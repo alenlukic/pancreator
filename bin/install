@@ -168,6 +168,7 @@ smoke_source_commit() {
 
 run_smoke() {
   local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project git_project
+  local committed_project committed_head committed_branch preexisting_project preexisting_pan_dev
   local detached_project detached_harness reconcile_project
   local -a smoke_source_args
 
@@ -199,6 +200,23 @@ run_smoke() {
     project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
     printf 'node_modules/\n' >"$project/.gitignore"
     printf '%s' "$project"
+  }
+
+  # Initialize the project as a Git repository when it is not one yet, then
+  # record one commit so HEAD exists. The identity is passed inline so the
+  # smoke never depends on, or writes, the operator's Git configuration.
+  smoke_commit() {
+    local project="$1" message="$2"
+
+    if [[ ! -d "$project/.git" ]]; then
+      git -C "$project" init -q
+    fi
+
+    printf '%s\n' "$message" >>"$project/README.md"
+    git -C "$project" add README.md
+    git -C "$project" -c user.name=pancreator-smoke \
+      -c user.email=smoke@pancreator.invalid -c commit.gpgsign=false \
+      commit -q -m "$message"
   }
 
   smoke_verify() {
@@ -319,15 +337,68 @@ run_smoke() {
     "$git_project/.gitignore"
   smoke_step "leave the git target with no tracked changes" \
     test -z "$(git -C "$git_project" status --porcelain)"
+  # `git init` leaves HEAD unborn, so there is no commit to branch from.
+  smoke_step "skip the integration branch in a git target with no commits" \
+    bash -c "! git -C '$git_project' show-ref --verify --quiet refs/heads/pan-dev"
+
+  # The integration branch: created from HEAD on a fresh install, kept across a
+  # refresh, left alone when the target already has one, and never checked out.
+  committed_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+  smoke_commit "$committed_project" "initial"
+  committed_head="$(git -C "$committed_project" rev-parse HEAD)"
+  committed_branch="$(git -C "$committed_project" symbolic-ref --short HEAD)"
+  smoke_step "install into a committed git target" bash -c \
+    "bash '$0' --target '$committed_project' --pancreator-root '$PANCREATOR_ROOT' \
+      ${smoke_source_args[*]} --skip-dependencies --skip-shell-alias \
+      >'$smoke_root/committed-install.log'"
+  smoke_step "create the pan-dev integration branch from HEAD" \
+    test "$(git -C "$committed_project" rev-parse --verify --quiet refs/heads/pan-dev)" = "$committed_head"
+  smoke_step "report the created integration branch" grep -q \
+    "Created integration branch pan-dev from $(git -C "$committed_project" rev-parse --short HEAD) (local only; not pushed)" \
+    "$smoke_root/committed-install.log"
+  smoke_step "leave the committed git target on its own branch" \
+    test "$(git -C "$committed_project" symbolic-ref --short HEAD)" = "$committed_branch"
+  smoke_step "leave the committed git target with no tracked changes" \
+    test -z "$(git -C "$committed_project" status --porcelain)"
+  smoke_step "refresh the committed git target" bash -c \
+    "bash '$0' --target '$committed_project' --pancreator-root '$PANCREATOR_ROOT' \
+      ${smoke_source_args[*]} --yes --skip-dependencies --skip-shell-alias \
+      >'$smoke_root/committed-refresh.log'"
+  smoke_step "retain one pan-dev across the refresh" \
+    test "$(git -C "$committed_project" branch --list pan-dev | wc -l | tr -d ' ')" = "1"
+  smoke_step "keep pan-dev at its commit across the refresh" \
+    test "$(git -C "$committed_project" rev-parse refs/heads/pan-dev)" = "$committed_head"
+  smoke_step "report the retained integration branch" grep -q \
+    'Retained integration branch pan-dev (local only; not pushed)' \
+    "$smoke_root/committed-refresh.log"
+
+  preexisting_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+  smoke_commit "$preexisting_project" "initial"
+  git -C "$preexisting_project" branch pan-dev
+  preexisting_pan_dev="$(git -C "$preexisting_project" rev-parse refs/heads/pan-dev)"
+  smoke_commit "$preexisting_project" "second"
+  smoke_step "install into a git target that already has pan-dev" bash "$0" \
+    --target "$preexisting_project" --pancreator-root "$PANCREATOR_ROOT" \
+    "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
+  smoke_step "leave a pre-existing pan-dev at its own commit" \
+    test "$(git -C "$preexisting_project" rev-parse refs/heads/pan-dev)" = "$preexisting_pan_dev"
+
+  smoke_step "create no git repository in a non-git target" test ! -e \
+    "$fresh_project/.git"
 
   # Resolve to the canonical form the installer records; TMPDIR often carries a
   # trailing slash, so the raw mktemp paths would not compare equal.
   detached_project="$(cd "$(mktemp -d "${smoke_root}/project.XXXXXX")" && pwd)"
   detached_harness="$(cd "$(mktemp -d "${smoke_root}/harness.XXXXXX")" && pwd)"
-  git -C "$detached_project" init -q
+  smoke_commit "$detached_project" "initial"
   smoke_step "detached install" bash "$0" --target "$detached_project" \
     --harness-dir "$detached_harness" --pancreator-root "$PANCREATOR_ROOT" \
     "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
+  # The workspace, not the harness directory, is the repository that lands
+  # agent work, so the branch belongs to the target.
+  smoke_step "detached install creates pan-dev in the target" \
+    test "$(git -C "$detached_project" rev-parse --verify --quiet refs/heads/pan-dev)" = \
+      "$(git -C "$detached_project" rev-parse HEAD)"
   smoke_step "detached harness lives outside the target" test -x \
     "$detached_harness/bin/pan"
   smoke_step "detached target has no .pancreator" test ! -e \
@@ -741,6 +812,39 @@ EXCLUDE
   echo "Ignored Pancreator files via $exclude_file (local only; not tracked)"
 }
 
+# `ACTION-001` lands agent work on the `pan-dev` integration branch, so a Git
+# target needs that branch before its first workflow run. Create it from the
+# target's current HEAD when it is missing. The branch is local and is never
+# checked out or pushed here; a target that already carries `pan-dev` keeps it
+# at its own commit, and a repository with no commits yet has nothing to branch
+# from, so the step reports that and moves on.
+INTEGRATION_BRANCH="pan-dev"
+
+ensure_target_integration_branch() {
+  local head
+
+  if [[ "$(git -C "$TARGET_DIR" rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]]; then
+    return
+  fi
+
+  if git -C "$TARGET_DIR" show-ref --verify --quiet "refs/heads/$INTEGRATION_BRANCH"; then
+    echo "Retained integration branch $INTEGRATION_BRANCH (local only; not pushed)"
+    return
+  fi
+
+  if ! head="$(git -C "$TARGET_DIR" rev-parse --short --verify --quiet HEAD)"; then
+    echo "Skipped integration branch $INTEGRATION_BRANCH: the target has no commits yet."
+    return
+  fi
+
+  if ! git -C "$TARGET_DIR" branch "$INTEGRATION_BRANCH" >/dev/null 2>&1; then
+    echo "Warning: could not create integration branch $INTEGRATION_BRANCH; run: git -C $TARGET_DIR branch $INTEGRATION_BRANCH" >&2
+    return
+  fi
+
+  echo "Created integration branch $INTEGRATION_BRANCH from $head (local only; not pushed)"
+}
+
 configure_shell_alias() {
   if [[ "$SKIP_SHELL_ALIAS" -eq 1 ]]; then
     return 0
@@ -999,6 +1103,7 @@ install_payload() {
     --entries "$(payload_entries_csv)" \
     --out "$payload_manifest"
   ensure_target_git_exclude
+  ensure_target_integration_branch
   report_legacy_gitignore
 
   mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"

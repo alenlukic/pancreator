@@ -115,7 +115,11 @@ import {
   tickHypervisor,
 } from './lib/hypervisor.js'
 import { runCursorAgentJson } from './lib/executors/cursor-agent.js'
-import { gitWorkspaceSnapshot, isGitRepository } from './lib/git.js'
+import {
+  gitWorkspaceSnapshot,
+  integrationBranchReadiness,
+  isGitRepository,
+} from './lib/git.js'
 import { liveRunsBoundToWorktree } from './lib/state.js'
 import { listInbox, renderInbox, restoreInboxRequest } from './lib/inbox.js'
 import {
@@ -4431,6 +4435,10 @@ async function main(): Promise<void> {
         // target, which a detached installation does not.
         git: {
           available_repository: isGitRepository(workspaceRoot),
+          // Advisory: ACTION-001 lands agent work on the integration branch,
+          // so its absence is a readiness gap rather than a failure. The
+          // installer creates it on the next fresh install or refresh.
+          integration_branch: integrationBranchReadiness(workspaceRoot),
         },
         pipeline_config: {
           active: pipelineConfig.name,
