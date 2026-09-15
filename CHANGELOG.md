@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.9.0] - 2026-09-15
+
+This release names the integration branch `pan-dev`. Agents commit and merge on `pan-dev` or on a branch that lands on `pan-dev`, and the operator promotes `pan-dev` to `main`. The former name `dev` collided with branches that target repositories already use for other work. The installer now creates `pan-dev` from the target's HEAD when it is missing, so a target carries the branch before its first run.
+
+### Changed
+
+- Rename the integration branch from `dev` to `pan-dev` on every surface that states the landing rule: `AGENTS.md`, the embedded and detached `AGENTS.md` templates, ACTION-001, both Cursor rules, and the operator guide ([AGENTS](AGENTS.md), [ACTION-001](governance/policies/ACTION-001.json), [7bf92ae6](https://github.com/alenlukic/pancreator/commit/7bf92ae64e75ac4004a081d57c38c8235b9a4fcf)).
+- Assert the `pan-dev` landing rule in the cohort-autonomy surface regression test, so a surface that still names `dev` fails the suite ([cohort-autonomy-surfaces](tests/regression/cohort-autonomy-surfaces.test.ts), [7bf92ae6](https://github.com/alenlukic/pancreator/commit/7bf92ae64e75ac4004a081d57c38c8235b9a4fcf)).
+
+### Added
+
+- Create the local `pan-dev` branch from the target's current HEAD on a fresh install and on every refresh when the target workspace is a Git repository and the branch does not exist. The installer never checks the branch out or pushes it, keeps an existing `pan-dev` at its own commit, skips a repository with no commits with a one-line notice, and creates the branch in the target workspace for a detached install ([install](bin/install), [embedded-installation](docs/embedded-installation.md), [0a28ddd0](https://github.com/alenlukic/pancreator/commit/0a28ddd0ed0bb94b32d074c23ba9de347201073a)).
+- Add smoke steps for the integration branch: a git target with no commits gets no branch, a committed target gets `pan-dev` at HEAD and stays on its own branch, a refresh keeps one `pan-dev` at the same commit, a pre-existing `pan-dev` is left alone, a non-git target gets no repository, and a detached install creates the branch in the target ([install](bin/install), [0a28ddd0](https://github.com/alenlukic/pancreator/commit/0a28ddd0ed0bb94b32d074c23ba9de347201073a)).
+- Assert the created and retained branch in the embedded and detached installer suites, on the git-target paths they already covered ([embedded-installation](tests/secondary/embedded-installation.test.ts), [detached-installation](tests/secondary/detached-installation.test.ts), [0a28ddd0](https://github.com/alenlukic/pancreator/commit/0a28ddd0ed0bb94b32d074c23ba9de347201073a)).
+- Report the integration branch in `pan doctor` under `git.integration_branch`. A missing branch is advisory and names the repair: run the `./bin/install` refresh or `git branch pan-dev` ([git](src/lib/git.ts), [cli](src/cli.ts), [integration-branch-readiness](tests/unit/integration-branch-readiness.test.ts), [0a28ddd0](https://github.com/alenlukic/pancreator/commit/0a28ddd0ed0bb94b32d074c23ba9de347201073a)).
+
 ## [6.8.0] - 2026-09-15
 
 This release removes commit and merge from every MUST NOT list. Agents commit and merge on their own judgment, on `dev` or on a branch that lands on `dev`. The operator promotes `dev` to `main` and pushes. Push, publication, deployment, history rewrite, branch deletion, and destructive reset stay operator-authorized.
