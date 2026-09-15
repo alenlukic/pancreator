@@ -56,6 +56,14 @@
       "timeout_ms": 1200000
     },
     {
+      "id": "ship.fast_wall_ceiling",
+      "type": "shell",
+      "hard": true,
+      "statement": "The TEST-001 rolling 24-hour fast-lane wall average is at or below the configured permitted ceiling.",
+      "command": "pan tests wall",
+      "timeout_ms": 30000
+    },
+    {
       "id": "ship.prior_gates_current",
       "type": "state",
       "hard": true,

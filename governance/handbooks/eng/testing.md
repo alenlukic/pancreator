@@ -2,7 +2,7 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC 2119 meanings.
 
-This handbook defines how Pancreator self-development tests earn their place in the suite. It applies to coders, remediators, reviewers, QA testers, and verifiers. No count budget or duration ceiling decides compliance. Duration supports a MERGE or DEMOTE verdict only after signal and contract analysis support that verdict.
+This handbook defines how Pancreator self-development tests earn their place in the suite. It applies to coders, remediators, reviewers, QA testers, and verifiers. Automated checks do not judge a test's contract value, and no count budget decides a tune verdict. The harness may enforce the policy-authorized duration ceiling on the fast lane's rolling daily average and mechanical structural checks on test placement and fixture construction. Duration supports a MERGE or DEMOTE verdict only after signal and contract analysis support that verdict.
 
 ## Principles
 
@@ -40,7 +40,7 @@ Keep fixture setup proportional to the contract. Share templates across tests in
 
 ### TP-09 · Scratch space
 
-Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
+Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests.noindex/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. The `.noindex` suffix and the root's `.metadata_never_index` marker keep fixture files out of Spotlight without changing a host setting. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
 
 ### TP-10 · Timing-independent proofs
 

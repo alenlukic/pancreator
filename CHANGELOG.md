@@ -1,5 +1,29 @@
 # Changelog
 
+## [6.6.0] - 2026-09-15
+
+This release bounds the fast test lane. The runner starts the longest files first. A tracked 120 s ceiling reports the daily average.
+
+### Changed
+
+- Order compiled test files longest first from the last-run duration record ([d947205c](https://github.com/alenlukic/pancreator/commit/d947205c)).
+- Rename the test scratch root to `runtime/tmp/tests.noindex` and move sweep work off the critical path ([d947205c](https://github.com/alenlukic/pancreator/commit/d947205c)).
+- Amend TEST-001 so a fast-lane duration ceiling and structural test-placement checks are permitted ([a3fa9a80](https://github.com/alenlukic/pancreator/commit/a3fa9a80)).
+- Convert hand-built run construction to checkpoint clones and enforce the rule in repository validation ([93c0ab2c](https://github.com/alenlukic/pancreator/commit/93c0ab2c)).
+- Keep the unit lane free of fixtures and subprocesses. Move those tests to the integration lane ([93c0ab2c](https://github.com/alenlukic/pancreator/commit/93c0ab2c)).
+- Set the explicit fast-lane worker default to 13 after the cost work ([1a3da16a](https://github.com/alenlukic/pancreator/commit/1a3da16a)).
+
+### Added
+
+- Record fixture template size and file count, and fail a template over 30 MB ([d947205c](https://github.com/alenlukic/pancreator/commit/d947205c)).
+- Seed fixture clones with a local repository-check file that uses Node, not npm ([93c0ab2c](https://github.com/alenlukic/pancreator/commit/93c0ab2c)).
+- Add a durable fast-wall series, `pan tests wall`, and a ship criterion that names the average and the ceiling ([1a3da16a](https://github.com/alenlukic/pancreator/commit/1a3da16a)).
+- Show implement-stage wall and test-count deltas on the verify card ([1a3da16a](https://github.com/alenlukic/pancreator/commit/1a3da16a)).
+
+### Fixed
+
+- Write the run-tests session record with an atomic rename in the wrapper test ([0ccc28bb](https://github.com/alenlukic/pancreator/commit/0ccc28bb)).
+
 ## [6.5.0] - 2026-09-14
 
 This release adds two standalone command-backed modes. `/pan-harden` prepares ad-hoc session changes for integration. `/pan-polish` brings UI and design changes into handbook and design-system conformance.

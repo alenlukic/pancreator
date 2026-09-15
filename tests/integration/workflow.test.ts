@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createFixture } from '../fixture-template.js'
+import { createFixture, sharedFixture } from '../fixture-template.js'
 import {
   loadWorkflow,
   stageBySlug,
@@ -10,7 +10,7 @@ import {
 } from '../../src/lib/workflow.js'
 
 test('delivery workflow starts at implement and stages are addressable', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const workflow = loadWorkflow(root, 'delivery')
   assert.equal(workflow.start_stage, 'implement')
   assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
@@ -44,7 +44,7 @@ test('delivery workflow starts at implement and stages are addressable', () => {
 })
 
 test('the planning plan stage is worker-owned while intake stages stay supervisor-owned', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const planningPlan = stageBySlug(loadWorkflow(root, 'planning'), 'plan')
 
   assert.equal(planningPlan.persona, 'planner')
@@ -62,7 +62,7 @@ test('the planning plan stage is worker-owned while intake stages stay superviso
 })
 
 test('a best-of-N candidate never stops for the operator', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const workflow = loadWorkflow(root, 'delivery-candidate')
 
   assert.deepEqual(
@@ -75,7 +75,7 @@ test('a best-of-N candidate never stops for the operator', () => {
 })
 
 test('shared delivery prompts locate the plan from the card rather than the request alone', () => {
-  const root = createFixture()
+  const root = sharedFixture()
 
   // delivery and delivery-chunk deliver the ratified child specification as
   // the request; a best-of-N candidate delivers a plan stage output and only
@@ -121,7 +121,7 @@ test('shared delivery prompts locate the plan from the card rather than the requ
 })
 
 test('consolidation routes verify failure back to consolidate and keeps the ship gate', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const workflow = loadWorkflow(root, 'metacritic')
 
   assert.equal(workflow.start_stage, 'consolidate')
@@ -156,7 +156,7 @@ test('consolidation routes verify failure back to consolidate and keeps the ship
 })
 
 test('the release gate is a ship entry gate that routes to remediate for two loops', () => {
-  const root = createFixture()
+  const root = sharedFixture()
 
   for (const [slug, failure] of [
     ['delivery', 'remediate'],

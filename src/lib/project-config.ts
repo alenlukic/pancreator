@@ -283,6 +283,36 @@ function assertAwayModeBlock(value: unknown): void {
   )
 }
 
+function assertFastWallBlock(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(value),
+    `${PROJECT_CONFIG_PATH}.fast_wall MUST be an object when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    Number.isInteger(value.ceiling_ms) && (value.ceiling_ms as number) > 0,
+    `${PROJECT_CONFIG_PATH}.fast_wall.ceiling_ms MUST be a positive integer.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    typeof value.anchor_date === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/u.test(value.anchor_date) &&
+      Number.isFinite(Date.parse(`${value.anchor_date}T00:00:00.000Z`)),
+    `${PROJECT_CONFIG_PATH}.fast_wall.anchor_date MUST be a UTC date in YYYY-MM-DD form.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    Number.isInteger(value.weekly_allowance_ms) &&
+      (value.weekly_allowance_ms as number) >= 0,
+    `${PROJECT_CONFIG_PATH}.fast_wall.weekly_allowance_ms MUST be a non-negative integer.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+}
+
 function resolveConfigPath(root: string): string | null {
   const name = harnessConfigName(root)
 
@@ -347,6 +377,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
 
   assertWorktreesBlock(value.worktrees)
   assertAwayModeBlock(value.away_mode)
+  assertFastWallBlock(value.fast_wall)
 
   // A detached harness cannot reach its target by a relative path that would
   // survive being moved, so the target MUST be recorded absolutely.

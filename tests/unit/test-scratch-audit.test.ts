@@ -10,6 +10,10 @@ import { createTestTempDirectory } from '../temp.js'
 // run time rather than written out, or the audit would flag these lines.
 const SHARED_TEMP = ['tmp', 'dir'].join('')
 const SHARED_TEMP_CALL = `${SHARED_TEMP}()`
+const RUN_CONSTRUCTION_CALL = `${['create', 'Run'].join('')}({})`
+const CHILD_PROCESS_MODULE = `node:${['child', 'process'].join('_')}`
+const CHECKPOINT_CALL = `${['check', 'point'].join('')}()`
+const WRITABLE_FIXTURE_CALL = `${['create', 'Fixture'].join('')}()`
 
 function rejection(relative: string, line: number): string {
   return `${relative}:${line} allocates in the shared temp directory with ${SHARED_TEMP_CALL}; use createTestTempDirectory from tests/temp.ts`
@@ -67,4 +71,47 @@ test('the scratch audit rejects the shared temp call outside the sanctioned help
       .errors,
     [],
   )
+})
+
+test('the structural audit rejects new hand-driven runs and unit process fixtures', () => {
+  const root = createTestTempDirectory('test-structure-audit-')
+
+  writeTestSource(
+    root,
+    'tests/integration/new-driver.test.ts',
+    `const run = ${RUN_CONSTRUCTION_CALL}\n`,
+  )
+  writeTestSource(
+    root,
+    'tests/unit/new-process.test.ts',
+    `import { spawn } from '${CHILD_PROCESS_MODULE}'\nvoid spawn\n`,
+  )
+  // The other half of the lane rule: a writable fixture is as much a lane
+  // crossing as a subprocess, and a clone of a driven run is the same cost.
+  writeTestSource(
+    root,
+    'tests/unit/new-fixture.test.ts',
+    `const root = ${WRITABLE_FIXTURE_CALL}\nvoid root\n`,
+  )
+  writeTestSource(
+    root,
+    'tests/unit/new-clone.test.ts',
+    `const run = ${CHECKPOINT_CALL}\nvoid run\n`,
+  )
+  writeTestSource(
+    root,
+    'tests/unit/read-only.test.ts',
+    'const root = sharedFixture()\nvoid root\n',
+  )
+
+  const laneRejection = (relative: string): string =>
+    `${relative} crosses the unit-lane boundary with a subprocess or writable fixture; move it to tests/integration or use sharedFixture() for read-only access`
+
+  assert.deepEqual(auditTestScratchDirectories(root).errors, [
+    `tests/integration/new-driver.test.ts constructs or prepares a run without cloning a checkpoint; use ${CHECKPOINT_CALL} from tests/integration/delivery-helpers.ts or add a reviewed allowlist entry`,
+    laneRejection('tests/unit/new-clone.test.ts'),
+    laneRejection('tests/unit/new-fixture.test.ts'),
+    laneRejection('tests/unit/new-process.test.ts'),
+  ])
+  assert.deepEqual(auditTestScratchDirectories(process.cwd()).errors, [])
 })

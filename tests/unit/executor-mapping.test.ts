@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { evalDrivesExecutor } from '../../src/lib/evals/run.js'
 import {
   canonicalPersonaMapping,
   parsePersonaMapping,
   personaExecutorOf,
 } from '../../src/lib/executors/mapping.js'
+
+test('the eval runner drives every external executor and hands back only cursor', () => {
+  assert.equal(evalDrivesExecutor('openai'), true)
+  assert.equal(evalDrivesExecutor('claude-code'), true)
+  assert.equal(evalDrivesExecutor('cursor'), false)
+})
 
 test('a plain model string parses as a cursor mapping', () => {
   const cases: {

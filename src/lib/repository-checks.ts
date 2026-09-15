@@ -735,7 +735,7 @@ function isLinkedWorktree(root: string): boolean {
 /** `<installation>/worktrees/...` and legacy paths resolve to the installation root. */
 function owningInstallationRoot(root: string): string | null {
   // The path alone is not enough: a test fixture under a worktree's
-  // runtime/tmp/tests/ also has a `worktrees` segment, and must not read the
+  // runtime/tmp/tests.noindex/ also has a `worktrees` segment, and must not read the
   // installation's configuration in place of its own.
   if (!isLinkedWorktree(root)) {
     return null

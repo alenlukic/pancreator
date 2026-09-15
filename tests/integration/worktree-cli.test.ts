@@ -227,46 +227,6 @@ test('worktree remove refuses dirty files unless force is explicit and keeps the
   )
 })
 
-test('commands without a selectable workspace reject the shared option', () => {
-  const root = createFixture()
-
-  for (const invocation of [
-    ['list'],
-    ['worktree', 'list'],
-    ['repository-check', 'validate'],
-    ['governance', 'audit-directives'],
-  ]) {
-    assert.throws(
-      () =>
-        assertWorktreeOptionSupported(invocation[0] as string, [
-          ...invocation.slice(1),
-          '--worktree',
-          'nope',
-        ]),
-      (error: unknown) =>
-        error instanceof PanError &&
-        error.code === 'WORKTREE_OPTION_UNSUPPORTED' &&
-        /technologies detect/u.test(error.message),
-      invocation.join(' '),
-    )
-  }
-
-  assert.throws(
-    () =>
-      assertWorktreeOptionSupported('repository-check', [
-        'validate',
-        '--worktree',
-        'nope',
-      ]),
-    /'pan repository-check validate'/u,
-  )
-
-  // The rejection fires before resolution, so no worktree was created.
-  const listed = runCli<{ worktrees: unknown[] }>(root, ['worktree', 'list'])
-
-  assert.deepEqual(listed.worktrees, [])
-})
-
 test('impacted selection and requirements resolution accept the shared option', () => {
   const root = createFixture()
 

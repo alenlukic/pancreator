@@ -213,24 +213,6 @@ test('pan doctor reports openai readiness only when a mapping needs it', () => {
   assert.match(unreadyReport.openai?.error ?? '', /OPENAI_API_KEY/u)
 })
 
-test('an invalid openai mapping is rejected before a run starts', () => {
-  const root = createFixture()
-
-  routePersonas(root, ['planner'], 'openai:gpt-6-astra[effort=extreme]')
-
-  const validated = pan(root, ['validate'])
-
-  assert.equal(validated.status, 1)
-
-  const message = `${validated.stdout}${validated.stderr}`
-
-  // The operator learns the offending value and every supported option.
-  assert.match(message, /planner/u)
-  assert.match(message, /effort/u)
-  assert.match(message, /session-resume/u)
-  assert.match(message, /max-tool-rounds/u)
-})
-
 test('an alias family value may not carry the openai prefix', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')

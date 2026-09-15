@@ -26,6 +26,7 @@ import {
   scratchRuns,
   waitForAbsence,
   waitForPath,
+  waitForProcess,
 } from './cli-build-helpers.js'
 
 test('importing the compiled CLI emits nothing while executing it reaches the command', () => {
@@ -121,6 +122,122 @@ test('pan reuses the prepared build during a repository test run', () => {
   }
 })
 
+// Two files share the unit lane so the negative case can withhold one file
+// while every lane is still represented. A matcher that only checked the lane
+// names would record that subset, and a one-file-per-lane fixture could not
+// tell the two implementations apart.
+test('run-tests records only the complete configured fast lane', () => {
+  const fixture = createBuildScriptFixture()
+  const durationRecord = path.join(
+    fixture.root,
+    'runtime',
+    'tmp',
+    'tests.noindex',
+    'file-durations.json',
+  )
+  const observed = path.join(fixture.root, 'fast-wall-call')
+  const testFiles = [
+    'dist/tests/unit/unit.test.js',
+    'dist/tests/unit/second-unit.test.js',
+    'dist/tests/integration/integration.test.js',
+    'dist/tests/regression/regression.test.js',
+  ]
+  const allLanesOneFileShort = testFiles.filter(
+    (file) => file !== 'dist/tests/unit/second-unit.test.js',
+  )
+
+  try {
+    for (const file of testFiles) {
+      mkdirSync(path.dirname(path.join(fixture.root, file)), {
+        recursive: true,
+      })
+      writeFileSync(path.join(fixture.root, file), '')
+    }
+
+    writeFileSync(
+      path.join(fixture.root, 'dist', 'src', 'cli.js'),
+      `require('node:fs').appendFileSync(${JSON.stringify(observed)}, process.argv.slice(2).join(' ') + '\\n')\n`,
+    )
+    mkdirSync(path.dirname(durationRecord), { recursive: true })
+    writeFileSync(
+      durationRecord,
+      JSON.stringify({
+        schema_version: 1,
+        recorded_at: '2026-09-15T00:00:00.000Z',
+        lane: 'integration+regression+unit',
+        wall_clock_ms: 100,
+        test_count: 4,
+        files: testFiles.map((file) => ({ file, duration_ms: 1 })),
+      }),
+    )
+
+    const env = { ...fixture.env, npm_lifecycle_event: 'test' }
+    const partial = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        '/usr/bin/true',
+        ...allLanesOneFileShort,
+      ],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(partial.status, 0, partial.stderr)
+    assert.equal(existsSync(observed), false)
+
+    const complete = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        '/usr/bin/true',
+        ...testFiles,
+      ],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(complete.status, 0, complete.stderr)
+    assert.match(
+      readFileSync(observed, 'utf8'),
+      /^tests record-fast-wall .*--worker-count /u,
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// Bash 3.2 treats an empty array as unset under `set -u`, so the matcher keeps
+// a sentinel element and compares counts. Without the explicit `expected_count
+// -gt 0` guard a tree with no compiled lane files matches an empty argument
+// list and records a run that never happened.
+test('run-tests records nothing when the compiled fast lane is empty', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'fast-wall-call')
+
+  try {
+    writeFileSync(
+      path.join(fixture.root, 'dist', 'src', 'cli.js'),
+      `require('node:fs').appendFileSync(${JSON.stringify(observed)}, process.argv.slice(2).join(' ') + '\\n')\n`,
+    )
+
+    const result = spawnSync(
+      '/bin/bash',
+      [path.join(fixture.root, 'bin', 'run-tests'), '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: { ...fixture.env, npm_lifecycle_event: 'test' },
+      },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(observed), false)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 // Fixtures never touch the shared OS temp directory. The wrapper hands the
 // suite a directory under the root, fences git discovery at it so a fixture
 // without its own repository reads as none, and discards it when the suite
@@ -144,7 +261,7 @@ test('run-tests scopes the suite to a scratch directory it discards afterwards',
     assert.ok(scratch)
     assert.equal(
       path.dirname(scratch),
-      path.join(fixture.root, 'runtime', 'tmp', 'tests'),
+      path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex'),
     )
     assert.match(path.basename(scratch), /^run-/u)
     assert.equal(ceiling?.split(':')[0], scratch)
@@ -155,6 +272,87 @@ test('run-tests scopes the suite to a scratch directory it discards afterwards',
       readFileSync(path.join(path.dirname(scratch), 'package.json'), 'utf8'),
       '{}\n',
     )
+    assert.equal(
+      existsSync(path.join(path.dirname(scratch), '.metadata_never_index')),
+      true,
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('run-tests orders recorded files slowest first and preserves a fresh order', () => {
+  const fixture = createBuildScriptFixture()
+  const testDirectory = path.join(fixture.root, 'dist', 'tests', 'unit')
+  const observed = path.join(fixture.root, 'observed')
+  const fast = path.join(testDirectory, 'fast.test.js')
+  const slow = path.join(testDirectory, 'slow.test.js')
+  const command = [
+    '/bin/bash',
+    '-c',
+    `printf '%s\\n' "$@" > "${observed}"`,
+    'runner',
+    fast,
+    slow,
+  ]
+
+  try {
+    mkdirSync(testDirectory, { recursive: true })
+    writeFileSync(fast, '')
+    writeFileSync(slow, '')
+
+    const fresh = runTests(fixture, command)
+
+    assert.equal(fresh.status, 0, fresh.stderr)
+    assert.deepEqual(readFileSync(observed, 'utf8').trim().split('\n'), [
+      fast,
+      slow,
+    ])
+
+    const durations = path.join(
+      fixture.root,
+      'runtime',
+      'tmp',
+      'tests.noindex',
+      'file-durations.json',
+    )
+
+    writeFileSync(
+      durations,
+      JSON.stringify({
+        schema_version: 1,
+        recorded_at: '2026-09-15T00:00:00.000Z',
+        lane: 'unit',
+        wall_clock_ms: 110,
+        test_count: 2,
+        files: [
+          { file: 'dist/tests/unit/fast.test.js', duration_ms: 10 },
+          { file: 'dist/tests/unit/slow.test.js', duration_ms: 100 },
+        ],
+      }),
+    )
+
+    const recorded = runTests(fixture, command)
+
+    assert.equal(recorded.status, 0, recorded.stderr)
+    assert.deepEqual(readFileSync(observed, 'utf8').trim().split('\n'), [
+      slow,
+      fast,
+    ])
+
+    // dist/ and runtime/ have independent lifetimes, so a record can outlive
+    // the helper that reads it. Ordering decides how the suite is dispatched,
+    // never whether it runs.
+    rmSync(path.join(fixture.root, 'dist', 'src', 'lib', 'test-file-order.js'))
+
+    const unordered = runTests(fixture, command)
+
+    assert.equal(unordered.status, 0, unordered.stderr)
+    assert.match(unordered.stderr, /running them in the order received/u)
+    assert.deepEqual(readFileSync(observed, 'utf8').trim().split('\n'), [
+      fast,
+      slow,
+    ])
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
   }
@@ -167,7 +365,7 @@ test('run-tests sweeps scratch left by a dead run and keeps a live one', () => {
   const fixture = createBuildScriptFixture()
   const squatter = spawn('/bin/sleep', ['30'])
   const holder = spawn('/bin/sleep', ['30'])
-  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests')
+  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')
 
   try {
     assert.ok(squatter.pid)
@@ -228,7 +426,7 @@ test('run-tests exits while the removal of its scratch is still running', async 
       `.removing-${discarded[0]?.replace('discarded-', '')}`,
     ])
 
-    const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests')
+    const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')
     const [remover] = readFileSync(
       path.join(scratch, markers[0] as string),
       'utf8',
@@ -245,13 +443,132 @@ test('run-tests exits while the removal of its scratch is still running', async 
   }
 })
 
-// A detached removal dies with a SIGKILLed run just as the run's own cleanup
-// does, so the discarded tree needs the same sweep the run directory gets.
+// A sleeping remover would let this pass by finishing before the group kill
+// lands, which proves nothing. The stub instead reports its own session and
+// then blocks until this test releases it, so the group kill is answered by
+// a remover that is provably still alive in a session of its own.
+test('run-tests removal survives the process group that launched it', async () => {
+  const fixture = createBuildScriptFixture()
+  const blockingRemove = path.join(fixture.root, 'tools', 'rm')
+  const started = path.join(fixture.root, 'remover-session')
+  const release = path.join(fixture.root, 'release-remover')
+
+  try {
+    writeFileSync(
+      blockingRemove,
+      [
+        '#!/usr/bin/env bash',
+        'session="$(ps -o sess= -p $$ | tr -d " ")"',
+        // The reader below waits on the record's existence, so the record has
+        // to appear whole. A redirection creates the file before it writes,
+        // and a read once landed in that window under the full profile.
+        `printf '%s %s\\n' "$$" "$session" > "${started}.tmp"`,
+        `/bin/mv "${started}.tmp" "${started}"`,
+        // The count is a hang guard, not the proof: a test that fails before
+        // it releases the stub must not leave it blocked forever.
+        'waited=0',
+        `while [[ ! -e "${release}" && "$waited" -lt 600 ]]; do`,
+        '  /bin/sleep 0.05',
+        '  waited=$((waited + 1))',
+        'done',
+        'exec /bin/rm "$@"',
+        '',
+      ].join('\n'),
+    )
+    chmodSync(blockingRemove, 0o755)
+
+    const child = spawn(
+      '/bin/bash',
+      [path.join(fixture.root, 'bin', 'run-tests'), '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        env: fixture.env,
+        detached: true,
+        stdio: ['ignore', 'ignore', 'pipe'],
+      },
+    )
+    // `detached` made the runner a session leader, so its session is its pid.
+    const runner = child.pid as number
+    const result = await waitForProcess(child)
+
+    assert.equal(result.status, 0, result.stderr)
+
+    const discarded = discardedRuns(fixture.root)
+
+    assert.equal(discarded.length, 1)
+
+    await waitForPath(started)
+
+    const [removerPid, removerSession] = readFileSync(started, 'utf8')
+      .trim()
+      .split(' ')
+
+    // A new session is what outlives the launching one; sharing the runner's
+    // would make the kill below reach the remover too.
+    assert.match(removerSession ?? '', /^[0-9]+$/u)
+    assert.notEqual(removerSession, String(runner))
+
+    try {
+      process.kill(-runner, 'SIGTERM')
+    } catch (error) {
+      assert.equal((error as NodeJS.ErrnoException).code, 'ESRCH')
+    }
+
+    // Still blocked on the release below, so its survival is observed rather
+    // than inferred from a removal that may already have finished.
+    assert.doesNotThrow(() => process.kill(Number(removerPid), 0))
+
+    writeFileSync(release, '')
+
+    await waitForAbsence(
+      path.join(
+        fixture.root,
+        'runtime',
+        'tmp',
+        'tests.noindex',
+        discarded[0] as string,
+      ),
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('run-tests ignores a failed dead-run removal', () => {
+  const fixture = createBuildScriptFixture()
+  const failingRemove = path.join(fixture.root, 'tools', 'rm')
+  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')
+
+  try {
+    writeFileSync(failingRemove, '#!/bin/sh\nexit 1\n')
+    chmodSync(failingRemove, 0o755)
+    mkdirSync(path.join(scratch, 'run-dead'), { recursive: true })
+    writeFileSync(
+      path.join(scratch, 'run-dead', '.owner'),
+      '999999\nunidentified-999999\n',
+    )
+    writeFileSync(path.join(scratch, 'run-dead', 'fixture'), '')
+
+    const result = runTests(fixture, ['/usr/bin/true'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(scratchRuns(fixture.root).includes('run-dead'), false)
+    assert.equal(
+      existsSync(path.join(scratch, 'discarded-dead', 'fixture')),
+      true,
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// A remover can fail independently of its runner, so a discarded tree needs
+// the same retry sweep as a run directory left by a killed wrapper.
 test('run-tests sweeps a discarded tree whose remover is gone', () => {
   const fixture = createBuildScriptFixture()
   const squatter = spawn('/bin/sleep', ['30'])
   const holder = spawn('/bin/sleep', ['30'])
-  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests')
+  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')
 
   try {
     assert.ok(squatter.pid)

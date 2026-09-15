@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -13,6 +12,7 @@ import {
   resumeRun,
   setRunStage,
   setRunStageAsAway,
+  setRunVerification,
 } from '../../src/lib/engine.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
@@ -320,33 +320,23 @@ test('an unconfirmed verification level change is refused and a confirmed one ap
 
   assert.notEqual(before, 'minimal')
 
-  const cli = path.join(process.cwd(), 'dist', 'src', 'cli.js')
-  const refused = spawnSync(
-    process.execPath,
-    [cli, 'verification', runId, 'set', 'minimal'],
-    { cwd: root, encoding: 'utf8' },
+  assert.throws(
+    () => setRunVerification(root, runId, 'minimal'),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'VERIFICATION_CONSEQUENCE_UNCONFIRMED')
+      assert.match(error.message, /AC-01 \(full, test\.full_suite\)/u)
+      assert.match(error.message, /--confirm/u)
+
+      return true
+    },
   )
 
-  assert.notEqual(refused.status, 0, refused.stdout)
-
-  const failure = JSON.parse(refused.stderr) as {
-    error: string
-    message: string
-  }
-
-  assert.equal(failure.error, 'VERIFICATION_CONSEQUENCE_UNCONFIRMED')
-  assert.match(failure.message, /AC-01 \(full, test\.full_suite\)/u)
-  assert.match(failure.message, /--confirm/u)
   // The refusal is the whole point only if it changed nothing.
   assert.equal(getRunState(root, runId).verification?.level, before)
 
-  const applied = spawnSync(
-    process.execPath,
-    [cli, 'verification', runId, 'set', 'minimal', '--confirm'],
-    { cwd: root, encoding: 'utf8' },
-  )
+  setRunVerification(root, runId, 'minimal', '', { confirmed: true })
 
-  assert.equal(applied.status, 0, applied.stderr)
   assert.equal(getRunState(root, runId).verification?.level, 'minimal')
 })
 

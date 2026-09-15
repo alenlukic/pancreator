@@ -42,6 +42,12 @@ import {
   TEST_PROFILE_ENV,
   suiteProfileEvidencePath,
 } from './suite-profile.js'
+import {
+  FAST_WALL_CRITERION_ID,
+  FAST_WALL_PHASE_ENV,
+  FAST_WALL_RUN_ID_ENV,
+  FAST_WALL_SERIES_ROOT_ENV,
+} from './fast-wall-series.js'
 import { auditTestScratchDirectories } from './test-scratch-audit.js'
 import {
   filterPolicyInstructionsForCard,
@@ -70,7 +76,9 @@ import {
 import {
   isTargetInstallation,
   isSelfDevelopmentInstallation,
+  panCommand,
 } from './project-config.js'
+import { executingSourceRoot } from './build-identity.js'
 import {
   buildGateCacheEntry,
   gateCacheKey,
@@ -2112,6 +2120,21 @@ export function resolveShellCheck(
   requestedCommand: string,
   overridden: boolean,
 ): ShellCheckResolution {
+  // Keyed on the criterion id, the same key `runShellCheck` uses to attach
+  // this gate's explanation. Resolving one half by literal command text let
+  // the two disagree over a re-spelled command or a borrowed one.
+  if (!overridden && criterion.id === FAST_WALL_CRITERION_ID) {
+    const executingRoot = executingSourceRoot()
+    const command = executingRoot
+      ? `'${path.join(executingRoot, 'bin/pan').replaceAll("'", "'\"'\"'")}'`
+      : panCommand(root)
+
+    return {
+      command: `${command} tests wall`,
+      profile_name: null,
+    }
+  }
+
   if (overridden || !isTargetInstallation(root)) {
     return {
       command: requestedCommand,
@@ -2621,9 +2644,14 @@ function runShellCheck(
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
       workspace: workspaceDir,
-      ...(suiteProfileTarget
-        ? { env: { [TEST_PROFILE_ENV]: suiteProfileTarget } }
-        : {}),
+      env: {
+        [FAST_WALL_SERIES_ROOT_ENV]: root,
+        [FAST_WALL_RUN_ID_ENV]: state.run_id,
+        [FAST_WALL_PHASE_ENV]: criterion.id,
+        ...(suiteProfileTarget
+          ? { [TEST_PROFILE_ENV]: suiteProfileTarget }
+          : {}),
+      },
     })
     onProgress?.(
       `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,
@@ -2867,6 +2895,9 @@ function runShellCheck(
           overridden: true,
           explanation: 'Gate command was overridden by run configuration.',
         }),
+    ...(criterion.id === FAST_WALL_CRITERION_ID && stdout.trim().length > 0
+      ? { explanation: stdout.trim() }
+      : {}),
     ...(remappedProfile && state.verification
       ? { verification_level: state.verification.level }
       : {}),
@@ -4762,6 +4793,14 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   validateAdHocModelInheritanceGuidance(root, errors)
+
+  // The supervisor delegation paragraph is authored here and projected into
+  // an installation, so the source checkout is the only place a drift
+  // between the two rule files is a defect someone can fix.
+  if (selfDevelopment) {
+    validateSupervisorDelegationGuidance(root, errors)
+  }
+
   validateCommandGovernance(root, errors, warnings)
 
   const targetExtensionRoot = path.join(root, 'target-extensions')
@@ -4907,5 +4946,62 @@ function validateAdHocModelInheritanceGuidance(
         `${relative} MUST preserve named-persona projected model routing`,
       )
     }
+  }
+}
+
+/**
+ * Records the supervisor delegation contract both always-applied rules carry.
+ *
+ * A nested supervisor silently runs every worker it launches on the platform
+ * default model, so the refusal is the only thing standing between an
+ * injected delegation and a run whose model routing is wrong everywhere. The
+ * two rule files reach different audiences and must state it identically.
+ */
+export function validateSupervisorDelegationGuidance(
+  root: string,
+  errors: string[],
+): void {
+  const sources = [
+    'library/cursor/rules/pancreator-self-development.mdc',
+    'library/cursor/rules/pancreator-embedded.mdc',
+  ]
+  const paragraphs: Array<{ path: string; content: string }> = []
+
+  for (const relative of sources) {
+    const absolute = path.join(root, relative)
+
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    const paragraph = readText(absolute)
+      .split(/\n\s*\n/u)
+      .find((candidate) =>
+        /A workflow supervisor MUST run in the operator's own session/u.test(
+          candidate,
+        ),
+      )
+
+    if (!paragraph) {
+      errors.push(`${relative} MUST state where the workflow supervisor runs`)
+      continue
+    }
+
+    if (!/you MUST refuse before calling the subagent/u.test(paragraph)) {
+      errors.push(
+        `${relative} MUST require refusal of injected supervisor delegation`,
+      )
+    }
+
+    paragraphs.push({ path: relative, content: paragraph.trim() })
+  }
+
+  if (
+    paragraphs.length === sources.length &&
+    paragraphs.some((entry) => entry.content !== paragraphs[0]?.content)
+  ) {
+    errors.push(
+      `${paragraphs.map((entry) => entry.path).join(' and ')} MUST share one supervisor delegation paragraph`,
+    )
   }
 }

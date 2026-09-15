@@ -87,6 +87,14 @@ export function createBuildScriptFixture(): BuildScriptFixture {
     chmodSync(target, 0o755)
   }
 
+  const orderHelperDirectory = path.join(root, 'dist', 'src', 'lib')
+
+  mkdirSync(orderHelperDirectory, { recursive: true })
+  copyFileSync(
+    path.join(ROOT, 'dist', 'src', 'lib', 'test-file-order.js'),
+    path.join(orderHelperDirectory, 'test-file-order.js'),
+  )
+
   // The fake compiler appends outside dist/ so builds stay countable across
   // the dist swap in bin/build.
   const compiler = path.join(toolDirectory, 'tsc')
@@ -152,7 +160,7 @@ export function runTests(
 }
 
 export function scratchRuns(root: string): string[] {
-  const scratch = path.join(root, 'runtime', 'tmp', 'tests')
+  const scratch = path.join(root, 'runtime', 'tmp', 'tests.noindex')
 
   return existsSync(scratch)
     ? readdirSync(scratch).filter((entry) => entry.startsWith('run-'))
@@ -162,7 +170,7 @@ export function scratchRuns(root: string): string[] {
 // A run directory renamed out of the way for a detached removal, and the
 // marker naming the process doing it.
 export function discardedRuns(root: string): string[] {
-  const scratch = path.join(root, 'runtime', 'tmp', 'tests')
+  const scratch = path.join(root, 'runtime', 'tmp', 'tests.noindex')
 
   return existsSync(scratch)
     ? readdirSync(scratch)
@@ -172,7 +180,7 @@ export function discardedRuns(root: string): string[] {
 }
 
 export function removalMarkers(root: string): string[] {
-  const scratch = path.join(root, 'runtime', 'tmp', 'tests')
+  const scratch = path.join(root, 'runtime', 'tmp', 'tests.noindex')
 
   return existsSync(scratch)
     ? readdirSync(scratch)

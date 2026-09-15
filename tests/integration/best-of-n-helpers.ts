@@ -233,7 +233,7 @@ function buildBestOfNTemplate(key: BestOfNCheckpointKey): {
 export function cloneTree(template: string): string {
   const root = createTestTempDirectory('v2-')
 
-  cloneSharedTree(template, root, { timeout: 180_000 })
+  cloneSharedTree(template, root)
 
   // Worktree bookkeeping compares Git's realpath output with the root, so hand
   // out the root in the form the CLI sees from process.cwd().

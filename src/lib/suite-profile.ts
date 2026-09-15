@@ -6,6 +6,8 @@ import { resolveRunLayout } from './run-layout.js'
 import { TEST_PROFILE_ENV } from './suite-profile-env.js'
 import type {
   DeterministicResult,
+  FastWallStagePoint,
+  FastWallStageSummary,
   RunState,
   SuiteProfileEntry,
   SuiteProfileSummary,
@@ -40,6 +42,9 @@ export interface SuiteProfileTest {
 export interface SuiteProfileFixtureCost {
   template_ms: number
   clone_ms: number
+  prepare_ms: number
+  template_bytes: number
+  template_files: number
 }
 
 /** The document `PAN_TEST_PROFILE` produces. */
@@ -138,6 +143,15 @@ export function loadSuiteProfile(
       ? {
           template_ms: value.fixture_cost.template_ms,
           clone_ms: value.fixture_cost.clone_ms,
+          prepare_ms: isNumber(value.fixture_cost.prepare_ms)
+            ? value.fixture_cost.prepare_ms
+            : 0,
+          template_bytes: isNumber(value.fixture_cost.template_bytes)
+            ? value.fixture_cost.template_bytes
+            : 0,
+          template_files: isNumber(value.fixture_cost.template_files)
+            ? value.fixture_cost.template_files
+            : 0,
         }
       : undefined
 
@@ -550,64 +564,98 @@ export function renderSuiteProfileStatusLine(
 
 /** The advisory card section. STE-001 prose, no gate. */
 export function renderSuiteProfileSection(
-  summary: SuiteProfileSummary,
+  summary: SuiteProfileSummary | null,
+  fastWall?: FastWallStageSummary,
 ): string[] {
-  const lines = [
-    '## 📈 Suite profile',
-    '',
-    'This section is advisory. It records the one profiled `full` run, the ' +
-      'release gate at ship entry. No count and no duration gates the release.',
-    '',
-    `- Source: \`${summary.profile_path}\` from the ${summary.stage} gate ` +
-      `\`${summary.gate_id}\`` +
-      (summary.cached
-        ? ' (cached pass; profile of the original execution)'
-        : '') +
-      '.',
-    `- Lane: \`${summary.lane}\`.`,
-    `- Tests: ${summary.test_count} (${summary.pass_count} passed, ` +
-      `${summary.fail_count} failed).`,
-    `- Wall clock: ${seconds(summary.wall_clock_ms)}.`,
-  ]
+  const lines = ['## 📈 Suite profile', '']
 
-  if (summary.previous) {
+  if (summary) {
     lines.push(
-      `- Delta against run \`${summary.previous.run_id}\` ` +
-        `(\`${summary.previous.profile_path}\`): ` +
-        `${signed(summary.previous.test_count_delta, String)} tests, ` +
-        `${signed(summary.previous.wall_clock_ms_delta, seconds)} wall clock.`,
+      'This section is advisory. It records the one profiled `full` run, the ' +
+        'release gate at ship entry.',
+      '',
+      `- Source: \`${summary.profile_path}\` from the ${summary.stage} gate ` +
+        `\`${summary.gate_id}\`` +
+        (summary.cached
+          ? ' (cached pass; profile of the original execution)'
+          : '') +
+        '.',
+      `- Lane: \`${summary.lane}\`.`,
+      `- Tests: ${summary.test_count} (${summary.pass_count} passed, ` +
+        `${summary.fail_count} failed).`,
+      `- Wall clock: ${seconds(summary.wall_clock_ms)}.`,
     )
-  } else {
+
+    if (summary.previous) {
+      lines.push(
+        `- Delta against run \`${summary.previous.run_id}\` ` +
+          `(\`${summary.previous.profile_path}\`): ` +
+          `${signed(summary.previous.test_count_delta, String)} tests, ` +
+          `${signed(summary.previous.wall_clock_ms_delta, seconds)} wall clock.`,
+      )
+    } else {
+      lines.push(
+        '- Delta: none. No previous succeeded run in this workspace recorded ' +
+          'a profile.',
+      )
+    }
+  }
+
+  if (fastWall) {
+    const marginal = (value: FastWallStagePoint): string =>
+      value.marginal_wall_ms_per_test === null
+        ? 'marginal cost unavailable'
+        : `${value.marginal_wall_ms_per_test.toFixed(3)}ms marginal per test`
+    const stagePoint = (
+      label: string,
+      value: FastWallStagePoint | null,
+    ): string =>
+      value
+        ? `- ${label}: ${value.test_count} tests in ` +
+          `${seconds(value.wall_clock_ms)} with ${value.worker_count} workers, ` +
+          `${marginal(value)}, at ${value.recorded_at} ` +
+          `(phase \`${value.phase}\`).`
+        : `- ${label}: no fast-lane record.`
+
     lines.push(
-      '- Delta: none. No previous succeeded run in this workspace recorded ' +
-        'a profile.',
+      '',
+      '### Implement-stage fast wall',
+      '',
+      `Source: \`${fastWall.series_path}\`. The before point is the run's ` +
+        "`fast` baseline; the after point is the run's latest later-phase " +
+        'record. The marginal cost is the wall one average test adds to that ' +
+        "run under the runner's concurrency.",
+      stagePoint('Before implement', fastWall.before),
+      stagePoint('After implement', fastWall.after),
     )
   }
 
-  lines.push('', '### Slowest files', '')
+  if (summary) {
+    lines.push('', '### Slowest files', '')
 
-  if (summary.slowest_files.length === 0) {
-    lines.push('- The profile lists no files.')
-  }
+    if (summary.slowest_files.length === 0) {
+      lines.push('- The profile lists no files.')
+    }
 
-  for (const entry of summary.slowest_files) {
-    lines.push(
-      `- \`${entry.file}\` — ${seconds(entry.duration_ms)}` +
-        (entry.test_count !== undefined ? `, ${entry.test_count} tests` : ''),
-    )
-  }
+    for (const entry of summary.slowest_files) {
+      lines.push(
+        `- \`${entry.file}\` — ${seconds(entry.duration_ms)}` +
+          (entry.test_count !== undefined ? `, ${entry.test_count} tests` : ''),
+      )
+    }
 
-  lines.push('', '### Slowest tests', '')
+    lines.push('', '### Slowest tests', '')
 
-  if (summary.slowest_tests.length === 0) {
-    lines.push('- The profile lists no tests.')
-  }
+    if (summary.slowest_tests.length === 0) {
+      lines.push('- The profile lists no tests.')
+    }
 
-  for (const entry of summary.slowest_tests) {
-    lines.push(
-      `- ${entry.name ?? '(unnamed)'} (\`${entry.file}\`) — ` +
-        `${seconds(entry.duration_ms)}`,
-    )
+    for (const entry of summary.slowest_tests) {
+      lines.push(
+        `- ${entry.name ?? '(unnamed)'} (\`${entry.file}\`) — ` +
+          `${seconds(entry.duration_ms)}`,
+      )
+    }
   }
 
   lines.push('')

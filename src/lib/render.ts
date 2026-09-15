@@ -1328,8 +1328,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       : []),
     ...involvementLines,
     ...verificationLines,
-    ...(invocation.suite_profile
-      ? renderSuiteProfileSection(invocation.suite_profile)
+    ...(invocation.suite_profile || invocation.fast_wall
+      ? renderSuiteProfileSection(
+          invocation.suite_profile ?? null,
+          invocation.fast_wall,
+        )
       : []),
     '## 📤 Output contract',
     '',

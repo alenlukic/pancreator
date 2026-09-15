@@ -43,7 +43,7 @@
     },
     "Treat a group as complete only when every one of its runs reports success in that run's own state. The durable record MUST also hold the merge proof for that group.",
     {
-      "text": "The harness MUST refuse to start a group while an earlier group is incomplete. The refusal MUST name the session, the refused group, and the earlier group that blocks it (`tests/unit/cohorts.test.ts::starting a later cohort is refused while an earlier one is unsatisfied`).",
+      "text": "The harness MUST refuse to start a group while an earlier group is incomplete. The refusal MUST name the session, the refused group, and the earlier group that blocks it (`tests/integration/cohorts.test.ts::starting a later cohort is refused while an earlier one is unsatisfied`).",
       "audience": ["harness"]
     },
     "A direct advance of one bound run MUST meet the same refusal. The ordering blocker therefore holds outside the group command.",
@@ -62,7 +62,7 @@
     "The `planning` workflow is the entry point for delivery work. Its ratified plan gate is the routing point. Approval of the plan MUST route the work by harness rule, never by supervisor judgment.",
     "A plan of exactly one unit MUST start one `delivery` run. That run MUST read the child specification as its request. It MUST be bound to its own worktree. It MUST reach the parent specification by reference. A plan of two or more units MUST open the cohort session and start the first group.",
     {
-      "text": "The route is the default of every planning run. It MUST fire for an approval by the operator. It MUST also fire for an away-mode decision applied on the operator's behalf under the away-mode policy. `pan init --no-autostart` is the only opt-out. The harness MUST record the opt-out when it creates the run (`tests/unit/cohorts.test.ts::the routing hook fires only for an approval of a routed planning run`).",
+      "text": "The route is the default of every planning run. It MUST fire for an approval by the operator. It MUST also fire for an away-mode decision applied on the operator's behalf under the away-mode policy. `pan init --no-autostart` is the only opt-out. The harness MUST record the opt-out when it creates the run (`tests/integration/cohorts.test.ts::the routing hook fires only for an approval of a routed planning run`).",
       "audience": ["harness"]
     },
     {
@@ -70,7 +70,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work (`tests/unit/cohorts.test.ts::a routing failure reports the error and the manual commands`).",
+      "text": "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work (`tests/integration/cohorts.test.ts::a routing failure reports the error and the manual commands`).",
       "audience": ["harness"]
     },
     "Each unit of a group of two or more MUST run the `delivery-chunk` workflow. It MUST end at a verified implementation on its own branch. Release preparation for such a plan MUST happen once, on the integrated result, in the release run. It MUST NOT happen per unit. A single-unit plan's `delivery` run carries its own `ship` stage.",

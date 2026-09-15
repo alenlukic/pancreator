@@ -10,9 +10,12 @@
 import { execFileSync } from 'node:child_process'
 import {
   chmodSync,
+  constants,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs'
@@ -37,9 +40,64 @@ const CURRENT_VERSION = readFileSync(
 const FIXTURE_GIT_TIMEOUT_MS = 180_000
 const FIXTURE_GIT_MAX_BUFFER = 1_024 * 1_024
 const FIXTURE_INVOLVEMENT_PROFILE = 'standard'
+const FIXTURE_PASS_COMMAND = 'node -e "process.exit(0)"'
 
 /** Cache key of the template every `createFixture` call clones. */
 const MAIN_TEMPLATE_KEY = 'fixture:main'
+
+export const MAX_FIXTURE_TEMPLATE_BYTES = 30 * 1024 * 1024
+
+export interface FixtureTemplateMeasurement {
+  bytes: number
+  files: number
+}
+
+export function measureFixtureTemplate(
+  root: string,
+): FixtureTemplateMeasurement {
+  let bytes = 0
+  let files = 0
+  const pending = [root]
+
+  while (pending.length > 0) {
+    const directory = pending.pop()
+
+    if (!directory) {
+      continue
+    }
+
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name)
+
+      if (entry.isDirectory()) {
+        pending.push(target)
+        continue
+      }
+
+      files += 1
+      bytes += lstatSync(target).size
+    }
+  }
+
+  return { bytes, files }
+}
+
+export function assertFixtureTemplateWithinLimit(
+  measurement: FixtureTemplateMeasurement,
+  limitBytes = MAX_FIXTURE_TEMPLATE_BYTES,
+): void {
+  if (measurement.bytes <= limitBytes) {
+    return
+  }
+
+  const measuredMb = (measurement.bytes / (1024 * 1024)).toFixed(2)
+  const limitMb = (limitBytes / (1024 * 1024)).toFixed(0)
+
+  throw new Error(
+    `Fixture template is ${measuredMb} MB (${measurement.bytes} bytes), ` +
+      `over the ${limitMb} MB limit.`,
+  )
+}
 
 export function fixtureGit(
   args: string[],
@@ -73,6 +131,43 @@ function pinFixtureInvolvement(root: string): void {
   config.operator_involvement.active = FIXTURE_INVOLVEMENT_PROFILE
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+}
+
+/**
+ * Keep fixture repository checks process-local.
+ *
+ * A fixture is its own repository, so its baselines resolve this file. Direct
+ * Node commands preserve each profile's passing contract without paying for
+ * an npm process that would only dispatch the fixture's stub scripts.
+ */
+function writeFixtureRepositoryChecks(root: string): void {
+  const profile = (name: string, description: string) => ({
+    description,
+    probes: ['node --version'],
+    commands: [`${FIXTURE_PASS_COMMAND} ${name}`],
+  })
+
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        profiles: {
+          configuration: profile(
+            'configuration',
+            'Validate fixture configuration.',
+          ),
+          static: profile('static', 'Run fixture static checks.'),
+          fast: profile('fast', 'Run the fixture mainline tests.'),
+          impacted: profile('impacted', 'Run fixture blast-radius tests.'),
+          secondary: profile('secondary', 'Run fixture secondary tests.'),
+          full: profile('full', 'Run complete fixture verification.'),
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
 }
 
 /**
@@ -114,36 +209,27 @@ export function pinFixturePersonaModel(
 }
 
 export interface CloneTreeOptions {
-  timeout?: number
   verbatimSymlinks?: boolean
 }
 
 /**
- * Copy a directory tree into `destination`. Uses copy-on-write when the
- * platform offers it and falls back to a plain recursive copy.
+ * Copy a directory tree into `destination`, copy-on-write where the
+ * filesystem offers it.
+ *
+ * `COPYFILE_FICLONE` asks for a reflink and degrades to a byte copy per file
+ * when the filesystem has none, so one in-process call covers every platform.
+ * The suite takes hundreds of these clones, and the `cp` process this
+ * replaced charged a fork and exec for each one on top of the same per-file
+ * clone syscalls.
  */
 export function cloneTree(
   template: string,
   destination: string,
   options: CloneTreeOptions = {},
 ): void {
-  const timeout = options.timeout ?? FIXTURE_GIT_TIMEOUT_MS
-
-  for (const flags of [['-Rc'], ['-a', '--reflink=auto']]) {
-    try {
-      execFileSync('cp', [...flags, `${template}/.`, destination], {
-        stdio: 'ignore',
-        timeout,
-      })
-
-      return
-    } catch {
-      // Fall back to the next flag set.
-    }
-  }
-
   cpSync(template, destination, {
     recursive: true,
+    mode: constants.COPYFILE_FICLONE,
     ...(options.verbatimSymlinks ? { verbatimSymlinks: true } : {}),
   })
 }
@@ -153,8 +239,8 @@ export function cloneTree(
 // existing imports from helpers keep working.
 export { createTestTempDirectory } from './temp.js'
 
-/** Populate `root` with the harness fixture every test clones. */
-function buildFixtureTemplate(root: string): void {
+/** Populate and measure `root` with the harness fixture every test clones. */
+function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   for (const entry of [
     'governance',
     'library',
@@ -216,6 +302,8 @@ function buildFixtureTemplate(root: string): void {
   mkdirSync(path.join(root, 'docs'), { recursive: true })
   mkdirSync(path.join(root, 'src'), { recursive: true })
 
+  writeFixtureRepositoryChecks(root)
+
   writeFileSync(
     path.join(root, 'AGENTS.md'),
     [
@@ -275,6 +363,12 @@ function buildFixtureTemplate(root: string): void {
   // clone of this template copies each one as its own file. Packing them once
   // here turns that per-clone cost into a handful of files.
   fixtureGit(['repack', '-a', '-d', '-q'], { cwd: root, encoding: 'utf8' })
+
+  const measurement = measureFixtureTemplate(root)
+
+  assertFixtureTemplateWithinLimit(measurement)
+
+  return measurement
 }
 
 let fixtureTemplateRoot: string | null = null
@@ -283,8 +377,9 @@ function buildTemplateInThisProcess(): string {
   const started = performance.now()
   const root = createTestTempDirectory('v2-template-')
 
-  buildFixtureTemplate(root)
-  recordFixtureEvent('template_build', 'main', performance.now() - started)
+  const measurement = buildFixtureTemplate(root)
+
+  recordFixtureEvent('template_build', performance.now() - started, measurement)
 
   return root
 }
@@ -302,8 +397,13 @@ function mainTemplate(): string {
     const started = performance.now()
 
     mkdirSync(destination, { recursive: true })
-    buildFixtureTemplate(destination)
-    recordFixtureEvent('template_build', 'main', performance.now() - started)
+    const measurement = buildFixtureTemplate(destination)
+
+    recordFixtureEvent(
+      'template_build',
+      performance.now() - started,
+      measurement,
+    )
 
     return null
   })
@@ -318,7 +418,7 @@ function cloneFixtureTemplate(template: string): string {
   const root = createTestTempDirectory('v2-')
 
   cloneTree(template, root)
-  recordFixtureEvent('template_clone', 'main', performance.now() - started)
+  recordFixtureEvent('template_clone', performance.now() - started)
 
   return root
 }

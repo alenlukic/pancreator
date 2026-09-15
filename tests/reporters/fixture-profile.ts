@@ -17,10 +17,12 @@ import {
 export { fixtureSidecarPath }
 
 export interface FixtureEvent {
-  kind: 'template_build' | 'template_clone'
+  kind: 'template_build' | 'template_clone' | 'run_prepare'
   lane: 'main' | 'secondary'
   duration_ms: number
   recorded_at: string
+  template_bytes?: number
+  template_files?: number
 }
 
 const events: FixtureEvent[] = []
@@ -31,10 +33,24 @@ function profilingActive(): boolean {
   return Boolean(target && path.isAbsolute(target))
 }
 
+/**
+ * The lane of the test file this process runs, which owns every cost it pays.
+ *
+ * The runner gives each test file its own process, so the lane is a property
+ * of the process rather than of the helper a test reached for. Reading it here
+ * keeps a shared helper from attributing a secondary-lane clone to the main
+ * lane.
+ */
+function currentLane(): FixtureEvent['lane'] {
+  return process.argv.some((argument) => argument.includes('/tests/secondary/'))
+    ? 'secondary'
+    : 'main'
+}
+
 export function recordFixtureEvent(
   kind: FixtureEvent['kind'],
-  lane: FixtureEvent['lane'],
   durationMs: number,
+  templateMeasurement?: { bytes: number; files: number },
 ): void {
   if (!profilingActive()) {
     return
@@ -42,9 +58,15 @@ export function recordFixtureEvent(
 
   events.push({
     kind,
-    lane,
+    lane: currentLane(),
     duration_ms: Math.round(durationMs * 1000) / 1000,
     recorded_at: new Date().toISOString(),
+    ...(templateMeasurement
+      ? {
+          template_bytes: templateMeasurement.bytes,
+          template_files: templateMeasurement.files,
+        }
+      : {}),
   })
 }
 

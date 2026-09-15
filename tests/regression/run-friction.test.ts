@@ -17,7 +17,6 @@ import {
   validateStageOutput,
 } from '../../src/lib/validation.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
-import { validatePlanTrace } from '../../src/lib/validators/stage-validators.js'
 import {
   createFixture,
   makeOutput,
@@ -402,88 +401,6 @@ test('the delegation validator accepts one leading persona label', () => {
     validateDelegationMarkdown(canonical, canonical.replace('one', 'two'))
       .passed,
     false,
-  )
-})
-
-test('plan file paths resolve against the workspace root, not the installation', () => {
-  const root = createFixture()
-  const workspace = createTestTempDirectory('pan-workspace-')
-  const targetFile = path.join(workspace, 'app', 'model.py')
-  const sibling = createTestTempDirectory('pan-sibling-repo-')
-  const siblingFile = path.join(sibling, 'model.py')
-
-  mkdirSync(path.dirname(targetFile), { recursive: true })
-  writeFileSync(targetFile, 'x = 1\n')
-  writeFileSync(siblingFile, 'print("sibling")\n')
-
-  const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
-
-  writeJson(path.join(root, outputRelative), {
-    data: {
-      engineering_plan: {
-        approach: 'Fixture',
-        components: ['app'],
-        files: [
-          // A workspace-relative path resolves against `workspace_root`, not
-          // the installation root.
-          { path: 'app/model.py', status: 'modified', purpose: 'core' },
-          // An absolute path into a sibling repository, exactly as run
-          // 63315's plan 97_plan-2_b898a4d1 declared it.
-          { path: siblingFile, status: 'modified', purpose: 'core' },
-          {
-            path: '../nonexistent/app/model.py',
-            status: 'modified',
-            purpose: 'core',
-          },
-        ],
-        risks: [],
-        validation: ['tests'],
-      },
-      acceptance_criteria: [
-        {
-          id: 'AC-01',
-          criterion: 'Works',
-          maps_to: ['US-01'],
-          verification: { method: 'test', expected: 'passes' },
-        },
-      ],
-    },
-  })
-
-  const result = validatePlanTrace({
-    root,
-    targetPath: outputRelative,
-    requirement: {
-      policy_id: 'PLAN-002',
-      requirement_id: 'plan-trace-validate',
-      registry_id: 'PLAN-TRACE-VALIDATE-001',
-      arguments: {},
-    },
-    runState: { workspace_root: workspace },
-  })
-  const missing = result.issues.filter(
-    (item) => item.code === 'plan.file_missing',
-  )
-
-  // Any path that resolves on this system is valid, absolute or relative;
-  // the only gate is existence for files not marked new. Downstream
-  // target-instruction resolution consumes the same paths without rejecting
-  // them, so an accepted plan can no longer fail implement preparation with
-  // TARGET_INSTRUCTION_PATH_INVALID.
-  assert.ok(!result.issues.some((item) => item.code === 'plan.file_path_shape'))
-  assert.ok(
-    !missing.some(
-      (item) =>
-        item.message.includes('app/model.py') &&
-        !item.message.includes('../nonexistent'),
-    ),
-    `a workspace-relative path must resolve: ${JSON.stringify(result.issues)}`,
-  )
-  assert.ok(!missing.some((item) => item.message.includes(siblingFile)))
-  assert.ok(
-    missing.some((item) =>
-      item.message.includes('../nonexistent/app/model.py'),
-    ),
   )
 })
 

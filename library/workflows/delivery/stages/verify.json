@@ -34,7 +34,8 @@
     ],
     "prior_attempts": 1,
     "operator_feedback": 1,
-    "gate_evidence": true
+    "gate_evidence": true,
+    "suite_profile": true
   },
   "required_data": {
     "verify": "object",

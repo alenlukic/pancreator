@@ -6,13 +6,9 @@ import test from 'node:test'
 import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import {
-  createFixture,
-  makeOutput,
-  writeCanonicalDelegation,
-  writeJson,
-} from '../helpers.js'
-import { createRun, submitAsSupervisor } from '../run-helpers.js'
+import { makeOutput, writeCanonicalDelegation, writeJson } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
+import { checkpoint } from '../integration/delivery-helpers.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
 
 /**
@@ -24,17 +20,13 @@ import type { Invocation, StageOutput } from '../../src/lib/types.js'
  */
 
 /** Run one failing implement attempt and return the retry it produces. */
-function retryAfter(
-  root: string,
-  grade: (output: StageOutput) => void,
-): { invocation: Invocation; card: string } {
+function retryAfter(grade: (output: StageOutput) => void): {
+  invocation: Invocation
+  card: string
+} {
+  const created = checkpoint('delivery@created')
+  const { root, runId } = created
   const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Prior failure sources run',
-  })
-  const runId = state.run_id
 
   setRunStage(root, runId, 'implement', 'Seed implementation for the retry.')
 
@@ -70,7 +62,7 @@ function retryAfter(
 }
 
 test('a retry carries a failure the worker declared against an acceptance criterion', () => {
-  const { invocation, card } = retryAfter(createFixture(), (output) => {
+  const { invocation, card } = retryAfter((output) => {
     for (const criterion of output.criteria) {
       criterion.result = 'pass'
       criterion.explanation = 'Fixture evidence'
@@ -100,7 +92,7 @@ test('a retry carries a failure the worker declared against an acceptance criter
 })
 
 test('a retry for which no reason resolves says so and lists nothing', () => {
-  const { invocation, card } = retryAfter(createFixture(), (output) => {
+  const { invocation, card } = retryAfter((output) => {
     for (const criterion of output.criteria) {
       criterion.result = 'pass'
       criterion.explanation = 'Fixture evidence'
@@ -119,7 +111,7 @@ test('a retry for which no reason resolves says so and lists nothing', () => {
 })
 
 test('a failing hard criterion still renders what it renders today', () => {
-  const { invocation, card } = retryAfter(createFixture(), (output) => {
+  const { invocation, card } = retryAfter((output) => {
     for (const criterion of output.criteria) {
       criterion.result =
         criterion.id === 'implement.acceptance_claimed' ? 'fail' : 'pass'
@@ -147,13 +139,9 @@ test('a failing hard criterion still renders what it renders today', () => {
 // of its own, so the retry contract resolved no reason at all and the card
 // left the superseded verify output as the only failure-shaped context.
 test('a card after an operator stage change carries the repair note, not a superseded output', () => {
-  const root = createFixture()
+  const created = checkpoint('delivery@created')
+  const { root, runId } = created
   const workflow = loadWorkflow(root, 'delivery')
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Operator stage change run',
-  }).run_id
 
   // A recorded verify failure, which is the superseded output of another
   // stage the operator is about to move past.
@@ -204,13 +192,9 @@ test('a card after an operator stage change carries the repair note, not a super
 // The note is the newest reason only until the stage records an attempt of
 // its own. After that the retry contract carries the real failure again.
 test('an attempt recorded after the repair note is the reason again', () => {
-  const root = createFixture()
+  const created = checkpoint('delivery@created')
+  const { root, runId } = created
   const workflow = loadWorkflow(root, 'delivery')
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Repair then fail run',
-  }).run_id
 
   setRunStage(root, runId, 'implement', 'Start at implementation.')
 

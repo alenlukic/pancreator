@@ -25,7 +25,7 @@ import {
   validateInvocationMarkdown,
 } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../fixture-template.js'
+import { sharedFixture } from '../fixture-template.js'
 import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 import type {
   Invocation,
@@ -111,7 +111,7 @@ function baseInvocation(
 }
 
 test('implementation cards render structured field contracts', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'implement')
 
   invocation.output.field_contract = {
@@ -212,7 +212,7 @@ function mixedAudiencePolicy(): Policy {
 }
 
 test('worker and supervisor cards filter mixed audiences while snapshots retain all', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = delegatedInvocation(root)
   const policy = mixedAudiencePolicy()
 
@@ -251,7 +251,7 @@ test('worker and supervisor cards filter mixed audiences while snapshots retain 
 })
 
 test('the worker card names the supervisor procedure and prints no lifecycle command', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = delegatedInvocation(root)
   const card = renderInvocationMarkdown(invocation)
   const procedure = renderSupervisorProcedureMarkdown(invocation)
@@ -325,7 +325,7 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
 // bounded guidance reference proves it. Render and validate agreement is
 // proven by validation.test.ts.
 test('an invocation card inlines policy text and references guidance', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const stageSlug = 'implement'
 
   let boundedReferences = 0
@@ -414,7 +414,7 @@ test('an invocation card inlines policy text and references guidance', () => {
 })
 
 test('model configurations receive the same normative invocation contract', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const configs = ['simple', 'default', 'complex', 'auto']
   const contracts = configs.map((modelConfig) => {
     const invocation = baseInvocation(root, 'delivery', 'implement')
@@ -540,7 +540,7 @@ function failedCheckIds(invocation: Invocation, markdown: string): Set<string> {
 }
 
 test('invocation validation fails when a guidance reference is omitted', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const { guidance, reference } = engineeringGuidance(invocation)
@@ -802,7 +802,7 @@ test('status summary renders a dedicated validation section for pass state', () 
 })
 
 test('invocation cards distinguish required, conditional, and indexed context', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
   invocation.inputs = {
     references: [
@@ -863,7 +863,7 @@ function referencedInvocation(root: string): Invocation {
 }
 
 test('contract sections concatenate back to the exact contract', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = referencedInvocation(root)
   const contract = renderInvocationMarkdown(invocation)
   const blocks = splitInvocationContract(contract)
@@ -923,7 +923,7 @@ test('contract sections concatenate back to the exact contract', () => {
 })
 
 test('the delivery prompt references the contract without reproducing it', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = referencedInvocation(root)
   const manifest = invocation.contract_manifest
 
@@ -1044,7 +1044,7 @@ function evidenceWorkerFixture(): InvocationEvidenceWorker {
 }
 
 test('the evidence brief names the fast command only when no passed fast gate is current', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
   // The two evidence workers of a verify stage share this invocation id, so
   // the role is what separates their recorded passes; the brief hands each
@@ -1144,7 +1144,7 @@ test('the evidence brief names the fast command only when no passed fast gate is
 // step. The launch step itself has to carry the digest pointer, the exact
 // command, and the ordering that makes the watch precede its verdict.
 test('the launch step carries the watch pointer, command, and ordering', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = delegatedInvocation(root)
   const delegateDigest = 'd'.repeat(64)
   const redlineRecordPath =
@@ -1203,7 +1203,7 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
 // reported `blocked` on reports nobody had produced. The ordering is numbered
 // so there is one place to count.
 test('a prepared verify stage orders every evidence worker before the stage worker', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
 
   invocation.delegation = delegatedInvocation(root).delegation
@@ -1260,7 +1260,7 @@ test('a prepared verify stage orders every evidence worker before the stage work
 // A stage with no evidence worker has nothing to order, so its procedure is
 // unchanged.
 test('a stage with no evidence worker reports no worker actions', () => {
-  const root = createFixture()
+  const root = sharedFixture()
 
   assert.deepEqual(orderedWorkerActions(delegatedInvocation(root)), [])
 })
@@ -1268,7 +1268,7 @@ test('a stage with no evidence worker reports no worker actions', () => {
 // AC-005. The supervisor used to assemble this command from three fields on
 // three different lines of the card and reliably dropped one.
 test('the supervisor procedure carries the resolved output validate command', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = delegatedInvocation(root)
 
   assert.ok(invocation.delegation)
@@ -1289,7 +1289,7 @@ test('the supervisor procedure carries the resolved output validate command', ()
 // run snapshot states the bound this gate enforces, and only the second one
 // tells the worker when its command will be killed.
 test('a worker card names the resolved gate timeout beside its profile command', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'implement')
   const card = renderInvocationMarkdown(invocation)
   const gate = invocation.rubric.find(
@@ -1307,7 +1307,7 @@ test('a worker card names the resolved gate timeout beside its profile command',
 })
 
 test('a verification level remap moves the gate command the card names', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'implement')
 
   invocation.verification = {
@@ -1324,7 +1324,7 @@ test('a verification level remap moves the gate command the card names', () => {
 
 // AC-018. One statement, in one term, wherever a worker meets the mark.
 test('a card that owns a repository-check gate carries the gate-cache rule', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const card = renderInvocationMarkdown(
     baseInvocation(root, 'delivery', 'implement'),
   )
@@ -1333,7 +1333,7 @@ test('a card that owns a repository-check gate carries the gate-cache rule', () 
 })
 
 test('a card handed gate evidence carries the same gate-cache rule', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
 
   assert.ok(

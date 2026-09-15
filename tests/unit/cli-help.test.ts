@@ -4,8 +4,22 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
-import { cliEntrypointMatches, HELP_BODY } from '../../src/cli.js'
+import {
+  cliEntrypointMatches,
+  HELP_BODY,
+  requiredPositional,
+} from '../../src/cli.js'
 import { PanError } from '../../src/lib/errors.js'
+
+test('required positional arguments reject a flag in their slot', () => {
+  assert.throws(
+    () => requiredPositional('--json', 'cohort-id'),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_ARGUMENT' &&
+      /cohort-id is required\./u.test(error.message),
+  )
+})
 
 // Run 63311 F-5: the displayed form omitted --invocation, and the command
 // failed until the supervisor supplied it. The help line is the contract.

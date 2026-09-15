@@ -35,8 +35,14 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     first,
     JSON.stringify({
       events: [
-        { kind: 'template_build', duration_ms: 4 },
+        {
+          kind: 'template_build',
+          duration_ms: 4,
+          template_bytes: 1024,
+          template_files: 12,
+        },
         { kind: 'template_clone', duration_ms: 2 },
+        { kind: 'run_prepare', duration_ms: 7 },
       ],
     }),
   )
@@ -44,8 +50,14 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     second,
     JSON.stringify({
       events: [
-        { kind: 'template_build', duration_ms: 6 },
+        {
+          kind: 'template_build',
+          duration_ms: 6,
+          template_bytes: 1024,
+          template_files: 12,
+        },
         { kind: 'template_clone', duration_ms: 3 },
+        { kind: 'run_prepare', duration_ms: 11 },
       ],
     }),
   )
@@ -53,6 +65,9 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
   assert.deepEqual(readFixtureCost(target), {
     template_ms: 10,
     clone_ms: 5,
+    prepare_ms: 18,
+    template_bytes: 1024,
+    template_files: 12,
   })
   assert.equal(existsSync(first), false)
   assert.equal(existsSync(second), false)
@@ -62,8 +77,14 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     next,
     JSON.stringify({
       events: [
-        { kind: 'template_build', duration_ms: 1 },
+        {
+          kind: 'template_build',
+          duration_ms: 1,
+          template_bytes: 2048,
+          template_files: 20,
+        },
         { kind: 'template_clone', duration_ms: 1 },
+        { kind: 'run_prepare', duration_ms: 2 },
       ],
     }),
   )
@@ -71,6 +92,9 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
   assert.deepEqual(readFixtureCost(target), {
     template_ms: 1,
     clone_ms: 1,
+    prepare_ms: 2,
+    template_bytes: 2048,
+    template_files: 20,
   })
   assert.equal(existsSync(next), false)
 })
@@ -398,6 +422,57 @@ test('a cached gate summary names the cached pass', () => {
   assert.match(renderSuiteProfileStatusLine(summary), /, cached \(no previous/u)
 })
 
+test('the verify card shows fast-wall measurements around implementation', () => {
+  const section = renderSuiteProfileSection(null, {
+    series_path: 'runtime/fast-wall-series.jsonl',
+    before: {
+      recorded_at: '2026-09-15T01:00:00.000Z',
+      wall_clock_ms: 119_000,
+      test_count: 1300,
+      worker_count: 13,
+      phase: 'baseline',
+      marginal_wall_ms_per_test: 100,
+    },
+    after: {
+      recorded_at: '2026-09-15T02:00:00.000Z',
+      wall_clock_ms: 118_000,
+      test_count: 1305,
+      worker_count: 13,
+      phase: 'implement.unit_tests',
+      marginal_wall_ms_per_test: 90.143,
+    },
+  }).join('\n')
+
+  assert.match(section, /Implement-stage fast wall/u)
+  assert.match(
+    section,
+    /Before implement: 1300 tests in 119\.0s .*100\.000ms marginal per test.*\(phase `baseline`\)/u,
+  )
+  assert.match(
+    section,
+    /After implement: 1305 tests in 118\.0s .*90\.143ms marginal per test.*\(phase `implement\.unit_tests`\)/u,
+  )
+  assert.match(section, /with 13 workers/u)
+
+  // A legacy row carries no summed file time, so its point has no marginal
+  // cost and the card says so rather than printing a fabricated zero.
+  const withoutMarginal = renderSuiteProfileSection(null, {
+    series_path: 'runtime/fast-wall-series.jsonl',
+    before: null,
+    after: {
+      recorded_at: '2026-09-15T02:00:00.000Z',
+      wall_clock_ms: 118_000,
+      test_count: 1305,
+      worker_count: 13,
+      phase: 'implement.unit_tests',
+      marginal_wall_ms_per_test: null,
+    },
+  }).join('\n')
+
+  assert.match(withoutMarginal, /Before implement: no fast-lane record\./u)
+  assert.match(withoutMarginal, /marginal cost unavailable/u)
+})
+
 test('fixture sidecars live in the runner scratch tree, not the profile target', () => {
   const scratch = createTestTempDirectory('pancreator-sidecar-scratch-')
   const target = path.join(
@@ -435,6 +510,12 @@ test('fixture sidecars live in the runner scratch tree, not the profile target',
   // repository scratch tree rather than falling back to the target.
   assert.equal(
     fixtureSidecarDirectory({}),
-    path.join(process.cwd(), 'runtime', 'tmp', 'tests', 'fixture-profile'),
+    path.join(
+      process.cwd(),
+      'runtime',
+      'tmp',
+      'tests.noindex',
+      'fixture-profile',
+    ),
   )
 })

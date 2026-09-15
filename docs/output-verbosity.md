@@ -53,7 +53,7 @@ step remains quiet.
 
 Deterministic coverage:
 
-- `tests/unit/quiet-command.test.ts`
+- `tests/integration/quiet-command.test.ts`
 
 The former `tests/unit/npm-verbosity.test.ts` and `tests/unit/bin-layout.test.ts` were deleted as
 config-shape tests; `runtime/inbox/test-audit-20260829-verdicts.md` records both verdicts.

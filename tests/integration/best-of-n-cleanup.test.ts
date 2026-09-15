@@ -159,11 +159,9 @@ test('prune removes finished and orphaned resources but preserves active runs', 
   for (const candidate of active.candidates) {
     assert.equal(existsSync(path.join(root, candidate.worktree_path)), true)
   }
-})
 
-test('best-of-N prune is available through the CLI', () => {
-  const root = createFixture()
-  const result = JSON.parse(
+  const expected = pruneBestOfN(root)
+  const cliResult = JSON.parse(
     execFileSync(process.execPath, [CLI, 'best-of-n', 'prune', '--json'], {
       cwd: root,
       encoding: 'utf8',
@@ -176,10 +174,14 @@ test('best-of-N prune is available through the CLI', () => {
     skipped: unknown[]
   }
 
-  assert.deepEqual(result, {
-    cleaned_sessions: [],
-    removed_orphan_worktrees: [],
-    removed_orphan_agents: [],
-    skipped: [],
-  })
+  // The equality proves the CLI dispatches to the same function. The key set
+  // is pinned independently, because a rename on both sides would leave the
+  // equality green while the operator's JSON contract had changed.
+  assert.deepEqual(Object.keys(cliResult).sort(), [
+    'cleaned_sessions',
+    'removed_orphan_agents',
+    'removed_orphan_worktrees',
+    'skipped',
+  ])
+  assert.deepEqual(cliResult, expected)
 })

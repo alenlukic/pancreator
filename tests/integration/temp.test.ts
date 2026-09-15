@@ -48,11 +48,16 @@ test('a file run outside the runner falls back to a per-process directory it rem
   const parent = path.dirname(fixture)
 
   assert.equal(path.dirname(parent), testTempRoot())
+  assert.equal(path.basename(testTempRoot()), 'tests.noindex')
   assert.match(path.basename(parent), /^proc-/u)
   assert.equal(path.relative(ROOT, parent).startsWith('..'), false)
   assert.equal(existsSync(parent), false)
   assert.equal(
     readFileSync(path.join(testTempRoot(), 'package.json'), 'utf8'),
     '{}\n',
+  )
+  assert.equal(
+    existsSync(path.join(testTempRoot(), '.metadata_never_index')),
+    true,
   )
 })

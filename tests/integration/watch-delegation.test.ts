@@ -29,6 +29,7 @@ import {
 } from '../../src/lib/watch.js'
 import { delegationExecutionPath } from '../../src/lib/validation.js'
 import { read } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 import {
   CADENCE_SECONDS,
   await_message,
@@ -229,7 +230,7 @@ test('submit carries a completed watch record into the stage record without an a
 })
 
 test('the built-in authority order matches the one AGENTS.md publishes', () => {
-  const { root } = preparedRun()
+  const root = createTestTempDirectory('authority-order-')
 
   // An installed target carries an operating card with no `## Authority and
   // context` section, so its redline record is written from the built-in

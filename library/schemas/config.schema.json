@@ -75,6 +75,29 @@
         }
       }
     },
+    "fast_wall": {
+      "type": "object",
+      "description": "Optional self-development fast-lane wall ceiling. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date and never changes for machine load.",
+      "required": ["ceiling_ms", "anchor_date", "weekly_allowance_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "ceiling_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Base rolling 24-hour fast-lane wall ceiling in milliseconds."
+        },
+        "anchor_date": {
+          "type": "string",
+          "format": "date",
+          "description": "UTC date from which complete elapsed weeks are counted."
+        },
+        "weekly_allowance_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum permitted ceiling increase per complete elapsed week, in milliseconds."
+        }
+      }
+    },
     "active_config": {
       "type": "string",
       "minLength": 1

@@ -12,13 +12,13 @@
       "audience": ["harness"]
     },
     {
-      "text": "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records (`tests/unit/operator-artifact-generation.test.ts::post-stage generation creates validated HTML from canonical records`).",
+      "text": "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records (`tests/integration/operator-artifact-generation.test.ts::post-stage generation creates validated HTML from canonical records`).",
       "audience": ["harness"]
     },
     "The rendered HTML MUST be artifact 0 when an invocation requests a brief.",
     "The transient source JSON MUST NOT be a final stage artifact.",
     {
-      "text": "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure (`tests/unit/operator-artifact-generation.test.ts::forced generation preserves existing HTML and source after render failure`).",
+      "text": "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure (`tests/integration/operator-artifact-generation.test.ts::forced generation preserves existing HTML and source after render failure`).",
       "audience": ["harness"]
     },
     {
