@@ -21,6 +21,8 @@ export interface FixtureEvent {
   lane: 'main' | 'secondary'
   duration_ms: number
   recorded_at: string
+  template_bytes?: number
+  template_files?: number
 }
 
 const events: FixtureEvent[] = []
@@ -35,6 +37,7 @@ export function recordFixtureEvent(
   kind: FixtureEvent['kind'],
   lane: FixtureEvent['lane'],
   durationMs: number,
+  templateMeasurement?: { bytes: number; files: number },
 ): void {
   if (!profilingActive()) {
     return
@@ -45,6 +48,12 @@ export function recordFixtureEvent(
     lane,
     duration_ms: Math.round(durationMs * 1000) / 1000,
     recorded_at: new Date().toISOString(),
+    ...(templateMeasurement
+      ? {
+          template_bytes: templateMeasurement.bytes,
+          template_files: templateMeasurement.files,
+        }
+      : {}),
   })
 }
 

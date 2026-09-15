@@ -5,12 +5,18 @@
  * records per-test and per-file durations and writes one profile document at
  * the end of the run. The variable unset leaves the output byte-identical and
  * writes nothing.
+ *
+ * When `PAN_TEST_FILE_DURATIONS` names an absolute JSON path, the reporter
+ * folds this run's per-file durations into the record there, which schedules
+ * the next run's test files. Only `bin/run-tests` sets that variable, so a
+ * reporter invocation the runner did not schedule cannot rewrite it.
  */
 import {
   mkdirSync,
   readdirSync,
   realpathSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -24,7 +30,10 @@ import type {
   SuiteProfileFixtureCost,
   SuiteProfileTest,
 } from '../../src/lib/suite-profile.js'
+import type { FileDurationRecord } from '../../src/lib/test-file-order.js'
+import { mergeFileDurationRecord } from '../../src/lib/test-file-order.js'
 import {
+  fileDurationRecordPath,
   fixtureSidecarDirectory,
   fixtureSidecarPrefix,
 } from '../../src/lib/suite-profile-env.js'
@@ -112,18 +121,27 @@ export function readFixtureCost(
 
   let template_ms = 0
   let clone_ms = 0
+  let template_bytes = 0
+  let template_files = 0
 
   for (const sidecar of sidecars) {
     const sidecarPath = path.join(directory, sidecar)
 
     try {
       const value = JSON.parse(readFileSync(sidecarPath, 'utf8')) as {
-        events?: Array<{ kind: string; duration_ms: number }>
+        events?: Array<{
+          kind: string
+          duration_ms: number
+          template_bytes?: number
+          template_files?: number
+        }>
       }
 
       for (const event of value.events ?? []) {
         if (event.kind === 'template_build') {
           template_ms += event.duration_ms
+          template_bytes = Math.max(template_bytes, event.template_bytes ?? 0)
+          template_files = Math.max(template_files, event.template_files ?? 0)
         } else if (event.kind === 'template_clone') {
           clone_ms += event.duration_ms
         }
@@ -135,7 +153,12 @@ export function readFixtureCost(
     }
   }
 
-  return template_ms === 0 && clone_ms === 0 ? null : { template_ms, clone_ms }
+  return template_ms === 0 &&
+    clone_ms === 0 &&
+    template_bytes === 0 &&
+    template_files === 0
+    ? null
+    : { template_ms, clone_ms, template_bytes, template_files }
 }
 
 class ProfileCollector {
@@ -144,7 +167,7 @@ class ProfileCollector {
   private readonly startedAt = Date.now()
   private total: SummaryData | null = null
 
-  constructor(private readonly profileTarget: string) {}
+  constructor(private readonly profileTarget: string | null) {}
 
   private fileEntry(file: string): SuiteProfileFile {
     let entry = this.files.get(file)
@@ -185,11 +208,18 @@ class ProfileCollector {
       // A per-file summary replaces the summed duration when the runner
       // emits one; until then the sum stands in.
       entry.duration_ms += data.details.duration_ms
-      this.tests.push({
-        file,
-        name: data.name,
-        duration_ms: data.details.duration_ms,
-      })
+
+      // Only the profile document reads per-test rows, so a run that was not
+      // asked for one keeps the reporter's work proportional to the record
+      // it does write.
+      if (this.profileTarget !== null) {
+        this.tests.push({
+          file,
+          name: data.name,
+          duration_ms: data.details.duration_ms,
+        })
+      }
+
       return
     }
 
@@ -215,7 +245,9 @@ class ProfileCollector {
     const allTests = [...this.tests].sort(
       (left, right) => right.duration_ms - left.duration_ms,
     )
-    const fixtureCost = readFixtureCost(this.profileTarget)
+    const fixtureCost = this.profileTarget
+      ? readFixtureCost(this.profileTarget)
+      : null
 
     return {
       schema_version: 1,
@@ -243,22 +275,70 @@ class ProfileCollector {
   }
 
   write(target: string): void {
-    mkdirSync(path.dirname(target), { recursive: true })
-    writeFileSync(target, `${JSON.stringify(this.document(), null, 2)}\n`)
+    writeJsonAtomic(target, this.document(), true)
   }
+
+  writeDurations(target: string): void {
+    const files = [...this.files.values()].sort(
+      (left, right) => right.duration_ms - left.duration_ms,
+    )
+    const testCount =
+      this.total?.counts.tests ??
+      files.reduce((total, entry) => total + entry.test_count, 0)
+    const wallClock = this.total?.duration_ms ?? Date.now() - this.startedAt
+    const measured: FileDurationRecord = {
+      schema_version: 1,
+      recorded_at: new Date().toISOString(),
+      lane: laneOf(files.map((entry) => entry.file)),
+      wall_clock_ms: Math.round(wallClock * 1000) / 1000,
+      test_count: testCount,
+      files: files.map((entry) => ({
+        file: entry.file,
+        duration_ms: Math.round(entry.duration_ms * 1000) / 1000,
+      })),
+    }
+
+    writeJsonAtomic(
+      target,
+      mergeFileDurationRecord(readJson(target), measured),
+      false,
+    )
+  }
+}
+
+function readJson(target: string): unknown {
+  try {
+    return JSON.parse(readFileSync(target, 'utf8')) as unknown
+  } catch {
+    return null
+  }
+}
+
+function writeJsonAtomic(
+  target: string,
+  value: unknown,
+  pretty: boolean,
+): void {
+  const temporary = `${target}.tmp-${process.pid}`
+
+  mkdirSync(path.dirname(target), { recursive: true })
+  writeFileSync(
+    temporary,
+    `${pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value)}\n`,
+  )
+  renameSync(temporary, target)
 }
 
 export default async function* failuresOnly(
   source: AsyncIterable<TestEvent>,
 ): AsyncGenerator<string> {
   const profileTarget = process.env[TEST_PROFILE_ENV]?.trim()
-  const collector =
-    profileTarget && path.isAbsolute(profileTarget)
-      ? new ProfileCollector(profileTarget)
-      : null
+  const absoluteProfileTarget =
+    profileTarget && path.isAbsolute(profileTarget) ? profileTarget : null
+  const collector = new ProfileCollector(absoluteProfileTarget)
 
   for await (const event of source) {
-    collector?.record(event)
+    collector.record(event)
 
     switch (event.type) {
       case 'test:fail': {
@@ -291,7 +371,13 @@ export default async function* failuresOnly(
     }
   }
 
-  if (collector && profileTarget) {
-    collector.write(profileTarget)
+  const durationRecord = fileDurationRecordPath()
+
+  if (durationRecord) {
+    collector.writeDurations(durationRecord)
+  }
+
+  if (absoluteProfileTarget) {
+    collector.write(absoluteProfileTarget)
   }
 }

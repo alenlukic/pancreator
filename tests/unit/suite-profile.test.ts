@@ -35,7 +35,12 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     first,
     JSON.stringify({
       events: [
-        { kind: 'template_build', duration_ms: 4 },
+        {
+          kind: 'template_build',
+          duration_ms: 4,
+          template_bytes: 1024,
+          template_files: 12,
+        },
         { kind: 'template_clone', duration_ms: 2 },
       ],
     }),
@@ -44,7 +49,12 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     second,
     JSON.stringify({
       events: [
-        { kind: 'template_build', duration_ms: 6 },
+        {
+          kind: 'template_build',
+          duration_ms: 6,
+          template_bytes: 1024,
+          template_files: 12,
+        },
         { kind: 'template_clone', duration_ms: 3 },
       ],
     }),
@@ -53,6 +63,8 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
   assert.deepEqual(readFixtureCost(target), {
     template_ms: 10,
     clone_ms: 5,
+    template_bytes: 1024,
+    template_files: 12,
   })
   assert.equal(existsSync(first), false)
   assert.equal(existsSync(second), false)
@@ -62,7 +74,12 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     next,
     JSON.stringify({
       events: [
-        { kind: 'template_build', duration_ms: 1 },
+        {
+          kind: 'template_build',
+          duration_ms: 1,
+          template_bytes: 2048,
+          template_files: 20,
+        },
         { kind: 'template_clone', duration_ms: 1 },
       ],
     }),
@@ -71,6 +88,8 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
   assert.deepEqual(readFixtureCost(target), {
     template_ms: 1,
     clone_ms: 1,
+    template_bytes: 2048,
+    template_files: 20,
   })
   assert.equal(existsSync(next), false)
 })
@@ -435,6 +454,12 @@ test('fixture sidecars live in the runner scratch tree, not the profile target',
   // repository scratch tree rather than falling back to the target.
   assert.equal(
     fixtureSidecarDirectory({}),
-    path.join(process.cwd(), 'runtime', 'tmp', 'tests', 'fixture-profile'),
+    path.join(
+      process.cwd(),
+      'runtime',
+      'tmp',
+      'tests.noindex',
+      'fixture-profile',
+    ),
   )
 })

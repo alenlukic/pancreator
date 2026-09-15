@@ -40,7 +40,7 @@ Keep fixture setup proportional to the contract. Share templates across tests in
 
 ### TP-09 · Scratch space
 
-Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
+Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests.noindex/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. The `.noindex` suffix and the root's `.metadata_never_index` marker keep fixture files out of Spotlight without changing a host setting. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
 
 ### TP-10 · Timing-independent proofs
 

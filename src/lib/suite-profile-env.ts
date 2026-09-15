@@ -15,7 +15,27 @@ export const TEST_PROFILE_ENV = 'PAN_TEST_PROFILE'
 /** Per-run scratch directory `bin/run-tests` owns and removes. */
 export const TEST_SCRATCH_ENV = 'PANCREATOR_TEST_TMP'
 
+/** Per-checkout file-duration record written after every test run. */
+export const TEST_FILE_DURATIONS_ENV = 'PAN_TEST_FILE_DURATIONS'
+
 const FIXTURE_SIDECAR_DIRECTORY = 'fixture-profile'
+
+/**
+ * The durable duration record used to order the next run's test files, or
+ * `null` when this process does not own it.
+ *
+ * Only a run `bin/run-tests` scheduled owns the record, and that wrapper
+ * always exports an absolute target. Resolving a default from the working
+ * directory instead let any bare `node --test` from the repository root
+ * silently replace the scheduler's input with a record naming one file.
+ */
+export function fileDurationRecordPath(
+  environment: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const configured = environment[TEST_FILE_DURATIONS_ENV]?.trim()
+
+  return configured && path.isAbsolute(configured) ? configured : null
+}
 
 /**
  * Directory the transient fixture sidecars of one profile run live in.
@@ -39,7 +59,7 @@ export function fixtureSidecarDirectory(
     process.cwd(),
     'runtime',
     'tmp',
-    'tests',
+    'tests.noindex',
     FIXTURE_SIDECAR_DIRECTORY,
   )
 }
