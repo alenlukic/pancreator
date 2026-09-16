@@ -801,6 +801,12 @@
       "policies": ["BRIEF-001", "REPO-001", "ENG-001"]
     },
     {
+      "persona": "researcher",
+      "workflow": "standalone",
+      "stage": "research",
+      "policies": ["STE-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "standalone",
       "stage": "shepherd",

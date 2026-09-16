@@ -1330,8 +1330,9 @@ checkpoint cache. Neither gates a stage, joins a repository-check profile, or
 becomes a stage criterion.
 
 `/pan-conform` repairs operator-timed prose. It scans the harness-owned
-`docs/issues/**/*.md` and `runtime/pr-descriptions/*.md`, which it may edit, and
-reports rendered workflow HTML and `CHANGELOG.md` without editing them. Its
+`docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`,
+which it may edit, and reports rendered workflow HTML and `CHANGELOG.md` without
+editing them. Its
 issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
 `runtime/cache/conform.json`.
 
@@ -1356,6 +1357,20 @@ status.
 Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
 
 The command is read-only apart from its generated Markdown artifact. It does not create, update, or merge a pull request and stops when the base is invalid, the comparison is ambiguous, or there is no delta to describe.
+
+## Research a subject
+
+Use `/pan-research <request>` when you want a sourced document about an external product, technology, or question rather than a change to the repository. Write the request in prose: name the subject, the document type, the dimensions to cover, and any business context as links, paths, or inline text. For example:
+
+```text
+/pan-research Research FullStory and produce a solution assessment evaluating its fit for user session analysis and general product telemetry. Dimensions: capabilities, implementation, pricing, privacy & security, risks. Business context: docs/telemetry-brief.md
+```
+
+The session runs the `research` governance card, reads `library/personas/researcher.md` and `library/skills/research.md`, reads every context reference before the first search, and then finds and reads sources with the session's web search and fetch tools. It writes one Markdown document under `runtime/research/` (`.pancreator/runtime/research/` when embedded) named `<UTC timestamp>-<document-type>-<subject>.md`. The document leads with a summary that states the verdict, the business relevance, the confidence, and the next action, and it sources every factual statement to a URL or path the session read.
+
+The skill defines five document types: `solution assessment`, `comparison`, `technical brief`, `feasibility study`, and `research memo`. A request that names none gets a research memo. A request that names no dimensions gets the default dimension set of its type.
+
+The session writes no other file, starts no run, and never answers from memory when a search tool is available. When the session has no web search tool it stops and reports the gap. The Simplified Technical English check on the finished document is advisory, and the session repairs the countable issues it reports before it finishes. Research documents are part of the `/pan-conform` editable set, so a later conform pass repairs their prose too. `pan archive` never retires them.
 
 ## Prepare release metadata manually
 

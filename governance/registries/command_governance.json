@@ -28,6 +28,10 @@
       "card_mode": "polish"
     },
     {
+      "command": "pan-research",
+      "card_mode": "research"
+    },
+    {
       "command": "pan-style",
       "card_mode": "style"
     }

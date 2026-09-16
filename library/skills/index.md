@@ -27,6 +27,8 @@ commands where they exist.
 - [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.
 - [`prompt-augmentation.md`](prompt-augmentation.md) - augment an operator
   prompt for one-shot execution.
+- [`research.md`](research.md) - research an operator-named subject from
+  supplied context and web sources, and write one sourced document.
 - [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
 - [`harden.md`](harden.md) - bring a session's ad-hoc changes to a mergeable
   state, stopping at the integration boundary.

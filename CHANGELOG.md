@@ -1,5 +1,22 @@
 # Changelog
 
+## [6.10.0] - 2026-09-16
+
+This release adds `/pan-research` as a standalone research mode. The operator names a subject and a document type. The session writes one sourced Markdown document under `runtime/research/`. Research documents join the STE-001 governed set and the `/pan-conform` editable set. Cursor now ignores nested worktree checkouts.
+
+### Changed
+
+- Register `research` in the standalone mode table, the policy lookup table, and command governance, and list it in the primer, the operator guide, and the skills index ([governance-card](src/lib/governance-card.ts), [lookup](governance/registries/policy_lookup_table.json), [command-governance](governance/registries/command_governance.json), [2b680424](https://github.com/alenlukic/pancreator/commit/2b680424b2afd23f9bcb6dd6b9d42c9590b40917)).
+- Add research documents to the STE-001 governed-artifact list and the STE handbook ([STE-001](governance/policies/STE-001.json), [handbook](governance/handbooks/writing/simplified-technical-english.md), [2b680424](https://github.com/alenlukic/pancreator/commit/2b680424b2afd23f9bcb6dd6b9d42c9590b40917)).
+- Add `runtime/research/*.md` to the `/pan-conform` editable set across the scanner, mode boundary, command, operator guide, and primer ([conform](src/lib/conform.ts), [pan-conform](library/cursor/commands/pan-conform.md), [operator-guide](docs/operator-guide.md), [2b680424](https://github.com/alenlukic/pancreator/commit/2b680424b2afd23f9bcb6dd6b9d42c9590b40917)).
+- Ignore worktree checkouts in Cursor so nested `AGENTS.md` files do not enter the root workspace. Add `.cursorignore` for `worktrees/`, `runtime/worktrees/`, and `.claude/worktrees/` ([.cursorignore](.cursorignore), [f780bc9f](https://github.com/alenlukic/pancreator/commit/f780bc9f3893686e0ab80a5c8993aed375c76b5b)).
+
+### Added
+
+- Add `/pan-research` as a standalone research mode that writes one sourced Markdown document under `runtime/research/` ([pan-research](library/cursor/commands/pan-research.md), [researcher](library/personas/researcher.md), [research](library/skills/research.md), [governance-card](src/lib/governance-card.ts), [2b680424](https://github.com/alenlukic/pancreator/commit/2b680424b2afd23f9bcb6dd6b9d42c9590b40917)).
+- Add the `researcher` persona and the `research` skill with five document types: `solution assessment`, `comparison`, `technical brief`, `feasibility study`, and `research memo` ([researcher](library/personas/researcher.md), [research](library/skills/research.md), [2b680424](https://github.com/alenlukic/pancreator/commit/2b680424b2afd23f9bcb6dd6b9d42c9590b40917)).
+- Add coverage for the research command, the research card, the STE-001 lookup, and the conform editable set ([command-coverage](tests/integration/command-coverage.test.ts), [governance-card](tests/integration/governance-card.test.ts), [policies](tests/integration/policies.test.ts), [conform](tests/integration/conform.test.ts), [2b680424](https://github.com/alenlukic/pancreator/commit/2b680424b2afd23f9bcb6dd6b9d42c9590b40917)).
+
 ## [6.9.0] - 2026-09-15
 
 This release names the integration branch `pan-dev`. Agents commit and merge on `pan-dev` or on a branch that lands on `pan-dev`, and the operator promotes `pan-dev` to `main`. The former name `dev` collided with branches that target repositories already use for other work. The installer now creates `pan-dev` from the target's HEAD when it is missing, so a target carries the branch before its first run.

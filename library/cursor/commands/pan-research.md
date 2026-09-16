@@ -1,0 +1,12 @@
+Research the subject described by `$ARGUMENTS` and write the document type it requests.
+
+1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Then run `{{PANCREATOR_PAN_COMMAND}} governance card --mode research` and read the card it writes in full. The card is the complete resolved governance for this mode. Do not assemble policy text by hand and do not generate a second card for the same session.
+2. Read `{{PANCREATOR_HARNESS_PATH}}library/personas/researcher.md` and `{{PANCREATOR_HARNESS_PATH}}library/skills/research.md`. Apply the skill to every later step.
+3. Treat all of `$ARGUMENTS` as the research request. Parse the subject, the document type, the dimensions, the business context references, and every explicit constraint with the skill's parsing rules. Stop and ask the operator when the request names no subject.
+4. Read every business context reference before the first search. When a reference names target-repository code, read `{{PANCREATOR_HARNESS_PATH}}docs/target-repo-primer.md` first. Record each reference you could not read.
+5. Confirm the session has a web search tool and a fetch tool. When it has neither, stop and report the environment gap. Do not write the document from memory.
+6. Convert the subject to a filename-safe slug by replacing every run of characters outside `[A-Za-z0-9._-]` with `-` and trimming leading or trailing `-`. Choose a unique harness-relative output path under `{{PANCREATOR_HARNESS_PATH}}runtime/research/` named `<UTC timestamp>-<document-type-slug>-<subject-slug>.md`. In an embedded installation, write the corresponding file under `.pancreator/runtime/research/`.
+7. Search, read, and synthesize with the skill's procedure. Write the document at the output path in the skill's skeleton, and write no other file.
+8. Run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona researcher --workflow standalone --stage research --kind standalone --registry SIMPLIFIED-ENGLISH-VALIDATE-001 --target <output-path> --json` after the file is final. Repair the countable issues it reports, then run it again. The check is advisory, so record the final result rather than stop on it.
+9. Do not modify source, workflow state, governance, or any file other than the output path. Do not start or advance a workflow run, and do not push, publish, or deploy.
+10. Surface the card path, the output path, the sources read, the context references you could not read, the validation result, and the complete `## Summary` section in the chat. Name the output path as the operator's next read.

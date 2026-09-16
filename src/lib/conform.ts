@@ -122,6 +122,16 @@ function isEligibleHarnessIssuesPath(relativePath: string): boolean {
   return rel.startsWith('docs/issues/') && rel.endsWith('.md')
 }
 
+/**
+ * Flat harness-owned directories whose Markdown files an agent writes for the
+ * operator: standalone PR descriptions and research documents. Each holds
+ * files directly, never in subdirectories.
+ */
+const EDITABLE_RUNTIME_MARKDOWN_DIRECTORIES = [
+  'runtime/pr-descriptions',
+  'runtime/research',
+] as const
+
 function isEligibleRuntimeMarkdownPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
 
@@ -130,9 +140,10 @@ function isEligibleRuntimeMarkdownPath(relativePath: string): boolean {
   }
 
   return (
-    rel.startsWith('runtime/pr-descriptions/') &&
     rel.endsWith('.md') &&
-    path.posix.dirname(rel) === 'runtime/pr-descriptions'
+    EDITABLE_RUNTIME_MARKDOWN_DIRECTORIES.some(
+      (directory) => path.posix.dirname(rel) === directory,
+    )
   )
 }
 
@@ -264,17 +275,24 @@ function listHarnessMarkdownIssuesFiles(harnessRoot: string): string[] {
   return found.sort()
 }
 
-function listRuntimePrDescriptions(harnessRoot: string): string[] {
-  const base = path.join(harnessRoot, 'runtime', 'pr-descriptions')
+function listEditableRuntimeMarkdown(harnessRoot: string): string[] {
+  const found: string[] = []
 
-  if (!fileExists(base)) {
-    return []
+  for (const directory of EDITABLE_RUNTIME_MARKDOWN_DIRECTORIES) {
+    const base = path.join(harnessRoot, ...directory.split('/'))
+
+    if (!fileExists(base)) {
+      continue
+    }
+
+    for (const entry of readdirSync(base, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith('.md')) {
+        found.push(`${directory}/${entry.name}`)
+      }
+    }
   }
 
-  return readdirSync(base, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => `runtime/pr-descriptions/${entry.name}`)
-    .sort()
+  return found.sort()
 }
 
 function listRuntimeWorkflowOperatorHtml(harnessRoot: string): string[] {
@@ -463,7 +481,7 @@ function listEligibleRuntimePaths(harnessRoot: string): string[] {
   const paths: string[] = []
 
   paths.push(...listHarnessMarkdownIssuesFiles(harnessRoot))
-  paths.push(...listRuntimePrDescriptions(harnessRoot))
+  paths.push(...listEditableRuntimeMarkdown(harnessRoot))
   paths.push(...listRuntimeWorkflowOperatorHtml(harnessRoot))
 
   return paths
