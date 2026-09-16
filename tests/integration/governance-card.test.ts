@@ -243,7 +243,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, harden, investigation, pair, polish, qa-workflow, release, repair, review, shepherd, spotfix, style, supervisor, target, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, harden, investigation, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, tune-harness, unbound, write-pr/u,
   )
 })
 
@@ -691,6 +691,7 @@ test('the card-less command modes resolve their persona governance', () => {
     'tune-harness': ['TUNE-001'],
     harden: ['DEV-001', 'BROWSER-001', 'DESIGN-001', 'DELEGATE-001'],
     polish: ['BRIEF-001', 'REPO-001', 'ENG-001'],
+    research: ['STE-001', 'GLOBAL-001', 'GLOBAL-002'],
   }
 
   for (const [mode, expected] of Object.entries(expectations)) {

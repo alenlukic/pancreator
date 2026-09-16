@@ -314,6 +314,66 @@ test('pan-polish is registered with its polish card and forwards its worktree', 
   )
 })
 
+test('pan-research is registered with its research card and validates its document', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-research.md'),
+    'utf8',
+  )
+
+  // The session writes one harness-owned document and touches no workspace,
+  // so the command binds no worktree and every step it prints must be one
+  // the CLI accepts as written.
+  assert.doesNotMatch(command, /--worktree/u)
+  assert.match(command, /requirements run --persona researcher/u)
+  assert.match(command, /SIMPLIFIED-ENGLISH-VALIDATE-001/u)
+  assert.match(command, /runtime\/research\//u)
+
+  for (const invocation of panInvocations(command)) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
+    )
+  }
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+    target_mutating_commands: Array<{ command: string }>
+  }
+  const research = registry.card_commands.find(
+    (entry) => entry.command === 'pan-research',
+  )
+
+  assert.deepEqual(research, {
+    command: 'pan-research',
+    card_mode: 'research',
+  })
+  assert.equal(
+    registry.target_mutating_commands.some(
+      (entry) => entry.command === 'pan-research',
+    ),
+    false,
+  )
+  assert.deepEqual(run(root).errors, [])
+
+  assert.ok(research)
+  research.card_mode = 'investigation'
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes(
+        'pan-research.md MUST run `pan governance card --mode investigation`',
+      ),
+    ),
+  )
+})
+
 test('a new command without a card fails validation with the fix named', () => {
   const root = createFixture()
 

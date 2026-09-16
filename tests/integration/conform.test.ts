@@ -39,6 +39,14 @@ test('scan includes runtime artifacts on first run', () => {
     'runtime/logs/workflows/scan-fixture/operator/brief.html',
     '<html><body><p>Run this command.</p></body></html>\n',
   )
+  // A research document is editable; a file nested below the flat directory
+  // is not part of the set.
+  write(
+    root,
+    'runtime/research/2026-09-16T00-00-00Z-research-memo-example.md',
+    '# Research memo: example\n\nRun this command.\n',
+  )
+  write(root, 'runtime/research/nested/ignored.md', '# Ignored\n')
 
   const result = scanConformArtifacts(root, { workspace_root: root })
 
@@ -48,11 +56,17 @@ test('scan includes runtime artifacts on first run', () => {
     [
       'runtime/logs/workflows/scan-fixture/operator/brief.html',
       'runtime/pr-descriptions/example.md',
+      'runtime/research/2026-09-16T00-00-00Z-research-memo-example.md',
       'CHANGELOG.md',
     ],
   )
-  assert.equal(result.summary.editable_files, 1)
+  assert.equal(result.summary.editable_files, 2)
   assert.equal(result.summary.report_only_files, 2)
+  assert.ok(
+    result.files.find((file) =>
+      file.relative_path.startsWith('runtime/research/'),
+    )?.editable,
+  )
 })
 
 test('the first scan selects the committed eligible set, not only the dirty tree', () => {

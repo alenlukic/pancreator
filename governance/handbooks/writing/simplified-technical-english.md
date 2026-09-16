@@ -12,6 +12,7 @@ This standard applies to every durable artifact a run produces for a human to re
 
 - Operator briefs and workflow-stage narratives.
 - Intake, plan, review, QA, investigation, repair, and ship records.
+- Research documents under `runtime/research/`.
 - Pull-request descriptions and release notes.
 - Changelog entries.
 - The operator-facing summary an agent writes into its stage output.

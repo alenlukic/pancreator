@@ -1229,6 +1229,31 @@ test('ship, write-pr, and conform keep required STE checks', () => {
     ['standalone-conform-simplified-english-validate'],
   )
 
+  // STE-001 keeps the check advisory for every artifact except a final PR
+  // description. The research document therefore resolves only the generic
+  // advisory check, and exactly once, so `pan requirements run` can select it.
+  assert.deepEqual(
+    requiredSte('researcher', 'standalone', 'research', 'standalone'),
+    [],
+  )
+  assert.deepEqual(
+    resolveRequirements(root, {
+      persona: 'researcher',
+      workflow: 'standalone',
+      stage: 'research',
+      invocation_kind: 'standalone',
+    })
+      .validation_requirements.filter(
+        (requirement) =>
+          requirement.registry_id === 'SIMPLIFIED-ENGLISH-VALIDATE-001',
+      )
+      .map((requirement) => [
+        requirement.requirement_id,
+        requirement.enforcement,
+      ]),
+    [['simplified-english-validate', 'advisory']],
+  )
+
   const planner = resolvePolicies(root, {
     persona: 'planner',
     workflow: 'planning',
