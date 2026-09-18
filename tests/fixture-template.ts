@@ -283,6 +283,9 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   // build. A fixture's stub package scripts need neither, so the block is
   // dropped; a test that wants setup commands declares its own.
   delete fixtureConfig.worktrees
+  // The operator's registry names absolute machine-local installation roots,
+  // so a fixture that inherited it would reach outside its own tree.
+  delete fixtureConfig.installations
 
   writeFileSync(
     path.join(root, 'config.json'),

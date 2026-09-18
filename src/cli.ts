@@ -138,6 +138,10 @@ import {
 import { liveRunsBoundToWorktree } from './lib/state.js'
 import { listInbox, renderInbox, restoreInboxRequest } from './lib/inbox.js'
 import {
+  archiveInstallationInboxItems,
+  describeInstallations,
+} from './lib/installations.js'
+import {
   loadPipelineConfig,
   parsePipelineConfig,
   pipelineConfigPersonaMappings,
@@ -374,6 +378,9 @@ export const HELP_BODY = `Usage:
       List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
+  pan installs list [--json]
+  pan installs archive <install-id> --intake <harness-relative-path> --item <install-relative-path> [--item <install-relative-path>] [--json]
+      Archive only installation inbox items whose file names the source checkout's validated consolidated intake cites.
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
@@ -488,6 +495,29 @@ function option(
   }
 
   return value
+}
+
+function options(args: string[], name: string): string[] {
+  const values: string[] = []
+
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== name) {
+      continue
+    }
+
+    const value = args[index + 1]
+
+    if (!value || value.startsWith('--')) {
+      throw new PanError(`${name} requires a value.`, {
+        code: 'INVALID_ARGUMENT',
+      })
+    }
+
+    values.push(value)
+    index += 1
+  }
+
+  return values
 }
 
 function requiredArgument(
@@ -700,6 +730,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'hypervisor',
   'horizon',
   'inbox',
+  'installs',
   'output',
   'release',
   'repository-check',
@@ -2810,6 +2841,30 @@ async function main(): Promise<void> {
     case 'list':
       print(listRuns(root), true)
       return
+    case 'installs': {
+      const sub = args[0]
+
+      if (sub === 'list') {
+        print(describeInstallations(root), json)
+        return
+      }
+
+      if (sub === 'archive') {
+        print(
+          archiveInstallationInboxItems(root, {
+            installId: requiredPositional(args[1], 'install-id'),
+            intakePath: requiredArgument(option(args, '--intake'), '--intake'),
+            items: options(args, '--item'),
+          }),
+          json,
+        )
+        return
+      }
+
+      throw new PanError(`Unknown installs subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
     case 'inbox': {
       if (args[0] === 'restore') {
         const result = restoreInboxRequest(

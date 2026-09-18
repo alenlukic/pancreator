@@ -11,6 +11,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  archiveInboxRequest,
   claimInboxRequest,
   finishInboxRequest,
   migrateLegacyInboxLayout,
@@ -834,5 +835,64 @@ test('restoreInboxRequest refuses a completed and an already-queued item', () =>
       status,
     )
     assert.equal(existsSync(absolute), true)
+  }
+})
+
+test('archiveInboxRequest moves terminal work safely and refuses live history', () => {
+  const root = inboxRoot()
+  const permitted = [
+    'runtime/inbox/queue/queued.md',
+    'runtime/inbox/complete/completed.md',
+    'runtime/inbox/canceled/canceled.md',
+    'runtime/inbox/legacy.md',
+  ]
+
+  for (const relative of permitted) {
+    const absolute = path.join(root, relative)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, `# ${path.basename(relative)}\n`, 'utf8')
+
+    const archived = archiveInboxRequest(root, relative)
+
+    assert.equal(archived.from, relative)
+    assert.match(archived.to, /^runtime\/inbox\/archive\//u)
+    assert.equal(existsSync(absolute), false)
+    assert.equal(existsSync(path.join(root, archived.to)), true)
+  }
+
+  const queueCollision = 'runtime/inbox/queue/collision.md'
+  const completeCollision = 'runtime/inbox/complete/collision.md'
+
+  for (const relative of [queueCollision, completeCollision]) {
+    const absolute = path.join(root, relative)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, '# Collision\n', 'utf8')
+  }
+
+  assert.equal(
+    archiveInboxRequest(root, queueCollision).to,
+    'runtime/inbox/archive/collision.md',
+  )
+  assert.equal(
+    archiveInboxRequest(root, completeCollision).to,
+    'runtime/inbox/archive/collision-2.md',
+  )
+
+  const active = 'runtime/inbox/active/live.md'
+  const activeAbsolute = path.join(root, active)
+
+  mkdirSync(path.dirname(activeAbsolute), { recursive: true })
+  writeFileSync(activeAbsolute, '# Live\n', 'utf8')
+
+  for (const relative of [active, 'runtime/inbox/archive/collision.md']) {
+    assert.throws(
+      () => archiveInboxRequest(root, relative),
+      (error: unknown) =>
+        error instanceof PanError && error.code === 'INVALID_INBOX_TRANSITION',
+      relative,
+    )
+    assert.equal(existsSync(path.join(root, relative)), true)
   }
 })

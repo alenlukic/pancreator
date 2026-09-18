@@ -278,6 +278,37 @@ export function rollbackInboxClaim(
   return moveInboxFileToPath(root, activePath, originalPath)
 }
 
+export interface InboxArchiveResult {
+  from: string
+  to: string
+}
+
+/** Move a non-active, non-archived inbox item into archive history. */
+export function archiveInboxRequest(
+  root: string,
+  relativePath: string,
+): InboxArchiveResult {
+  const normalized = normalizeRepoPath(relativePath)
+  const status = inboxStatusOf(normalized)
+
+  invariant(status !== null, `Not an inbox request path: ${normalized}`, {
+    code: 'INVALID_INBOX_REQUEST',
+  })
+  invariant(
+    status === 'queue' ||
+      status === 'complete' ||
+      status === 'canceled' ||
+      status === 'legacy',
+    `Inbox request '${normalized}' is in status '${status}' and cannot be archived.`,
+    { code: 'INVALID_INBOX_TRANSITION', details: { status, to: 'archive' } },
+  )
+
+  return {
+    from: normalized,
+    to: moveInboxFile(root, normalized, 'archive'),
+  }
+}
+
 /** What `restoreInboxRequest` moved, and which run it detached doing it. */
 export interface InboxRestoreResult {
   from: string

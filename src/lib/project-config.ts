@@ -7,6 +7,7 @@ import type {
   AwayModeAction,
   AwayModeConfig,
   ProjectConfig,
+  RegisteredInstallation,
   ResolvedAwayModeConfig,
   ResolvedWorktreesConfig,
 } from './types.js'
@@ -390,6 +391,44 @@ function assertScheduleAction(value: unknown, source: string): void {
   }
 }
 
+const INSTALLATION_ID = /^[a-z0-9][a-z0-9-]*$/u
+
+function assertInstallationsBlock(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    Array.isArray(value),
+    `${PROJECT_CONFIG_PATH}.installations MUST be an array when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  const ids = new Set<string>()
+
+  for (const [index, entry] of value.entries()) {
+    const source = `${PROJECT_CONFIG_PATH}.installations[${index}]`
+
+    invariant(isRecord(entry), `${source} MUST be an object.`, {
+      code: 'INVALID_PROJECT_CONFIG',
+    })
+    invariant(
+      typeof entry.id === 'string' && INSTALLATION_ID.test(entry.id),
+      `${source}.id MUST match ${INSTALLATION_ID.source}.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(!ids.has(entry.id), `${source}.id duplicates '${entry.id}'.`, {
+      code: 'INVALID_PROJECT_CONFIG',
+    })
+    ids.add(entry.id)
+    invariant(
+      typeof entry.path === 'string' && path.isAbsolute(entry.path),
+      `${source}.path MUST be an absolute path.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  }
+}
+
 function assertScheduleBlock(value: unknown): void {
   if (value === undefined) return
 
@@ -585,6 +624,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
 
   assertWorktreesBlock(value.worktrees)
   assertAwayModeBlock(value.away_mode)
+  assertInstallationsBlock(value.installations)
   assertScheduleBlock(value.schedule)
   assertFastWallBlock(value.fast_wall)
 
@@ -613,6 +653,36 @@ export function loadProjectConfig(root: string): ProjectConfig {
 
 export function configuredWorkspaceRoot(root: string): string {
   return loadProjectConfig(root).workspace_root ?? '.'
+}
+
+export function registeredInstallations(
+  root: string,
+): RegisteredInstallation[] {
+  return (loadProjectConfig(root).installations ?? []).map((entry) => ({
+    id: entry.id,
+    path: entry.path,
+  }))
+}
+
+export function resolveRegisteredInstallation(
+  root: string,
+  id: string,
+): RegisteredInstallation {
+  const installations = registeredInstallations(root)
+  const installation = installations.find((entry) => entry.id === id)
+
+  invariant(
+    installation,
+    `Unknown installation '${id}'. Registered installations: ${
+      installations.map((entry) => entry.id).join(', ') || '(none)'
+    }.`,
+    {
+      code: 'UNKNOWN_INSTALLATION',
+      details: { id, registered_ids: installations.map((entry) => entry.id) },
+    },
+  )
+
+  return installation
 }
 
 /** Worktree defaults for this installation, with code defaults applied. */

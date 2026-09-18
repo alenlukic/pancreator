@@ -842,6 +842,11 @@ export interface AgentHealthView {
   recovery: AgentRecoveryState
 }
 
+export interface RegisteredInstallation {
+  id: string
+  path: string
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
@@ -866,6 +871,8 @@ export interface ProjectConfig {
   away_mode?: AwayModeConfig
   /** Calendar-triggered unattended work. Disabled in the shipped config. */
   schedule?: ScheduleConfig
+  /** Operator-declared Pancreator installation roots on this machine. */
+  installations?: RegisteredInstallation[]
 }
 
 export type ScheduleWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
