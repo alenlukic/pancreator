@@ -1,5 +1,23 @@
 # Changelog
 
+## [6.15.0] - 2026-09-18
+
+This release extends `/pan-conform` to the harness instruction surfaces that STE-001 names. The scanner and the validator now cover those files. The first operator conform pass repairs the copy debt.
+
+### Changed
+
+- Extend the `/pan-conform` editable set to `AGENTS.md`, policy files, criteria, personas, skills, commands, and rules ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+- Reword STE-001 instruction 2 so the governance exclusion covers only non-instruction files ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+- Repair instruction-surface copy against STE-001 after the scanner change ([a14cc27f](https://github.com/alenlukic/pancreator/commit/a14cc27fcae3997bc325d156b55ddaa63e1b80c2)).
+
+### Added
+
+- Add a `policy-json` target type so `SIMPLIFIED-ENGLISH-VALIDATE-001` counts policy instruction text ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+
+### Fixed
+
+- Accept a policy file and an `.mdc` rule as validator targets ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+
 ## [6.14.0] - 2026-09-18
 
 This release indexes the merged tree. Versions 6.12.0 and 6.13.0 were cut in parallel on separate branches, so neither indexed commit describes a tree holding both features. This release restores the release identity the installer checks.
