@@ -1,5 +1,25 @@
 # Changelog
 
+## [6.13.0] - 2026-09-18
+
+This release adds a machine-local registry of embedded installations. Operators can list those installs and archive cited inbox items from the source checkout. The version is 6.13.0 because pan-dev already holds 6.12.0.
+
+### Changed
+
+- Point `/pan-repair installs` at every registered install and write one intake set in this repository ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+- Document the registry, the two installs commands, and the sweep ([f657a7f8](https://github.com/alenlukic/pancreator/commit/f657a7f8ff5bd63c588a032f11eb2b96e7e85447)).
+- Name the inbox queue directory in installer and operator docs ([62d19132](https://github.com/alenlukic/pancreator/commit/62d191323c7ac253812f0f6941f5e706fd3cd7d6)).
+
+### Added
+
+- Add an optional `installations` array with `id` and absolute `path` ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+- Add `pan installs list` and `pan installs archive` ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+- Add `archiveInboxRequest` for a terminal inbox item ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+
+### Fixed
+
+- Match a cited inbox file name as a whole path segment ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+
 ## [6.11.0] - 2026-09-18
 
 This release adds long-horizon mode, a headless driver, a session ladder, and scheduled jobs. The operator selects the mode at preflight. The harness then advances a queue of workflows and one-off tasks without a mid-run stop.
