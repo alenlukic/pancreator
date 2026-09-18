@@ -2298,6 +2298,25 @@ export interface WorktreeClaimTransfer {
   timestamp: string
 }
 
+/** Durable membership of one workflow run in a long-horizon session task. */
+export interface HorizonRunBinding {
+  session_id: string
+  task_id: string
+  role: 'task' | 'replan'
+}
+
+/** Per-task escalation counters carried by the run that executes the task. */
+export interface HorizonLadderState {
+  retries_spent: number
+  strategy_switches_spent: number
+  replans_spent: number
+  last_failure_signature: string[]
+  approaches_tried: string[]
+  directive?: string
+  pause_kind?: 'ladder_exhausted'
+  failure_record_path?: string
+}
+
 export interface RunState {
   schema_version: 1 | 2
   run_id: string
@@ -2365,6 +2384,10 @@ export interface RunState {
   best_of_n?: BestOfNRunRole
   /** Membership of a cohort fan-out. Absent on an ordinary run. */
   cohort?: CohortRunBinding
+  /** Membership of a long-horizon session. Absent on an ordinary run. */
+  horizon?: HorizonRunBinding
+  /** Contract-gated escalation state. Absent until a long-horizon failure. */
+  horizon_ladder?: HorizonLadderState
   /**
    * Route the ratified plan into delivery when its gate is approved: one
    * `delivery` run for a single chunk, cohort 1 for a wider plan. Recorded on

@@ -32,7 +32,12 @@
       "card_mode": "style"
     }
   ],
-  "supervisor_commands": ["pan-cohort", "pan-resume", "pan-start"],
+  "supervisor_commands": [
+    "pan-cohort",
+    "pan-horizon",
+    "pan-resume",
+    "pan-start"
+  ],
   "target_mutating_commands": [
     {
       "command": "pan-author",
@@ -70,6 +75,12 @@
         "release sync --worktree <name>",
         "release continue --worktree <name>",
         "release finalize --worktree <name>"
+      ]
+    },
+    {
+      "command": "pan-horizon",
+      "worktree_forwarding": [
+        "horizon init --queue <path> --worktree <name> --json"
       ]
     },
     {

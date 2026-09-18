@@ -334,11 +334,11 @@ export function installOpenAiFixture(
 }
 
 /** Point the away evaluator at a script that answers with `response`. */
-export function withFakeEvaluator(
+export function withFakeEvaluator<T>(
   root: string,
   response: unknown,
-  body: () => void,
-): void {
+  body: () => T,
+): T {
   const binary = path.join(root, 'fake-cursor-agent')
 
   writeFileSync(
@@ -355,7 +355,7 @@ export function withFakeEvaluator(
   process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
 
   try {
-    body()
+    return body()
   } finally {
     if (previousBinary === undefined) {
       delete process.env.PANCREATOR_CURSOR_AGENT_BIN

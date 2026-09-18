@@ -234,6 +234,8 @@ import type {
   ExternalPersonaExecutorKind,
   ExternalRequestSettings,
   GovernanceArtifactIssue,
+  HorizonLadderState,
+  HorizonRunBinding,
   Invocation,
   ManagedWorktreeReference,
   OperatorFeedbackItem,
@@ -348,6 +350,10 @@ interface CreateRunOptions {
   bestOfN?: BestOfNRunRole | null
   /** Cohort membership recorded when a fan-out creates this chunk's run. */
   cohort?: CohortRunBinding | null
+  /** Long-horizon task membership recorded when a session creates this run. */
+  horizon?: HorizonRunBinding | null
+  /** Per-task ladder counters inherited when a scoped re-plan restarts work. */
+  horizonLadder?: HorizonLadderState | null
   /**
    * Harness-relative document this run reads by reference. A cohort chunk run
    * points at the parent specification, which it must never copy.
@@ -2350,6 +2356,188 @@ function isSameReasonSignature(current: string[], prior: string[]): boolean {
   return prior.every((criterionId) => currentSet.has(criterionId))
 }
 
+type HorizonFailureAction =
+  | { kind: 'retry' }
+  | { kind: 'strategy'; target: string }
+  | { kind: 'exhausted'; reason: string }
+
+function sameHorizonSignature(current: string[], prior: string[]): boolean {
+  return (
+    prior.length > 0 &&
+    current.length === prior.length &&
+    current.every((criterion, index) => criterion === prior[index])
+  )
+}
+
+function horizonDependentTaskIds(root: string, state: RunState): string[] {
+  const binding = state.horizon
+
+  if (!binding) {
+    return []
+  }
+
+  const sessionPath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'horizon',
+    binding.session_id,
+    'session.json',
+  )
+
+  if (!fileExists(sessionPath)) {
+    return []
+  }
+
+  const value = readJson(sessionPath)
+
+  if (!isRecord(value) || !Array.isArray(value.tasks)) {
+    return []
+  }
+
+  const direct = new Map<string, string[]>()
+
+  for (const task of value.tasks) {
+    if (!isRecord(task) || typeof task.id !== 'string') {
+      continue
+    }
+
+    direct.set(
+      task.id,
+      Array.isArray(task.depends_on)
+        ? task.depends_on.filter(
+            (dependency): dependency is string =>
+              typeof dependency === 'string',
+          )
+        : [],
+    )
+  }
+
+  const found = new Set<string>()
+  const pending = [binding.task_id]
+
+  while (pending.length > 0) {
+    const dependency = pending.shift() as string
+
+    for (const [taskId, dependencies] of direct) {
+      if (found.has(taskId) || !dependencies.includes(dependency)) {
+        continue
+      }
+
+      found.add(taskId)
+      pending.push(taskId)
+    }
+  }
+
+  return [...found].sort()
+}
+
+function pauseForHorizonLadder(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  signature: string[],
+  reason: string,
+): void {
+  const ladder = (state.horizon_ladder ??= {
+    retries_spent: 0,
+    strategy_switches_spent: 0,
+    replans_spent: 0,
+    last_failure_signature: [],
+    approaches_tried: [],
+  })
+  const artifact = resolveRunLayout(root, state.run_id).artifactJson(
+    `horizon-failure-${stage.slug}-${state.transition_count + 1}.json`,
+  )
+  const failure = {
+    schema_version: 1,
+    run_id: state.run_id,
+    task_id: state.horizon?.task_id ?? null,
+    session_id: state.horizon?.session_id ?? null,
+    rung: 'scoped_replan',
+    stage: stage.slug,
+    approaches_tried: ladder.approaches_tried,
+    error_class: signature.length > 0 ? signature.join(',') : 'unknown',
+    dependent_tasks: horizonDependentTaskIds(root, state),
+    reason,
+    recorded_at: now(),
+  }
+
+  writeJsonAtomic(artifact.absolute, failure)
+  ladder.pause_kind = 'ladder_exhausted'
+  ladder.failure_record_path = artifact.relative
+  ladder.last_failure_signature = signature
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+  state.current_invocation = null
+
+  writeDecision(root, state, 'Long-horizon ladder exhausted', reason, [
+    `Failure record: ${artifact.relative}`,
+    state.horizon
+      ? 'The owning long-horizon session may re-plan or defer this task.'
+      : `Resume from a chosen stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+  ])
+}
+
+export function classifyHorizonFailure(
+  state: RunState,
+  stage: StageDefinition,
+  signature: string[],
+): HorizonFailureAction {
+  const ladder = (state.horizon_ladder ??= {
+    retries_spent: 0,
+    strategy_switches_spent: 0,
+    replans_spent: 0,
+    last_failure_signature: [],
+    approaches_tried: [],
+  })
+  const repeated = sameHorizonSignature(
+    signature,
+    ladder.last_failure_signature,
+  )
+  ladder.last_failure_signature = signature
+
+  if (!repeated && ladder.retries_spent < 2) {
+    ladder.retries_spent += 1
+    ladder.approaches_tried.push(
+      `retry ${ladder.retries_spent} at stage '${stage.slug}'`,
+    )
+    return { kind: 'retry' }
+  }
+
+  if (ladder.strategy_switches_spent === 0) {
+    ladder.strategy_switches_spent = 1
+    const target = stage.transitions.failure
+    const reason = repeated
+      ? `failure signature repeated (${signature.join(', ') || 'unknown'})`
+      : 'the two-retry bound was spent'
+
+    ladder.directive = `Change strategy after ${reason}; do not repeat the prior approach.`
+    ladder.approaches_tried.push(`strategy switch from '${stage.slug}'`)
+
+    if (
+      target &&
+      target !== stage.slug &&
+      !['succeeded', 'failed', 'canceled', 'paused'].includes(target)
+    ) {
+      return { kind: 'strategy', target }
+    }
+
+    return {
+      kind: 'exhausted',
+      reason: `Stage '${stage.slug}' has no declared repair route for the long-horizon strategy switch.`,
+    }
+  }
+
+  return {
+    kind: 'exhausted',
+    reason:
+      `Stage '${stage.slug}' exhausted the long-horizon retry and strategy-switch rungs ` +
+      `for signature (${signature.join(', ') || 'unknown'}).`,
+  }
+}
+
 function recordSameReasonFailure(
   state: RunState,
   stageSlug: string,
@@ -2493,9 +2681,21 @@ function applyTransition(
   }
 
   if (target === 'paused') {
+    // A release-gated stage reports `blocked` only for a concern the operator
+    // owns, which is `SHIP-001`'s legitimate-diagnostics pause. Marking it
+    // operator-only under the long-horizon contract is what carries it to the
+    // session's fourth rung instead of into away-mode evaluation.
+    const operatorOnly =
+      outcome === 'blocked' &&
+      stage.entry_gate !== undefined &&
+      runHasContract(state.operator_involvement, 'long_horizon')
+
     state.status = 'paused'
     state.pause_reason = `Stage '${stage.slug}' reported ${outcome}.`
-    state.pending_action = { type: 'operator_decision' }
+    state.pending_action = {
+      type: 'operator_decision',
+      ...(operatorOnly ? { operator_only: true as const } : {}),
+    }
 
     writeDecision(
       root,
@@ -3588,6 +3788,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
       ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
       ...(options.cohort ? { cohort: options.cohort } : {}),
+      ...(options.horizon ? { horizon: options.horizon } : {}),
+      ...(options.horizonLadder
+        ? { horizon_ladder: structuredClone(options.horizonLadder) }
+        : {}),
       ...(autostartDelivery !== null
         ? { autostart_delivery: autostartDelivery }
         : {}),
@@ -6788,23 +6992,66 @@ export function submitOutput(
       }
 
       let sameReasonPauseTriggered = false
+      let horizonFailure: HorizonFailureAction | null = null
+      let horizonSignature: string[] = []
 
-      if (outcome === 'failure' && isSameReasonTrackedStage(stage)) {
-        const signature = collectHardFailureSignature(
+      if (
+        outcome === 'failure' &&
+        (runHasContract(state.operator_involvement, 'long_horizon') ||
+          isSameReasonTrackedStage(stage))
+      ) {
+        horizonSignature = collectHardFailureSignature(
           stage,
           validation.output.criteria,
           evaluated.results,
           allValidationErrors,
         )
 
-        sameReasonPauseTriggered = recordSameReasonFailure(
-          state,
-          stage.slug,
-          signature,
-        )
+        if (runHasContract(state.operator_involvement, 'long_horizon')) {
+          horizonFailure = classifyHorizonFailure(
+            state,
+            stage,
+            horizonSignature,
+          )
+        } else {
+          sameReasonPauseTriggered = recordSameReasonFailure(
+            state,
+            stage.slug,
+            horizonSignature,
+          )
+        }
       }
 
-      if (sameReasonPauseTriggered) {
+      if (horizonFailure?.kind === 'retry') {
+        applyTransition(root, state, stage, 'failure', {
+          overrideTarget: stage.slug,
+        })
+        nextState = state.current_stage
+      } else if (horizonFailure?.kind === 'strategy') {
+        recordOperatorFeedback(
+          root,
+          state,
+          stage,
+          horizonFailure.target,
+          'revise',
+          state.horizon_ladder?.directive ??
+            'Change strategy and do not repeat the prior approach.',
+          'away',
+        )
+        applyTransition(root, state, stage, 'failure', {
+          overrideTarget: horizonFailure.target,
+        })
+        nextState = state.current_stage
+      } else if (horizonFailure?.kind === 'exhausted') {
+        pauseForHorizonLadder(
+          root,
+          state,
+          stage,
+          horizonSignature,
+          horizonFailure.reason,
+        )
+        nextState = 'paused'
+      } else if (sameReasonPauseTriggered) {
         pauseForSameReasonFailure(root, state, stage)
         nextState = 'paused'
       } else if (stage.gate === 'operator') {
@@ -9283,6 +9530,38 @@ export function getRunStatus(
 
 export function getRunState(root: string, runId: string): RunState {
   return loadState(root, runId)
+}
+
+/** Record the session-owned re-plan rung on the task run. */
+export function recordHorizonReplan(root: string, runId: string): RunState {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      runHasContract(state.operator_involvement, 'long_horizon'),
+      `Run '${runId}' does not carry the long_horizon contract.`,
+      { code: 'HORIZON_CONTRACT_REQUIRED' },
+    )
+
+    const ladder = (state.horizon_ladder ??= {
+      retries_spent: 0,
+      strategy_switches_spent: 0,
+      replans_spent: 0,
+      last_failure_signature: [],
+      approaches_tried: [],
+    })
+    ladder.replans_spent += 1
+    ladder.approaches_tried.push(`scoped re-plan ${ladder.replans_spent}`)
+
+    persistRun(root, state, 'horizon_replan_started', {
+      session_id: state.horizon?.session_id ?? null,
+      task_id: state.horizon?.task_id ?? null,
+      replans_spent: ladder.replans_spent,
+      failure_record_path: ladder.failure_record_path ?? null,
+    })
+
+    return state
+  })
 }
 
 /**

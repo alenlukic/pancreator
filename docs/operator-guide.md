@@ -664,6 +664,76 @@ mode-scoped policy set only. It does not lower verification, review depth,
 correctness checks, the release boundary, or any operator-owned irreversible
 action.
 
+### Long-horizon sessions
+
+A long-horizon session owns an ordered queue of workflow tasks and one-off prompt
+tasks. The worktree-capable surface is `horizon init --queue <path> --worktree <name>`.
+The queue is a JSON file with `tasks` and optional dependency `edges`. A
+workflow task names `workflow` and `request_path`; a prompt task names `prompt`.
+Each task may name `workspace` or `worktree`, and `depends_on` adds direct
+dependencies. Initialization rejects unknown dependencies and reports a cycle by
+its task ids.
+
+```sh
+./bin/pan horizon init --queue runtime/inbox/queue/<queue>.json --involvement long-horizon --worktree <name> --json
+./bin/pan horizon start <session-id> --attest-supervisor-card --json
+```
+
+Start is one preflight operation. It records the selected involvement profile,
+arms away mode for the session, records the override, and records permission for
+the driver to attest each task run's supervisor card. Without
+`--attest-supervisor-card`, preflight refuses before any task starts. After a
+successful start, the harness advances tasks until the session is terminal or no
+eligible task remains. It does not publish, deploy, or take an operator-only
+release decision.
+
+The session state lives at
+`runtime/logs/horizon/<session-id>/session.json`. An append-only `events.jsonl`
+sits beside it. Only one task runs at a time. A task becomes eligible when all of
+its dependencies succeeded; declared queue order breaks ties. Deferring a task
+marks only its transitive dependents blocked and leaves unrelated tasks eligible.
+The deferral is written both to `deferred.jsonl` and to an actionable request
+under `runtime/inbox/queue/`. Deferring the active task pauses its run before
+the session releases the slot, and the session refuses to open the next task
+while any task's run is still in flight, so two workflows never mutate one
+workspace at the same time. A run already resting in a pause keeps the pending
+decision you own.
+
+Failures use one fixed per-task ladder:
+
+1. Two transient signatures may retry.
+2. A repeated signature, or the first failure after those retries, spends one
+   strategy switch and routes to the workflow's declared repair stage.
+3. The next exhaustion starts one planning run from the structured failure
+   record, scoped to the task and its dependents.
+4. A second exhaustion or a human-only blocker defers the task.
+
+The failure signature is the sorted set of failed hard criteria, or the
+validation-only marker. The counters live on the task's run and survive ordinary
+run resume. A long-horizon run that belongs to no session pauses after the engine
+rungs because no queue exists to receive a deferral.
+
+Every started, finished, deferred, excluded, and quiescent transition writes a
+JSON handoff and a readable companion under `handoffs/`. The handoff carries the
+queue shape, last task, open deferrals, and one next action. Each task runs in a
+new driver process that reads the latest handoff and session record. That process
+boundary is the only continuity mechanism. `pan horizon resume <session-id>` is a
+post-run inspection command that reads the latest handoff; the running session
+does not wait for it.
+
+Useful inspection and post-run controls:
+
+```sh
+./bin/pan horizon status <session-id> --json
+./bin/pan horizon resume <session-id> --json
+./bin/pan horizon defer <session-id> --task <id> --reason '<reason>' --json
+./bin/pan horizon abandon <session-id> --reason '<reason>' --json
+```
+
+A prompt task writes its text to the request inbox and resolves the `unbound`
+standalone card with the session's snapshotted contracts. An ordinary unbound
+card outside a session still resolves with no run contract.
+
 ## Set how thoroughly a run verifies
 
 `config.json.verification` selects a named verification level: which

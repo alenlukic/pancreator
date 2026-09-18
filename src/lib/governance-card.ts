@@ -25,7 +25,7 @@ import {
   type ReviewScope,
 } from './review-scope.js'
 import type { WorktreeRecord } from './worktrees.js'
-import type { Policy, RequirementManifest } from './types.js'
+import type { Policy, RequirementManifest, RunContract } from './types.js'
 
 /**
  * A standalone mode is work the operator drives directly: no run, no workflow, no
@@ -461,6 +461,8 @@ export interface GovernanceCardOptions {
   extensionId?: string | null
   requestPath?: string | null
   outputPath?: string | null
+  /** Session-scoped contracts for an unbound task; absent stays standalone. */
+  contracts?: readonly RunContract[] | null
   worktreeName?: string | null
   /** Review mode only. Conduct policies render from this base revision. */
   baseRef?: string | null
@@ -850,6 +852,11 @@ export function buildGovernanceCard(
     { code: 'UNKNOWN_STANDALONE_MODE' },
   )
   invariant(
+    !options.contracts?.length || options.mode === 'unbound',
+    'Session-scoped contracts apply to the unbound mode only.',
+    { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
+  )
+  invariant(
     options.extensionId === undefined ||
       options.extensionId === null ||
       options.mode === 'target',
@@ -933,8 +940,9 @@ export function buildGovernanceCard(
     persona: mode.persona,
     workflow: mode.workflow,
     stage: mode.stage,
-    // A standalone mode is bound to no run, so no run contract applies.
-    contracts: [],
+    // Only a long-horizon prompt task binds a standalone card to run
+    // contracts. Ordinary standalone cards keep the empty selection.
+    contracts: [...(options.contracts ?? [])],
     operator_artifacts: 'suppressed',
   })
   const requirements = resolveRequirements(root, {
@@ -942,7 +950,7 @@ export function buildGovernanceCard(
     workflow: mode.workflow,
     stage: mode.stage,
     invocation_kind: mode.kind,
-    contracts: [],
+    contracts: [...(options.contracts ?? [])],
     operator_artifacts: 'suppressed',
   })
   const worktree = options.worktreeName

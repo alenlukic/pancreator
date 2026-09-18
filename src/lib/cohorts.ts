@@ -35,8 +35,10 @@ import {
   sha256,
   withOperationMutex,
   writeJsonAtomic,
+  writeTextAtomic,
 } from './io.js'
 import { keywordRunSuffixFrom } from './naming.js'
+import { runHasContract } from './operator-involvement.js'
 import { panCommand } from './project-config.js'
 import {
   eventPath,
@@ -2069,9 +2071,79 @@ export function abandonChunk(
       { code: 'COHORT_CHUNK_NOT_FOUND' },
     )
 
-    return updateChunk(root, state, chunkId, {
-      abandoned: { note, recorded_at: now() },
-    })
+    const longHorizon =
+      fileExists(statePath(root, state.plan_run_id)) &&
+      runHasContract(
+        loadState(root, state.plan_run_id).operator_involvement,
+        'long_horizon',
+      )
+
+    if (!longHorizon) {
+      return updateChunk(root, state, chunkId, {
+        abandoned: { note, recorded_at: now() },
+      })
+    }
+
+    // A plan may declare a dependency through `edges`, through a chunk's
+    // `depends_on`, or through both: the cohort-plan validator builds its
+    // graph from the union and requires no agreement between them. The
+    // exclusion walk reads the same union, so a dependent declared only on
+    // its own chunk is still carried out with the unit it depends on.
+    const dependencies = [
+      ...state.edges,
+      ...state.chunks.flatMap((chunk) =>
+        chunk.depends_on.map((dependency) => ({
+          from: dependency,
+          to: chunk.id,
+        })),
+      ),
+    ]
+    const excluded = new Set([chunkId])
+    let changed = true
+
+    while (changed) {
+      changed = false
+      for (const edge of dependencies) {
+        if (excluded.has(edge.from) && !excluded.has(edge.to)) {
+          excluded.add(edge.to)
+          changed = true
+        }
+      }
+    }
+
+    const recordedAt = now()
+    const next: CohortSessionState = {
+      ...state,
+      chunks: state.chunks.map((chunk) =>
+        excluded.has(chunk.id)
+          ? {
+              ...chunk,
+              abandoned: {
+                note:
+                  chunk.id === chunkId
+                    ? note
+                    : `Excluded because chunk '${chunkId}' was excluded: ${note}`,
+                recorded_at: recordedAt,
+              },
+            }
+          : chunk,
+      ),
+    }
+    const followUpPath = path.posix.join(
+      'runtime',
+      'inbox',
+      'queue',
+      `cohort-${cohortId}-${chunkId}-excluded.md`,
+    )
+
+    writeTextAtomic(
+      resolveInside(root, followUpPath),
+      `# Excluded cohort unit ${chunkId}\n\n` +
+        `Reason: ${note}\n\n` +
+        `Excluded dependents: ${[...excluded].filter((id) => id !== chunkId).join(', ') || 'none'}\n`,
+    )
+
+    return persistCohortState(root, next)
   })
 }
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,8 +11,12 @@ import {
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
-import type { CohortSessionState, RunStatus } from '../../src/lib/types.js'
-import { createFixture, writeJson } from '../helpers.js'
+import type {
+  CohortSessionState,
+  RunState,
+  RunStatus,
+} from '../../src/lib/types.js'
+import { createFixture, read, writeJson } from '../helpers.js'
 
 const COHORT_ID = '10000_Sep-13-0000_cohort-aband'
 
@@ -213,4 +217,123 @@ test('a recorded abandonment does not exempt a live chunk run', () => {
     (error: unknown) =>
       error instanceof PanError && error.code === 'COHORT_RUN_ACTIVE',
   )
+})
+
+/** Put the plan run under the contract the exclusion behaviour is gated on. */
+function longHorizonPlanRun(root: string): void {
+  writeChunkRun(root, 'plan-run', 'succeeded')
+
+  const planPath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    'plan-run',
+    'agent',
+    'state.json',
+  )
+  const plan = read(planPath) as RunState
+
+  plan.operator_involvement = {
+    profile: 'long-horizon',
+    summary: 'Long-horizon test profile.',
+    contracts: ['long_horizon'],
+    applied_gates: {},
+  }
+  writeJson(planPath, plan)
+}
+
+function followUpPath(root: string, chunkId: string): string {
+  return path.join(
+    root,
+    'runtime',
+    'inbox',
+    'queue',
+    `cohort-${COHORT_ID}-${chunkId}-excluded.md`,
+  )
+}
+
+test('long-horizon exclusion drops only dependent cohort units and writes a follow-up', () => {
+  const root = createFixture()
+  const state = writeSession(root, [chunk('c1'), chunk('c2'), chunk('c3')])
+  writeJson(path.join(cohortDir(root, COHORT_ID), 'state.json'), {
+    ...state,
+    edges: [{ from: 'c1', to: 'c2' }],
+  })
+  longHorizonPlanRun(root)
+
+  const excluded = abandonChunk(
+    root,
+    COHORT_ID,
+    'c1',
+    'The unit cannot complete unattended.',
+  )
+
+  assert.equal(
+    excluded.chunks.find((item) => item.id === 'c1')?.abandoned?.note,
+    'The unit cannot complete unattended.',
+  )
+  assert.match(
+    excluded.chunks.find((item) => item.id === 'c2')?.abandoned?.note ?? '',
+    /because chunk 'c1' was excluded/u,
+  )
+  assert.equal(
+    excluded.chunks.find((item) => item.id === 'c3')?.abandoned,
+    undefined,
+  )
+  assert.equal(existsSync(followUpPath(root, 'c1')), true)
+})
+
+test('exclusion follows a dependency declared only on the chunk', () => {
+  const root = createFixture()
+
+  // A plan may state a dependency on the chunk instead of in `edges`, and the
+  // cohort-plan validator accepts either, so the exclusion walk reads both.
+  writeSession(root, [
+    chunk('c1'),
+    chunk('c2', { depends_on: ['c1'] }),
+    chunk('c3'),
+  ])
+  longHorizonPlanRun(root)
+
+  const excluded = abandonChunk(
+    root,
+    COHORT_ID,
+    'c1',
+    'The unit cannot complete unattended.',
+  )
+
+  assert.match(
+    excluded.chunks.find((item) => item.id === 'c2')?.abandoned?.note ?? '',
+    /because chunk 'c1' was excluded/u,
+  )
+  assert.equal(
+    excluded.chunks.find((item) => item.id === 'c3')?.abandoned,
+    undefined,
+  )
+})
+
+test('exclusion outside the contract stays one operator-owned chunk', () => {
+  const root = createFixture()
+  const state = writeSession(root, [
+    chunk('c1'),
+    chunk('c2', { depends_on: ['c1'] }),
+  ])
+  writeJson(path.join(cohortDir(root, COHORT_ID), 'state.json'), {
+    ...state,
+    edges: [{ from: 'c1', to: 'c2' }],
+  })
+  writeChunkRun(root, 'plan-run', 'succeeded')
+
+  const abandoned = abandonChunk(root, COHORT_ID, 'c1', 'Operator dropped it.')
+
+  assert.equal(
+    abandoned.chunks.find((item) => item.id === 'c1')?.abandoned?.note,
+    'Operator dropped it.',
+  )
+  assert.equal(
+    abandoned.chunks.find((item) => item.id === 'c2')?.abandoned,
+    undefined,
+  )
+  assert.equal(existsSync(followUpPath(root, 'c1')), false)
 })
