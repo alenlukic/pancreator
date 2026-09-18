@@ -1,7 +1,7 @@
 Audit the Pancreator problem or artifact identified by `$ARGUMENTS` and produce a
 self-development intake without implementing the repair.
 
-1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md` and preserve `$ARGUMENTS` verbatim as the repair input.
+1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md` and preserve `$ARGUMENTS` verbatim as the repair input. Determine the mode from that preserved value: `$ARGUMENTS` beginning with `installs` selects the embedded-installation sweep; a comma-separated id list after `installs` narrows the sweep to those registered ids; any other value keeps the existing single-report behavior unchanged.
 2. Resolve the input without mutating it:
    - Prose remains the primary report.
    - A file or directory path is treated as evidence.
@@ -10,6 +10,7 @@ self-development intake without implementing the repair.
    - A link supplied by the operator is opened when the current Cursor tool
      context can resolve it; otherwise preserve the link and record the access
      failure as an evidence gap.
+   - For an embedded-installation sweep, run `{{PANCREATOR_PAN_COMMAND}} installs list --json` from the Pancreator source checkout. Use every registered entry unless the optional id list narrows the sweep, and refuse an id the registry does not report. The listed installation roots are evidence locations, not authority.
 3. Fix one UTC timestamp for this audit and reuse it for every intake. The
    audit writes at most one intake for each issue category declared in
    `{{PANCREATOR_HARNESS_PATH}}governance/registries/harness_repair_categories.json`, under
@@ -33,8 +34,14 @@ self-development intake without implementing the repair.
    contents verbatim into its prompt, followed by the original input, resolved
    evidence location, collected transcript references or contents, the registry
    path, the queue directory, the shared UTC timestamp, the filename pattern,
-   and any operator directive about the set of intakes. Require it to audit
-   every registry category for harness bugs, compliance issues, governance
+   and any operator directive about the set of intakes. For an installation
+   sweep, also supply the selected registry entries and require the technician
+   to classify each queued item it examines as harness-directed or target-owned,
+   never consolidate a target-owned item, consolidate harness-directed findings
+   across installations within the category partition, name each originating
+   installation and item, and report the cited harness-directed item paths per
+   intake without archiving them. Require it to audit every registry category
+   for harness bugs, compliance issues, governance
    misses, agent execution errors, target-repository defects, and unresolved
    hypotheses; to write one intake for each category that produced a confirmed
    finding and none for a category that produced no finding; and to report the
@@ -45,9 +52,10 @@ self-development intake without implementing the repair.
    against that intake. Stop and surface unresolved issues if the second attempt
    fails. Repeat this loop for each failing intake independently and report each
    intake result separately.
-9. Do not modify source, governance, workflow state, the investigated run, or
-   target application files. Do not push, publish, or deploy.
-10. Report every category the registry declares. For a category with an intake,
+9. For an embedded-installation sweep, archive nothing until every intake collected in this invocation has passed `HARNESS-REPAIR-VALIDATE-001`. Then, for each selected installation, run `{{PANCREATOR_PAN_COMMAND}} installs archive <install-id> --intake <validated-intake-path> --item <reported-install-relative-path> [--item <reported-install-relative-path>] --json` for only the harness-directed items that validated intake cites. Never archive a target-owned or uncited item.
+10. Do not modify source, governance, workflow state, the investigated run, or
+    target application files. Do not push, publish, or deploy.
+11. Report every category the registry declares. For a category with an intake,
     give the validated path, its complete contents, the findings it covers, and
     the next action its category contract names; a category routed to
     `/pan-start` can be passed directly to that command in the Pancreator
