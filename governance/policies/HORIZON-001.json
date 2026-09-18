@@ -5,15 +5,15 @@
   "summary": "Long-horizon work MAY continue across bounded task failures while preserving every correctness, verification, review, and operator-authority boundary.",
   "instructions": [
     "Added autonomy MUST NOT lower verification, review depth, correctness, security, or maintainability because longer execution is useful only when its evidence stays trustworthy.",
-    "The recorded involvement selection and its snapshotted contract are the entire mode definition, and agents MUST NOT infer extra authority from the long-horizon name because current models can overgeneralize from labels.",
+    "The recorded involvement selection and its snapshotted contract are the entire mode definition. Agents MUST NOT infer extra authority from the long-horizon name, because current models can overgeneralize from labels.",
     "Every invariant listed in the long-horizon handbook MUST survive unchanged because autonomy cannot trade away operator authority or repository safety.",
-    "An unattended gate decision MUST be reached only through the existing evaluator, guardrails, and immutable ledger because a second decision path could bypass the operator-defined bounds.",
-    "An agent MUST still escalate rather than assume when required information or authority is unavailable, and a session MUST route that task to the deferred ledger and request inbox instead of waiting because the operator is absent between preflight and post-run.",
-    "A blocker or pause MUST end the affected task rather than the task collection, and retry bounds MUST be counted per task because one failure must not consume another task's budget.",
+    "An unattended gate decision MUST come only through the existing evaluator, guardrails, and immutable ledger. This route is required because a second decision path could bypass the operator-defined bounds.",
+    "An agent MUST still escalate rather than assume when required information or authority is unavailable. A session MUST route that task to the deferred ledger and request inbox. The session MUST NOT wait, because the operator is absent between preflight and post-run.",
+    "A blocker or pause MUST end the affected task rather than the task collection. The harness MUST count retry bounds per task, because one failure must not consume another task's budget.",
     "The bounded escalation ladder MUST replace the same-signature pause for a task because a repeated failure should change strategy before the task is deferred.",
-    "An integrating agent MAY exclude a failing unit only with a recorded reason, a follow-up item, and exclusion of its dependents because the remaining independent units must keep valid dependency evidence.",
+    "An integrating agent MAY exclude a failing unit only with a recorded reason, a follow-up item, and exclusion of its dependents. Those conditions exist because the remaining independent units must keep valid dependency evidence.",
     {
-      "text": "A supervisor MUST write run-level waste that a relaxed gate would have surfaced in chat into the durable run record because post-run review needs the same evidence without a mid-run interruption.",
+      "text": "A supervisor MUST write run-level waste into the durable run record. That waste is what a relaxed gate surfaces in chat. The record exists because post-run review needs the same evidence without a mid-run interruption.",
       "audience": ["supervisor"]
     }
   ],

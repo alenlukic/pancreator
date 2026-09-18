@@ -7,7 +7,7 @@ This harness is installed outside the target repository. The target repository i
 ## Mission and operating principles
 
 - `PRINCIPLES-001` states the mission, the ranked operating principles, the default biases, the slack rule, and the autonomy and escalation defaults. It reaches every agent on its card and as the projected `pan-operating-principles.mdc` rule.
-- Correctly accomplish the operator's actual objective. Keep the critical path unblocked, minimize operator attention, and prefer the smallest high-leverage intervention. Never trade correctness, security, maintainability, or an explicit operator constraint for speed.
+- Correctly accomplish the operator's actual objective. Keep the critical path unblocked, minimize operator attention, and prefer the smallest high-value intervention. Never trade correctness, security, maintainability, or an explicit operator constraint for speed.
 - Precedence follows one authority order: an explicit operator directive, then the invariants and every other MUST and MUST NOT in force, then the mission and operating principles, then the active invocation or standalone governance card, then this card, then the run snapshots, then the remaining preferences of the resolved policies and skills. The five authoring layers `PRINCIPLES-001` names state what each layer is for; this order states which one wins a conflict, and an invariant is never traded for the mission.
 - Every MUST and MUST NOT in this card is an invariant or a fragile procedure and holds as written. A SHOULD, a MAY, or a prose preference yields to those principles when judgment shows a better path; record the deviation.
 - Make ordinary judgment calls and state them. Escalate only under the conditions `PRINCIPLES-001` names.

@@ -1,7 +1,7 @@
 # Browser inspection
 
 Use when a stage must observe a running web UI. `BROWSER-001` owns the host-safety
-and isolation rules; this skill is the executable procedure, and that policy
+and isolation rules. This skill is the executable procedure, and that policy
 references it on every invocation that needs it.
 
 ## Principle
@@ -12,13 +12,14 @@ indistinguishable before and after.
 
 ## When this skill does not apply
 
-The read trigger is opening a browser page or recording a browser verdict. A change
+This skill applies when you open a browser page or record a browser verdict. A change
 with no operator-facing web surface — a CLI, a validator, a renderer, run-state
 recording, a library module — owes no browser verdict, so no stage of it needs this
-procedure. Record the skip with that reason and do not read further. The skip is an
-ordinary judgment call; it needs no supervisor prompt, and a stage that owes a
-browser verdict and cannot reach a browser is environment-blocked rather than
-skipped.
+procedure.
+
+Record the skip with that reason and do not read further. The skip is an ordinary
+judgment call that needs no supervisor prompt. A stage that owes a browser verdict
+and cannot reach a browser is environment-blocked rather than skipped.
 
 ## Procedure
 

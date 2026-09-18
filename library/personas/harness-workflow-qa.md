@@ -20,7 +20,7 @@ All parameters are optional:
 - `qa-target` — what to validate: a description of harness functionality, a
   change summary, or a link to a pull request. When absent, ask the operator.
 - `task` — the workload to push through the workflow. When absent, pick a
-  `runtime/inbox/queue/` item you assess as not yet implemented; when none is
+  `runtime/inbox/queue/` item you assess as not yet implemented. When none is
   available, research robust harness techniques, pick one worth implementing,
   and write it up as the task.
 
@@ -36,14 +36,15 @@ Do not substitute your own model or stage mapping.
   written before the stage runs, not reconstructed afterward.
 - An in-run worker delegation is a foreground blocking call with no
   observation point while it runs, so a fixed check-in cadence is impossible
-  for it. For each such delegation you MUST record launch evidence before the
+  for it.
+- For each such delegation you MUST record launch evidence before the
   call, completion evidence with elapsed time after it returns, and a
   terminal-state inspection of the stage result — course-correct on what the
   inspection shows, and record any newly observed issue or failure against
   the relevant checklist item at the moment it is observed.
 - A fixed check-in cadence applies only to an asynchronous process that
   exposes an observation point, such as a background subagent or a
-  long-running background command; for those, apply the `DELEGATE-001`
+  long-running background command. For those, apply the `DELEGATE-001`
   cadence.
 - You MUST remediate issues you find (in the harness, the run, or the
   delegation) so the workflow run completes successfully. A QA run that stalls
@@ -88,7 +89,7 @@ Do not substitute your own model or stage mapping.
 
 ## Boundaries
 
-- New dependencies MUST be installed in a worktree. When a global install is
+- You MUST install new dependencies in a worktree. When a global install is
   unavoidable, you MUST reverse it once the QA run is complete and record both
   the install and the reversal.
 - You MUST NOT run destructive commands: no file deletions, no
@@ -107,7 +108,7 @@ The QA record MUST contain:
 3. Per-stage checklists with per-item outcomes and timestamped check-in notes
 4. Issues found, each with the remediation applied (or the reason it was
    deferred) and any waiver exercised
-5. Global installs performed and their reversals
+5. Global installs done and their reversals
 6. The RCA for the former one-decision stall and the repaired continuation
 7. The waiver expiry point and every action after expiry
 8. A final verdict per QA-target change: validated, failed, or not exercised

@@ -5,7 +5,7 @@
   "summary": "Pancreator workflow runtime directories MUST use sortable UTC names and harness-owned archival after seven days; agents MUST NOT rename or relocate generated run state manually.",
   "instructions": [
     {
-      "text": "Workflow directories under runtime/logs/workflows/ and the legacy mirrored runtime/workflows/ location MUST use <days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<eight-character-UUID>, with the minute field zero-padded to four digits (`tests/unit/naming.test.ts::workflow run IDs pad the minute field to four digits`).",
+      "text": "Workflow directories under runtime/logs/workflows/ and the legacy mirrored runtime/workflows/ location MUST use <days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<eight-character-UUID>. The harness MUST zero-pad the minute field to four digits (`tests/unit/naming.test.ts::workflow run IDs pad the minute field to four digits`).",
       "audience": ["harness"]
     },
     {
@@ -17,27 +17,27 @@
       "audience": ["harness"]
     },
     {
-      "text": "DATETIME_ANCHOR MUST remain 2200-01-01T00:00:00.000Z. days-to-anchor MUST be the floor of the UTC duration from run creation to the anchor divided by one day, and minutes-to-end-of-UTC-day MUST be the ceiling of the remaining UTC-day duration in minutes (`tests/unit/naming.test.ts::workflow run IDs use UTC days to the 2200 anchor`).",
+      "text": "DATETIME_ANCHOR MUST remain 2200-01-01T00:00:00.000Z. days-to-anchor MUST be the floor of the UTC duration from run creation to the anchor divided by one day. minutes-to-end-of-UTC-day MUST be the ceiling of the remaining UTC-day duration in minutes (`tests/unit/naming.test.ts::workflow run IDs use UTC days to the 2200 anchor`).",
       "audience": ["harness"]
     },
     {
-      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names, update persisted path references, and move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/integration/inbox.test.ts::runtime maintenance migrates and archives old workflow directories`; the command surface is pinned by `tests/integration/runtime-archive-cli.test.ts::selects complete canceled or both inbox archives`).",
+      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names and update persisted path references. It MUST move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/integration/inbox.test.ts::runtime maintenance migrates and archives old workflow directories`, and the command surface is pinned by `tests/integration/runtime-archive-cli.test.ts::selects complete canceled or both inbox archives`).",
       "audience": ["harness"]
     },
     {
-      "text": "Archived workflow directories MUST be excluded from active run discovery and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently (`tests/unit/workflow-artifacts.test.ts::workflow archive moves runs older than retention into archive directories`).",
+      "text": "The harness MUST exclude archived workflow directories from active run discovery, and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently (`tests/unit/workflow-artifacts.test.ts::workflow archive moves runs older than retention into archive directories`).",
       "audience": ["harness"]
     },
     {
-      "text": "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before replacing the owned harness payload, while preserving workflow contents (`tests/secondary/embedded-installation-refresh.test.ts::embedded installer refresh reconciles persona mappings and agent ownership while preserving target state`).",
+      "text": "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before it replaces the owned harness payload. The refresh MUST preserve workflow contents (`tests/secondary/embedded-installation-refresh.test.ts::embedded installer refresh reconciles persona mappings and agent ownership while preserving target state`).",
       "audience": ["harness"]
     },
     {
-      "text": "Worker-authored helper scripts under runtime/logs/workflows/<run-id>/scripts/ MUST survive the closing of their run, because a closed run is still being read, and MUST be removed by the pan archive retention pass rather than at finalization (`tests/unit/workflow-artifacts.test.ts::retention sweeps run-local worker scripts and finalization keeps them`).",
+      "text": "Worker-authored helper scripts under runtime/logs/workflows/<run-id>/scripts/ MUST survive the closing of their run, because a closed run is still being read. The pan archive retention pass MUST remove them, rather than finalization (`tests/unit/workflow-artifacts.test.ts::retention sweeps run-local worker scripts and finalization keeps them`).",
       "audience": ["harness"]
     },
     {
-      "text": "Terminal renumbering of a run's invocation prefixes MUST leave a resolvable alias from each superseded invocation id to the current one under the run directory, so a citation written while the run was live still resolves after it closes (`tests/unit/workflow-artifacts.test.ts::finalization leaves an alias from every in-flight invocation prefix to its final one`).",
+      "text": "Terminal renumbering of invocation prefixes MUST leave a resolvable alias under the run directory, from each superseded invocation id to the current one. A citation written while the run was live then still resolves after it closes (`tests/unit/workflow-artifacts.test.ts::finalization leaves an alias from every in-flight invocation prefix to its final one`).",
       "audience": ["harness"]
     },
     "A worker-authored helper script under runtime/logs/workflows/<run-id>/scripts/ belongs to its own run. Agents MUST NOT delete one when a run closes and MUST NOT rely on one outliving the retention window.",

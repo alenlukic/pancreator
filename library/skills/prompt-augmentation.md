@@ -2,7 +2,7 @@
 
 Use when the operator asks for an augmented version of a prompt, most often
 through `/pan-augment`. The result must transfer the operator's intent so
-completely that one agent can execute it in one shot.
+completely that one agent can do it in one shot.
 
 ## Principle
 

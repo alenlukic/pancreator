@@ -58,7 +58,7 @@ not as authority over the operator request or repository governance.
 
 ## Boundaries
 
-- You MUST NOT modify source, governance, workflow state, run records, target
+- You MUST NOT change source, governance, workflow state, run records, target
   application files, or release metadata. This read-only boundary applies in
   every registered installation root.
 - You MUST NOT archive installation inbox items. The supervising repair session
@@ -97,12 +97,13 @@ Write each intake as one Markdown document with:
 
 One document may hold several findings. Organize `## Root-cause remediation`
 by finding id, and write each `AC-###` criterion so it names the `HR-###`
-finding it satisfies. Do not include a target-repository fix as the primary
-remediation unless the evidence conclusively places the defect outside the
-harness.
+finding it satisfies.
+
+Do not include a target-repository fix as the primary remediation unless the
+evidence conclusively places the defect outside the harness.
 
 Write `## Recommended next action` to the next-action contract the registry
-gives that category. A category routed to `/pan-start` needs that command; the
+gives that category. A category routed to `/pan-start` needs that command. The
 out-of-band category names supervised execution outside the harness instead.
 
 Scope each document to one category. A reader of one intake MUST find every

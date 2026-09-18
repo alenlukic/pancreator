@@ -4,7 +4,7 @@
   "severity": "hard",
   "summary": "Agents MUST prepare reversible changes and MUST NOT perform irreversible source-control actions without explicit operator approval.",
   "instructions": [
-    "Agents MUST NOT run git push, gh pr create, gh pr merge, branch deletion, history rewrite, or destructive reset commands unless the active invocation records operator approval for that action.",
+    "Agents MUST NOT run git push, gh pr create, gh pr merge, branch deletion, history rewrite, or destructive reset commands. The active invocation MUST record operator approval for that action first.",
     "Agents commit and merge on their own judgment, on `pan-dev` or on a branch that lands on `pan-dev`. Agents MUST NOT merge into `main`. The operator promotes `pan-dev` to `main` and pushes.",
     "Agents SHOULD preserve the pre-task workspace state and MUST record enough evidence to diagnose or revert a failed change."
   ]

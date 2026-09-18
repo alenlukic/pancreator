@@ -9,7 +9,7 @@ Drive a workflow in this top-level session to validate harness changes.
 7. For a bound run, use `./bin/pan prepare <run-id> --worktree <name>`.
 8. Run the supervisor card and attestation steps from the normal orchestrator procedure.
 9. For a bound run, use `./bin/pan submit <run-id> <output-json> --worktree <name>`.
-10. Write each stage checklist before that stage starts. For each foreground worker delegation, record launch evidence, completion evidence with elapsed time, and a terminal-state inspection; apply a fixed check-in cadence only to asynchronous processes that expose an observation point. Record drift, issues, and remediation immediately.
+10. Write each stage checklist before that stage starts. For each foreground worker delegation, record launch evidence, completion evidence with elapsed time, and a terminal-state inspection. Apply a fixed check-in cadence only to asynchronous processes that expose an observation point. Record drift, issues, and remediation immediately.
 11. Inspect `pending_action` after every transition. Continue each supervisor-owned action in this top-level session.
 12. When away mode is enabled, evaluate through `pan away`, apply the returned `decision_id`, inspect status, and continue.
 13. When away mode is disabled, preserve the normal operator stop. Stop enabled mode only for a real blocker or terminal state.

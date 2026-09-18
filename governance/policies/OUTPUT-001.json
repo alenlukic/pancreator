@@ -13,7 +13,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "Operator commands whose stdout is the requested result MUST preserve that result; incidental Pancreator lifecycle banners and successful harness build, lint, format, and test chatter MUST remain suppressed.",
+      "text": "Operator commands whose stdout is the requested result MUST preserve that result. Incidental Pancreator lifecycle banners and successful harness build, lint, format, and test chatter MUST remain suppressed.",
       "audience": ["agent"]
     },
     {
@@ -21,15 +21,15 @@
       "audience": ["harness"]
     },
     {
-      "text": "The Cursor SDK invocation logger MUST emit concise plan or progress summaries, grouped tool-call logs, significant findings or issues, and a brief current-task update when two minutes pass without another operator-facing emission (`tests/unit/cursor-sdk-logging.test.ts::Cursor SDK logger emits an idle progress update after the configured interval`).",
+      "text": "The Cursor SDK invocation logger MUST emit concise plan or progress summaries, grouped tool-call logs, and significant findings or issues. It MUST emit a brief current-task update when two minutes pass without another operator-facing emission (`tests/unit/cursor-sdk-logging.test.ts::Cursor SDK logger emits an idle progress update after the configured interval`).",
       "audience": ["harness"]
     },
     {
-      "text": "Human-readable summaries MUST NOT replace full-fidelity SDK events used as durable evidence, and tool arguments or results MUST be treated as unstable unknown input (`tests/unit/cursor-sdk-logging.test.ts::invocation wrapper streams events, records raw evidence, and returns the SDK result`).",
+      "text": "Human-readable summaries MUST NOT replace full-fidelity SDK events used as durable evidence. The logger MUST treat tool arguments or results as unstable unknown input (`tests/unit/cursor-sdk-logging.test.ts::invocation wrapper streams events, records raw evidence, and returns the SDK result`).",
       "audience": ["harness"]
     },
     {
-      "text": "Verbose command output MAY be enabled explicitly for diagnosis and MUST NOT be the default operator experience (`tests/integration/quiet-command.test.ts::quiet command streams successful output in verbose mode`).",
+      "text": "An operator MAY enable verbose command output explicitly for diagnosis, and it MUST NOT be the default operator experience (`tests/integration/quiet-command.test.ts::quiet command streams successful output in verbose mode`).",
       "audience": ["harness"]
     }
   ]
