@@ -5,6 +5,7 @@ import { invariant } from './errors.js'
 import { fileExists, isRecord, readJson, sha256 } from './io.js'
 import type {
   AwayModeAction,
+  AwayModeConfig,
   ProjectConfig,
   ResolvedAwayModeConfig,
   ResolvedWorktreesConfig,
@@ -420,8 +421,11 @@ export function worktreesConfig(root: string): ResolvedWorktreesConfig {
 }
 
 /** Away-mode settings for a new run, with safe defaults and a source digest. */
-export function resolveAwayModeConfig(root: string): ResolvedAwayModeConfig {
-  const configured = loadProjectConfig(root).away_mode
+export function resolveAwayModeConfig(
+  root: string,
+  profileAwayMode?: AwayModeConfig,
+): ResolvedAwayModeConfig {
+  const configured = profileAwayMode ?? loadProjectConfig(root).away_mode
   const allowedActions =
     configured?.guardrails?.allowed_actions ?? DEFAULT_AWAY_MODE_ACTIONS
 

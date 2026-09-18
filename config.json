@@ -134,6 +134,27 @@
           "*": "operator"
         },
         "contracts": ["technical_director"]
+      },
+      "long-horizon": {
+        "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged.",
+        "gates": {
+          "plan": "supervisor"
+        },
+        "contracts": ["long_horizon"],
+        "away_mode": {
+          "enabled": true,
+          "guardrails": {
+            "allowed_actions": [
+              "approve",
+              "reject",
+              "revise",
+              "resume",
+              "set-stage"
+            ],
+            "max_decisions_per_run": 3,
+            "max_remediation_attempts_per_agent": 2
+          }
+        }
       }
     }
   },

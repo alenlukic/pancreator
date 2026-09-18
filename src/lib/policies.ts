@@ -28,7 +28,10 @@ import {
 } from './technologies.js'
 
 /** Run contracts a policy lookup row MAY require. */
-export const RUN_CONTRACT_IDS = new Set<RunContract>(['technical_director'])
+export const RUN_CONTRACT_IDS = new Set<RunContract>([
+  'technical_director',
+  'long_horizon',
+])
 
 interface PolicyContext {
   persona: string
@@ -442,6 +445,11 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     { code: 'INVALID_POLICY_LOOKUP' },
   )
   invariant(
+    value.long_horizon === undefined || typeof value.long_horizon === 'boolean',
+    `${source}: long_horizon MUST be a boolean when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
     Array.isArray(value.policies) &&
       value.policies.every((item) => typeof item === 'string'),
     `${source}: policies MUST be a string array.`,
@@ -621,6 +629,7 @@ function loadLookupTable(root: string): PolicyLookupTable {
       technology: row.technology ?? null,
       contract: row.contract ?? null,
       operator_artifacts: row.operator_artifacts ?? null,
+      long_horizon: row.long_horizon ?? null,
       policies: [...row.policies].sort(),
     })
     const rowSource = rowSources[index] ?? `row ${index}`
@@ -661,6 +670,7 @@ function loadLookupTable(root: string): PolicyLookupTable {
           technology: row.technology ?? null,
           contract: row.contract ?? null,
           operator_artifacts: row.operator_artifacts ?? null,
+          long_horizon: row.long_horizon ?? null,
         })
         const previousBinding = policyBindingIdentities.get(bindingIdentity)
 
@@ -790,6 +800,7 @@ export function resolvePolicies(
   const technologies = new Set(context.technologies ?? sources.technologies)
   const contracts = new Set(context.contracts ?? [])
   const operatorArtifacts = context.operator_artifacts ?? 'requested'
+  const longHorizon = contracts.has('long_horizon')
 
   for (const row of lookup.rows) {
     const applies =
@@ -821,6 +832,10 @@ export function resolvePolicies(
       row.operator_artifacts &&
       row.operator_artifacts !== operatorArtifacts
     ) {
+      continue
+    }
+
+    if (row.long_horizon !== undefined && row.long_horizon !== longHorizon) {
       continue
     }
 

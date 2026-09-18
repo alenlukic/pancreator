@@ -3496,7 +3496,27 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
         }
       : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
 
-    const awayMode = resolveAwayModeConfig(root)
+    const awayMode = resolveAwayModeConfig(
+      root,
+      involvementSelection.profile.away_mode,
+    )
+    const configurationOverrides =
+      runHasContract(involvement, 'long_horizon') && !awayMode.enabled
+        ? [
+            {
+              setting: 'away_mode.enabled' as const,
+              configured_value: false,
+              applied_value: true,
+              reason:
+                `Involvement profile '${involvement.profile}' carries the ` +
+                'long_horizon contract, which requires away mode for this run.',
+            },
+          ]
+        : []
+
+    if (configurationOverrides.length > 0) {
+      awayMode.enabled = true
+    }
     // Snapshotted likewise. The level decides which repository-check profiles
     // gate this run and which baselines the first mutating stage captures.
     const verification = resolveVerification(root, options.verification)
@@ -3550,6 +3570,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       operator_involvement: involvement,
       verification,
       away_mode: awayMode,
+      ...(configurationOverrides.length > 0
+        ? { configuration_overrides: configurationOverrides }
+        : {}),
       operator_artifacts: {
         mode: options.operatorArtifacts ? 'requested' : 'suppressed',
         requested_stages: [],
@@ -3617,6 +3640,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       applied_gates: involvement.applied_gates,
       verification_level: verification.level,
       away_mode_enabled: awayMode.enabled,
+      ...(configurationOverrides.length > 0
+        ? { configuration_overrides: configurationOverrides }
+        : {}),
       operator_artifacts: state.operator_artifacts,
     })
 

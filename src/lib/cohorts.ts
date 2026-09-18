@@ -1092,6 +1092,10 @@ export function startCohort(
 
     const pending = unstarted.slice(0, slots)
     const deferred = unstarted.slice(slots).map((chunk) => chunk.id)
+    // One read for the whole fan-out: the plan run's snapshot does not change
+    // across the loop, and reading it per chunk also clears that run's stale
+    // operation mutex once per chunk for no reason.
+    const involvement = planRunInvolvement(root, loaded)
 
     let state = loaded
     const started: CohortStartResult['chunks'] = []
@@ -1138,6 +1142,7 @@ export function startCohort(
             branch: record.branch,
           },
           contextReferencePath: state.parent_spec_path,
+          involvement,
           cohort: {
             cohort_id: cohortId,
             cohort_index: cohortIndex,
@@ -2630,6 +2635,7 @@ function startSingleDeliveryRun(
         branch: record.branch,
       },
       contextReferencePath: plan.parent_spec_path,
+      involvement: planState.operator_involvement?.profile,
     })
 
   recordDeliveryHandoff(root, planState, {
@@ -2730,6 +2736,27 @@ function continueAfterIntegration(
 }
 
 /**
+ * The involvement profile the plan run snapshotted, which every run the route
+ * starts inherits. The snapshot is the authority for what the operator
+ * selected, so the live configuration is never consulted here.
+ *
+ * Propagation is best-effort metadata: a session whose plan run record is gone
+ * still has to start and release its runs, exactly as the request path falls
+ * back to the parent specification, so an absent record resolves to no profile
+ * rather than throwing `RUN_NOT_FOUND`.
+ */
+function planRunInvolvement(
+  root: string,
+  state: CohortSessionState,
+): string | undefined {
+  if (!fileExists(statePath(root, state.plan_run_id))) {
+    return undefined
+  }
+
+  return loadState(root, state.plan_run_id).operator_involvement?.profile
+}
+
+/**
  * The release run reads the operator's original request, which the plan run
  * stored, and reaches the parent specification by reference. When the plan
  * run's record is gone, the parent specification itself stands in.
@@ -2805,6 +2832,7 @@ function startReleaseRun(
       workspace: record.path,
       worktree: { name: record.name, path: record.path, branch: record.branch },
       contextReferencePath: state.parent_spec_path,
+      involvement: planRunInvolvement(root, state),
       // The chunk runs are the implementation record of this run, so the
       // binding names the session and the final merge proof that lists them.
       cohort: {

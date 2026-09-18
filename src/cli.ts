@@ -1720,6 +1720,7 @@ async function main(): Promise<void> {
                 summary: profile.summary,
                 gates: profile.gates ?? {},
                 contracts: profile.contracts ?? [],
+                away_mode: profile.away_mode ?? null,
               },
             ]),
           ),

@@ -1,0 +1,10 @@
+{
+  "id": "SINGLERUN-001",
+  "title": "Regular single-run recovery and unit exclusion",
+  "severity": "hard",
+  "summary": "Regular runs MUST pause after a repeated hard-failure signature, and only the operator may exclude a unit from a group.",
+  "instructions": [
+    "The harness MUST pause ordinary runs after the same stage fails twice for the same hard-failure signature.",
+    "The exclusion of one unit from a group MUST be an operator decision. The record MUST carry the operator's stated reason."
+  ]
+}

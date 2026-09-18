@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   applyOperatorInvolvement,
+  parseOperatorInvolvement,
   selectInvolvementProfile,
 } from '../../src/lib/operator-involvement.js'
 import type {
@@ -61,14 +62,6 @@ test('a profile cannot lower a gate a stage declares non-relaxable', () => {
 
   assert.throws(
     () =>
-      applyTo('delivery', {
-        typo: { summary: 'Mistyped stage.', gates: { shipp: 'operator' } },
-      }),
-    /which workflow 'delivery' does not define/u,
-  )
-
-  assert.throws(
-    () =>
       applyTo(
         'delivery',
         { standard: { summary: 'Workflow gates.' } },
@@ -108,5 +101,68 @@ test('gates resolve by ascending specificity', () => {
   assert.equal(
     planning.resolved.applied_gates.plan?.source,
     "profile 'planning-specificity' stage override",
+  )
+})
+
+test('a valid shared profile skips stage keys absent from one workflow', () => {
+  const delivery = applyTo('delivery', {
+    shared: {
+      summary: 'The plan gate belongs to the planning workflow.',
+      gates: { plan: 'supervisor' },
+    },
+  })
+
+  assert.deepEqual(delivery.resolved.applied_gates, {})
+  assert.equal(stageBySlug(delivery.workflow, 'ship').gate, 'operator')
+})
+
+test('profiles parse long-horizon contracts and validated away-mode guardrails', () => {
+  const parsed = parseOperatorInvolvement({
+    operator_involvement: {
+      active: 'long-horizon',
+      profiles: {
+        'long-horizon': {
+          summary: 'Unattended between preflight and post-run.',
+          contracts: ['long_horizon'],
+          away_mode: {
+            enabled: true,
+            guardrails: {
+              allowed_actions: ['approve', 'resume'],
+              max_decisions_per_run: 4,
+              max_remediation_attempts_per_agent: 2,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  assert.deepEqual(parsed.profiles['long-horizon']?.contracts, ['long_horizon'])
+  assert.deepEqual(parsed.profiles['long-horizon']?.away_mode, {
+    enabled: true,
+    guardrails: {
+      allowed_actions: ['approve', 'resume'],
+      max_decisions_per_run: 4,
+      max_remediation_attempts_per_agent: 2,
+    },
+  })
+
+  assert.throws(
+    () =>
+      parseOperatorInvolvement({
+        operator_involvement: {
+          active: 'invalid',
+          profiles: {
+            invalid: {
+              summary: 'Invalid action.',
+              away_mode: {
+                enabled: true,
+                guardrails: { allowed_actions: ['push'] },
+              },
+            },
+          },
+        },
+      }),
+    /allowed_actions MUST contain only/u,
   )
 })

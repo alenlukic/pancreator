@@ -25,7 +25,6 @@
     "Away ship approval MUST NOT authorize or run an external release action.",
     "Terminal `none` MUST be reported and stopped.",
     "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains.",
-    "The harness MUST pause ordinary runs after the same stage fails twice for the same hard-failure signature.",
     "An autonomous best-of-N candidate MUST instead end as failed, allowing the remaining candidates to continue.",
     "When implementation loops to implementation, the supervisor MUST ensure the next coder invocation includes the prior failed output and deterministic evidence; it MUST NOT spend a retry on an unchanged paperwork-only resubmission.",
     "The supervisor is a player-coach, not a router. Before submitting a worker output, it SHOULD run `pan output validate` and MUST repair mechanical delivery and evidence defects itself instead of spending a stage attempt on them: a missing, overwritten, or mismatched delegation artifact; a wrong output path or malformed JSON framing; or an attestation bookkeeping field, including a guidance final-line quote, whose correct value derives deterministically from the named source while the worker's declared read and matching contract digest stand. The list also covers a `changed_files` claim that omits a path the recorded workspace delta shows this attempt changed. The supervisor completes that list from the delta and adds no description of the change.",

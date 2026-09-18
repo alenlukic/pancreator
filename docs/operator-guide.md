@@ -603,6 +603,9 @@ Shipped profiles:
 - `standard` — workflow-declared gates. You ratify the plan and approve release.
 - `hands-off` — the supervisor ratifies the plan instead of you; release still
   stops for your explicit approval.
+- `long-horizon` — the supervisor ratifies the plan, the run carries the
+  `long_horizon` contract, and profile-scoped away mode handles bounded
+  decisions until post-run review. Release still stops for your approval.
 - `technical-director` — you refine the technical plan with its author before
   implementation and respond to the independent review before the run continues.
 - `high-touch` — every stage stops for your explicit approval.
@@ -610,7 +613,17 @@ Shipped profiles:
 `init` reports the resolved profile, active contracts, and any gate that replaced
 a workflow default, so you know where the run will stop before it starts. The run
 snapshots that resolution, so editing `config.json` afterwards never changes a
-run in flight.
+run in flight. A planning run also passes its recorded profile to every delivery,
+chunk, and release run it starts, so the route cannot fall back to a later
+configuration default.
+
+Selecting `long-horizon` snapshots its away-mode guardrails. If a custom profile
+carries the `long_horizon` contract with away mode disabled or omitted, run
+creation forces the snapshot on and records the configured value, applied value,
+and reason without editing `config.json`. The mode changes gate ownership and the
+mode-scoped policy set only. It does not lower verification, review depth,
+correctness checks, the release boundary, or any operator-owned irreversible
+action.
 
 ## Set how thoroughly a run verifies
 

@@ -218,7 +218,10 @@ heavily the operator gates each stage:
   for the run.
 - `contracts` names run-wide contracts. `technical_director` loads
   `DIRECTOR-001` and escalates the `technical_plan` and `independent_review`
-  checkpoints to operator gates.
+  checkpoints to operator gates. `long_horizon` selects the long-horizon policy
+  set and forces away mode on for the run when its selected source leaves it off.
+- `away_mode` optionally supplies the enabled value and guardrails that this
+  profile snapshots instead of the installation-level block.
 
 Select one with `./bin/pan init --involvement <profile>`; omitting the flag uses
 `active`. List them with `./bin/pan involvement`.
@@ -234,8 +237,9 @@ targeted one:
 The run resolves its profile once at `init` and writes the result into
 `workflow.snapshot.json` and `state.operator_involvement`. Later edits to
 `config.json` never change a run already in flight. `./bin/pan validate` checks
-every profile against every workflow, so a mistyped stage slug fails at
-authoring time rather than at someone else's `pan init`.
+every profile against the complete workflow set, so a mistyped stage slug fails
+at authoring time. Applying that valid shared profile skips stage keys the
+current workflow does not declare.
 
 A contract-scoped policy lookup row keeps run contracts inside the single policy
 applicability map:
@@ -249,6 +253,15 @@ applicability map:
   "policies": ["DIRECTOR-001"]
 }
 ```
+
+The lookup table also supports `long_horizon: true|false`. The resolver derives
+that value from whether the run's snapshotted contracts contain `long_horizon`;
+callers cannot supply a separate mode flag. An omitted value applies in both
+modes. A mismatched value skips the row without subtracting any mode-agnostic
+policy. The two shipped wildcard rows select `HORIZON-001` for long-horizon runs
+and `SINGLERUN-001` for regular runs. Row identity and cross-reference coverage
+include the dimension, so opposite-mode rows stay distinct and cannot satisfy
+each other's dependencies.
 
 ## Attempt accounting
 

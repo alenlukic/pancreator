@@ -230,9 +230,45 @@
               "contracts": {
                 "type": "array",
                 "uniqueItems": true,
-                "description": "Run-wide contracts every stage of the run abides by. technical_director escalates the technical_plan and independent_review checkpoints to operator gates and requires interactive refinement.",
+                "description": "Run-wide contracts every stage of the run abides by. technical_director escalates the technical_plan and independent_review checkpoints to operator gates and requires interactive refinement. long_horizon selects the long-horizon policy set and arms away mode for the run.",
                 "items": {
-                  "enum": ["technical_director"]
+                  "enum": ["technical_director", "long_horizon"]
+                }
+              },
+              "away_mode": {
+                "type": "object",
+                "required": ["enabled"],
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "guardrails": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "allowed_actions": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "items": {
+                          "enum": [
+                            "approve",
+                            "reject",
+                            "revise",
+                            "resume",
+                            "set-stage",
+                            "waive-gate"
+                          ]
+                        }
+                      },
+                      "max_decisions_per_run": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "max_remediation_attempts_per_agent": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
                 }
               }
             }

@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 
 import { prepareInvocation } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import { eventPath } from '../../src/lib/state.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
@@ -116,5 +119,147 @@ test('the technical_director contract escalates checkpoints and loads DIRECTOR-0
   assert.match(
     card,
     /technical_director contract at independent_review checkpoint/u,
+  )
+})
+
+test('the shipped long-horizon profile is listed and snapshots its mode', () => {
+  const root = createFixture()
+  const before = readFileSync(path.join(root, 'config.json'))
+  const listed = spawnSync(
+    process.execPath,
+    [path.join(process.cwd(), 'dist', 'src', 'cli.js'), 'involvement'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal(listed.status, 0, listed.stderr)
+  const listing = JSON.parse(listed.stdout) as {
+    active: string
+    profiles: Record<string, Record<string, unknown>>
+  }
+
+  assert.equal(listing.active, 'standard')
+  assert.deepEqual(listing.profiles['long-horizon']?.contracts, [
+    'long_horizon',
+  ])
+  assert.deepEqual(listing.profiles['long-horizon']?.away_mode, {
+    enabled: true,
+    guardrails: {
+      allowed_actions: ['approve', 'reject', 'revise', 'resume', 'set-stage'],
+      max_decisions_per_run: 3,
+      max_remediation_attempts_per_agent: 2,
+    },
+  })
+
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+    involvement: 'long-horizon',
+  })
+
+  assert.equal(state.operator_involvement?.profile, 'long-horizon')
+  assert.deepEqual(state.operator_involvement?.contracts, ['long_horizon'])
+  assert.equal(
+    state.operator_involvement?.applied_gates.plan?.run_gate,
+    'supervisor',
+  )
+  assert.equal(state.away_mode?.enabled, true)
+  assert.deepEqual(state.away_mode?.guardrails.allowed_actions, [
+    'approve',
+    'reject',
+    'revise',
+    'resume',
+    'set-stage',
+  ])
+  assert.equal(state.configuration_overrides, undefined)
+
+  const invocation = prepareInvocation(root, state.run_id).invocation
+  const policyIds = invocation?.policies.map((policy) => policy.id) ?? []
+
+  assert.ok(policyIds.includes('HORIZON-001'))
+  assert.equal(policyIds.includes('SINGLERUN-001'), false)
+  assert.deepEqual(readFileSync(path.join(root, 'config.json')), before)
+})
+
+test('the long-horizon contract forces away mode on and records the override', () => {
+  const root = createFixture()
+
+  setInvolvement(root, {
+    active: 'standard',
+    profiles: {
+      standard: { summary: 'Workflow gates.' },
+      forced: {
+        summary: 'Exercise contract arming.',
+        contracts: ['long_horizon'],
+        away_mode: {
+          enabled: false,
+          guardrails: {
+            allowed_actions: ['resume'],
+            max_decisions_per_run: 1,
+            max_remediation_attempts_per_agent: 1,
+          },
+        },
+      },
+    },
+  })
+  const before = readFileSync(path.join(root, 'config.json'))
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    involvement: 'forced',
+  })
+
+  assert.equal(state.away_mode?.enabled, true)
+  assert.deepEqual(state.away_mode?.guardrails.allowed_actions, ['resume'])
+  assert.deepEqual(state.configuration_overrides, [
+    {
+      setting: 'away_mode.enabled',
+      configured_value: false,
+      applied_value: true,
+      reason:
+        "Involvement profile 'forced' carries the long_horizon contract, " +
+        'which requires away mode for this run.',
+    },
+  ])
+
+  // The override has to survive on the durable event stream, not only in the
+  // returned state. Parsing the event keeps that proof independent of the key
+  // order `JSON.stringify` happens to emit.
+  const created = readFileSync(eventPath(root, state.run_id), 'utf8')
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+    .find((event) => event.type === 'run_created')
+
+  assert.ok(created, 'the run records a run_created event')
+  assert.deepEqual(
+    created.configuration_overrides,
+    state.configuration_overrides,
+  )
+  assert.deepEqual(readFileSync(path.join(root, 'config.json')), before)
+})
+
+test('a long-horizon profile cannot lower the ship gate', () => {
+  const root = createFixture()
+
+  setInvolvement(root, {
+    active: 'standard',
+    profiles: {
+      standard: { summary: 'Workflow gates.' },
+      reckless: {
+        summary: 'Attempt to bypass release review.',
+        gates: { ship: 'next_stage' },
+        contracts: ['long_horizon'],
+      },
+    },
+  })
+
+  assert.throws(
+    () =>
+      createRun(root, {
+        workflowSlug: 'delivery',
+        requestPath: 'request.md',
+        involvement: 'reckless',
+      }),
+    /delivery\/ship.*profile 'reckless'.*MUST NOT lower/su,
   )
 })

@@ -4299,7 +4299,10 @@ function lookupRowCovers(
       provider.contract === consumer.contract) &&
     // Same reasoning for operator-artifact-scoped rows.
     (provider.operator_artifacts === undefined ||
-      provider.operator_artifacts === consumer.operator_artifacts)
+      provider.operator_artifacts === consumer.operator_artifacts) &&
+    // A mode-scoped row cannot provide a policy to the opposite mode.
+    (provider.long_horizon === undefined ||
+      provider.long_horizon === consumer.long_horizon)
   )
 }
 

@@ -292,7 +292,7 @@ export interface StageDefinition {
  * `prototype`, or `design` by attaching to stage checkpoints and personas
  * rather than to stage slugs.
  */
-export type RunContract = 'technical_director'
+export type RunContract = 'technical_director' | 'long_horizon'
 
 /** One named operator-involvement profile from `config.json`. */
 export interface OperatorInvolvementProfile {
@@ -304,6 +304,8 @@ export interface OperatorInvolvementProfile {
    */
   gates?: Record<string, StageGate>
   contracts?: RunContract[]
+  /** Away-mode settings this profile snapshots instead of the project default. */
+  away_mode?: AwayModeConfig
 }
 
 export interface OperatorInvolvementFile {
@@ -555,6 +557,11 @@ export interface PolicyLookupRow {
    * An absent context retains standalone and historical behavior.
    */
   operator_artifacts?: 'requested' | 'suppressed'
+  /**
+   * Activates the row only for the run mode derived from its snapshotted
+   * contracts. An absent value applies in either mode.
+   */
+  long_horizon?: boolean
   policies: string[]
 }
 
@@ -720,6 +727,13 @@ export interface ResolvedAwayModeConfig {
     max_remediation_attempts_per_agent: number
   }
   source_sha256: string
+}
+
+export interface RunConfigurationOverride {
+  setting: 'away_mode.enabled'
+  configured_value: boolean
+  applied_value: boolean
+  reason: string
 }
 
 export type AgentHealth =
@@ -2266,6 +2280,8 @@ export interface RunState {
   verification_recommendations_surfaced?: string[]
   /** Away-mode settings resolved when the run was created. */
   away_mode?: ResolvedAwayModeConfig
+  /** Explicit run-local changes made while resolving snapshotted settings. */
+  configuration_overrides?: RunConfigurationOverride[]
   /**
    * Operator artifact selection for this run. Absent means enabled for every
    * stage, which preserves runs created before artifact selection existed.

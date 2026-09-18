@@ -22,15 +22,29 @@ import {
 
 test('--into-branch integrates past a dirty base checkout and retargets later cohorts', () => {
   const root = createFixture()
-  const planRunId = ratifiedPlanRun(root, [
-    { id: 'alpha', cohort_index: 1 },
-    { id: 'beta', cohort_index: 1 },
-    { id: 'gamma', cohort_index: 2, depends_on: ['alpha', 'beta'] },
-  ])
+  // The fixture runs under `long-horizon` deliberately. Building a session
+  // that reaches the chunk and release call sites of profile propagation costs
+  // a full fan-out, integration, and release, so this retargeting regression
+  // carries those assertions rather than paying for a second such session.
+  // The retargeting contract does not touch the away-mode evaluator, so the
+  // profile changes the recorded metadata and not the behaviour under test.
+  const planRunId = ratifiedPlanRun(
+    root,
+    [
+      { id: 'alpha', cohort_index: 1 },
+      { id: 'beta', cohort_index: 1 },
+      { id: 'gamma', cohort_index: 2, depends_on: ['alpha', 'beta'] },
+    ],
+    'long-horizon',
+  )
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
 
   for (const chunk of started.chunks) {
+    assert.equal(
+      loadState(root, chunk.run_id).operator_involvement?.profile,
+      'long-horizon',
+    )
     commitInChunk(
       root,
       loadState(root, chunk.run_id).workspace_root,
@@ -101,8 +115,10 @@ test('--into-branch integrates past a dirty base checkout and retargets later co
     return
   }
 
-  const gammaWorkspace = loadState(root, next.chunks[0].run_id).workspace_root
+  const gammaState = loadState(root, next.chunks[0].run_id)
+  const gammaWorkspace = gammaState.workspace_root
 
+  assert.equal(gammaState.operator_involvement?.profile, 'long-horizon')
   assert.ok(existsSync(path.join(root, gammaWorkspace, 'alpha.txt')))
   assert.ok(existsSync(path.join(root, gammaWorkspace, 'beta.txt')))
 
@@ -145,6 +161,10 @@ test('--into-branch integrates past a dirty base checkout and retargets later co
   const releaseState = loadState(root, release.run_id)
 
   assert.equal(releaseState.workflow_slug, 'delivery')
+  assert.equal(releaseState.operator_involvement?.profile, 'long-horizon')
+  assert.deepEqual(releaseState.operator_involvement?.contracts, [
+    'long_horizon',
+  ])
   assert.equal(releaseState.current_stage, 'verify')
   assert.equal(releaseState.pending_action.type, 'prepare_invocation')
   assert.equal(releaseState.managed_worktree?.branch, 'cohort-integration')
