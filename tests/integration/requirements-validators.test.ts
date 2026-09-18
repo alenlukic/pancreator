@@ -215,6 +215,39 @@ test('a source file resolves the source-file target kind', () => {
   assert.equal(inferTargetKind('Makefile'), 'unknown')
 })
 
+test('an instruction surface resolves the target kind its STE entry accepts', () => {
+  assert.equal(
+    inferTargetKind('governance/policies/STE-001.json'),
+    'policy-json',
+  )
+  assert.equal(
+    inferTargetKind('library/cursor/rules/pancreator-embedded.mdc'),
+    'markdown-artifact',
+  )
+  assert.equal(
+    inferTargetKind('governance/registries/validation_registry.json'),
+    'unknown',
+    'only a policy file carries the policy-json kind',
+  )
+
+  const entry = loadRegistry(REPO_ROOT).entries.get(
+    'SIMPLIFIED-ENGLISH-VALIDATE-001',
+  )
+
+  assert.ok(entry, 'SIMPLIFIED-ENGLISH-VALIDATE-001 MUST be registered')
+
+  for (const target of [
+    'governance/policies/STE-001.json',
+    'library/cursor/rules/pancreator-embedded.mdc',
+    'library/personas/librarian.md',
+  ]) {
+    assert.ok(
+      entry.target_types.includes(inferTargetKind(target)),
+      `pan requirements run MUST reach the writing check for ${target}`,
+    )
+  }
+})
+
 test('a tune record resolves the target kind its registry entry accepts', () => {
   assert.equal(
     inferTargetKind('runtime/tune-harness/records/tune-1789154168355.json'),

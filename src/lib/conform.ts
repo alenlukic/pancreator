@@ -147,6 +147,46 @@ function isEligibleRuntimeMarkdownPath(relativePath: string): boolean {
   )
 }
 
+/**
+ * The harness instruction surfaces `STE-001` binds to its durable-instruction
+ * rules: the operating card, the policies, the criteria catalog, the skills,
+ * the personas, and the projected commands and rules. Each directory holds its
+ * instruction files directly, so none carries a nested tree. Handbooks stay
+ * out, because they are guidance rather than instruction text.
+ */
+const EDITABLE_INSTRUCTION_DIRECTORIES = [
+  { directory: 'governance/criteria', extension: '.md' },
+  { directory: 'governance/policies', extension: '.json' },
+  { directory: 'library/cursor/commands', extension: '.md' },
+  { directory: 'library/cursor/rules', extension: '.mdc' },
+  { directory: 'library/personas', extension: '.md' },
+  { directory: 'library/skills', extension: '.md' },
+] as const
+
+const EDITABLE_INSTRUCTION_FILES = ['AGENTS.md'] as const
+
+function isEligibleInstructionPath(relativePath: string): boolean {
+  const rel = toPosix(relativePath)
+
+  if ((EDITABLE_INSTRUCTION_FILES as readonly string[]).includes(rel)) {
+    return true
+  }
+
+  return EDITABLE_INSTRUCTION_DIRECTORIES.some(
+    (entry) =>
+      rel.endsWith(entry.extension) &&
+      path.posix.dirname(rel) === entry.directory,
+  )
+}
+
+/** Every harness-owned path conform may edit, whatever the installation mode. */
+function isEditableHarnessPath(relativePath: string): boolean {
+  return (
+    isEligibleRuntimeMarkdownPath(relativePath) ||
+    isEligibleInstructionPath(relativePath)
+  )
+}
+
 function isEligibleRuntimeHtmlPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
 
@@ -162,7 +202,7 @@ function isEligibleRuntimeHtmlPath(relativePath: string): boolean {
 
 function isEligibleRuntimePath(relativePath: string): boolean {
   return (
-    isEligibleRuntimeMarkdownPath(relativePath) ||
+    isEditableHarnessPath(relativePath) ||
     isEligibleRuntimeHtmlPath(relativePath)
   )
 }
@@ -295,6 +335,32 @@ function listEditableRuntimeMarkdown(harnessRoot: string): string[] {
   return found.sort()
 }
 
+function listEditableInstructionSurfaces(harnessRoot: string): string[] {
+  const found: string[] = []
+
+  for (const relative of EDITABLE_INSTRUCTION_FILES) {
+    if (fileExists(path.join(harnessRoot, relative))) {
+      found.push(relative)
+    }
+  }
+
+  for (const entry of EDITABLE_INSTRUCTION_DIRECTORIES) {
+    const base = path.join(harnessRoot, ...entry.directory.split('/'))
+
+    if (!fileExists(base)) {
+      continue
+    }
+
+    for (const child of readdirSync(base, { withFileTypes: true })) {
+      if (child.isFile() && child.name.endsWith(entry.extension)) {
+        found.push(`${entry.directory}/${child.name}`)
+      }
+    }
+  }
+
+  return found.sort()
+}
+
 function listRuntimeWorkflowOperatorHtml(harnessRoot: string): string[] {
   const workflows = path.join(harnessRoot, 'runtime', 'logs', 'workflows')
 
@@ -373,7 +439,7 @@ function validateFile(root: string, relativePath: string): HandlerResult {
  * its issues and never edits it. Every editable artifact is harness-owned.
  */
 function isEditable(root: ConformRoot, relativePath: string): boolean {
-  return root === 'runtime' && isEligibleRuntimeMarkdownPath(relativePath)
+  return root === 'runtime' && isEditableHarnessPath(relativePath)
 }
 
 function absolutePathOf(
@@ -482,6 +548,7 @@ function listEligibleRuntimePaths(harnessRoot: string): string[] {
 
   paths.push(...listHarnessMarkdownIssuesFiles(harnessRoot))
   paths.push(...listEditableRuntimeMarkdown(harnessRoot))
+  paths.push(...listEditableInstructionSurfaces(harnessRoot))
   paths.push(...listRuntimeWorkflowOperatorHtml(harnessRoot))
 
   return paths

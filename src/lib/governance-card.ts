@@ -331,7 +331,10 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'Scan operator artifacts for Simplified Technical English issues, ' +
       'repair eligible prose, and record a clean checkpoint.',
     boundaries: [
-      'You MUST edit only the harness-owned `docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`, whatever the installation mode.',
+      'You MUST edit only the harness-owned operator artifacts `docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`, whatever the installation mode.',
+      'You MUST also repair the harness instruction surfaces `AGENTS.md`, `governance/criteria/*.md`, `governance/policies/*.json`, `library/personas/*.md`, `library/skills/*.md`, `library/cursor/commands/*.md`, and `library/cursor/rules/*.mdc`. In a policy file you MUST edit only the text of an `instructions[]` entry.',
+      'You MUST NOT restyle `governance/handbooks/`. Handbooks are guidance, and `STE-001` leaves them outside its writing rules.',
+      'You MUST run `pan models --sync` after a repair under `library/cursor/`, because that canonical source leaves the local projection stale.',
       'You MUST report rendered workflow HTML and `CHANGELOG.md` but MUST NOT edit either. `CHANGELOG.md` is release metadata a ship stage and `/pan-release` own, and it is scanned only in self-development.',
       'You MUST NOT edit a target-tracked file. No target-repository path is in the conform editable set.',
       'You MUST validate each edited file with `pan requirements run --registry SIMPLIFIED-ENGLISH-VALIDATE-001` before you checkpoint.',

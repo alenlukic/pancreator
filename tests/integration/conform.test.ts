@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { createFixture } from '../fixture-template.js'
@@ -22,8 +22,37 @@ function write(root: string, relativePath: string, content: string): void {
   writeFileSync(absolute, content)
 }
 
+const INSTRUCTION_SURFACES = [
+  'AGENTS.md',
+  'governance/criteria',
+  'governance/policies',
+  'library/cursor/commands',
+  'library/cursor/rules',
+  'library/personas',
+  'library/skills',
+]
+
+/**
+ * Drop the instruction surfaces a fixture inherits from this checkout.
+ *
+ * A fixture clones the real `governance/` and `library/` trees, so those
+ * hundreds of files would dominate every selection the operator-artifact
+ * tests assert. The instruction-surface tests below write their own files.
+ */
+function clearInstructionSurfaces(root: string): void {
+  for (const relative of INSTRUCTION_SURFACES) {
+    rmSync(path.join(root, relative), { force: true, recursive: true })
+  }
+}
+
+function policy(instructions: unknown[]): string {
+  return `${JSON.stringify({ id: 'EXAMPLE-001', instructions }, null, 2)}\n`
+}
+
 test('scan includes runtime artifacts on first run', () => {
   const root = createFixture()
+
+  clearInstructionSurfaces(root)
 
   write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
   git(root, ['add', 'CHANGELOG.md'])
@@ -72,6 +101,8 @@ test('scan includes runtime artifacts on first run', () => {
 test('the first scan selects the committed eligible set, not only the dirty tree', () => {
   const root = createFixture()
 
+  clearInstructionSurfaces(root)
+
   // A repository with no checkpoint has no baseline to diff against. The bare
   // scan must still see this committed file, because `conform checkpoint`
   // inspects it and blocks on what a hidden scan never reported.
@@ -114,6 +145,10 @@ test('the first scan selects the committed eligible set, not only the dirty tree
 test('an embedded install scans harness intake and never target-tracked prose', () => {
   const harness = createFixture()
   const target = createFixture()
+
+  // The target keeps its own instruction surfaces. No target path is editable,
+  // so none of them may reach the scan.
+  clearInstructionSurfaces(harness)
   const configPath = path.join(harness, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
@@ -147,6 +182,8 @@ test('an embedded install scans harness intake and never target-tracked prose', 
 
 test('checkpoint blocks editable issues but permits report-only HTML issues', () => {
   const root = createFixture()
+
+  clearInstructionSurfaces(root)
 
   write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
   git(root, ['add', 'CHANGELOG.md'])
@@ -186,6 +223,8 @@ test('checkpoint blocks editable issues but permits report-only HTML issues', ()
 test('--since selects tracked changes and invalid refs are refused', () => {
   const root = createFixture()
 
+  clearInstructionSurfaces(root)
+
   write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
   write(root, 'docs/issues/one.md', '# Issue\n\nRun this command.\n')
   git(root, ['add', 'CHANGELOG.md', 'docs/issues/one.md'])
@@ -221,6 +260,8 @@ test('--since selects tracked changes and invalid refs are refused', () => {
 
 test('checkpoint accepts lone --since and both verbs reject combined overrides', () => {
   const root = createFixture()
+
+  clearInstructionSurfaces(root)
 
   write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
   git(root, ['add', 'CHANGELOG.md'])
@@ -258,6 +299,8 @@ test('checkpoint accepts lone --since and both verbs reject combined overrides',
 
 test('scan selects dirty, untracked, and deleted files and --all adds unchanged files', () => {
   const root = createFixture()
+
+  clearInstructionSurfaces(root)
 
   write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
   write(root, 'docs/issues/dirty.md', '# Dirty\n\nRun this command.\n')
@@ -315,6 +358,8 @@ test('scan selects dirty, untracked, and deleted files and --all adds unchanged 
 test('--all omits an absent CHANGELOG.md', () => {
   const root = createFixture()
 
+  clearInstructionSurfaces(root)
+
   git(root, ['rm', '-q', 'CHANGELOG.md'])
   write(root, 'docs/issues/one.md', '# Issue\n\nRun this command.\n')
   git(root, ['add', 'docs/issues/one.md'])
@@ -334,6 +379,8 @@ test('--all omits an absent CHANGELOG.md', () => {
 
 test('checkpoint replacement drops entries for deleted files', () => {
   const root = createFixture()
+
+  clearInstructionSurfaces(root)
 
   write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
   write(root, 'docs/issues/one.md', '# Issue\n\nRun this command.\n')
@@ -355,4 +402,87 @@ test('checkpoint replacement drops entries for deleted files', () => {
   ) as { files: Record<string, unknown> }
 
   assert.deepEqual(Object.keys(saved.files), ['workspace:CHANGELOG.md'])
+})
+
+test('scan selects the harness instruction surfaces as editable files', () => {
+  const root = createFixture()
+
+  clearInstructionSurfaces(root)
+
+  write(root, 'AGENTS.md', '# Card\n\nRun this command.\n')
+  write(root, 'governance/criteria/index.md', '# Criteria\n\nRun this.\n')
+  write(root, 'governance/policies/EXAMPLE-001.json', policy(['Run this.']))
+  write(root, 'library/personas/coder.md', '# Coder\n\nRun this.\n')
+  write(root, 'library/skills/spotfix.md', '# Spotfix\n\nRun this.\n')
+  write(root, 'library/cursor/commands/pan-x.md', 'Run this command.\n')
+  write(root, 'library/cursor/rules/pan-x.mdc', 'Run this command.\n')
+  // A handbook is guidance, a nested file is outside the flat directory, and
+  // a registry is not instruction text.
+  write(root, 'governance/handbooks/eng/x.md', "# X\n\nDon't do this.\n")
+  write(root, 'library/personas/nested/x.md', "# X\n\nDon't do this.\n")
+  write(root, 'governance/registries/x.json', policy(["Don't do this."]))
+
+  const result = scanConformArtifacts(root, { workspace_root: root })
+
+  assert.deepEqual(
+    result.files
+      .filter((file) => file.relative_path !== 'CHANGELOG.md')
+      .map((file) => file.relative_path),
+    [
+      'AGENTS.md',
+      'governance/criteria/index.md',
+      'governance/policies/EXAMPLE-001.json',
+      'library/cursor/commands/pan-x.md',
+      'library/cursor/rules/pan-x.mdc',
+      'library/personas/coder.md',
+      'library/skills/spotfix.md',
+    ],
+  )
+
+  for (const file of result.files) {
+    if (file.relative_path === 'CHANGELOG.md') {
+      continue
+    }
+
+    assert.equal(file.root, 'runtime', file.relative_path)
+    assert.equal(file.editable, true, file.relative_path)
+    assert.deepEqual(file.issues, [], file.relative_path)
+  }
+})
+
+test('an instruction surface fails the scan and blocks the checkpoint', () => {
+  const root = createFixture()
+
+  clearInstructionSurfaces(root)
+  write(
+    root,
+    'governance/policies/EXAMPLE-001.json',
+    policy(['Run this.', { text: "Don't do this.", audience: ['agent'] }]),
+  )
+
+  const scan = scanConformArtifacts(root, { workspace_root: root })
+  const file = scan.files.find(
+    (entry) => entry.relative_path === 'governance/policies/EXAMPLE-001.json',
+  )
+
+  assert.equal(scan.status, 'failed')
+  assert.equal(scan.summary.editable_issue_files, 1)
+  assert.ok(file)
+  assert.deepEqual(
+    file.issues.map((issue) => issue.code),
+    ['ste.contraction'],
+    'the check reads the text of an audience-tagged entry',
+  )
+
+  const blocked = checkpointConformArtifacts(root, { workspace_root: root })
+
+  assert.equal(blocked.status, 'blocked')
+  assert.equal(blocked.wrote_checkpoint, false)
+
+  write(root, 'governance/policies/EXAMPLE-001.json', policy(['Run this.']))
+
+  const repaired = checkpointConformArtifacts(root, { workspace_root: root })
+
+  assert.equal(repaired.status, 'passed')
+  assert.equal(repaired.wrote_checkpoint, true)
 })

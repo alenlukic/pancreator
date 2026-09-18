@@ -1561,10 +1561,16 @@ has its own standalone mode, its own scan-and-checkpoint command, and its own
 checkpoint cache. Neither gates a stage, joins a repository-check profile, or
 becomes a stage criterion.
 
-`/pan-conform` repairs operator-timed prose. It scans the harness-owned
-`docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`,
-which it may edit, and reports rendered workflow HTML and `CHANGELOG.md` without
-editing them. Its
+`/pan-conform` repairs operator-timed prose and harness instruction text. It
+scans the harness-owned `docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`,
+and `runtime/research/*.md`, which it may edit. `STE-001` binds its
+durable-instruction rules to every instruction surface, so the pass also edits
+`AGENTS.md`, `governance/criteria/*.md`, `governance/policies/*.json`,
+`library/personas/*.md`, `library/skills/*.md`, `library/cursor/commands/*.md`,
+and `library/cursor/rules/*.mdc`. In a policy file it repairs only the text of
+an `instructions[]` entry. `governance/handbooks/` stays out, because a handbook
+is guidance rather than instruction text. The pass reports rendered workflow
+HTML and `CHANGELOG.md` without editing them. Its
 issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
 `runtime/cache/conform.json`.
 
