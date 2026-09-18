@@ -423,8 +423,8 @@ path spaces:
   `.pancreator/runtime/...`, `.pancreator/library/...`, and
   `.pancreator/governance/...`
 - CLI request/output arguments remain harness-relative, such as
-  `runtime/inbox/request.md`, because `./.pancreator/bin/pan` resolves them from
-  the installation root
+  `runtime/inbox/queue/request.md`, because `./.pancreator/bin/pan` resolves
+  them from the installation root
 
 ## Refresh, repair, and clean install
 

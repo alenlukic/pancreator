@@ -333,8 +333,8 @@ the workflow without a push, publication, deployment, or branch deletion.
 After the run reaches a terminal state, the QA agent investigates each flagged
 issue. It separates a verified root-cause repair from a retry, workaround,
 configuration patch, rollback, reconciliation, or containment action. It puts
-one implementation-ready remediation intake in `runtime/inbox/` when an issue
-does not have a verified root-cause repair.
+one implementation-ready remediation intake in `runtime/inbox/queue/` when an
+issue does not have a verified root-cause repair.
 
 ## Invocation and delegation validation
 
@@ -422,7 +422,7 @@ Existing runs keep their original layout.
 
 Use `/pan-decompose <intake spec>` before starting a workflow when the request may contain multiple independently valuable outcomes or prerequisite decisions. `DECOMP-001` is intentionally conservative: the decomposer defaults to one larger run, requires every proposed chunk to be independently testable and safely completable, and then requires either a hard decomposition trigger or broad complexity pressure across several dimensions. File count, frontend/backend boundaries, tests, documentation, and implementation phases are not valid split boundaries by themselves.
 
-The decomposer also compares reduced implementation, review, and remediation risk against the repeated intake, planning, review, QA, release, and coordination cost of additional runs. Marginal cases remain intact. Valid decompositions normally contain two to four dependency-ordered chunks, preserve requirement traceability, and write a validated packet under `runtime/inbox/` whose chunks can be passed directly to `/pan-start`.
+The decomposer also compares reduced implementation, review, and remediation risk against the repeated intake, planning, review, QA, release, and coordination cost of additional runs. Marginal cases remain intact. Valid decompositions normally contain two to four dependency-ordered chunks, preserve requirement traceability, and write a validated packet under `runtime/inbox/queue/` whose chunks can be passed directly to `/pan-start`.
 
 ## Choose a work mode
 
@@ -461,9 +461,10 @@ lightweight execution and the request satisfies `WORK-001`: one coherent change,
 no unresolved structural decision, no more than three core implementation files
 in one bounded subsystem, and existing checks that can prove correctness. The
 spotfixer performs at most three implementation-validation cycles. Failure or
-scope expansion creates `runtime/inbox/spotfix-escalation-*.md` for systematic
-routing. Do not run it while a mutating workflow agent is active in the same
-workspace.
+scope expansion creates
+`runtime/inbox/queue/spotfix-escalation-<UTC timestamp>-<slug>.md` for
+systematic routing. Do not run it while a mutating workflow agent is active in
+the same workspace.
 
 Use `/pan-pair <directive>` when you want to drive the work yourself. The agent
 applies the governance the coder persona carries — engineering baseline, language
@@ -1102,7 +1103,7 @@ Best-of-N candidate worktrees are separate. They live under `worktrees/<bon-id>/
 
 Under `ACTION-001` an agent may run `pan worktree reconcile` on its own judgment when the target is `pan-dev` or a branch that lands on `pan-dev`. Merging into `main` is your promotion step, not the agent's.
 
-On conflict the command stops at the first conflicting source and exits non-zero, and a conflict request is written to `runtime/inbox/` naming the target, the completed sources, the conflicted paths, and the sources not started. In a recorded worktree target the merge state stays in place; direct an agent at that request to resolve the conflict and commit the result. In a held checkout the conflicted merge is aborted instead, so your working tree comes back untouched; completed source merges remain on the branch, and the request explains how to finish through a worktree.
+On conflict the command stops at the first conflicting source and exits non-zero, and a conflict request is written to `runtime/inbox/queue/` naming the target, the completed sources, the conflicted paths, and the sources not started. In a recorded worktree target the merge state stays in place; direct an agent at that request to resolve the conflict and commit the result. In a held checkout the conflicted merge is aborted instead, so your working tree comes back untouched; completed source merges remain on the branch, and the request explains how to finish through a worktree.
 
 Configure defaults in `config.json` when the built-in ones do not suit the repository:
 
