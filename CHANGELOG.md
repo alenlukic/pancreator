@@ -1,5 +1,30 @@
 # Changelog
 
+## [6.16.0] - 2026-09-18
+
+This release extends the style scanner and the `/pan-style` command. The scanner reports the handbook rules it can decide. The command reads every file that changed after the last checkpoint.
+
+### Changed
+
+- Extend `CODE-STYLE-VALIDATE-001` so the scanner reports the TypeScript handbook rules it can decide ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Route every eligible file that changed after the last checkpoint through the complete style handbook ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Run the fast test profile before the `/pan-style` checkpoint ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Document the wider scanner and command scope in the operator guide and `pan style` help ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Apply the handbook pass to 118 source and test files ([7372472a](https://github.com/alenlukic/pancreator/commit/7372472ad9e6ae3e9a9ef0371af60e9c13b84b76)).
+- Replace a non-null assertion and a cast in the horizon test with a type guard ([a23e7c19](https://github.com/alenlukic/pancreator/commit/a23e7c193bed5b06c224666346fae705ad1db496)).
+
+### Added
+
+- Add scanner codes for unbraced bodies, block spacing, large declaration groups, and a `switch` without `default` ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add scanner codes for default exports, mutable exports, function expressions, private fields, and `debugger` ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add scanner codes for restricted features, wrapper constructors, the arguments object, and TypeScript suppressions ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add a documented exception as `// style: allow <code> <reason>`, or `# style: allow` in Python ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add exhaustive `default` branches in `versioning.ts`, `engine.ts`, `cohorts.ts`, and `render.ts` ([7372472a](https://github.com/alenlukic/pancreator/commit/7372472ad9e6ae3e9a9ef0371af60e9c13b84b76)).
+
+### Fixed
+
+- Follow a `${}` substitution in the template masker so a nested template does not end the outer template early ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+
 ## [6.15.0] - 2026-09-18
 
 This release extends `/pan-conform` to the harness instruction surfaces that STE-001 names. The scanner and the validator now cover those files. The first operator conform pass repairs the copy debt.
