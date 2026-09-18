@@ -1,5 +1,25 @@
 # Changelog
 
+## [6.12.0] - 2026-09-18
+
+This release adds an optional design composition for planning and delivery runs. The operator selects the option at run creation. A run without the option keeps the current graph.
+
+### Changed
+
+- Carry the design selection from `pan init` through the plan route into delivery, chunk, and release runs ([bf25658d](https://github.com/alenlukic/pancreator/commit/bf25658d9e22ae151b9510f8fa86c756d705ee71)).
+- Record verify findings from design-review and design-qa when those workers run ([bf25658d](https://github.com/alenlukic/pancreator/commit/bf25658d9e22ae151b9510f8fa86c756d705ee71)).
+- Name `runtime/inbox/queue/` as the destination of a new inbox item ([62d19132](https://github.com/alenlukic/pancreator/commit/62d191323c7ac253812f0f6941f5e706fd3cd7d6)).
+
+### Added
+
+- Add `./bin/pan init --with-design` for planning, delivery, and delivery-chunk ([bf25658d](https://github.com/alenlukic/pancreator/commit/bf25658d9e22ae151b9510f8fa86c756d705ee71)).
+- Add a planning design stage before plan when the option is on ([bf25658d](https://github.com/alenlukic/pancreator/commit/bf25658d9e22ae151b9510f8fa86c756d705ee71)).
+- Add design-review and design-qa workers on verify when the option is on ([bf25658d](https://github.com/alenlukic/pancreator/commit/bf25658d9e22ae151b9510f8fa86c756d705ee71)).
+
+### Fixed
+
+- Create every inbox lifecycle directory during install layout preparation ([62d19132](https://github.com/alenlukic/pancreator/commit/62d191323c7ac253812f0f6941f5e706fd3cd7d6)).
+
 ## [6.11.0] - 2026-09-18
 
 This release adds long-horizon mode, a headless driver, a session ladder, and scheduled jobs. The operator selects the mode at preflight. The harness then advances a queue of workflows and one-off tasks without a mid-run stop.
