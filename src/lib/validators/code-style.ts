@@ -24,6 +24,12 @@ const LANGUAGE_BY_EXTENSION = new Map<string, CodeStyleLanguage>([
   ['.tsx', 'typescript'],
 ])
 
+const JAVASCRIPT_EXTENSIONS: readonly string[] = [
+  ...LANGUAGE_BY_EXTENSION.entries(),
+]
+  .filter(([, language]) => language === 'javascript')
+  .map(([extension]) => extension)
+
 /**
  * The language whose style guide governs a path, or `null` when no handbook
  * covers it. One owner of the extension map keeps the scan's eligible set and
@@ -119,6 +125,96 @@ function blankOut(text: string): string {
 }
 
 /**
+ * The offset after the quote closing the string opened at `start`. A quoted
+ * string runs to its closing quote; an unterminated one runs to the end.
+ */
+function quotedStringEnd(source: string, start: number): number {
+  const quote = source[start]
+  let cursor = start + 1
+
+  while (cursor < source.length) {
+    const inner = source[cursor]
+
+    if (inner === '\\') {
+      cursor += 2
+      continue
+    }
+
+    if (inner === quote) {
+      return cursor + 1
+    }
+
+    cursor += 1
+  }
+
+  return source.length
+}
+
+/**
+ * The offset after the backtick closing the template opened at `start`. A
+ * `${}` substitution may hold strings and nested templates, so it is walked
+ * to its own closing brace before the outer template continues.
+ */
+function templateEnd(source: string, start: number): number {
+  let cursor = start + 1
+
+  while (cursor < source.length) {
+    const inner = source[cursor]
+
+    if (inner === '\\') {
+      cursor += 2
+      continue
+    }
+
+    if (inner === '`') {
+      return cursor + 1
+    }
+
+    if (inner === '$' && source[cursor + 1] === '{') {
+      cursor = substitutionEnd(source, cursor + 2)
+      continue
+    }
+
+    cursor += 1
+  }
+
+  return source.length
+}
+
+function substitutionEnd(source: string, start: number): number {
+  let depth = 0
+  let cursor = start
+
+  while (cursor < source.length) {
+    const inner = source[cursor]
+
+    if (inner === '`') {
+      cursor = templateEnd(source, cursor)
+      continue
+    }
+
+    if (inner === '"' || inner === "'") {
+      cursor = quotedStringEnd(source, cursor)
+      continue
+    }
+
+    if (inner === '{') {
+      depth += 1
+    } else if (inner === '}') {
+      if (depth === 0) {
+        return cursor + 1
+      }
+
+      depth -= 1
+    }
+
+    cursor += 1
+  }
+
+  return source.length
+}
+
+/**
  * Replace comments, string literals, and regular expressions with spaces so a
  * rule matches code alone. Line numbers survive because only non-newline
  * characters are blanked.
@@ -158,23 +254,10 @@ export function maskScriptNonCode(source: string): string {
     }
 
     if (character === '"' || character === "'" || character === '`') {
-      let cursor = index + 1
-
-      while (cursor < source.length) {
-        const inner = source[cursor]
-
-        if (inner === '\\') {
-          cursor += 2
-          continue
-        }
-
-        if (inner === character) {
-          cursor += 1
-          break
-        }
-
-        cursor += 1
-      }
+      const cursor =
+        character === '`'
+          ? templateEnd(source, index)
+          : quotedStringEnd(source, index)
 
       masked += character + blankOut(source.slice(index + 1, cursor))
       index = cursor
@@ -359,6 +442,66 @@ const SCRIPT_RULES: readonly LineRule[] = [
       'TypeScript style guide, Restricted features — do not use `const enum`. Use a plain `enum` or a union of literals.',
     pattern: /(?<![\w$.])const\s+enum(?![\w$])/gu,
   },
+  {
+    code: 'style.default_export',
+    message:
+      'TypeScript style guide, Exports — do not use default exports. Use a named export.',
+    pattern: /^\s*export\s+default(?![\w$])/gu,
+    // A tool configuration file such as `prettier.config.js` exports its
+    // default because the tool demands it, so the script extensions are exempt.
+    skipExtensions: JAVASCRIPT_EXTENSIONS,
+  },
+  {
+    code: 'style.mutable_export',
+    message:
+      'TypeScript style guide, Exports — do not use a mutable export. Export a `const`, or an accessor function for mutable module state.',
+    pattern: /^\s*export\s+(?:let|var)(?![\w$])/gu,
+  },
+  {
+    code: 'style.function_expression',
+    message:
+      'TypeScript style guide, Declarations and expressions — do not use `function` expressions. Use a function declaration or an arrow function.',
+    pattern: /(?<![\w$.])function(?![\w$])/gu,
+    // A declaration starts its statement, optionally after `export` and
+    // `async`. Every other position is an expression.
+    permitted: (line, match) =>
+      /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?$/u.test(
+        line.slice(0, match.index),
+      ),
+  },
+  {
+    code: 'style.private_field',
+    message:
+      'TypeScript style guide, Visibility — use TypeScript `private`, not ECMAScript `#private` fields.',
+    pattern: /(?<![\w$])#[A-Za-z_$][\w$]*/gu,
+  },
+  {
+    code: 'style.debugger',
+    message:
+      'TypeScript style guide, Restricted features — do not leave a `debugger` statement in durable code.',
+    pattern: /^\s*debugger(?![\w$])/gu,
+  },
+  {
+    code: 'style.restricted_feature',
+    message:
+      'TypeScript style guide, Restricted features — do not use `eval` or the `Function` string constructor.',
+    pattern: /(?<![\w$.])(?:eval\s*\(|new\s+Function\s*\()/gu,
+  },
+  {
+    code: 'style.wrapper_constructor',
+    message:
+      'TypeScript style guide, Arrays, objects, and discouraged types — use literals, not the `Array` or `Object` constructor, and never a primitive wrapper constructor.',
+    pattern:
+      /(?<![\w$.])(?:new\s+(?:Array|Object|String|Number|Boolean)|Array)\s*(?:<[^>]*>)?\(/gu,
+  },
+  {
+    code: 'style.arguments_object',
+    message:
+      'TypeScript style guide, Parameters — use rest parameters instead of `arguments`.',
+    // A property or interface member named `arguments` is followed by `:`,
+    // and a member access is preceded by `.`; neither is the implicit object.
+    pattern: /(?<![\w$.])arguments(?![\w$])(?!\s*\??\s*:)/gu,
+  },
 ]
 
 /**
@@ -371,6 +514,12 @@ const RAW_SCRIPT_RULES: readonly LineRule[] = [
     message:
       'TypeScript style guide, Imports — do not use triple-slash path references. Import the module instead.',
     pattern: /^\s*\/\/\/\s*<reference\b/gu,
+  },
+  {
+    code: 'style.ts_suppression',
+    message:
+      'TypeScript style guide, Toolchain and validation — do not use `@ts-ignore` or `@ts-nocheck`. Fix the diagnostic, or use a described `@ts-expect-error` in a type-level test.',
+    pattern: /\/[/*]\s*@ts-(?:ignore|nocheck)(?![\w-])/gu,
   },
 ]
 
@@ -475,9 +624,353 @@ function collectMutableDefaults(
 }
 
 /**
- * Report the countable style rules the handbooks state normatively and the
- * formatter does not own. Judgment-level rules stay with the agent that reads
- * the style card.
+ * The masked source with its line boundaries, so a structural rule can match
+ * across lines and still report the line a construct starts on.
+ */
+class ScriptSource {
+  readonly raw: readonly string[]
+  readonly masked: readonly string[]
+  readonly text: string
+  private readonly lineStarts: number[]
+
+  constructor(content: string) {
+    this.raw = content.split('\n')
+    this.text = maskScriptNonCode(content)
+    this.masked = this.text.split('\n')
+    this.lineStarts = [0]
+
+    for (const [index, line] of this.masked.entries()) {
+      if (index < this.masked.length - 1) {
+        this.lineStarts.push(
+          (this.lineStarts[index] ?? 0) + line.length + '\n'.length,
+        )
+      }
+    }
+  }
+
+  /** The zero-based line holding a character offset of the masked text. */
+  lineAt(offset: number): number {
+    let low = 0
+    let high = this.lineStarts.length - 1
+
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2)
+
+      if ((this.lineStarts[middle] ?? 0) <= offset) {
+        low = middle
+      } else {
+        high = middle - 1
+      }
+    }
+
+    return low
+  }
+
+  /** The masked text of a line before an offset on that line. */
+  lineBefore(offset: number): string {
+    return this.text.slice(this.lineStarts[this.lineAt(offset)] ?? 0, offset)
+  }
+
+  /** The offset of the next non-whitespace character, or `-1` at the end. */
+  nextSignificant(offset: number): number {
+    const match = /\S/u.exec(this.text.slice(offset))
+
+    return match ? offset + match.index : -1
+  }
+
+  /** The offset of the bracket closing the one at `open`, or `-1`. */
+  matchingClose(open: number): number {
+    const opener = this.text[open] ?? ''
+    const closer = opener === '(' ? ')' : '}'
+    let depth = 0
+
+    for (let cursor = open; cursor < this.text.length; cursor += 1) {
+      const character = this.text[cursor]
+
+      if (character === opener) {
+        depth += 1
+      } else if (character === closer) {
+        depth -= 1
+
+        if (depth === 0) {
+          return cursor
+        }
+      }
+    }
+
+    return -1
+  }
+
+  /**
+   * The nearest earlier line that is blank or holds code. A comment line, or
+   * the inside of a masked template literal, belongs to the statement below
+   * it, so the walk passes over it.
+   */
+  precedingCodeLine(line: number): number {
+    let cursor = line - 1
+
+    while (
+      cursor >= 0 &&
+      (this.raw[cursor] ?? '').trim() !== '' &&
+      (this.masked[cursor] ?? '').trim() === ''
+    ) {
+      cursor -= 1
+    }
+
+    return cursor
+  }
+}
+
+const STATEMENT_HEADER_PATTERN = /(?<![\w$.])(if|for|while)\s*\(/gu
+const BARE_KEYWORD_PATTERN = /(?<![\w$.])(else|do)(?![\w$])/gu
+
+/**
+ * Control flow, Blocks: every `if`, `else`, `for`, `while`, and `do` body uses
+ * braces. The header's parentheses are balanced across lines so a wrapped
+ * condition is followed to its close before the body is inspected.
+ */
+function collectUnbracedBodies(
+  source: ScriptSource,
+  issues: CodeStyleIssue[],
+): void {
+  function report(offset: number): void {
+    issues.push({
+      code: 'style.unbraced_body',
+      message:
+        'TypeScript style guide, Blocks — every `if`, `else`, `for`, `while`, and `do` body MUST use braces.',
+      line: source.lineAt(offset) + 1,
+    })
+  }
+
+  for (const match of source.text.matchAll(STATEMENT_HEADER_PATTERN)) {
+    const open = match.index + match[0].length - 1
+    const isLoopTail =
+      match[1] === 'while' && /\}\s*$/u.test(source.lineBefore(match.index))
+
+    if (isLoopTail) {
+      continue
+    }
+
+    const close = source.matchingClose(open)
+    const body = close === -1 ? -1 : source.nextSignificant(close + 1)
+
+    if (body !== -1 && source.text[body] !== '{') {
+      report(match.index)
+    }
+  }
+
+  for (const match of source.text.matchAll(BARE_KEYWORD_PATTERN)) {
+    const body = source.nextSignificant(match.index + match[0].length)
+
+    if (body === -1 || source.text[body] === '{') {
+      continue
+    }
+
+    if (match[1] === 'else' && /^if(?![\w$])/u.test(source.text.slice(body))) {
+      continue
+    }
+
+    report(match.index)
+  }
+}
+
+const BLOCK_START_PATTERN = /^\s*(?:if|for|while|do|switch|try)(?![\w$])/u
+const FIRST_STATEMENT_PATTERN =
+  /\{$|^\s*(?:case(?![\w$]).*|default)\s*:$|(?<![\w$])(?:else|do|try|finally)$/u
+
+/**
+ * Whitespace and logical grouping: an independent `if`, loop, `switch`, or
+ * `try` is preceded by one blank line unless it opens its enclosing body. A
+ * comment directly above the block belongs to it, so the blank line is
+ * expected above the comment.
+ */
+function collectBlockSpacing(
+  source: ScriptSource,
+  issues: CodeStyleIssue[],
+): void {
+  for (const [index, line] of source.masked.entries()) {
+    if (!BLOCK_START_PATTERN.test(line)) {
+      continue
+    }
+
+    const preceding = source.precedingCodeLine(index)
+
+    if (preceding < 0 || (source.raw[preceding] ?? '').trim() === '') {
+      continue
+    }
+
+    if (
+      FIRST_STATEMENT_PATTERN.test((source.masked[preceding] ?? '').trimEnd())
+    ) {
+      continue
+    }
+
+    issues.push({
+      code: 'style.block_spacing',
+      message:
+        'TypeScript style guide, Conditionals and Loops — an independent `if`, loop, `switch`, or `try` MUST be preceded by one blank line unless it is the first statement in its body.',
+      line: index + 1,
+    })
+  }
+}
+
+const LOCAL_DECLARATION_PATTERN = /^(\s+)(?:const|let)\s/u
+const CONTINUATION_PATTERN = /^[)\]}.?:]/u
+const MAX_DECLARATION_GROUP = 4
+
+/**
+ * Local declarations, Declaration groups: contiguous local `const` and `let`
+ * declarations form a group of at most four. A deeper-indented line, or one
+ * that closes or chains the previous declaration, continues that declaration.
+ * Module-level constants are outside the section, so a group starts only at
+ * an indented declaration.
+ */
+function collectDeclarationGroups(
+  source: ScriptSource,
+  issues: CodeStyleIssue[],
+): void {
+  let group: { indent: number; count: number } | null = null
+
+  for (const [index, line] of source.masked.entries()) {
+    if ((source.raw[index] ?? '').trim() === '') {
+      group = null
+      continue
+    }
+
+    const declaration = LOCAL_DECLARATION_PATTERN.exec(line)
+
+    if (declaration) {
+      const indent = declaration[1]?.length ?? 0
+
+      if (group && group.indent === indent) {
+        group.count += 1
+      } else {
+        group = { indent, count: 1 }
+      }
+
+      if (group.count === MAX_DECLARATION_GROUP + 1) {
+        issues.push({
+          code: 'style.declaration_group',
+          message:
+            'TypeScript style guide, Declaration groups — a declaration group MUST contain no more than four declarations. Split the group at its strongest logical boundary.',
+          line: index + 1,
+        })
+      }
+
+      continue
+    }
+
+    if (!group || line.trim() === '') {
+      continue
+    }
+
+    const indent = line.length - line.trimStart().length
+
+    if (
+      indent > group.indent ||
+      (indent === group.indent && CONTINUATION_PATTERN.test(line.trimStart()))
+    ) {
+      continue
+    }
+
+    group = null
+  }
+}
+
+const SWITCH_PATTERN = /(?<![\w$.])switch\s*\(/gu
+const DEFAULT_LABEL_PATTERN = /^default\s*:/u
+
+/**
+ * Switch statements: every `switch` contains a `default` branch. The label is
+ * searched at the switch's own brace depth, so a nested switch or an object
+ * literal inside a case cannot supply it.
+ */
+function collectSwitchDefaults(
+  source: ScriptSource,
+  issues: CodeStyleIssue[],
+): void {
+  for (const match of source.text.matchAll(SWITCH_PATTERN)) {
+    const close = source.matchingClose(match.index + match[0].length - 1)
+    const open = close === -1 ? -1 : source.nextSignificant(close + 1)
+
+    if (open === -1 || source.text[open] !== '{') {
+      continue
+    }
+
+    const end = source.matchingClose(open)
+
+    if (end === -1) {
+      continue
+    }
+
+    let depth = 0
+    let found = false
+
+    for (let cursor = open + 1; cursor < end && !found; cursor += 1) {
+      const character = source.text[cursor]
+
+      if (character === '{') {
+        depth += 1
+      } else if (character === '}') {
+        depth -= 1
+      } else if (
+        depth === 0 &&
+        !/[\w$]/u.test(source.text[cursor - 1] ?? '') &&
+        DEFAULT_LABEL_PATTERN.test(source.text.slice(cursor, cursor + 16))
+      ) {
+        found = true
+      }
+    }
+
+    if (!found) {
+      issues.push({
+        code: 'style.switch_default',
+        message:
+          'TypeScript style guide, Switch statements — every `switch` MUST contain a `default` branch, and it MUST be last.',
+        line: source.lineAt(match.index) + 1,
+      })
+    }
+  }
+}
+
+const WAIVER_PATTERN =
+  /^\s*(?:\/\/|#)\s*style:\s*allow\s+(style\.[a-z_]+)\s+\S.*$/u
+
+/**
+ * A rule the handbook lets a documented exception satisfy is waived by a
+ * comment directly above the construct: `// style: allow <code> <reason>`,
+ * or `# style: allow` in Python. The reason is mandatory, so the exception
+ * is documented where the reader meets it, as the handbooks require.
+ */
+function isWaived(
+  raw: readonly string[],
+  masked: readonly string[],
+  issue: CodeStyleIssue,
+): boolean {
+  let cursor = issue.line - 2
+
+  while (
+    cursor >= 0 &&
+    (raw[cursor] ?? '').trim() !== '' &&
+    (masked[cursor] ?? '').trim() === ''
+  ) {
+    const waiver = WAIVER_PATTERN.exec(raw[cursor] ?? '')
+
+    if (waiver?.[1] === issue.code) {
+      return true
+    }
+
+    cursor -= 1
+  }
+
+  return false
+}
+
+/**
+ * Report the style rules the handbooks state normatively, the formatter does
+ * not own, and a scanner can decide from the source. Rules that need the
+ * reader's judgment, such as just-in-time declarations or the coherence of a
+ * declaration group, stay with the agent that reads the style card.
  */
 export function analyzeCodeStyle(
   relativePath: string,
@@ -491,23 +984,32 @@ export function analyzeCodeStyle(
 
   const extension = path.extname(relativePath).toLowerCase()
   const issues: CodeStyleIssue[] = []
+  let raw: readonly string[]
+  let masked: readonly string[]
 
   if (language === 'python') {
-    const lines = maskPythonNonCode(content).split('\n')
+    raw = content.split('\n')
+    masked = maskPythonNonCode(content).split('\n')
 
-    matchLineRules(lines, PYTHON_RULES, extension, issues)
-    collectMutableDefaults(lines, issues)
+    matchLineRules(masked, PYTHON_RULES, extension, issues)
+    collectMutableDefaults(masked, issues)
   } else {
-    matchLineRules(content.split('\n'), RAW_SCRIPT_RULES, extension, issues)
-    matchLineRules(
-      maskScriptNonCode(content).split('\n'),
-      SCRIPT_RULES,
-      extension,
-      issues,
-    )
+    const source = new ScriptSource(content)
+
+    raw = source.raw
+    masked = source.masked
+
+    matchLineRules(raw, RAW_SCRIPT_RULES, extension, issues)
+    matchLineRules(masked, SCRIPT_RULES, extension, issues)
+    collectUnbracedBodies(source, issues)
+    collectBlockSpacing(source, issues)
+    collectDeclarationGroups(source, issues)
+    collectSwitchDefaults(source, issues)
   }
 
-  return issues.sort((first, second) => first.line - second.line)
+  return issues
+    .filter((issue) => !isWaived(raw, masked, issue))
+    .sort((first, second) => first.line - second.line)
 }
 
 export function validateCodeStyle(input: HandlerInput): HandlerResult {

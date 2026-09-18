@@ -347,7 +347,7 @@ export const HELP_BODY = `Usage:
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
   pan style scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
-      Report the countable code style issues of the workspace source a detected language owns. checkpoint inspects the complete eligible set, returns blocked without writing while an editable file still has issues, and writes runtime/cache/style.json once the set is clean. Both subcommands exit 1 on a non-passing status. npm run lint stays authoritative for mechanical style.
+      Select the workspace source a detected language owns that changed since the last checkpoint, and report the style handbook rules a scanner can decide. checkpoint inspects the complete eligible set, returns blocked without writing while an editable file still has issues, and writes runtime/cache/style.json once the set is clean. Both subcommands exit 1 on a non-passing status. npm run lint stays authoritative for mechanical style.
   pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
       --worktree runs the command from the installation root and selects against that worktree's tree, the same workspace selection pan repository-check accepts. Without it the installation root is the workspace, as before. The run record stays at the installation root either way.

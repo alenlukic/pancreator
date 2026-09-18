@@ -83,11 +83,205 @@ test('each TypeScript rule reports the construct its handbook section forbids', 
     ['style.legacy_module', "import fs = require('node:fs')", 'import assign'],
     ['style.legacy_module', '/// <reference types="node" />', 'reference'],
     ['style.const_enum', 'const enum Mode { On }', 'const enum'],
+    ['style.default_export', 'export default function run() {}', 'default'],
+    ['style.mutable_export', 'export let counter = 0', 'mutable export'],
+    ['style.function_expression', 'const run = function () {}', 'expression'],
+    ['style.function_expression', 'run({ load: function () {} })', 'method'],
+    ['style.private_field', 'class Box { #value = 1 }', 'hash field'],
+    ['style.debugger', 'debugger', 'debugger'],
+    ['style.restricted_feature', "eval('1 + 1')", 'eval'],
+    ['style.restricted_feature', "new Function('return 1')", 'Function'],
+    ['style.wrapper_constructor', 'const items = new Array(3)', 'Array'],
+    ['style.wrapper_constructor', 'const items = Array(3)', 'bare Array'],
+    ['style.wrapper_constructor', 'const bag = new Object()', 'Object'],
+    ['style.wrapper_constructor', "const name = new String('x')", 'String'],
+    ['style.arguments_object', 'const first = arguments[0]', 'arguments'],
+    ['style.ts_suppression', ['// @ts-', 'ignore'].join(''), 'ts-ignore'],
+    ['style.ts_suppression', ['/* @ts-', 'nocheck */'].join(''), 'nocheck'],
+    ['style.unbraced_body', 'if (ready) return', 'unbraced if'],
+    ['style.unbraced_body', 'for (const x of xs) use(x)', 'unbraced for'],
+    ['style.unbraced_body', 'while (busy) wait()', 'unbraced while'],
+    ['style.switch_default', 'switch (x) {\n  case 1:\n    break\n}', 'switch'],
   ]
 
   for (const [code, line, label] of cases) {
     assert.deepEqual(codes('src/example.ts', `${line}\n`), [code], label)
   }
+})
+
+test('the structural rules follow a construct across its lines', () => {
+  // A wrapped condition is followed to its closing parenthesis before the
+  // body is inspected, and `else if` is one chain rather than a bare `else`.
+  const wrapped = [
+    'if (',
+    '  first &&',
+    '  second',
+    ')',
+    '  run()',
+    'else if (third) {',
+    '  other()',
+    '} else',
+    '  fallback()',
+    '',
+  ].join('\n')
+
+  assert.deepEqual(
+    analyzeCodeStyle('src/wrapped.ts', wrapped).map((issue) => [
+      issue.code,
+      issue.line,
+    ]),
+    [
+      ['style.unbraced_body', 1],
+      ['style.unbraced_body', 8],
+    ],
+  )
+
+  // A `do` loop's tail `while` is not a statement header.
+  assert.deepEqual(codes('src/tail.ts', 'do {\n  step()\n} while (busy)\n'), [])
+
+  // An independent block needs a blank line unless it opens its body. A
+  // comment above the block belongs to it, so the blank line sits above the
+  // comment. A `case` label and an `else` also open a body.
+  const spacing = [
+    'function run(items: string[]): void {',
+    '  prepare()',
+    '  if (items.length === 0) {',
+    '    return',
+    '  }',
+    '',
+    '  // The blank line above this comment satisfies the rule.',
+    '  for (const item of items) {',
+    '    use(item)',
+    '  }',
+    '  // This comment is attached to a block with no blank line above.',
+    '  while (pending()) {',
+    '    drain()',
+    '  }',
+    '',
+    '  switch (items.length) {',
+    '    case 1:',
+    '      if (items[0]) {',
+    '        single()',
+    '      }',
+    '      break',
+    '    default:',
+    '      break',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+
+  assert.deepEqual(
+    analyzeCodeStyle('src/spacing.ts', spacing).map((issue) => [
+      issue.code,
+      issue.line,
+    ]),
+    [
+      ['style.block_spacing', 3],
+      ['style.block_spacing', 12],
+    ],
+  )
+
+  // A local declaration group holds four declarations. A wrapped
+  // declaration's continuation lines and a comment inside the group do not
+  // count, a blank line ends the group, and module-level constants are
+  // outside the section.
+  const groups = [
+    'export const a = 1',
+    'export const b = 2',
+    'export const c = 3',
+    'export const d = 4',
+    'export const e = 5',
+    '',
+    'function build(): number {',
+    '  const first = 1',
+    '  const second = load(',
+    '    first,',
+    '  )',
+    '  // A comment does not break the group.',
+    '  const { third } = second',
+    '  const fourth = [third]',
+    '    .map((value) => value)',
+    '  const fifth = 5',
+    '',
+    '  const sixth = 6',
+    '  const seventh = 7',
+    '  const eighth = 8',
+    '  const ninth = 9',
+    '  let tenth = 10',
+    '',
+    '  return first + fifth + sixth + tenth',
+    '}',
+    '',
+  ].join('\n')
+
+  assert.deepEqual(
+    analyzeCodeStyle('src/groups.ts', groups).map((issue) => [
+      issue.code,
+      issue.line,
+    ]),
+    [
+      ['style.declaration_group', 16],
+      ['style.declaration_group', 22],
+    ],
+  )
+
+  // The `default` label is found at the switch's own depth, so a nested
+  // switch cannot lend its label to the outer one.
+  const nested = [
+    'switch (outer) {',
+    '  case 1: {',
+    '    switch (inner) {',
+    '      default:',
+    '        break',
+    '    }',
+    '    break',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+
+  assert.deepEqual(codes('src/nested.ts', nested), ['style.switch_default'])
+})
+
+test('a documented exception waives one rule on the construct below it', () => {
+  const waived = [
+    '// style: allow style.default_export Node loads a reporter through it.',
+    'export default async function* report() {}',
+    '',
+  ].join('\n')
+  const undocumented = [
+    '// style: allow style.default_export',
+    'export default async function* report() {}',
+    '',
+  ].join('\n')
+  const otherRule = [
+    '// style: allow style.debugger Not the rule that fires below.',
+    'export default async function* report() {}',
+    '',
+  ].join('\n')
+
+  assert.deepEqual(codes('src/reporter.ts', waived), [])
+  assert.deepEqual(codes('src/reporter.ts', undocumented), [
+    'style.default_export',
+  ])
+  assert.deepEqual(codes('src/reporter.ts', otherRule), [
+    'style.default_export',
+  ])
+  assert.deepEqual(
+    codes(
+      'tools/report.py',
+      [
+        'try:',
+        '    run()',
+        '# style: allow style.bare_except The wrapped API raises bare.',
+        'except:',
+        '    pass',
+        '',
+      ].join('\n'),
+    ),
+    [],
+  )
 })
 
 test('each Python rule reports the construct its handbook section forbids', () => {
@@ -126,6 +320,12 @@ test('the handbook exceptions and the formatter boundary stay unreported', () =>
   assert.deepEqual(codes('src/example.ts', "const text = 'var x == y'\n"), [])
   assert.deepEqual(codes('src/example.ts', 'const pattern = /a==b/u\n'), [])
   assert.deepEqual(codes('src/example.ts', 'const flag = !(value)\n'), [])
+  // A template nested in a substitution does not end the outer template, so
+  // the `#` inside it is text rather than a private field.
+  assert.deepEqual(
+    codes('src/example.ts', "const label = `${a}${b === 1 ? '' : `#${b}`}`\n"),
+    [],
+  )
   assert.deepEqual(codes('src/example.ts', 'const same = left === right\n'), [])
   assert.deepEqual(codes('tools/report.py', '# from os import *\n'), [])
   assert.deepEqual(

@@ -1578,10 +1578,20 @@ issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
 detected language owns: TypeScript, JavaScript, and Python. In a self-development
 checkout the workspace is this repository. In an embedded installation the
 workspace is the target repository, and the harness at `<target>/.pancreator` is
-report-only. Its countable issues come from `CODE-STYLE-VALIDATE-001`, and its
-checkpoint lives at `runtime/cache/style.json`. `npm run lint`, or the formatter
-the target declares, stays authoritative for mechanical style, so the pass
-repairs only the judgment-level rules the style handbooks state.
+report-only. Its checkpoint lives at `runtime/cache/style.json`, and records
+the hash of every eligible file, so a scan selects the files that changed since
+the last pass. The pass reads every selected file against the complete style
+handbook, whether or not the scanner reports an issue in it.
+`CODE-STYLE-VALIDATE-001` reports the handbook rules a scanner can decide:
+unbraced bodies, a missing blank line before an independent block, a local
+declaration group larger than four, a `switch` without `default`, and the
+lexical restrictions such as `any`, `!`, `var`, default exports, `function`
+expressions, and `@ts-ignore`. Rules that need the reader's judgment, such as
+just-in-time declarations, stay with the agent. `npm run lint`, or the formatter
+the target declares, stays authoritative for mechanical style, and the scanner
+does not repeat a rule the formatter owns. A construct the handbook lets a
+documented exception satisfy carries `// style: allow <code> <reason>` on the
+line above it; the reason is mandatory.
 
 Both commands accept `--since <ref>` or `--all`, and `/pan-style` also accepts
 `--worktree <name>`. Without a checkpoint the bare scan inspects the complete
