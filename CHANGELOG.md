@@ -1,5 +1,14 @@
 # Changelog
 
+## [6.14.0] - 2026-09-18
+
+This release indexes the merged tree. Versions 6.12.0 and 6.13.0 were cut in parallel on separate branches, so neither indexed commit describes a tree holding both features. This release restores the release identity the installer checks.
+
+### Changed
+
+- Index a release commit whose harness payload matches the merge of the design composition of 6.12.0 and the embedded installation registry of 6.13.0 ([ff415dc4](https://github.com/alenlukic/pancreator/commit/ff415dc4)).
+- Drop the stale version from the `AGENTS.md` header ([38bd2d5f](https://github.com/alenlukic/pancreator/commit/38bd2d5f)).
+
 ## [6.13.0] - 2026-09-18
 
 This release adds a machine-local registry of embedded installations. Operators can list those installs and archive cited inbox items from the source checkout. The version is 6.13.0 because pan-dev already holds 6.12.0.
