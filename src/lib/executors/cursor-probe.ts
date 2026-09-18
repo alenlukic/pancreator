@@ -1,8 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { isRecord } from '../io.js'
+import type { ExternalModelVerification } from '../types.js'
 import {
   expectedVariantDisplayName,
   loadCursorCatalog,
+  LOCAL_CATALOG_RELATIVE_PATH,
   type CursorCatalog,
 } from './cursor-catalog.js'
 import {
@@ -185,6 +187,41 @@ export function expectedCursorModelForSpec(
   spec: string,
 ): string | null {
   return expectedFor(loadCursorCatalog(root), spec)
+}
+
+/**
+ * Whether the local catalog predicts the variant a spec launches. The catalog
+ * is operator-local, optional, and gitignored, so an absent prediction is a
+ * state of its own rather than a match: the delegation records why no drift
+ * check ran instead of looking like a check that passed.
+ */
+export function cursorModelPredictionForSpec(
+  root: string,
+  spec: string,
+): ExternalModelVerification {
+  const catalog = loadCursorCatalog(root)
+
+  if (catalog === null) {
+    return {
+      status: 'unverifiable',
+      reason:
+        `No Cursor model catalog exists at ${LOCAL_CATALOG_RELATIVE_PATH}, ` +
+        `so no variant is predicted for '${spec}'. Run 'pan models --sync' ` +
+        'to enable model-drift enforcement.',
+    }
+  }
+
+  const expected = expectedFor(catalog, spec)
+
+  return expected === null
+    ? {
+        status: 'unverifiable',
+        reason:
+          `The catalog at ${LOCAL_CATALOG_RELATIVE_PATH} predicts no variant ` +
+          `for '${spec}': the spec declares no bracketed parameters, or the ` +
+          'catalog carries no entry for its model.',
+      }
+    : { status: 'compared', expected_model: expected }
 }
 
 function expectedFor(

@@ -32,10 +32,16 @@ import {
   type ParsedPersonaMapping,
 } from './executors/mapping.js'
 import {
+  cursorAuthenticationReadiness,
+  cursorModelPredictionForSpec,
   expectedCursorModelForSpec,
   probeCursorModelSpec,
   probeEnvironment,
 } from './executors/cursor-probe.js'
+import {
+  createCursorAgentAdapter,
+  cursorAgentBinaryReadiness,
+} from './executors/cursor-agent.js'
 import {
   ensureDir,
   fileExists,
@@ -222,10 +228,14 @@ import type {
   EntryGateReach,
   EvidenceWorkerAttempt,
   ExternalDelegationRecord,
+  ExternalExecutorAdapter,
+  ExternalExecutorRunResult,
   ExternalMcpCapabilities,
   ExternalPersonaExecutorKind,
   ExternalRequestSettings,
   GovernanceArtifactIssue,
+  HorizonLadderState,
+  HorizonRunBinding,
   Invocation,
   ManagedWorktreeReference,
   OperatorFeedbackItem,
@@ -340,6 +350,10 @@ interface CreateRunOptions {
   bestOfN?: BestOfNRunRole | null
   /** Cohort membership recorded when a fan-out creates this chunk's run. */
   cohort?: CohortRunBinding | null
+  /** Long-horizon task membership recorded when a session creates this run. */
+  horizon?: HorizonRunBinding | null
+  /** Per-task ladder counters inherited when a scoped re-plan restarts work. */
+  horizonLadder?: HorizonLadderState | null
   /**
    * Harness-relative document this run reads by reference. A cohort chunk run
    * points at the parent specification, which it must never copy.
@@ -2342,6 +2356,188 @@ function isSameReasonSignature(current: string[], prior: string[]): boolean {
   return prior.every((criterionId) => currentSet.has(criterionId))
 }
 
+type HorizonFailureAction =
+  | { kind: 'retry' }
+  | { kind: 'strategy'; target: string }
+  | { kind: 'exhausted'; reason: string }
+
+function sameHorizonSignature(current: string[], prior: string[]): boolean {
+  return (
+    prior.length > 0 &&
+    current.length === prior.length &&
+    current.every((criterion, index) => criterion === prior[index])
+  )
+}
+
+function horizonDependentTaskIds(root: string, state: RunState): string[] {
+  const binding = state.horizon
+
+  if (!binding) {
+    return []
+  }
+
+  const sessionPath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'horizon',
+    binding.session_id,
+    'session.json',
+  )
+
+  if (!fileExists(sessionPath)) {
+    return []
+  }
+
+  const value = readJson(sessionPath)
+
+  if (!isRecord(value) || !Array.isArray(value.tasks)) {
+    return []
+  }
+
+  const direct = new Map<string, string[]>()
+
+  for (const task of value.tasks) {
+    if (!isRecord(task) || typeof task.id !== 'string') {
+      continue
+    }
+
+    direct.set(
+      task.id,
+      Array.isArray(task.depends_on)
+        ? task.depends_on.filter(
+            (dependency): dependency is string =>
+              typeof dependency === 'string',
+          )
+        : [],
+    )
+  }
+
+  const found = new Set<string>()
+  const pending = [binding.task_id]
+
+  while (pending.length > 0) {
+    const dependency = pending.shift() as string
+
+    for (const [taskId, dependencies] of direct) {
+      if (found.has(taskId) || !dependencies.includes(dependency)) {
+        continue
+      }
+
+      found.add(taskId)
+      pending.push(taskId)
+    }
+  }
+
+  return [...found].sort()
+}
+
+function pauseForHorizonLadder(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  signature: string[],
+  reason: string,
+): void {
+  const ladder = (state.horizon_ladder ??= {
+    retries_spent: 0,
+    strategy_switches_spent: 0,
+    replans_spent: 0,
+    last_failure_signature: [],
+    approaches_tried: [],
+  })
+  const artifact = resolveRunLayout(root, state.run_id).artifactJson(
+    `horizon-failure-${stage.slug}-${state.transition_count + 1}.json`,
+  )
+  const failure = {
+    schema_version: 1,
+    run_id: state.run_id,
+    task_id: state.horizon?.task_id ?? null,
+    session_id: state.horizon?.session_id ?? null,
+    rung: 'scoped_replan',
+    stage: stage.slug,
+    approaches_tried: ladder.approaches_tried,
+    error_class: signature.length > 0 ? signature.join(',') : 'unknown',
+    dependent_tasks: horizonDependentTaskIds(root, state),
+    reason,
+    recorded_at: now(),
+  }
+
+  writeJsonAtomic(artifact.absolute, failure)
+  ladder.pause_kind = 'ladder_exhausted'
+  ladder.failure_record_path = artifact.relative
+  ladder.last_failure_signature = signature
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+  state.current_invocation = null
+
+  writeDecision(root, state, 'Long-horizon ladder exhausted', reason, [
+    `Failure record: ${artifact.relative}`,
+    state.horizon
+      ? 'The owning long-horizon session may re-plan or defer this task.'
+      : `Resume from a chosen stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+  ])
+}
+
+export function classifyHorizonFailure(
+  state: RunState,
+  stage: StageDefinition,
+  signature: string[],
+): HorizonFailureAction {
+  const ladder = (state.horizon_ladder ??= {
+    retries_spent: 0,
+    strategy_switches_spent: 0,
+    replans_spent: 0,
+    last_failure_signature: [],
+    approaches_tried: [],
+  })
+  const repeated = sameHorizonSignature(
+    signature,
+    ladder.last_failure_signature,
+  )
+  ladder.last_failure_signature = signature
+
+  if (!repeated && ladder.retries_spent < 2) {
+    ladder.retries_spent += 1
+    ladder.approaches_tried.push(
+      `retry ${ladder.retries_spent} at stage '${stage.slug}'`,
+    )
+    return { kind: 'retry' }
+  }
+
+  if (ladder.strategy_switches_spent === 0) {
+    ladder.strategy_switches_spent = 1
+    const target = stage.transitions.failure
+    const reason = repeated
+      ? `failure signature repeated (${signature.join(', ') || 'unknown'})`
+      : 'the two-retry bound was spent'
+
+    ladder.directive = `Change strategy after ${reason}; do not repeat the prior approach.`
+    ladder.approaches_tried.push(`strategy switch from '${stage.slug}'`)
+
+    if (
+      target &&
+      target !== stage.slug &&
+      !['succeeded', 'failed', 'canceled', 'paused'].includes(target)
+    ) {
+      return { kind: 'strategy', target }
+    }
+
+    return {
+      kind: 'exhausted',
+      reason: `Stage '${stage.slug}' has no declared repair route for the long-horizon strategy switch.`,
+    }
+  }
+
+  return {
+    kind: 'exhausted',
+    reason:
+      `Stage '${stage.slug}' exhausted the long-horizon retry and strategy-switch rungs ` +
+      `for signature (${signature.join(', ') || 'unknown'}).`,
+  }
+}
+
 function recordSameReasonFailure(
   state: RunState,
   stageSlug: string,
@@ -2485,9 +2681,21 @@ function applyTransition(
   }
 
   if (target === 'paused') {
+    // A release-gated stage reports `blocked` only for a concern the operator
+    // owns, which is `SHIP-001`'s legitimate-diagnostics pause. Marking it
+    // operator-only under the long-horizon contract is what carries it to the
+    // session's fourth rung instead of into away-mode evaluation.
+    const operatorOnly =
+      outcome === 'blocked' &&
+      stage.entry_gate !== undefined &&
+      runHasContract(state.operator_involvement, 'long_horizon')
+
     state.status = 'paused'
     state.pause_reason = `Stage '${stage.slug}' reported ${outcome}.`
-    state.pending_action = { type: 'operator_decision' }
+    state.pending_action = {
+      type: 'operator_decision',
+      ...(operatorOnly ? { operator_only: true as const } : {}),
+    }
 
     writeDecision(
       root,
@@ -3496,7 +3704,27 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
         }
       : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
 
-    const awayMode = resolveAwayModeConfig(root)
+    const awayMode = resolveAwayModeConfig(
+      root,
+      involvementSelection.profile.away_mode,
+    )
+    const configurationOverrides =
+      runHasContract(involvement, 'long_horizon') && !awayMode.enabled
+        ? [
+            {
+              setting: 'away_mode.enabled' as const,
+              configured_value: false,
+              applied_value: true,
+              reason:
+                `Involvement profile '${involvement.profile}' carries the ` +
+                'long_horizon contract, which requires away mode for this run.',
+            },
+          ]
+        : []
+
+    if (configurationOverrides.length > 0) {
+      awayMode.enabled = true
+    }
     // Snapshotted likewise. The level decides which repository-check profiles
     // gate this run and which baselines the first mutating stage captures.
     const verification = resolveVerification(root, options.verification)
@@ -3550,6 +3778,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       operator_involvement: involvement,
       verification,
       away_mode: awayMode,
+      ...(configurationOverrides.length > 0
+        ? { configuration_overrides: configurationOverrides }
+        : {}),
       operator_artifacts: {
         mode: options.operatorArtifacts ? 'requested' : 'suppressed',
         requested_stages: [],
@@ -3557,6 +3788,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
       ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
       ...(options.cohort ? { cohort: options.cohort } : {}),
+      ...(options.horizon ? { horizon: options.horizon } : {}),
+      ...(options.horizonLadder
+        ? { horizon_ladder: structuredClone(options.horizonLadder) }
+        : {}),
       ...(autostartDelivery !== null
         ? { autostart_delivery: autostartDelivery }
         : {}),
@@ -3617,6 +3852,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       applied_gates: involvement.applied_gates,
       verification_level: verification.level,
       away_mode_enabled: awayMode.enabled,
+      ...(configurationOverrides.length > 0
+        ? { configuration_overrides: configurationOverrides }
+        : {}),
       operator_artifacts: state.operator_artifacts,
     })
 
@@ -5025,29 +5263,54 @@ function ensureOpenAiReady(
   return { ok: true }
 }
 
+function ensureCursorReady(
+  root: string,
+): { ok: true } | { ok: false; error: string } {
+  const binary = cursorAgentBinaryReadiness()
+
+  if (!binary.ok) {
+    return { ok: false, error: binary.error }
+  }
+
+  const authentication = cursorAuthenticationReadiness(root)
+
+  return authentication.key_available
+    ? { ok: true }
+    : { ok: false, error: authentication.advisories.join(' ') }
+}
+
 function ensureExecutorReady(
   root: string,
   state: RunState,
-  executor: ExternalPersonaExecutorKind,
+  executor: PersonaExecutorKind,
 ): { ok: true } | { ok: false; error: string } {
-  return executor === 'claude-code'
-    ? ensureClaudeCodeReady(state)
-    : ensureOpenAiReady(root, state)
+  switch (executor) {
+    case 'cursor':
+      return ensureCursorReady(root)
+    case 'claude-code':
+      return ensureClaudeCodeReady(state)
+    case 'openai':
+      return ensureOpenAiReady(root, state)
+  }
 }
 
-function executorPreflightRemedy(
-  executor: ExternalPersonaExecutorKind,
-): string {
-  return executor === 'claude-code'
-    ? 'Install and authenticate the Claude Code CLI on this machine'
-    : 'Export OPENAI_API_KEY, or add it to the repository-local .env file'
+/** One remedy per executor, so a new kind cannot inherit another's by order. */
+const EXECUTOR_PREFLIGHT_REMEDY: Record<PersonaExecutorKind, string> = {
+  cursor:
+    'Install cursor-agent and provide CURSOR_API_KEY in the process environment or repository-local .env file',
+  'claude-code': 'Install and authenticate the Claude Code CLI on this machine',
+  openai: 'Export OPENAI_API_KEY, or add it to the repository-local .env file',
+}
+
+function executorPreflightRemedy(executor: PersonaExecutorKind): string {
+  return EXECUTOR_PREFLIGHT_REMEDY[executor]
 }
 
 function pauseForExecutorPreflight(
   root: string,
   state: RunState,
   stage: StageDefinition,
-  executor: ExternalPersonaExecutorKind,
+  executor: PersonaExecutorKind,
   error: string,
 ): void {
   const reason =
@@ -5154,41 +5417,6 @@ export function openAiToolPolicy(
     maxResultBytes: bounds.maxResultBytes,
     shellTimeoutMs: bounds.shellTimeoutMs,
   }
-}
-
-/**
- * One external executor's delivery result, normalized so the delegation
- * skeleton — evidence capture, session recording, failure persistence — is
- * written once rather than per executor.
- */
-interface ExternalExecutorRunResult {
-  ok: boolean
-  binary: string
-  /** Resolved argument vector. Never carries the prompt body or a credential. */
-  argv: string[]
-  exit_code: number | null
-  timed_out: boolean
-  duration_ms: number
-  stdout: string
-  stderr: string
-  session_id?: string
-  error?: string
-  result_subtype?: string
-  is_error?: boolean
-  request_settings?: ExternalRequestSettings
-  tool_summary?: Record<string, number>
-  response_ids?: string[]
-  usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
-  failure_reason?: string
-  mcp_capabilities?: ExternalMcpCapabilities
-}
-
-interface ExternalExecutorAdapter {
-  kind: ExternalPersonaExecutorKind
-  /** Deliver one prompt, continuing `resumeSessionId` when one is supplied. */
-  run: (prompt: string, resumeSessionId?: string) => ExternalExecutorRunResult
-  /** Strip credentials from captured text before it becomes evidence. */
-  sanitize: (text: string) => string
 }
 
 const OPENAI_AGENT_ENTRYPOINT = 'openai-agent-cli.js'
@@ -5485,6 +5713,8 @@ function createClaudeCodeAdapter(context: {
 
 export interface DelegateInvocationOptions extends OperationProgressOptions {
   timeoutMs?: number
+  /** Permit the harness-owned driver to dispatch a Cursor persona. */
+  headless?: boolean
 }
 
 export interface DelegateInvocationResult {
@@ -5538,7 +5768,7 @@ export function delegateInvocation(
     )
 
     invariant(
-      mapping.executor !== 'cursor',
+      mapping.executor !== 'cursor' || options.headless === true,
       `Stage '${stage.slug}' resolves to the '${mapping.executor}' executor. ` +
         `'pan delegate' dispatches only external executors; cursor personas ` +
         `are delegated by the supervisor per INVOCATION-001.`,
@@ -5548,10 +5778,10 @@ export function delegateInvocation(
     // The resolved executor is never rewritten to another one: the prepared
     // invocation has to agree with the mapping, or the card the worker reads
     // would name a runtime the harness is not using.
-    const executor: ExternalPersonaExecutorKind = mapping.executor
+    const executor: PersonaExecutorKind = mapping.executor
 
     invariant(
-      invocation.stage.persona_executor === executor,
+      (invocation.stage.persona_executor ?? 'cursor') === executor,
       `Invocation ${invocationId} was prepared for executor ` +
         `'${invocation.stage.persona_executor ?? 'cursor'}' but its persona ` +
         `now resolves to '${executor}'. Re-prepare the invocation before ` +
@@ -5586,15 +5816,29 @@ export function delegateInvocation(
       options.timeoutMs ??
       (configuredTimeout ? Number(configuredTimeout) : undefined)
     const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
-    const adapter: ExternalExecutorAdapter =
-      executor === 'claude-code'
-        ? createClaudeCodeAdapter({
+    const selectAdapter = (): ExternalExecutorAdapter => {
+      switch (executor) {
+        case 'cursor':
+          return createCursorAgentAdapter({
+            workspaceDir,
+            installationRoot: root,
+            runtimeDir: path.join(root, 'runtime'),
+            modelSpec: mapping.model_spec,
+            modelVerification: cursorModelPredictionForSpec(
+              root,
+              mapping.model_spec,
+            ),
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          })
+        case 'claude-code':
+          return createClaudeCodeAdapter({
             workspaceDir,
             mapping,
             policy: claudeCodeToolPolicy(root, workspaceDir, stage),
             ...(timeoutMs !== undefined ? { timeoutMs } : {}),
           })
-        : createOpenAiAdapter({
+        case 'openai':
+          return createOpenAiAdapter({
             root,
             runId,
             invocationId,
@@ -5606,6 +5850,9 @@ export function delegateInvocation(
               ? { timeoutOverrideMs: options.timeoutMs }
               : {}),
           })
+      }
+    }
+    const adapter: ExternalExecutorAdapter = selectAdapter()
     const runExecutor = (
       prompt: string,
       resumeSessionId?: string,
@@ -5648,9 +5895,18 @@ export function delegateInvocation(
         ? session
         : undefined
 
-    const cardMarkdown = readText(
-      resolveInside(root, state.current_invocation.markdown_path),
+    const promptPath =
+      executor === 'cursor'
+        ? invocation.delegation?.delivery_prompt_path
+        : state.current_invocation.markdown_path
+
+    invariant(
+      typeof promptPath === 'string' && promptPath.length > 0,
+      `Invocation ${invocationId} has no delivery prompt for ${executor}.`,
+      { code: 'INVALID_INVOCATION' },
     )
+
+    const cardMarkdown = readText(resolveInside(root, promptPath))
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
     let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
     let deliveredPrompt = cardMarkdown
@@ -5755,6 +6011,7 @@ export function delegateInvocation(
       invocation_id: invocationId,
       stage: stage.slug,
       executor,
+      delegated_by: 'harness',
       delegation_kind: delegationKind,
       binary: result.binary,
       argv: result.argv,
@@ -5785,6 +6042,13 @@ export function delegateInvocation(
       ...(result.mcp_capabilities
         ? { mcp_capabilities: result.mcp_capabilities }
         : {}),
+      ...(result.reported_model
+        ? { reported_model: result.reported_model }
+        : {}),
+      ...(result.model_verification
+        ? { model_verification: result.model_verification }
+        : {}),
+      ...(result.tool_policy ? { tool_policy: result.tool_policy } : {}),
     }
 
     writeJsonAtomic(
@@ -6229,13 +6493,16 @@ export function submitOutput(
 
     advise('evidence_report', incompleteReports)
 
+    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+
     // DELEGATE-001: the harness must have seen the worker reach a terminal
     // state. A completed `pan watch` record or a foreground-return attestation
-    // is that evidence for a Cursor worker; `pan delegate` writes its own for
-    // an external executor. Like a missing evidence report, this is a
-    // supervisor-owned precondition and rejects outright without consuming an
-    // attempt.
-    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+    // is that evidence for an operator-session worker; `pan delegate` writes
+    // its own for a harness-delegated worker. Like a missing evidence report,
+    // this is a supervisor-owned precondition and rejects outright without
+    // consuming an attempt. The exemption reads the execution record whatever
+    // the executor is; only the refusal wording turns on who owns the dispatch
+    // in an operator session, which for a Cursor stage is that session itself.
     const delegationObservation: DelegationObservation | undefined =
       stage.persona !== 'orchestrator'
         ? summarizeDelegationObservation(
@@ -6725,23 +6992,66 @@ export function submitOutput(
       }
 
       let sameReasonPauseTriggered = false
+      let horizonFailure: HorizonFailureAction | null = null
+      let horizonSignature: string[] = []
 
-      if (outcome === 'failure' && isSameReasonTrackedStage(stage)) {
-        const signature = collectHardFailureSignature(
+      if (
+        outcome === 'failure' &&
+        (runHasContract(state.operator_involvement, 'long_horizon') ||
+          isSameReasonTrackedStage(stage))
+      ) {
+        horizonSignature = collectHardFailureSignature(
           stage,
           validation.output.criteria,
           evaluated.results,
           allValidationErrors,
         )
 
-        sameReasonPauseTriggered = recordSameReasonFailure(
-          state,
-          stage.slug,
-          signature,
-        )
+        if (runHasContract(state.operator_involvement, 'long_horizon')) {
+          horizonFailure = classifyHorizonFailure(
+            state,
+            stage,
+            horizonSignature,
+          )
+        } else {
+          sameReasonPauseTriggered = recordSameReasonFailure(
+            state,
+            stage.slug,
+            horizonSignature,
+          )
+        }
       }
 
-      if (sameReasonPauseTriggered) {
+      if (horizonFailure?.kind === 'retry') {
+        applyTransition(root, state, stage, 'failure', {
+          overrideTarget: stage.slug,
+        })
+        nextState = state.current_stage
+      } else if (horizonFailure?.kind === 'strategy') {
+        recordOperatorFeedback(
+          root,
+          state,
+          stage,
+          horizonFailure.target,
+          'revise',
+          state.horizon_ladder?.directive ??
+            'Change strategy and do not repeat the prior approach.',
+          'away',
+        )
+        applyTransition(root, state, stage, 'failure', {
+          overrideTarget: horizonFailure.target,
+        })
+        nextState = state.current_stage
+      } else if (horizonFailure?.kind === 'exhausted') {
+        pauseForHorizonLadder(
+          root,
+          state,
+          stage,
+          horizonSignature,
+          horizonFailure.reason,
+        )
+        nextState = 'paused'
+      } else if (sameReasonPauseTriggered) {
         pauseForSameReasonFailure(root, state, stage)
         nextState = 'paused'
       } else if (stage.gate === 'operator') {
@@ -9222,6 +9532,38 @@ export function getRunState(root: string, runId: string): RunState {
   return loadState(root, runId)
 }
 
+/** Record the session-owned re-plan rung on the task run. */
+export function recordHorizonReplan(root: string, runId: string): RunState {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      runHasContract(state.operator_involvement, 'long_horizon'),
+      `Run '${runId}' does not carry the long_horizon contract.`,
+      { code: 'HORIZON_CONTRACT_REQUIRED' },
+    )
+
+    const ladder = (state.horizon_ladder ??= {
+      retries_spent: 0,
+      strategy_switches_spent: 0,
+      replans_spent: 0,
+      last_failure_signature: [],
+      approaches_tried: [],
+    })
+    ladder.replans_spent += 1
+    ladder.approaches_tried.push(`scoped re-plan ${ladder.replans_spent}`)
+
+    persistRun(root, state, 'horizon_replan_started', {
+      session_id: state.horizon?.session_id ?? null,
+      task_id: state.horizon?.task_id ?? null,
+      replans_spent: ladder.replans_spent,
+      failure_record_path: ladder.failure_record_path ?? null,
+    })
+
+    return state
+  })
+}
+
 /**
  * Mirror every validator `pan submit` runs before its shell gates, so a
  * mechanical defect does not consume a stage attempt. Only the shell gates
@@ -9413,7 +9755,7 @@ export interface EvidenceWorkerDelegation {
   role: string
   persona: string
   evidence_path: string
-  skipped: 'already_present' | 'cursor_persona' | null
+  skipped: 'already_present' | 'cursor_persona' | 'executor_preflight' | null
   ok: boolean
   exit_code: number | null
   duration_ms: number
@@ -9423,16 +9765,20 @@ export interface EvidenceWorkerDelegation {
 }
 
 /**
- * Run the active invocation's parallel evidence workers through the
- * claude-code executor. The supervisor owns these launches for Cursor
- * personas; an eval driver or an external-executor supervisor uses this path
- * so the evidence reports exist before the stage worker is delegated. A worker
- * whose persona maps to Cursor is reported as skipped, never launched.
+ * Run the active invocation's parallel evidence workers as harness-owned
+ * processes, so their reports exist before the stage worker is delegated.
+ *
+ * An operator session still owns its own Cursor launches: without the headless
+ * option a Cursor persona is reported as skipped, exactly as `delegateInvocation`
+ * refuses one. With it — the option only a harness-owned caller sets — the
+ * worker runs through the same Cursor adapter a stage worker uses. Without that
+ * path a driven run cannot advance any stage that declares evidence workers,
+ * because every persona in the tracked configuration maps to Cursor.
  */
 export function delegateEvidenceWorkers(
   root: string,
   runId: string,
-  options: OperationProgressOptions = {},
+  options: OperationProgressOptions & { headless?: boolean } = {},
 ): EvidenceWorkerDelegation[] {
   const state = loadState(root, runId)
 
@@ -9450,6 +9796,7 @@ export function delegateEvidenceWorkers(
   const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
   const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
   const results: EvidenceWorkerDelegation[] = []
+  let cursorPreflighted = false
 
   for (const worker of invocation.evidence_workers ?? []) {
     const evidenceAbsolute = resolveInside(root, worker.evidence_path)
@@ -9473,8 +9820,10 @@ export function delegateEvidenceWorkers(
     }
 
     const mapping = resolvePersonaMapping(pipelineConfig, worker.persona)
+    const headlessCursor =
+      mapping.executor === 'cursor' && options.headless === true
 
-    if (mapping.executor !== 'claude-code') {
+    if (mapping.executor !== 'claude-code' && !headlessCursor) {
       results.push({
         ...base,
         skipped: 'cursor_persona',
@@ -9487,6 +9836,48 @@ export function delegateEvidenceWorkers(
       continue
     }
 
+    if (headlessCursor && !cursorPreflighted) {
+      const preflight = ensureCursorReady(root)
+
+      if (!preflight.ok) {
+        // EXECUTOR-001 makes a failed preflight an operator-visible stop that
+        // names its remedy. These workers run before the stage delegation that
+        // carries that check, so an unready Cursor has to pause the run here
+        // or it reaches the operator as a spawn error with no remedy. The
+        // claude-code path keeps its existing behaviour: its readiness probe
+        // spends a real invocation, and the run state that caches one is not
+        // written from here.
+        withOperationMutex(operationMutexPath(root, runId), () => {
+          const paused = loadState(root, runId)
+
+          pauseForExecutorPreflight(
+            root,
+            paused,
+            stage,
+            'cursor',
+            preflight.error,
+          )
+          persistRun(root, paused, 'run_paused', {
+            reason: paused.pause_reason,
+          })
+        })
+
+        results.push({
+          ...base,
+          skipped: 'executor_preflight',
+          ok: false,
+          exit_code: null,
+          duration_ms: 0,
+          stdout_path: null,
+          stderr_path: null,
+          error: preflight.error,
+        })
+        break
+      }
+
+      cursorPreflighted = true
+    }
+
     const brief = readText(resolveInside(root, worker.brief_path))
     const prompt =
       `${brief}\n\n## Evidence report destination\n\n` +
@@ -9495,22 +9886,35 @@ export function delegateEvidenceWorkers(
       `That file is the only file you write outside the workspace. ` +
       `Do not submit the stage output; the stage worker owns it.\n`
     const configuredTimeout = mapping.options['timeout-ms']
+    const timeoutMs = configuredTimeout ? Number(configuredTimeout) : undefined
 
     options.onProgress?.(
-      `launching ${worker.role} evidence worker (${worker.persona}) via claude-code`,
+      `launching ${worker.role} evidence worker (${worker.persona}) via ${mapping.executor}`,
     )
 
-    const result = runClaudeCode({
-      prompt,
-      cwd: workspaceDir,
-      model: mapping.model,
-      permissionMode: mapping.options['permission-mode'] ?? 'default',
-      allowedTools: policy.allowedTools,
-      addDirs: policy.addDirs,
-      ...(configuredTimeout ? { timeoutMs: Number(configuredTimeout) } : {}),
-    })
-    const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stdout.json`
-    const stderrPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stderr.log`
+    const result = headlessCursor
+      ? createCursorAgentAdapter({
+          workspaceDir,
+          installationRoot: root,
+          runtimeDir: path.join(root, 'runtime'),
+          modelSpec: mapping.model_spec,
+          modelVerification: cursorModelPredictionForSpec(
+            root,
+            mapping.model_spec,
+          ),
+          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        }).run(prompt)
+      : runClaudeCode({
+          prompt,
+          cwd: workspaceDir,
+          model: mapping.model,
+          permissionMode: mapping.options['permission-mode'] ?? 'default',
+          allowedTools: policy.allowedTools,
+          addDirs: policy.addDirs,
+          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        })
+    const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stdout.json`
+    const stderrPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stderr.log`
 
     writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
     writeTextAtomic(resolveInside(root, stderrPath), result.stderr)

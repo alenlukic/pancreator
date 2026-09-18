@@ -220,6 +220,14 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     ],
     ['pan-start.md', [/\.pancreator\/runtime\/inbox/u]],
     [
+      'pan-horizon.md',
+      [
+        /horizon init --queue <path>/u,
+        /horizon start <session-id> --attest-supervisor-card/u,
+        /\.\/\.pancreator\/bin\/pan/u,
+      ],
+    ],
+    [
       'pan-author.md',
       [
         /governance card --mode author/u,

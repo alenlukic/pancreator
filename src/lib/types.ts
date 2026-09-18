@@ -73,11 +73,60 @@ export interface ExternalMcpCapabilities {
  * starting a fresh invocation.
  */
 export interface ExternalExecutorSession {
-  executor: ExternalPersonaExecutorKind
+  executor: PersonaExecutorKind
   session_id: string
   invocation_id: string
   stage: string
   recorded_at: string
+}
+
+/** Tool boundary the harness applied to one delegated worker process. */
+export interface ExternalExecutorToolPolicy {
+  granted_roots: string[]
+  per_path_write_policy: boolean
+  scope_gate: 'scope.no_unapproved_changes'
+}
+
+/**
+ * Whether the harness could compare the model an executor reported against a
+ * predicted variant. `unverifiable` carries its reason, so a delegation that
+ * ran no drift check stays distinguishable from one that ran and matched.
+ */
+export type ExternalModelVerification =
+  | { status: 'compared'; expected_model: string }
+  | { status: 'unverifiable'; reason: string }
+
+/** Normalized result returned by every harness-owned executor adapter. */
+export interface ExternalExecutorRunResult {
+  ok: boolean
+  binary: string
+  /** Resolved argument vector. Never carries the prompt body or a credential. */
+  argv: string[]
+  exit_code: number | null
+  timed_out: boolean
+  duration_ms: number
+  stdout: string
+  stderr: string
+  session_id?: string
+  error?: string
+  result_subtype?: string
+  is_error?: boolean
+  request_settings?: ExternalRequestSettings
+  tool_summary?: Record<string, number>
+  response_ids?: string[]
+  usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
+  failure_reason?: string
+  mcp_capabilities?: ExternalMcpCapabilities
+  reported_model?: string
+  model_verification?: ExternalModelVerification
+  tool_policy?: ExternalExecutorToolPolicy
+}
+
+/** One harness-owned process adapter for a persona executor. */
+export interface ExternalExecutorAdapter {
+  kind: PersonaExecutorKind
+  run: (prompt: string, resumeSessionId?: string) => ExternalExecutorRunResult
+  sanitize: (text: string) => string
 }
 
 /**
@@ -92,7 +141,15 @@ export interface ExternalDelegationRecord {
   run_id: string
   invocation_id: string
   stage: string
-  executor: ExternalPersonaExecutorKind
+  executor: PersonaExecutorKind
+  /**
+   * Who dispatched the worker. Only the harness writes this record today, so
+   * the value is always `harness` and the record's existence is itself the
+   * harness-delegation signal `DELEGATE-001`'s watch exemption reads.
+   * `operator_session` is reserved for a session-authored record and is not
+   * yet produced by any writer.
+   */
+  delegated_by: 'harness' | 'operator_session'
   /**
    * `fresh` delivers the full canonical card in a new session. `resumed`
    * continues the recorded session with the operator's revision directive.
@@ -134,6 +191,11 @@ export interface ExternalDelegationRecord {
   failure_reason?: string
   /** Always recorded for a tool-loop executor, empty list and reason included. */
   mcp_capabilities?: ExternalMcpCapabilities
+  /** Cursor's system/init model, and whether a prediction could check it. */
+  reported_model?: string
+  model_verification?: ExternalModelVerification
+  /** Coarse process roots and the gate that still owns mutation enforcement. */
+  tool_policy?: ExternalExecutorToolPolicy
 }
 
 /**
@@ -292,7 +354,7 @@ export interface StageDefinition {
  * `prototype`, or `design` by attaching to stage checkpoints and personas
  * rather than to stage slugs.
  */
-export type RunContract = 'technical_director'
+export type RunContract = 'technical_director' | 'long_horizon'
 
 /** One named operator-involvement profile from `config.json`. */
 export interface OperatorInvolvementProfile {
@@ -304,6 +366,8 @@ export interface OperatorInvolvementProfile {
    */
   gates?: Record<string, StageGate>
   contracts?: RunContract[]
+  /** Away-mode settings this profile snapshots instead of the project default. */
+  away_mode?: AwayModeConfig
 }
 
 export interface OperatorInvolvementFile {
@@ -555,6 +619,11 @@ export interface PolicyLookupRow {
    * An absent context retains standalone and historical behavior.
    */
   operator_artifacts?: 'requested' | 'suppressed'
+  /**
+   * Activates the row only for the run mode derived from its snapshotted
+   * contracts. An absent value applies in either mode.
+   */
+  long_horizon?: boolean
   policies: string[]
 }
 
@@ -722,6 +791,13 @@ export interface ResolvedAwayModeConfig {
   source_sha256: string
 }
 
+export interface RunConfigurationOverride {
+  setting: 'away_mode.enabled'
+  configured_value: boolean
+  applied_value: boolean
+  reason: string
+}
+
 export type AgentHealth =
   | 'running'
   | 'stalled'
@@ -788,6 +864,56 @@ export interface ProjectConfig {
   installation_mode?: 'self_development' | 'embedded' | 'detached'
   /** Autonomous blocker handling, snapshotted into each new run. */
   away_mode?: AwayModeConfig
+  /** Calendar-triggered unattended work. Disabled in the shipped config. */
+  schedule?: ScheduleConfig
+}
+
+export type ScheduleWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
+export interface ScheduleActionOptions {
+  involvement?: string
+  verification?: string
+  pipeline_config?: string
+  attest_supervisor_card?: boolean
+}
+
+export type ScheduleAction =
+  | { kind: 'command'; command: string }
+  | ({
+      kind: 'workflow'
+      workflow: string
+      request_path: string
+    } & ScheduleActionOptions)
+  | {
+      kind: 'session'
+      queue_path: string
+      involvement?: string
+    }
+  | ({
+      kind: 'prompt'
+      prompt: string
+      workflow?: string
+    } & ScheduleActionOptions)
+
+export interface ScheduleJob {
+  id: string
+  enabled: boolean
+  hour: number
+  minute: number
+  weekdays?: ScheduleWeekday[]
+  timezone?: string
+  catch_up_window_minutes?: number
+  grace_period_minutes?: number
+  workspace?: string
+  worktree?: string
+  action: ScheduleAction
+}
+
+export interface ScheduleConfig {
+  enabled: boolean
+  catch_up_window_minutes?: number
+  grace_period_minutes?: number
+  jobs: ScheduleJob[]
 }
 
 export interface FastWallConfig {
@@ -2222,6 +2348,25 @@ export interface WorktreeClaimTransfer {
   timestamp: string
 }
 
+/** Durable membership of one workflow run in a long-horizon session task. */
+export interface HorizonRunBinding {
+  session_id: string
+  task_id: string
+  role: 'task' | 'replan'
+}
+
+/** Per-task escalation counters carried by the run that executes the task. */
+export interface HorizonLadderState {
+  retries_spent: number
+  strategy_switches_spent: number
+  replans_spent: number
+  last_failure_signature: string[]
+  approaches_tried: string[]
+  directive?: string
+  pause_kind?: 'ladder_exhausted'
+  failure_record_path?: string
+}
+
 export interface RunState {
   schema_version: 1 | 2
   run_id: string
@@ -2266,6 +2411,8 @@ export interface RunState {
   verification_recommendations_surfaced?: string[]
   /** Away-mode settings resolved when the run was created. */
   away_mode?: ResolvedAwayModeConfig
+  /** Explicit run-local changes made while resolving snapshotted settings. */
+  configuration_overrides?: RunConfigurationOverride[]
   /**
    * Operator artifact selection for this run. Absent means enabled for every
    * stage, which preserves runs created before artifact selection existed.
@@ -2287,6 +2434,10 @@ export interface RunState {
   best_of_n?: BestOfNRunRole
   /** Membership of a cohort fan-out. Absent on an ordinary run. */
   cohort?: CohortRunBinding
+  /** Membership of a long-horizon session. Absent on an ordinary run. */
+  horizon?: HorizonRunBinding
+  /** Contract-gated escalation state. Absent until a long-horizon failure. */
+  horizon_ladder?: HorizonLadderState
   /**
    * Route the ratified plan into delivery when its gate is approved: one
    * `delivery` run for a single chunk, cohort 1 for a wider plan. Recorded on

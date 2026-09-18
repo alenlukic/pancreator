@@ -48,6 +48,26 @@ test('self-development-only payload paths exist in the source checkout', () => {
   assert.equal(paths.includes('library/skills/review-squad.md'), false)
 })
 
+test('a file repository validation always requires ships to a target', () => {
+  const paths = selfDevelopmentOnlyPaths()
+
+  // Repository validation lists the launch agent template outside its
+  // self-development branch, so an installed target validates it too. A
+  // required file the payload withheld would fail every fresh installation.
+  assert.match(
+    readRepositoryFile('src/lib/validation.ts'),
+    /'library\/templates\/launchd-schedule\.plist',/u,
+  )
+  assert.equal(
+    existsSync(path.join(ROOT, 'library/templates/launchd-schedule.plist')),
+    true,
+  )
+  assert.equal(
+    paths.includes('library/templates/launchd-schedule.plist'),
+    false,
+  )
+})
+
 test('the skill index does not link a file the payload omits', () => {
   const index = readRepositoryFile('library/skills/index.md')
   const basename = path.basename(HARNESS_LINEUP)

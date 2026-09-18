@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+This release adds long-horizon mode, a headless driver, a session ladder, and scheduled jobs. The operator selects the mode at preflight. The harness then advances a queue of workflows and one-off tasks without a mid-run stop.
+
+### Changed
+
+- Split the two mode-specific rules into SINGLERUN-001 and HORIZON-001. Policy resolution reads the snapshotted `long_horizon` contract ([1664bba1](https://github.com/alenlukic/pancreator/commit/1664bba1970ea9d74f6b30a847330e4beb79a5c8)).
+- Extract the eval drive loop into one shared headless driver. Eval outcomes stay the same ([513940d3](https://github.com/alenlukic/pancreator/commit/513940d3c18c7416bb9bce333eb47416b7fac6f9)).
+- Move the submit watch check to harness delegation rather than executor kind ([513940d3](https://github.com/alenlukic/pancreator/commit/513940d3c18c7416bb9bce333eb47416b7fac6f9)).
+- Permit a coarser Cursor tool policy when the CLI has no per-path write control. The scope gate stays the gate of record ([513940d3](https://github.com/alenlukic/pancreator/commit/513940d3c18c7416bb9bce333eb47416b7fac6f9)).
+
+### Added
+
+- Add a `long-horizon` involvement profile, a `long_horizon` run contract, and a lookup-table mode dimension ([1664bba1](https://github.com/alenlukic/pancreator/commit/1664bba1970ea9d74f6b30a847330e4beb79a5c8)).
+- Add HORIZON-001, SINGLERUN-001, and the horizon handbook with the marked enumeration and the ladder ([1664bba1](https://github.com/alenlukic/pancreator/commit/1664bba1970ea9d74f6b30a847330e4beb79a5c8)).
+- Add a Cursor executor adapter that drives `cursor-agent` with the persona model spec and the rendered delivery prompt ([513940d3](https://github.com/alenlukic/pancreator/commit/513940d3c18c7416bb9bce333eb47416b7fac6f9)).
+- Add `pan horizon` for a durable session that holds tasks, dependencies, deferral, and a handoff at each task boundary ([bce2c005](https://github.com/alenlukic/pancreator/commit/bce2c0052cb093aa0f7ce037522ab32b877c0d4f)).
+- Add a four-rung per-task ladder: retry, strategy switch, scoped re-plan, then defer ([bce2c005](https://github.com/alenlukic/pancreator/commit/bce2c0052cb093aa0f7ce037522ab32b877c0d4f)).
+- Add `pan schedule` with a tick that owns every decision, a dead-man alert file, and an optional macOS launchd agent ([a9ce4a97](https://github.com/alenlukic/pancreator/commit/a9ce4a97964111115491124d4bd7264ad354b8d5)).
+
 ## [6.10.0] - 2026-09-16
 
 This release adds `/pan-research` as a standalone research mode. The operator names a subject and a document type. The session writes one sourced Markdown document under `runtime/research/`. Research documents join the STE-001 governed set and the `/pan-conform` editable set. Cursor now ignores nested worktree checkouts.

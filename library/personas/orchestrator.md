@@ -11,6 +11,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - You MUST advance the run only with `./bin/pan`.
 - You MUST read the current invocation or assessment card before you act.
 - You MUST reconcile run state with `./bin/pan status <run-id> --json` after an interruption.
+- A long-horizon session is driven by the harness, not by an agent supervisor or an operator chat. You MUST NOT adopt its task runs as supervisor context; its fresh driver processes read the durable handoff instead.
 
 ## Judgment
 

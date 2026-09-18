@@ -136,6 +136,41 @@ When away mode is disabled, stop at each unresolved operator gate as before.
 When the active request already supplies a decision, execute it instead of
 asking again.
 
+### Harness-owned headless driver
+
+`driveRun` in `src/lib/headless-driver.ts` advances one run through the same
+pending-action loop the eval runner uses. A harness-owned caller supplies any
+operator-decision resolver and explicit authority to attest the supervisor
+card. The driver prepares, delegates, and submits one stage at a time, returns
+a typed operator pause instead of retrying it, and stops at a terminal state or
+the caller's step bound. A caller that advances several runs starts a fresh
+driver process for each run; no counters or stop reason cross that boundary.
+
+The headless delegation option lets this driver dispatch a `cursor` persona
+through the installed `cursor-agent` binary. Preflight requires the binary, a
+resolved `CURSOR_API_KEY`, and a help text that still declares every flag a
+stage delegation emits, so a CLI release that drops one pauses the run with a
+named remedy instead of failing at spawn time. The same option reaches the
+stage's parallel evidence workers: without it a Cursor evidence worker stays
+skipped, and a driven run cannot advance any stage that declares one. Those
+workers launch before the stage delegation, so the same preflight runs ahead
+of the first of them and pauses the run with the same remedy.
+
+The adapter pipes the rendered `<invocation-id>.delivery.md` body on stdin and
+preserves the snapshotted model spec verbatim. It compares the stream's
+`system/init` model against the local Cursor catalog prediction and fails on a
+mismatch. The catalog is operator-local and optional, so the delegation record
+states which of the two happened: `model_verification` is `compared` with the
+predicted variant, or `unverifiable` with the reason no prediction existed.
+Run `./bin/pan models --sync` to turn an `unverifiable` record into a real
+drift check.
+
+Cursor's CLI exposes workspace roots but no per-path write policy. The process
+therefore receives the stage workspace through `--workspace` and the harness
+runtime tree through `--add-dir`. Its delegation record names both roots and
+states that no per-path policy was applied. `scope.no_unapproved_changes`
+remains the gate of record for workspace mutation.
+
 ### Supervisor governance card and attestation
 
 A supervisor session receives its policies the same way a worker does: as one
@@ -227,7 +262,8 @@ launch itself. An elapsed time shorter than the watch record's own
 first-to-last wake span is labeled `elapsed_implausible` and names both
 numbers. `--foreground-returned` and `--mark-background` are exclusive.
 
-`pan submit` accepts one of three records for every Cursor worker invocation:
+`pan submit` accepts one of three records for every worker invocation an
+operator session delegated:
 
 1. `watch_completed` — a watch record that ends in a completed wake.
 2. `watch_observed_final_output` — a watch record that reached no verdict of
@@ -242,10 +278,13 @@ numbers. `--foreground-returned` and `--mark-background` are exclusive.
 A submission with none of the three fails with the hard error
 `DELEGATION_UNOBSERVED` before any validator or gate runs and consumes
 no stage attempt; the supervisor records the missing observation and submits
-again. External-executor stages that `pan delegate` runs are exempt because
-the harness writes their delegation evidence. The stage record carries the
-observation as `delegation_observation`, naming which record proved the
-worker reached a terminal state.
+again. A harness-delegated stage is exempt only when its delegation execution
+record names the run and invocation, whichever executor ran it. The refusal
+message points at `pan delegate` only for a stage that command dispatches; a
+Cursor stage an operator session delegated is told about the watch record and
+the attestation instead. The stage record carries the observation as
+`delegation_observation`, naming which record proved the worker reached a
+terminal state.
 
 `pan output validate <run-id> --file <path> --invocation <path>` runs every
 validator `pan submit` runs before its shell gates — the evidence-report,
@@ -603,6 +642,9 @@ Shipped profiles:
 - `standard` — workflow-declared gates. You ratify the plan and approve release.
 - `hands-off` — the supervisor ratifies the plan instead of you; release still
   stops for your explicit approval.
+- `long-horizon` — the supervisor ratifies the plan, the run carries the
+  `long_horizon` contract, and profile-scoped away mode handles bounded
+  decisions until post-run review. Release still stops for your approval.
 - `technical-director` — you refine the technical plan with its author before
   implementation and respond to the independent review before the run continues.
 - `high-touch` — every stage stops for your explicit approval.
@@ -610,7 +652,163 @@ Shipped profiles:
 `init` reports the resolved profile, active contracts, and any gate that replaced
 a workflow default, so you know where the run will stop before it starts. The run
 snapshots that resolution, so editing `config.json` afterwards never changes a
-run in flight.
+run in flight. A planning run also passes its recorded profile to every delivery,
+chunk, and release run it starts, so the route cannot fall back to a later
+configuration default.
+
+Selecting `long-horizon` snapshots its away-mode guardrails. If a custom profile
+carries the `long_horizon` contract with away mode disabled or omitted, run
+creation forces the snapshot on and records the configured value, applied value,
+and reason without editing `config.json`. The mode changes gate ownership and the
+mode-scoped policy set only. It does not lower verification, review depth,
+correctness checks, the release boundary, or any operator-owned irreversible
+action.
+
+### Long-horizon sessions
+
+A long-horizon session owns an ordered queue of workflow tasks and one-off prompt
+tasks. The worktree-capable surface is `horizon init --queue <path> --worktree <name>`.
+The queue is a JSON file with `tasks` and optional dependency `edges`. A
+workflow task names `workflow` and `request_path`; a prompt task names `prompt`.
+Each task may name `workspace` or `worktree`, and `depends_on` adds direct
+dependencies. Initialization rejects unknown dependencies and reports a cycle by
+its task ids.
+
+```sh
+./bin/pan horizon init --queue runtime/inbox/queue/<queue>.json --involvement long-horizon --worktree <name> --json
+./bin/pan horizon start <session-id> --attest-supervisor-card --json
+```
+
+Start is one preflight operation. It records the selected involvement profile,
+arms away mode for the session, records the override, and records permission for
+the driver to attest each task run's supervisor card. Without
+`--attest-supervisor-card`, preflight refuses before any task starts. After a
+successful start, the harness advances tasks until the session is terminal or no
+eligible task remains. It does not publish, deploy, or take an operator-only
+release decision.
+
+The session state lives at
+`runtime/logs/horizon/<session-id>/session.json`. An append-only `events.jsonl`
+sits beside it. Only one task runs at a time. A task becomes eligible when all of
+its dependencies succeeded; declared queue order breaks ties. Deferring a task
+marks only its transitive dependents blocked and leaves unrelated tasks eligible.
+The deferral is written both to `deferred.jsonl` and to an actionable request
+under `runtime/inbox/queue/`. Deferring the active task pauses its run before
+the session releases the slot, and the session refuses to open the next task
+while any task's run is still in flight, so two workflows never mutate one
+workspace at the same time. A run already resting in a pause keeps the pending
+decision you own.
+
+Failures use one fixed per-task ladder:
+
+1. Two transient signatures may retry.
+2. A repeated signature, or the first failure after those retries, spends one
+   strategy switch and routes to the workflow's declared repair stage.
+3. The next exhaustion starts one planning run from the structured failure
+   record, scoped to the task and its dependents.
+4. A second exhaustion or a human-only blocker defers the task.
+
+The failure signature is the sorted set of failed hard criteria, or the
+validation-only marker. The counters live on the task's run and survive ordinary
+run resume. A long-horizon run that belongs to no session pauses after the engine
+rungs because no queue exists to receive a deferral.
+
+Every started, finished, deferred, excluded, and quiescent transition writes a
+JSON handoff and a readable companion under `handoffs/`. The handoff carries the
+queue shape, last task, open deferrals, and one next action. Each task runs in a
+new driver process that reads the latest handoff and session record. That process
+boundary is the only continuity mechanism. `pan horizon resume <session-id>` is a
+post-run inspection command that reads the latest handoff; the running session
+does not wait for it.
+
+Useful inspection and post-run controls:
+
+```sh
+./bin/pan horizon status <session-id> --json
+./bin/pan horizon resume <session-id> --json
+./bin/pan horizon defer <session-id> --task <id> --reason '<reason>' --json
+./bin/pan horizon abandon <session-id> --reason '<reason>' --json
+```
+
+A prompt task writes its text to the request inbox and resolves the `unbound`
+standalone card with the session's snapshotted contracts. An ordinary unbound
+card outside a session still resolves with no run contract.
+
+## Scheduled jobs
+
+Scheduling is opt-in. The tracked `config.json` ships this block disabled, with
+no jobs:
+
+```json
+{
+  "schedule": {
+    "enabled": false,
+    "catch_up_window_minutes": 360,
+    "grace_period_minutes": 60,
+    "jobs": []
+  }
+}
+```
+
+A job names a unique `id`, `enabled`, `hour`, `minute`, one target (`workspace`
+or `worktree`), and one `action`. Optional `weekdays` use `0` for Sunday through
+`6` for Saturday. `timezone` is an IANA name; without it, the machine's local
+zone defines the wall-clock hour. A job may override the block's catch-up window
+and grace period.
+
+Actions have four shapes:
+
+```json
+{ "kind": "command", "command": "./bin/pan validate" }
+{ "kind": "workflow", "workflow": "planning", "request_path": "docs/scheduled-workflow-request.md", "involvement": "long-horizon", "verification": "light", "pipeline_config": "advanced", "attest_supervisor_card": true }
+{ "kind": "session", "queue_path": "runtime/inbox/queue/session.json", "involvement": "long-horizon" }
+{ "kind": "prompt", "prompt": "Prepare the weekly dependency report.", "workflow": "planning", "attest_supervisor_card": true }
+```
+
+A workflow job does not attest its supervisor card unless
+`attest_supervisor_card` is true. A session uses its own long-horizon preflight
+arming. A prompt is written under `runtime/inbox/queue/` and then starts the
+named workflow against that request.
+
+Use the command family directly or call `tick` from any external trigger:
+
+```sh
+./bin/pan schedule list --json
+./bin/pan schedule validate --json
+./bin/pan schedule tick --json
+./bin/pan schedule run <job-id> --json
+./bin/pan schedule status --json
+./bin/pan schedule install-agent --json
+./bin/pan schedule uninstall-agent --json
+```
+
+The tick owns all decisions. A start within five minutes of the scheduled
+minute records `fired`, a later start inside the bounded window records
+`caught_up`, the first instant past that window records `dropped`, and any
+non-terminal run holding the target records `deferred`. The five-minute
+tolerance matches the trigger interval, so an ordinary poll is not reported as
+a late catch-up. A deferred occurrence stays eligible until its window closes.
+
+Each decision appends to `runtime/logs/schedule/<job-id>.jsonl`. A later poll
+of an occurrence the ledger already decided reports the skip in the command
+output and appends nothing, so the ledger grows with the schedule rather than
+with the trigger interval. A job whose evaluation fails records that failure
+and does not stop its peers; a ledger line that no longer parses is skipped and
+counted in the next record's `damaged_ledger_lines`.
+
+At the end of each tick, a missing timely success opens an alert in the
+atomically replaced `runtime/logs/schedule/alerts.json`. Only a success
+recorded after the alert opened clears it, so a job that never runs keeps its
+notice open across every later occurrence. Open and clear events append to
+`alerts.jsonl`. `schedule status` reads the same current open set; no
+notification service is required.
+
+On macOS, `install-agent` renders `library/templates/launchd-schedule.plist`
+into `~/Library/LaunchAgents/com.pancreator.schedule.plist` and loads it.
+`uninstall-agent` unloads and removes that file. A failed load removes the
+plist it rendered and names the command to rerun. Installation and update never
+run either command. On other platforms, `install-agent` refuses and names
+`pan schedule tick` as the portable entry point.
 
 ## Set how thoroughly a run verifies
 
@@ -821,7 +1019,7 @@ An external-executor persona is executed by that runtime instead of a Cursor sub
 
 Note that `openai:` names a runtime, while `oai:` names a tier alias family of Cursor models. They are unrelated, and an alias family value may never carry an executor prefix.
 
-Behavior shared by every external executor:
+Behavior shared by every harness-dispatched executor:
 
 - Run creation verifies the executor is reachable; the first delegation of a run verifies credentials. A failed preflight pauses the run with an operator decision — it is an operator-visible stop, not an error to work around, and the harness never silently substitutes Cursor.
 - When a run reaches an external stage, the supervisor runs `./bin/pan delegate <run-id>` instead of invoking a subagent. The harness delivers the canonical card, writes the delegation evidence itself, and records the executor session.

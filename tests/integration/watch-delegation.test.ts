@@ -59,6 +59,11 @@ test('submit refuses with DELEGATION_UNOBSERVED when neither a watch record nor 
       assert.match(failure.message, /^DELEGATION_UNOBSERVED: invocation /u)
       assert.match(failure.message, /no watch record exists at /u)
       assert.match(failure.message, /--foreground-returned --invocation /u)
+      // This stage maps to Cursor, which an operator session delegates itself.
+      // Calling it an external executor would send the supervisor to
+      // `pan delegate`, which refuses that stage without the headless option.
+      assert.doesNotMatch(failure.message, /names an external executor/u)
+      assert.doesNotMatch(failure.message, /`pan delegate` did not run/u)
 
       return true
     },
@@ -607,6 +612,7 @@ test('the external-executor exemption requires the delegation-execution record p
   assert.equal(without.observed, false)
   assert.equal(without.source, null)
   assert.equal(without.execution_record_present, false)
+  assert.equal(without.external_executor, true)
   assert.equal(
     without.execution_record_path,
     delegationExecutionPath(state.run_id, invocationId, root),
@@ -616,6 +622,26 @@ test('the external-executor exemption requires the delegation-execution record p
 
   assert.match(unobserved, /no execution record exists at /u)
   assert.match(unobserved, /`pan delegate` did not run this worker/u)
+
+  // The same absent record on a stage `pan delegate` does not dispatch reads
+  // the missing record the same way and says nothing about an external
+  // executor. The exemption lookup is shared; only the wording differs.
+  const operatorSession = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+  )
+
+  assert.equal(operatorSession.external_executor, false)
+  assert.equal(operatorSession.execution_record_present, false)
+  assert.equal(
+    operatorSession.execution_record_path,
+    delegationExecutionPath(state.run_id, invocationId, root),
+  )
+  assert.doesNotMatch(
+    await_message(operatorSession),
+    /names an external executor/u,
+  )
 
   // A record for another invocation does not count.
   const recordPath = path.join(
@@ -677,4 +703,11 @@ test('the external-executor exemption requires the delegation-execution record p
   assert.equal(withRecord.observed, true)
   assert.equal(withRecord.source, 'external_executor')
   assert.equal(withRecord.execution_record_present, true)
+
+  // The harness delegates a Cursor stage too, so the exemption reads the same
+  // record without the external-executor shape.
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).source,
+    'external_executor',
+  )
 })

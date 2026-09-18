@@ -65,7 +65,6 @@
       "text": "An automatic advance that fails MUST leave the merge proof unwritten and MUST report the concrete error with the manual integrate command. That command MUST stay available and idempotent as the retry (`tests/integration/cohort-auto-advance.test.ts::a failed automatic advance reports the manual command and the retry completes it`).",
       "audience": ["harness"]
     },
-    "The exclusion of one unit from a group MUST be an operator decision. The record MUST carry the operator's stated reason.",
     {
       "text": "The harness MUST refuse to remove a unit's workspace while its run is live or its workspace holds uncommitted work. Only an explicit operator force overrides that refusal (`tests/integration/cohort-fanout-start.test.ts::cleaning a session removes its chunk worktrees and keeps the branches`).",
       "audience": ["harness"]

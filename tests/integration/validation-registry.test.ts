@@ -234,3 +234,45 @@ test('repository validation rejects a lookup row that renders no instruction', (
     /loads PAIR-001, whose instruction list is empty at card audience agent/u,
   )
 })
+
+// `applyOperatorInvolvement` no longer rejects a stage key the workflow under
+// construction does not declare, because a profile is shared across workflows.
+// Authoring time is therefore the only place a mistyped slug is caught, and
+// the promise in `docs/workflow-authoring.md` rests on this check alone.
+test('repository validation rejects an involvement profile stage no workflow defines', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const configPath = path.join(root, 'config.json')
+  const config = readJson<{
+    operator_involvement: {
+      profiles: Record<
+        string,
+        { summary: string; gates: Record<string, string> }
+      >
+    }
+  }>(configPath)
+
+  // `plan` is declared by the planning workflow and not by delivery, so a
+  // profile naming it is inert elsewhere rather than mistyped.
+  config.operator_involvement.profiles.shared = {
+    summary: 'One workflow declares the stage this profile names.',
+    gates: { plan: 'supervisor' },
+  }
+  writeJsonFile(configPath, config)
+
+  assert.doesNotMatch(
+    validateRepository(root).errors.join('\n'),
+    /which no workflow defines/u,
+  )
+
+  config.operator_involvement.profiles.mistyped = {
+    summary: 'No workflow declares the stage this profile names.',
+    gates: { shipp: 'operator' },
+  }
+  writeJsonFile(configPath, config)
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /operator-involvement profile 'mistyped' targets stage 'shipp', which no workflow defines/u,
+  )
+})

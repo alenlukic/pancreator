@@ -270,6 +270,22 @@ export function selectAwayOption(
   return { selected: null, rejected }
 }
 
+/**
+ * Whether any permitted autonomous action can clear one blocker.
+ *
+ * Every human-only class the long-horizon ladder names reaches this predicate
+ * the same way: a denied decision, a guardrail that forbids every ranked
+ * option, and a quarantined agent with no supported recovery all leave
+ * `selectAwayOption` with nothing selected. The session consumes only this
+ * predicate. Ranking, guardrail filtering, and ledger writes stay at their
+ * existing away-mode call sites.
+ */
+export function awayBlockerCanBeCleared(
+  selection: ReturnType<typeof selectAwayOption>,
+): boolean {
+  return selection.selected !== null
+}
+
 /** Identify only the blocker classes the approved away-mode design permits. */
 export function awayModeTrigger(
   state: RunState,
@@ -301,7 +317,13 @@ export function awayModeTrigger(
   // produced. A progressing run with stale blocked history is not a blocker.
   if (
     state.status === 'paused' &&
-    state.stage_history.at(-1)?.outcome === 'blocked'
+    state.stage_history.at(-1)?.outcome === 'blocked' &&
+    // An operator-only pending action is never a permitted blocker class,
+    // whichever pause produced it.
+    !(
+      state.pending_action.type === 'operator_decision' &&
+      state.pending_action.operator_only === true
+    )
   ) {
     return {
       type: 'stage_blocked',

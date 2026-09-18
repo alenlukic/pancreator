@@ -134,6 +134,27 @@
           "*": "operator"
         },
         "contracts": ["technical_director"]
+      },
+      "long-horizon": {
+        "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged.",
+        "gates": {
+          "plan": "supervisor"
+        },
+        "contracts": ["long_horizon"],
+        "away_mode": {
+          "enabled": true,
+          "guardrails": {
+            "allowed_actions": [
+              "approve",
+              "reject",
+              "revise",
+              "resume",
+              "set-stage"
+            ],
+            "max_decisions_per_run": 3,
+            "max_remediation_attempts_per_agent": 2
+          }
+        }
       }
     }
   },
@@ -143,6 +164,12 @@
       "note": "Built-in levels: minimal (static and fast gate the implement and remediate loops; no gate runs full, including the ship release gate), light (static and fast gate the implement and remediate loops; the full profile runs only as the ship release gate when the run enters ship, a failure routes to remediate and returns to ship, at most twice before the operator decides), thorough (alias of light kept for existing snapshots). No verify or remediate gate runs full. Agents iterate on the impacted profile plus their added tests, run the fast profile once each as final validation, and never run full. The full profile is never baselined before implementation. Operator-declared levels here merge over the built-ins. Runs snapshot the resolved level. Change an in-flight run with ./bin/pan verification <run-id> set <level>. Inspect levels with ./bin/pan verification."
     },
     "active": "light"
+  },
+  "schedule": {
+    "enabled": false,
+    "catch_up_window_minutes": 360,
+    "grace_period_minutes": 60,
+    "jobs": []
   },
   "away_mode": {
     "enabled": false

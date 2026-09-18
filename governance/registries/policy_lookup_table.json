@@ -119,6 +119,20 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
+      "long_horizon": false,
+      "policies": ["SINGLERUN-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
+      "long_horizon": true,
+      "policies": ["HORIZON-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
       "contract": "technical_director",
       "policies": ["DIRECTOR-001"]
     },

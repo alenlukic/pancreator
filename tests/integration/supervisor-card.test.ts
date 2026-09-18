@@ -73,7 +73,8 @@ test('pan init renders the supervisor card and records its digest in run state',
       !row.installation_scope &&
       !row.technology &&
       !row.contract &&
-      !row.operator_artifacts
+      !row.operator_artifacts &&
+      row.long_horizon !== true
     ) {
       for (const id of row.policies) {
         expected.add(id)

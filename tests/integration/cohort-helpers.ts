@@ -26,7 +26,11 @@ export interface ChunkSpec {
  * records, so the fixture writes those records rather than a plan object the
  * commands would have to be told about.
  */
-export function ratifiedPlanRun(root: string, chunks: ChunkSpec[]): string {
+export function ratifiedPlanRun(
+  root: string,
+  chunks: ChunkSpec[],
+  involvement?: string,
+): string {
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
   writeFileSync(
     path.join(root, 'runtime', 'specs', 'parent-specification.md'),
@@ -48,6 +52,7 @@ export function ratifiedPlanRun(root: string, chunks: ChunkSpec[]): string {
   const run = createRun(root, {
     workflowSlug: 'planning',
     requestPath: 'planning-request.md',
+    involvement,
   })
   const outputPath = `runtime/logs/workflows/${run.run_id}/agent/outputs/plan-1.json`
   const indexes = [...new Set(chunks.map((chunk) => chunk.cohort_index))].sort()
