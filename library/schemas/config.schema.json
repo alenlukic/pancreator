@@ -276,6 +276,117 @@
         }
       }
     },
+    "schedule": {
+      "type": "object",
+      "description": "Calendar jobs evaluated by pan schedule tick. The shipped configuration is disabled.",
+      "required": ["enabled", "jobs"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "catch_up_window_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 360
+        },
+        "grace_period_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 60
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "enabled", "hour", "minute", "action"],
+            "additionalProperties": false,
+            "oneOf": [
+              {
+                "required": ["workspace"],
+                "not": { "required": ["worktree"] }
+              },
+              { "required": ["worktree"], "not": { "required": ["workspace"] } }
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "enabled": { "type": "boolean" },
+              "hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+              "minute": { "type": "integer", "minimum": 0, "maximum": 59 },
+              "weekdays": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "integer", "minimum": 0, "maximum": 6 }
+              },
+              "timezone": { "type": "string", "minLength": 1 },
+              "catch_up_window_minutes": { "type": "integer", "minimum": 0 },
+              "grace_period_minutes": { "type": "integer", "minimum": 0 },
+              "workspace": { "type": "string", "minLength": 1 },
+              "worktree": { "type": "string", "minLength": 1 },
+              "action": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["kind", "command"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "command" },
+                      "command": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "workflow", "request_path"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "workflow" },
+                      "workflow": { "type": "string", "minLength": 1 },
+                      "request_path": { "type": "string", "minLength": 1 },
+                      "involvement": { "type": "string", "minLength": 1 },
+                      "verification": { "type": "string", "minLength": 1 },
+                      "pipeline_config": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "attest_supervisor_card": { "type": "boolean" }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "queue_path"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "session" },
+                      "queue_path": { "type": "string", "minLength": 1 },
+                      "involvement": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "prompt"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "prompt" },
+                      "prompt": { "type": "string", "minLength": 1 },
+                      "workflow": { "type": "string", "minLength": 1 },
+                      "involvement": { "type": "string", "minLength": 1 },
+                      "verification": { "type": "string", "minLength": 1 },
+                      "pipeline_config": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "attest_supervisor_card": { "type": "boolean" }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "installation_mode": {
       "description": "self_development is the Pancreator source checkout. embedded installs the harness at <target>/.pancreator. detached installs it outside the target tree, requiring an absolute workspace_root.",
       "enum": ["self_development", "embedded", "detached"]

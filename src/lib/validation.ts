@@ -4469,6 +4469,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'docs/operator-brief-system.md',
     'library/templates/repository-checks.json',
     'library/templates/repository-checks.self-development.json',
+    'library/templates/launchd-schedule.plist',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
     'governance/policies/PY-001.json',

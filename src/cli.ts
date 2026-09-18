@@ -73,6 +73,15 @@ import {
   applyAwayDecision,
   evaluateAwayState,
 } from './lib/away-orchestration.js'
+import {
+  installScheduleAgent,
+  resolveScheduleConfig,
+  runScheduledJob,
+  scheduleStatus,
+  scheduleTick,
+  uninstallScheduleAgent,
+  validateSchedule,
+} from './lib/schedule.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import {
@@ -398,6 +407,9 @@ export const HELP_BODY = `Usage:
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
   pan best-of-n prune [--force] [--json]
+  pan schedule list|status|tick|validate|install-agent|uninstall-agent [--json]
+  pan schedule run <job-id> [--json]
+      Evaluate configured calendar jobs, force one named job, inspect filesystem alerts, validate job references, or install and remove the opt-in macOS launchd trigger. Any platform can invoke 'pan schedule tick' from an external trigger.
   pan horizon init --queue <path> [--session <id>] [--involvement <profile>] [--worktree <name>] [--json]
   pan horizon add <session-id> --task <task-json> [--json]
   pan horizon start <session-id> --attest-supervisor-card [--json]
@@ -692,6 +704,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'release',
   'repository-check',
   'requirements',
+  'schedule',
   'spotfix',
   'style',
   'technologies',
@@ -3368,6 +3381,46 @@ async function main(): Promise<void> {
           code: 'UNKNOWN_COMMAND',
         },
       )
+    }
+    case 'schedule': {
+      const sub = args[0]
+      const rest = args.slice(1)
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'list') {
+        print(resolveScheduleConfig(root), asJson)
+        return
+      }
+      if (sub === 'status') {
+        print(scheduleStatus(root), asJson)
+        return
+      }
+      if (sub === 'tick') {
+        print(scheduleTick(root), asJson)
+        return
+      }
+      if (sub === 'run') {
+        print(
+          runScheduledJob(root, requiredPositional(rest[0], 'job-id')),
+          asJson,
+        )
+        return
+      }
+      if (sub === 'validate') {
+        print(validateSchedule(root), asJson)
+        return
+      }
+      if (sub === 'install-agent') {
+        print(installScheduleAgent(root), asJson)
+        return
+      }
+      if (sub === 'uninstall-agent') {
+        print(uninstallScheduleAgent(root), asJson)
+        return
+      }
+      throw new PanError(`Unknown schedule subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'horizon': {
       const sub = args[0]

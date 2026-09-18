@@ -500,7 +500,12 @@ function newTask(task: HorizonQueueTaskInput): HorizonTask {
 export function initHorizonSession(
   root: string,
   queuePath: string,
-  options: { sessionId?: string; involvement?: string; worktree?: string } = {},
+  options: {
+    sessionId?: string
+    involvement?: string
+    workspace?: string
+    worktree?: string
+  } = {},
 ): HorizonSessionState {
   const queue = parseHorizonQueue(
     readJson(resolveInside(root, queuePath)),
@@ -551,7 +556,9 @@ export function initHorizonSession(
       newTask(
         options.worktree && !task.workspace && !task.worktree
           ? { ...task, worktree: options.worktree }
-          : task,
+          : options.workspace && !task.workspace && !task.worktree
+            ? { ...task, workspace: options.workspace }
+            : task,
       ),
     ),
     edges: queue.edges ?? [],
@@ -1224,6 +1231,48 @@ function advanceAwayBlocker(
   return { advanced: true }
 }
 
+/**
+ * Drive one run to a stop, applying away-mode decisions while the workflow
+ * pauses on a blocker the evaluator owns. `blocked` names the reason the loop
+ * gave up, so a caller renders the exhausted bound in its own vocabulary
+ * instead of keeping a second copy of this loop and its bound.
+ */
+export function driveRunUnderAwayMode(
+  root: string,
+  runId: string,
+  options: { attestSupervisorCard: boolean; attestedBy: string },
+  drive: typeof driveRun = driveRun,
+): { driven: HeadlessDriverResult; blocked: string | null } {
+  let driven = drive(root, runId, options)
+  let awaySteps = 0
+
+  while (
+    driven.stop.type === 'operator_pause' &&
+    !driven.stop.operator_only &&
+    // The session owns rungs three and four for its own typed pause, so the
+    // away evaluator never sees a ladder exhaustion.
+    driven.state.horizon_ladder?.pause_kind !== 'ladder_exhausted'
+  ) {
+    if (awaySteps >= AWAY_STEP_BOUND) {
+      return {
+        driven,
+        blocked: `The task spent its ${AWAY_STEP_BOUND}-decision away-mode bound without clearing the blocker.`,
+      }
+    }
+
+    const attempt = advanceAwayBlocker(root, driven.state)
+
+    if (!attempt.advanced) {
+      return { driven, blocked: attempt.reason }
+    }
+
+    driven = drive(root, runId, options)
+    awaySteps += 1
+  }
+
+  return { driven, blocked: null }
+}
+
 /** Drive the active workflow task and persist its resulting session transition. */
 export function checkpointHorizonSession(
   root: string,
@@ -1237,40 +1286,14 @@ export function checkpointHorizonSession(
     if (!task?.run_id)
       fail(`Horizon session '${sessionId}' has no active workflow task.`)
 
-    let driven = driveRun(root, task.run_id, {
+    const attempt = driveRunUnderAwayMode(root, task.run_id, {
       attestSupervisorCard: state.preflight.card_attestation_authorized,
       attestedBy: `horizon:${sessionId}`,
     })
-    let awaySteps = 0
-
-    while (
-      driven.stop.type === 'operator_pause' &&
-      !driven.stop.operator_only &&
-      // The session owns rungs three and four for its own typed pause, so the
-      // away evaluator never sees a ladder exhaustion.
-      driven.state.horizon_ladder?.pause_kind !== 'ladder_exhausted'
-    ) {
-      if (awaySteps >= AWAY_STEP_BOUND) {
-        driven = operatorOnlyStop(
-          driven,
-          `The task spent its ${AWAY_STEP_BOUND}-decision away-mode bound without clearing the blocker.`,
-        )
-        break
-      }
-
-      const attempt = advanceAwayBlocker(root, driven.state)
-
-      if (!attempt.advanced) {
-        driven = operatorOnlyStop(driven, attempt.reason)
-        break
-      }
-
-      driven = driveRun(root, task.run_id, {
-        attestSupervisorCard: state.preflight.card_attestation_authorized,
-        attestedBy: `horizon:${sessionId}`,
-      })
-      awaySteps += 1
-    }
+    let driven =
+      attempt.blocked === null
+        ? attempt.driven
+        : operatorOnlyStop(attempt.driven, attempt.blocked)
 
     state = reconcileDrivenTask(root, state, task, driven)
     const transitioned = state.active_task_id === null

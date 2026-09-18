@@ -285,6 +285,212 @@ function assertAwayModeBlock(value: unknown): void {
   )
 }
 
+const SCHEDULE_JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u
+
+function assertScheduleMinutes(value: unknown, source: string): void {
+  invariant(
+    value === undefined || (Number.isInteger(value) && (value as number) >= 0),
+    `${source} MUST be a non-negative integer when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+}
+
+function assertScheduleAction(value: unknown, source: string): void {
+  invariant(isRecord(value), `${source} MUST be an action object.`, {
+    code: 'INVALID_PROJECT_CONFIG',
+  })
+
+  const kind = value.kind
+  invariant(
+    kind === 'command' ||
+      kind === 'workflow' ||
+      kind === 'session' ||
+      kind === 'prompt',
+    `${source}.kind MUST be command, workflow, session, or prompt.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  const nonEmpty = (candidate: unknown): candidate is string =>
+    typeof candidate === 'string' && candidate.trim().length > 0
+  const shared = [
+    'kind',
+    'involvement',
+    'verification',
+    'pipeline_config',
+    'attest_supervisor_card',
+  ]
+  const allowed =
+    kind === 'command'
+      ? ['kind', 'command']
+      : kind === 'session'
+        ? ['kind', 'queue_path', 'involvement']
+        : kind === 'workflow'
+          ? [...shared, 'workflow', 'request_path']
+          : [...shared, 'prompt', 'workflow']
+  const unsupported = Object.keys(value).filter((key) => !allowed.includes(key))
+  invariant(
+    unsupported.length === 0,
+    `${source} contains unsupported fields for '${kind}': ${unsupported.join(', ')}.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  if (kind === 'command') {
+    invariant(nonEmpty(value.command), `${source}.command MUST be non-empty.`, {
+      code: 'INVALID_PROJECT_CONFIG',
+    })
+    return
+  }
+
+  if (kind === 'session') {
+    invariant(
+      nonEmpty(value.queue_path),
+      `${source}.queue_path MUST be non-empty.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  } else if (kind === 'workflow') {
+    invariant(
+      nonEmpty(value.workflow) && nonEmpty(value.request_path),
+      `${source} MUST name a non-empty workflow and request_path.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  } else {
+    invariant(nonEmpty(value.prompt), `${source}.prompt MUST be non-empty.`, {
+      code: 'INVALID_PROJECT_CONFIG',
+    })
+    invariant(
+      value.workflow === undefined || nonEmpty(value.workflow),
+      `${source}.workflow MUST be non-empty when present.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  }
+
+  invariant(
+    value.involvement === undefined || nonEmpty(value.involvement),
+    `${source}.involvement MUST be non-empty when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  if (kind !== 'session') {
+    invariant(
+      value.verification === undefined || nonEmpty(value.verification),
+      `${source}.verification MUST be non-empty when present.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(
+      value.pipeline_config === undefined || nonEmpty(value.pipeline_config),
+      `${source}.pipeline_config MUST be non-empty when present.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(
+      value.attest_supervisor_card === undefined ||
+        typeof value.attest_supervisor_card === 'boolean',
+      `${source}.attest_supervisor_card MUST be boolean when present.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  }
+}
+
+function assertScheduleBlock(value: unknown): void {
+  if (value === undefined) return
+
+  invariant(
+    isRecord(value) &&
+      typeof value.enabled === 'boolean' &&
+      Array.isArray(value.jobs),
+    `${PROJECT_CONFIG_PATH}.schedule MUST contain enabled as a boolean and jobs as an array.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  assertScheduleMinutes(
+    value.catch_up_window_minutes,
+    `${PROJECT_CONFIG_PATH}.schedule.catch_up_window_minutes`,
+  )
+  assertScheduleMinutes(
+    value.grace_period_minutes,
+    `${PROJECT_CONFIG_PATH}.schedule.grace_period_minutes`,
+  )
+
+  const ids = new Set<string>()
+  for (const [index, job] of value.jobs.entries()) {
+    const source = `${PROJECT_CONFIG_PATH}.schedule.jobs[${index}]`
+    invariant(isRecord(job), `${source} MUST be an object.`, {
+      code: 'INVALID_PROJECT_CONFIG',
+    })
+    invariant(
+      typeof job.id === 'string' && SCHEDULE_JOB_ID.test(job.id),
+      `${source}.id MUST match ${SCHEDULE_JOB_ID.source}.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(!ids.has(job.id), `${source}.id duplicates '${job.id}'.`, {
+      code: 'INVALID_PROJECT_CONFIG',
+    })
+    ids.add(job.id)
+    invariant(
+      typeof job.enabled === 'boolean',
+      `${source}.enabled MUST be boolean.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(
+      Number.isInteger(job.hour) &&
+        (job.hour as number) >= 0 &&
+        (job.hour as number) <= 23,
+      `${source}.hour MUST be an integer from 0 through 23.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(
+      Number.isInteger(job.minute) &&
+        (job.minute as number) >= 0 &&
+        (job.minute as number) <= 59,
+      `${source}.minute MUST be an integer from 0 through 59.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    invariant(
+      job.weekdays === undefined ||
+        (Array.isArray(job.weekdays) &&
+          job.weekdays.length > 0 &&
+          new Set(job.weekdays).size === job.weekdays.length &&
+          job.weekdays.every(
+            (day) => Number.isInteger(day) && day >= 0 && day <= 6,
+          )),
+      `${source}.weekdays MUST contain unique integers from 0 (Sunday) through 6 (Saturday).`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    if (job.timezone !== undefined) {
+      invariant(
+        nonEmptyScheduleString(job.timezone),
+        `${source}.timezone MUST be non-empty when present.`,
+        { code: 'INVALID_PROJECT_CONFIG' },
+      )
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: job.timezone as string })
+      } catch {
+        invariant(false, `${source}.timezone MUST be a valid IANA timezone.`, {
+          code: 'INVALID_PROJECT_CONFIG',
+        })
+      }
+    }
+    assertScheduleMinutes(
+      job.catch_up_window_minutes,
+      `${source}.catch_up_window_minutes`,
+    )
+    assertScheduleMinutes(
+      job.grace_period_minutes,
+      `${source}.grace_period_minutes`,
+    )
+    invariant(
+      (nonEmptyScheduleString(job.workspace) ? 1 : 0) +
+        (nonEmptyScheduleString(job.worktree) ? 1 : 0) ===
+        1,
+      `${source} MUST name exactly one of workspace or worktree.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    assertScheduleAction(job.action, `${source}.action`)
+  }
+}
+
+function nonEmptyScheduleString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 function assertFastWallBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -379,6 +585,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
 
   assertWorktreesBlock(value.worktrees)
   assertAwayModeBlock(value.away_mode)
+  assertScheduleBlock(value.schedule)
   assertFastWallBlock(value.fast_wall)
 
   // A detached harness cannot reach its target by a relative path that would

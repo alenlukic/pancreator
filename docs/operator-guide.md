@@ -734,6 +734,82 @@ A prompt task writes its text to the request inbox and resolves the `unbound`
 standalone card with the session's snapshotted contracts. An ordinary unbound
 card outside a session still resolves with no run contract.
 
+## Scheduled jobs
+
+Scheduling is opt-in. The tracked `config.json` ships this block disabled, with
+no jobs:
+
+```json
+{
+  "schedule": {
+    "enabled": false,
+    "catch_up_window_minutes": 360,
+    "grace_period_minutes": 60,
+    "jobs": []
+  }
+}
+```
+
+A job names a unique `id`, `enabled`, `hour`, `minute`, one target (`workspace`
+or `worktree`), and one `action`. Optional `weekdays` use `0` for Sunday through
+`6` for Saturday. `timezone` is an IANA name; without it, the machine's local
+zone defines the wall-clock hour. A job may override the block's catch-up window
+and grace period.
+
+Actions have four shapes:
+
+```json
+{ "kind": "command", "command": "./bin/pan validate" }
+{ "kind": "workflow", "workflow": "planning", "request_path": "docs/scheduled-workflow-request.md", "involvement": "long-horizon", "verification": "light", "pipeline_config": "advanced", "attest_supervisor_card": true }
+{ "kind": "session", "queue_path": "runtime/inbox/queue/session.json", "involvement": "long-horizon" }
+{ "kind": "prompt", "prompt": "Prepare the weekly dependency report.", "workflow": "planning", "attest_supervisor_card": true }
+```
+
+A workflow job does not attest its supervisor card unless
+`attest_supervisor_card` is true. A session uses its own long-horizon preflight
+arming. A prompt is written under `runtime/inbox/queue/` and then starts the
+named workflow against that request.
+
+Use the command family directly or call `tick` from any external trigger:
+
+```sh
+./bin/pan schedule list --json
+./bin/pan schedule validate --json
+./bin/pan schedule tick --json
+./bin/pan schedule run <job-id> --json
+./bin/pan schedule status --json
+./bin/pan schedule install-agent --json
+./bin/pan schedule uninstall-agent --json
+```
+
+The tick owns all decisions. A start within five minutes of the scheduled
+minute records `fired`, a later start inside the bounded window records
+`caught_up`, the first instant past that window records `dropped`, and any
+non-terminal run holding the target records `deferred`. The five-minute
+tolerance matches the trigger interval, so an ordinary poll is not reported as
+a late catch-up. A deferred occurrence stays eligible until its window closes.
+
+Each decision appends to `runtime/logs/schedule/<job-id>.jsonl`. A later poll
+of an occurrence the ledger already decided reports the skip in the command
+output and appends nothing, so the ledger grows with the schedule rather than
+with the trigger interval. A job whose evaluation fails records that failure
+and does not stop its peers; a ledger line that no longer parses is skipped and
+counted in the next record's `damaged_ledger_lines`.
+
+At the end of each tick, a missing timely success opens an alert in the
+atomically replaced `runtime/logs/schedule/alerts.json`. Only a success
+recorded after the alert opened clears it, so a job that never runs keeps its
+notice open across every later occurrence. Open and clear events append to
+`alerts.jsonl`. `schedule status` reads the same current open set; no
+notification service is required.
+
+On macOS, `install-agent` renders `library/templates/launchd-schedule.plist`
+into `~/Library/LaunchAgents/com.pancreator.schedule.plist` and loads it.
+`uninstall-agent` unloads and removes that file. A failed load removes the
+plist it rendered and names the command to rerun. Installation and update never
+run either command. On other platforms, `install-agent` refuses and names
+`pan schedule tick` as the portable entry point.
+
 ## Set how thoroughly a run verifies
 
 `config.json.verification` selects a named verification level: which

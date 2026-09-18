@@ -165,6 +165,12 @@
     },
     "active": "light"
   },
+  "schedule": {
+    "enabled": false,
+    "catch_up_window_minutes": 360,
+    "grace_period_minutes": 60,
+    "jobs": []
+  },
   "away_mode": {
     "enabled": false
   },

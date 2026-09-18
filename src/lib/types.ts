@@ -864,6 +864,56 @@ export interface ProjectConfig {
   installation_mode?: 'self_development' | 'embedded' | 'detached'
   /** Autonomous blocker handling, snapshotted into each new run. */
   away_mode?: AwayModeConfig
+  /** Calendar-triggered unattended work. Disabled in the shipped config. */
+  schedule?: ScheduleConfig
+}
+
+export type ScheduleWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
+export interface ScheduleActionOptions {
+  involvement?: string
+  verification?: string
+  pipeline_config?: string
+  attest_supervisor_card?: boolean
+}
+
+export type ScheduleAction =
+  | { kind: 'command'; command: string }
+  | ({
+      kind: 'workflow'
+      workflow: string
+      request_path: string
+    } & ScheduleActionOptions)
+  | {
+      kind: 'session'
+      queue_path: string
+      involvement?: string
+    }
+  | ({
+      kind: 'prompt'
+      prompt: string
+      workflow?: string
+    } & ScheduleActionOptions)
+
+export interface ScheduleJob {
+  id: string
+  enabled: boolean
+  hour: number
+  minute: number
+  weekdays?: ScheduleWeekday[]
+  timezone?: string
+  catch_up_window_minutes?: number
+  grace_period_minutes?: number
+  workspace?: string
+  worktree?: string
+  action: ScheduleAction
+}
+
+export interface ScheduleConfig {
+  enabled: boolean
+  catch_up_window_minutes?: number
+  grace_period_minutes?: number
+  jobs: ScheduleJob[]
 }
 
 export interface FastWallConfig {
