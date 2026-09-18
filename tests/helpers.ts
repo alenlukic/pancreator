@@ -500,6 +500,24 @@ function requiredData(
   }
 
   switch (stage) {
+    case 'design':
+      return {
+        design_spec: {
+          summary: 'A complete fixture design.',
+          screens: ['Primary'],
+          tokens: { color: '#000000' },
+        },
+        mocks: [
+          {
+            kind: 'html',
+            screen: 'Primary',
+            path: 'runtime/artifacts/mocks/primary.html',
+          },
+        ],
+        acceptance_criteria: [
+          { id: 'DAC-01', criterion: 'The primary screen is visible.' },
+        ],
+      }
     case 'intake':
       return {
         product_spec: {

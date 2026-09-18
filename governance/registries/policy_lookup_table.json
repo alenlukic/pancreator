@@ -501,6 +501,18 @@
       "policies": ["VERIFY-001"]
     },
     {
+      "persona": "design-reviewer",
+      "workflow": "delivery",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "design-qa",
+      "workflow": "delivery",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
       "persona": "remediator",
       "workflow": "delivery",
       "stage": "remediate",
@@ -545,6 +557,18 @@
     },
     {
       "persona": "qa-tester",
+      "workflow": "delivery-chunk",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "design-reviewer",
+      "workflow": "delivery-chunk",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "design-qa",
       "workflow": "delivery-chunk",
       "stage": "verify",
       "policies": ["VERIFY-001"]

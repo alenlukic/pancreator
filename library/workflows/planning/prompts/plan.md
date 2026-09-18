@@ -87,6 +87,16 @@ Each edge states `from` and `to`, naming chunk ids. Each cohort states
 lists the identifiers of the originating items several chunks carry, and it is
 omitted when every item has one owner.
 
+On a design-composed run the card also requires `data.design_plan`. It records
+where design work sits for the plan you wrote: `planning_stage` names the stage
+that produced the design specification and mocks, `verification_stage` names the
+stage that verifies the implemented UI against them, and `evidence_roles` lists
+the design evidence-worker roles that run there. The design stage's draft design
+acceptance criteria belong to the artifact one operator gate ratifies, so carry
+each one into `data.acceptance_criteria` with its own `AC-*` id and at least one
+test-plan case, and give it an owning chunk. Do not leave a design acceptance
+criterion in the design output alone.
+
 Each disposition states the question `id`, a `disposition` of `resolved`,
 `deferred`, or `escalated`, an `answer` naming the answer or the decision
 still required, and `evidence`, which is required and must be non-empty for a

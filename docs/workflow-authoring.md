@@ -37,7 +37,8 @@ is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate
   record. These broad budgets are independent of the universal same-reason
   circuit breaker: two consecutive hard failures with the same normalized
   signature pause immediately. The harness never silently resets a budget.
-- `stages` - ordered, unique stage slugs.
+- `stages` - unique stage slugs loaded for the base graph. The array is a load set; `start_stage` and transitions define execution order.
+- `design_composition` - optional additive graph data applied only for runs created with `--with-design`. It can load extra `stages`, replace `start_stage`, merge `limits`, and append `required_stage_outputs`, `required_data`, or `evidence_workers` through `stage_overrides`. Composition never mutates the base definition, and repository validation checks both graphs.
 
 ## Pipeline model configuration
 

@@ -12,6 +12,7 @@ import {
 import type {
   Criterion,
   CriterionType,
+  DesignComposition,
   JsonTypeName,
   StageCheckpoint,
   StageContextDefinition,
@@ -412,7 +413,7 @@ function parseRequiredData(
   return requiredData
 }
 
-function parseStage(
+export function parseStage(
   value: unknown,
   source: string,
   allowLegacyContext = false,
@@ -562,6 +563,152 @@ function parseStage(
   return stage
 }
 
+function parseDesignComposition(
+  value: unknown,
+  source: string,
+): DesignComposition | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(isRecord(value), `${source} MUST be an object when present.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+
+  const allowedKeys = new Set([
+    'stages',
+    'start_stage',
+    'limits',
+    'stage_overrides',
+  ])
+
+  invariant(Object.keys(value).length > 0, `${source} MUST NOT be empty.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+
+  for (const key of Object.keys(value)) {
+    invariant(allowedKeys.has(key), `${source}.${key} is not supported.`, {
+      code: 'INVALID_WORKFLOW',
+    })
+  }
+
+  const composition: DesignComposition = {}
+
+  if (value.stages !== undefined) {
+    invariant(
+      Array.isArray(value.stages) &&
+        value.stages.length > 0 &&
+        value.stages.every(
+          (slug) => typeof slug === 'string' && /^[a-z0-9-]+$/u.test(slug),
+        ) &&
+        new Set(value.stages).size === value.stages.length,
+      `${source}.stages MUST be a non-empty array of unique stage slugs.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    composition.stages = value.stages as string[]
+  }
+
+  if (value.start_stage !== undefined) {
+    invariant(
+      typeof value.start_stage === 'string' &&
+        /^[a-z0-9-]+$/u.test(value.start_stage),
+      `${source}.start_stage MUST be a stage slug when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    composition.start_stage = value.start_stage
+  }
+
+  if (value.limits !== undefined) {
+    invariant(
+      isRecord(value.limits) && Object.keys(value.limits).length > 0,
+      `${source}.limits MUST be a non-empty object when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    const limits: NonNullable<DesignComposition['limits']> = {}
+    const limitKeys = new Set([
+      'max_total_transitions',
+      'max_stage_attempts',
+      'max_consecutive_failures',
+    ])
+
+    for (const [key, limit] of Object.entries(value.limits)) {
+      invariant(
+        limitKeys.has(key) && Number.isInteger(limit) && Number(limit) > 0,
+        `${source}.limits.${key} MUST be a supported positive integer.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+      limits[key as keyof typeof limits] = limit as number
+    }
+    composition.limits = limits
+  }
+
+  if (value.stage_overrides !== undefined) {
+    invariant(
+      isRecord(value.stage_overrides) &&
+        Object.keys(value.stage_overrides).length > 0,
+      `${source}.stage_overrides MUST be a non-empty object when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    const overrides: NonNullable<DesignComposition['stage_overrides']> = {}
+
+    for (const [slug, rawOverride] of Object.entries(value.stage_overrides)) {
+      const overrideSource = `${source}.stage_overrides.${slug}`
+
+      invariant(
+        /^[a-z0-9-]+$/u.test(slug) &&
+          isRecord(rawOverride) &&
+          Object.keys(rawOverride).length > 0,
+        `${overrideSource} MUST be a non-empty stage override.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+
+      const allowedOverrideKeys = new Set([
+        'required_stage_outputs',
+        'required_data',
+        'evidence_workers',
+      ])
+
+      for (const key of Object.keys(rawOverride)) {
+        invariant(
+          allowedOverrideKeys.has(key),
+          `${overrideSource}.${key} is not supported.`,
+          { code: 'INVALID_WORKFLOW' },
+        )
+      }
+
+      overrides[slug] = {
+        ...(rawOverride.required_stage_outputs !== undefined
+          ? {
+              required_stage_outputs: parseContextSelectors(
+                rawOverride.required_stage_outputs,
+                `${overrideSource}.required_stage_outputs`,
+              ),
+            }
+          : {}),
+        ...(rawOverride.required_data !== undefined
+          ? {
+              required_data: parseRequiredData(
+                rawOverride.required_data,
+                `${overrideSource}.required_data`,
+              ),
+            }
+          : {}),
+        ...(rawOverride.evidence_workers !== undefined
+          ? {
+              evidence_workers: parseEvidenceWorkers(
+                rawOverride.evidence_workers,
+                `${overrideSource}.evidence_workers`,
+              ),
+            }
+          : {}),
+      }
+    }
+    composition.stage_overrides = overrides
+  }
+
+  return composition
+}
+
 function parseWorkflowIndex(value: unknown, source: string): WorkflowIndex {
   invariant(isRecord(value), `${source} MUST contain an object.`, {
     code: 'INVALID_WORKFLOW',
@@ -617,6 +764,15 @@ function parseWorkflowIndex(value: unknown, source: string): WorkflowIndex {
 
   if (typeof value.description === 'string') {
     workflow.description = value.description
+  }
+
+  const designComposition = parseDesignComposition(
+    value.design_composition,
+    `${source}.design_composition`,
+  )
+
+  if (designComposition) {
+    workflow.design_composition = designComposition
   }
 
   return workflow

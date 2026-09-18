@@ -888,11 +888,15 @@ unacceptable; it routes to the stage's failure target.
 `DIRECTOR-001` forbids inferring approval from silence, from the absence of
 objections, or from discussing the plan with you.
 
-## Run the design workflow before non-trivial UI/UX delivery work
+## Include design in development or run it separately
 
-For any development task with a non-trivial UI/UX design component, run the
-standalone `design` workflow first, ratify its handoff package, then start a
-separate corresponding `delivery` run whose request references that package.
+For development work that needs one design specification across planning and delivery, pass `--with-design` when starting the default planning workflow. The planning run gains a design stage before `plan`; routed `delivery` and `delivery-chunk` runs gain design review and design QA evidence workers on `verify`.
+
+```sh
+./bin/pan init --with-design --request runtime/inbox/queue/<request>.md
+```
+
+The standalone `design` workflow remains available when design should produce a separately ratified handoff package before development starts:
 
 ```sh
 ./bin/pan init --workflow design --request runtime/inbox/queue/<design-request>.md
@@ -907,10 +911,7 @@ those paths so planning preserves the design acceptance criteria:
 ./bin/pan init --request runtime/inbox/queue/<request-referencing-design-package>.md
 ```
 
-Composition is deliberately separate runs (not an automatic gate inside
-`delivery`).
-The first live design run after enabling this capability is an operator checklist
-item, not an in-workflow nested run.
+The first live standalone design run after enabling this capability is an operator checklist item.
 
 ### Browser inspection MCP setup (self-development)
 
