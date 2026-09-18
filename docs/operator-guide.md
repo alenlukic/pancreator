@@ -456,6 +456,38 @@ intake, a named subset of categories, or a fixed count when you want a
 different set. The command does not modify the investigated run or implement
 the repair.
 
+### Sweep registered embedded installations
+
+Keep machine-local installation roots in the untracked
+`config_overrides.json`, not in the tracked `config.json`:
+
+```json
+{
+  "installations": [
+    { "id": "rowspace", "path": "/Users/alen/Dev/rowspace/.pancreator" },
+    { "id": "cumulus", "path": "/Users/alen/Dev/cumulus/.pancreator" },
+    {
+      "id": "portfolio-demo",
+      "path": "/Users/alen/Dev/portfolio-demo/.pancreator"
+    },
+    { "id": "skills", "path": "/Users/alen/Dev/skills/.pancreator" }
+  ]
+}
+```
+
+Each entry has a stable lowercase `id` and an absolute harness-root `path`.
+Inspect the registry with `./bin/pan installs list --json`. A missing or
+unreadable installation is reported on its own row and does not hide the other
+entries.
+
+Run `/pan-repair installs` to sweep every registered installation, or append a
+comma-separated id list to narrow the sweep. The technician classifies queued
+items as harness-directed or target-owned and consolidates only harness work in
+the source checkout. After every consolidated intake passes its validator, the
+supervising session uses `pan installs archive`; the command refuses any inbox
+item whose file name the validated intake does not cite. The installed harness
+versions do not need updates.
+
 Use `/pan-spotfix <request>` only when the operator deliberately selects
 lightweight execution and the request satisfies `WORK-001`: one coherent change,
 no unresolved structural decision, no more than three core implementation files
