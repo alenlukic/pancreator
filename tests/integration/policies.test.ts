@@ -1548,14 +1548,18 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
     catalog
       .get('LIBRARIAN-001')
       ?.instructions.some((instruction) =>
-        instruction.text.includes('Repository-check commands MUST be copied'),
+        instruction.text.includes(
+          'The librarian MUST copy repository-check commands',
+        ),
       ),
   )
   assert.equal(
     catalog
       .get('REPO-001')
       ?.instructions.some((instruction) =>
-        instruction.text.includes('Repository-check commands MUST be copied'),
+        instruction.text.includes(
+          'The librarian MUST copy repository-check commands',
+        ),
       ),
     false,
   )

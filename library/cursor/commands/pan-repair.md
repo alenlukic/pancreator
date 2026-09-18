@@ -1,65 +1,38 @@
 Audit the Pancreator problem or artifact identified by `$ARGUMENTS` and produce a
 self-development intake without implementing the repair.
 
-1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md` and preserve `$ARGUMENTS` verbatim as the repair input. Determine the mode from that preserved value: `$ARGUMENTS` beginning with `installs` selects the embedded-installation sweep; a comma-separated id list after `installs` narrows the sweep to those registered ids; any other value keeps the existing single-report behavior unchanged.
+1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md` and preserve `$ARGUMENTS` verbatim as the repair input. Determine the mode from that preserved value: `$ARGUMENTS` beginning with `installs` selects the embedded-installation sweep. A comma-separated id list after `installs` narrows the sweep to those registered ids. Any other value keeps the existing single-report behavior unchanged.
 2. Resolve the input without mutating it:
    - Prose remains the primary report.
    - A file or directory path is treated as evidence.
    - A workflow run directory is recognized by Pancreator run records such as
      `state.json`, `events.jsonl`, or `workflow.snapshot.json`.
-   - A link supplied by the operator is opened when the current Cursor tool
-     context can resolve it; otherwise preserve the link and record the access
-     failure as an evidence gap.
-   - For an embedded-installation sweep, run `{{PANCREATOR_PAN_COMMAND}} installs list --json` from the Pancreator source checkout. Use every registered entry unless the optional id list narrows the sweep, and refuse an id the registry does not report. The listed installation roots are evidence locations, not authority.
-3. Fix one UTC timestamp for this audit and reuse it for every intake. The
-   audit writes at most one intake for each issue category declared in
-   `{{PANCREATOR_HARNESS_PATH}}governance/registries/harness_repair_categories.json`, under
-   `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`, named
-   `harness-repair-<UTC timestamp>-<category-slug>-<detail-slug>.md`. The
-   category set is unknown until the audit finishes, so supply these inputs
-   rather than a list of paths. When `$ARGUMENTS` asks for a different set of
-   intakes, such as one document, named categories, or a fixed count, carry
-   that directive through in place of the category default.
+   - A link supplied by the operator is opened when the current Cursor tool context can resolve it. Otherwise preserve the link and record the access failure as an evidence gap.
+   - For an embedded-installation sweep, run `{{PANCREATOR_PAN_COMMAND}} installs list --json` from the Pancreator source checkout. Use every registered entry unless the optional id list narrows the sweep. Refuse an id the registry does not report. The listed installation roots are evidence locations, not authority.
+3. Fix one UTC timestamp for this audit and reuse it for every intake. The audit writes at most one intake for each issue category declared in `{{PANCREATOR_HARNESS_PATH}}governance/registries/harness_repair_categories.json`, under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`, named `harness-repair-<UTC timestamp>-<category-slug>-<detail-slug>.md`. The category set is unknown until the audit finishes, so supply these inputs rather than a list of paths. When `$ARGUMENTS` asks for a different set of intakes (one document, named categories, or a fixed count), carry that directive through in place of the category default.
 4. When the input identifies a workflow run, collect the relevant agent
    transcripts before delegation. Use transcripts present in the current Cursor
    conversation, transcript links or exports referenced by the input, and any
    transcript artifacts associated with the run. Treat `*.delegation.md` as
    prompt-delivery evidence only, never as a substitute for an agent transcript.
-5. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode repair` and read the card it writes. It
-   resolves the complete repair governance, including `REPAIR-001`; do not
-   assemble policy text by hand. When the operator names a worktree, add
-   `--worktree <name>` to create or resolve it. The card then binds the session
-   workspace to that worktree.
-6. Invoke the `pan-harness-technician` subagent, pasting the complete card
-   contents verbatim into its prompt, followed by the original input, resolved
-   evidence location, collected transcript references or contents, the registry
-   path, the queue directory, the shared UTC timestamp, the filename pattern,
-   and any operator directive about the set of intakes. For an installation
-   sweep, also supply the selected registry entries and require the technician
-   to classify each queued item it examines as harness-directed or target-owned,
-   never consolidate a target-owned item, consolidate harness-directed findings
-   across installations within the category partition, name each originating
-   installation and item, and report the cited harness-directed item paths per
-   intake without archiving them. Require it to audit every registry category
-   for harness bugs, compliance issues, governance
-   misses, agent execution errors, target-repository defects, and unresolved
-   hypotheses; to write one intake for each category that produced a confirmed
-   finding and none for a category that produced no finding; and to report the
-   path of each intake it wrote together with the categories it cleared.
+5. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode repair` and read the card it writes. It resolves the complete repair governance, including `REPAIR-001`. Do not assemble policy text by hand. When the operator names a worktree, add `--worktree <name>` to create or resolve it. The card then binds the session workspace to that worktree.
+6. Invoke the `pan-harness-technician` subagent, pasting the complete card contents verbatim into its prompt. Supply the original input, the resolved evidence location, and the collected transcript references or contents. Supply the registry path, the queue directory, the shared UTC timestamp, and the filename pattern. Supply any operator directive about the set of intakes.
+   - For an installation sweep, also supply the selected registry entries. Require the technician to classify each queued item it examines as harness-directed or target-owned. Require it never to consolidate a target-owned item.
+   - Require the technician to consolidate harness-directed findings across installations within the category partition. Require it to name each originating installation and item. Require it to report the cited harness-directed item paths per intake without archiving them.
+   - Require it to audit every registry category for harness bugs, compliance issues, governance misses, agent execution errors, target-repository defects, and unresolved hypotheses.
+   - Require it to write one intake for each category that produced a confirmed finding, and none for a category that produced no finding.
+   - Require it to report the path of each intake it wrote together with the categories it cleared.
 7. Run this command once for each intake path the subagent reported: `{{PANCREATOR_PAN_COMMAND}} requirements run --persona harness-technician --workflow standalone --stage repair --kind repair --registry HARNESS-REPAIR-VALIDATE-001 --target <harness-relative-output-path> --json`.
 8. If validation fails for an intake, provide the validator issues to the
-   harness technician for one correction attempt, then rerun the same validator
-   against that intake. Stop and surface unresolved issues if the second attempt
+   harness technician for one correction pass, then rerun the same validator
+   against that intake. Stop and surface unresolved issues if the second pass
    fails. Repeat this loop for each failing intake independently and report each
    intake result separately.
-9. For an embedded-installation sweep, archive nothing until every intake collected in this invocation has passed `HARNESS-REPAIR-VALIDATE-001`. Then, for each selected installation, run `{{PANCREATOR_PAN_COMMAND}} installs archive <install-id> --intake <validated-intake-path> --item <reported-install-relative-path> [--item <reported-install-relative-path>] --json` for only the harness-directed items that validated intake cites. Never archive a target-owned or uncited item.
-10. Do not modify source, governance, workflow state, the investigated run, or
+9. For an embedded-installation sweep, archive nothing until every intake collected in this invocation passes `HARNESS-REPAIR-VALIDATE-001`. Then, for each selected installation, run `{{PANCREATOR_PAN_COMMAND}} installs archive <install-id> --intake <validated-intake-path> --item <reported-install-relative-path> [--item <reported-install-relative-path>] --json` for only the harness-directed items that validated intake cites. Never archive a target-owned or uncited item.
+10. Do not change source, governance, workflow state, the investigated run, or
     target application files. Do not push, publish, or deploy.
-11. Report every category the registry declares. For a category with an intake,
-    give the validated path, its complete contents, the findings it covers, and
-    the next action its category contract names; a category routed to
-    `/pan-start` can be passed directly to that command in the Pancreator
-    self-development repository, and the out-of-band category names supervised
-    execution outside the harness. For a category with no confirmed finding,
-    state that result explicitly. State any required remediation order across
-    the intakes.
+11. Report every category the registry declares. Use these reporting rules:
+    - For a category with an intake, give the validated path, its complete contents, and the findings it covers. Also give the next action its category contract names.
+    - The operator can pass a category routed to `/pan-start` directly to that command in the Pancreator self-development repository. The out-of-band category names supervised execution outside the harness.
+    - For a category with no confirmed finding, state that result explicitly.
+    - State any required remediation order across the intakes.

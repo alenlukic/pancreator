@@ -11,12 +11,12 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - You MUST advance the run only with `./bin/pan`.
 - You MUST read the current invocation or assessment card before you act.
 - You MUST reconcile run state with `./bin/pan status <run-id> --json` after an interruption.
-- A long-horizon session is driven by the harness, not by an agent supervisor or an operator chat. You MUST NOT adopt its task runs as supervisor context; its fresh driver processes read the durable handoff instead.
+- A long-horizon session is driven by the harness, not by an agent supervisor or an operator chat. You MUST NOT adopt its task runs as supervisor context. Its fresh driver processes read the durable handoff instead.
 
 ## Judgment
 
 - Make ordinary supervisory judgment calls yourself under `PRINCIPLES-001` and state them in your report.
-- Stop for the operator only at a gate, at a decision the harness marks operator-owned, or under an escalation condition that policy names.
+- Stop for the operator only in these cases: at a gate, at a decision the harness marks operator-owned, or under an escalation condition that policy names.
 - Keep the critical path moving. Prefer the smallest repair that unblocks the run over a complete account of what went wrong.
 
 ## Start options
@@ -60,17 +60,17 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 
 ## Warnings and carry-forwards
 
-- When you close a stage with warnings and carry a finding forward to a later chunk instead of routing to remediate, the directive MUST name the finding id, the severity its verifier graded, and the receiving chunk's verifier as the grader of record.
+- A carry-forward directive closes a stage with warnings and sends a finding to a later chunk instead of remediation. That directive MUST name the finding id, the severity its verifier graded, and the receiving chunk's verifier as the grader of record.
 - The directive MUST cite the evidence file path and MUST NOT cite an in-flight invocation prefix. The harness renumbers invocation prefixes when the run closes, so a prefix copied mid-run goes stale.
 - You MUST NOT carry a finding that leaves tracked operator-facing text false past the next release run. Repair that finding in the current run instead.
 
 ## Release lane
 
 - On a self-development release, run each release-lane `./bin/pan` command against the build of the workspace under release: `PANCREATOR_EXEC_ROOT=<workspace path> ./bin/pan <command>`. The value is harness-relative, and run state, the worktree index, the gate cache, and the run mutex stay on the harness root.
-- The redirection is read from the harness root's own `bin/pan`, so it is inactive on the release that introduces it. Confirm that the harness root's `bin/pan` accepts `PANCREATOR_EXEC_ROOT` before you rely on it, and use the harness root's build when it does not.
-- Before you rely on any other release-lane behavior this release introduces, such as an entry-gate waiver or a `release sync` guard, read the harness root's `VERSION` and confirm the behavior exists there.
+- The redirection is read from the harness root's own `bin/pan`, so it is inactive on the release that introduces it. Confirm that the harness root's `bin/pan` accepts `PANCREATOR_EXEC_ROOT` before you rely on it. Use the harness root's build when it does not.
+- Before you rely on any other release-lane behavior this release introduces, read the harness root's `VERSION`. Confirm the behavior exists there. An entry-gate waiver and a `release sync` guard are examples.
 - State in your report which release-lane repairs in this release are inactive on this run, and carry any `build_currency` advisory the ship submission recorded.
-- The ship stage stops after `pan release finalize`. Landing the release on the harness root's local default branch is an operator step after submit, so you MUST NOT fast-forward, merge, switch, or check out a branch in the harness root while the ship stage runs.
+- The ship stage stops after `pan release finalize`. Landing the release on the harness root's local default branch is an operator step after submit. You MUST NOT fast-forward, merge, switch, or check out a branch in the harness root while the ship stage runs.
 
 ## Decision packet
 
@@ -86,7 +86,8 @@ Every stop MUST place the complete decision packet in the message that ends your
 ## Repairs and run friction
 
 - Repair mechanical delivery, validation, and evidence defects yourself when the repair is in scope.
-- When you change the workspace on an operator directive outside a stage, record it with `pan attribute <run-id> --note <directive> [--disposition read-only-input|commit-with-unit|operator-owned]` before you prepare the next invocation. The next card then presents those paths as attributed, and no worker audits them. Record `read-only-input` for a path the operator placed as an input that must never be committed: that path stops blocking every clean-tree gate, stays out of every harness commit, and is placed into each worktree the harness creates afterwards. `commit-with-unit` names work the unit's own commit carries. The default `operator-owned` leaves every refusal in place. One record reaches every checkout of the repository, so do not attribute the same input again per workspace.
+- When you change the workspace on an operator directive outside a stage, record it with `pan attribute <run-id> --note <directive> [--disposition read-only-input|commit-with-unit|operator-owned]` before you prepare the next invocation. The next card then presents those paths as attributed, and no worker audits them. One record reaches every checkout of the repository, so do not attribute the same input again per workspace.
+- Record `read-only-input` for a path the operator placed as an input that must never be committed: that path stops blocking every clean-tree gate, stays out of every harness commit, and is placed into each worktree the harness creates afterwards. `commit-with-unit` names work the unit's own commit carries. The default `operator-owned` leaves every refusal in place.
 - When a run required supervisor repair or exposed harness friction, write an intake to `runtime/inbox/queue/<run-id>-run-friction.md`. Include evidence paths and one suggested fix per issue.
 
 ## Boundaries

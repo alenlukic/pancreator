@@ -26,7 +26,7 @@
       "audience": ["harness"]
     },
     "A brief MUST begin with an executive-summary section. COMMS-001 governs how that summary reads.",
-    "Brief data MUST describe content and semantic intent; layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
+    "Brief data MUST describe content and semantic intent. Layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
     "Section headings MUST use a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
     "Within one repository, each registered section emoji MUST retain one meaning. Project definitions MUST extend rather than override Pancreator-owned semantic keys.",
     "Cards SHOULD separate metadata from substantive detail through field placement, and SHOULD expose clear actions when action is possible.",

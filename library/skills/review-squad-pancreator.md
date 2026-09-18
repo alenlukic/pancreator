@@ -2,8 +2,8 @@
 
 Use when a squad review reads a change to the Pancreator harness itself, whether
 it arrives from a shepherd review under `SHEPHERD-001` or a standalone
-`/pan-review` session under `REVIEW-001`. `review-squad.md` supplies the method;
-this file supplies the lineup.
+`/pan-review` session under `REVIEW-001`.
+`review-squad.md` supplies the method, and this file supplies the lineup.
 
 This skill ships only in a Pancreator source checkout. `bin/install` drops it
 from the staged payload, so a target installation never carries the file and
@@ -15,11 +15,14 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 ## Principle
 
 The core lineup reads a product change: a feature, the layer it landed in, the
-blast radius it opens. Pancreator ships something else. Its product is
-governance text, projected agent prompts, workflow contracts, and the CLI that
-executes them. A defect here is seldom a crash. It is a clause that contradicts
-another clause, an instruction no agent can act on, or a cost that every run
-afterward pays.
+blast radius it opens.
+Pancreator ships something else.
+
+Its product is governance text, projected agent prompts, workflow contracts,
+and the CLI that runs them.
+A defect here is seldom a crash.
+It is a clause that contradicts another clause, an instruction no agent can act
+on, or a cost that every run afterward pays.
 
 Three dimensions cover that surface. They are not the core five renamed. Each
 reads the diff for a failure mode no core charter names.
@@ -81,9 +84,9 @@ because an agent resolves it by guessing.
 - **Card asymmetry.** Pancreator carries four operating surfaces: `AGENTS.md`,
   `library/templates/embedded-AGENTS.md`,
   `library/cursor/rules/pancreator-self-development.mdc`, and
-  `library/cursor/rules/pancreator-embedded.mdc`. A rule that belongs to all
-  modes and landed in one of them is a finding. So is a rule that belongs to one
-  mode and leaked into another.
+  `library/cursor/rules/pancreator-embedded.mdc`.
+  A rule that belongs to all modes and landed in one of them is a finding.
+  So is a rule that belongs to one mode and leaked into another.
 - **Canonical source without its projection.** A change under `library/cursor/`
   or to a projected policy that ships without the regenerated `.cursor/` output,
   or a projection manifest entry whose source or target moved.
@@ -107,33 +110,37 @@ because an agent resolves it by guessing.
 - **Instruction-text conformance.** A durable operator artifact, or an
   agent-facing instruction, that breaks a writing rule `STE-001` names: a
   sentence past the length bound, a semicolon carrying two instructions, a
-  directive keyword used loosely. This dimension owns that duty by operator
-  decision on 2026-08-28. Quote the rule and the sentence.
+  directive keyword used loosely.
+  This dimension owns that duty by operator decision on 2026-08-28.
+  Quote the rule and the sentence.
 - **Coverage shape.** A new rejection path with no test that asserts the
-  rejection. Also the inverse defect: a test that pins prose bytes of a policy or
-  persona, which fails on any legitimate rewording and teaches the next author to
-  edit the test instead of thinking. Test-quality findings MUST cite
-  `governance/handbooks/eng/testing.md` with a stable TP identifier and concrete
-  test evidence.
+  rejection.
+  The inverse defect is a test that pins prose bytes of a policy or persona,
+  which fails on any legitimate rewording and teaches the next author to edit
+  the test instead of thinking.
+  Test-quality findings MUST cite `governance/handbooks/eng/testing.md` with a
+  stable TP identifier and concrete test evidence.
 
 Method: read the whole diff and build a model of the intent before judging any
-hunk. For every normative sentence the change adds or edits, search the
-repository for the subject of that sentence and confirm nothing already says the
-opposite. For every mirrored surface the change touches, confirm each copy
-moved. Verify against the surrounding code, not against memory of it.
+hunk.
+For every normative sentence the change adds or edits, search the repository
+for the subject of that sentence and confirm nothing already says the opposite.
+
+For every mirrored surface the change touches, confirm each copy moved.
+Verify against the surrounding code, not against memory of it.
 
 ### Agentic practice
 
 Judge the change as harness design. The question is whether an agent reading
-this repository afterward can execute it, verify it, and fail loudly when it
+this repository afterward can obey it, verify it, and fail loudly when it
 cannot. This is not a correctness pass and not a prose review.
 
-- **Instruction an agent cannot execute.** A directive with no observable action,
+- **Instruction an agent cannot obey.** A directive with no observable action,
   no input it names, or no artifact it produces. Every added MUST needs an actor,
   a trigger, and something a reader can check afterward.
 - **Prose where a check belongs.** Behavior that must not go wrong, stated in a
   paragraph and enforced nowhere. Push it down: prose, then persona, then policy,
-  then validator, then CLI. Name the layer it should have landed in.
+  then validator, then CLI. Name the layer it belongs in.
 - **Judgment asked of the wrong layer.** Normative behavior belongs in policy
   JSON, role judgment in personas, task procedure in stage prompts and skills. A
   charter that tells an agent what to conclude, rather than where to look and
@@ -161,10 +168,12 @@ cannot. This is not a correctness pass and not a prose review.
   names the next action, or a decision the harness takes silently that the
   operator owns.
 
-Method: for each instruction the change adds or edits, ask who executes it, with
+Method: for each instruction the change adds or edits, ask who runs it, with
 which tools, on which input, producing which artifact, and how it reports
-failure. A missing answer is the finding. Prefer the repair that moves the rule
-one layer down, and say which layer.
+failure.
+
+A missing answer is the finding. Prefer the repair that moves the rule one
+layer down, and say which layer.
 
 ### Performance
 
@@ -172,11 +181,11 @@ Read the change for what it costs on the critical path of a run and of the test
 suite. Every finding carries a number: measured, or estimated with the
 arithmetic shown. A cost with no number is not a finding here.
 
-- **Work the run already did.** A check, suite, probe, or build executed again
+- **Work the run already did.** A check, suite, probe, or build that runs again
   against an unchanged workspace fingerprint. Name the earlier execution that
   already holds the evidence.
 - **Rebuild on dispatch.** A compile or code-generation step gating a command
-  whose inputs have not changed since the last one.
+  whose inputs did not change since the last one.
 - **Fixture cost per test.** Setup that copies trees, syncs projections, or
   initializes a repository once per test where one template per suite run plus a
   cheap clone would serve. Multiply the per-test cost by the test count and put
@@ -201,13 +210,16 @@ arithmetic shown. A cost with no number is not a finding here.
   or a gate whose scope is the full profile where the change can only affect part
   of it.
 
-Method: for each loop, gate, fixture, and read, ask what it costs now and what it
-costs at a hundred times the current input. Prefer a measurement to an estimate
-and name the command that would produce it. Rank by absolute cost removed from
-the critical path, and separate one-time cost from cost paid every run. No
-suite-duration ceiling is in force. Judge a suite-cost change by its delta
-against the base revision, not against a fixed bound. Cost that sits off the
-critical path is a note.
+Method: for each loop, gate, fixture, and read, ask what it costs now and what
+it costs at a hundred times the current input.
+Prefer a measurement to an estimate and name the command that would produce it.
+
+Rank by absolute cost removed from the critical path, and separate one-time
+cost from cost paid every run.
+No suite-duration ceiling is in force.
+Judge a suite-cost change by its delta against the base revision, not against a
+fixed bound.
+Cost that sits off the critical path is a note.
 
 ## Joining
 
@@ -223,8 +235,10 @@ The coordinator ranks the joined set with these tie-breaks:
   duplicate execution to the critical path. Other cost findings are follow-ups
   with their numbers recorded.
 
-Record the swap and the core dimensions it removed. Then record the three
-dimensions and any core charter the operator named. Record each one with its
-findings or with an explicit empty result. An operator selection replaces
-the swap. Record the selected dimensions with their findings. Record every
-other dimension of this lineup as not run.
+Record the swap and the core dimensions it removed.
+Then record the three dimensions and any core charter the operator named.
+Record each one with its findings or with an explicit empty result.
+
+An operator selection replaces the swap.
+Record the selected dimensions with their findings.
+Record every other dimension of this lineup as not run.

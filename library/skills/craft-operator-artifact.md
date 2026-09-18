@@ -11,7 +11,7 @@ Under `BRIEF-001`, use the operator brief system for new operator-facing narrati
 3. Render self-contained HTML with `./bin/pan briefs render --input <brief.json> --output <brief.html>`.
 
 For workflow stages, use the exact source and rendered paths declared in
-`output.operator_brief`; list HTML as artifact 0 and brief JSON as artifact 1.
+`output.operator_brief`. List HTML as artifact 0 and brief JSON as artifact 1.
 The harness rerenders the source during submission so the displayed document is
 always derived from the validated content contract.
 
@@ -26,7 +26,7 @@ Use `/pan-conform` for operator-timed Simplified Technical English repair.
 
 ## Composition
 
-- Begin with `executive-summary`; state the bottom line, why it matters, the outcome, and the next action when applicable.
+- Begin with `executive-summary`. State the bottom line, why it matters, the outcome, and the next action when applicable.
 - Use sections for distinct operator questions, not for every paragraph.
 - Use one card per independently scannable subject or decision.
 - Use fields for labeled facts. Mark logistical or identity data as `placement: "meta"` so it is visually separate from substantive detail.

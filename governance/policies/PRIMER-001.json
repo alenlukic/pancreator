@@ -7,6 +7,6 @@
     "Before expanding target-repository context, every agent MUST read the target repository primer at the harness-relative path `docs/target-repo-primer.md`. In an embedded installation, Cursor filesystem access MUST use `.pancreator/docs/target-repo-primer.md`.",
     "The primer is orientation rather than authority. The operator request, target repository `AGENTS.md`, active invocation card, and applicable policies MUST retain precedence over primer content.",
     "Agents SHOULD NOT open, search, or otherwise follow references from the primer merely because they are listed. An agent MAY inspect a referenced file when it can state a concrete task-specific reason that the file is needed.",
-    "When the primer is missing or marked unbuilt, non-librarian agents MUST stop before substantive target-repository work and direct the operator to run `/pan-build-docs`. The librarian MAY create a missing primer or regenerate an existing primer."
+    "When the primer is absent or marked unbuilt, non-librarian agents MUST stop before substantive target-repository work and direct the operator to run `/pan-build-docs`. The librarian MAY create a missing primer or regenerate an existing primer."
   ]
 }

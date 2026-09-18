@@ -9,7 +9,7 @@ this skill. It binds the orchestrator and the meta-orchestrator equally.
 Harness records are the source of truth, and delegation is not idempotent. A
 resumed supervisor knows nothing about work in flight until it reconciles
 recorded state. A second worker on one invocation contaminates the workspace,
-and no later verification from that workspace can be trusted or attributed.
+and you cannot trust or attribute a later verification from that workspace.
 
 ## Resume procedure
 
@@ -30,7 +30,7 @@ subagent result, or a handoff from an earlier supervisor pass.
    modification times).
 5. When prior delivery is evident and liveness is uncertain, observe the
    workspace over an interval. A quiet tree across two checks several minutes
-   apart, with no worker result pending in your own session, indicates the
+   apart, with no worker result pending in your own session, shows the
    prior worker ended.
 6. Relaunch a worker only after the prior worker's end is established. When
    liveness cannot be established, report the ambiguity to the operator instead
@@ -49,7 +49,7 @@ mid-flight or from a worker's blocked output.
 3. Preserve both workers' outputs and the workspace as evidence. Do not revert
    or clean.
 4. Surface the conflict to the operator with the run id, the invocation id, and
-   the overlap evidence. The operator selects the owning attempt, typically
+   the overlap evidence. The operator selects the owning worker, typically
    through `pan resume --stage <stage> --note <directive>` for a rerun with one
    owner.
 
