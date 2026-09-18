@@ -158,6 +158,29 @@ test('approving a single-chunk plan starts one delivery run and no fan-out', () 
   assert.deepEqual(cohortSessionIds(root), [])
 })
 
+test('a single-chunk route preserves the planning involvement profile', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(
+    root,
+    [{ id: 'alpha', cohort_index: 1 }],
+    'long-horizon',
+  )
+  const started = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'operator',
+    action: 'approve',
+  })
+
+  assert.ok(started?.status === 'started' && started.kind === 'delivery')
+  assert.equal(
+    loadState(root, started.run_id).operator_involvement?.profile,
+    'long-horizon',
+  )
+  assert.deepEqual(
+    loadState(root, started.run_id).operator_involvement?.contracts,
+    ['long_horizon'],
+  )
+})
+
 test('a single-chunk routing failure leaves the approval and the plan intact', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])

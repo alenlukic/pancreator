@@ -145,6 +145,62 @@ test('a configured Chrome for Testing bundle satisfies readiness', () => {
   }
 })
 
+test('attaching to the shared loopback instance satisfies readiness', () => {
+  const root = makeRoot()
+  const browser = writeBrowser(root)
+
+  writeMcp(
+    root,
+    '.cursor/mcp.json',
+    chromeDevtoolsConfig([
+      'chrome-devtools-mcp@latest',
+      '--browserUrl=http://127.0.0.1:9222',
+    ]),
+  )
+
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: browser, source: 'test' },
+  })
+
+  assert.equal(readiness.ready, true)
+  assert.equal(readiness.chrome_devtools_mcp.isolated, false)
+  assert.equal(readiness.chrome_devtools_mcp.executable_path, null)
+  assert.equal(
+    readiness.chrome_devtools_mcp.browser_url,
+    'http://127.0.0.1:9222',
+  )
+  assert.deepEqual(readiness.advisories, [])
+})
+
+test('a non-loopback --browserUrl or leftover launch flags are advised', () => {
+  const root = makeRoot()
+  const browser = writeBrowser(root)
+
+  writeMcp(
+    root,
+    '.cursor/mcp.json',
+    chromeDevtoolsConfig([
+      'chrome-devtools-mcp@latest',
+      '--browserUrl=http://10.0.0.5:9222',
+      '--isolated',
+    ]),
+  )
+
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: browser, source: 'test' },
+  })
+
+  assert.equal(readiness.ready, false)
+  assert.ok(
+    readiness.advisories.some((advisory) => advisory.includes('loopback')),
+  )
+  assert.ok(
+    readiness.advisories.some((advisory) =>
+      advisory.includes('never launches its own browser'),
+    ),
+  )
+})
+
 test('a malformed MCP config is treated as absent rather than throwing', () => {
   const root = makeRoot()
 

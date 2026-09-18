@@ -446,6 +446,7 @@ test('representative contexts exclude policies outside their remit', () => {
     'PLAN-002',
     'PRIMER-001',
     'PRINCIPLES-001',
+    'SINGLERUN-001',
     'VALID-001',
   ])
 
@@ -656,8 +657,11 @@ test('the best-of-N candidate planner receives no specification hierarchy or coh
     'unit of work',
   ]
 
+  // The card renders the title beside the id, so a title carries the same
+  // vocabulary onto the card that a summary or an instruction does.
   for (const policy of candidate) {
     for (const text of [
+      policy.title,
       policy.summary,
       ...policy.instructions.map((instruction) => instruction.text),
     ]) {
@@ -1598,4 +1602,186 @@ test('a technology-scoped provider row does not cover an unscoped consumer', () 
     /loads WAIVER-001 without referenced policy OPERATOR-001/u,
     'the same provider without a technology scope must cover the consumer',
   )
+})
+
+test('long-horizon policy rows swap one mode policy without changing the rest', () => {
+  const root = sharedFixture()
+  const ids = (contracts: Array<'long_horizon'>): string[] =>
+    resolvePolicies(root, {
+      persona: 'coder',
+      workflow: 'delivery',
+      stage: 'implement',
+      contracts,
+      operator_artifacts: 'suppressed',
+    }).map((policy) => policy.id)
+  const regular = ids([])
+  const horizon = ids(['long_horizon'])
+
+  assert.ok(regular.includes('SINGLERUN-001'))
+  assert.equal(regular.includes('HORIZON-001'), false)
+  assert.ok(horizon.includes('HORIZON-001'))
+  assert.equal(horizon.includes('SINGLERUN-001'), false)
+  assert.deepEqual(
+    regular.filter((id) => id !== 'SINGLERUN-001'),
+    horizon.filter((id) => id !== 'HORIZON-001'),
+  )
+})
+
+test('long-horizon lookup values validate and distinguish otherwise equal rows', () => {
+  const root = createFixture()
+
+  writePolicyExtension(root, 'mode-pair.json', [
+    {
+      persona: 'planner',
+      workflow: 'delivery',
+      stage: 'plan',
+      long_horizon: false,
+      policies: ['PLAN-002'],
+    },
+    {
+      persona: 'planner',
+      workflow: 'delivery',
+      stage: 'plan',
+      long_horizon: true,
+      policies: ['PLAN-002'],
+    },
+  ])
+
+  assert.doesNotThrow(() =>
+    resolvePolicies(root, {
+      persona: 'planner',
+      workflow: 'delivery',
+      stage: 'plan',
+    }),
+  )
+
+  const invalid = createFixture()
+
+  writePolicyExtension(invalid, 'invalid-mode.json', [
+    {
+      persona: 'planner',
+      workflow: 'delivery',
+      stage: 'plan',
+      long_horizon: 'yes',
+      policies: ['PLAN-002'],
+    },
+  ])
+  assert.throws(
+    () =>
+      resolvePolicies(invalid, {
+        persona: 'planner',
+        workflow: 'delivery',
+        stage: 'plan',
+      }),
+    /long_horizon MUST be a boolean/u,
+  )
+})
+
+test('a long-horizon provider cannot cover a regular consumer', () => {
+  const root = createFixture()
+
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = readJson<{
+    rows: Array<{
+      persona: string
+      workflow: string
+      stage: string
+      long_horizon?: boolean
+      policies: string[]
+    }>
+  }>(lookupPath)
+
+  lookup.rows = lookup.rows.map((row) => {
+    if (row.persona === '*' && row.workflow === '*' && row.stage === '*') {
+      return {
+        ...row,
+        policies: row.policies.filter((policy) => policy !== 'OPERATOR-001'),
+      }
+    }
+
+    if (row.policies.includes('WAIVER-001')) {
+      return { ...row, long_horizon: false }
+    }
+
+    return row
+  })
+  const provider = {
+    persona: '*',
+    workflow: '*',
+    stage: '*',
+    long_horizon: true,
+    policies: ['OPERATOR-001'],
+  }
+
+  lookup.rows.push(provider)
+  writeJsonFile(lookupPath, lookup)
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /loads WAIVER-001 without referenced policy OPERATOR-001/u,
+  )
+
+  delete (provider as { long_horizon?: boolean }).long_horizon
+  writeJsonFile(lookupPath, lookup)
+
+  assert.doesNotMatch(
+    validateRepository(root).errors.join('\n'),
+    /loads WAIVER-001 without referenced policy OPERATOR-001/u,
+  )
+})
+
+test('mode governance explains every rule and carries the two canonical tables', () => {
+  const catalog = loadPolicyCatalog(sharedFixture())
+  const horizon = catalog.get('HORIZON-001')
+  const regular = catalog.get('SINGLERUN-001')
+
+  assert.ok(horizon)
+  assert.ok(regular)
+  assert.ok(
+    horizon.instructions.every((instruction) =>
+      /\bbecause\b/iu.test(instruction.text),
+    ),
+    'every long-horizon instruction states its reason',
+  )
+  assert.ok(
+    horizon.instructions.some((instruction) =>
+      /current models/iu.test(instruction.text),
+    ),
+    'model-limitation instructions identify the current limitation',
+  )
+  assert.ok(
+    horizon.instructions.some((instruction) =>
+      instruction.audience.includes('agent'),
+    ),
+  )
+
+  const handbook = horizon.guidance?.[0]?.content ?? ''
+  const tableHeader =
+    '| Identifier | Source | Kind | What it decides | Mark | Reason |'
+
+  assert.equal(
+    handbook
+      .split('\n')
+      .filter((line) => line.replaceAll(/\s+/gu, ' ').trim() === tableHeader)
+      .length,
+    2,
+  )
+  assert.match(handbook, /\| LH-01\s+\|/u)
+  assert.match(handbook, /\| LH-R4\s+\|/u)
+
+  const policyText = [
+    horizon.summary,
+    ...horizon.instructions.map((instruction) => instruction.text),
+    regular.summary,
+    ...regular.instructions.map((instruction) => instruction.text),
+    handbook,
+  ].join('\n')
+
+  assert.doesNotMatch(policyText, /\b[A-Z][A-Z0-9]*-\d{3}\b/u)
 })

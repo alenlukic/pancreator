@@ -4299,7 +4299,10 @@ function lookupRowCovers(
       provider.contract === consumer.contract) &&
     // Same reasoning for operator-artifact-scoped rows.
     (provider.operator_artifacts === undefined ||
-      provider.operator_artifacts === consumer.operator_artifacts)
+      provider.operator_artifacts === consumer.operator_artifacts) &&
+    // A mode-scoped row cannot provide a policy to the opposite mode.
+    (provider.long_horizon === undefined ||
+      provider.long_horizon === consumer.long_horizon)
   )
 }
 
@@ -4466,6 +4469,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'docs/operator-brief-system.md',
     'library/templates/repository-checks.json',
     'library/templates/repository-checks.self-development.json',
+    'library/templates/launchd-schedule.plist',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
     'governance/policies/PY-001.json',

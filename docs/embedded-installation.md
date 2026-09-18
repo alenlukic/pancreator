@@ -55,6 +55,16 @@ cd /path/to/target-repository
 # /pan-build-briefs to generate target-specific brief semantics and design tokens.
 ```
 
+## Optional scheduled trigger
+
+An embedded or detached installation includes the schedule configuration,
+command family, and launchd template, but neither `bin/install` nor `bin/update`
+installs or removes a trigger. Scheduling stays disabled until the operator
+configures jobs and explicitly runs `pan schedule install-agent` on macOS.
+`pan schedule uninstall-agent` reverses that action. Other platforms can invoke
+`pan schedule tick` from their own trigger; Pancreator packages no non-macOS
+scheduler service.
+
 ## Detached installation
 
 Pass `--harness-dir` to place the harness outside the target tree. The directory
@@ -465,7 +475,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.10.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.11.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

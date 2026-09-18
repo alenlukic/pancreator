@@ -51,6 +51,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `PROTO-001` — prototype spike discipline and declared shortcuts
 - `BESTOFN-001` — best-of-N session boundaries: isolated worktrees, operator-owned repair, and no source-control action
 - `DIRECTOR-001` — technical-director checkpoints for contract-enabled runs
+- `SINGLERUN-001` — regular-mode repeated-failure pause and operator-owned exclusion of one unit from a group
+- `HORIZON-001` — long-horizon autonomy boundaries, escalation, and dependency-scoped exclusion
 - `COHORT-001` — cohort plan hierarchy and fan-out execution: parent and child specifications, the chunk carve-up, harness-owned routing of the ratified plan into one delivery run or a cohort session, worktree isolation, ordered groups, durable completion proof, automatic continuation to the next group, and the single release run on the integrated result
 
 The prototype MUST NOT use an implicit policy override hierarchy. Conflicting policy text MUST be treated as a configuration defect and resolved directly.

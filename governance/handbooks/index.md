@@ -6,6 +6,7 @@ Handbooks define durable repository standards. Applicable handbook content MUST 
 
 - [`eng/engineering.md`](eng/engineering.md) defines the language-agnostic engineering baseline.
 - [`eng/testing.md`](eng/testing.md) defines the self-development test standard and stable test principles.
+- [`horizon/long-horizon.md`](horizon/long-horizon.md) defines the selectable long-horizon mode, its invariants, and its bounded escalation ladder.
 - [`writing/simplified-technical-english.md`](writing/simplified-technical-english.md) defines the Simplified Technical English standard for artifacts an operator reads, adapted from ASD-STE100 Issue 9.
 - [`design/ux-guide.md`](design/ux-guide.md) defines UI/UX design laws, critique, accessibility, tokens, mock media, and tooling.
 - [`python/style-guide.md`](python/style-guide.md) defines normative Python engineering and style guidance.

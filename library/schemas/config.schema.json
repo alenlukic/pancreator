@@ -230,10 +230,157 @@
               "contracts": {
                 "type": "array",
                 "uniqueItems": true,
-                "description": "Run-wide contracts every stage of the run abides by. technical_director escalates the technical_plan and independent_review checkpoints to operator gates and requires interactive refinement.",
+                "description": "Run-wide contracts every stage of the run abides by. technical_director escalates the technical_plan and independent_review checkpoints to operator gates and requires interactive refinement. long_horizon selects the long-horizon policy set and arms away mode for the run.",
                 "items": {
-                  "enum": ["technical_director"]
+                  "enum": ["technical_director", "long_horizon"]
                 }
+              },
+              "away_mode": {
+                "type": "object",
+                "required": ["enabled"],
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "guardrails": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "allowed_actions": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "items": {
+                          "enum": [
+                            "approve",
+                            "reject",
+                            "revise",
+                            "resume",
+                            "set-stage",
+                            "waive-gate"
+                          ]
+                        }
+                      },
+                      "max_decisions_per_run": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "max_remediation_attempts_per_agent": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "description": "Calendar jobs evaluated by pan schedule tick. The shipped configuration is disabled.",
+      "required": ["enabled", "jobs"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "catch_up_window_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 360
+        },
+        "grace_period_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 60
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "enabled", "hour", "minute", "action"],
+            "additionalProperties": false,
+            "oneOf": [
+              {
+                "required": ["workspace"],
+                "not": { "required": ["worktree"] }
+              },
+              { "required": ["worktree"], "not": { "required": ["workspace"] } }
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "enabled": { "type": "boolean" },
+              "hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+              "minute": { "type": "integer", "minimum": 0, "maximum": 59 },
+              "weekdays": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "integer", "minimum": 0, "maximum": 6 }
+              },
+              "timezone": { "type": "string", "minLength": 1 },
+              "catch_up_window_minutes": { "type": "integer", "minimum": 0 },
+              "grace_period_minutes": { "type": "integer", "minimum": 0 },
+              "workspace": { "type": "string", "minLength": 1 },
+              "worktree": { "type": "string", "minLength": 1 },
+              "action": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["kind", "command"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "command" },
+                      "command": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "workflow", "request_path"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "workflow" },
+                      "workflow": { "type": "string", "minLength": 1 },
+                      "request_path": { "type": "string", "minLength": 1 },
+                      "involvement": { "type": "string", "minLength": 1 },
+                      "verification": { "type": "string", "minLength": 1 },
+                      "pipeline_config": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "attest_supervisor_card": { "type": "boolean" }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "queue_path"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "session" },
+                      "queue_path": { "type": "string", "minLength": 1 },
+                      "involvement": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["kind", "prompt"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": { "const": "prompt" },
+                      "prompt": { "type": "string", "minLength": 1 },
+                      "workflow": { "type": "string", "minLength": 1 },
+                      "involvement": { "type": "string", "minLength": 1 },
+                      "verification": { "type": "string", "minLength": 1 },
+                      "pipeline_config": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "attest_supervisor_card": { "type": "boolean" }
+                    }
+                  }
+                ]
               }
             }
           }

@@ -1,6 +1,10 @@
 import { spawnSync } from 'node:child_process'
 
 import { isRecord } from '../io.js'
+import type {
+  ExternalExecutorAdapter,
+  ExternalModelVerification,
+} from '../types.js'
 import { probeEnvironment } from './cursor-auth.js'
 
 // A failed spawn's ledger record used to say only "exited with status 1". The
@@ -33,6 +37,12 @@ const HELP_TIMEOUT_MS = 10_000
 /** Flags the installed CLI declares, cached per binary for the process. */
 const declaredFlags = new Map<string, Set<string> | null>()
 
+function declaredFlagsIn(help: string): Set<string> {
+  return new Set(
+    [...help.matchAll(/(--[a-z0-9][a-z0-9-]*)/gu)].map((match) => match[1]),
+  )
+}
+
 /**
  * Whether the installed `cursor-agent` accepts an optional flag.
  *
@@ -63,11 +73,7 @@ export function cursorAgentSupportsFlag(
       binary,
       help.error || typeof help.stdout !== 'string'
         ? null
-        : new Set(
-            [...help.stdout.matchAll(/(--[a-z0-9][a-z0-9-]*)/gu)].map(
-              (match) => match[1],
-            ),
-          ),
+        : declaredFlagsIn(help.stdout),
     )
   }
 
@@ -91,10 +97,36 @@ export function withSupportedFlags(
   )
 }
 
+/**
+ * Flags every headless stage delegation emits. A stage worker cannot degrade
+ * to a shorter vector the way a probe can: it needs the trust grant and both
+ * workspace grants. Preflight therefore asks the installed CLI for them
+ * rather than discovering the gap at spawn time, once per stage.
+ *
+ * `--resume` is deliberately absent, because only a resumed delegation emits
+ * it. Requiring it would pause a fresh delegation that never uses it, while a
+ * resume the CLI cannot accept already degrades safely: the failed attempt is
+ * recorded as `resume_attempt` and the delegation falls back to a fresh
+ * full-card delivery.
+ */
+export const CURSOR_SESSION_REQUIRED_FLAGS = [
+  '--output-format',
+  '--trust',
+  '--model',
+  '--workspace',
+  '--add-dir',
+]
+
 export interface CursorAgentRequest {
   prompt: string
   /** Working directory of the spawned agent. */
   cwd: string
+  /** Workspace root granted to a headless stage worker. */
+  workspaceRoot?: string
+  /** Additional roots granted to a headless stage worker. */
+  addDirs?: string[]
+  /** The headless stage contract requires --trust instead of capability fallback. */
+  requireTrust?: boolean
   /**
    * Harness installation root the credential search starts from. ASK-001
    * resolves `CURSOR_API_KEY` from the installation or its workspace `.env`,
@@ -116,6 +148,7 @@ export interface CursorAgentResult {
   stdout: string
   stderr: string
   session_id?: string
+  reported_model?: string
   value?: unknown
   error?: string
 }
@@ -167,9 +200,11 @@ function parseJsonValue(text: string): unknown | undefined {
 
 function parseStream(stdout: string): {
   sessionId?: string
+  reportedModel?: string
   value?: unknown
 } {
   let sessionId: string | undefined
+  let reportedModel: string | undefined
   let value: unknown | undefined
 
   for (const line of stdout.split('\n')) {
@@ -195,6 +230,14 @@ function parseStream(stdout: string): {
       sessionId = event.session_id
     }
 
+    if (
+      event.type === 'system' &&
+      event.subtype === 'init' &&
+      typeof event.model === 'string'
+    ) {
+      reportedModel = event.model
+    }
+
     const text = eventText(event)
     const parsed = text ? parseJsonValue(text) : undefined
 
@@ -205,8 +248,52 @@ function parseStream(stdout: string): {
 
   return {
     ...(sessionId ? { sessionId } : {}),
+    ...(reportedModel ? { reportedModel } : {}),
     ...(value !== undefined ? { value } : {}),
   }
+}
+
+type CursorArgumentRequest = Pick<
+  CursorAgentRequest,
+  'model' | 'sessionId' | 'workspaceRoot' | 'addDirs'
+>
+
+/**
+ * The one argument vector every cursor-agent spawn is built from. `leading`
+ * carries the mode and trust flags each caller resolves differently, and
+ * `trailing` the workspace grants only a stage worker receives.
+ */
+function cursorAgentArguments(
+  request: CursorArgumentRequest,
+  leading: string[],
+  trailing: string[] = [],
+): string[] {
+  return [
+    '-p',
+    '--output-format',
+    'stream-json',
+    ...leading,
+    ...(request.model ? ['--model', request.model] : []),
+    ...(request.sessionId ? ['--resume', request.sessionId] : []),
+    ...trailing,
+  ]
+}
+
+/** Exact non-interactive argument vector used for a stage-worker session. */
+export function cursorAgentSessionArguments(
+  request: CursorArgumentRequest,
+): string[] {
+  return cursorAgentArguments(
+    request,
+    ['--trust'],
+    [
+      ...(request.workspaceRoot ? ['--workspace', request.workspaceRoot] : []),
+      ...(request.addDirs ?? []).flatMap((directory) => [
+        '--add-dir',
+        directory,
+      ]),
+    ],
+  )
 }
 
 function runCursorAgent(
@@ -214,21 +301,14 @@ function runCursorAgent(
   options: CursorAgentExecutionOptions,
 ): CursorAgentResult {
   const binary = cursorAgentBinary()
-  const argv = ['-p', '--output-format', 'stream-json']
-
-  if (options.toolFree) {
-    argv.push(...withSupportedFlags([['--mode', 'ask']]))
-  }
-
-  argv.push(...withSupportedFlags([['--trust']]))
-
-  if (request.model) {
-    argv.push('--model', request.model)
-  }
-
-  if (request.sessionId) {
-    argv.push('--resume', request.sessionId)
-  }
+  const argv = options.toolFree
+    ? cursorAgentArguments(
+        request,
+        withSupportedFlags([['--mode', 'ask'], ['--trust']]),
+      )
+    : request.requireTrust
+      ? cursorAgentSessionArguments(request)
+      : cursorAgentArguments(request, withSupportedFlags([['--trust']]))
 
   const startedAt = Date.now()
   const spawned = spawnSync(binary, argv, {
@@ -300,6 +380,7 @@ function runCursorAgent(
       stdout,
       stderr,
       ...(parsed.sessionId ? { session_id: parsed.sessionId } : {}),
+      ...(parsed.reportedModel ? { reported_model: parsed.reportedModel } : {}),
       error: 'Cursor agent returned no parseable JSON value.',
     }
   }
@@ -314,6 +395,7 @@ function runCursorAgent(
     stdout,
     stderr,
     ...(parsed.sessionId ? { session_id: parsed.sessionId } : {}),
+    ...(parsed.reportedModel ? { reported_model: parsed.reportedModel } : {}),
     ...(parsed.value !== undefined ? { value: parsed.value } : {}),
   }
 }
@@ -333,4 +415,148 @@ export function runCursorAgentSession(
   request: CursorAgentRequest,
 ): CursorAgentResult {
   return runCursorAgent(request, { toolFree: false, requireJson: false })
+}
+
+export interface CursorAgentAdapterOptions {
+  workspaceDir: string
+  installationRoot: string
+  runtimeDir: string
+  modelSpec: string
+  /**
+   * Whether the local catalog predicts a variant for `modelSpec`. An
+   * `unverifiable` prediction still delegates, and its reason reaches the
+   * delegation record, so a delegation that ran no drift check cannot be
+   * mistaken for one that ran and matched.
+   */
+  modelVerification: ExternalModelVerification
+  timeoutMs?: number
+}
+
+/**
+ * Verify that the configured cursor-agent binary resolves locally and still
+ * declares every flag a stage delegation emits.
+ */
+export function cursorAgentBinaryReadiness():
+  | { ok: true; binary: string }
+  | { ok: false; binary: string; error: string } {
+  const binary = cursorAgentBinary()
+  const result = spawnSync(binary, ['--help'], {
+    encoding: 'utf8',
+    input: '',
+    timeout: HELP_TIMEOUT_MS,
+    maxBuffer: MAX_OUTPUT_BYTES,
+  })
+
+  if (result.error) {
+    return {
+      ok: false,
+      binary,
+      error: `Cursor agent CLI '${binary}' is not invocable: ${result.error.message}.`,
+    }
+  }
+
+  if (result.status !== 0) {
+    return {
+      ok: false,
+      binary,
+      error: `Cursor agent CLI '${binary}' exited with status ${String(result.status)} during preflight.`,
+    }
+  }
+
+  // Unreadable help keeps the documented argument form, for the reason
+  // `cursorAgentSupportsFlag` states: a capability read that fails closed
+  // would block a CLI that works.
+  const help = `${result.stdout ?? ''}\n${result.stderr ?? ''}`
+
+  if (help.trim().length === 0) {
+    return { ok: true, binary }
+  }
+
+  const declared = declaredFlagsIn(help)
+  const missing = CURSOR_SESSION_REQUIRED_FLAGS.filter(
+    (flag) => !declared.has(flag),
+  )
+
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      binary,
+      error:
+        `Cursor agent CLI '${binary}' declares no ${missing.join(', ')} in ` +
+        'its help output, and every headless stage delegation emits those ' +
+        'flags.',
+    }
+  }
+
+  return { ok: true, binary }
+}
+
+/** Adapt the existing cursor-agent session spawn to harness delegation. */
+export function createCursorAgentAdapter(
+  options: CursorAgentAdapterOptions,
+): ExternalExecutorAdapter {
+  const grantedRoots = [options.workspaceDir, options.runtimeDir]
+  const toolPolicy = {
+    granted_roots: grantedRoots,
+    per_path_write_policy: false,
+    scope_gate: 'scope.no_unapproved_changes' as const,
+  }
+  // ASK-001 forbids persisting a secret value, and the child's streams become
+  // durable run evidence. The CLI is not expected to echo its credential;
+  // this is the layer that holds if a release ever starts to.
+  const apiKey =
+    process.env.CURSOR_API_KEY ??
+    probeEnvironment(options.installationRoot)?.CURSOR_API_KEY
+  const sanitize = (text: string): string =>
+    apiKey ? text.split(apiKey).join('[redacted CURSOR_API_KEY]') : text
+
+  return {
+    kind: 'cursor',
+    sanitize,
+    run: (prompt, resumeSessionId) => {
+      const result = runCursorAgentSession({
+        prompt,
+        cwd: options.workspaceDir,
+        workspaceRoot: options.workspaceDir,
+        addDirs: [options.runtimeDir],
+        requireTrust: true,
+        installationRoot: options.installationRoot,
+        model: options.modelSpec,
+        ...(resumeSessionId ? { sessionId: resumeSessionId } : {}),
+        ...(options.timeoutMs !== undefined
+          ? { timeoutMs: options.timeoutMs }
+          : {}),
+      })
+      const verification = options.modelVerification
+      const expected =
+        verification.status === 'compared' ? verification.expected_model : null
+      const reported = result.reported_model
+      const modelError =
+        result.ok && !reported
+          ? 'Cursor agent returned no system/init model variant.'
+          : result.ok && expected !== null && reported !== expected
+            ? `Cursor agent reported model '${reported}' but the local catalog predicts '${expected}'.`
+            : null
+
+      return {
+        ok: result.ok && modelError === null,
+        binary: result.binary,
+        argv: result.argv,
+        exit_code: result.exit_code,
+        timed_out: result.timed_out,
+        duration_ms: result.duration_ms,
+        stdout: sanitize(result.stdout),
+        stderr: sanitize(result.stderr),
+        ...(result.session_id ? { session_id: result.session_id } : {}),
+        ...(reported ? { reported_model: reported } : {}),
+        model_verification: verification,
+        tool_policy: toolPolicy,
+        ...(modelError !== null
+          ? { error: modelError }
+          : result.error
+            ? { error: result.error }
+            : {}),
+      }
+    },
+  }
 }

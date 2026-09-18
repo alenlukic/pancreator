@@ -1909,6 +1909,41 @@ function standardizedFileSlug(filePath: string, slugSeed: string): string {
   )
 }
 
+/**
+ * File names a governance policy mandates verbatim, with the UTC timestamp
+ * each one carries captured so its age stays legible without a rename.
+ *
+ * `REPAIR-001` mandates `harness-repair-<UTC timestamp>-<category-slug>-<detail-slug>.md`
+ * and requires one intake to cite another by file name; `SPOT-001` mandates
+ * `spotfix-escalation-<UTC timestamp>-<slug>.md`. Standardizing either shape
+ * breaks the mandated name and every citation of it, because a citation is a
+ * bare file name that the reference rewrite, which maps whole relative paths,
+ * never sees.
+ */
+const POLICY_MANDATED_FILE_NAME_PATTERN =
+  /^(?:harness-repair|spotfix-escalation)-(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})?Z-.+\.md$/u
+
+/** The creation date a policy-mandated file name carries, if it is one. */
+function policyMandatedFileDate(name: string): Date | null {
+  const match = POLICY_MANDATED_FILE_NAME_PATTERN.exec(name)
+
+  return match
+    ? utcDate(
+        match[1],
+        match[2],
+        match[3],
+        match[4],
+        match[5],
+        match[6],
+        match[7] ?? '0',
+      )
+    : null
+}
+
+function isPolicyMandatedFileName(name: string): boolean {
+  return policyMandatedFileDate(name) !== null
+}
+
 function isCompliantTemporalFileName(name: string): boolean {
   return temporalFileDate(name) !== null
 }
@@ -1939,7 +1974,8 @@ function standardizeTemporalFileNamesIn(
     if (
       !entry.isFile() ||
       entry.name.startsWith('.') ||
-      isCompliantTemporalFileName(entry.name)
+      isCompliantTemporalFileName(entry.name) ||
+      isPolicyMandatedFileName(entry.name)
     ) {
       continue
     }
@@ -2571,7 +2607,8 @@ export function archiveWorkflowDirectories(
 
   // Inbox requests and PR descriptions are copied into run directories when
   // consumed, so the originals age out on the same retention window. Their
-  // standardized temporal prefix is the age authority.
+  // standardized temporal prefix is the age authority, except for the
+  // policy-mandated names standardization leaves alone.
   const archivedFiles = new Map<string, string[]>()
   const fileMappings = new Map<string, string>()
   const inboxArchivedNames: string[] = []
@@ -2599,7 +2636,10 @@ export function archiveWorkflowDirectories(
         continue
       }
 
-      const createdAt = temporalFileDate(entry.name)
+      // A policy-mandated name keeps itself, so the UTC timestamp inside it is
+      // the only age authority it has.
+      const createdAt =
+        temporalFileDate(entry.name) ?? policyMandatedFileDate(entry.name)
 
       if (!createdAt || createdAt.getTime() >= cutoff.getTime()) {
         continue

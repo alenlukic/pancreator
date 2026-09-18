@@ -5,6 +5,7 @@ import test from 'node:test'
 import { Worker } from 'node:worker_threads'
 
 import {
+  awayBlockerCanBeCleared,
   awayDecisionLedgerPath,
   awayEvaluatorPrompt,
   awayGateContext,
@@ -1169,4 +1170,47 @@ test('the evaluator prompt states when a gate waiver may be ranked', () => {
   // A forward route past a gate is refused unless the note names where the
   // run is going, so the prompt has to ask for it.
   assert.match(prompt, /destination stage|stage or the gate|gate it waives/u)
+})
+
+test('blocker recovery predicate rejects every human-only exit a session meets', () => {
+  // Each human-only class AC-21 names reaches the session the same way: the
+  // ranked options survive nothing, so `selectAwayOption` selects none. The
+  // predicate reads that selection and nothing the caller asserts about it.
+  const deniedDecision = selectAwayOption(
+    parseAwayOptions({ ranked_options: [option(1, 'approve')] }),
+    awayConfig(),
+    { operator_decision: true },
+  )
+  const guardrailFiltered = selectAwayOption(
+    parseAwayOptions({
+      ranked_options: [option(1, 'resume'), option(2, 'set-stage')],
+    }),
+    awayConfig({ allowed_actions: ['approve'] }),
+  )
+  const unsupportedQuarantine = selectAwayOption(
+    parseAwayOptions({
+      ranked_options: [{ ...option(1, 'resume'), feasible: false }],
+    }),
+    awayConfig(),
+  )
+  const recoverable = selectAwayOption(
+    parseAwayOptions({ ranked_options: [option(1, 'resume')] }),
+    awayConfig(),
+  )
+
+  assert.equal(deniedDecision.selected, null)
+  assert.match(
+    deniedDecision.rejected[0]?.reason ?? '',
+    /declares an operator decision/u,
+  )
+  assert.equal(awayBlockerCanBeCleared(deniedDecision), false)
+
+  assert.equal(guardrailFiltered.rejected.length, 2)
+  assert.equal(awayBlockerCanBeCleared(guardrailFiltered), false)
+
+  assert.match(unsupportedQuarantine.rejected[0]?.reason ?? '', /infeasible/u)
+  assert.equal(awayBlockerCanBeCleared(unsupportedQuarantine), false)
+
+  assert.equal(recoverable.selected?.action, 'resume')
+  assert.equal(awayBlockerCanBeCleared(recoverable), true)
 })

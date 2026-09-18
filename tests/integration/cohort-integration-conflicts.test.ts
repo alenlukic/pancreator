@@ -489,3 +489,37 @@ test('the last integration starts the release run at verify in its own worktree,
     'the retry reuses the release worktree',
   )
 })
+
+// Profile propagation is best-effort metadata on a run the route has to start
+// anyway. A session whose plan run record is gone reaches release through the
+// same fallback the request path uses; a throw here would be unrecoverable,
+// because the one recovery command re-enters the identical read.
+test('the release run starts when the plan run record is gone', () => {
+  const root = createFixture()
+  const { cohortId, planRunId } = finalCohortReadyToIntegrate(root)
+
+  rmSync(statePath(root, planRunId))
+
+  const integrated = integrateCohort(root, cohortId)
+
+  assert.equal(integrated.autostart.status, 'started')
+  assert.equal(integrated.autostart.kind, 'release')
+
+  if (
+    integrated.autostart.status !== 'started' ||
+    integrated.autostart.kind !== 'release'
+  ) {
+    return
+  }
+
+  const state = loadState(root, integrated.autostart.run_id)
+
+  // No plan run remains to name a profile, so the run takes the configured
+  // default rather than inheriting one.
+  assert.equal(state.operator_involvement?.profile, 'standard')
+  assert.equal(
+    state.request.source_path,
+    'runtime/specs/parent-specification.md',
+  )
+  assert.deepEqual(releaseRuns(root), [integrated.autostart.run_id])
+})

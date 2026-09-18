@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readdirSync, realpathSync, rmSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -10,7 +11,6 @@ import {
   createRun,
   DEFAULT_WORKFLOW_SLUG,
   decideRun,
-  decideRunAsAway,
   armWorkerWatch,
   delegateInvocation,
   getRunStatus,
@@ -27,9 +27,7 @@ import {
   quarantineRunForAgent,
   recordSupervisorModelEvidence,
   resumeRun,
-  resumeRunAsAway,
   setRunStage,
-  setRunStageAsAway,
   setRunVerification,
   submitOutput,
   validateOutputForSubmission,
@@ -58,6 +56,32 @@ import {
   startCohort,
 } from './lib/cohorts.js'
 import type { DeliveryRouteOptions } from './lib/cohorts.js'
+import {
+  abandonHorizonSession,
+  addHorizonTask,
+  checkpointHorizonSession,
+  deferHorizonTask,
+  horizonStatus,
+  initHorizonSession,
+  latestHorizonHandoff,
+  loadHorizonSession,
+  nextHorizonTask,
+  startHorizonSession,
+  type HorizonQueueTaskInput,
+} from './lib/horizon.js'
+import {
+  applyAwayDecision,
+  evaluateAwayState,
+} from './lib/away-orchestration.js'
+import {
+  installScheduleAgent,
+  resolveScheduleConfig,
+  runScheduledJob,
+  scheduleStatus,
+  scheduleTick,
+  uninstallScheduleAgent,
+  validateSchedule,
+} from './lib/schedule.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import {
@@ -88,17 +112,9 @@ import {
 import {
   AWAY_SUBCOMMAND_OPTIONS,
   awayDecisionLedgerPath,
-  awayEvaluatorFailureLimitError,
-  awayEvaluatorPrompt,
   awayModeTrigger,
-  countAwayDecisions,
-  countAwayEvaluatorFailures,
   readAwayDecisionLedger,
   recordAwayApplyResult,
-  recordAwayEvaluation,
-  recordAwayEvaluationFailure,
-  recordAwayEvaluatorExchange,
-  recordDeterministicShipApproval,
   recordHypervisorQuarantine,
   resolveAwayApplyAction,
   unknownAwayOption,
@@ -114,7 +130,6 @@ import {
   stopHypervisorProcess,
   tickHypervisor,
 } from './lib/hypervisor.js'
-import { runCursorAgentJson } from './lib/executors/cursor-agent.js'
 import {
   gitWorkspaceSnapshot,
   integrationBranchReadiness,
@@ -124,7 +139,6 @@ import { liveRunsBoundToWorktree } from './lib/state.js'
 import { listInbox, renderInbox, restoreInboxRequest } from './lib/inbox.js'
 import {
   loadPipelineConfig,
-  loadPipelineConfigSnapshot,
   parsePipelineConfig,
   pipelineConfigPersonaMappings,
 } from './lib/pipeline-config.js'
@@ -380,7 +394,7 @@ export const HELP_BODY = `Usage:
   pan output validate (<run-id> | --run <run-id>) --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--horizon <session-id>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
       --dimensions (review mode) selects the review dimensions the squad runs, comma-separated. The default is the full lineup. An unknown name is refused with the accepted list, and the card records the selection and the default dimensions it leaves out.
   pan governance card --mode supervisor --run <run-id> [--json]
@@ -393,6 +407,16 @@ export const HELP_BODY = `Usage:
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
   pan best-of-n prune [--force] [--json]
+  pan schedule list|status|tick|validate|install-agent|uninstall-agent [--json]
+  pan schedule run <job-id> [--json]
+      Evaluate configured calendar jobs, force one named job, inspect filesystem alerts, validate job references, or install and remove the opt-in macOS launchd trigger. Any platform can invoke 'pan schedule tick' from an external trigger.
+  pan horizon init --queue <path> [--session <id>] [--involvement <profile>] [--worktree <name>] [--json]
+  pan horizon add <session-id> --task <task-json> [--json]
+  pan horizon start <session-id> --attest-supervisor-card [--json]
+  pan horizon next|status|checkpoint|resume <session-id> [--json]
+  pan horizon defer <session-id> --task <id> --reason <text> [--evidence <path>]... [--json]
+  pan horizon abandon <session-id> --reason <text> [--json]
+      A horizon session runs one eligible task per fresh driver process. Deferral blocks only transitive dependents and keeps unrelated tasks eligible.
   pan cohort init --plan-run <run-id> [--from <branch>] [--max-parallel <n>] [--json]
       --max-parallel caps the concurrent chunk runs of the session (default 4).
   pan cohort start <cohort-id> [--cohort <index>] [--json]
@@ -647,6 +671,7 @@ const WORKTREE_CAPABLE_SURFACES = [
   'init',
   'decide',
   'cohort route',
+  'horizon init',
   'prepare',
   'resume',
   'submit',
@@ -673,11 +698,13 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'context',
   'governance',
   'hypervisor',
+  'horizon',
   'inbox',
   'output',
   'release',
   'repository-check',
   'requirements',
+  'schedule',
   'spotfix',
   'style',
   'technologies',
@@ -705,6 +732,8 @@ function acceptsWorktreeOption(command: string, args: string[]): boolean {
       return args[0] === 'apply' || args[0] === 'validate'
     case 'cohort':
       return args[0] === 'route'
+    case 'horizon':
+      return args[0] === 'init'
     case 'repository-check':
       return args[0] !== 'validate'
     // The usage line advertises the option and the handler already resolves
@@ -980,149 +1009,6 @@ function listRuns(root: string): Array<Record<string, unknown>> {
       pending_action: state.pending_action.type,
       updated_at: state.updated_at,
     }))
-}
-
-function hypervisorModelForRun(root: string, state: RunState): string {
-  if (state.pipeline_config) {
-    const snapshot = loadPipelineConfigSnapshot(
-      root,
-      state.pipeline_config.path,
-    )
-    const model = snapshot.personas.hypervisor
-
-    if (model) {
-      return model
-    }
-  }
-
-  const model = loadPipelineConfig(root).config.personas.hypervisor
-
-  if (!model) {
-    throw new PanError(
-      "Pipeline configuration does not map persona 'hypervisor'.",
-      { code: 'INVALID_PIPELINE_CONFIG' },
-    )
-  }
-
-  return model
-}
-
-function applyAwayDecision(
-  root: string,
-  state: RunState,
-  decision: AwayDecisionRecord,
-): RunState {
-  const selected = decision.selected_action
-
-  if (!selected) {
-    throw new PanError('The away decision selected no action.', {
-      code: 'AWAY_DECISION_NOT_APPLICABLE',
-    })
-  }
-
-  switch (selected.action) {
-    case 'approve':
-    case 'reject':
-    case 'revise':
-      return decideRunAsAway(
-        root,
-        state.run_id,
-        selected.action,
-        selected.note ?? selected.rationale,
-      )
-    case 'resume':
-      return resumeRunAsAway(
-        root,
-        state.run_id,
-        selected.stage ?? state.current_stage,
-        selected.note ?? selected.rationale,
-      )
-    case 'set-stage':
-      return setRunStageAsAway(
-        root,
-        state.run_id,
-        requiredArgument(selected.stage, 'selected stage'),
-        selected.note ?? selected.rationale,
-      )
-    case 'waive-gate':
-      // The note is the directive, and `selectAwayOption` already refused an
-      // option that carries none. The waiver is recorded with away
-      // authorship, so nothing in the record claims the operator wrote it.
-      return waiveGate(root, state.run_id, {
-        note: requiredArgument(selected.note, 'selected note'),
-        actor: 'away',
-      }).state
-    default:
-      throw new PanError(
-        `Unsupported away action: ${String(selected.action)}`,
-        { code: 'AWAY_DECISION_NOT_APPLICABLE' },
-      )
-  }
-}
-
-function evaluateAwayState(
-  root: string,
-  state: RunState,
-  blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
-): AwayDecisionRecord {
-  if (
-    blocker.type === 'operator_approval' &&
-    blocker.stage === 'ship' &&
-    state.pending_action.type === 'operator_approval' &&
-    (state.pending_action.outcome ?? 'success') === 'success'
-  ) {
-    const evidenceReferences = [
-      resolveRunLayout(root, state.run_id).state.relative,
-      state.stage_history.at(-1)?.output_path,
-    ].filter((item): item is string => typeof item === 'string')
-
-    return recordDeterministicShipApproval(root, state, evidenceReferences)
-  }
-
-  // The ledger append re-checks the limit under its lock. This pre-check only
-  // skips a model evaluation whose record could never be persisted.
-  const budget = state.away_mode?.guardrails.max_decisions_per_run ?? 0
-
-  if (countAwayDecisions(root, state.run_id) >= budget) {
-    throw new PanError(
-      'The away-mode decision limit for this run is exhausted.',
-      { code: 'AWAY_DECISION_LIMIT' },
-    )
-  }
-
-  const evaluatorFailures = countAwayEvaluatorFailures(root, state.run_id)
-
-  if (evaluatorFailures >= budget) {
-    throw awayEvaluatorFailureLimitError(root, state, evaluatorFailures, budget)
-  }
-
-  const prompt = awayEvaluatorPrompt(root, state, blocker, {
-    hypervisorEventsPath: path
-      .relative(root, hypervisorEventsPath(root))
-      .split(path.sep)
-      .join('/'),
-  })
-  const evaluation = runCursorAgentJson({
-    cwd: root,
-    installationRoot: root,
-    model: hypervisorModelForRun(root, state),
-    prompt,
-  })
-
-  // The ledger keeps only the parsed verdict. The prompt and the raw response
-  // are what diagnose a rejected ranking, so they land beside the run evidence.
-  recordAwayEvaluatorExchange(root, state, prompt, evaluation)
-
-  if (!evaluation.ok || evaluation.value === undefined) {
-    return recordAwayEvaluationFailure(
-      root,
-      state,
-      blocker,
-      evaluation.error ?? 'The away evaluator returned no decision.',
-    )
-  }
-
-  return recordAwayEvaluation(root, state, blocker, evaluation.value)
 }
 
 function reprepareRecoveredAgent(
@@ -1720,6 +1606,7 @@ async function main(): Promise<void> {
                 summary: profile.summary,
                 gates: profile.gates ?? {},
                 contracts: profile.contracts ?? [],
+                away_mode: profile.away_mode ?? null,
               },
             ]),
           ),
@@ -3326,6 +3213,10 @@ async function main(): Promise<void> {
             '--dimensions',
             availableReviewDimensions(root).map((dimension) => dimension.slug),
           ),
+          contracts: option(args, '--horizon')
+            ? loadHorizonSession(root, option(args, '--horizon') as string)
+                .contracts
+            : undefined,
         })
 
         print({
@@ -3490,6 +3381,223 @@ async function main(): Promise<void> {
           code: 'UNKNOWN_COMMAND',
         },
       )
+    }
+    case 'schedule': {
+      const sub = args[0]
+      const rest = args.slice(1)
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'list') {
+        print(resolveScheduleConfig(root), asJson)
+        return
+      }
+      if (sub === 'status') {
+        print(scheduleStatus(root), asJson)
+        return
+      }
+      if (sub === 'tick') {
+        print(scheduleTick(root), asJson)
+        return
+      }
+      if (sub === 'run') {
+        print(
+          runScheduledJob(root, requiredPositional(rest[0], 'job-id')),
+          asJson,
+        )
+        return
+      }
+      if (sub === 'validate') {
+        print(validateSchedule(root), asJson)
+        return
+      }
+      if (sub === 'install-agent') {
+        print(installScheduleAgent(root), asJson)
+        return
+      }
+      if (sub === 'uninstall-agent') {
+        print(uninstallScheduleAgent(root), asJson)
+        return
+      }
+      throw new PanError(`Unknown schedule subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'horizon': {
+      const sub = args[0]
+      const rest = args.slice(1)
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'init') {
+        print(
+          initHorizonSession(
+            root,
+            requiredArgument(option(args, '--queue'), '--queue'),
+            {
+              ...(option(args, '--session')
+                ? { sessionId: option(args, '--session') as string }
+                : {}),
+              ...(option(args, '--involvement')
+                ? { involvement: option(args, '--involvement') as string }
+                : {}),
+              ...(option(args, '--worktree')
+                ? { worktree: option(args, '--worktree') as string }
+                : {}),
+            },
+          ),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'add') {
+        const taskPath = requiredArgument(option(args, '--task'), '--task')
+        print(
+          addHorizonTask(
+            root,
+            requiredPositional(rest[0], 'session-id'),
+            readJson(resolveInside(root, taskPath)) as HorizonQueueTaskInput,
+          ),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'start') {
+        const sessionId = requiredPositional(rest[0], 'session-id')
+        let state = startHorizonSession(root, sessionId, {
+          attestSupervisorCard: hasFlag(args, '--attest-supervisor-card'),
+        })
+        let childCount = 0
+
+        while (state.status === 'running' && childCount < 10_000) {
+          const child = spawnSync(
+            process.execPath,
+            [
+              fileURLToPath(import.meta.url),
+              'horizon',
+              'next',
+              sessionId,
+              '--driver-child',
+              '--json',
+            ],
+            {
+              cwd: root,
+              encoding: 'utf8',
+              timeout: 86_400_000,
+              maxBuffer: 16 * 1024 * 1024,
+            },
+          )
+
+          if (child.error || child.status !== 0) {
+            throw new PanError(
+              `Horizon driver process failed: ${child.error?.message ?? child.stderr ?? `exit ${String(child.status)}`}`,
+              { code: 'HORIZON_DRIVER_FAILED' },
+            )
+          }
+
+          state = horizonStatus(root, sessionId)
+          childCount += 1
+        }
+
+        if (childCount >= 10_000) {
+          throw new PanError(
+            'Horizon session exceeded its 10000-task driver bound.',
+            {
+              code: 'HORIZON_DRIVER_LIMIT',
+            },
+          )
+        }
+
+        print(state, asJson)
+        return
+      }
+
+      if (sub === 'next') {
+        const sessionId = requiredPositional(rest[0], 'session-id')
+        const result = nextHorizonTask(root, sessionId)
+
+        if (hasFlag(args, '--driver-child') && result.run) {
+          let state = result.session
+          let checkpoints = 0
+
+          while (state.active_task_id && checkpoints < 100) {
+            state = checkpointHorizonSession(root, sessionId).session
+            checkpoints += 1
+          }
+
+          if (checkpoints >= 100) {
+            throw new PanError(
+              'Horizon task exceeded its 100-checkpoint bound.',
+              {
+                code: 'HORIZON_TASK_DRIVER_LIMIT',
+              },
+            )
+          }
+
+          print(state, asJson)
+          return
+        }
+
+        print(result, asJson)
+        return
+      }
+
+      if (sub === 'status') {
+        print(
+          horizonStatus(root, requiredPositional(rest[0], 'session-id')),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'checkpoint') {
+        print(
+          checkpointHorizonSession(
+            root,
+            requiredPositional(rest[0], 'session-id'),
+          ),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'resume') {
+        print(
+          latestHorizonHandoff(root, requiredPositional(rest[0], 'session-id')),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'defer') {
+        print(
+          deferHorizonTask(
+            root,
+            requiredPositional(rest[0], 'session-id'),
+            requiredArgument(option(args, '--task'), '--task'),
+            requiredArgument(option(args, '--reason'), '--reason'),
+            repeatedOption(args, '--evidence'),
+          ),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'abandon') {
+        print(
+          abandonHorizonSession(
+            root,
+            requiredPositional(rest[0], 'session-id'),
+            requiredArgument(option(args, '--reason'), '--reason'),
+          ),
+          asJson,
+        )
+        return
+      }
+
+      throw new PanError(`Unknown horizon subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'cohort': {
       const sub = args[0]

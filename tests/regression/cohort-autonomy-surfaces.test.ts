@@ -268,16 +268,20 @@ test('every operator-owned action list surface states the pan-dev landing rule o
   }
 })
 
-test('COHORT-001 still requires a stated operator reason to exclude one unit from a group', () => {
-  const exclusion = instructions('COHORT-001').find(
+test('mode policies pair operator-owned and agent-owned unit exclusion', () => {
+  const regular = instructions('SINGLERUN-001').find(
     (text) => /exclusion of one unit/iu.test(text) && /operator/u.test(text),
   )
-
-  assert.ok(
-    exclusion,
-    'COHORT-001 no longer governs excluding a unit from a group',
+  const horizon = instructions('HORIZON-001').find((text) =>
+    /integrating agent MAY exclude/iu.test(text),
   )
-  assert.match(exclusion, /reason/u)
+
+  assert.ok(regular, 'the regular mode lost operator-owned unit exclusion')
+  assert.match(regular, /reason/u)
+  assert.ok(horizon, 'the long-horizon mode lost agent-owned unit exclusion')
+  assert.match(horizon, /recorded reason/iu)
+  assert.match(horizon, /follow-up/iu)
+  assert.match(horizon, /dependents/iu)
 })
 
 test('WAIVER-001 lets away mode author a waiver only under its own authorship', () => {

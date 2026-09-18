@@ -846,6 +846,109 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
   assert.equal(standardizeRuntimeFileNames(root).renamed_files, 0)
 })
 
+// `pan archive` renamed all 13 queued harness repair intakes out of the shape
+// `REPAIR-001` mandates and left 20 by-name cross-references dangling, because
+// standardization rewrites a bare file name that the reference repair, which
+// maps whole relative paths, cannot follow.
+test('standardization leaves policy-mandated inbox names and their citations alone', () => {
+  const root = createTestTempDirectory('pan-names-policy-')
+  const intake =
+    'harness-repair-20260917T215829Z-build-release-sync-and-validator-routing.md'
+  const related = 'harness-repair-20260918T061754Z-int-con-ship-scope-window.md'
+  const escalation = 'spotfix-escalation-20260918T083300Z-pan-archive.md'
+
+  write(
+    path.join(root, 'runtime/inbox/queue', intake),
+    `# Build intake\n\nLand \`${related}\` first.\n`,
+  )
+  write(path.join(root, 'runtime/inbox/queue', related), '# Consistency\n')
+  write(path.join(root, 'runtime/inbox/queue', escalation), '# Escalation\n')
+  // An ordinary request in the same directory still standardizes, so the
+  // exemption is the mandated name rather than the directory.
+  write(
+    path.join(root, 'runtime/inbox/queue/2026-08-14-archive-utils.md'),
+    'Ordinary request.\n',
+  )
+
+  const summary = standardizeRuntimeFileNames(root)
+
+  assert.deepEqual(Object.keys(summary.renames), [
+    'runtime/inbox/queue/2026-08-14-archive-utils.md',
+  ])
+  assert.equal(existsSync(path.join(root, 'runtime/inbox/queue', intake)), true)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/queue', related)),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/queue', escalation)),
+    true,
+  )
+  // The cross-reference still resolves, which is the contract the rename broke.
+  const citation = readFileSync(
+    path.join(root, 'runtime/inbox/queue', intake),
+    'utf8',
+  ).match(/`([^`]+)`/u)
+
+  assert.ok(citation)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/queue', citation[1])),
+    true,
+  )
+})
+
+// The exemption is bounded by the mandated shape. A name that only borrows the
+// prefix carries no UTC timestamp, so it has no age of its own and must still
+// be standardized rather than sit unarchivable in a status directory.
+test('a policy prefix without a mandated UTC timestamp still standardizes', () => {
+  const root = createTestTempDirectory('pan-names-policy-near-miss-')
+  const nearMisses = [
+    'harness-repair-notes.md',
+    'harness-repair-2026-09-17-draft.md',
+    'spotfix-escalation-20260918T0833Z-truncated.md',
+  ]
+
+  for (const name of nearMisses) {
+    write(path.join(root, 'runtime/inbox/queue', name), 'Near miss.\n')
+  }
+
+  assert.equal(standardizeRuntimeFileNames(root).renamed_files, 3)
+
+  for (const name of nearMisses) {
+    assert.equal(
+      existsSync(path.join(root, 'runtime/inbox/queue', name)),
+      false,
+      name,
+    )
+  }
+})
+
+// Standardization is what gave an inbox item an archivable age, so exempting a
+// name must not make it immortal in a terminal status directory.
+test('a policy-mandated inbox item still archives on the age its name carries', () => {
+  const root = createTestTempDirectory('pan-archive-policy-')
+  const stale = 'harness-repair-20260622T211500Z-test-issues-flaky-lane.md'
+  const fresh = 'harness-repair-20260629T211500Z-compliance-card-drift.md'
+
+  write(path.join(root, 'runtime/inbox/complete', stale), '# Stale\n')
+  write(path.join(root, 'runtime/inbox/complete', fresh), '# Fresh\n')
+
+  const summary = archiveWorkflowDirectories(root, {
+    retentionDays: 7,
+    now: new Date('2026-07-01T22:00:00.000Z'),
+  })
+
+  assert.deepEqual(summary.inbox_files, [stale])
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/archive', stale)),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/complete', fresh)),
+    true,
+  )
+})
+
 test('run directory hash suffixes migrate to keyword suffixes', () => {
   const root = createTestTempDirectory('pan-suffixes-')
   const first = '63379_Jun-22-0158_5f354f23'

@@ -2,8 +2,14 @@ import path from 'node:path'
 
 import { invariant } from './errors.js'
 import { fileExists, isRecord } from './io.js'
-import { harnessConfigName, readHarnessConfig } from './project-config.js'
+import {
+  AWAY_MODE_ACTIONS,
+  harnessConfigName,
+  readHarnessConfig,
+} from './project-config.js'
 import type {
+  AwayModeAction,
+  AwayModeConfig,
   OperatorInvolvementFile,
   OperatorInvolvementProfile,
   ResolvedOperatorInvolvement,
@@ -26,7 +32,10 @@ const GATES = new Set<StageGate>([
   'stage_verdict',
 ])
 
-const RUN_CONTRACTS = new Set<RunContract>(['technical_director'])
+const RUN_CONTRACTS = new Set<RunContract>([
+  'technical_director',
+  'long_horizon',
+])
 
 /**
  * How much operator attention each gate costs, ascending. Used only to tell a
@@ -83,6 +92,73 @@ function parseGateMap(
   return gates
 }
 
+function parseProfileAwayMode(value: unknown, source: string): AwayModeConfig {
+  invariant(
+    isRecord(value) && typeof value.enabled === 'boolean',
+    `${source} MUST contain enabled as a boolean.`,
+    { code: 'INVALID_OPERATOR_INVOLVEMENT' },
+  )
+
+  const guardrails = value.guardrails
+
+  if (guardrails === undefined) {
+    return { enabled: value.enabled }
+  }
+
+  invariant(isRecord(guardrails), `${source}.guardrails MUST be an object.`, {
+    code: 'INVALID_OPERATOR_INVOLVEMENT',
+  })
+  invariant(
+    guardrails.allowed_actions === undefined ||
+      (Array.isArray(guardrails.allowed_actions) &&
+        guardrails.allowed_actions.every(
+          (action) =>
+            typeof action === 'string' &&
+            AWAY_MODE_ACTIONS.includes(action as AwayModeAction),
+        )),
+    `${source}.guardrails.allowed_actions MUST contain only ${AWAY_MODE_ACTIONS.join(', ')}.`,
+    { code: 'INVALID_OPERATOR_INVOLVEMENT' },
+  )
+
+  for (const key of [
+    'max_decisions_per_run',
+    'max_remediation_attempts_per_agent',
+  ] as const) {
+    const candidate = guardrails[key]
+
+    invariant(
+      candidate === undefined ||
+        (Number.isInteger(candidate) && (candidate as number) > 0),
+      `${source}.guardrails.${key} MUST be a positive integer when present.`,
+      { code: 'INVALID_OPERATOR_INVOLVEMENT' },
+    )
+  }
+
+  return {
+    enabled: value.enabled,
+    guardrails: {
+      ...(guardrails.allowed_actions !== undefined
+        ? {
+            allowed_actions: [
+              ...(guardrails.allowed_actions as AwayModeAction[]),
+            ],
+          }
+        : {}),
+      ...(guardrails.max_decisions_per_run !== undefined
+        ? {
+            max_decisions_per_run: guardrails.max_decisions_per_run as number,
+          }
+        : {}),
+      ...(guardrails.max_remediation_attempts_per_agent !== undefined
+        ? {
+            max_remediation_attempts_per_agent:
+              guardrails.max_remediation_attempts_per_agent as number,
+          }
+        : {}),
+    },
+  }
+}
+
 function parseProfile(
   value: unknown,
   source: string,
@@ -122,6 +198,14 @@ function parseProfile(
       ? { gates: parseGateMap(value.gates, `${source}.gates`) }
       : {}),
     ...(contracts.length > 0 ? { contracts } : {}),
+    ...(value.away_mode !== undefined
+      ? {
+          away_mode: parseProfileAwayMode(
+            value.away_mode,
+            `${source}.away_mode`,
+          ),
+        }
+      : {}),
   }
 }
 
@@ -232,16 +316,6 @@ export function applyOperatorInvolvement(
   const contracts = profile.contracts ?? []
   const wildcard = gates['*']
   const applied: ResolvedOperatorInvolvement['applied_gates'] = {}
-  const stageSlugs = new Set(workflow.stages.map((stage) => stage.slug))
-
-  for (const key of Object.keys(gates)) {
-    invariant(
-      key === '*' || stageSlugs.has(key),
-      `Operator-involvement profile '${name}' targets stage '${key}', ` +
-        `which workflow '${workflow.slug}' does not define.`,
-      { code: 'INVALID_OPERATOR_INVOLVEMENT' },
-    )
-  }
 
   for (const stage of workflow.stages) {
     const workflowGate = stage.gate

@@ -312,9 +312,16 @@ export interface DelegationObservation {
   source: DelegationObservationSource | null
   watch: DelegationWatchSummary
   foreground_return: ForegroundReturnSummary
-  /** Where `pan delegate` writes the external-executor record, when relevant. */
-  execution_record_path: string | null
+  /** Where `pan delegate` writes the delegation-execution record. */
+  execution_record_path: string
   execution_record_present: boolean
+  /**
+   * Whether `pan delegate` is the dispatch path an operator session would have
+   * used for this stage. It shapes the refusal wording only: a Cursor stage
+   * that session delegated itself is not an external executor and must not be
+   * sent to a command that refuses it.
+   */
+  external_executor: boolean
 }
 
 export interface ForegroundReturnOptions {
@@ -1822,8 +1829,13 @@ export function summarizeForegroundReturn(
 /**
  * Decide whether the harness saw the delegation reach its terminal state.
  * A completed watch, a watch whose last wake observed the final output, or a
- * foreground-return attestation satisfies `DELEGATE-001`; an external-executor
+ * foreground-return attestation satisfies `DELEGATE-001`; a harness-delegated
  * stage is exempt because `pan delegate` writes its delegation evidence itself.
+ *
+ * `externalExecutor` describes who owns the dispatch in an operator session,
+ * and reaches the refusal wording only. The exemption itself reads the
+ * execution record for every executor, because the harness delegates a Cursor
+ * stage too.
  */
 export function summarizeDelegationObservation(
   root: string,
@@ -1834,11 +1846,13 @@ export function summarizeDelegationObservation(
   const watch = summarizeDelegationWatch(root, runId, invocationId)
   const foregroundReturn = summarizeForegroundReturn(root, runId, invocationId)
   // The exemption rests on the execution record `pan delegate` writes. A
-  // hand-supplied output for an external-executor stage has no such record
+  // hand-supplied output for a harness-dispatched stage has no such record
   // and is as unobserved as any other.
-  const executionRecord = options.externalExecutor
-    ? loadDelegationExecutionRecord(root, runId, invocationId)
-    : null
+  const executionRecord = loadDelegationExecutionRecord(
+    root,
+    runId,
+    invocationId,
+  )
   const executionRecordMatches =
     executionRecord !== null &&
     executionRecord.run_id === runId &&
@@ -1858,10 +1872,9 @@ export function summarizeDelegationObservation(
     source,
     watch,
     foreground_return: foregroundReturn,
-    execution_record_path: options.externalExecutor
-      ? delegationExecutionPath(runId, invocationId, root)
-      : null,
+    execution_record_path: delegationExecutionPath(runId, invocationId, root),
     execution_record_present: executionRecord !== null,
+    external_executor: options.externalExecutor === true,
   }
 }
 
@@ -1896,8 +1909,7 @@ export function delegationUnobservedMessage(
         `recorded no output present at return and does not count`
       : `no attestation exists at ${observation.foreground_return.record_path}`
   const external =
-    observation.execution_record_path !== null &&
-    !observation.execution_record_present
+    observation.external_executor && !observation.execution_record_present
       ? ` The stage names an external executor, but no execution record ` +
         `exists at ${observation.execution_record_path}, so \`pan delegate\` ` +
         `did not run this worker.`

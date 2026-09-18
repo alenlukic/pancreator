@@ -58,6 +58,34 @@ subagent files are project-global, preparing an existing run fails if the live
 active mapping no longer matches its snapshot. Restore and resynchronize that
 mapping before resuming the run.
 
+## Executor seam
+
+A persona keeps one executor identity from the run's pipeline snapshot:
+`cursor`, `claude-code`, or `openai`. Ordinary Cursor-session delegation stays
+operator-session owned. The harness-owned headless driver may dispatch the same
+`cursor` identity through `delegateInvocation(..., { headless: true })`; this is
+who delegated the worker changing, not a fourth executor kind.
+
+Every harness-dispatched adapter implements the shared `ExternalExecutorAdapter`
+shape and returns the shared normalized execution result. The delegation record
+sets `delegated_by` to `harness`, captures the exact argument vector and returned
+session, and records any model and tool-policy evidence. Submission exempts a
+worker from watch evidence only when that harness-authored execution record
+names the active run and invocation.
+
+A headless Cursor invocation consumes the prepared referenced-delivery artifact,
+not a newly composed prompt. The adapter passes the persona's `model_spec`
+verbatim and records the coarser workspace-root policy that the Cursor CLI
+supports. It compares the `system/init` model against the local catalog
+prediction and records that comparison as `model_verification`, either
+`compared` with the predicted variant or `unverifiable` with the reason, so a
+delegation that ran no drift check cannot be read as one that ran and matched.
+
+A stage's parallel evidence workers take the same seam. `delegateEvidenceWorkers`
+launches a Cursor persona only under the headless option a harness-owned caller
+sets, and reports it as skipped otherwise, which keeps an operator session's own
+delegation contract unchanged.
+
 ## Stage fields (`stages/<stage>.json`)
 
 - `slug` - stage id; matches the file name and a slug in the index.
@@ -218,7 +246,10 @@ heavily the operator gates each stage:
   for the run.
 - `contracts` names run-wide contracts. `technical_director` loads
   `DIRECTOR-001` and escalates the `technical_plan` and `independent_review`
-  checkpoints to operator gates.
+  checkpoints to operator gates. `long_horizon` selects the long-horizon policy
+  set and forces away mode on for the run when its selected source leaves it off.
+- `away_mode` optionally supplies the enabled value and guardrails that this
+  profile snapshots instead of the installation-level block.
 
 Select one with `./bin/pan init --involvement <profile>`; omitting the flag uses
 `active`. List them with `./bin/pan involvement`.
@@ -234,8 +265,9 @@ targeted one:
 The run resolves its profile once at `init` and writes the result into
 `workflow.snapshot.json` and `state.operator_involvement`. Later edits to
 `config.json` never change a run already in flight. `./bin/pan validate` checks
-every profile against every workflow, so a mistyped stage slug fails at
-authoring time rather than at someone else's `pan init`.
+every profile against the complete workflow set, so a mistyped stage slug fails
+at authoring time. Applying that valid shared profile skips stage keys the
+current workflow does not declare.
 
 A contract-scoped policy lookup row keeps run contracts inside the single policy
 applicability map:
@@ -249,6 +281,15 @@ applicability map:
   "policies": ["DIRECTOR-001"]
 }
 ```
+
+The lookup table also supports `long_horizon: true|false`. The resolver derives
+that value from whether the run's snapshotted contracts contain `long_horizon`;
+callers cannot supply a separate mode flag. An omitted value applies in both
+modes. A mismatched value skips the row without subtracting any mode-agnostic
+policy. The two shipped wildcard rows select `HORIZON-001` for long-horizon runs
+and `SINGLERUN-001` for regular runs. Row identity and cross-reference coverage
+include the dimension, so opposite-mode rows stay distinct and cannot satisfy
+each other's dependencies.
 
 ## Attempt accounting
 
