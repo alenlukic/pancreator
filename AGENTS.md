@@ -1,4 +1,4 @@
-# Pancreator v4 operating card
+# Pancreator operating card
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC 2119 and RFC 8174 meanings.
 

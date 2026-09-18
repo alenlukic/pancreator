@@ -8,6 +8,7 @@ import {
   countSteWords,
   extractHtmlProse,
   extractMarkdownProse,
+  extractPolicyInstructionProse,
   splitSentences,
   validateSimplifiedEnglish,
 } from '../../src/lib/validators/simplified-english.js'
@@ -246,4 +247,81 @@ test('the validator passes a conformant Markdown artifact', () => {
   assert.equal(elided.issues.length, 51)
   assert.equal(elided.issues.at(-1)?.code, 'ste.issues_elided')
   assert.ok((elided.issues[0].line ?? 0) > 0)
+})
+
+test('policy prose extraction reads plain and audience-tagged instruction text', () => {
+  const policy = `${JSON.stringify(
+    {
+      id: 'EXAMPLE-001',
+      summary: "Don't read this summary.",
+      instructions: [
+        'Run the command.',
+        { text: "Don't do this.", audience: ['agent'] },
+        { audience: ['harness'] },
+        '   ',
+      ],
+    },
+    null,
+    2,
+  )}\n`
+  const paragraphs = extractPolicyInstructionProse(policy)
+  const issues = analyzeSimplifiedEnglish(paragraphs)
+  const lines = policy.split('\n')
+
+  assert.equal(paragraphs.length, 2, 'only instruction text carries prose')
+  assert.deepEqual(
+    issues.map((issue) => issue.code),
+    ['ste.contraction'],
+    'the summary and an entry without text state no rule',
+  )
+
+  // The reported line opens the instruction the operator must repair.
+  assert.ok(lines[(issues[0]?.line ?? 0) - 1]?.includes('Don'))
+})
+
+test('policy prose extraction ignores a file that declares no instructions', () => {
+  assert.deepEqual(extractPolicyInstructionProse('{ not json'), [])
+  assert.deepEqual(extractPolicyInstructionProse('[]'), [])
+  assert.deepEqual(
+    extractPolicyInstructionProse('{ "instructions": "Run the command." }'),
+    [],
+  )
+})
+
+test('the validator reads a policy file through its instruction text', () => {
+  const root = scratchRoot()
+  const clean = writeArtifact(
+    root,
+    'governance/policies/CLEAN-001.json',
+    `${JSON.stringify(
+      {
+        id: 'CLEAN-001',
+        instructions: ['Run the command.', { text: 'Read the card.' }],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+
+  assert.equal(validateSimplifiedEnglish(input(root, clean)).status, 'passed')
+
+  const dirty = writeArtifact(
+    root,
+    'governance/policies/DIRTY-001.json',
+    `${JSON.stringify(
+      {
+        id: 'DIRTY-001',
+        instructions: ['Agents MUST perform the check; then stop.'],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  const result = validateSimplifiedEnglish(input(root, dirty))
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual(result.issues.map((issue) => issue.code).sort(), [
+    'ste.semicolon',
+    'ste.word_substitution',
+  ])
 })

@@ -111,6 +111,13 @@ export function inferTargetKind(targetPath: string): string {
     return 'tune-record-json'
   }
 
+  if (
+    targetPath.includes('governance/policies/') &&
+    targetPath.endsWith('.json')
+  ) {
+    return 'policy-json'
+  }
+
   if (targetPath.includes('.delegation.md')) {
     return 'delegation-markdown'
   }
@@ -123,7 +130,7 @@ export function inferTargetKind(targetPath: string): string {
     return 'html-artifact'
   }
 
-  if (targetPath.endsWith('.md')) {
+  if (targetPath.endsWith('.md') || targetPath.endsWith('.mdc')) {
     return 'markdown-artifact'
   }
 
