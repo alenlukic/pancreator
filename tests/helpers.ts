@@ -912,7 +912,7 @@ export function attestRunCard(root: string, runId: string): void {
  * Record the foreground-return attestation a compliant supervisor writes after
  * a Cursor worker launch returns. DELEGATE-001 requires it, or a completed
  * `pan watch` record, for every Cursor worker invocation, and `pan submit`
- * refuses with `DELEGATION_UNOBSERVED` otherwise. An external-executor
+ * refuses with `DELEGATION_UNOBSERVED` otherwise. A harness-delegated
  * invocation is exempt because `pan delegate` writes its own evidence. A run
  * without a current invocation gets no record, so the submission reports its
  * own error.
@@ -958,6 +958,7 @@ export function attestForegroundReturn(root: string, runId: string): void {
         invocation_id: current.id,
         stage: invocation.stage.slug,
         executor,
+        delegated_by: 'harness',
         delegation_kind: 'fresh',
         binary: 'test-stub',
         argv: [],

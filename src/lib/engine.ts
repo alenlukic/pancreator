@@ -32,10 +32,16 @@ import {
   type ParsedPersonaMapping,
 } from './executors/mapping.js'
 import {
+  cursorAuthenticationReadiness,
+  cursorModelPredictionForSpec,
   expectedCursorModelForSpec,
   probeCursorModelSpec,
   probeEnvironment,
 } from './executors/cursor-probe.js'
+import {
+  createCursorAgentAdapter,
+  cursorAgentBinaryReadiness,
+} from './executors/cursor-agent.js'
 import {
   ensureDir,
   fileExists,
@@ -222,6 +228,8 @@ import type {
   EntryGateReach,
   EvidenceWorkerAttempt,
   ExternalDelegationRecord,
+  ExternalExecutorAdapter,
+  ExternalExecutorRunResult,
   ExternalMcpCapabilities,
   ExternalPersonaExecutorKind,
   ExternalRequestSettings,
@@ -5051,29 +5059,54 @@ function ensureOpenAiReady(
   return { ok: true }
 }
 
+function ensureCursorReady(
+  root: string,
+): { ok: true } | { ok: false; error: string } {
+  const binary = cursorAgentBinaryReadiness()
+
+  if (!binary.ok) {
+    return { ok: false, error: binary.error }
+  }
+
+  const authentication = cursorAuthenticationReadiness(root)
+
+  return authentication.key_available
+    ? { ok: true }
+    : { ok: false, error: authentication.advisories.join(' ') }
+}
+
 function ensureExecutorReady(
   root: string,
   state: RunState,
-  executor: ExternalPersonaExecutorKind,
+  executor: PersonaExecutorKind,
 ): { ok: true } | { ok: false; error: string } {
-  return executor === 'claude-code'
-    ? ensureClaudeCodeReady(state)
-    : ensureOpenAiReady(root, state)
+  switch (executor) {
+    case 'cursor':
+      return ensureCursorReady(root)
+    case 'claude-code':
+      return ensureClaudeCodeReady(state)
+    case 'openai':
+      return ensureOpenAiReady(root, state)
+  }
 }
 
-function executorPreflightRemedy(
-  executor: ExternalPersonaExecutorKind,
-): string {
-  return executor === 'claude-code'
-    ? 'Install and authenticate the Claude Code CLI on this machine'
-    : 'Export OPENAI_API_KEY, or add it to the repository-local .env file'
+/** One remedy per executor, so a new kind cannot inherit another's by order. */
+const EXECUTOR_PREFLIGHT_REMEDY: Record<PersonaExecutorKind, string> = {
+  cursor:
+    'Install cursor-agent and provide CURSOR_API_KEY in the process environment or repository-local .env file',
+  'claude-code': 'Install and authenticate the Claude Code CLI on this machine',
+  openai: 'Export OPENAI_API_KEY, or add it to the repository-local .env file',
+}
+
+function executorPreflightRemedy(executor: PersonaExecutorKind): string {
+  return EXECUTOR_PREFLIGHT_REMEDY[executor]
 }
 
 function pauseForExecutorPreflight(
   root: string,
   state: RunState,
   stage: StageDefinition,
-  executor: ExternalPersonaExecutorKind,
+  executor: PersonaExecutorKind,
   error: string,
 ): void {
   const reason =
@@ -5180,41 +5213,6 @@ export function openAiToolPolicy(
     maxResultBytes: bounds.maxResultBytes,
     shellTimeoutMs: bounds.shellTimeoutMs,
   }
-}
-
-/**
- * One external executor's delivery result, normalized so the delegation
- * skeleton — evidence capture, session recording, failure persistence — is
- * written once rather than per executor.
- */
-interface ExternalExecutorRunResult {
-  ok: boolean
-  binary: string
-  /** Resolved argument vector. Never carries the prompt body or a credential. */
-  argv: string[]
-  exit_code: number | null
-  timed_out: boolean
-  duration_ms: number
-  stdout: string
-  stderr: string
-  session_id?: string
-  error?: string
-  result_subtype?: string
-  is_error?: boolean
-  request_settings?: ExternalRequestSettings
-  tool_summary?: Record<string, number>
-  response_ids?: string[]
-  usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
-  failure_reason?: string
-  mcp_capabilities?: ExternalMcpCapabilities
-}
-
-interface ExternalExecutorAdapter {
-  kind: ExternalPersonaExecutorKind
-  /** Deliver one prompt, continuing `resumeSessionId` when one is supplied. */
-  run: (prompt: string, resumeSessionId?: string) => ExternalExecutorRunResult
-  /** Strip credentials from captured text before it becomes evidence. */
-  sanitize: (text: string) => string
 }
 
 const OPENAI_AGENT_ENTRYPOINT = 'openai-agent-cli.js'
@@ -5511,6 +5509,8 @@ function createClaudeCodeAdapter(context: {
 
 export interface DelegateInvocationOptions extends OperationProgressOptions {
   timeoutMs?: number
+  /** Permit the harness-owned driver to dispatch a Cursor persona. */
+  headless?: boolean
 }
 
 export interface DelegateInvocationResult {
@@ -5564,7 +5564,7 @@ export function delegateInvocation(
     )
 
     invariant(
-      mapping.executor !== 'cursor',
+      mapping.executor !== 'cursor' || options.headless === true,
       `Stage '${stage.slug}' resolves to the '${mapping.executor}' executor. ` +
         `'pan delegate' dispatches only external executors; cursor personas ` +
         `are delegated by the supervisor per INVOCATION-001.`,
@@ -5574,10 +5574,10 @@ export function delegateInvocation(
     // The resolved executor is never rewritten to another one: the prepared
     // invocation has to agree with the mapping, or the card the worker reads
     // would name a runtime the harness is not using.
-    const executor: ExternalPersonaExecutorKind = mapping.executor
+    const executor: PersonaExecutorKind = mapping.executor
 
     invariant(
-      invocation.stage.persona_executor === executor,
+      (invocation.stage.persona_executor ?? 'cursor') === executor,
       `Invocation ${invocationId} was prepared for executor ` +
         `'${invocation.stage.persona_executor ?? 'cursor'}' but its persona ` +
         `now resolves to '${executor}'. Re-prepare the invocation before ` +
@@ -5612,15 +5612,29 @@ export function delegateInvocation(
       options.timeoutMs ??
       (configuredTimeout ? Number(configuredTimeout) : undefined)
     const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
-    const adapter: ExternalExecutorAdapter =
-      executor === 'claude-code'
-        ? createClaudeCodeAdapter({
+    const selectAdapter = (): ExternalExecutorAdapter => {
+      switch (executor) {
+        case 'cursor':
+          return createCursorAgentAdapter({
+            workspaceDir,
+            installationRoot: root,
+            runtimeDir: path.join(root, 'runtime'),
+            modelSpec: mapping.model_spec,
+            modelVerification: cursorModelPredictionForSpec(
+              root,
+              mapping.model_spec,
+            ),
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          })
+        case 'claude-code':
+          return createClaudeCodeAdapter({
             workspaceDir,
             mapping,
             policy: claudeCodeToolPolicy(root, workspaceDir, stage),
             ...(timeoutMs !== undefined ? { timeoutMs } : {}),
           })
-        : createOpenAiAdapter({
+        case 'openai':
+          return createOpenAiAdapter({
             root,
             runId,
             invocationId,
@@ -5632,6 +5646,9 @@ export function delegateInvocation(
               ? { timeoutOverrideMs: options.timeoutMs }
               : {}),
           })
+      }
+    }
+    const adapter: ExternalExecutorAdapter = selectAdapter()
     const runExecutor = (
       prompt: string,
       resumeSessionId?: string,
@@ -5674,9 +5691,18 @@ export function delegateInvocation(
         ? session
         : undefined
 
-    const cardMarkdown = readText(
-      resolveInside(root, state.current_invocation.markdown_path),
+    const promptPath =
+      executor === 'cursor'
+        ? invocation.delegation?.delivery_prompt_path
+        : state.current_invocation.markdown_path
+
+    invariant(
+      typeof promptPath === 'string' && promptPath.length > 0,
+      `Invocation ${invocationId} has no delivery prompt for ${executor}.`,
+      { code: 'INVALID_INVOCATION' },
     )
+
+    const cardMarkdown = readText(resolveInside(root, promptPath))
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
     let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
     let deliveredPrompt = cardMarkdown
@@ -5781,6 +5807,7 @@ export function delegateInvocation(
       invocation_id: invocationId,
       stage: stage.slug,
       executor,
+      delegated_by: 'harness',
       delegation_kind: delegationKind,
       binary: result.binary,
       argv: result.argv,
@@ -5811,6 +5838,13 @@ export function delegateInvocation(
       ...(result.mcp_capabilities
         ? { mcp_capabilities: result.mcp_capabilities }
         : {}),
+      ...(result.reported_model
+        ? { reported_model: result.reported_model }
+        : {}),
+      ...(result.model_verification
+        ? { model_verification: result.model_verification }
+        : {}),
+      ...(result.tool_policy ? { tool_policy: result.tool_policy } : {}),
     }
 
     writeJsonAtomic(
@@ -6255,13 +6289,16 @@ export function submitOutput(
 
     advise('evidence_report', incompleteReports)
 
+    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+
     // DELEGATE-001: the harness must have seen the worker reach a terminal
     // state. A completed `pan watch` record or a foreground-return attestation
-    // is that evidence for a Cursor worker; `pan delegate` writes its own for
-    // an external executor. Like a missing evidence report, this is a
-    // supervisor-owned precondition and rejects outright without consuming an
-    // attempt.
-    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+    // is that evidence for an operator-session worker; `pan delegate` writes
+    // its own for a harness-delegated worker. Like a missing evidence report,
+    // this is a supervisor-owned precondition and rejects outright without
+    // consuming an attempt. The exemption reads the execution record whatever
+    // the executor is; only the refusal wording turns on who owns the dispatch
+    // in an operator session, which for a Cursor stage is that session itself.
     const delegationObservation: DelegationObservation | undefined =
       stage.persona !== 'orchestrator'
         ? summarizeDelegationObservation(
@@ -9439,7 +9476,7 @@ export interface EvidenceWorkerDelegation {
   role: string
   persona: string
   evidence_path: string
-  skipped: 'already_present' | 'cursor_persona' | null
+  skipped: 'already_present' | 'cursor_persona' | 'executor_preflight' | null
   ok: boolean
   exit_code: number | null
   duration_ms: number
@@ -9449,16 +9486,20 @@ export interface EvidenceWorkerDelegation {
 }
 
 /**
- * Run the active invocation's parallel evidence workers through the
- * claude-code executor. The supervisor owns these launches for Cursor
- * personas; an eval driver or an external-executor supervisor uses this path
- * so the evidence reports exist before the stage worker is delegated. A worker
- * whose persona maps to Cursor is reported as skipped, never launched.
+ * Run the active invocation's parallel evidence workers as harness-owned
+ * processes, so their reports exist before the stage worker is delegated.
+ *
+ * An operator session still owns its own Cursor launches: without the headless
+ * option a Cursor persona is reported as skipped, exactly as `delegateInvocation`
+ * refuses one. With it — the option only a harness-owned caller sets — the
+ * worker runs through the same Cursor adapter a stage worker uses. Without that
+ * path a driven run cannot advance any stage that declares evidence workers,
+ * because every persona in the tracked configuration maps to Cursor.
  */
 export function delegateEvidenceWorkers(
   root: string,
   runId: string,
-  options: OperationProgressOptions = {},
+  options: OperationProgressOptions & { headless?: boolean } = {},
 ): EvidenceWorkerDelegation[] {
   const state = loadState(root, runId)
 
@@ -9476,6 +9517,7 @@ export function delegateEvidenceWorkers(
   const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
   const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
   const results: EvidenceWorkerDelegation[] = []
+  let cursorPreflighted = false
 
   for (const worker of invocation.evidence_workers ?? []) {
     const evidenceAbsolute = resolveInside(root, worker.evidence_path)
@@ -9499,8 +9541,10 @@ export function delegateEvidenceWorkers(
     }
 
     const mapping = resolvePersonaMapping(pipelineConfig, worker.persona)
+    const headlessCursor =
+      mapping.executor === 'cursor' && options.headless === true
 
-    if (mapping.executor !== 'claude-code') {
+    if (mapping.executor !== 'claude-code' && !headlessCursor) {
       results.push({
         ...base,
         skipped: 'cursor_persona',
@@ -9513,6 +9557,48 @@ export function delegateEvidenceWorkers(
       continue
     }
 
+    if (headlessCursor && !cursorPreflighted) {
+      const preflight = ensureCursorReady(root)
+
+      if (!preflight.ok) {
+        // EXECUTOR-001 makes a failed preflight an operator-visible stop that
+        // names its remedy. These workers run before the stage delegation that
+        // carries that check, so an unready Cursor has to pause the run here
+        // or it reaches the operator as a spawn error with no remedy. The
+        // claude-code path keeps its existing behaviour: its readiness probe
+        // spends a real invocation, and the run state that caches one is not
+        // written from here.
+        withOperationMutex(operationMutexPath(root, runId), () => {
+          const paused = loadState(root, runId)
+
+          pauseForExecutorPreflight(
+            root,
+            paused,
+            stage,
+            'cursor',
+            preflight.error,
+          )
+          persistRun(root, paused, 'run_paused', {
+            reason: paused.pause_reason,
+          })
+        })
+
+        results.push({
+          ...base,
+          skipped: 'executor_preflight',
+          ok: false,
+          exit_code: null,
+          duration_ms: 0,
+          stdout_path: null,
+          stderr_path: null,
+          error: preflight.error,
+        })
+        break
+      }
+
+      cursorPreflighted = true
+    }
+
     const brief = readText(resolveInside(root, worker.brief_path))
     const prompt =
       `${brief}\n\n## Evidence report destination\n\n` +
@@ -9521,22 +9607,35 @@ export function delegateEvidenceWorkers(
       `That file is the only file you write outside the workspace. ` +
       `Do not submit the stage output; the stage worker owns it.\n`
     const configuredTimeout = mapping.options['timeout-ms']
+    const timeoutMs = configuredTimeout ? Number(configuredTimeout) : undefined
 
     options.onProgress?.(
-      `launching ${worker.role} evidence worker (${worker.persona}) via claude-code`,
+      `launching ${worker.role} evidence worker (${worker.persona}) via ${mapping.executor}`,
     )
 
-    const result = runClaudeCode({
-      prompt,
-      cwd: workspaceDir,
-      model: mapping.model,
-      permissionMode: mapping.options['permission-mode'] ?? 'default',
-      allowedTools: policy.allowedTools,
-      addDirs: policy.addDirs,
-      ...(configuredTimeout ? { timeoutMs: Number(configuredTimeout) } : {}),
-    })
-    const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stdout.json`
-    const stderrPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stderr.log`
+    const result = headlessCursor
+      ? createCursorAgentAdapter({
+          workspaceDir,
+          installationRoot: root,
+          runtimeDir: path.join(root, 'runtime'),
+          modelSpec: mapping.model_spec,
+          modelVerification: cursorModelPredictionForSpec(
+            root,
+            mapping.model_spec,
+          ),
+          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        }).run(prompt)
+      : runClaudeCode({
+          prompt,
+          cwd: workspaceDir,
+          model: mapping.model,
+          permissionMode: mapping.options['permission-mode'] ?? 'default',
+          allowedTools: policy.allowedTools,
+          addDirs: policy.addDirs,
+          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        })
+    const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stdout.json`
+    const stderrPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stderr.log`
 
     writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
     writeTextAtomic(resolveInside(root, stderrPath), result.stderr)

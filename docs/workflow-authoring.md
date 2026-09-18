@@ -58,6 +58,34 @@ subagent files are project-global, preparing an existing run fails if the live
 active mapping no longer matches its snapshot. Restore and resynchronize that
 mapping before resuming the run.
 
+## Executor seam
+
+A persona keeps one executor identity from the run's pipeline snapshot:
+`cursor`, `claude-code`, or `openai`. Ordinary Cursor-session delegation stays
+operator-session owned. The harness-owned headless driver may dispatch the same
+`cursor` identity through `delegateInvocation(..., { headless: true })`; this is
+who delegated the worker changing, not a fourth executor kind.
+
+Every harness-dispatched adapter implements the shared `ExternalExecutorAdapter`
+shape and returns the shared normalized execution result. The delegation record
+sets `delegated_by` to `harness`, captures the exact argument vector and returned
+session, and records any model and tool-policy evidence. Submission exempts a
+worker from watch evidence only when that harness-authored execution record
+names the active run and invocation.
+
+A headless Cursor invocation consumes the prepared referenced-delivery artifact,
+not a newly composed prompt. The adapter passes the persona's `model_spec`
+verbatim and records the coarser workspace-root policy that the Cursor CLI
+supports. It compares the `system/init` model against the local catalog
+prediction and records that comparison as `model_verification`, either
+`compared` with the predicted variant or `unverifiable` with the reason, so a
+delegation that ran no drift check cannot be read as one that ran and matched.
+
+A stage's parallel evidence workers take the same seam. `delegateEvidenceWorkers`
+launches a Cursor persona only under the headless option a harness-owned caller
+sets, and reports it as skipped otherwise, which keeps an operator session's own
+delegation contract unchanged.
+
 ## Stage fields (`stages/<stage>.json`)
 
 - `slug` - stage id; matches the file name and a slug in the index.

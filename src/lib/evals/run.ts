@@ -2,33 +2,19 @@ import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, readdirSync, renameSync } from 'node:fs'
 import path from 'node:path'
 
-import {
-  createRun,
-  decideRun,
-  delegateEvidenceWorkers,
-  delegateInvocation,
-  getRunState,
-  prepareInvocation,
-  submitOutput,
-} from '../engine.js'
-import { maybeStartDelivery, type DeliveryAutostartResult } from '../cohorts.js'
+import { createRun } from '../engine.js'
+import type { DeliveryAutostartResult } from '../cohorts.js'
+import { driveRun } from '../headless-driver.js'
 import { PanError } from '../errors.js'
-import { personaExecutorOf } from '../executors/mapping.js'
 import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
 } from '../git.js'
-import { writeRedlineRecord } from '../watch.js'
-import {
-  attestSupervisorCard,
-  redlineCurrent,
-  supervisorAttestCommand,
-} from '../governance/supervisor-card.js'
-import { ensureDir, readJson, writeJsonAtomic, writeTextAtomic } from '../io.js'
+import { supervisorAttestCommand } from '../governance/supervisor-card.js'
+import { ensureDir, writeJsonAtomic, writeTextAtomic } from '../io.js'
 import { keywordRunSuffix, makeWorkflowRunId } from '../naming.js'
 import { panCommand } from '../project-config.js'
 import type {
-  Invocation,
   PersonaExecutorKind,
   RunState,
   WorkspaceSnapshot,
@@ -248,16 +234,6 @@ function deliveryAutostartSteps(
   ]
 }
 
-function readInvocation(root: string, state: RunState): Invocation | null {
-  const pointer = state.current_invocation
-
-  if (!pointer) {
-    return null
-  }
-
-  return readJson(path.resolve(root, pointer.json_path)) as Invocation
-}
-
 /**
  * What the run did to the harness checkout that graded it. An eval works in
  * its own workspace, so any tracked harness-root change outside `runtime/` is
@@ -367,177 +343,39 @@ export function runEval(
   writeJsonAtomic(path.join(evalDir, 'eval.json'), metadata)
   onProgress?.(`run ${runId} created for workflow ${scenario.workflow}`)
 
-  let handoffReason: string | null = null
-  let lastAutostart: DeliveryAutostartResult | null = null
-
-  for (let step = 0; step < MAX_DRIVE_STEPS; step += 1) {
-    const state = getRunState(root, runId)
-    const action = state.pending_action
-
-    if (['succeeded', 'failed', 'canceled'].includes(state.status)) {
-      break
-    }
-
-    if (
-      action.type === 'operator_approval' ||
-      action.type === 'operator_decision'
-    ) {
-      const stage =
-        'stage' in action && typeof action.stage === 'string'
-          ? action.stage
-          : (state.current_stage ?? '')
+  const driven = driveRun(root, runId, {
+    maxSteps: MAX_DRIVE_STEPS,
+    onProgress,
+    attestSupervisorCard: options.attestSupervisorCard,
+    attestedBy: 'eval-driver',
+    canDelegateExecutor: evalDrivesExecutor,
+    unsupportedExecutorReason: (_state, invocation, executor) =>
+      `stage '${invocation.stage.slug}' persona '${invocation.stage.persona}' maps to the ${executor} executor, which a Cursor supervisor drives`,
+    resolveDecision: ({ action, stage }) => {
       const index = pendingDecisions.findIndex((item) => item.stage === stage)
 
       if (index === -1) {
-        handoffReason = `the run needs an operator ${action.type.replace('_', ' ')} at stage '${stage}' that the scenario does not script`
-        break
+        return {
+          reason: `the run needs an operator ${action.type.replace('_', ' ')} at stage '${stage}' that the scenario does not script`,
+        }
       }
 
       const [decision] = pendingDecisions.splice(index, 1)
 
-      if (!decision) {
-        break
-      }
-
-      onProgress?.(
-        `applying scripted decision ${decision.decision} at ${stage}`,
-      )
-      const decided = decideRun(
-        root,
-        runId,
-        decision.decision,
-        decision.note ?? '',
-      )
-      decisionsApplied.push({ stage, decision: decision.decision })
-
-      // Same hook `pan decide` runs: an approved planning run routes into
-      // delivery here, outside the run mutex the decision took.
-      const autostart = maybeStartDelivery(root, decided, {
-        actor: 'operator',
-        action: decision.decision,
-      })
-
-      if (autostart) {
-        lastAutostart = autostart
-        onProgress?.(
-          autostart.status === 'failed'
-            ? `delivery autostart failed: ${autostart.error}`
-            : autostart.kind === 'cohort'
-              ? `cohort ${autostart.cohort_id} ${autostart.status}: ${autostart.chunks.length} chunk run(s), ${autostart.deferred_chunks.length} deferred`
-              : `delivery run ${autostart.run_id} ${autostart.status} in ${autostart.worktree}`,
-        )
-      }
-      continue
-    }
-
-    if (state.status !== 'running') {
-      handoffReason = `the run is '${state.status}' with pending action '${action.type}'`
-      break
-    }
-
-    const card = state.supervisor_card
-
-    if (card && card.attested_sha256 !== card.sha256) {
-      if (!options.attestSupervisorCard) {
-        handoffReason = `the supervisor card ${card.path} is not attested at its current digest; a supervisor must read it and attest before the harness prepares an invocation`
-        break
-      }
-
-      onProgress?.(
-        `attesting the supervisor card ${card.path} on the operator's behalf`,
-      )
-      attestSupervisorCard(root, runId, card.sha256)
-      writeRedlineRecord(root, runId, 'pan-start')
-      metadata.supervisor_card_attested_by = 'eval-driver'
-      continue
-    }
-
-    if (card && !redlineCurrent(root, state).current) {
-      if (!options.attestSupervisorCard) {
-        handoffReason = `supervisor session ${card.session_generation} has written no platform-guidance redline; a supervisor must run pan status --redline before the harness prepares an invocation`
-        break
-      }
-
-      onProgress?.(
-        "writing the platform-guidance redline on the operator's behalf",
-      )
-      writeRedlineRecord(root, runId, 'pan-start')
-      continue
-    }
-
-    if (action.type === 'prepare_invocation') {
-      onProgress?.('preparing the next invocation')
-      prepareInvocation(root, runId, { onProgress })
-      continue
-    }
-
-    if (action.type === 'invoke_agent') {
-      const invocation = readInvocation(root, state)
-
-      if (!invocation) {
-        handoffReason = 'the run has no current invocation to delegate'
-        break
-      }
-
-      // The prepared invocation records the executor the mapping resolved;
-      // `stage.model` carries the spec without its executor prefix.
-      const executor =
-        invocation.stage.persona_executor ??
-        personaExecutorOf(invocation.stage.model)
-
-      if (!evalDrivesExecutor(executor)) {
-        handoffReason = `stage '${invocation.stage.slug}' persona '${invocation.stage.persona}' maps to the ${executor} executor, which a Cursor supervisor drives`
-        break
-      }
-
-      if ((invocation.evidence_workers ?? []).length > 0) {
-        const workers = delegateEvidenceWorkers(root, runId, { onProgress })
-        const failed = workers.filter((worker) => !worker.ok)
-
-        if (failed.length > 0) {
-          handoffReason = `evidence worker(s) did not produce a report: ${failed
-            .map(
-              (worker) =>
-                `${worker.role} (${worker.skipped ?? worker.error ?? 'failed'})`,
-            )
-            .join(', ')}`
-          break
+      return (
+        decision ?? {
+          reason: `the run needs an operator ${action.type.replace('_', ' ')} at stage '${stage}' that the scenario does not script`,
         }
-      }
+      )
+    },
+  })
+  const handoffReason = driven.handoff_reason
+  const lastAutostart = driven.last_autostart
+  const finalState = driven.state
 
-      onProgress?.(`delegating ${invocation.stage.slug} to ${executor}`)
-
-      const delegated = delegateInvocation(root, runId, { onProgress })
-
-      if (!delegated.execution) {
-        handoffReason = `delegation paused the run: ${delegated.state.pause_reason ?? 'unknown reason'}`
-        break
-      }
-
-      const outputPath = delegated.state.current_invocation?.output_path
-
-      if (!outputPath || !existsSync(path.resolve(root, outputPath))) {
-        handoffReason = `the external executor left no output at ${outputPath ?? '(unknown)'}`
-        break
-      }
-
-      onProgress?.(`submitting ${outputPath}`)
-      submitOutput(root, runId, outputPath, { onProgress })
-      continue
-    }
-
-    handoffReason = `pending action '${action.type}' needs the Cursor supervisor`
-    break
-  }
-
-  const finalState = getRunState(root, runId)
-
-  if (
-    handoffReason === null &&
-    !['succeeded', 'failed', 'canceled'].includes(finalState.status)
-  ) {
-    handoffReason = `the drive loop reached its ${MAX_DRIVE_STEPS}-step bound`
-  }
+  decisionsApplied.push(...driven.decisions_applied)
+  metadata.supervisor_card_attested_by =
+    driven.supervisor_card_attested_by === 'eval-driver' ? 'eval-driver' : null
 
   const report = gradeRunRecords(root, runId, loaded)
   const harnessCheck = harnessRootUntouched(root, harnessBefore)

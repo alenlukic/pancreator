@@ -136,6 +136,41 @@ When away mode is disabled, stop at each unresolved operator gate as before.
 When the active request already supplies a decision, execute it instead of
 asking again.
 
+### Harness-owned headless driver
+
+`driveRun` in `src/lib/headless-driver.ts` advances one run through the same
+pending-action loop the eval runner uses. A harness-owned caller supplies any
+operator-decision resolver and explicit authority to attest the supervisor
+card. The driver prepares, delegates, and submits one stage at a time, returns
+a typed operator pause instead of retrying it, and stops at a terminal state or
+the caller's step bound. A caller that advances several runs starts a fresh
+driver process for each run; no counters or stop reason cross that boundary.
+
+The headless delegation option lets this driver dispatch a `cursor` persona
+through the installed `cursor-agent` binary. Preflight requires the binary, a
+resolved `CURSOR_API_KEY`, and a help text that still declares every flag a
+stage delegation emits, so a CLI release that drops one pauses the run with a
+named remedy instead of failing at spawn time. The same option reaches the
+stage's parallel evidence workers: without it a Cursor evidence worker stays
+skipped, and a driven run cannot advance any stage that declares one. Those
+workers launch before the stage delegation, so the same preflight runs ahead
+of the first of them and pauses the run with the same remedy.
+
+The adapter pipes the rendered `<invocation-id>.delivery.md` body on stdin and
+preserves the snapshotted model spec verbatim. It compares the stream's
+`system/init` model against the local Cursor catalog prediction and fails on a
+mismatch. The catalog is operator-local and optional, so the delegation record
+states which of the two happened: `model_verification` is `compared` with the
+predicted variant, or `unverifiable` with the reason no prediction existed.
+Run `./bin/pan models --sync` to turn an `unverifiable` record into a real
+drift check.
+
+Cursor's CLI exposes workspace roots but no per-path write policy. The process
+therefore receives the stage workspace through `--workspace` and the harness
+runtime tree through `--add-dir`. Its delegation record names both roots and
+states that no per-path policy was applied. `scope.no_unapproved_changes`
+remains the gate of record for workspace mutation.
+
 ### Supervisor governance card and attestation
 
 A supervisor session receives its policies the same way a worker does: as one
@@ -227,7 +262,8 @@ launch itself. An elapsed time shorter than the watch record's own
 first-to-last wake span is labeled `elapsed_implausible` and names both
 numbers. `--foreground-returned` and `--mark-background` are exclusive.
 
-`pan submit` accepts one of three records for every Cursor worker invocation:
+`pan submit` accepts one of three records for every worker invocation an
+operator session delegated:
 
 1. `watch_completed` — a watch record that ends in a completed wake.
 2. `watch_observed_final_output` — a watch record that reached no verdict of
@@ -242,10 +278,13 @@ numbers. `--foreground-returned` and `--mark-background` are exclusive.
 A submission with none of the three fails with the hard error
 `DELEGATION_UNOBSERVED` before any validator or gate runs and consumes
 no stage attempt; the supervisor records the missing observation and submits
-again. External-executor stages that `pan delegate` runs are exempt because
-the harness writes their delegation evidence. The stage record carries the
-observation as `delegation_observation`, naming which record proved the
-worker reached a terminal state.
+again. A harness-delegated stage is exempt only when its delegation execution
+record names the run and invocation, whichever executor ran it. The refusal
+message points at `pan delegate` only for a stage that command dispatches; a
+Cursor stage an operator session delegated is told about the watch record and
+the attestation instead. The stage record carries the observation as
+`delegation_observation`, naming which record proved the worker reached a
+terminal state.
 
 `pan output validate <run-id> --file <path> --invocation <path>` runs every
 validator `pan submit` runs before its shell gates — the evidence-report,
@@ -834,7 +873,7 @@ An external-executor persona is executed by that runtime instead of a Cursor sub
 
 Note that `openai:` names a runtime, while `oai:` names a tier alias family of Cursor models. They are unrelated, and an alias family value may never carry an executor prefix.
 
-Behavior shared by every external executor:
+Behavior shared by every harness-dispatched executor:
 
 - Run creation verifies the executor is reachable; the first delegation of a run verifies credentials. A failed preflight pauses the run with an operator decision — it is an operator-visible stop, not an error to work around, and the harness never silently substitutes Cursor.
 - When a run reaches an external stage, the supervisor runs `./bin/pan delegate <run-id>` instead of invoking a subagent. The harness delivers the canonical card, writes the delegation evidence itself, and records the executor session.

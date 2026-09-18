@@ -73,11 +73,60 @@ export interface ExternalMcpCapabilities {
  * starting a fresh invocation.
  */
 export interface ExternalExecutorSession {
-  executor: ExternalPersonaExecutorKind
+  executor: PersonaExecutorKind
   session_id: string
   invocation_id: string
   stage: string
   recorded_at: string
+}
+
+/** Tool boundary the harness applied to one delegated worker process. */
+export interface ExternalExecutorToolPolicy {
+  granted_roots: string[]
+  per_path_write_policy: boolean
+  scope_gate: 'scope.no_unapproved_changes'
+}
+
+/**
+ * Whether the harness could compare the model an executor reported against a
+ * predicted variant. `unverifiable` carries its reason, so a delegation that
+ * ran no drift check stays distinguishable from one that ran and matched.
+ */
+export type ExternalModelVerification =
+  | { status: 'compared'; expected_model: string }
+  | { status: 'unverifiable'; reason: string }
+
+/** Normalized result returned by every harness-owned executor adapter. */
+export interface ExternalExecutorRunResult {
+  ok: boolean
+  binary: string
+  /** Resolved argument vector. Never carries the prompt body or a credential. */
+  argv: string[]
+  exit_code: number | null
+  timed_out: boolean
+  duration_ms: number
+  stdout: string
+  stderr: string
+  session_id?: string
+  error?: string
+  result_subtype?: string
+  is_error?: boolean
+  request_settings?: ExternalRequestSettings
+  tool_summary?: Record<string, number>
+  response_ids?: string[]
+  usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
+  failure_reason?: string
+  mcp_capabilities?: ExternalMcpCapabilities
+  reported_model?: string
+  model_verification?: ExternalModelVerification
+  tool_policy?: ExternalExecutorToolPolicy
+}
+
+/** One harness-owned process adapter for a persona executor. */
+export interface ExternalExecutorAdapter {
+  kind: PersonaExecutorKind
+  run: (prompt: string, resumeSessionId?: string) => ExternalExecutorRunResult
+  sanitize: (text: string) => string
 }
 
 /**
@@ -92,7 +141,15 @@ export interface ExternalDelegationRecord {
   run_id: string
   invocation_id: string
   stage: string
-  executor: ExternalPersonaExecutorKind
+  executor: PersonaExecutorKind
+  /**
+   * Who dispatched the worker. Only the harness writes this record today, so
+   * the value is always `harness` and the record's existence is itself the
+   * harness-delegation signal `DELEGATE-001`'s watch exemption reads.
+   * `operator_session` is reserved for a session-authored record and is not
+   * yet produced by any writer.
+   */
+  delegated_by: 'harness' | 'operator_session'
   /**
    * `fresh` delivers the full canonical card in a new session. `resumed`
    * continues the recorded session with the operator's revision directive.
@@ -134,6 +191,11 @@ export interface ExternalDelegationRecord {
   failure_reason?: string
   /** Always recorded for a tool-loop executor, empty list and reason included. */
   mcp_capabilities?: ExternalMcpCapabilities
+  /** Cursor's system/init model, and whether a prediction could check it. */
+  reported_model?: string
+  model_verification?: ExternalModelVerification
+  /** Coarse process roots and the gate that still owns mutation enforcement. */
+  tool_policy?: ExternalExecutorToolPolicy
 }
 
 /**
