@@ -277,6 +277,7 @@ test('invalid revision envelopes fail before structural validation', () => {
   const prior = failedState.stage_history[0]
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
+
   const invalidRevisions: unknown[] = []
 
   assert.ok(invocation)

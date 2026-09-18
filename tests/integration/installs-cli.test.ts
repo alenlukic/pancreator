@@ -193,6 +193,7 @@ test('pan installs archive moves cited items without installation commands or ta
   )
   assert.equal(existsSync(path.join(installation, first)), false)
   assert.equal(existsSync(path.join(installation, second)), false)
+
   for (const item of payload.archived) {
     assert.equal(existsSync(path.join(installation, item.to)), true)
   }

@@ -416,6 +416,7 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
         (criterion) => criterion.id === 'ship.local_release_complete',
       ),
     }
+
     const snapshot = gitWorkspaceSnapshot(worktreePath)
     const gateOutput = {
       data: {

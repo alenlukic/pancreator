@@ -220,6 +220,7 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   const root = createFixture()
   const agentPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
   const sourcePath = path.join(root, 'library', 'cursor', 'agents', 'coder.md')
+
   const personas = loadPipelineConfig(root).config.personas
   const activeModel = personas.coder
   const activeSlug = resolveCursorModelSlug(parsePersonaMapping(activeModel))

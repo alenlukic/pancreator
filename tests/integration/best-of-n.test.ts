@@ -124,6 +124,7 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
 test('agent refresh preserves pinned models while updating instructions', () => {
   const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates[0]
+
   const variant = path.join(
     root,
     `.cursor/agents/pan-planner--${candidate.agent_suffix}.md`,

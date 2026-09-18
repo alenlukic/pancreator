@@ -172,13 +172,16 @@ test('implementation context resolves planned target instruction paths', () => {
 
 test('ship context selects effective records and indexes superseded history', () => {
   const root = createFixture()
+
   const planFailed = historyItem('plan', 'plan-1', 'failure')
   const planCurrent = historyItem('plan', 'plan-2', 'success')
   const implementOld = historyItem('implement', 'implement-1', 'success')
   const verifyOld = historyItem('verify', 'verify-1', 'failure')
+
   const remediateCurrent = historyItem('remediate', 'remediate-1', 'success')
   const implementCurrent = historyItem('implement', 'implement-2', 'success')
   const verifyCurrent = historyItem('verify', 'verify-2', 'success')
+
   const history = [
     planFailed,
     planCurrent,

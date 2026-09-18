@@ -352,6 +352,7 @@ test('structured target policy extensions reject ownership conflicts', () => {
   const conflictRoot = createFixture()
 
   writeTargetPolicy(conflictRoot, 'TARGET-001')
+
   for (const extensionId of ['first', 'second']) {
     writePolicyExtension(
       conflictRoot,
@@ -758,6 +759,7 @@ test('Python policy loads only for detected Python workspaces', () => {
   for (const policyId of ['ENG-001', 'PLAN-002']) {
     assert.ok(plannerIds.includes(policyId), `plan MUST include ${policyId}`)
   }
+
   for (const policyId of ['LANG-001', 'PY-001', 'TS-001']) {
     assert.equal(plannerIds.includes(policyId), false)
   }
@@ -1283,6 +1285,7 @@ test('no conform policy forbids an edit the conform boundary requires', () => {
       (instruction) => `${policy.id}: ${instruction.text}`,
     ),
   )
+
   const boundary = mode.boundaries.join('\n')
   const editable = mode.boundaries.find((line) =>
     line.includes('MUST edit only'),
@@ -1294,6 +1297,7 @@ test('no conform policy forbids an edit the conform boundary requires', () => {
         line.includes('MUST edit only') || line.includes('MUST also repair'),
     )
     .join('\n')
+
   // One sentence carries the exclusion, and the exception that follows
   // `except` is the governed set rather than part of the exclusion.
   const exclusions = rendered

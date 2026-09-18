@@ -444,8 +444,10 @@ export function buildFastWallReport(
 
   const config = fastWallConfig(root)
   const series = readFastWallSeries(root)
+
   const recent = insideWindow(series.records, at)
   const qualified = recent.filter(qualifiesAsFastLane)
+
   const average = rollingFastWallAverage(qualified, at)
   const permitted = permittedFastWallCeiling(config, at)
   const marginal = rollingMarginalFastWallCost(qualified, at)

@@ -698,6 +698,7 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
   const lines = ['## 🎯 Review dimensions', '']
   const slugList = (slugs: string[]): string =>
     slugs.length > 0 ? slugs.map((slug) => `\`${slug}\``).join(', ') : 'none'
+
   if (selection.default) {
     lines.push(
       'The operator selected no dimension set. The squad runs the full ' +

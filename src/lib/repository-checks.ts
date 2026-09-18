@@ -605,6 +605,7 @@ export function compareRepositoryCheckToBaseline(
 
   const baselineDiagnostics = failureDiagnostics(baseline)
   const currentDiagnostics = failureDiagnostics(current)
+
   const added: RepositoryCheckDiagnostic[] = []
   const fixed: RepositoryCheckDiagnostic[] = []
   const carried: RepositoryCheckDiagnostic[] = []
@@ -1307,6 +1308,7 @@ export function recordProfileGatePass(
   const evidence = resolveRunLayout(root, runId).evidence(
     `${agentGatePassArtifactId(profileName, snapshot.fingerprint, attempt)}.log`,
   )
+
   // The execution wrote its profile only when this command told the reporter
   // where to put it, which it does for the profiled profile and a named run.
   const suiteProfile = agentGatePassSuiteProfile(
@@ -1389,6 +1391,7 @@ function agentFastRunAllowance(
     const invocationPath = layout.invocation(invocationId, '.json').absolute
     const record = fileExists(invocationPath) ? readJson(invocationPath) : null
     const state = loadState(root, runId)
+
     const stageSlug =
       isRecord(record) &&
       isRecord(record.stage) &&
@@ -1501,6 +1504,7 @@ export function runRepositorySetup(
   )
   const commands = config.setup ?? []
   const timeoutMs = options.timeout_ms ?? DEFAULT_TIMEOUT_MS
+
   const results: RepositoryCheckCommandResult[] = []
   let status: RepositorySetupResult['status'] =
     commands.length > 0 ? 'passed' : 'not_configured'
@@ -1616,6 +1620,7 @@ function execute(
   env: Record<string, string> = {},
 ): RepositoryCheckCommandResult {
   const startedAt = Date.now()
+
   // Output goes to files, not pipes. `spawnSync` with pipes returns only when
   // every holder of the pipe has closed it, so a timed-out `npm test` whose
   // shell was killed still blocked the gate until the orphaned node processes
@@ -1627,6 +1632,7 @@ function execute(
   )
   const stdoutPath = path.join(captureDirectory, 'stdout')
   const stderrPath = path.join(captureDirectory, 'stderr')
+
   // Read-write, because the same descriptors read the capture back once the
   // shell exits.
   const stdoutFd = openSync(stdoutPath, 'w+')
@@ -1646,6 +1652,7 @@ function execute(
       detached,
     }
     const result = spawnSync(command, [], spawnOptions)
+
     const timedOut =
       result.error instanceof Error &&
       'code' in result.error &&
@@ -1728,10 +1735,12 @@ function executeStreaming(
 
       child.kill(signal)
     }
+
     let stdout = ''
     let stderr = ''
     let timedOut = false
     let settled = false
+
     let timeoutHandle: NodeJS.Timeout | undefined
     let killHandle: NodeJS.Timeout | undefined
 
@@ -1951,6 +1960,7 @@ export function runRepositoryCheck(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
+
   const workspaceRoot = repositoryCheckWorkspaceRoot(root, options.workspace)
   const timeoutMs = effectiveTimeout(
     config,
@@ -2049,6 +2059,7 @@ export async function runRepositoryCheckStreaming(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
+
   const workspaceRoot = repositoryCheckWorkspaceRoot(root, options.workspace)
   const timeoutMs = effectiveTimeout(
     config,

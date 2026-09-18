@@ -329,6 +329,7 @@ function runCursorAgent(
     timeout: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxBuffer: MAX_OUTPUT_BYTES,
   })
+
   const durationMs = Date.now() - startedAt
   const timedOut =
     (spawned.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT'
@@ -527,6 +528,7 @@ export function createCursorAgentAdapter(
           ? { timeoutMs: options.timeoutMs }
           : {}),
       })
+
       const verification = options.modelVerification
       const expected =
         verification.status === 'compared' ? verification.expected_model : null

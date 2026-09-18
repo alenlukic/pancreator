@@ -359,11 +359,13 @@ test('only a change inside the governance case of cli.ts is an entry-point chang
     'selects the review dimensions.',
     'selects the review dimensions to run.',
   )
+
   const otherHelperChanged = before.replace('return value', 'return value + 1')
   const otherHelpChanged = before.replace(
     'pan best-of-n status <bon-id> [--json]',
     'pan best-of-n status <bon-id> [--verbose] [--json]',
   )
+
   // The stanza is sliced by its usage line, so a continuation line that never
   // names the option and the review-scope usage line are both inside it,
   // while the attest-supervisor line between them is not.

@@ -34,6 +34,7 @@ test('a failed hard self-criterion skips shell gates on a declared success', () 
   )
 
   assert.ok(shellResults.length >= 2)
+
   for (const result of shellResults) {
     assert.equal(result.skipped, true)
     assert.equal(result.passed, true)
@@ -71,6 +72,7 @@ test('a failed read attestation skips shell gates before executing them', () => 
   )
 
   assert.ok(shellResults.length >= 2)
+
   for (const result of shellResults) {
     assert.equal(result.skipped, true)
     assert.match(
@@ -88,6 +90,7 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
     workflow,
   } = checkpoint('delivery@implement-failed-once')
   const implementStage = stageBySlug(workflow, 'implement')
+
   const firstHistory = first.stage_history[0]
   const firstInvocationId = firstHistory.invocation_id
   const firstOutput = JSON.parse(

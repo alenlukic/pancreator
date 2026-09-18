@@ -452,12 +452,14 @@ export function diffPolicyTexts(
 
   const base = policyFields(baseText)
   const head = policyFields(headText)
+
   const baseSet = new Set(
     base.instructions.map((instruction) => instruction.key),
   )
   const headSet = new Set(
     head.instructions.map((instruction) => instruction.key),
   )
+
   const malformed =
     !base.parsed && !head.parsed
       ? 'both'
@@ -534,6 +536,7 @@ function reviewMappings(text: string | null): string {
   }
 
   const picked: Record<string, unknown> = {}
+
   for (const family of REVIEW_ALIAS_FAMILIES) {
     const map = isRecord(value[family]) ? value[family] : {}
 
@@ -541,6 +544,7 @@ function reviewMappings(text: string | null): string {
       picked[`${family}.${tier}`] = map[tier]
     }
   }
+
   const defaults = isRecord(value.defaults) ? value.defaults : {}
 
   for (const key of REVIEW_MAPPING_KEYS) {

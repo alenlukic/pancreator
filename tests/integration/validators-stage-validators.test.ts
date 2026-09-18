@@ -392,6 +392,7 @@ test('implementation validator binds acceptance coverage to accepted plan', () =
   const runId = 'run-impl-accepted-plan'
   const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
   const absolute = path.join(root, target)
+
   const acceptedInvocation = 'plan-1-accepted'
   const rejectedInvocation = 'plan-2-rejected'
   const acceptedOutput = `runtime/logs/workflows/${runId}/outputs/plan-1-test.json`
@@ -949,6 +950,7 @@ test('self-development release validator requires a real next-version bump', () 
   })
 
   assert.equal(historyResult.status, 'failed')
+
   for (const code of [
     'release.current_version_mismatch',
     'release.baseline_version_mismatch',
@@ -1128,6 +1130,7 @@ test('a malformed pull-request description path is a coded issue, not a thrown e
 test('release validator reads metadata from selected workspace', () => {
   const root = createFixture()
   const target = 'output.json'
+
   const currentVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
   const proposedVersion = nextSemanticVersion(currentVersion, 'patch')
   const baselineCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -1156,6 +1159,7 @@ test('release validator reads metadata from selected workspace', () => {
   }
 
   lockJson.version = proposedVersion ?? ''
+
   if (lockJson.packages['']) {
     lockJson.packages[''].version = proposedVersion ?? ''
   }
@@ -2183,8 +2187,10 @@ test('plan file paths resolve against the workspace root', () => {
   const root = createTestTempDirectory('plan-trace-root-')
   const workspace = createTestTempDirectory('pan-workspace-')
   const targetFile = path.join(workspace, 'app', 'model.py')
+
   const sibling = createTestTempDirectory('pan-sibling-repo-')
   const siblingFile = path.join(sibling, 'model.py')
+
   const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
 
   installFieldContract(root)
@@ -2709,6 +2715,7 @@ test('the field contract guard reaches a required child of any stage', () => {
     readFileSync(path.join(root, contractPath), 'utf8'),
   ) as Record<string, unknown>
   const stages = source.stages as Record<string, Record<string, unknown>>
+
   const requirement = {
     policy_id: 'CONTRACT-001',
     requirement_id: 'shared-stage-field-contract',
@@ -2808,6 +2815,7 @@ test('plan field contract declares every validator-enforced shape', () => {
       }
     }
   }
+
   const declared = new Set(source.stages.plan.fields.map((field) => field.path))
   const enforced = new Set(
     source.stages.plan.validators.flatMap(

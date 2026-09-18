@@ -418,6 +418,7 @@ export function extractSpecialReferences(
 ): SpecialReferences {
   const knownBins = new Set(binScripts)
   const knownFixtures = new Set(fixtureDirectories)
+
   const bin = new Set<string>()
   const fixtures = new Set<string>()
   const data = new Set<string>()
@@ -498,14 +499,18 @@ export async function buildModuleGraph(
     listTypeScriptFiles(root, directory),
   )
   const fileSet = new Set(files)
+
   const ts = options.parser === 'regex' ? null : await loadTypeScript(root)
   const binScripts = listBinScripts(root)
   const fixtureDirectories = listFixtureDirectories(root)
+
   const imports = new Map<string, Set<string>>()
   const dependents = new Map<string, Set<string>>()
+
   const binReferences = new Map<string, Set<string>>()
   const fixtureReferences = new Map<string, Set<string>>()
   const dataReferences = new Map<string, Set<string>>()
+
   const typeOnlyTargets = new Set<string>()
   const specialReferences = new Map<string, SpecialReferences>()
   const cliSource = fileSet.has('src/cli.ts') ? 'src/cli.ts' : null
@@ -706,9 +711,11 @@ export function selectImpactedTests(
 ): Selection {
   const lane = laneTests(graph)
   const laneSet = new Set(lane)
+
   const reasons = new Map<string, string>()
   const depths = new Map<string, number>()
   const reachedBy = new Set<string>()
+
   const normalizedChanged = [...new Set(changed)].sort()
   const maxDepth = options.depth ?? Number.POSITIVE_INFINITY
 
@@ -1133,6 +1140,7 @@ export async function runTestsImpacted(
 
   const started = performance.now()
   const impactOptions = parseImpactArgs(args)
+
   const graph = await buildModuleGraph(workspace)
   const changed = resolveChangeSet(workspace, impactOptions)
   const selection = selectImpactedTests(graph, changed, {
@@ -1140,6 +1148,7 @@ export async function runTestsImpacted(
     advisoryRatio: impactOptions.advisoryRatio,
     depth: impactOptions.depth,
   })
+
   // The record stays at the installation root so one history covers every
   // workspace the operator selected from it.
   const recordPath = path.join(root, RECORD_RELATIVE_PATH)

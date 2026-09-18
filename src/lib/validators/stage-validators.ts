@@ -981,6 +981,7 @@ function assessmentVerdictForInvocation(
   const assessmentsDirectory = path.dirname(
     layout.assessment('placeholder').absolute,
   )
+
   const currentPath = path.join(
     assessmentsDirectory,
     `${invocationId}.assessment.json`,
@@ -1220,6 +1221,7 @@ export function validateTargetInstructionCoverage(
       )
     : []
   const workspaceRoot = workspaceRootFromInput(input)
+
   const output = readJson(path.join(input.root, input.targetPath))
   const outputData =
     isRecord(output) && isRecord(output.data) ? output.data : null
@@ -1233,6 +1235,7 @@ export function validateTargetInstructionCoverage(
           (item): item is string => typeof item === 'string',
         )
       : []
+
   const diff = workspaceSourceChanges(workspaceRoot)
   const workspaceBefore =
     isRecord(input.invocation) && isRecord(input.invocation.workspace_before)
@@ -1257,6 +1260,7 @@ export function validateTargetInstructionCoverage(
   const requiredReadPaths = [
     ...new Set([...invocationReadPaths, ...finalReadPaths]),
   ].sort()
+
   const evidence =
     isRecord(output) && isRecord(output.target_instruction_evidence)
       ? output.target_instruction_evidence
@@ -1335,6 +1339,7 @@ export function validateImplementationClaims(
   input: HandlerInput,
 ): HandlerResult {
   const issues: HandlerResult['issues'] = []
+
   const absolute = path.join(input.root, input.targetPath)
   const value = readJson(absolute) as Record<string, unknown>
   const data = isRecord(value.data) ? value.data : {}
@@ -2855,6 +2860,7 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   const failedCase = qaCases.some(
     (item) => isRecord(item) && item.result === 'fail',
   )
+
   const failingEvidence = blockerFinding || failedAcceptance || failedCase
   const passingVerdict = verdict === 'pass' || verdict === 'pass_with_warnings'
   const failingVerdict =
@@ -2971,6 +2977,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     const localRelease = isRecord(release.local_release)
       ? release.local_release
       : null
+
     const releaseCommit =
       localRelease && typeof localRelease.release_commit === 'string'
         ? localRelease.release_commit
@@ -2983,6 +2990,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
       localRelease && typeof localRelease.fetched_main === 'string'
         ? localRelease.fetched_main
         : ''
+
     const localBranch =
       localRelease && typeof localRelease.branch === 'string'
         ? localRelease.branch
@@ -3019,6 +3027,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         fetchedMain,
         releaseCommit,
       ])
+
       const clean = gitOutput(workspaceRoot, [
         'status',
         '--porcelain=v1',
@@ -3149,12 +3158,14 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         typeof versioning.baseline_commit === 'string'
           ? versioning.baseline_commit
           : ''
+
       const rawUpdatedFiles = Array.isArray(versioning.updated_files)
         ? versioning.updated_files
         : []
       const updatedFiles = rawUpdatedFiles.filter(
         (entry): entry is string => typeof entry === 'string',
       )
+
       const rationale =
         typeof versioning.rationale === 'string'
           ? versioning.rationale.trim()
@@ -3418,6 +3429,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         : null,
     )
     .filter((entry): entry is string => typeof entry === 'string')
+
   const diffResult = workspaceSourceChanges(workspaceRootFromInput(input))
 
   if (rawChangeList.length !== changeList.length) {
@@ -3549,6 +3561,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const deferred = Array.isArray(release.deferred_acceptance_criteria)
     ? release.deferred_acceptance_criteria
     : []
+
   const runWaivers = Array.isArray(input.runState?.operator_gate_waivers)
     ? input.runState.operator_gate_waivers
     : []
@@ -3568,6 +3581,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     },
     currentFingerprint,
   )
+
   const runDeferred = Array.isArray(
     input.runState?.deferred_acceptance_criteria,
   )
@@ -3773,6 +3787,7 @@ export function validateDecompositionArtifact(
   const content = readText(path.join(input.root, input.targetPath))
   const parsed = parseMarkdown(content)
   const lower = content.toLowerCase()
+
   const requiredHeadings = [
     'decision',
     'scope summary',
@@ -4009,6 +4024,7 @@ export function validateHarnessRepairIntake(
   const content = readText(path.join(input.root, input.targetPath))
   const lower = content.toLowerCase()
   const parsed = parseMarkdown(content)
+
   const categories = loadHarnessRepairCategories(input.root)
   const requiredHeadings = [
     'original report',
@@ -4135,12 +4151,14 @@ export function validateHarnessRepairIntake(
     const start = match.index ?? 0
     const nextFinding = findingMatches[index + 1]?.index ?? content.length
     const remainder = content.slice(start, nextFinding)
+
     const nextTopLevelSection = /^##\s+/mu.exec(
       remainder.slice(match[0].length),
     )
     const end = nextTopLevelSection
       ? start + match[0].length + nextTopLevelSection.index
       : nextFinding
+
     const block = content.slice(start, Math.min(end, nextFinding))
     const blockLower = block.toLowerCase()
     const findingId = match[1]

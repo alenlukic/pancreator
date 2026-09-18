@@ -32,6 +32,7 @@ const writeLaneProfile = (
   const relative = `runtime/tune-harness/work/session/${name}.json`
   const absolute = path.join(root, relative)
   const file = `tests/${name}.test.ts`
+
   const fileMs = Math.max(0, wallMs - 1)
   const caseMs = Math.max(0, wallMs - 2)
 
@@ -381,6 +382,7 @@ test('the secondary lane delta needs a measurement on both sides', () => {
     'secondary test',
     10,
   )
+
   const withLane = buildBenchmarkFromProfiles(root, fast, secondary, null)
   const withoutLane = buildBenchmarkFromProfiles(root, fast, null, null)
   const deltaKeys = (benchmark: TuneRecord['benchmark']): string[] =>

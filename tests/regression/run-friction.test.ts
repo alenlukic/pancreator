@@ -82,6 +82,7 @@ test('an unrecognized criterion verdict is reported, not silently failed', () =>
     workflow: workflow.slug,
     stage: stage.slug,
   }
+
   const outputPath = 'runtime/logs/workflows/x/outputs/plan.json'
   const invocation = {
     $operator: { headline: 'Test', summary: 'Test', next_action: 'Submit' },
@@ -270,6 +271,7 @@ test('the inbox routing rule fails a producer that writes outside the queue', ()
 test('a retry card inlines the recorded reason the prior attempt failed', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
+
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',

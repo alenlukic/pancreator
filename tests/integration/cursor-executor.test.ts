@@ -50,8 +50,10 @@ function withCursorFixture<T>(
 ): T {
   const binary = path.join(root, 'runtime', 'fake-cursor-agent')
   const promptPath = path.join(root, 'runtime', 'cursor-prompt.txt')
+
   const originalBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
   const originalKey = process.env.CURSOR_API_KEY
+
   const originalModel = process.env.FAKE_CURSOR_MODEL
   const originalPrompt = process.env.FAKE_CURSOR_PROMPT_PATH
   const originalOutputSource = process.env.FAKE_CURSOR_OUTPUT_SOURCE
@@ -384,11 +386,13 @@ test('headless Cursor preflight pauses when the binary is missing', () => {
     } else {
       process.env.PANCREATOR_CURSOR_AGENT_BIN = originalBinary
     }
+
     if (originalKey === undefined) {
       delete process.env.CURSOR_API_KEY
     } else {
       process.env.CURSOR_API_KEY = originalKey
     }
+
     resetCursorAgentCapabilities()
   }
 })

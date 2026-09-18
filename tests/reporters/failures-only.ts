@@ -63,9 +63,11 @@ interface SummaryData {
 
 function formatError(error: Error & { cause?: unknown }): string {
   const cause = error.cause
+
   if (cause instanceof Error) {
     return cause.stack ?? cause.message
   }
+
   return error.stack ?? error.message
 }
 
@@ -122,6 +124,7 @@ export function readFixtureCost(
   let template_ms = 0
   let clone_ms = 0
   let prepare_ms = 0
+
   let template_bytes = 0
   let template_files = 0
 
@@ -252,6 +255,7 @@ class ProfileCollector {
     const round = (value: number): number => Math.round(value * 1000) / 1000
     const sum = (select: (entry: SuiteProfileFile) => number): number =>
       files.reduce((total, entry) => total + select(entry), 0)
+
     const allTests = [...this.tests].sort(
       (left, right) => right.duration_ms - left.duration_ms,
     )
@@ -364,6 +368,7 @@ function writeJsonAtomic(
   }
 }
 
+// style: allow style.default_export Node loads a test reporter through its default export.
 export default async function* failuresOnly(
   source: AsyncIterable<TestEvent>,
 ): AsyncGenerator<string> {

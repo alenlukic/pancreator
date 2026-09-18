@@ -484,6 +484,7 @@ function guidanceChecks(options: {
   const heading = guidanceReferenceHeading(3, guidance.source_path)
   const digestToken = guidanceDigestToken(reference)
   const selectedRange = `Selected range: ${guidanceSelectedRange(reference)}.`
+
   const referenceBlockLines = renderGuidanceBlock(3, guidance)
   const referenceBlock = referenceBlockLines.join('\n')
   // An invocation rendered before the digest-basis line existed carries the
@@ -492,6 +493,7 @@ function guidanceChecks(options: {
   const legacyReferenceBlock = referenceBlockLines.slice(0, -1).join('\n')
   const referenceBlockPresent =
     markdown.includes(referenceBlock) || markdown.includes(legacyReferenceBlock)
+
   const digestMatchesContent =
     reference.content_sha256 === sha256(guidance.content)
   const lineCountMatchesContent =
@@ -964,6 +966,7 @@ export function validateDelegationMarkdown(
       )
   const label = matched?.label ?? null
   const passed = exact || matched !== undefined
+
   const subject =
     mode === 'referenced'
       ? 'the compact delivery prompt'
@@ -2494,6 +2497,7 @@ function runShellCheck(
     requestedCommand,
     commandOverride !== undefined,
   )
+
   // The run's verification level may gate this criterion on a different
   // repository-check profile than the workflow declares. An explicit command
   // override still wins: resolution then carries no profile to remap.
@@ -2505,6 +2509,7 @@ function runShellCheck(
   const command = remappedProfile
     ? repositoryCheckGateCommand(remappedProfile)
     : resolution.command
+
   const startedAt = new Date().toISOString()
   const profileName = remappedProfile ?? resolution.profile_name
 
@@ -2626,10 +2631,12 @@ function runShellCheck(
   let signal: NodeJS.Signals | null = null
   let stdout: string
   let stderr: string
+
   let errorMessageText = ''
   let timedOut = false
   let skipped = false
   let repositoryResult: RepositoryCheckResult | undefined
+
   // Only the `full` profile is profiled: it is the last suite execution before
   // ship. Baselines, interior gates, and agent-side runs never set the
   // variable. The artifact exists only when the profile ran the reporter.
@@ -2768,9 +2775,11 @@ function runShellCheck(
     'evidence',
     `${artifactId}-${safeCriterionId}.full.log`,
   )
+
   const boundedStdout = boundEvidenceStream(stdout)
   const boundedStderr = boundEvidenceStream(stderr)
   const elided = boundedStdout !== stdout || boundedStderr !== stderr
+
   const header = [
     `$ ${command}`,
     `started_at=${startedAt}`,
@@ -2971,6 +2980,7 @@ export function evaluateStateCriterion(
     const acceptedEvidenceFingerprint =
       Boolean(testFingerprint) &&
       state.accepted_workspace_fingerprint === testFingerprint
+
     const gatesCurrent =
       Boolean(testWaiver) ||
       fingerprintCurrent ||
@@ -3494,6 +3504,7 @@ export function evaluateDeterministicCriteria(
       isSelfDevelopmentInstallation(root)
     const blocksUnderPolicy = (relativePath: string): boolean =>
       !releaseMetadataAllowed || !isReleaseMetadataPath(relativePath)
+
     // A commit of already-present content is not a workspace change, but it is
     // still this stage's action, so each absorbed path owes an author. The
     // ones a live run in this worktree claims pass and are named; the rest
@@ -3506,6 +3517,7 @@ export function evaluateDeterministicCriteria(
     const unownedAbsorbedPaths = absorbedPaths.filter(
       (relativePath) => !absorbedOwners.has(relativePath),
     )
+
     // A run that works somewhere else may not write the harness checkout.
     // The workspace snapshot cannot see that tree, so an eval run or a
     // worktree run edited the installation it was graded from and the scope
@@ -3520,6 +3532,7 @@ export function evaluateDeterministicCriteria(
           isReleaseMetadataPath(relativePath),
         )
       : []
+
     const attribution = stageOutput?.workspace_changes
     const normalizeDeclaredPath = (relativePath: string): string =>
       path.posix
@@ -3537,6 +3550,7 @@ export function evaluateDeterministicCriteria(
       blockingPaths.every((relativePath) =>
         declaredInternalPaths.has(normalizeDeclaredPath(relativePath)),
       )
+
     const unattributedPaths = blockingPaths.filter(
       (relativePath) => !declaredInternalPaths.has(relativePath),
     )
@@ -3683,6 +3697,7 @@ export function evaluateDeterministicCriteria(
           release && isRecord(release.local_release)
             ? release.local_release
             : null
+
         const releaseCommit =
           local && typeof local.release_commit === 'string'
             ? local.release_commit
@@ -3695,6 +3710,7 @@ export function evaluateDeterministicCriteria(
           local && typeof local.fetched_main === 'string'
             ? local.fetched_main
             : ''
+
         const legacyUnboundRelease =
           isSelfDevelopmentInstallation(root) && !state.managed_worktree
 
@@ -3710,6 +3726,7 @@ export function evaluateDeterministicCriteria(
               `evaluated.`,
           )
         }
+
         const passed =
           isTargetInstallation(root) || legacyUnboundRelease
             ? true

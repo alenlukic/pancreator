@@ -205,6 +205,7 @@ export function parseHorizonQueue(
     }
 
     const kind = task.kind
+
     if (kind !== 'workflow' && kind !== 'prompt') {
       fail(`${item}.kind MUST be 'workflow' or 'prompt'.`)
     }
@@ -231,12 +232,15 @@ export function parseHorizonQueue(
     if (!HORIZON_ID.test(parsed.id)) {
       fail(`${item}.id MUST match ${HORIZON_ID.source}.`)
     }
+
     if (kind === 'workflow' && !parsed.request_path) {
       fail(`${item}.request_path is required for a workflow task.`)
     }
+
     if (kind === 'prompt' && !parsed.prompt) {
       fail(`${item}.prompt is required for a prompt task.`)
     }
+
     if (parsed.workspace && parsed.worktree) {
       fail(`${item} MUST NOT set both workspace and worktree.`)
     }
@@ -270,6 +274,7 @@ export function parseHorizonQueue(
       }
     }
   }
+
   for (const edge of edges) {
     if (!known.has(edge.from) || !known.has(edge.to)) {
       fail(
@@ -324,16 +329,22 @@ export function horizonCycle(
       const start = stack.indexOf(taskId)
       return [...stack.slice(start), taskId]
     }
+
     if (visited.has(taskId)) {
       return null
     }
 
     visiting.add(taskId)
     stack.push(taskId)
+
     for (const dependency of dependencies.get(taskId) ?? []) {
       const found = visit(dependency)
-      if (found) return found
+
+      if (found) {
+        return found
+      }
     }
+
     stack.pop()
     visiting.delete(taskId)
     visited.add(taskId)
@@ -342,7 +353,10 @@ export function horizonCycle(
 
   for (const task of tasks) {
     const found = visit(task.id)
-    if (found) return found
+
+    if (found) {
+      return found
+    }
   }
 
   return null
@@ -357,8 +371,12 @@ export function transitiveHorizonDependents(
 
   while (pending.length > 0) {
     const dependency = pending.shift() as string
+
     for (const task of state.tasks) {
-      if (found.has(task.id) || !task.depends_on.includes(dependency)) continue
+      if (found.has(task.id) || !task.depends_on.includes(dependency)) {
+        continue
+      }
+
       found.add(task.id)
       pending.push(task.id)
     }
@@ -374,7 +392,10 @@ export function eligibleHorizonTask(
   const byId = new Map(state.tasks.map((task) => [task.id, task]))
 
   for (const task of state.tasks) {
-    if (task.status !== 'pending') continue
+    if (task.status !== 'pending') {
+      continue
+    }
+
     if (
       task.depends_on.every(
         (dependency) => byId.get(dependency)?.status === 'succeeded',
@@ -392,8 +413,13 @@ export function loadHorizonSession(
   sessionId: string,
 ): HorizonSessionState {
   const file = sessionPath(root, sessionId)
-  if (!fileExists(file)) fail(`Unknown horizon session: ${sessionId}`)
+
+  if (!fileExists(file)) {
+    fail(`Unknown horizon session: ${sessionId}`)
+  }
+
   const value = readJson(file)
+
   if (
     !isRecord(value) ||
     value.schema_version !== 1 ||
@@ -401,6 +427,7 @@ export function loadHorizonSession(
   ) {
     fail(`${file} MUST contain a horizon schema version 1 record.`)
   }
+
   return value as unknown as HorizonSessionState
 }
 
@@ -440,6 +467,7 @@ function writeHandoff(
     `${String(sequence).padStart(4, '0')}.json`,
   )
   const absolute = resolveInside(root, relative)
+
   const openDeferrals = state.tasks
     .filter((task) => task.status === 'deferred')
     .map((task) => task.id)
@@ -518,13 +546,16 @@ export function initHorizonSession(
       .replaceAll(/[^0-9]/gu, '')
       .slice(0, 14)}-${randomUUID().slice(0, 8)}`
   const directory = horizonDir(root, sessionId)
-  if (fileExists(directory))
+
+  if (fileExists(directory)) {
     fail(`Horizon session already exists: ${sessionId}`)
+  }
 
   const selected = selectInvolvementProfile(
     loadOperatorInvolvementFile(root),
     options.involvement ?? queue.involvement_profile ?? 'long-horizon',
   )
+
   if (!(selected.profile.contracts ?? []).includes('long_horizon')) {
     fail(
       `Involvement profile '${selected.name}' does not carry the long_horizon contract.`,
@@ -581,9 +612,11 @@ export function addHorizonTask(
 ): HorizonSessionState {
   return withOperationMutex(mutexPath(root, sessionId), () => {
     const state = loadHorizonSession(root, sessionId)
+
     if (state.tasks.some((task) => task.id === input.id)) {
       fail(`Horizon task already exists: ${input.id}`)
     }
+
     const parsed = parseHorizonQueue({ tasks: [...state.tasks, input] })
     const added = parsed.tasks.find(
       (task) => task.id === input.id,
@@ -602,12 +635,16 @@ export function startHorizonSession(
 ): HorizonSessionState {
   return withOperationMutex(mutexPath(root, sessionId), () => {
     const state = loadHorizonSession(root, sessionId)
+
     if (!options.attestSupervisorCard) {
       fail(
         `Horizon preflight requires --attest-supervisor-card for session '${sessionId}'.`,
       )
     }
-    if (state.status !== 'created') return state
+
+    if (state.status !== 'created') {
+      return state
+    }
 
     const armed = writeHandoff(
       root,
@@ -669,11 +706,13 @@ function executePromptTask(
     worktreeName: task.worktree,
     contracts: state.contracts,
   })
+
   const pipeline = loadPipelineConfig(root)
   // `unbound` is a governance mode rather than a persona, so no pipeline
   // configuration maps it to a model. A prompt task is the session's own
   // top-level agent, which is the persona the configuration does map.
   const mapping = resolvePersonaMapping(pipeline.config, 'orchestrator')
+
   const workspace = task.worktree
     ? path.resolve(
         root,
@@ -756,7 +795,11 @@ function sessionTerminalState(state: HorizonSessionState): HorizonSessionState {
   const open = state.tasks.some((task) =>
     ['pending', 'running', 'replanning'].includes(task.status),
   )
-  if (open) return state
+
+  if (open) {
+    return state
+  }
+
   return {
     ...state,
     status: state.tasks.every((task) => task.status === 'succeeded')
@@ -803,9 +846,11 @@ export function nextHorizonTask(
 ): HorizonNextResult {
   return withOperationMutex(mutexPath(root, sessionId), () => {
     let state = skipBlockedDependents(loadHorizonSession(root, sessionId))
+
     if (state.status !== 'running') {
       fail(`Horizon session '${sessionId}' is '${state.status}', not running.`)
     }
+
     if (state.active_task_id) {
       fail(
         `Horizon session '${sessionId}' already runs task '${state.active_task_id}'.`,
@@ -817,6 +862,7 @@ export function nextHorizonTask(
     // flight beside a newly opened one is two mutating workflows in one
     // workspace.
     const advancing = advancingHorizonRun(root, state)
+
     if (advancing) {
       fail(
         `Horizon session '${sessionId}' cannot open a task: run '${advancing.run_id}' for task '${advancing.task_id}' is still running.`,
@@ -824,6 +870,7 @@ export function nextHorizonTask(
     }
 
     const selected = eligibleHorizonTask(state)
+
     if (!selected) {
       state = sessionTerminalState(state)
       state = writeHandoff(root, state, 'no_eligible_task', null)
@@ -868,6 +915,7 @@ export function nextHorizonTask(
           task.id === selected.id ? executed.task : task,
         ),
       }
+
       if (!executed.ok) {
         state = writeDeferral(
           root,
@@ -939,7 +987,11 @@ export function nextHorizonTask(
 
 function synchronizeLadder(task: HorizonTask, run: RunState): HorizonTask {
   const ladder = run.horizon_ladder
-  if (!ladder) return task
+
+  if (!ladder) {
+    return task
+  }
+
   return {
     ...task,
     ladder: {
@@ -964,7 +1016,10 @@ const ADVANCING_RUN_STATUSES: ReadonlySet<RunState['status']> = new Set([
 
 /** Read a task's run, treating an unreadable record as no run at all. */
 function taskRunState(root: string, task: HorizonTask): RunState | null {
-  if (!task.run_id) return null
+  if (!task.run_id) {
+    return null
+  }
+
   try {
     return getRunState(root, task.run_id)
   } catch {
@@ -979,10 +1034,12 @@ function advancingHorizonRun(
 ): { task_id: string; run_id: string } | null {
   for (const task of state.tasks) {
     const run = taskRunState(root, task)
+
     if (run && ADVANCING_RUN_STATUSES.has(run.status)) {
       return { task_id: task.id, run_id: run.run_id }
     }
   }
+
   return null
 }
 
@@ -1001,7 +1058,11 @@ function stopRunForDeferral(
   reason: string,
 ): void {
   const run = taskRunState(root, task)
-  if (!run || !ADVANCING_RUN_STATUSES.has(run.status)) return
+
+  if (!run || !ADVANCING_RUN_STATUSES.has(run.status)) {
+    return
+  }
+
   pauseRun(
     root,
     run.run_id,
@@ -1056,13 +1117,17 @@ function writeDeferral(
     active_task_id:
       state.active_task_id === task.id ? null : state.active_task_id,
     tasks: state.tasks.map((candidate) => {
-      if (candidate.id === task.id) return { ...task, status: 'deferred' }
+      if (candidate.id === task.id) {
+        return { ...task, status: 'deferred' }
+      }
+
       if (
         dependentIds.includes(candidate.id) &&
         candidate.status === 'pending'
       ) {
         return { ...candidate, status: 'blocked' }
       }
+
       return candidate
     }),
   }
@@ -1098,6 +1163,7 @@ function reconcileDrivenTask(
 
   if (ladderExhausted && task.ladder.replans_spent === 0) {
     const failureRecord = run.horizon_ladder?.failure_record_path
+
     if (!failureRecord) {
       return writeDeferral(
         root,
@@ -1283,20 +1349,24 @@ export function checkpointHorizonSession(
     const task = state.tasks.find(
       (candidate) => candidate.id === state.active_task_id,
     )
-    if (!task?.run_id)
+
+    if (!task?.run_id) {
       fail(`Horizon session '${sessionId}' has no active workflow task.`)
+    }
 
     const attempt = driveRunUnderAwayMode(root, task.run_id, {
       attestSupervisorCard: state.preflight.card_attestation_authorized,
       attestedBy: `horizon:${sessionId}`,
     })
-    let driven =
+    const driven =
       attempt.blocked === null
         ? attempt.driven
         : operatorOnlyStop(attempt.driven, attempt.blocked)
 
     state = reconcileDrivenTask(root, state, task, driven)
+
     const transitioned = state.active_task_id === null
+
     if (transitioned) {
       state = writeHandoff(
         root,
@@ -1327,7 +1397,11 @@ export function deferHorizonTask(
   return withOperationMutex(mutexPath(root, sessionId), () => {
     let state = loadHorizonSession(root, sessionId)
     const task = state.tasks.find((candidate) => candidate.id === taskId)
-    if (!task) fail(`Unknown horizon task: ${taskId}`)
+
+    if (!task) {
+      fail(`Unknown horizon task: ${taskId}`)
+    }
+
     state = writeDeferral(root, state, task, reason, evidence)
     state = writeHandoff(root, sessionTerminalState(state), 'deferred', taskId)
     return persistHorizonSession(root, state, 'task_deferred', {
@@ -1365,7 +1439,10 @@ export function horizonStatus(
   return {
     ...state,
     tasks: state.tasks.map((task) => {
-      if (!task.run_id) return task
+      if (!task.run_id) {
+        return task
+      }
+
       try {
         return synchronizeLadder(task, getRunState(root, task.run_id))
       } catch {

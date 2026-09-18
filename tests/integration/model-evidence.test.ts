@@ -560,6 +560,7 @@ test('preparing without an agent, and an external-executor stage, are unchanged'
   const externalCreated = checkpoint('planning[claude-code:planner]@created')
   const externalRoot = externalCreated.root
   const external = externalCreated.state
+
   const stubPath = claudeStubPath(externalRoot)
   const externalPrepared = withStub(stubPath, null, () =>
     prepareInvocation(externalRoot, external.run_id, { agent: 'pan-planner' }),
@@ -940,9 +941,11 @@ test('the run mutex spans the evidence write, not the live probe', () => {
   const mutexPath = operationMutexPath(root, run.run_id)
   const observationPath = path.join(root, 'probe-observation.json')
   const concurrentTitle = 'Retitled while the probe ran'
+
   const bin = path.join(root, 'probe-bin')
   const helperPath = path.join(bin, 'observe.mjs')
   const executable = path.join(bin, 'cursor-agent')
+
   const priorPath = process.env.PATH
 
   mkdirSync(bin, { recursive: true })

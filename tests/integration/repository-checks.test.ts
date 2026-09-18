@@ -117,6 +117,7 @@ test('an elided baseline loads its full result before comparison', () => {
   const artifactDirectory = 'runtime/logs/workflows/run-1/agent/artifacts/json'
   const summaryPath = `${artifactDirectory}/baseline-static.json`
   const fullPath = `${artifactDirectory}/baseline-static.full.json`
+
   const count = Math.ceil(
     (SUMMARY_STREAM_HEAD_BYTES + SUMMARY_STREAM_TAIL_BYTES) / 24,
   )
@@ -124,6 +125,7 @@ test('an elided baseline loads its full result before comparison', () => {
     { length: count },
     (_, index) => `stable diagnostic ${index}`,
   )
+
   const check = (stderr: string): RepositoryCheckResult => ({
     profile: 'static',
     status: 'failed',
@@ -795,6 +797,7 @@ test('a concurrent profile runs its commands together and records each one', asy
   const { root } = makeInstallation()
   const delayMs = 900
   const stdout: string[] = []
+
   // TP-10: each command brackets its own delay in a shared log. An elapsed
   // ceiling would measure the scheduling of a suite that runs its own tests
   // concurrently; the recorded order measures these three commands.
@@ -1436,6 +1439,7 @@ test('the fast-profile allowance follows the evidence workers of the invocation 
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const layout = resolveRunLayout(root, run.run_id)
   const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE).absolute
   const record = (invocationId: string): string =>
@@ -1544,6 +1548,7 @@ test('an agent clean profile pass is recorded where the gate looks for it', () =
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
   const result = commandLineResult(root)
   const recorded = recordProfileGatePass(root, 'fast', result, {
@@ -1591,6 +1596,7 @@ test('two permitted executions at one fingerprint keep their own evidence logs',
     fingerprint_before: fingerprint,
     started_at: '2026-09-12T09:00:00.000Z',
   }
+
   const passes = ['review', 'qa'].map((role) => {
     const result = commandLineResult(root)
     const recorded = recordProfileGatePass(root, 'fast', result, options)
@@ -1650,6 +1656,7 @@ test('an agent profile run that proves nothing is not recorded as a pass', () =>
     fingerprint_before: fingerprint,
     started_at: '2026-09-12T09:00:00.000Z',
   }
+
   const timedOut = commandLineResult(root)
 
   timedOut.results = [{ ...timedOut.results[0], timed_out: true }]
@@ -1737,6 +1744,7 @@ test('a recorded pass answers a repeated request for the same profile', () => {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const layout = resolveRunLayout(root, run.run_id)
   const ledger = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE)
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
@@ -1797,10 +1805,12 @@ test('a reusable pass needs the same invocation, fingerprint, profile, and clean
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const ledger = resolveRunLayout(root, run.run_id).evidence(
     AGENT_REPOSITORY_CHECK_RUNS_FILE,
   ).absolute
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+
   const entry = (overrides: Record<string, unknown> = {}): string =>
     `${JSON.stringify({
       profile: 'fast',

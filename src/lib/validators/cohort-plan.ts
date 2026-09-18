@@ -622,6 +622,7 @@ export function validateChildSpecifications(
   // wrong basis at the plan gate, before any chunk run reads it.
   const parentDigest =
     parentText === null ? null : referenceContentSha256(parentText)
+
   const ownership = new Map<string, string[]>()
 
   for (const chunk of plan.chunks) {

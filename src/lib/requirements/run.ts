@@ -184,6 +184,7 @@ export function runRequirement(
   const absoluteTarget = path.isAbsolute(options.targetPath)
     ? options.targetPath
     : path.join(options.root, options.targetPath)
+
   const catalog = options.catalog ?? loadRegistry(options.root)
   const entry = catalog.entries.get(options.requirement.registry_id)
   const handler = entry ? getHandler(entry.handler) : undefined

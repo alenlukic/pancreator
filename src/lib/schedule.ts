@@ -117,7 +117,10 @@ const formatters = new Map<string, Intl.DateTimeFormat>()
 function formatter(timeZone?: string): Intl.DateTimeFormat {
   const key = timeZone ?? ''
   const cached = formatters.get(key)
-  if (cached) return cached
+
+  if (cached) {
+    return cached
+  }
 
   const created = new Intl.DateTimeFormat('en-US', {
     ...(timeZone ? { timeZone } : {}),
@@ -159,6 +162,7 @@ export function mostRecentScheduleOccurrence(
 
   for (let scanned = 0; scanned <= MAX_OCCURRENCE_SCAN_MINUTES; scanned += 1) {
     const parts = localScheduleParts(candidate, job.timezone)
+
     if (
       parts.hour === job.hour &&
       parts.minute === job.minute &&
@@ -166,6 +170,7 @@ export function mostRecentScheduleOccurrence(
     ) {
       return candidate
     }
+
     candidate.setTime(candidate.getTime() - MINUTE_MS)
   }
 
@@ -220,13 +225,19 @@ export function readScheduleLedger(
   jobId: string,
 ): { records: ScheduleDecisionRecord[]; damaged: number } {
   const ledger = jobLedgerPath(root, jobId)
-  if (!fileExists(ledger)) return { records: [], damaged: 0 }
+
+  if (!fileExists(ledger)) {
+    return { records: [], damaged: 0 }
+  }
 
   const records: ScheduleDecisionRecord[] = []
   let damaged = 0
 
   for (const line of readFileSync(ledger, 'utf8').split('\n')) {
-    if (line.trim().length === 0) continue
+    if (line.trim().length === 0) {
+      continue
+    }
+
     try {
       records.push(JSON.parse(line) as ScheduleDecisionRecord)
     } catch {
@@ -347,9 +358,11 @@ function runWorkflowAction(
     },
     runtime.driveWorkflow ?? driveRun,
   )
+
   if (attempt.blocked !== null) {
     return { ok: false, run_id: run.run_id, reason: attempt.blocked }
   }
+
   const driven = attempt.driven
   const ok =
     driven.stop.type === 'terminal' && driven.stop.status === 'succeeded'
@@ -376,7 +389,10 @@ function validateSessionTarget(
   const expected = targetForJob(root, job).absolute
 
   for (const task of queue.tasks) {
-    if (!task.workspace && !task.worktree) continue
+    if (!task.workspace && !task.worktree) {
+      continue
+    }
+
     const actual = task.worktree
       ? path.resolve(root, resolveWorktreeWorkspace(root, task.worktree))
       : path.isAbsolute(task.workspace as string)
@@ -396,6 +412,7 @@ function validateSessionTarget(
  */
 export function parseHorizonSessionStatus(stdout: string): string | null {
   let output: unknown
+
   try {
     output = JSON.parse(stdout)
   } catch {
@@ -416,6 +433,7 @@ function runSessionAction(
   action: Extract<ScheduleAction, { kind: 'session' }>,
 ): ScheduleActionResult {
   validateSessionTarget(root, job, action)
+
   const target = targetForJob(root, job)
   const session = initHorizonSession(root, action.queue_path, {
     involvement: action.involvement,
@@ -441,6 +459,7 @@ function runSessionAction(
       maxBuffer: 16 * 1024 * 1024,
     },
   )
+
   const terminalStatus =
     !command.error && command.status === 0
       ? parseHorizonSessionStatus(command.stdout)
@@ -448,6 +467,7 @@ function runSessionAction(
   // `empty` is the session's verdict when a task did not succeed, so only
   // `succeeded` counts as the scheduled job having done its work.
   const ok = terminalStatus === 'succeeded'
+
   return {
     ok,
     session_id: session.session_id,
@@ -485,7 +505,10 @@ function executeScheduleAction(
     }
   }
 
-  if (action.kind === 'session') return runSessionAction(root, job, action)
+  if (action.kind === 'session') {
+    return runSessionAction(root, job, action)
+  }
+
   return runWorkflowAction(root, job, occurrence, action, runtime)
 }
 
@@ -624,6 +647,7 @@ function decideJob(
   }
 
   const busyRun = occupyingRun(root, job)
+
   if (busyRun) {
     const reason = `Run '${busyRun}' already holds the target workspace.`
     return emit(
@@ -634,6 +658,7 @@ function decideJob(
   }
 
   let action: ScheduleActionResult
+
   try {
     action = runtime.executeAction
       ? runtime.executeAction(root, job, occurrence)
@@ -656,6 +681,7 @@ function decideJob(
 
 function readAlerts(root: string): ScheduleAlertFile {
   const file = alertsPath(root)
+
   if (!fileExists(file)) {
     return {
       schema_version: 1,
@@ -663,6 +689,7 @@ function readAlerts(root: string): ScheduleAlertFile {
       alerts: [],
     }
   }
+
   return readJson(file) as ScheduleAlertFile
 }
 
@@ -692,14 +719,17 @@ function alertReason(
     new Date(occurrence.getTime() - MINUTE_MS),
   )
   const interval = occurrence.getTime() - previous.getTime()
+
   const window =
     (job.catch_up_window_minutes ?? config.catch_up_window_minutes) * MINUTE_MS
   const grace =
     (job.grace_period_minutes ?? config.grace_period_minutes) * MINUTE_MS
+
   const successes = readScheduleHistory(root, job.id).filter((entry) =>
     ['fired', 'caught_up'].includes(entry.outcome),
   )
   const lastSuccess = successes.at(-1)?.recorded_at ?? null
+
   const overdue = lastSuccess
     ? now.getTime() - Date.parse(lastSuccess) > interval + window + grace
     : now.getTime() - occurrence.getTime() > window + grace
@@ -722,7 +752,6 @@ export function refreshScheduleAlerts(
   const current = readAlerts(root)
   const existing = new Map(current.alerts.map((alert) => [alert.job_id, alert]))
   const next: ScheduleAlert[] = []
-  const configuredIds = new Set(config.jobs.map((job) => job.id))
 
   for (const job of config.jobs) {
     const open = existing.get(job.id)
@@ -734,7 +763,10 @@ export function refreshScheduleAlerts(
       // A job the evaluator cannot read keeps whatever notice it already has.
       // Its own decision record carries the diagnostic, and the peers of a
       // damaged job still get their alerts refreshed.
-      if (open) next.push(open)
+      if (open) {
+        next.push(open)
+      }
+
       continue
     }
 
@@ -748,6 +780,7 @@ export function refreshScheduleAlerts(
           last_success_at: status.lastSuccessAt,
         } satisfies ScheduleAlert)
       next.push(alert)
+
       if (!open) {
         appendJsonLine(alertHistoryPath(root), {
           event: 'opened',
@@ -755,10 +788,13 @@ export function refreshScheduleAlerts(
           recorded_at: now.toISOString(),
         })
       }
+
       continue
     }
 
-    if (!open) continue
+    if (!open) {
+      continue
+    }
 
     // Absence of success is the trigger, so only a success recorded after the
     // alert opened clears it. The overdue predicate of a job that never ran is
@@ -785,6 +821,8 @@ export function refreshScheduleAlerts(
       recorded_at: now.toISOString(),
     })
   }
+
+  const configuredIds = new Set(config.jobs.map((job) => job.id))
 
   for (const alert of current.alerts) {
     if (!configuredIds.has(alert.job_id)) {
@@ -873,17 +911,25 @@ export function validateSchedule(root: string): {
   for (const job of config.jobs) {
     targetForJob(root, job)
     const action = job.action
-    if (action.kind === 'command') continue
+
+    if (action.kind === 'command') {
+      continue
+    }
 
     if (action.kind === 'session') {
       validateSessionTarget(root, job, action)
+
       const queue = parseHorizonQueue(
         readJson(resolveInside(root, action.queue_path)),
         action.queue_path,
       )
       const pipeline = loadPipelineConfig(root)
+
       for (const task of queue.tasks) {
-        if (task.kind !== 'workflow') continue
+        if (task.kind !== 'workflow') {
+          continue
+        }
+
         const workflow = loadWorkflow(root, task.workflow ?? 'planning')
         invariant(
           task.request_path !== undefined &&
@@ -891,10 +937,12 @@ export function validateSchedule(root: string): {
           `Scheduled session job '${job.id}' task '${task.id}' request does not exist: ${task.request_path ?? '(missing)'}`,
           { code: 'INVALID_SCHEDULE' },
         )
+
         for (const persona of workflowPersonaNames(workflow)) {
           resolvePersonaMapping(pipeline.config, persona)
         }
       }
+
       continue
     }
 
@@ -908,9 +956,11 @@ export function validateSchedule(root: string): {
       root,
       action.pipeline_config ?? undefined,
     )
+
     for (const persona of workflowPersonaNames(workflow)) {
       resolvePersonaMapping(pipeline.config, persona)
     }
+
     if (action.kind === 'workflow') {
       invariant(
         existsSync(resolveInside(root, action.request_path)),
@@ -980,6 +1030,7 @@ export function installScheduleAgent(
       }
     })
   const loaded = launchctl(['load', target])
+
   if (loaded.error || loaded.status !== 0) {
     // A rendered plist the operator never asked to keep is partial state on
     // their host, so the failed install removes what it wrote.
@@ -1015,6 +1066,7 @@ export function uninstallScheduleAgent(
     'LaunchAgents',
     `${LAUNCH_AGENT_LABEL}.plist`,
   )
+
   if (fileExists(target)) {
     const launchctl =
       options.runLaunchctl ??
@@ -1033,5 +1085,6 @@ export function uninstallScheduleAgent(
     )
     rmSync(target, { force: true })
   }
+
   return { status: 'uninstalled', path: target }
 }

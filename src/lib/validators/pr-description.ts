@@ -22,6 +22,7 @@ function scanBody(content: string): {
 } {
   const preamble: string[] = []
   const sections: BodySection[] = []
+
   let current: BodySection | null = null
   let fence: string | null = null
   let inComment = false

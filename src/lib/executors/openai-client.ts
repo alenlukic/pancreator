@@ -168,6 +168,7 @@ export async function createOpenAiResponse(
   const fetchImpl = request.fetchImpl ?? fetch
   const endpoint = request.endpoint ?? OPENAI_RESPONSES_URL
   const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   let response: Response

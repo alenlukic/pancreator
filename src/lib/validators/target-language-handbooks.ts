@@ -255,6 +255,7 @@ export function validateTargetLanguageHandbooks(
   )
   const rows = generatedLanguageRows(lookup)
   const expectedPolicies = expectedLanguagePolicies(languages)
+
   const codeRows = rows.filter(
     (row) => row.workflow === '*' && row.stage === '*',
   )

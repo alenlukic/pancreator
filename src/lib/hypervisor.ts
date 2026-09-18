@@ -171,6 +171,7 @@ export function registerPreparedInvocation(
       const existing = registry.agents.find(
         (agent) => agent.agent_id === agentId,
       )
+
       const agent: AgentRecord = existing ?? {
         agent_id: agentId,
         parent_agent_id: null,
@@ -612,6 +613,7 @@ function discoverRunObservations(
       state.pending_action.type === 'invoke_agent'
         ? state.pending_action.persona
         : (previous?.persona ?? 'unknown')
+
     const recordedExternalSession = state.current_stage
       ? state.external_executor_sessions?.[state.current_stage]
       : undefined
@@ -745,6 +747,7 @@ function redeliveryReadiness(
     isRecord(invocationValue) && isRecord(invocationValue.workspace_before)
       ? invocationValue.workspace_before
       : null
+
   const validationPath =
     delegation && typeof delegation.invocation_validation_path === 'string'
       ? resolveInside(root, delegation.invocation_validation_path)
@@ -1021,6 +1024,7 @@ export function tickHypervisor(
   const registry = readAgentRegistry(root)
   const observations =
     options.observations ?? discoverRunObservations(root, registry.agents)
+
   let agents = reconcileAgentRecords(registry.agents, observations, scannedAt)
   const recoveryEvents: HypervisorTickResult['recovery_events'] = []
 

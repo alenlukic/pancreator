@@ -24,6 +24,7 @@ import {
 test('embedded installer migrates a legacy project.json to config.json', () => {
   const project = cloneInstalledProject()
   const customCoderModel = 'operator-legacy-coder-model[fast=false]'
+
   const pancreatorDir = path.join(project, '.pancreator')
   const configPath = path.join(pancreatorDir, 'config.json')
   const legacyPath = path.join(pancreatorDir, 'project.json')
@@ -74,9 +75,11 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
 test('embedded installer refresh clears superseded legacy state in one pass', () => {
   const project = cloneInstalledProject()
   const source = createReleaseFixture()
+
   const pancreatorDir = path.join(project, '.pancreator')
   const configJsonPath = path.join(pancreatorDir, 'config.json')
   const legacyProjectJsonPath = path.join(pancreatorDir, 'project.json')
+
   const currentPrimer = path.join(
     pancreatorDir,
     'docs',
@@ -93,9 +96,11 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     'repository-checks.json',
   )
   const sourceConfigPath = path.join(source, 'config.json')
+
   const activeConfigName = 'ultra'
   const restoredPersona = 'planner'
   const inheritedPersona = 'meta-orchestrator'
+
   const fixtureDefaultModel = 'fixture-default-model[fast=false]'
   const restoredModel = 'fixture-restored-planner[fast=false]'
 

@@ -270,6 +270,7 @@ function runInventoryCollection(options: {
   const cwd = path.resolve(options.cwd)
   const reporterRoot = path.resolve(options.reporterRoot)
   const out = path.resolve(options.out)
+
   const reporterDir = path.join(reporterRoot, 'dist/tests/reporters')
   const reporterSource = path.join(reporterDir, 'inventory.js')
   const reporterInCwd = path.join(cwd, 'dist/tests/reporters/inventory.js')
@@ -1124,6 +1125,7 @@ export function finalizeTuneSession(
 
   const recordRelative = path.join(TUNE_RECORDS_DIR, `${input.session_id}.json`)
   const reportRelative = path.join(TUNE_REPORTS_DIR, `${input.session_id}.md`)
+
   const recordAbsolute = path.join(root, recordRelative)
   const reportAbsolute = path.join(root, reportRelative)
   const staging = `${recordAbsolute}.staging`
@@ -1230,6 +1232,7 @@ export function finalizePreparedTuneSession(
   const relativeSecondaryProfile = fileExists(secondaryProfile)
     ? path.relative(root, secondaryProfile)
     : null
+
   const benchmark = buildBenchmarkFromProfiles(
     root,
     relativeFastProfile,
@@ -1347,12 +1350,14 @@ export function validateAudit(
     'utf8',
   )
   const rows = parseAuditMarkdown(content)
+
   const baselineSession = `audit-${Date.now()}`
   const baseline = collectBaselineInventory(
     root,
     options.baselineRef,
     baselineSession,
   )
+
   const target = execFileSync('git', ['rev-parse', options.targetRef], {
     cwd: root,
     encoding: 'utf8',
@@ -1372,6 +1377,7 @@ export function validateAudit(
   const delta = targetInventory.filter(
     (item) => !baselineKeys.has(identityKey(item)),
   )
+
   const rowKeys = rows.map((row) =>
     identityKey({
       file: row.file,
@@ -1381,8 +1387,10 @@ export function validateAudit(
   )
   const rowKeySet = new Set(rowKeys)
   const deltaKeys = new Set(delta.map(identityKey))
+
   const missing = [...deltaKeys].filter((key) => !rowKeySet.has(key))
   const unexpected = [...rowKeySet].filter((key) => !deltaKeys.has(key))
+
   const duplicates: string[] = []
   const seen = new Set<string>()
 

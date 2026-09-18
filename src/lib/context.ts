@@ -603,6 +603,7 @@ function selectOperatorFeedback(
   const targeted = (state.operator_feedback ?? []).filter(
     (item) => item.to_stage === stage.slug,
   )
+
   const approvalDirectives = targeted.filter(
     (item) => item.decision === 'approve',
   )
@@ -1012,6 +1013,7 @@ function targetInstructionInput(
     ? []
     : (workspace?.entries ?? []).map((entry) => snapshotEntryPath(entry))
   const changedPaths = [...new Set([...declared, ...current])].sort()
+
   const workspaceRoot = path.resolve(root, state.workspace_root || '.')
   const readPaths = resolveTargetInstructionPaths(workspaceRoot, changedPaths)
 

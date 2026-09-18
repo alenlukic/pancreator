@@ -25,7 +25,11 @@ function worktreeJob(id: string, worktree: string): ScheduleJob {
 
 function ledgerLines(root: string, id: string): string[] {
   const file = path.join(root, 'runtime/logs/schedule', `${id}.jsonl`)
-  if (!existsSync(file)) return []
+
+  if (!existsSync(file)) {
+    return []
+  }
+
   return readFileSync(file, 'utf8').trimEnd().split('\n').filter(Boolean)
 }
 

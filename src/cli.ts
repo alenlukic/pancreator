@@ -1076,6 +1076,7 @@ function reprepareRecoveredAgent(
   const validation = fileExists(validationPath)
     ? readJson(validationPath)
     : undefined
+
   const priorFingerprint =
     isRecord(invocation) &&
     isRecord(invocation.workspace_before) &&
@@ -1603,6 +1604,7 @@ async function main(): Promise<void> {
         noteOption(root, args, '') ?? '',
         option(args, '--stage'),
       )
+
       // The hook runs after the decision is durable and outside the run mutex,
       // so delivery run creation takes its own mutexes and a routing failure
       // cannot roll back the recorded approval.
@@ -2114,6 +2116,7 @@ async function main(): Promise<void> {
       const asJson = hasFlag(args, '--json')
       const sinceRef = option(args, '--since')
       const all = hasFlag(args, '--all')
+
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const workspaceRoot = path.resolve(
         root,
@@ -2210,6 +2213,7 @@ async function main(): Promise<void> {
       const asJson = hasFlag(args, '--json')
       const sinceRef = option(args, '--since')
       const all = hasFlag(args, '--all')
+
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const workspaceRoot = path.resolve(
         root,
@@ -2362,6 +2366,7 @@ async function main(): Promise<void> {
           : evidenceRun
             ? path.resolve(root, evidenceRun.workspace_root)
             : null
+
       // The harness starts this command for itself when it prefetches the
       // release profile, and that execution is not an agent spending its
       // allowance. It also has no terminal to stream to.
@@ -2371,6 +2376,7 @@ async function main(): Promise<void> {
       // be handed the first one's pass instead of producing its own log.
       const workerRole = option(args, '--role')
       const startedAt = new Date().toISOString()
+
       // DEV-001: a clean pass reaches a later gate only when the workspace
       // never moved, so the run is bracketed by the fingerprint the gate
       // itself would compare.
@@ -3054,6 +3060,7 @@ async function main(): Promise<void> {
         skipCatalog,
         pipeline: loaded,
       })
+
       // Static validation proves each spec is well-formed for the catalog
       // snapshot; --probe proves what it launches today by spending one
       // minimal cursor-agent call per distinct spec and comparing the echoed
@@ -3449,14 +3456,17 @@ async function main(): Promise<void> {
         print(resolveScheduleConfig(root), asJson)
         return
       }
+
       if (sub === 'status') {
         print(scheduleStatus(root), asJson)
         return
       }
+
       if (sub === 'tick') {
         print(scheduleTick(root), asJson)
         return
       }
+
       if (sub === 'run') {
         print(
           runScheduledJob(root, requiredPositional(rest[0], 'job-id')),
@@ -3464,18 +3474,22 @@ async function main(): Promise<void> {
         )
         return
       }
+
       if (sub === 'validate') {
         print(validateSchedule(root), asJson)
         return
       }
+
       if (sub === 'install-agent') {
         print(installScheduleAgent(root), asJson)
         return
       }
+
       if (sub === 'uninstall-agent') {
         print(uninstallScheduleAgent(root), asJson)
         return
       }
+
       throw new PanError(`Unknown schedule subcommand: ${sub ?? '(missing)'}`, {
         code: 'UNKNOWN_COMMAND',
       })
@@ -3874,6 +3888,7 @@ async function main(): Promise<void> {
           '--workflow',
         )
         const stage = requiredArgument(option(args, '--stage'), '--stage')
+
         const outputPath = option(args, '--output-path') ?? undefined
         const invocationKind = invocationKindOption(args)
 
@@ -3905,6 +3920,7 @@ async function main(): Promise<void> {
         )
         const stage = requiredArgument(option(args, '--stage'), '--stage')
         const invocationKind = invocationKindOption(args, true)
+
         const registryId = requiredArgument(
           option(args, '--registry'),
           '--registry',
@@ -4127,6 +4143,7 @@ async function main(): Promise<void> {
           submittedValue,
           invocation.invocation_id,
         )
+
         const effectiveValue = materialized.value
         const effectiveRecord = isRecord(effectiveValue) ? effectiveValue : {}
         const scratchPath =
@@ -4389,9 +4406,11 @@ async function main(): Promise<void> {
 
       const agentState = parseAgentState(option(args, '--agent-state'))
       const armLaunchedAt = option(args, '--launched-at')
+
       const workerHandle = option(args, '--handle')
       const workerAgent = option(args, '--agent')
       const workerModel = option(args, '--model')
+
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),
         cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
@@ -4480,6 +4499,7 @@ async function main(): Promise<void> {
           option(args, '--scenario'),
           '--scenario',
         )
+
         const report = gradeEvalRun(root, runId, scenarioName)
         const outDir = option(args, '--out')
         const written = outDir ? writeEvalReport(root, outDir, report) : null
@@ -4558,6 +4578,7 @@ async function main(): Promise<void> {
         root,
         pipelineConfigPersonaMappings(pipelineConfig.file),
       )
+
       // Doctor's report must survive a malformed repository-checks file:
       // validateRepository already records the same defect, and aborting here
       // would replace the full diagnostic report with one error.

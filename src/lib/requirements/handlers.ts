@@ -136,6 +136,7 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
   const invocation = input.invocation as {
     delegation?: { supervisor_procedure_path?: string }
   }
+
   const procedurePath = invocation.delegation?.supervisor_procedure_path
   const procedureAbsolute =
     typeof procedurePath === 'string'
@@ -145,6 +146,7 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
     procedureAbsolute && fileExists(procedureAbsolute)
       ? readText(procedureAbsolute)
       : undefined
+
   const result = validateInvocationMarkdown(
     input.invocation as never,
     markdown,

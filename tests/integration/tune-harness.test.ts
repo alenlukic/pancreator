@@ -75,6 +75,7 @@ test('finalizeTuneSession writes record, report, and latest atomically', () => {
   const before = gitWorkspaceSnapshot(root)
   const now = new Date().toISOString()
   const current = [identity('tests/unit/a.test.ts', 'alpha')]
+
   const passes = {
     benchmark: { started_at: now, ended_at: now },
     comparison: { started_at: now, ended_at: now },

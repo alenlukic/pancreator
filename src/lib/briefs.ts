@@ -268,6 +268,7 @@ function parseRegistry(
     `${source}.field_semantics`,
     errors,
   )
+
   const base: BriefRegistry = {
     schema_version: 1,
     brief_types: briefTypes,
@@ -726,6 +727,7 @@ function parseBrief(
     ...registries.common.field_semantics,
     ...registries.project.field_semantics,
   }
+
   const briefType = stringValue(value.brief_type)
   const title = stringValue(value.title)
 
@@ -1079,6 +1081,7 @@ function renderCard(
     renderStatusBadge('urgency', card.urgency),
   ].filter(Boolean)
   const body = card.body ? renderPlainText(card.body) : (card.body_html ?? '')
+
   const items = (card.items ?? [])
     .map(
       (item) => `<div class="pc-item">

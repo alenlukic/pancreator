@@ -256,6 +256,7 @@ test('an attributed read-only input blocks no integration and joins no harness c
   ])
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
+
   const chunkWorkspace = loadState(
     root,
     started.chunks[0].run_id,

@@ -185,6 +185,7 @@ test('a candidate circuit breaker ends that candidate without operator input', (
     agent_suffix: `${bonId}-slot-${index + 1}`,
     request_path: `runtime/logs/best-of-n/${bonId}/request.md`,
   }))
+
   const sessionDirectory = bestOfNDir(root, bonId)
 
   mkdirSync(sessionDirectory, { recursive: true })

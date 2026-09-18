@@ -207,6 +207,7 @@ test('an override that is not a Pancreator checkout is refused and names the pat
   const installation = stubCheckout(parent, 'installation')
   const tools = toolPath(parent)
   const stranger = createTestTempDirectory('pan-exec-root-stranger-')
+
   const refused = runPan(
     installation.pan,
     panEnvironment(tools, stranger),

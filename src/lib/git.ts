@@ -1063,6 +1063,7 @@ export function gitWorkspaceSnapshot(
     .filter(Boolean)
     .filter((entry) => !isProtectedWorkspacePath(indexEntryPath(entry)))
     .sort()
+
   const head = gitHead(workspaceDir)
   const content = entryContentFingerprint(toplevel, entries)
   const committed = commitAbsorbedContent(

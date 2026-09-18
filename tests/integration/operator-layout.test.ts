@@ -99,6 +99,7 @@ test('submit reports the sole operator brief and removes its source', () => {
   )
   const layout = resolveRunLayout(root, runId)
   const filesBefore = listRunFiles(layout.root.absolute)
+
   const result = JSON.parse(
     execFileSync(
       process.execPath,

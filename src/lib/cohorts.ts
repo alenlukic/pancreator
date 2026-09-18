@@ -1232,6 +1232,7 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
           (index) =>
             index > activeIndex && chunksOfCohort(state, index).length > 0,
         ) ?? null)
+
   const bootstrap: CohortChunkBootstrap[] = []
   const chunks = state.chunks.map((chunk) => {
     const run = chunkRunState(root, chunk.run_id)
@@ -1255,6 +1256,7 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
       resume_command: chunk.run_id ? `/pan-resume ${chunk.run_id}` : null,
     }
   })
+
   const readyToAdvance =
     activeIndex !== null &&
     cohortRunsSucceeded(root, state, activeIndex) &&
@@ -1266,6 +1268,7 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     activeIndex !== null &&
     chunksOfCohort(state, activeIndex).every((chunk) => chunk.abandoned)
   const readyToIntegrate = readyToAdvance && !nothingToMerge
+
   const maxParallel = cohortMaxParallel(state)
   const live =
     activeIndex === null ? 0 : liveChunkRuns(root, state, activeIndex)
@@ -1888,9 +1891,11 @@ function mergeThroughReconcile(
   const repositoryRoot = cohortRepositoryRoot(root, state)
   const target = integrationBranch(state)
   const baseBefore = gitRevParse(repositoryRoot, target)
+
   const worktreeNames = chunks.map((chunk) => chunk.worktree as string)
   const chunkOfWorktree = (name: string): string =>
     chunks.find((chunk) => chunk.worktree === name)?.id ?? name
+
   const result = reconcileWorktrees(
     root,
     { into_branch: target },
@@ -2107,6 +2112,7 @@ export function abandonChunk(
 
     while (changed) {
       changed = false
+
       for (const edge of dependencies) {
         if (excluded.has(edge.from) && !excluded.has(edge.to)) {
           excluded.add(edge.to)
@@ -2607,6 +2613,14 @@ function handoffKey(handoff: DeliveryHandoff): string {
       return `cohort:${handoff.cohort_id}`
     case 'failed':
       return `failed:${handoff.route ?? ''}:${handoff.error}`
+    default: {
+      const exhaustive: never = handoff
+
+      throw new PanError(
+        `Unhandled delivery handoff: ${JSON.stringify(exhaustive)}`,
+        { code: 'INVALID_DELIVERY_HANDOFF' },
+      )
+    }
   }
 }
 
@@ -2885,6 +2899,7 @@ function startReleaseRun(
     const repositoryRoot = cohortRepositoryRoot(root, state)
     const index = readWorktreeIndex(root)
     const releaseWorktree = releaseWorktreeName(cohortId)
+
     const record =
       index.worktrees.find((entry) => entry.branch === target) ??
       index.worktrees.find((entry) => entry.name === releaseWorktree) ??

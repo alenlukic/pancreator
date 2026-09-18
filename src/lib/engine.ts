@@ -26,7 +26,7 @@ import {
   scaffoldOperatorBrief,
   validateBriefSystem,
 } from './briefs.js'
-import { errorMessage, invariant } from './errors.js'
+import { PanError, errorMessage, invariant } from './errors.js'
 import {
   canonicalPersonaMapping,
   type ParsedPersonaMapping,
@@ -1618,6 +1618,7 @@ function captureRepositoryCheckBaselines(
       `pre-implementation-${profile.name}.full.json`,
     )
     const recordedAt = now()
+
     const { summary, elided } = summarizeRepositoryCheckResult(result)
     const environmentProbes =
       repositoryChecks.profiles[profile.name]?.environment_probes ?? []
@@ -2302,11 +2303,13 @@ function sameReasonTrackers(state: RunState): SameReasonFailureTrackers {
 
 function clearSameReasonTracker(state: RunState, stageSlug: string): void {
   const trackers = state.same_reason_failures
+
   if (!trackers?.[stageSlug]) {
     return
   }
 
   delete trackers[stageSlug]
+
   if (Object.keys(trackers).length === 0) {
     delete state.same_reason_failures
   }
@@ -2795,6 +2798,7 @@ function persistModelEvidence(
     evidence_path: evidencePath,
     timestamp: now(),
   }
+
   const items = [...(state.model_evidence ?? [])]
 
   if (index === -1) {
@@ -4517,6 +4521,7 @@ export function prepareInvocation(
     const model = mapping.model_spec
     const externalExecutor =
       mapping.executor !== 'cursor' ? mapping.executor : undefined
+
     // An invocation that was prepared but never submitted did no work, so it
     // must not spend an attempt. This happens whenever a card is superseded —
     // most often after an operator pause — and previously the discarded card
@@ -4528,6 +4533,7 @@ export function prepareInvocation(
         (item) => item.stage === stage.slug && item.attempt === recordedAttempt,
       )
     const attempt = lastAttemptSubmitted ? recordedAttempt + 1 : recordedAttempt
+
     // An operator refinement round is not a failed attempt. It raises the
     // ceiling instead of consuming budget reserved for failures, so directing a
     // plan through several revisions cannot exhaust the retry allowance the
@@ -4607,6 +4613,7 @@ export function prepareInvocation(
       attempt,
     )
     const layout = resolveRunLayout(root, runId)
+
     const outputPath = layout.output(invocationId).relative
     const briefSourcePath = layout.artifactJson(
       `${invocationId}.brief.json`,
@@ -4614,6 +4621,7 @@ export function prepareInvocation(
     const briefRenderedPath = layout.operatorHtml(invocationId).relative
     const prDescriptionPath =
       layout.operatorMarkdown('pr-description.md').relative
+
     const jsonPath = layout.invocation(invocationId, '.json').relative
     const markdownPath = layout.invocation(invocationId, '.md').relative
     const supervisorProcedurePath = layout.invocation(
@@ -4621,6 +4629,7 @@ export function prepareInvocation(
       '.supervisor.md',
     ).relative
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
+
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
     // Parallel evidence workers run as top-level named agents so their
     // persona-model mappings hold. Resolving them at prepare time makes a
@@ -4675,6 +4684,7 @@ export function prepareInvocation(
       (artifactsRequested || isSelfDevelopmentInstallation(root))
         ? resolvePrDescriptionContext(workspaceDirectory(root, state), policies)
         : undefined
+
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
       workflow: workflow.slug,
@@ -4720,6 +4730,7 @@ export function prepareInvocation(
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
             `${delegationArtifactPath}, then submit ${outputPath}.`
+
     // The supervisor delegates from the continuation loop, where it holds no
     // card of its own. Resolving its policies here puts the delivery contract
     // on the artifact it must already read to perform the delegation. For an
@@ -4832,6 +4843,7 @@ export function prepareInvocation(
     const briefVocabulary = artifactsRequested
       ? resolveBriefVocabulary(root)
       : undefined
+
     const requiredData = { ...(stage.required_data ?? {}) }
     const fieldContract = stageFieldContract(
       root,
@@ -5312,6 +5324,13 @@ function ensureExecutorReady(
       return ensureClaudeCodeReady(state)
     case 'openai':
       return ensureOpenAiReady(root, state)
+    default: {
+      const exhaustive: never = executor
+
+      throw new PanError(`Unhandled persona executor: ${String(exhaustive)}`, {
+        code: 'EXECUTOR_UNSUPPORTED',
+      })
+    }
   }
 }
 
@@ -5506,6 +5525,7 @@ function createOpenAiAdapter(
   const apiKey = credential.key ?? ''
   const entrypoint = openAiAgentEntrypoint()
   const options = context.mapping.options
+
   const sessionTimeoutMs =
     context.timeoutOverrideMs ??
     positiveIntegerOption(options, 'timeout-ms') ??
@@ -5515,6 +5535,7 @@ function createOpenAiAdapter(
     OPENAI_SESSION_DEFAULTS.maxToolRounds
   const maxOutputTokens = positiveIntegerOption(options, 'max-output-tokens')
   const effort = options.effort
+
   const toolPolicy = openAiToolPolicy(
     context.root,
     context.workspaceDir,
@@ -5575,6 +5596,7 @@ function createOpenAiAdapter(
           : {}),
         tool_policy: toolPolicy,
       }
+
       const argv = [entrypoint]
       const startedAt = Date.now()
       const spawned = spawnSync(process.execPath, argv, {
@@ -5587,12 +5609,14 @@ function createOpenAiAdapter(
         maxBuffer: 64 * 1024 * 1024,
         env: { ...process.env, OPENAI_API_KEY: apiKey },
       })
+
       const durationMs = Date.now() - startedAt
       const timedOut =
         (spawned.error as NodeJS.ErrnoException | undefined)?.code ===
         'ETIMEDOUT'
       const stdout = sanitize(spawned.stdout ?? '')
       const stderr = sanitize(spawned.stderr ?? '')
+
       const base = {
         binary: process.execPath,
         argv,
@@ -5780,6 +5804,7 @@ export function delegateInvocation(
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
     const invocationId = invocation.invocation_id
+
     const pipelineConfig = loadRunPipelineConfig(root, state)
     // The invocation carries the persona the prepared card resolved, which for
     // a verdict-routed stage can differ from the stage's default persona.
@@ -5837,6 +5862,7 @@ export function delegateInvocation(
       options.timeoutMs ??
       (configuredTimeout ? Number(configuredTimeout) : undefined)
     const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+
     const selectAdapter = (): ExternalExecutorAdapter => {
       switch (executor) {
         case 'cursor':
@@ -5871,6 +5897,14 @@ export function delegateInvocation(
               ? { timeoutOverrideMs: options.timeoutMs }
               : {}),
           })
+        default: {
+          const exhaustive: never = executor
+
+          throw new PanError(
+            `Unhandled persona executor: ${String(exhaustive)}`,
+            { code: 'EXECUTOR_UNSUPPORTED' },
+          )
+        }
       }
     }
     const adapter: ExternalExecutorAdapter = selectAdapter()
@@ -5903,6 +5937,7 @@ export function delegateInvocation(
     const lastFeedback = [...(state.operator_feedback ?? [])]
       .reverse()
       .find((item) => item.to_stage === stage.slug)
+
     const revisionRound =
       lastFeedback?.decision === 'revise' &&
       lastForStage !== undefined &&
@@ -5929,6 +5964,7 @@ export function delegateInvocation(
 
     const cardMarkdown = readText(resolveInside(root, promptPath))
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
+
     let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
     let deliveredPrompt = cardMarkdown
     let result: ExternalExecutorRunResult
@@ -6365,6 +6401,7 @@ export function submitOutput(
   const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
+
     const materialized = materializeOutputSubmission(
       root,
       state,
@@ -6610,6 +6647,7 @@ export function submitOutput(
         const mode = deliveredSource.mode
         const deliveredSourcePath = deliveredSource.path
         const deliveredAbsolute = resolveInside(root, deliveredSourcePath)
+
         const delegationMarkdown = readText(delegationAbsolute)
         const delegationValidation = fileExists(deliveredAbsolute)
           ? validateDelegationMarkdown(
@@ -6756,6 +6794,7 @@ export function submitOutput(
       briefRenderFailed && briefRenderedPath
         ? messages.filter((message) => !message.includes(briefRenderedPath))
         : messages
+
     // A missing or mismatched attestation blocks every stage, because it means
     // the harness cannot show that the worker held the contract it acted on.
     // A required or authoritative harness validator failure blocks whichever
@@ -6783,6 +6822,7 @@ export function submitOutput(
             ...blockingCriterionErrors,
             ...blockingValidatorErrors,
           ]
+
     const declaredNonSuccess =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -6796,6 +6836,7 @@ export function submitOutput(
       (criterion) =>
         criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
     )
+
     const rejectingValidatorIds = [
       ...new Set(
         harnessValidation.blocking_errors
@@ -6888,6 +6929,7 @@ export function submitOutput(
       ...validation.errors,
       ...harnessValidation.errors,
     ]
+
     const briefContract = invocation.output.operator_brief
 
     let briefSourceRecord: StageHistoryItem['operator_brief_source']
@@ -7363,11 +7405,13 @@ function recordOperatorFeedback(
   const feedback = state.operator_feedback ?? []
   const index = feedback.length + 1
   const attempt = state.attempts[fromStage.slug] ?? 1
+
   // Control records document operator decisions for workers and audit, so they
   // live beside the decision records rather than in the operator directory.
   const relativePath = resolveRunLayout(root, state.run_id).decision(
     `${source}-feedback-${index}.md`,
   ).relative
+
   const heading =
     source === 'away'
       ? 'Away-mode remediation directive'
@@ -7773,11 +7817,13 @@ function setRunStageWithActor(
     const sourceAttempt = state.current_stage
       ? (state.attempts[state.current_stage] ?? 0)
       : 0
+
     const feedback = state.operator_feedback ?? []
     const index = feedback.length + 1
     const relativePath = resolveRunLayout(root, state.run_id).decision(
       `${actor}-feedback-${index}.md`,
     ).relative
+
     const body = [
       actor === 'operator'
         ? '# Operator stage repair'
@@ -7879,16 +7925,19 @@ function ratifyPausedWorkspaceChanges(
 
   const ratificationId = `pause-${randomUUID()}`
   const changedPaths = workspaceChangedPathsFromSnapshots(before, current)
+
   const beforePaths = new Set(before.entries.map((entry) => entry.slice(3)))
   const afterPaths = new Set(current.entries.map((entry) => entry.slice(3)))
   const deletedPaths = [...beforePaths]
     .filter((relativePath) => !afterPaths.has(relativePath))
     .sort()
+
   const ratifications = state.operator_workspace_ratifications ?? []
   const relativePath = resolveRunLayout(root, state.run_id).decision(
     `operator-pause-ratification-${ratifications.length + 1}.md`,
   ).relative
   const actor = pause.actor ?? 'operator'
+
   const body = [
     actor === 'supervisor'
       ? '# Supervisor-paused workspace ratification'
@@ -8227,6 +8276,7 @@ export function recordDelegatedWorker(
     const recordedForRole = (state.delegated_workers ?? []).filter(
       (item) => item.invocation_id === invocationId && item.role === role,
     )
+
     let attempt = recordedForRole.length + 1
     let declaredPaths = [invocation.output.path]
     let harnessPaths: string[] = []
@@ -8566,11 +8616,14 @@ export function recordWorkspaceDirective(
     const relativePath = resolveRunLayout(root, runId).evidence(
       `workspace-directive-${records.length + 1}.md`,
     ).relative
+
     const actingRole = options.actingRole ?? 'supervisor'
     const disposition =
       options.disposition ?? DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION
+
     const timestamp = now()
     const beforeFingerprint = lastAccountableFingerprint(state)
+
     const record: WorkspaceDirectiveRecord = {
       directive_id: `directive-${randomUUID()}`,
       acting_role: actingRole,
@@ -9190,6 +9243,7 @@ export function waiveGate(
     }
 
     let record: TaskRecord | null = null
+
     if (
       history?.record_path &&
       fileExists(resolveInside(root, history.record_path))
@@ -9211,10 +9265,12 @@ export function waiveGate(
         : inferredBlockers.length > 0
           ? inferredBlockers
           : ['*']
+
     const bypassedBeyondRequest = inferredBlockers.filter(
       (blocker) => !waivedCriteria.includes(blocker),
     )
     const wholeStageBypass = bypassedBeyondRequest.length > 0
+
     // A waiver on a stage whose card is prepared or whose worker is running
     // names a blocker in that attempt, not a decision to discard it. Routing
     // forward by default threw away the prepared invocation.
@@ -9257,6 +9313,7 @@ export function waiveGate(
         details: { stage: stage.slug, gate: stageGate, default_target: target },
       },
     )
+
     if (!['succeeded', 'failed', 'canceled', 'paused'].includes(target)) {
       stageBySlug(workflow, target)
     }
@@ -9304,6 +9361,7 @@ export function waiveGate(
     const deferred = normalizeIdentifiers(
       options.deferredAcceptanceCriteria ?? [],
     )
+
     if (options.createSpotfixCase) {
       invariant(
         deferred.length > 0 && history,
@@ -9318,6 +9376,7 @@ export function waiveGate(
     const artifactPath = resolveRunLayout(root, state.run_id).decision(
       `gate-waiver-${waivers.length + 1}.md`,
     ).relative
+
     const sourceEvidencePath =
       assessment?.verdict === 'fail' && assessmentPath
         ? assessmentPath
@@ -9338,6 +9397,7 @@ export function waiveGate(
         : undefined
     const actor = options.actor ?? 'operator'
     const authorship = actor === 'away' ? 'Away-mode' : 'Operator'
+
     const body = [
       `# ${authorship} waiver directive`,
       '',
@@ -9644,6 +9704,7 @@ export function validateOutputForSubmission(
 
   const workflow = loadRunWorkflow(root, state)
   const stage = stageBySlug(workflow, invocation.stage.slug)
+
   // The harness renders the operator brief during submission, so its absence
   // before submit is expected.
   const renderedPath = invocation.output.operator_brief?.rendered_path
@@ -9676,6 +9737,7 @@ export function validateOutputForSubmission(
   const submittedRecord = isRecord(effectiveValue)
     ? effectiveValue
     : ({} as Record<string, unknown>)
+
   // Before submit the output may still sit outside its declared path, or
   // only in memory. Output-targeted validators then read the file under
   // validation, or a scratch copy of the value that is removed afterwards, so
@@ -9687,6 +9749,7 @@ export function validateOutputForSubmission(
     options.submittedPath !== undefined
       ? resolveInside(root, options.submittedPath)
       : null
+
   let scratchOutput: string | null = null
   const outputTargetPath = (): string => {
     // The operator's file wins. A stale copy at the declared path must not
@@ -9813,9 +9876,11 @@ export function delegateEvidenceWorkers(
   const stage = stageBySlug(workflow, state.current_stage)
   const invocation = readInvocation(root, state.current_invocation.json_path)
   const pipelineConfig = loadRunPipelineConfig(root, state)
+
   const workspaceDir = workspaceDirectory(root, state)
   const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
   const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+
   const results: EvidenceWorkerDelegation[] = []
   let cursorPreflighted = false
 

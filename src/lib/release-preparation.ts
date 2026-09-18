@@ -509,6 +509,7 @@ export function finalizeLocalRelease(
   const existing = releaseIndex.releases.find(
     (entry) => entry.version === version,
   )
+
   // A path the operator recorded as a read-only input is never committable,
   // so finalization must neither stage it nor refuse the release over it.
   const releasePaths = committablePaths(

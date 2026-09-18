@@ -50,6 +50,7 @@ test('an attributed read-only design source in both checkouts no longer refuses 
   ])
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
+
   const chunkWorkspace = loadState(
     root,
     started.chunks[0].run_id,

@@ -441,6 +441,7 @@ export function parseStage(
     `${source}.gate MUST name a supported gate.`,
     { code: 'INVALID_WORKFLOW' },
   )
+
   if (value.executor !== undefined) {
     invariant(
       typeof value.executor === 'string' &&
@@ -449,6 +450,7 @@ export function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+
   if (value.gate_relaxable !== undefined) {
     invariant(
       typeof value.gate_relaxable === 'boolean',
@@ -456,6 +458,7 @@ export function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+
   if (value.checkpoint !== undefined) {
     invariant(
       typeof value.checkpoint === 'string' &&
@@ -464,6 +467,7 @@ export function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+
   invariant(
     typeof value.prompt === 'string' || typeof value.prompt_path === 'string',
     `${source} MUST define prompt or prompt_path.`,

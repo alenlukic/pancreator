@@ -187,6 +187,7 @@ test('ACTION-001 frees commit and local merge, keeps the remote and destructive 
     !/\bgit merge\b/u.test(prohibition),
     `ACTION-001 still prohibits a local git merge: ${prohibition}`,
   )
+
   for (const kept of [
     'git push',
     'gh pr create',

@@ -270,6 +270,7 @@ test('a worktree-less self-development run records the criterion it bypassed', (
   const root = sharedFixture()
   const localReleaseStage = localReleaseStageOf(root)
   const snapshot = gitWorkspaceSnapshot(root)
+
   const evaluated = evaluateDeterministicCriteria(
     root,
     path.join(root, 'runtime', 'gate-evidence'),

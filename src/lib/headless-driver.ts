@@ -100,10 +100,12 @@ export function driveRun(
   options: HeadlessDriverOptions = {},
 ): HeadlessDriverResult {
   const maxSteps = options.maxSteps ?? 40
+
   const decisionsApplied: Array<{ stage: string; decision: string }> = []
   let lastAutostart: DeliveryAutostartResult | null = null
   let supervisorCardAttestedBy: string | null = null
   let handoffReason: string | null = null
+
   let stop: HeadlessDriverStop | null = null
   let steps = 0
 

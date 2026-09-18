@@ -171,6 +171,7 @@ export function scaffoldStageOutput(
     operatorBrief?.source_lifecycle === 'transient' ||
     operatorBrief?.source_transient === true
   const manifest = invocation.contract_manifest
+
   // The attestation is one whole-contract digest plus a status flip. The
   // per-section digest echoes the scaffold used to prefill proved nothing
   // beyond the contract digest and cost every attempt kilobytes of

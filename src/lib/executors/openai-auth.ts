@@ -184,6 +184,7 @@ export function openAiAuthenticationReadiness(
   const processKey = process.env[OPENAI_API_KEY]
   const fromProcess = typeof processKey === 'string' && processKey.length > 0
   const supplying = candidates.find((candidate) => candidate.key !== null)
+
   const source = fromProcess
     ? 'process_environment'
     : supplying

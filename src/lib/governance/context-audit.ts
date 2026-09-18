@@ -132,6 +132,7 @@ function canonicalSources(root: string): ContextSource[] {
     },
   ]
   const catalog = loadPolicyCatalog(root)
+
   const targetPolicyPaths = new Set<string>()
   const targetGuidance = new Set<string>()
   const harnessGuidance = new Set<string>()
@@ -576,6 +577,7 @@ export function auditAgentContext(root: string): ContextAuditResult {
   const groups = duplicateGroups(sources)
   const errors: string[] = []
   const dispositions = parseDispositions(root, errors)
+
   const monkeypatchCandidates = [
     {
       id: 'installer-projection-renderer-mirror',

@@ -65,6 +65,7 @@ function readInvocation(
 test('a relaunched evidence worker writes its own report and leaves the first intact', () => {
   const { root, runId, invocation } = verifyInvocation()
   const invocationId = invocation.invocation_id
+
   const first = (invocation.evidence_workers ?? [])[0]
   const firstReport = path.join(root, first.evidence_path)
   const firstBody = '# Review evidence, first attempt\n'

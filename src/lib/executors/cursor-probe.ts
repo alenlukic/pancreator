@@ -107,6 +107,7 @@ export function probeCursorModelSpecAsync(
       timeout: timeoutMs,
       ...(env ? { env } : {}),
     })
+
     let stdout = ''
     let stderr = ''
     let settled = false

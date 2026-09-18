@@ -479,6 +479,7 @@ function loadLookupTable(root: string): PolicyLookupTable {
   const rowSources = value.rows.map((_, index) => `${source}:rows[${index}]`)
   const rowExtensionIds: Array<string | null> = value.rows.map(() => null)
   const catalog = loadPolicyCatalog(root)
+
   const extensionSources = new Map<string, string>()
   const policyOwners = new Map<
     string,
@@ -796,11 +797,13 @@ export function resolvePolicies(
   sources: LoadedPolicySources = loadPolicySources(root),
 ): Policy[] {
   const { lookup, catalog, selfDevelopment } = sources
-  const policyIds = new Set<string>()
+
   const technologies = new Set(context.technologies ?? sources.technologies)
   const contracts = new Set(context.contracts ?? [])
   const operatorArtifacts = context.operator_artifacts ?? 'requested'
   const longHorizon = contracts.has('long_horizon')
+
+  const policyIds = new Set<string>()
 
   for (const row of lookup.rows) {
     const applies =

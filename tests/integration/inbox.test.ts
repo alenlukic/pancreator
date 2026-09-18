@@ -187,6 +187,7 @@ test('listInbox falls back to a unique date-sequence base match', () => {
       '# Different sequence\n',
       modifiedAt,
     )
+
     // Two run directories share the 0150 base, so that base is ambiguous.
     for (const ambiguous of [
       '63319_Aug-21-0150_first-run',
@@ -531,6 +532,7 @@ test('runtime maintenance migrates a legacy complete item before archiving it', 
   const root = inboxRoot()
   const runId = '63309_Aug-31-0403_complete-item'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+
   const legacyAbsolute = path.join(root, 'runtime/inbox/legacy-complete.md')
   const stale = new Date('2026-06-22T21:22:54.051Z')
 
@@ -602,8 +604,10 @@ test('runtime maintenance migrates and archives old workflow directories', () =>
   const legacyRunId = '20200101T120000000Z-abcdef12'
   const createdAt = new Date('2020-01-01T12:00:00.000Z')
   const currentRunId = makeWorkflowRunId(createdAt, 'old-fixture')
+
   const logDirectory = path.join(root, 'runtime/logs/workflows', legacyRunId)
   const stateDirectory = path.join(root, 'runtime/workflows', legacyRunId)
+
   const write = (target: string, content: string): void => {
     mkdirSync(path.dirname(target), { recursive: true })
     writeFileSync(target, content, 'utf8')

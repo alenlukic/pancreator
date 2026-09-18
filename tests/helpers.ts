@@ -99,13 +99,16 @@ function prepareFixtureReleaseMetadata(root: string): {
     cwd: root,
     encoding: 'utf8',
   }).trim()
+
   const versionPath = path.join(root, 'VERSION')
   const workingVersion = readFileSync(versionPath, 'utf8').trim()
+
   const changelogPath = path.join(root, 'CHANGELOG.md')
   const changelog = readFileSync(changelogPath, 'utf8')
   const latestVersion = /^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}$/mu.exec(
     changelog,
   )?.[1]
+
   const existingCandidate =
     workingVersion !== currentVersion && latestVersion === workingVersion
   const proposedVersion = existingCandidate
@@ -217,14 +220,21 @@ function artifactBrief(
   const semanticForHeading = (heading: string): string => {
     const normalized = heading.toLowerCase()
 
-    if (normalized.includes('change')) return 'changes'
+    if (normalized.includes('change')) {
+      return 'changes'
+    }
+
     if (normalized.includes('accept') || normalized.includes('test')) {
       return 'validation'
     }
+
     if (normalized.includes('defect') || normalized.includes('constraint')) {
       return 'risks'
     }
-    if (normalized.includes('rollback')) return 'release'
+
+    if (normalized.includes('rollback')) {
+      return 'release'
+    }
 
     return 'context'
   }

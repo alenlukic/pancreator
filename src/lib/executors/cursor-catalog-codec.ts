@@ -125,6 +125,7 @@ function compactOneModel(
   const modelName =
     typeof model.displayName === 'string' ? model.displayName : ''
   const keys = variants[0].params.map((param) => param.id)
+
   const tuples: string[] = []
   const names: Record<string, string> = {}
   let defaultTuple: string | undefined

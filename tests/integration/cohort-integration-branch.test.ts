@@ -208,6 +208,7 @@ test('a dirty chunk worktree is committed by the harness and integrates', () => 
     { id: 'alpha', cohort_index: 1 },
     { id: 'gamma', cohort_index: 2, depends_on: ['alpha'] },
   ])
+
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
   const workspace = loadState(root, started.chunks[0].run_id).workspace_root

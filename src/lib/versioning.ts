@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import { PanError } from './errors.js'
 import { fileExists, isRecord, readJson, readText } from './io.js'
 
 const SEMVER_PATTERN =
@@ -74,6 +75,13 @@ export function nextSemanticVersion(
       return `${current.major}.${current.minor + 1}.0`
     case 'patch':
       return `${current.major}.${current.minor}.${current.patch + 1}`
+    default: {
+      const exhaustive: never = bump
+
+      throw new PanError(`Unhandled release bump: ${String(exhaustive)}`, {
+        code: 'INVALID_RELEASE_BUMP',
+      })
+    }
   }
 }
 
@@ -271,9 +279,11 @@ export function validateReleaseMetadata(
   root: string,
 ): ReleaseMetadataValidation {
   const errors: string[] = []
+
   const versionPath = path.join(root, 'VERSION')
   const packagePath = path.join(root, 'package.json')
   const lockPath = path.join(root, 'package-lock.json')
+
   const changelogPath = path.join(root, 'CHANGELOG.md')
   const releaseIndexPath = path.join(root, 'release', 'index.json')
 

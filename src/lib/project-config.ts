@@ -430,7 +430,9 @@ function assertInstallationsBlock(value: unknown): void {
 }
 
 function assertScheduleBlock(value: unknown): void {
-  if (value === undefined) return
+  if (value === undefined) {
+    return
+  }
 
   invariant(
     isRecord(value) &&
@@ -449,6 +451,7 @@ function assertScheduleBlock(value: unknown): void {
   )
 
   const ids = new Set<string>()
+
   for (const [index, job] of value.jobs.entries()) {
     const source = `${PROJECT_CONFIG_PATH}.schedule.jobs[${index}]`
     invariant(isRecord(job), `${source} MUST be an object.`, {
@@ -493,12 +496,14 @@ function assertScheduleBlock(value: unknown): void {
       `${source}.weekdays MUST contain unique integers from 0 (Sunday) through 6 (Saturday).`,
       { code: 'INVALID_PROJECT_CONFIG' },
     )
+
     if (job.timezone !== undefined) {
       invariant(
         nonEmptyScheduleString(job.timezone),
         `${source}.timezone MUST be non-empty when present.`,
         { code: 'INVALID_PROJECT_CONFIG' },
       )
+
       try {
         new Intl.DateTimeFormat('en-US', { timeZone: job.timezone as string })
       } catch {

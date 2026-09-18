@@ -423,7 +423,9 @@ function passAssessment(
 ): void {
   const state = getRunState(root, runId)
 
-  if (state.pending_action.type !== 'supervisor_assessment') return
+  if (state.pending_action.type !== 'supervisor_assessment') {
+    return
+  }
 
   const assessmentPath = state.pending_action.output_path
 

@@ -44,6 +44,7 @@ test('a single-chunk merge conflict is aborted and leaves the base checkout clea
   const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
+
   const workspace = loadState(root, started.chunks[0].run_id).workspace_root
 
   // A single-chunk fan-out starts one run in one worktree and blocks nothing.
@@ -87,6 +88,7 @@ test('a multi-chunk conflict records which chunks already landed', () => {
   ])
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
+
   const byChunk = new Map(
     started.chunks.map((chunk) => [
       chunk.chunk,
@@ -371,6 +373,7 @@ test('the last integration starts the release run at verify in its own worktree,
     false,
     'no implement output is reported missing on a release run',
   )
+
   // The fixture's chunk runs never wrote a verify output, so each one is a
   // named gap rather than silence.
   for (const chunkRunId of chunkRunIds) {

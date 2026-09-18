@@ -44,6 +44,7 @@ test('release prefetch rejects every ineligible submission state', () => {
   const root = sharedFixture()
   const workflow = loadWorkflow(root, 'delivery')
   const implement = stageBySlug(workflow, 'implement')
+
   const running = {
     status: 'running',
     current_stage: 'verify',

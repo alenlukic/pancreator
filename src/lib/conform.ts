@@ -465,6 +465,7 @@ function scanFile(
   const key = checkpointKey(root, posixPath)
   const prior = checkpoint?.files[key]?.sha256 ?? null
   const editable = isEditable(root, posixPath)
+
   const absolute = absolutePathOf(root, workspaceRoot, harnessRoot, posixPath)
   const exists = fileExists(absolute)
 
@@ -507,6 +508,7 @@ function scanSummary(files: ConformScanFile[]): ConformScanResult['summary'] {
   const editableFiles = files.filter((file) => file.editable && file.exists)
   const reportOnlyFiles = files.filter((file) => !file.editable && file.exists)
   const deletedFiles = files.filter((file) => !file.exists)
+
   const issueFiles = files.filter((file) => file.issues.length > 0)
   const editableIssueFiles = files.filter(
     (file) => file.editable && file.issues.length > 0,

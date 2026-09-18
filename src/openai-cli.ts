@@ -71,9 +71,11 @@ export function parseOpenAiArgs(argv: string[]): ParsedOpenAiArgs {
   let model: string | undefined
   let prompt: string | undefined
   let instructions: string | undefined
+
   let reasoningEffort: OpenAiReasoningEffort | undefined
   let maxOutputTokens: number | undefined
   let timeoutMs: number | undefined
+
   let json = false
   let doctor = false
   let help = false

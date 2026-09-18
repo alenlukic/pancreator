@@ -357,6 +357,7 @@ const profileExecutions: Grader = (context) => {
   const limits = Array.isArray(configured)
     ? configured.filter(isProfileLimit)
     : defaultProfileLimits(records)
+
   const violations: string[] = []
   const succeeded = records.state.status === 'succeeded'
 
@@ -452,6 +453,7 @@ const delegationWatchRecord: Grader = (context) => {
     'require_for',
     'background',
   )
+
   const invocationIds = [
     ...records.state.stage_history.map((item) => item.invocation_id),
     ...(records.state.current_invocation
@@ -459,6 +461,7 @@ const delegationWatchRecord: Grader = (context) => {
       : []),
   ]
   const unique = [...new Set(invocationIds)]
+
   const rows: Record<string, unknown>[] = []
   const failures: string[] = []
   const evidence: string[] = []
@@ -484,11 +487,14 @@ const delegationWatchRecord: Grader = (context) => {
       'evidence',
       `${invocationId}-foreground-return.json`,
     )
+
     const watchAbsolute = path.join(records.root, watchRelative)
+
     let armings = 0
     let wakes = 0
     let entries = 0
     let parseErrors = 0
+
     let terminalState: string | null = null
 
     if (fileExists(watchAbsolute)) {
@@ -590,6 +596,7 @@ const delegationWatchRecord: Grader = (context) => {
     const history = historyForInvocation(records, invocationId)
     const backgroundObserved = backgroundSources.length > 0
     const required = requireFor === 'all' || backgroundObserved
+
     // A submitted stage needs a watch that saw the output land; a still-open
     // invocation only needs the record to exist.
     const needsCompletion = history !== undefined
@@ -597,6 +604,7 @@ const delegationWatchRecord: Grader = (context) => {
       entries > 0 &&
       parseErrors === 0 &&
       (!needsCompletion || terminalState === 'completed')
+
     const observedVia = watchSatisfied
       ? 'watch_completed'
       : foregroundReturn
@@ -674,8 +682,10 @@ const REDLINE_FILE = 'platform-guidance-redline.json'
 const platformGuidanceConflictRecorded: Grader = (context) => {
   const { records } = context
   const minRecorded = config<number>(context, 'min_recorded', 0)
+
   const redlineRelative = relativeEvidence(records, 'evidence', REDLINE_FILE)
   const redlineExists = fileExists(path.join(records.root, redlineRelative))
+
   const advisoryInvocations = new Set(
     (records.state.advisories ?? [])
       .filter((advisory) => advisory.kind === 'platform_guidance')
@@ -686,6 +696,7 @@ const platformGuidanceConflictRecorded: Grader = (context) => {
       .filter((event) => /platform_guidance/u.test(event.type))
       .map((event) => String(event.invocation_id ?? '')),
   )
+
   const evidence: string[] = []
   const failures: string[] = []
   let recorded = 0
@@ -801,12 +812,15 @@ const attemptsNotSpentOnMechanics: Grader = (context) => {
 
     const output = outputForInvocation(records, item.invocation_id)
     const workerClaimedSuccess = output?.output.result === 'success'
+
     const gates = (item.deterministic ?? []) as DeterministicResult[]
     const gateFailed = gates.some((gate) => gate.hard && !gate.passed)
+
     const selfCriteria = (item.self_criteria ?? []) as { result?: string }[]
     const selfFailed = selfCriteria.some(
       (criterion) => criterion.result === 'fail',
     )
+
     const validationErrors = item.validation_errors ?? []
 
     if (
@@ -878,6 +892,7 @@ const stageOrderAndTerminalState: Grader = (context) => {
       ? (context.spec.config as Partial<EvalExpectedState>)
       : {}),
   }
+
   const failures: string[] = []
   const state = records.state
   const statePath = path
@@ -1143,10 +1158,13 @@ const cohortFanout: Grader = (context) => {
     'min_concurrent',
     null,
   )
+
   const requireIntegrated = config(context, 'require_integrated', true)
   const chunkWorkflow = config(context, 'chunk_workflow', 'delivery-chunk')
+
   const failures: string[] = []
   const evidence: string[] = []
+
   const session = findCohortSession(records)
 
   if (!session) {

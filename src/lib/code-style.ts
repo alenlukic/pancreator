@@ -341,6 +341,7 @@ export function scanStyleArtifacts(
   const harnessPrefix = nestedHarnessPrefix(harnessRoot, workspaceRoot)
   const languages = detectedLanguages(harnessRoot, workspaceRoot)
   const languageSet = new Set(languages)
+
   const base = options.all
     ? head
     : options.since_ref

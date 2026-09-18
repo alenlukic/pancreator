@@ -94,6 +94,7 @@ test('every standalone mode renders a card with its policies inlined', () => {
 
       for (const instruction of policy.instructions) {
         const bullet = `- ${instruction.text}`
+
         if (policyInstructionAppliesToCard(instruction, 'agent')) {
           assert.ok(
             written.includes(bullet),
@@ -109,7 +110,9 @@ test('every standalone mode renders a card with its policies inlined', () => {
       }
 
       for (const guidance of policy.guidance ?? []) {
-        if (!guidance.reference) continue
+        if (!guidance.reference) {
+          continue
+        }
 
         assert.ok(
           written.includes(
@@ -712,6 +715,7 @@ test('the review card scopes the closure from the bound worktree when the main c
   const git = (args: string[]) =>
     execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
   const base = git(['rev-parse', 'HEAD'])
+
   const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')
   const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
     instructions: string[]

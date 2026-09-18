@@ -204,10 +204,13 @@ export function resolveRequirements(
 ): RequirementManifest {
   const policies = resolvePolicies(root, context)
   const catalog = loadRegistry(root)
+
   const errors: string[] = []
   const seenIds = new Set<string>()
+
   const automation: ResolvedRequirement[] = []
   const validation: ResolvedRequirement[] = []
+
   const resolvedTargets: Record<string, string> = {}
   const unresolvedBindings: string[] = []
   const policyVersions: Record<string, string> = {}

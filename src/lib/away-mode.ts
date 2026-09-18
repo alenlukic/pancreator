@@ -603,9 +603,11 @@ export function awayGateContext(
   const operatorRequest = fileExists(requestPath)
     ? boundedText(readText(requestPath))
     : null
+
   const last = state.stage_history.at(-1)
   let summary: string | null = null
   let nextAction: string | null = null
+
   const artifacts: string[] = []
   const openQuestions: string[] = []
   const unknowns: string[] = []

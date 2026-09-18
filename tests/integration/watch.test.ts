@@ -192,6 +192,7 @@ test('watch reports timed_out at the timeout when the paths keep changing', asyn
     'agent',
     'evidence',
   )
+
   const clock = fakeClock()
   let tick = 0
   const churn = (): void => {

@@ -158,6 +158,7 @@ function readProjectionManifest(root: string): ProjectionManifest {
     const installationModes = stringArray(entry.installation_modes)
     const generatedFields = stringArray(entry.generated_fields)
     const transforms = stringArray(entry.transforms)
+
     const sourceVariables = [...entry.source.matchAll(/\{([a-z_]+)\}/gu)].map(
       (match) => match[1],
     )
@@ -242,6 +243,7 @@ function expandProjection(
   const sourceDirectory = path.dirname(projection.source)
   const basename = path.basename(projection.source)
   const [prefix, suffix] = basename.split(token)
+
   const absoluteDirectory = path.join(root, sourceDirectory)
 
   if (!fileExists(absoluteDirectory)) {
@@ -323,6 +325,7 @@ function renderProjections(
   const mode = installationMode(root)
   const manifestMode = projectionMode(mode)
   const harnessPrefix = harnessPathPrefix(root)
+
   const pipeline =
     options.pipeline ??
     loadPipelineConfig(root, undefined, { skipCatalog: options.skipCatalog })
@@ -330,6 +333,7 @@ function renderProjections(
     skipCatalog: options.skipCatalog,
   })
   const only = options.only === undefined ? null : new Set(options.only)
+
   const rendered: RenderedProjection[] = []
   const removals: ProjectionRemoval[] = []
 

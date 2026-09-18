@@ -223,6 +223,7 @@ export async function runOpenAiSession(
     deadline: Date.now() + request.sessionTimeoutMs,
     maxRounds: request.maxToolRounds,
   }
+
   const responseIds: string[] = []
   const toolSummary: Record<string, number> = {}
   let usage: OpenAiUsage | undefined

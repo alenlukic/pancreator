@@ -29,6 +29,7 @@ test('artifact validators resolve only when workflow artifacts are requested', (
       artifact_paths: ['runtime/logs/workflows/x/operator/y.html'],
     },
   }
+
   const requested = resolveRequirements(root, {
     ...base,
     operator_artifacts: 'requested',

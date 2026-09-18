@@ -229,6 +229,7 @@ export function renderSupervisorCard(
     contracts,
     operator_artifacts: 'suppressed',
   })
+
   const relativePath = supervisorCardPath(root, state.run_id)
   const markdown = renderGovernanceCardMarkdown({
     mode,
@@ -258,6 +259,7 @@ export function renderSupervisorCard(
       return { policy_id: policy.id, sha256: sha256(section) }
     })
     .sort((a, b) => a.policy_id.localeCompare(b.policy_id))
+
   const previous = state.supervisor_card
   const absolute = resolveInside(root, relativePath)
   const changed = previous?.sha256 !== digest
