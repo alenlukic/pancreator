@@ -1287,6 +1287,13 @@ test('no conform policy forbids an edit the conform boundary requires', () => {
   const editable = mode.boundaries.find((line) =>
     line.includes('MUST edit only'),
   )
+  // The instruction surfaces `STE-001` names sit on their own boundary line.
+  const repairable = mode.boundaries
+    .filter(
+      (line) =>
+        line.includes('MUST edit only') || line.includes('MUST also repair'),
+    )
+    .join('\n')
   // One sentence carries the exclusion, and the exception that follows
   // `except` is the governed set rather than part of the exclusion.
   const exclusions = rendered
@@ -1309,8 +1316,18 @@ test('no conform policy forbids an edit the conform boundary requires', () => {
 
   // The boundary requires the librarian to repair these paths, so no rendered
   // instruction may place them outside the writing rules of this card.
-  for (const required of ['docs/issues/', 'runtime/pr-descriptions/']) {
-    assert.ok(editable.includes(required), `the boundary omits ${required}`)
+  for (const required of [
+    'docs/issues/',
+    'runtime/pr-descriptions/',
+    'governance/policies/',
+    'governance/criteria/',
+    'library/personas/',
+    'library/skills/',
+    'library/cursor/commands/',
+    'library/cursor/rules/',
+    'AGENTS.md',
+  ]) {
+    assert.ok(repairable.includes(required), `the boundary omits ${required}`)
 
     for (const sentence of exclusions) {
       const exceptAt = sentence.search(/\bexcept\b/u)
