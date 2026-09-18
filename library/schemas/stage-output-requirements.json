@@ -36,6 +36,24 @@
       ],
       "fields": [
         {
+          "path": "data.design_plan",
+          "type": "object",
+          "format": "required only for a design-composed planning run; names where design planning and verification execute"
+        },
+        {
+          "path": "data.design_plan.planning_stage",
+          "type": "string"
+        },
+        {
+          "path": "data.design_plan.verification_stage",
+          "type": "string"
+        },
+        {
+          "path": "data.design_plan.evidence_roles",
+          "type": "array",
+          "format": "string array of design evidence-worker roles"
+        },
+        {
           "path": "data.acceptance_criteria[].id",
           "type": "string"
         },
@@ -223,7 +241,8 @@
         {
           "path": "data.verify.findings[].source",
           "type": "string",
-          "enum": ["review", "qa"]
+          "enum": ["review", "qa", "design-review", "design-qa"],
+          "format": "names the evidence worker the finding came from; 'design-review' and 'design-qa' are available only on a design-composed verify stage that runs those workers"
         },
         {
           "path": "data.verify.qa_cases[].expected",

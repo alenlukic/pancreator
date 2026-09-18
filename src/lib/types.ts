@@ -315,6 +315,24 @@ export interface StageEvidenceWorkerDefinition {
   scope: string
 }
 
+/** Additive changes one optional design composition applies to a stage. */
+export interface DesignCompositionStageOverride {
+  required_stage_outputs?: StageContextStageSelector[]
+  required_data?: Record<string, JsonTypeName>
+  evidence_workers?: StageEvidenceWorkerDefinition[]
+}
+
+/**
+ * Workflow-authored design augmentation applied only when a run requests it.
+ * The base workflow remains the authority when the option is absent.
+ */
+export interface DesignComposition {
+  stages?: string[]
+  start_stage?: string
+  limits?: Partial<SerializedWorkflowLimits>
+  stage_overrides?: Record<string, DesignCompositionStageOverride>
+}
+
 export interface StageDefinition {
   slug: string
   title: string
@@ -406,6 +424,7 @@ export interface WorkflowIndex {
   start_stage: string
   limits: SerializedWorkflowLimits
   stages: string[]
+  design_composition?: DesignComposition
 }
 
 export interface WorkflowDefinition extends Omit<WorkflowIndex, 'stages'> {
@@ -2261,6 +2280,8 @@ export interface CohortSessionState {
   plan_run_id: string
   parent_spec_path: string
   base_branch: string
+  /** Optional design graph selection inherited from the planning run. */
+  design_composition?: true
   /**
    * Branch the cohorts merge into and later cohorts branch from, when the
    * operator retargeted integration away from `base_branch` with
@@ -2455,6 +2476,8 @@ export interface RunState {
    * the session default.
    */
   autostart_max_parallel?: number
+  /** Optional design graph selection snapshotted when the run was created. */
+  design_composition?: true
   /** Delivery the approval of this planning run started. */
   delivery_handoff?: DeliveryHandoff
   title: string

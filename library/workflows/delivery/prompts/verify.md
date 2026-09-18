@@ -1,16 +1,18 @@
 ## Objective
 
-Consolidate the parallel review and QA evidence reports into one independent,
-read-only verification with a single graded verdict. The supervisor already
-ran both evidence workers top-level and in parallel — a reviewer on the code
-dimension and a QA tester on the execution dimension — so each ran on its
-mapped model. You own the joint verdict; never edit source to fix what you
-find.
+Consolidate the parallel evidence reports into one independent, read-only
+verification with a single graded verdict. The supervisor already ran every
+evidence worker top-level and in parallel — always a reviewer on the code
+dimension and a QA tester on the execution dimension, and a design reviewer
+plus a design QA tester when the run composes design — so each ran on its
+mapped model. The card's required inputs name every report that ran, and that
+list is authoritative over any count stated here. You own the joint verdict;
+never edit source to fix what you find.
 
 ## Steps
 
-1. Read the card, the ratified plan, the implementation record, and both
-   parallel evidence reports listed under the card's inputs. The plan is the
+1. Read the card, the ratified plan, the implementation record, and every
+   parallel evidence report listed under the card's inputs. The plan is the
    `plan` stage output when the card lists one under its required inputs,
    otherwise the request the card delivers. A request that is the plan is the
    child specification with its acceptance criteria and validation plan, and
@@ -23,7 +25,7 @@ find.
    path. A report that carries cases but no `<!-- evidence-report: complete -->`
    line is the partial record of an interrupted worker: consolidate the cases
    it does hold, and state in your output which dimensions it left uncovered.
-2. Reconcile the two reports. Where they disagree about the same behavior,
+2. Reconcile the reports. Where two of them disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
 3. Spot-check, do not redo. Verify the reports' critical claims: rerun one
    or two pivotal QA cases, read the diff hunks behind the highest-severity
@@ -41,8 +43,10 @@ find.
    configured full-suite target check as product/test or environment rather
    than harness/test, unless harness-owned evidence implicates the harness.
 5. Join everything into one findings list. Each finding carries `source`
-   (`review` or `qa`), a severity, a statement, and reproducible evidence
-   citing the evidence report or your own reproduction.
+   naming the evidence worker that produced it — `review` or `qa`, and
+   `design-review` or `design-qa` on a design-composed run — a severity, a
+   statement, and reproducible evidence citing the evidence report or your
+   own reproduction.
 6. Grade the joint verdict:
    - `pass`: every acceptance criterion verified, all QA cases pass, no
      findings.
@@ -98,7 +102,8 @@ the parallel evidence workers already ran. Follow the card's `output.operator_br
 
 ## Done when
 
-Both evidence reports are read in full and reconciled, their pivotal claims
+Every evidence report the card lists is read in full and reconciled, each
+finding names the worker it came from, their pivotal claims
 are spot-checked, every acceptance criterion has an independently confirmed
 result, findings are joined into one graded verdict, and a failing verdict
 carries remediation guidance an agent can act on without you.

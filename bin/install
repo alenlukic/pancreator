@@ -530,6 +530,9 @@ fi
 CONFIG_JSON="$PANCREATOR_DIR/config.json"
 RUNTIME_DIR="$PANCREATOR_DIR/runtime"
 INBOX_DIR="$RUNTIME_DIR/inbox"
+# The inbox is partitioned by lifecycle status. This list must stay equal to
+# `INBOX_WORK_STATUSES` in `src/lib/inbox.ts` plus `archive`.
+INBOX_STATUS_DIRECTORIES=(queue active canceled complete archive)
 DOCS_DIR="$PANCREATOR_DIR/docs"
 PRIMER_PATH="$DOCS_DIR/target-repo-primer.md"
 BRIEF_SYSTEM_DIR="$DOCS_DIR/operator-briefs"
@@ -864,7 +867,7 @@ configure_install_shell_aliases() {
 }
 
 prepare_persistent_layout() {
-  local migrated_at backup_dir
+  local migrated_at backup_dir inbox_status
 
   mkdir -p \
     "$INBOX_DIR" \
@@ -872,6 +875,12 @@ prepare_persistent_layout() {
     "$RUNTIME_DIR/backlog" \
     "$DOCS_DIR" \
     "$PANCREATOR_DIR/worktrees"
+
+  # A fresh install presents every lifecycle directory, so the first intake
+  # has an obvious destination instead of landing loose in the inbox root.
+  for inbox_status in "${INBOX_STATUS_DIRECTORIES[@]}"; do
+    mkdir -p "$INBOX_DIR/$inbox_status"
+  done
 
   # Per-file workspace locks were removed. Refreshes clean up stale lock files
   # from older installations so they can never block run completion again.

@@ -97,7 +97,15 @@ import {
 import { liveRunsBoundToWorktree } from './state.js'
 import { validateCommandGovernance } from './governance/command-coverage.js'
 import { validateTargetAuthoring } from './target-authoring.js'
-import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
+import {
+  listWorkflowSlugs,
+  loadWorkflow,
+  stagePersonaCandidates,
+} from './workflow.js'
+import {
+  composeDesignWorkflow,
+  workflowSupportsDesignComposition,
+} from './design-composition.js'
 import {
   applyOperatorInvolvement,
   loadOperatorInvolvementFile,
@@ -4599,127 +4607,154 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   for (const slug of listWorkflowSlugs(root)) {
     try {
-      const workflow = loadWorkflow(root, slug)
+      const baseWorkflow = loadWorkflow(root, slug)
+      const workflows = workflowSupportsDesignComposition(baseWorkflow)
+        ? [baseWorkflow, composeDesignWorkflow(root, baseWorkflow)]
+        : [baseWorkflow]
+      const checkedStages = new Set<string>()
+      const checkedPersonaContexts = new Set<string>()
 
-      for (const stage of workflow.stages) {
-        workflowPersonas.add(stage.persona)
+      for (const workflow of workflows) {
+        for (const stage of workflow.stages) {
+          if (!checkedStages.has(stage.slug)) {
+            checkedStages.add(stage.slug)
 
-        // Repository verification MUST route through configured profiles rather
-        // than baking a project-shaped command into a workflow (REPO-001).
-        const canonicalRepositoryChecks: Record<
-          string,
-          Record<string, string>
-        > = {
-          dev: {
-            'implement.lint': 'pan repository-check static',
-            'implement.unit_tests': 'pan repository-check fast',
-            'test.full_suite': 'pan repository-check full',
-            'ship.validate': 'pan repository-check configuration',
-          },
-          prototype: {
-            'build.static': 'pan repository-check static',
-            'build.fast_checks': 'pan repository-check fast',
-          },
-        }
-        const expectedForWorkflow = canonicalRepositoryChecks[workflow.slug]
+            // Repository verification MUST route through configured profiles rather
+            // than baking a project-shaped command into a workflow (REPO-001).
+            const canonicalRepositoryChecks: Record<
+              string,
+              Record<string, string>
+            > = {
+              dev: {
+                'implement.lint': 'pan repository-check static',
+                'implement.unit_tests': 'pan repository-check fast',
+                'test.full_suite': 'pan repository-check full',
+                'ship.validate': 'pan repository-check configuration',
+              },
+              prototype: {
+                'build.static': 'pan repository-check static',
+                'build.fast_checks': 'pan repository-check fast',
+              },
+            }
+            const expectedForWorkflow = canonicalRepositoryChecks[workflow.slug]
 
-        if (expectedForWorkflow) {
-          for (const criterion of stage.criteria) {
-            const expectedCommand = expectedForWorkflow[criterion.id]
+            if (expectedForWorkflow) {
+              for (const criterion of stage.criteria) {
+                const expectedCommand = expectedForWorkflow[criterion.id]
 
-            if (expectedCommand && criterion.command !== expectedCommand) {
-              errors.push(
-                `${workflow.slug} criterion '${criterion.id}' MUST use '${expectedCommand}'`,
-              )
+                if (expectedCommand && criterion.command !== expectedCommand) {
+                  errors.push(
+                    `${workflow.slug} criterion '${criterion.id}' MUST use '${expectedCommand}'`,
+                  )
+                }
+
+                if (criterion.id === 'test.coverage') {
+                  errors.push(
+                    `${workflow.slug} MUST NOT require a standalone coverage gate; configure coverage inside a target-owned repository profile when applicable`,
+                  )
+                }
+              }
             }
 
-            if (criterion.id === 'test.coverage') {
+            if (workflow.slug === 'prototype') {
+              for (const criterion of stage.criteria) {
+                if (
+                  criterion.type === 'shell' &&
+                  criterion.hard === true &&
+                  criterion.command !== 'pan repository-check static'
+                ) {
+                  errors.push(
+                    `prototype criterion '${criterion.id}' MUST NOT be a hard shell ` +
+                      'gate other than the static profile; report other profiles as ' +
+                      'advisory evidence instead',
+                  )
+                }
+              }
+            }
+          }
+
+          for (const persona of stagePersonaCandidates(stage)) {
+            workflowPersonas.add(persona)
+            const contextKey = `${workflow.slug}/${stage.slug}/${persona}`
+
+            if (checkedPersonaContexts.has(contextKey)) {
+              continue
+            }
+            checkedPersonaContexts.add(contextKey)
+
+            const policies = resolvePolicies(root, {
+              persona,
+              workflow: workflow.slug,
+              stage: stage.slug,
+            })
+            const policyIds = new Set(policies.map((policy) => policy.id))
+
+            if (DESIGN_PERSONAS.has(persona)) {
+              for (const required of ['DESIGN-001', 'BROWSER-001']) {
+                if (!policyIds.has(required)) {
+                  errors.push(
+                    `workflow stage '${workflow.slug}/${stage.slug}' design persona '${persona}' MUST load ${required}`,
+                  )
+                }
+              }
+            }
+
+            for (const requirement of HANDBOOK_POLICY_REQUIREMENTS) {
+              if (
+                !handbookRequirementApplies(requirement, selfDevelopment) ||
+                !requirement.personas.has(persona)
+              ) {
+                continue
+              }
+
+              const handbookPolicyIds =
+                handbookPolicies.get(requirement.handbook_path) ??
+                new Set<string>()
+              const applicablePolicies = requirement.technology
+                ? resolvePolicies(root, {
+                    persona,
+                    workflow: workflow.slug,
+                    stage: stage.slug,
+                    technologies: [requirement.technology],
+                  })
+                : policies
+              const hasHandbookPolicy = applicablePolicies.some((policy) =>
+                handbookPolicyIds.has(policy.id),
+              )
+
+              if (!hasHandbookPolicy) {
+                errors.push(
+                  `workflow stage '${workflow.slug}/${stage.slug}' persona ` +
+                    `'${persona}' MUST load a policy for the ${requirement.label}`,
+                )
+              }
+            }
+
+            const personaPath = path.join(
+              root,
+              'library',
+              'personas',
+              `${persona}.md`,
+            )
+
+            if (!fileExists(personaPath)) {
+              errors.push(`missing persona: library/personas/${persona}.md`)
+            }
+
+            const agentPath = path.join(
+              root,
+              'library',
+              'cursor',
+              'agents',
+              `${persona}.md`,
+            )
+
+            if (!fileExists(agentPath)) {
               errors.push(
-                `${workflow.slug} MUST NOT require a standalone coverage gate; configure coverage inside a target-owned repository profile when applicable`,
+                `missing Cursor agent template: library/cursor/agents/${persona}.md`,
               )
             }
           }
-        }
-
-        // A prototype deprioritizes QA breadth by design; a hard full-suite gate
-        // would reintroduce exactly the cost the workflow exists to avoid.
-        if (workflow.slug === 'prototype') {
-          for (const criterion of stage.criteria) {
-            if (
-              criterion.type === 'shell' &&
-              criterion.hard === true &&
-              criterion.command !== 'pan repository-check static'
-            ) {
-              errors.push(
-                `prototype criterion '${criterion.id}' MUST NOT be a hard shell ` +
-                  'gate other than the static profile; report other profiles as ' +
-                  'advisory evidence instead',
-              )
-            }
-          }
-        }
-        const policies = resolvePolicies(root, {
-          persona: stage.persona,
-          workflow: workflow.slug,
-          stage: stage.slug,
-        })
-
-        for (const requirement of HANDBOOK_POLICY_REQUIREMENTS) {
-          if (
-            !handbookRequirementApplies(requirement, selfDevelopment) ||
-            !requirement.personas.has(stage.persona)
-          ) {
-            continue
-          }
-
-          const handbookPolicyIds =
-            handbookPolicies.get(requirement.handbook_path) ?? new Set<string>()
-          const applicablePolicies = requirement.technology
-            ? resolvePolicies(root, {
-                persona: stage.persona,
-                workflow: workflow.slug,
-                stage: stage.slug,
-                technologies: [requirement.technology],
-              })
-            : policies
-          const hasHandbookPolicy = applicablePolicies.some((policy) =>
-            handbookPolicyIds.has(policy.id),
-          )
-
-          if (hasHandbookPolicy) {
-            continue
-          }
-
-          errors.push(
-            `workflow stage '${workflow.slug}/${stage.slug}' persona ` +
-              `'${stage.persona}' MUST load a policy for the ` +
-              `${requirement.label}`,
-          )
-        }
-
-        const personaPath = path.join(
-          root,
-          'library',
-          'personas',
-          `${stage.persona}.md`,
-        )
-
-        if (!fileExists(personaPath)) {
-          errors.push(`missing persona: library/personas/${stage.persona}.md`)
-        }
-
-        const agentPath = path.join(
-          root,
-          'library',
-          'cursor',
-          'agents',
-          `${stage.persona}.md`,
-        )
-
-        if (!fileExists(agentPath)) {
-          errors.push(
-            `missing Cursor agent template: library/cursor/agents/${stage.persona}.md`,
-          )
         }
       }
     } catch (error) {

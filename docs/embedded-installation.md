@@ -423,8 +423,8 @@ path spaces:
   `.pancreator/runtime/...`, `.pancreator/library/...`, and
   `.pancreator/governance/...`
 - CLI request/output arguments remain harness-relative, such as
-  `runtime/inbox/request.md`, because `./.pancreator/bin/pan` resolves them from
-  the installation root
+  `runtime/inbox/queue/request.md`, because `./.pancreator/bin/pan` resolves
+  them from the installation root
 
 ## Refresh, repair, and clean install
 
@@ -475,7 +475,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.11.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.12.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

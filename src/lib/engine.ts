@@ -111,6 +111,10 @@ import {
   operatorArtifactProfileForStage,
 } from './operator-artifact-profiles.js'
 import {
+  composeDesignWorkflow,
+  workflowSupportsDesignComposition,
+} from './design-composition.js'
+import {
   operatorArtifactsRequested,
   requestStageOperatorArtifacts,
 } from './operator-artifacts.js'
@@ -339,6 +343,8 @@ interface CreateRunOptions {
   gatesPath?: string | null
   involvement?: string | null
   verification?: string | null
+  /** Compose the workflow's declared design stages and evidence workers. */
+  design?: boolean
   operatorArtifacts?: boolean
   pipelineOverride?: PipelineOverride | null
   cursorAgentSuffix?: string | null
@@ -3487,7 +3493,20 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     { code: 'INVALID_ARGUMENT' },
   )
 
-  const workflow = loadWorkflow(root, workflowSlug)
+  let workflow = loadWorkflow(root, workflowSlug)
+
+  if (options.design) {
+    invariant(
+      workflowSupportsDesignComposition(workflow),
+      `Workflow '${workflowSlug}' does not support --with-design.`,
+      {
+        code: 'DESIGN_COMPOSITION_UNSUPPORTED',
+        details: { workflow: workflowSlug },
+      },
+    )
+    workflow = composeDesignWorkflow(root, workflow)
+  }
+
   // A start-stage override must name a stage of this workflow, checked before
   // any run state exists so a typo cannot create a run that no stage owns.
   const startStage = options.startStage
@@ -3798,6 +3817,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       ...(autostartMaxParallel !== null
         ? { autostart_max_parallel: autostartMaxParallel }
         : {}),
+      ...(options.design ? { design_composition: true as const } : {}),
       title: options.title ?? path.basename(requestPath),
       status: 'running',
       current_stage: startStage,
@@ -3852,6 +3872,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       applied_gates: involvement.applied_gates,
       verification_level: verification.level,
       away_mode_enabled: awayMode.enabled,
+      ...(options.design ? { design_composition: true } : {}),
       ...(configurationOverrides.length > 0
         ? { configuration_overrides: configurationOverrides }
         : {}),

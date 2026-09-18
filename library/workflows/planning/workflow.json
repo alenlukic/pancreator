@@ -2,12 +2,35 @@
   "schema_version": 1,
   "slug": "planning",
   "title": "Ratified planning and cohort fan-out plan",
-  "description": "Operator-ratified planning that produces one parent technical specification, one child specification per chunk, and a cohort execution plan the harness fans out into parallel delivery runs.",
+  "description": "Operator-ratified planning that produces one parent technical specification, one child specification per chunk, and a cohort execution plan. With --with-design, a design stage runs before planning so one design specification remains authoritative across the routed delivery work.",
   "start_stage": "plan",
   "limits": {
     "max_total_transitions": 4,
     "max_stage_attempts": 3,
     "max_consecutive_failures": 3
   },
-  "stages": ["plan"]
+  "stages": ["plan"],
+  "design_composition": {
+    "stages": ["design"],
+    "start_stage": "design",
+    "limits": {
+      "max_total_transitions": 8
+    },
+    "stage_overrides": {
+      "plan": {
+        "required_stage_outputs": [
+          {
+            "stage": "design",
+            "selection": "latest_success"
+          }
+        ],
+        "required_data": {
+          "design_plan": "object",
+          "design_plan.planning_stage": "string",
+          "design_plan.verification_stage": "string",
+          "design_plan.evidence_roles": "array"
+        }
+      }
+    }
+  }
 }

@@ -30,6 +30,7 @@ export function ratifiedPlanRun(
   root: string,
   chunks: ChunkSpec[],
   involvement?: string,
+  design = false,
 ): string {
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
   writeFileSync(
@@ -53,6 +54,7 @@ export function ratifiedPlanRun(
     workflowSlug: 'planning',
     requestPath: 'planning-request.md',
     involvement,
+    design,
   })
   const outputPath = `runtime/logs/workflows/${run.run_id}/agent/outputs/plan-1.json`
   const indexes = [...new Set(chunks.map((chunk) => chunk.cohort_index))].sort()

@@ -990,6 +990,9 @@ export function initCohortSession(
     plan_run_id: options.planRunId,
     parent_spec_path: plan.parent_spec_path,
     base_branch: baseBranch,
+    ...(planState.design_composition
+      ? { design_composition: true as const }
+      : {}),
     repository_root: repositoryRoot,
     max_parallel: maxParallel,
     created_at: now(),
@@ -1145,6 +1148,7 @@ export function startCohort(
           },
           contextReferencePath: state.parent_spec_path,
           involvement,
+          design: state.design_composition,
           cohort: {
             cohort_id: cohortId,
             cohort_index: cohortIndex,
@@ -2708,6 +2712,7 @@ function startSingleDeliveryRun(
       },
       contextReferencePath: plan.parent_spec_path,
       involvement: planState.operator_involvement?.profile,
+      design: planState.design_composition,
     })
 
   recordDeliveryHandoff(root, planState, {
@@ -2905,6 +2910,7 @@ function startReleaseRun(
       worktree: { name: record.name, path: record.path, branch: record.branch },
       contextReferencePath: state.parent_spec_path,
       involvement: planRunInvolvement(root, state),
+      design: state.design_composition,
       // The chunk runs are the implementation record of this run, so the
       // binding names the session and the final merge proof that lists them.
       cohort: {

@@ -59,7 +59,7 @@ Standalone personas can resolve and run their policy-bound validators without cr
   --stage decompose \
   --kind decomposition \
   --registry DECOMPOSITION-VALIDATE-001 \
-  --target runtime/inbox/decomposition-<id>.md \
+  --target runtime/inbox/queue/decomposition-<id>.md \
   --json
 ```
 

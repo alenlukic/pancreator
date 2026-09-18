@@ -297,8 +297,9 @@ import {
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 export const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--no-autostart | --autostart [--max-parallel <n>]]
+  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--with-design] [--operator-artifacts] [--context-reference <repo-relative-file>] [--no-autostart | --autostart [--max-parallel <n>]]
       The default workflow is planning, the entry point for delivery work. Approving its ratified plan routes the work: a plan of one chunk starts one delivery run (implement, verify, remediate, ship) in its own worktree; a plan of two or more chunks opens a cohort session and starts cohort 1. --workflow delivery skips planning for an operator who brings a ratified specification as the request.
+      --with-design composes design planning into a planning run and design review plus design QA into routed delivery runs. It is refused for workflows that do not declare design_composition.
       --no-autostart applies only to the planning workflow and stops the run at the ratified plan, so delivery is started by hand. --autostart names the default and is accepted for compatibility. --max-parallel caps the concurrent chunk runs of an autostarted cohort session (default 4).
       --context-reference records an audited pointer to wider context every stage reads and never copies, for example the parent specification of one cohort chunk.
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts] [--agent <name>]
@@ -1380,6 +1381,7 @@ async function main(): Promise<void> {
         gatesPath: option(args, '--gates'),
         involvement: option(args, '--involvement'),
         verification: option(args, '--verification'),
+        design: hasFlag(args, '--with-design'),
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         contextReferencePath: option(args, '--context-reference'),
         autostartDelivery,
@@ -1397,6 +1399,7 @@ async function main(): Promise<void> {
         run_contracts: state.operator_involvement?.contracts ?? [],
         applied_gates: state.operator_involvement?.applied_gates ?? {},
         verification_level: state.verification?.level,
+        design_composition: state.design_composition === true,
         operator_artifacts: state.operator_artifacts,
         context_reference: state.request.context_reference ?? null,
         autostart_delivery: state.autostart_delivery ?? false,

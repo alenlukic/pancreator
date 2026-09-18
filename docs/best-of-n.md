@@ -24,8 +24,9 @@ stays uncommitted in its worktree until you remove it.
 ## Starting a session
 
 Invoke the projected `pan-meta-orchestrator` agent from Cursor chat and give it
-the task plus the configs path. It preserves the task under `runtime/inbox/`,
-runs `./bin/pan best-of-n init`, and drives the session from there.
+the task plus the configs path. It preserves the task under
+`runtime/inbox/queue/`, runs `./bin/pan best-of-n init`, and drives the session
+from there.
 
 The meta-orchestrator runs as a nested subagent. It directly supervises every
 session run and invokes run-scoped stage workers in foreground. This flattened

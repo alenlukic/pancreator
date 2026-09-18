@@ -434,7 +434,12 @@ export function validateSharedFieldContract(
       'fail_severe',
     ],
     'data.verify.findings[].severity': ['blocker', 'high', 'medium', 'low'],
-    'data.verify.findings[].source': ['review', 'qa'],
+    'data.verify.findings[].source': [
+      'review',
+      'qa',
+      'design-review',
+      'design-qa',
+    ],
   }
 
   const expectedPrototypeEnums: Record<string, Record<string, string[]>> = {

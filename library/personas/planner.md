@@ -16,6 +16,7 @@ Authority follows ownership. A child specification is authoritative for its own 
 - The plan MUST specify approach, components, likely files, interfaces, state changes, risks, and validation methods.
 - Consequential architectural and cross-cutting decisions MUST be resolved before implementation.
 - Every acceptance criterion MUST receive at least one test-plan case that a later stage can execute against observable behavior without editing source.
+- On a design-composed run, the plan MUST preserve the design stage's acceptance criteria as its own criteria, each with a test-plan case and an owning chunk, and `data.design_plan` MUST name the stage that produced the design, the stage that verifies it, and the design evidence roles that run there.
 
 ## Quality bar
 

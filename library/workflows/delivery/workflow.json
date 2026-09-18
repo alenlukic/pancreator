@@ -2,12 +2,30 @@
   "schema_version": 1,
   "slug": "delivery",
   "title": "Consolidated development delivery",
-  "description": "Implementation of a ratified specification, joint read-only verification with a graded verdict, verdict-routed remediation, and operator-approved release preparation. Planning runs in the separate planning workflow, whose ratified child specification becomes this run's request.",
+  "description": "Implementation of a ratified specification, joint read-only verification, verdict-routed remediation, and operator-approved release preparation. With --with-design, design review and design QA join verification inside the run.",
   "start_stage": "implement",
   "limits": {
     "max_total_transitions": 12,
     "max_stage_attempts": 3,
     "max_consecutive_failures": 3
   },
-  "stages": ["implement", "verify", "remediate", "ship"]
+  "stages": ["implement", "verify", "remediate", "ship"],
+  "design_composition": {
+    "stage_overrides": {
+      "verify": {
+        "evidence_workers": [
+          {
+            "persona": "design-reviewer",
+            "role": "design-review",
+            "scope": "Independently review the implemented UI against the authoritative design specification, HTML mocks, tokens, states, and design acceptance criteria. Record concrete findings for the verifier and do not review unrelated architecture. Browser rules:\n- The ONLY browser automation namespace you may call is `user-chrome-devtools` (chrome-devtools-mcp attached with --browserUrl=http://127.0.0.1:9222 to a shared HEADLESS Chrome for Testing). Use `new_page` once for your own tab, `navigate_page` to reuse it, `close_page` when done.\n- You MUST NOT use any other browser namespace or plugin for browser tasks (for example a plugin-provided chrome-devtools server, `cursor-ide-browser`, `user-playwright`, or the `browser-use` subagent). If `user-chrome-devtools` is unavailable, report the gap and continue with non-browser work; never fall back.\n- Never launch a browser process, never pass --isolated, never bring any window to the foreground, never touch the operator's personal Chrome profile.\n- Every brief you write for a subagent that could touch a browser MUST repeat these rules verbatim."
+          },
+          {
+            "persona": "design-qa",
+            "role": "design-qa",
+            "scope": "Verify the implemented UI behavior against the authoritative design specification, HTML mocks, and design acceptance criteria. Record reproducible design QA evidence for the verifier and route defects through the existing verdict. Browser rules:\n- The ONLY browser automation namespace you may call is `user-chrome-devtools` (chrome-devtools-mcp attached with --browserUrl=http://127.0.0.1:9222 to a shared HEADLESS Chrome for Testing). Use `new_page` once for your own tab, `navigate_page` to reuse it, `close_page` when done.\n- You MUST NOT use any other browser namespace or plugin for browser tasks (for example a plugin-provided chrome-devtools server, `cursor-ide-browser`, `user-playwright`, or the `browser-use` subagent). If `user-chrome-devtools` is unavailable, report the gap and continue with non-browser work; never fall back.\n- Never launch a browser process, never pass --isolated, never bring any window to the foreground, never touch the operator's personal Chrome profile.\n- Every brief you write for a subagent that could touch a browser MUST repeat these rules verbatim."
+          }
+        ]
+      }
+    }
+  }
 }
