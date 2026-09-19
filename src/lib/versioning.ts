@@ -139,7 +139,8 @@ function comparePrerelease(left: string | null, right: string | null): number {
   return 0
 }
 
-function compareVersions(left: string, right: string): number {
+/** Order two versions; a value that is not SemVer compares equal to anything. */
+export function compareVersions(left: string, right: string): number {
   const leftVersion = parseVersion(left)
   const rightVersion = parseVersion(right)
 

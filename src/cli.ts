@@ -104,6 +104,7 @@ import { resolvePolicies } from './lib/policies.js'
 import { renderRunInvocationCard } from './lib/context-card.js'
 import { orderedWorkerActions } from './lib/render.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
+import { allocateReleaseVersion } from './lib/release-allocation.js'
 import {
   continueLocalRelease,
   finalizeLocalRelease,
@@ -357,6 +358,8 @@ export const HELP_BODY = `Usage:
       Sync refuses with RELEASE_REMOTE_BEHIND_LOCAL when the fetched remote head is behind the point this branch shares with the local default branch, because the rebase would rewrite commits that branch already carries. It never retargets on its own. --onto <ref> rebases onto a ref the operator names, normally the local integration head; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result.
   pan release continue --worktree <name> [--run <run-id>] [--json]
   pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
+  pan release allocate --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--json]
+      Hand the worktree the next release version above every version published on its head, on pan-dev, on the local default branch, or already allocated, and record the allocation in runtime/release/allocations.jsonl before any release commit exists. Two worktrees allocating against the same base receive different versions, and a repeated request from a worktree whose allocation has not landed returns the same version. The ship validator accepts the allocated version in place of the exact next version for the same bump.
   pan author apply --input <draft-json> [--json]
   pan author validate [--extension <id>] [--json]
   pan tune prepare [--baseline <ref>] [--json]
@@ -2672,6 +2675,19 @@ async function main(): Promise<void> {
             worktreeName,
             requiredArgument(option(args, '--fetched-main'), '--fetched-main'),
             option(args, '--run') ?? undefined,
+          ),
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      if (sub === 'allocate') {
+        print(
+          allocateReleaseVersion(
+            root,
+            worktreeName,
+            requiredArgument(option(args, '--bump'), '--bump'),
+            { runId: option(args, '--run') },
           ),
           hasFlag(args, '--json'),
         )

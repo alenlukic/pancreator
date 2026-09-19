@@ -34,7 +34,9 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from '../git.js'
 import type { WorkspaceSnapshot } from '../types.js'
+import { releaseAllocationFor } from '../release-allocation.js'
 import {
+  compareVersions,
   isReleaseMetadataPath,
   isSemanticVersion,
   nextSemanticVersion,
@@ -3210,12 +3212,25 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           currentVersion,
           recommendation as ReleaseBump,
         )
+        // A worktree that shares its base with a concurrent release cannot
+        // take the exact next version, so the allocation ledger may hand it
+        // a higher one for the same bump. Anything else is still a mismatch.
+        const allocated =
+          expected !== null &&
+          isSemanticVersion(proposedVersion) &&
+          compareVersions(proposedVersion, expected) > 0 &&
+          releaseAllocationFor(
+            input.root,
+            workspaceRoot,
+            proposedVersion,
+            recommendation,
+          ) !== null
 
-        if (expected !== proposedVersion) {
+        if (expected !== proposedVersion && !allocated) {
           issues.push(
             issue(
               'release.proposed_version_mismatch',
-              `release.versioning.proposed_version MUST be ${expected ?? 'a valid next version'} for a ${recommendation} bump from ${currentVersion}`,
+              `release.versioning.proposed_version MUST be ${expected ?? 'a valid next version'} for a ${recommendation} bump from ${currentVersion}, or a higher version pan release allocate handed this worktree for the same bump`,
             ),
           )
         }

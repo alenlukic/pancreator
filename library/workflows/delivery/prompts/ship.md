@@ -39,7 +39,10 @@ otherwise the request the card delivers, which is the ratified specification.
    `synchronized`, whether it rebased or recorded an override.
    A legacy run without a managed worktree keeps metadata-only preparation.
 5. Apply the release-metadata procedure `VERSION-001` references. For a
-   managed run, synchronize metadata after the rebase. Then run
+   managed run, allocate the version with
+   `pan release allocate --worktree <name> --bump <bump> --run <run-id> --json`
+   after you choose the bump, use `allocation.version` as `proposed_version`,
+   and synchronize metadata after the rebase. Then run
    `pan release finalize --worktree <name> --fetched-main <hash> --run <run-id>`.
    In embedded mode, do not modify release metadata or create local commits.
    Stop there. Landing this release on the harness root's local default
