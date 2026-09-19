@@ -1,5 +1,30 @@
 # Changelog
 
+## [6.18.0] - 2026-09-19
+
+This release classifies load-sensitive gate failures, allocates concurrent release versions, and repairs headless workers. Plan validation now rejects a pan option that the CLI does not accept.
+
+### Changed
+
+- Classify a new gate failure outside the change import graph as `environment_or_flake` when one isolated rerun passes ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Raise the TEST-001 rolling fast-wall ceiling from 120s to 160s ([e4ec3882](https://github.com/alenlukic/pancreator/commit/e4ec38828994f8153cf7bfc25a96abfb8533999b)).
+
+### Added
+
+- Add `pan release allocate` so concurrent worktrees take distinct versions from one ledger ([d3e12776](https://github.com/alenlukic/pancreator/commit/d3e12776)).
+- Add a shared pan option grammar for plan cases, rollback steps, and command files ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Add a benchmark session record that pairs a baseline sample with a candidate sample ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Flag a stale installation on `pan installs list` ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b2)).
+- Refuse a repair intake that names a sibling intake file this checkout does not hold ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b2)).
+
+### Fixed
+
+- Let headless stage workers read their contract, honor `--force`, and use an hours-long bound ([6ca005cf](https://github.com/alenlukic/pancreator/commit/6ca005cf5141738509ed99630749172070191c29)).
+- Reuse a held release allocation only for the same bump ([732f74ab](https://github.com/alenlukic/pancreator/commit/732f74ab)).
+- Stop `pan validate` from reporting RFC 2119 keyword-definition warnings ([c575264f](https://github.com/alenlukic/pancreator/commit/c575264f)).
+- Repair three regression guards so they fail against the pre-change state ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Render the suite-profile advisory in both shapes and drop the doubled blank line ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+
 ## [6.17.0] - 2026-09-19
 
 This release adds `/pan-trace`. The command runs a cheap end-to-end smoke of a newly merged harness feature.
