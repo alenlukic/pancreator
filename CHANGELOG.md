@@ -1,5 +1,29 @@
 # Changelog
 
+## [6.22.0] - 2026-09-19
+
+This release repairs eight internal-consistency defects. A late worker-record call no longer rewrites a launched contract. Primer freshness, verify return visits, ship scope, and release allocation now match the stated rules.
+
+### Changed
+
+- Derive the primer version from `VERSION` at the stamped `source-head`. `pan doctor` and `pan validate` report primer drift ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Permit the read-only `configuration` profile on a verify return visit. Refresh stale interior evidence at prepare, and remove the `fast` offer from the return-visit brief ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Compare ship scope by content when the recorded base is not an ancestor of HEAD. Compare the harness root against its current HEAD rather than the prepare-time commit ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Name the release version sequence, `pan-dev`, and `release/index.json` as shared resources on the operating card ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Refuse a proposed version that already exists on `pan-dev` or the local default branch. Refuse release finalization without a recorded allocation ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- State the launch record as the watch clock. Keep that clock on a `--mark-background` re-arm ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Cite the configured `fast_wall` ceiling and `ship.fast_wall_ceiling` in review guidance ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Render a harness prefetch from the ledger `invoked_by` field, and name the recording role for an agent pass ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+
+### Added
+
+- `pan prepare --agent` for an evidence role, so the attempt is allocated before launch ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- A `configuration` gate on the `delivery-chunk` remediate stage ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+
+### Fixed
+
+- A late `pan worker record` no longer allocates a phantom attempt or rewrites the contract a launched worker holds ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+
 ## [6.20.0] - 2026-09-19
 
 This release makes the operator's chat session the supervisor of a long-horizon session end to end, adds a session arbiter so no harness verdict can end a task, closes the four hard blocks that may stop long-horizon work, and refuses any landing on `pan-dev` that carries no release.
