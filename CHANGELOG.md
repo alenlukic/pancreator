@@ -1,5 +1,22 @@
 # Changelog
 
+## [6.20.0] - 2026-09-19
+
+This release makes the operator's chat session the supervisor of a long-horizon session end to end, adds a session arbiter so no harness verdict can end a task, closes the four hard blocks that may stop long-horizon work, and refuses any landing on `pan-dev` that carries no release.
+
+### Changed
+
+- Supervise a long-horizon session from the chat: `horizon start` arms the session and returns, `horizon status --json` lists every live run with its bootstrap commands, and `horizon reconcile` applies the mechanical part of each wake. A task finishes when its route finishes, so the delivery run or cohort a plan approval starts is supervised rather than orphaned ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad)).
+- Route every long-horizon stop through the session arbiter before any deferral: a rejected ranking, a spent budget, an apply error, an unparseable evaluator reply, or an exhausted ladder is evidence the arbiter reasons about, and a task defers only when it names one of the four hard blocks ([3ce507b0](https://github.com/alenlukic/pancreator/commit/3ce507b02b9970ca5800e7ac1dd93deda1553acd)).
+- Close the long-horizon hard-block list to four (LH-H1 to LH-H4): a cost- or wall-time-backed criterion, a self-caused condition, a transient failure, and any ordinary judgment call are decided and recorded, never deferred. The profile allows `waive-gate` and sizes the decision budget at 12 per run; a failed away apply falls through to the next ranked option ([41c2c5b8](https://github.com/alenlukic/pancreator/commit/41c2c5b8a6a5e9c41758e05f2a8767b6d923b16f)).
+- State the 60-second observation rule as one statement with no exceptions, refuse to end a turn while an observed process is unfinished, and project `DELEGATE-001` as an always-on Cursor rule ([41c2c5b8](https://github.com/alenlukic/pancreator/commit/41c2c5b8a6a5e9c41758e05f2a8767b6d923b16f)).
+- Require a named authority on `horizon defer`: `--hard-block <LH-H1..LH-H4>` or `--operator-directive` ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad)).
+
+### Added
+
+- `horizon reconcile`, `horizon reinstate`, and `horizon start --headless` for the scheduled-job substrate ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad), [3ce507b0](https://github.com/alenlukic/pancreator/commit/3ce507b02b9970ca5800e7ac1dd93deda1553acd)).
+- `bin/check-landing` with `pre-commit` and `pre-merge-commit` hooks under `.githooks/`, wired by `npm run prepare`: a direct installable commit on `pan-dev` or `main`, and a merge whose source carries no new indexed release, are refused ([de81dcab](https://github.com/alenlukic/pancreator/commit/de81dcab4007e4fcb180e792de39f11a109e7bab), [b2c536e5](https://github.com/alenlukic/pancreator/commit/b2c536e58ede5ec78f2f627f79a5780db87d3fc2)).
+
 ## [6.19.0] - 2026-09-19
 
 This release repairs eleven live command defects on the ship, inbox, and validator paths. It also allocates concurrent release versions from one shared ledger.
