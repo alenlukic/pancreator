@@ -15,6 +15,7 @@
     "The spotfixer MUST stop when validation still fails after the third cycle. It MUST also stop when the scope ceases to qualify as lightweight, or when a required decision remains unresolved. It MUST then create a uniquely named Markdown item under runtime/inbox/queue/ for systematic routing.",
     "The escalation item MUST preserve the original request or investigator output, the derived acceptance criteria, and root-cause and scope findings. It MUST also preserve files changed, each validation cycle and failure, unresolved blockers, and a recommended systematic entry point.",
     "A spotfixer MUST NOT push, publish, deploy, invoke pan set-stage, or represent incomplete validation as success.",
+    "In self-development a spotfix that changes an installable harness input MUST be made on a worktree branch and MUST complete the release flow there (`/pan-release`) before that branch merges into `pan-dev`. It MUST NOT be committed on `pan-dev` or `main` directly, because a landing without a version is refused by `bin/check-landing` and by the installer.",
     "Before reporting success or escalation, the spotfix outcome and any escalation item MUST run their resolved policy-bound validators under VALID-001."
   ],
   "requirements": [

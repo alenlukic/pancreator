@@ -1777,7 +1777,16 @@ has already been updated by the release steward. Before approval, confirm:
 
 Approval marks the workflow succeeded. It does not itself create a commit, PR, merge, or deployment.
 
-Agents commit and merge on `pan-dev` or on a branch that lands on `pan-dev`. Landing work on `main` is your promotion step: merge or fast-forward `pan-dev` into `main` yourself, then push. `./bin/install` creates a missing `pan-dev` from the target's HEAD on a fresh install or refresh, so a target normally carries the branch before its first run; `pan doctor` reports when it does not.
+Agents commit and merge on a branch that lands on `pan-dev`. In the Pancreator
+repository itself nothing lands on `pan-dev` without a proper version: a change
+to any installable harness input reaches `pan-dev` only inside a release, so the
+branch carries the release commit and the `release/index.json` commit for a new
+`VERSION` before it merges, and no installable change after that release
+commit. `bin/check-landing` enforces this from the `pre-commit` and
+`pre-merge-commit` hooks under `.githooks/` (`npm run prepare` sets
+`core.hooksPath`; `npm ci` runs it), refusing a direct installable commit on
+`pan-dev` or `main` and a merge whose source has no release. The installer
+applies the same test to a clean checkout. Landing work on `main` is your promotion step: merge or fast-forward `pan-dev` into `main` yourself, then push. `./bin/install` creates a missing `pan-dev` from the target's HEAD on a fresh install or refresh, so a target normally carries the branch before its first run; `pan doctor` reports when it does not.
 
 ### Rejecting a release packet
 
