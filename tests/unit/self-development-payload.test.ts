@@ -6,6 +6,7 @@ import test from 'node:test'
 const ROOT = process.cwd()
 
 const HARNESS_LINEUP = 'library/skills/review-squad-pancreator.md'
+const TARGET_REQUIRED_FILE = 'library/templates/launchd-schedule.plist'
 
 function readRepositoryFile(relative: string): string {
   return readFileSync(path.join(ROOT, relative), 'utf8')
@@ -48,22 +49,65 @@ test('self-development-only payload paths exist in the source checkout', () => {
   assert.equal(paths.includes('library/skills/review-squad.md'), false)
 })
 
+function baseRequiredPaths(validationSource: string): string[] {
+  const block =
+    /const required = \[\n([\s\S]*?)\n  \]\n\n  if \(selfDevelopment\)/u.exec(
+      validationSource,
+    )
+
+  assert.ok(block, 'validation declares its base required-file list')
+
+  return [...block[1].matchAll(/['"]([^'"]+)['"]/gu)].map(
+    (match) => match[1] as string,
+  )
+}
+
+function selfDevelopmentRequiredPaths(validationSource: string): string[] {
+  const block =
+    /if \(selfDevelopment\) \{\n    required\.push\(\n([\s\S]*?)\n    \)/u.exec(
+      validationSource,
+    )
+
+  assert.ok(block, 'validation declares its self-development required list')
+
+  return [...block[1].matchAll(/['"]([^'"]+)['"]/gu)].map(
+    (match) => match[1] as string,
+  )
+}
+
 test('a file repository validation always requires ships to a target', () => {
   const paths = selfDevelopmentOnlyPaths()
+  const validationSource = readRepositoryFile('src/lib/validation.ts')
 
-  // Repository validation lists the launch agent template outside its
-  // self-development branch, so an installed target validates it too. A
-  // required file the payload withheld would fail every fresh installation.
-  assert.match(
-    readRepositoryFile('src/lib/validation.ts'),
-    /'library\/templates\/launchd-schedule\.plist',/u,
+  // The launch agent template belongs to the base required list. Searching the
+  // whole file would also match a path moved into the self-development branch.
+  assert.ok(baseRequiredPaths(validationSource).includes(TARGET_REQUIRED_FILE))
+  assert.equal(existsSync(path.join(ROOT, TARGET_REQUIRED_FILE)), true)
+  assert.equal(paths.includes(TARGET_REQUIRED_FILE), false)
+
+  // Reproduce the pre-change defect: move the same literal into the
+  // self-development-only branch. The guard must lose the required base path.
+  const removed = validationSource.replace(
+    `    '${TARGET_REQUIRED_FILE}',\n`,
+    '',
+  )
+  const movedToSelfDevelopment = removed.replace(
+    'if (selfDevelopment) {\n    required.push(\n',
+    `if (selfDevelopment) {\n    required.push(\n      '${TARGET_REQUIRED_FILE}',\n`,
+  )
+
+  // Both halves of the mutation must land. Asserting the base list alone
+  // would still pass if the insertion matched nothing, which proves that a
+  // removal is detected rather than that a move is.
+  assert.notEqual(removed, validationSource, 'the base entry was removed')
+  assert.ok(
+    selfDevelopmentRequiredPaths(movedToSelfDevelopment).includes(
+      TARGET_REQUIRED_FILE,
+    ),
+    'the entry landed in the self-development-only branch',
   )
   assert.equal(
-    existsSync(path.join(ROOT, 'library/templates/launchd-schedule.plist')),
-    true,
-  )
-  assert.equal(
-    paths.includes('library/templates/launchd-schedule.plist'),
+    baseRequiredPaths(movedToSelfDevelopment).includes(TARGET_REQUIRED_FILE),
     false,
   )
 })

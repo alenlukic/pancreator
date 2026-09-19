@@ -1524,6 +1524,44 @@ The `impacted` profile in `runtime/repository-checks.json` runs the same
 command. An embedded target may declare its own `impacted` command in its
 `repository-checks.json`; the harness never treats that profile as a gate.
 
+## Read a gate's failure classification
+
+When a repository-check gate fails, the harness asks of each newly failing
+test whether the change could have caused it, and records the answer in the
+gate's evidence log under `--- failure classifications ---`.
+
+A test the change's import closure does not reach, and that the baseline was
+not already failing, is rerun once on its own through the profile's
+`isolation_command`. A rerun that passes, and whose transcript names the test,
+makes the failure `environment_or_flake`: the gate passes with an advisory
+naming the test and both results. Anything else keeps the failure.
+
+The other dispositions each say why no pass was granted. `reproduced` means
+the test failed again alone. `in_change_closure` means the change reaches the
+test, so it is never reclassified. `isolation_unproven` means the rerun exited
+cleanly but never reported the test, which is what a selector that matches
+nothing looks like. `isolation_unavailable` means the harness could not
+diagnose at all, and its `reason` distinguishes a profile with no
+`isolation_command` from a workspace with no change evidence.
+
+`isolation_command` is optional, and a profile without one keeps today's
+behavior: every new failure fails the gate. A target repository gains the
+classification only by declaring a command that runs one named test, with
+`{file}` for the test file and `{test_pattern}` for the test name as an
+anchored regular expression, or `{test}` for the name literally:
+
+```json
+"fast": {
+  "commands": ["pytest -q"],
+  "isolation_command": "pytest -q {file}::{test}"
+}
+```
+
+Prefer `{test_pattern}` for any runner whose filter is a pattern. A literal
+name containing `(`, `.`, or `|` is read as regular-expression syntax, and a
+filter that matches nothing exits successfully — which is why a clean exit
+alone never earns a pass.
+
 ## Govern the fast-lane wall
 
 Self-development only. Every complete `npm test` run appends one record to

@@ -3,6 +3,10 @@ import path from 'node:path'
 
 import { errorMessage, invariant, PanError } from './errors.js'
 import {
+  panInvocationsInText,
+  panProseInvocationError,
+} from './pan-command-grammar.js'
+import {
   appendJsonLine,
   fileExists,
   isRecord,
@@ -159,6 +163,24 @@ function parseOption(value: unknown, index: number): AwayOption {
     { code: 'INVALID_AWAY_DECISION' },
   )
 
+  const rollbackSteps = parseStringArray(
+    value.rollback_plan.steps,
+    `${source}.rollback_plan.steps`,
+  )
+
+  for (const step of rollbackSteps) {
+    for (const argv of panInvocationsInText(step)) {
+      const refusal = panProseInvocationError(argv)
+
+      invariant(
+        refusal === null,
+        `${source}.rollback_plan.steps names \`pan ${argv.join(' ')}\`. ` +
+          refusal,
+        { code: 'INVALID_AWAY_DECISION' },
+      )
+    }
+  }
+
   return {
     rank: value.rank as number,
     action: value.action,
@@ -166,10 +188,7 @@ function parseOption(value: unknown, index: number): AwayOption {
     rationale: value.rationale,
     evidence: parseEvidenceReferences(value.evidence, `${source}.evidence`),
     rollback_plan: {
-      steps: parseStringArray(
-        value.rollback_plan.steps,
-        `${source}.rollback_plan.steps`,
-      ),
+      steps: rollbackSteps,
       verification: value.rollback_plan.verification,
     },
     ...(typeof value.note === 'string' ? { note: value.note } : {}),

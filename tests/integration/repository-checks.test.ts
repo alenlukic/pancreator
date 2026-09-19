@@ -904,6 +904,141 @@ test('a concurrent profile ends every unfinished command at the shared deadline'
   }
 })
 
+test('an isolation command must select both the failing file and case', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      probes: [],
+      commands: ['npm test'],
+      isolation_command: 'npm test -- {file}',
+    },
+  })
+
+  assert.throws(
+    () => loadRepositoryChecks(root),
+    /isolation_command MUST be .* \{file\} and either \{test_pattern\} or \{test\}/u,
+  )
+
+  for (const isolationCommand of [
+    'npm test -- {file} --case {test}',
+    'npm test -- {file} --name-pattern {test_pattern}',
+  ]) {
+    writeChecks(root, {
+      fast: {
+        probes: [],
+        commands: ['npm test'],
+        isolation_command: isolationCommand,
+      },
+    })
+
+    assert.equal(
+      loadRepositoryChecks(root).profiles.fast?.isolation_command,
+      isolationCommand,
+    )
+  }
+})
+
+/**
+ * The self-development runtime configuration is untracked per-installation
+ * state that nothing regenerates. A selector added to the tracked template
+ * therefore reached no live gate, and the whole classifier sat inert in the
+ * one installation that declares one. Adoption is keyed on identical
+ * commands, so an operator-rewritten profile keeps its own configuration.
+ */
+test('a self-development profile adopts the template isolation command', () => {
+  const { root } = makeInstallation()
+  const templateCommand = './run-one -- --pattern {test_pattern} --file {file}'
+
+  writeFileSync(
+    path.join(root, 'config.json'),
+    `${JSON.stringify({ schema_version: 1, installation_mode: 'self_development' }, null, 2)}\n`,
+  )
+  mkdirSync(path.join(root, 'library/templates'), { recursive: true })
+  writeFileSync(
+    path.join(
+      root,
+      'library/templates/repository-checks.self-development.json',
+    ),
+    `${JSON.stringify({
+      schema_version: 1,
+      profiles: {
+        fast: {
+          probes: [],
+          commands: ['npm test'],
+          isolation_command: templateCommand,
+        },
+      },
+    })}\n`,
+  )
+
+  writeChecks(root, { fast: { probes: [], commands: ['npm test'] } })
+
+  assert.equal(
+    loadRepositoryChecks(root).profiles.fast?.isolation_command,
+    templateCommand,
+  )
+
+  // An operator who replaced the command replaced the runner too, so the
+  // template's selector no longer describes anything this profile runs.
+  writeChecks(root, { fast: { probes: [], commands: ['npm run verify'] } })
+
+  assert.equal(
+    loadRepositoryChecks(root).profiles.fast?.isolation_command,
+    undefined,
+  )
+})
+
+/**
+ * An eval grader reads the profile commands of a synthetic run directory that
+ * holds a repository-check file and nothing else. Loading those profiles must
+ * not start requiring a harness configuration the directory never had.
+ */
+test('a directory with no harness configuration still loads its profiles', () => {
+  const bare = createTestTempDirectory('bare-checks-')
+
+  mkdirSync(path.join(bare, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(bare, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      profiles: { fast: { probes: [], commands: ['npm test'] } },
+    })}\n`,
+  )
+
+  assert.deepEqual(loadRepositoryChecks(bare).profiles.fast?.commands, [
+    'npm test',
+  ])
+})
+
+test('a target installation adopts no isolation command', () => {
+  const { root } = makeInstallation()
+
+  mkdirSync(path.join(root, 'library/templates'), { recursive: true })
+  writeFileSync(
+    path.join(
+      root,
+      'library/templates/repository-checks.self-development.json',
+    ),
+    `${JSON.stringify({
+      schema_version: 1,
+      profiles: {
+        fast: {
+          probes: [],
+          commands: ['npm test'],
+          isolation_command: 'node --test --name {test_pattern} {file}',
+        },
+      },
+    })}\n`,
+  )
+  writeChecks(root, { fast: { probes: [], commands: ['npm test'] } })
+
+  assert.equal(
+    loadRepositoryChecks(root).profiles.fast?.isolation_command,
+    undefined,
+  )
+})
+
 test('the concurrent field must be a boolean and the gate runner ignores it', () => {
   const { root } = makeInstallation()
 
@@ -956,7 +1091,9 @@ test('a synchronous timeout ends the whole process tree, not only the shell', as
   })
 
   const startedAt = Date.now()
-  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 250 })
+  // Give the loaded test runner time to start the shell and heartbeat before
+  // exercising the timeout path. The timeout remains the behavior under test.
+  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 2000 })
   const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')

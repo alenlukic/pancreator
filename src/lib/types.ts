@@ -1620,6 +1620,33 @@ export interface RepositoryCheckDelta {
   }
 }
 
+export type GateFailureDisposition =
+  | 'environment_or_flake'
+  | 'reproduced'
+  | 'in_change_closure'
+  | 'isolation_unavailable'
+  /**
+   * The isolation command exited cleanly but its transcript never names the
+   * failing test, so nothing proves the test ran. A filter that selects
+   * nothing produces exactly this shape, and crediting it would convert a
+   * real failure into a pass.
+   */
+  | 'isolation_unproven'
+
+export interface GateFailureClassification {
+  file: string
+  test: string
+  initial_diagnostic: string
+  disposition: GateFailureDisposition
+  /** Why a non-reclassifying disposition was reached, for counting across runs. */
+  reason?: string
+  isolation_command?: string
+  isolation_exit_code?: number | null
+  isolation_timed_out?: boolean
+  /** Whether the rerun transcript names the failing test as executed. */
+  isolation_executed?: boolean
+}
+
 export interface DeterministicResult {
   id: string
   type: 'shell' | 'state'
@@ -1672,6 +1699,7 @@ export interface DeterministicResult {
   preexisting_failure?: boolean
   environment_blocked?: boolean
   repository_check_delta?: RepositoryCheckDelta
+  failure_classifications?: GateFailureClassification[]
   workspace_fingerprint: string
   delta?: WorkspaceDelta
   /**
