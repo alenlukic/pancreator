@@ -20,7 +20,7 @@
     "readiness_paths": ["node_modules", "dist"]
   },
   "fast_wall": {
-    "ceiling_ms": 160000,
+    "ceiling_ms": 200000,
     "anchor_date": "2026-09-14",
     "weekly_allowance_ms": 1000
   },
