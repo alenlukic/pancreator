@@ -51,6 +51,10 @@ export interface ExternalRequestSettings {
   model: string
   store: false
   reasoning_effort?: string
+  reasoning_mode?: string
+  reasoning_context?: string
+  reasoning_summary?: string
+  text_verbosity?: string
   max_output_tokens?: number
   max_tool_rounds: number
   timeout_ms: number

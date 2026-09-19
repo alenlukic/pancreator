@@ -55,14 +55,55 @@ export const OPENAI_REASONING_EFFORTS = new Set([
   'max',
 ])
 
+/** Execution modes the Responses API accepts beside the effort level. */
+export const OPENAI_REASONING_MODES = new Set(['standard', 'pro'])
+
+/**
+ * Whether the model may reuse reasoning items from earlier turns. The harness
+ * disables server-side retention, and its local transcript replays only
+ * messages and tool calls, so a value other than `current_turn` has nothing
+ * earlier to reuse until encrypted reasoning items are replayed too.
+ */
+export const OPENAI_REASONING_CONTEXTS = new Set([
+  'auto',
+  'current_turn',
+  'all_turns',
+])
+
+/** Reasoning-summary detail levels. Omitting the option requests no summary. */
+export const OPENAI_REASONING_SUMMARIES = new Set([
+  'auto',
+  'concise',
+  'detailed',
+])
+
+/** Answer-detail levels. Not a token bound; `max-output-tokens` is that. */
+export const OPENAI_TEXT_VERBOSITIES = new Set(['low', 'medium', 'high'])
+
 /** Sorted so the rejection message always lists the set the same way. */
 export const OPENAI_OPTION_KEYS = [
+  'context',
   'effort',
   'max-output-tokens',
   'max-tool-rounds',
+  'mode',
   'session-resume',
+  'summary',
   'timeout-ms',
+  'verbosity',
 ] as const
+
+/**
+ * Enum-valued options share one rejection shape, so each new Responses
+ * parameter is a table row rather than another branch in the validator.
+ */
+const OPENAI_ENUM_OPTIONS: Record<string, Set<string>> = {
+  context: OPENAI_REASONING_CONTEXTS,
+  effort: OPENAI_REASONING_EFFORTS,
+  mode: OPENAI_REASONING_MODES,
+  summary: OPENAI_REASONING_SUMMARIES,
+  verbosity: OPENAI_TEXT_VERBOSITIES,
+}
 function parseBracketOptions(
   optionsText: string | undefined,
   source: string,
@@ -161,11 +202,13 @@ function validateOpenAiOptions(
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 
-    if (key === 'effort') {
+    const allowedValues = OPENAI_ENUM_OPTIONS[key]
+
+    if (allowedValues !== undefined) {
       invariant(
-        OPENAI_REASONING_EFFORTS.has(value),
-        `${source} effort '${value}' is not supported. Supported levels: ` +
-          `${[...OPENAI_REASONING_EFFORTS].join(', ')}. ${supported}`,
+        allowedValues.has(value),
+        `${source} ${key} '${value}' is not supported. Supported values: ` +
+          `${[...allowedValues].join(', ')}. ${supported}`,
         { code: 'INVALID_PIPELINE_CONFIG' },
       )
     }

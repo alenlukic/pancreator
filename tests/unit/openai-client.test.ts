@@ -109,6 +109,82 @@ test('optional request controls are forwarded when given', async () => {
   assert.equal(sentBody.max_output_tokens, 64)
 })
 
+test('the reasoning parameters merge into one object beside text.verbosity', async () => {
+  const { fetchImpl, calls } = fakeFetch(
+    () => new Response(JSON.stringify({ output_text: 'ok' }), { status: 200 }),
+  )
+
+  await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: 'Summarize this.',
+    reasoningEffort: 'xhigh',
+    reasoningMode: 'pro',
+    reasoningContext: 'all_turns',
+    reasoningSummary: 'concise',
+    textVerbosity: 'low',
+    fetchImpl,
+  })
+
+  const sentBody = JSON.parse(String(calls[0]?.init.body)) as Record<
+    string,
+    unknown
+  >
+
+  assert.deepEqual(sentBody.reasoning, {
+    effort: 'xhigh',
+    mode: 'pro',
+    context: 'all_turns',
+    summary: 'concise',
+  })
+  assert.deepEqual(sentBody.text, { verbosity: 'low' })
+})
+
+test('a reasoning parameter is sent without requiring an effort level', async () => {
+  const { fetchImpl, calls } = fakeFetch(
+    () => new Response(JSON.stringify({ output_text: 'ok' }), { status: 200 }),
+  )
+
+  await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: 'Summarize this.',
+    reasoningMode: 'pro',
+    fetchImpl,
+  })
+
+  const sentBody = JSON.parse(String(calls[0]?.init.body)) as Record<
+    string,
+    unknown
+  >
+
+  assert.deepEqual(sentBody.reasoning, { mode: 'pro' })
+  assert.ok(!('text' in sentBody))
+})
+
+test('an unconfigured request asserts no reasoning or text parameter', async () => {
+  const { fetchImpl, calls } = fakeFetch(
+    () => new Response(JSON.stringify({ output_text: 'ok' }), { status: 200 }),
+  )
+
+  await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: 'Summarize this.',
+    fetchImpl,
+  })
+
+  const sentBody = JSON.parse(String(calls[0]?.init.body)) as Record<
+    string,
+    unknown
+  >
+
+  // An empty `reasoning: {}` would claim a configuration the caller never
+  // made, so the keys must be absent rather than present and empty.
+  assert.ok(!('reasoning' in sentBody))
+  assert.ok(!('text' in sentBody))
+})
+
 test('function calls and tool definitions cross the client intact', async () => {
   const { fetchImpl, calls } = fakeFetch(
     () =>
