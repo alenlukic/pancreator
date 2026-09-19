@@ -94,8 +94,10 @@ test('pan installs list reports healthy missing and unreadable installations', (
     'missing',
   )
   const broken = installationRoot('broken', false)
+  const current = installationRoot('current')
 
   writeText(path.join(healthy, 'VERSION'), '6.9.0\n')
+  writeText(path.join(current, 'VERSION'), '0.0.0-test\n')
   writeText(path.join(healthy, 'runtime/inbox/queue/one.md'), '# One\n')
   writeText(path.join(healthy, 'runtime/inbox/queue/ignore.txt'), 'ignore\n')
   writeText(path.join(broken, 'config.json'), '{not-json\n')
@@ -104,6 +106,7 @@ test('pan installs list reports healthy missing and unreadable installations', (
     { id: 'healthy', path: healthy },
     { id: 'missing', path: missing },
     { id: 'broken', path: broken },
+    { id: 'current', path: current },
   ])
   const result = run(source, ['installs', 'list', '--json'])
 
@@ -112,7 +115,7 @@ test('pan installs list reports healthy missing and unreadable installations', (
 
   assert.deepEqual(
     payload.map((entry) => entry.id),
-    ['healthy', 'missing', 'broken'],
+    ['healthy', 'missing', 'broken', 'current'],
   )
   assert.deepEqual(Object.keys(payload[0] ?? {}), [
     'id',
@@ -121,18 +124,26 @@ test('pan installs list reports healthy missing and unreadable installations', (
     'exists',
     'installation_mode',
     'version',
+    'harness_version',
+    'stale',
     'queued_items',
     'error',
   ])
   assert.equal(payload[0]?.exists, true)
   assert.equal(payload[0]?.installation_mode, 'embedded')
   assert.equal(payload[0]?.version, '6.9.0')
+  assert.equal(payload[0]?.harness_version, '0.0.0-test')
+  assert.equal(payload[0]?.stale, true)
   assert.equal(payload[0]?.queued_items, 1)
   assert.equal(payload[1]?.exists, false)
+  assert.equal(payload[1]?.stale, null)
   assert.equal(payload[2]?.exists, true)
   assert.equal(payload[2]?.installation_mode, null)
+  assert.equal(payload[2]?.stale, null)
   assert.equal(typeof payload[2]?.error, 'string')
   assert.notEqual(payload[2]?.error, '')
+  assert.equal(payload[3]?.version, '0.0.0-test')
+  assert.equal(payload[3]?.stale, false)
 })
 
 test('pan installs archive moves cited items without installation commands or target changes', () => {

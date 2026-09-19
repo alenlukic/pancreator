@@ -478,7 +478,10 @@ Keep machine-local installation roots in the untracked
 Each entry has a stable lowercase `id` and an absolute harness-root `path`.
 Inspect the registry with `./bin/pan installs list --json`. A missing or
 unreadable installation is reported on its own row and does not hide the other
-entries.
+entries. Each row carries the installation's `version`, the `harness_version`
+of this checkout, and `stale`, which is `true` when the two differ and `null`
+when either is unknown, so an installation that fell behind is visible without
+a manual comparison.
 
 Run `/pan-repair installs` to sweep every registered installation, or append a
 comma-separated id list to narrow the sweep. The technician classifies queued

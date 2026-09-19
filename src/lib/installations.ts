@@ -16,6 +16,10 @@ export interface InstallationDescription extends RegisteredInstallation {
   exists: boolean
   installation_mode: 'self_development' | 'embedded' | 'detached' | null
   version: string | null
+  /** The version of the harness checkout that lists the installation. */
+  harness_version: string | null
+  /** True when the installation's version differs from the harness version, null when either is unknown. */
+  stale: boolean | null
   pan_command: string
   queued_items: number
   error: string | null
@@ -51,7 +55,16 @@ function installationVersion(root: string): string | null {
   return fileExists(versionPath) ? readText(versionPath).trim() || null : null
 }
 
+function staleVersion(
+  installed: string | null,
+  harness: string | null,
+): boolean | null {
+  return installed !== null && harness !== null ? installed !== harness : null
+}
+
 export function describeInstallations(root: string): InstallationDescription[] {
+  const harnessVersion = installationVersion(root)
+
   return registeredInstallations(root).map((entry) => {
     const configName = harnessConfigName(entry.path)
     const base = {
@@ -66,6 +79,8 @@ export function describeInstallations(root: string): InstallationDescription[] {
         exists: false,
         installation_mode: null,
         version: null,
+        harness_version: harnessVersion,
+        stale: null,
         queued_items: 0,
         error: null,
       }
@@ -73,12 +88,15 @@ export function describeInstallations(root: string): InstallationDescription[] {
 
     try {
       const config = readProjectConfig(entry.path)
+      const version = installationVersion(entry.path)
 
       return {
         ...base,
         exists: true,
         installation_mode: config?.installation_mode ?? null,
-        version: installationVersion(entry.path),
+        version,
+        harness_version: harnessVersion,
+        stale: staleVersion(version, harnessVersion),
         queued_items: queuedItemCount(entry.path),
         error: null,
       }
@@ -88,6 +106,8 @@ export function describeInstallations(root: string): InstallationDescription[] {
         exists: true,
         installation_mode: null,
         version: null,
+        harness_version: harnessVersion,
+        stale: null,
         queued_items: 0,
         error: errorMessage(error),
       }
