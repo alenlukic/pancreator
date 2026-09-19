@@ -61,8 +61,9 @@ export const HELP_BODY = `Usage:
   pan tests wall [--json]
       Report the rolling 24-hour fast-lane wall average, permitted ceiling, marginal wall cost per test, and pass or fail verdict.
   pan release sync --worktree <name> --message <message> [--run <run-id>] [--onto <ref> | --no-rebase] [--json]
-      Sync refuses with RELEASE_REMOTE_BEHIND_LOCAL when the fetched remote head is behind the point this branch shares with the local default branch, because the rebase would rewrite commits that branch already carries. It never retargets on its own. --onto <ref> rebases onto a ref the operator names, normally the local integration head; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result.
+      Returns already_current without rebasing when the selected target is already an ancestor of the branch head. Otherwise sync rebases in Git's merge-preserving mode and refuses success with RELEASE_REBASE_TOPOLOGY_LOST when the result drops a merge commit the branch carried or no longer descends from the target; replayed commit hashes are expected to change. --onto <ref> rebases onto a ref the operator names; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result. Sync and finalize return RELEASE_LOCAL_DEFAULT_AHEAD in advisories when the local default branch is ahead of fetched main.
   pan release continue --worktree <name> [--run <run-id>] [--json]
+      Returns not_needed with exit 0 when no rebase is active.
   pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
   pan release allocate --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--json]
       Hand the worktree the next release version above every version published on its head, on pan-dev, on the local default branch, or already allocated, and record the allocation in runtime/release/allocations.jsonl before any release commit exists. Two worktrees allocating against the same base receive different versions, and a repeated request from a worktree whose allocation has not landed returns the same version. The ship validator accepts the allocated version in place of the exact next version for the same bump.
@@ -85,7 +86,7 @@ export const HELP_BODY = `Usage:
       --resolve reads a citation of this run's artifacts — a path or a bare invocation id — through the run's invocation alias map and names the current path. Resequencing at finalization is what leaves a citation stale; the alias map is written then.
   pan list [--json]
   pan inbox [--json]
-      List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
+      List every regular file directly under each runtime/inbox/ lifecycle directory, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status. Unreadable items remain visible with a reason.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
   pan installs list [--json]
@@ -94,6 +95,8 @@ export const HELP_BODY = `Usage:
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
+  pan models evidence --run <run-id> --invocation <invocation-id> --role <worker|evidence-role> --effective-model <model> --source <source> --launch-handle <handle> [--json]
+      Worker evidence accepts only the stage role \`worker\` and evidence-worker roles declared by that invocation. The declared model spec comes from the invocation snapshot.
   pan models --probe --run <run-id> --invocation <invocation-id> [--await-probe] [--json]
       Records an in-flight marker, starts a detached probe, and returns. --await-probe performs the live call in the foreground; the detached child passes it.
       --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
@@ -104,7 +107,8 @@ export const HELP_BODY = `Usage:
   pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
-  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <workflow|assessment|spotfix|investigation|repair|decomposition|documentation|standalone> --registry <id> --target <path> [--run <run-id> | --worktree <name>] [--json]
+  pan requirements run [--invocation <id-or-path> | --persona <p> --workflow <w> --stage <s> --kind <workflow|assessment|spotfix|investigation|repair|decomposition|documentation|standalone>] --registry <id> [--target <path>] [--run <run-id> | --worktree <name>] [--json]
+      --invocation accepts an exact JSON snapshot path or, with --run, an invocation id from that run.
       --run or --worktree binds the check to that run's or worktree's workspace instead of the installation root.
   pan pr-description context [--worktree <name>] [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
@@ -117,6 +121,7 @@ export const HELP_BODY = `Usage:
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
+      closure_tracking is tracked or untracked. closure_revision is null when the target repository does not track the installation closure.
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
   pan best-of-n refresh-agents <bon-id> [--json]
