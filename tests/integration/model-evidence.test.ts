@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFile, spawnSync } from 'node:child_process'
+import { execFile, spawn, spawnSync } from 'node:child_process'
 import {
   chmodSync,
   existsSync,
@@ -37,6 +37,7 @@ import {
 import { operationMutexPath, statePath } from '../../src/lib/state.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
+  attestRunCard,
   createFixture,
   createTestTempDirectory,
   makeOutput,
@@ -443,7 +444,7 @@ test('the run-scoped probe returns a pending marker and a detached child records
   assert.equal(landed?.effective_model, expected)
 })
 
-test('preparing with an agent writes the labeled card and lands the probe', async () => {
+test('prepare defaults the projected agent and keeps the explicit label override', async () => {
   // One prepare replaces the three commands a supervisor ran by hand before
   // every Cursor worker launch: prepare, write the delegation file, probe.
   const { root, run } = createdRunCheckpoint('delivery@created')
@@ -464,7 +465,7 @@ test('preparing with an agent writes the labeled card and lands the probe', asyn
   assert.ok(expected)
 
   const prepared = withFakeCursorAgent(root, expected, () =>
-    prepareInvocation(root, run.run_id, { agent: 'pan-coder' }),
+    prepareInvocation(root, run.run_id, { agent: 'custom-coder' }),
   )
   const invocation = prepared.invocation
   const delegation = prepared.prepared_delegation
@@ -487,7 +488,7 @@ test('preparing with an agent writes the labeled card and lands the probe', asyn
   )
 
   // The label the operator reads, above the card the harness rendered.
-  assert.equal(artifact, `Agent: pan-coder\n\n${body}`)
+  assert.equal(artifact, `Agent: custom-coder\n\n${body}`)
 
   // The probe is in flight, not waited on.
   assert.equal(delegation.model_evidence?.result, 'pending')
@@ -533,38 +534,93 @@ test('preparing with an agent writes the labeled card and lands the probe', asyn
   )
 })
 
-test('preparing without an agent, and an external-executor stage, are unchanged', () => {
+test('bare prepare resolves the projected agent while external prepare explains its skip', () => {
   const { root, run } = createdRunCheckpoint('delivery@created')
 
   writeFixtureCursorCatalog(root)
-  const prepared = prepareInvocation(root, run.run_id)
+  const stage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    getRunState(root, run.run_id).current_stage ?? '',
+  )
+  const expected = expectedCursorModelForSpec(
+    root,
+    resolvePersonaModel(loadPipelineConfig(root).config, stage.persona),
+  )
+
+  assert.ok(expected)
+
+  const prepared = withFakeCursorAgent(root, expected, () =>
+    prepareInvocation(root, run.run_id, { prepareDelegation: true }),
+  )
   const invocation = prepared.invocation
+  const delegation = prepared.prepared_delegation
 
   assert.ok(invocation)
-  assert.equal(prepared.prepared_delegation, undefined)
-  assert.equal(
-    existsSync(
-      path.join(root, invocation.delegation?.delegation_artifact_path ?? ''),
-    ),
-    false,
-    'the supervisor still writes the delegation artifact itself',
+  assert.ok(delegation)
+  assert.equal(delegation.skipped, null)
+  const body = readFileSync(
+    path.join(root, invocation.delegation?.delivery_prompt_path ?? ''),
+    'utf8',
   )
   assert.equal(
-    getRunState(root, run.run_id).model_evidence?.some(
-      (item) => item.role === 'worker',
+    readFileSync(path.join(root, delegation.artifact_path ?? ''), 'utf8'),
+    `Agent: pan-coder\n\n${body}`,
+  )
+  assert.equal(delegation.model_evidence?.result, 'pending')
+
+  // HR-001 is about the documented minimal command, so the default has to be
+  // proven at the CLI: a library call that passes the option would still pass
+  // with the CLI wiring deleted.
+  const cliCreated = createdRunCheckpoint('delivery@created')
+
+  writeFixtureCursorCatalog(cliCreated.root)
+  attestRunCard(cliCreated.root, cliCreated.run.run_id)
+
+  const cliPrepared = withFakeCursorAgent(cliCreated.root, expected, () =>
+    spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), 'dist', 'src', 'cli.js'),
+        'prepare',
+        cliCreated.run.run_id,
+        '--json',
+      ],
+      { cwd: cliCreated.root, encoding: 'utf8', timeout: 120_000 },
     ),
-    undefined,
+  )
+
+  assert.equal(cliPrepared.status, 0, cliPrepared.stderr)
+
+  const cliResponse = JSON.parse(cliPrepared.stdout) as {
+    prepared_delegation?: {
+      artifact_path: string | null
+      skipped: string | null
+    }
+  }
+
+  assert.equal(cliResponse.prepared_delegation?.skipped, null)
+  assert.match(
+    readFileSync(
+      path.join(
+        cliCreated.root,
+        cliResponse.prepared_delegation?.artifact_path ?? '',
+      ),
+      'utf8',
+    ),
+    /^Agent: pan-coder\n/u,
   )
 
   // An external-executor stage authors its own evidence at `pan delegate`,
-  // so the option writes nothing and starts nothing there.
+  // so bare prepare writes nothing and starts nothing there.
   const externalCreated = checkpoint('planning[claude-code:planner]@created')
   const externalRoot = externalCreated.root
   const external = externalCreated.state
 
   const stubPath = claudeStubPath(externalRoot)
   const externalPrepared = withStub(stubPath, null, () =>
-    prepareInvocation(externalRoot, external.run_id, { agent: 'pan-planner' }),
+    prepareInvocation(externalRoot, external.run_id, {
+      prepareDelegation: true,
+    }),
   )
 
   assert.ok(externalPrepared.invocation)
@@ -1441,4 +1497,126 @@ test('two concurrent probes serialize their evidence writes', async () => {
     1,
   )
   assert.equal(state.title, 'Checkpoint fixture run')
+})
+
+/**
+ * Hold the run mutex from another process for `holdMs`, and report when the
+ * hold began and when it ended. A synchronous mutex cannot be held and
+ * contended from one process, so the holder is a child.
+ */
+function holdRunMutex(
+  root: string,
+  runId: string,
+  label: string,
+  holdMs: number,
+): { held: Promise<void>; released: string; exited: Promise<void> } {
+  const holderPath = path.join(root, `${label}-holder.mjs`)
+  const heldMarker = path.join(root, `${label}-held`)
+  const releasedMarker = path.join(root, `${label}-released`)
+
+  writeFileSync(
+    holderPath,
+    [
+      `import { writeFileSync } from 'node:fs'`,
+      `import { withOperationMutex } from ${JSON.stringify(
+        pathToFileURL(path.join(process.cwd(), 'dist', 'src', 'lib', 'io.js'))
+          .href,
+      )}`,
+      '',
+      `withOperationMutex(${JSON.stringify(
+        operationMutexPath(root, runId),
+      )}, () => {`,
+      `  writeFileSync(${JSON.stringify(heldMarker)}, '')`,
+      `  const until = Date.now() + ${holdMs}`,
+      '  const cell = new Int32Array(new SharedArrayBuffer(4))',
+      '  while (Date.now() < until) {',
+      '    Atomics.wait(cell, 0, 0, 25)',
+      '  }',
+      `  writeFileSync(${JSON.stringify(releasedMarker)}, '')`,
+      '})',
+      '',
+    ].join('\n'),
+  )
+
+  const holder = spawn(process.execPath, [holderPath], {
+    cwd: root,
+    stdio: 'ignore',
+  })
+  const exited = new Promise<void>((resolve, reject) => {
+    holder.on('exit', (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(`mutex holder '${label}' exited with ${code}`))
+      }
+    })
+    holder.on('error', reject)
+  })
+  const held = (async () => {
+    const deadline = Date.now() + 30_000
+
+    while (!existsSync(heldMarker)) {
+      assert.ok(Date.now() < deadline, `mutex holder '${label}' never held`)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+  })()
+
+  return { held, released: releasedMarker, exited }
+}
+
+// AC-008. `pan models evidence` refused at once with RUN_OPERATION_IN_PROGRESS
+// while `pan status --redline` held the run mutex. It is a read-mostly
+// evidence write, so both of its writers now wait a bounded interval for a
+// live holder and the contended write queues instead of failing.
+test('a contended pan models evidence write waits for the run mutex instead of refusing', async () => {
+  const { root, runId, invocation } = verifyRun()
+
+  const workerHold = holdRunMutex(root, runId, 'worker-evidence', 1_500)
+
+  await workerHold.held
+  assert.equal(existsSync(workerHold.released), false)
+
+  const worker = recordInvocationModelEvidence(
+    root,
+    runId,
+    invocation.invocation_id,
+    'worker',
+    'Stage Effective Model',
+    'Cursor launch metadata',
+    'launch-contended-1',
+  )
+
+  // The write returned only once the holder let go: it queued behind the
+  // live holder rather than refusing or clearing it.
+  assert.equal(existsSync(workerHold.released), true)
+  assert.equal(worker.launch_handle, 'launch-contended-1')
+  await workerHold.exited
+
+  const supervisorHold = holdRunMutex(root, runId, 'supervisor-evidence', 1_500)
+
+  await supervisorHold.held
+  assert.equal(existsSync(supervisorHold.released), false)
+
+  const supervisor = recordSupervisorModelEvidence(
+    root,
+    runId,
+    'GPT 5.6 Sol',
+    'metadata',
+  )
+
+  assert.equal(existsSync(supervisorHold.released), true)
+  assert.equal(supervisor.evidence.role, 'supervisor')
+  await supervisorHold.exited
+
+  const recorded = getRunState(root, runId).model_evidence ?? []
+
+  assert.equal(
+    recorded.find((item) => item.invocation_id === invocation.invocation_id)
+      ?.launch_handle,
+    'launch-contended-1',
+  )
+  assert.equal(
+    recorded.find((item) => item.role === 'supervisor')?.effective_model,
+    'GPT 5.6 Sol',
+  )
 })

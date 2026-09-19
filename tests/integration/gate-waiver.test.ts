@@ -347,19 +347,47 @@ test('an inferred waiver names the synthesized scope criterion', () => {
 // AC-012. The recorded case waived one evidence gap on verify while the run
 // held a prepared verify card; the default route jumped to ship, discarding
 // the prepared work and skipping verify's own gate the note never mentioned.
-test('a waiver on a stage holding a prepared invocation stays on that stage', () => {
-  const { root, runId } = checkpoint('delivery@verify-prepared', BRIEFS)
+test('a criterion waiver preserves the prepared invocation and finished output for submission', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    BRIEFS,
+  )
   const before = getRunState(root, runId)
 
+  assert.ok(invocation)
   assert.equal(before.current_stage, 'verify')
   assert.equal(before.pending_action.type, 'invoke_agent')
 
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'verify'))
+
+  writeJson(path.join(root, invocation.output.path), output)
+  const outputBefore = readFileSync(
+    path.join(root, invocation.output.path),
+    'utf8',
+  )
+
   const waived = waiveGate(root, runId, {
     stageSlug: 'verify',
+    criterionIds: ['verify.evidence_complete'],
     note: 'The browser evidence is environment-blocked; waive that criterion only.',
   })
 
   assert.equal(waived.state.current_stage, 'verify')
+  assert.equal(waived.state.pending_action.type, 'invoke_agent')
+  assert.equal(waived.state.current_invocation?.id, invocation.invocation_id)
+  assert.deepEqual(waived.waiver.criterion_ids, ['verify.evidence_complete'])
+  assert.equal(
+    readFileSync(path.join(root, invocation.output.path), 'utf8'),
+    outputBefore,
+  )
+
+  // "Submittable" is the outcome the recorded run lost five waivers to, so it
+  // is demonstrated by submitting the preserved output rather than inferred
+  // from the pending action.
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.invocation_id, invocation.invocation_id)
+  assert.equal(submitted.record.outcome, 'success')
 })
 
 // AC-003, AC-004. The entry gate runs before delegation and read no waiver,

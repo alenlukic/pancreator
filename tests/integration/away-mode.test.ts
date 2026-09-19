@@ -15,6 +15,7 @@ import { Worker } from 'node:worker_threads'
 import {
   awayBlockerCanBeCleared,
   awayDecisionLedgerPath,
+  awayEvaluationResponse,
   awayEvaluatorPrompt,
   awayGateContext,
   awayModeTrigger,
@@ -1307,6 +1308,14 @@ test('an output declaring no blocker ranks approval as it does today', () => {
 
   assert.equal(record.selected_action?.action, 'approve')
   assert.deepEqual(record.rejected_options, [])
+
+  const response = awayEvaluationResponse('./bin/pan', record)
+
+  assert.equal(response.apply_ready_decision_id, record.decision_id)
+  assert.equal(
+    response.apply_command,
+    `./bin/pan away apply ${state.run_id} --decision ${record.decision_id}`,
+  )
 })
 
 // `pan away apply --action` was accepted and ignored: the apply took the

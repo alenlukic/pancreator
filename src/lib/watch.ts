@@ -190,6 +190,8 @@ export interface WatchResult {
   ended_at: string
   elapsed_seconds: number
   background_marker_path: string | null
+  /** Exact command that starts another bounded observation after timeout. */
+  rearm_command?: string
 }
 
 export interface WatchOptions {
@@ -1516,6 +1518,18 @@ export async function watchInvocation(
       ended_at: new Date(endedMs).toISOString(),
       elapsed_seconds: (endedMs - startedMs) / 1000,
       background_marker_path: backgroundMarker,
+      ...(state === 'timed_out'
+        ? {
+            rearm_command:
+              `./bin/pan watch ${runId} --invocation ${invocationId} ` +
+              `--cadence-seconds ${cadenceSeconds} ` +
+              `--stall-timeout-seconds ${stallTimeoutSeconds} ` +
+              `--timeout-seconds ${timeoutSeconds}` +
+              (options.agentState
+                ? ` --agent-state ${options.agentState}`
+                : ''),
+          }
+        : {}),
     }
   }
   // An already-present output needs no timer. The wake record still proves

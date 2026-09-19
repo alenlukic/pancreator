@@ -1131,6 +1131,12 @@ test('the evidence brief names the fast command only when no passed fast gate is
   // the brief names that directory instead of assuming this checkout.
   invocation.workspace_root = 'worktrees/operator/delivery-abc123-alpha'
   invocation.harness_root = '/srv/harness'
+  invocation.installation_mode = 'self_development'
+  invocation.managed_worktree = {
+    name: 'delivery-abc123-alpha',
+    path: invocation.workspace_root,
+    branch: 'delivery-abc123-alpha',
+  }
 
   const fromHarnessRoot = renderEvidenceWorkerBrief(
     invocation,
@@ -1138,6 +1144,14 @@ test('the evidence brief names the fast command only when no passed fast gate is
   )
 
   assert.ok(fromHarnessRoot.includes('/srv/harness'))
+  assert.match(
+    fromHarnessRoot,
+    /PANCREATOR_EXEC_ROOT=\/srv\/harness\/worktrees\/operator\/delivery-abc123-alpha \.\/bin\/pan/u,
+  )
+  assert.match(
+    fromHarnessRoot,
+    /Bare `\.\/bin\/pan` remains the installation-root form for lifecycle and evidence commands/u,
+  )
   assert.doesNotMatch(fromHarnessRoot, /from this checkout/u)
 })
 

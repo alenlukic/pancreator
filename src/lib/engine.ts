@@ -200,6 +200,7 @@ import {
   repositoryChecksConfigDigest,
 } from './gate-cache.js'
 import {
+  cursorAgentName,
   cursorAgentTarget,
   projectPersonaVariants,
   syncCursorProjection,
@@ -467,6 +468,8 @@ interface PrepareInvocationOptions extends OperationProgressOptions {
    * supervisor otherwise assembles and runs by hand.
    */
   agent?: string
+  /** CLI prepare owns a complete delegation packet even without --agent. */
+  prepareDelegation?: boolean
 }
 
 export interface SubmitOutputResult {
@@ -2826,6 +2829,23 @@ export interface SupervisorModelEvidenceResult {
   advisories: RunAdvisory[]
 }
 
+/**
+ * How long a model-evidence hold waits for another command to release the
+ * run mutex.
+ *
+ * Every hold on that mutex is a state read and a state write, so a queue of
+ * ordinary commands drains far inside this bound. It exists to refuse a
+ * genuinely wedged holder rather than to pace normal contention. The bound
+ * covers every model-evidence writer: `pan models evidence` is a read-mostly
+ * write that a supervisor runs beside `pan status --redline`, and a detached
+ * probe that refused would lose the answer its live call already paid for.
+ */
+const MODEL_EVIDENCE_MUTEX_WAIT_MS = 10_000
+
+const MODEL_EVIDENCE_MUTEX_OPTIONS = {
+  waitForHolderMs: MODEL_EVIDENCE_MUTEX_WAIT_MS,
+}
+
 /** Record the unpinned supervisor model that Cursor exposes for this session. */
 export function recordSupervisorModelEvidence(
   root: string,
@@ -2833,60 +2853,64 @@ export function recordSupervisorModelEvidence(
   effectiveModel: string,
   source: string,
 ): SupervisorModelEvidenceResult {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    invariant(
-      effectiveModel.trim().length > 0,
-      '--effective-model is required.',
-      {
+  return withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      invariant(
+        effectiveModel.trim().length > 0,
+        '--effective-model is required.',
+        {
+          code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
+        },
+      )
+      invariant(source.trim().length > 0, '--source is required.', {
         code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
-      },
-    )
-    invariant(source.trim().length > 0, '--source is required.', {
-      code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
-    })
+      })
 
-    const state = loadState(root, runId)
-    const existing = state.model_evidence?.find(
-      (item) => item.role === 'supervisor',
-    )
-    let advisories: RunAdvisory[] = []
+      const state = loadState(root, runId)
+      const existing = state.model_evidence?.find(
+        (item) => item.role === 'supervisor',
+      )
+      let advisories: RunAdvisory[] = []
 
-    if (existing) {
-      if (
-        normalizedModelName(existing.effective_model ?? '') ===
-        normalizedModelName(effectiveModel)
-      ) {
-        return { evidence: existing, advisories }
+      if (existing) {
+        if (
+          normalizedModelName(existing.effective_model ?? '') ===
+          normalizedModelName(effectiveModel)
+        ) {
+          return { evidence: existing, advisories }
+        }
+
+        // A mid-run model change is legitimate, so record the new fact and
+        // continue the run.
+        advisories = recordRunAdvisories(
+          state,
+          { kind: 'model_evidence', source: 'supervisor_evidence' },
+          [
+            `The supervisor model changed from ` +
+              `'${existing.effective_model}' to '${effectiveModel.trim()}' ` +
+              `during this run.`,
+          ],
+        )
+        persistRun(root, state, 'model_evidence_advisory', {
+          role: 'supervisor',
+          advisories: advisories.map((advisory) => advisory.message),
+        })
       }
 
-      // A mid-run model change is legitimate, so record the new fact and
-      // continue the run.
-      advisories = recordRunAdvisories(
-        state,
-        { kind: 'model_evidence', source: 'supervisor_evidence' },
-        [
-          `The supervisor model changed from ` +
-            `'${existing.effective_model}' to '${effectiveModel.trim()}' ` +
-            `during this run.`,
-        ],
-      )
-      persistRun(root, state, 'model_evidence_advisory', {
+      const evidence = persistModelEvidence(root, state, {
         role: 'supervisor',
-        advisories: advisories.map((advisory) => advisory.message),
+        persona: 'orchestrator',
+        declared_spec: null,
+        effective_model: effectiveModel.trim(),
+        source: source.trim(),
+        result: 'recorded',
       })
-    }
 
-    const evidence = persistModelEvidence(root, state, {
-      role: 'supervisor',
-      persona: 'orchestrator',
-      declared_spec: null,
-      effective_model: effectiveModel.trim(),
-      source: source.trim(),
-      result: 'recorded',
-    })
-
-    return { evidence, advisories }
-  })
+      return { evidence, advisories }
+    },
+    MODEL_EVIDENCE_MUTEX_OPTIONS,
+  )
 }
 
 function normalizedModelName(value: string): string {
@@ -2940,60 +2964,65 @@ export function recordInvocationModelEvidence(
   source: string,
   launchHandle: string,
 ): RunModelEvidence {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    const values = [
-      ['--invocation', invocationId],
-      ['--role', role],
-      ['--effective-model', effectiveModel],
-      ['--source', source],
-      ['--launch-handle', launchHandle],
-    ] as const
+  return withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      const values = [
+        ['--invocation', invocationId],
+        ['--role', role],
+        ['--effective-model', effectiveModel],
+        ['--source', source],
+        ['--launch-handle', launchHandle],
+      ] as const
 
-    for (const [name, value] of values) {
-      invariant(value.trim().length > 0, `${name} is required.`, {
-        code: 'INVALID_ARGUMENT',
+      for (const [name, value] of values) {
+        invariant(value.trim().length > 0, `${name} is required.`, {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const state = loadState(root, runId)
+      const { invocation } = readInvocationRecord(root, state, invocationId)
+
+      invariant(
+        invocation.run_id === runId &&
+          invocation.invocation_id === invocationId,
+        `Invocation '${invocationId}' does not belong to run '${runId}'.`,
+        { code: 'INVALID_INVOCATION' },
+      )
+
+      const roleName = role.trim()
+      const declaredWorkers = declaredWorkerSpecs(invocation)
+      const declared = declaredWorkers.find((item) =>
+        item.role === 'worker'
+          ? roleName === 'worker'
+          : item.worker_role === roleName,
+      )
+      const declaredRoles = declaredWorkers.map((item) =>
+        item.role === 'worker' ? 'worker' : (item.worker_role as string),
+      )
+
+      invariant(
+        declared,
+        `Role '${roleName}' is not declared by invocation '${invocationId}'. ` +
+          `Declared roles: ${declaredRoles.join(', ')}.`,
+        { code: 'INVALID_ARGUMENT' },
+      )
+
+      return persistModelEvidence(root, state, {
+        role: declared.role,
+        invocation_id: invocationId,
+        ...(declared.worker_role ? { worker_role: declared.worker_role } : {}),
+        persona: declared.persona,
+        declared_spec: declared.spec,
+        effective_model: effectiveModel.trim(),
+        source: source.trim(),
+        launch_handle: launchHandle.trim(),
+        result: 'recorded',
       })
-    }
-
-    const state = loadState(root, runId)
-    const { invocation } = readInvocationRecord(root, state, invocationId)
-
-    invariant(
-      invocation.run_id === runId && invocation.invocation_id === invocationId,
-      `Invocation '${invocationId}' does not belong to run '${runId}'.`,
-      { code: 'INVALID_INVOCATION' },
-    )
-
-    const roleName = role.trim()
-    const declaredWorkers = declaredWorkerSpecs(invocation)
-    const declared = declaredWorkers.find((item) =>
-      item.role === 'worker'
-        ? roleName === 'worker'
-        : item.worker_role === roleName,
-    )
-    const declaredRoles = declaredWorkers.map((item) =>
-      item.role === 'worker' ? 'worker' : (item.worker_role as string),
-    )
-
-    invariant(
-      declared,
-      `Role '${roleName}' is not declared by invocation '${invocationId}'. ` +
-        `Declared roles: ${declaredRoles.join(', ')}.`,
-      { code: 'INVALID_ARGUMENT' },
-    )
-
-    return persistModelEvidence(root, state, {
-      role: declared.role,
-      invocation_id: invocationId,
-      ...(declared.worker_role ? { worker_role: declared.worker_role } : {}),
-      persona: declared.persona,
-      declared_spec: declared.spec,
-      effective_model: effectiveModel.trim(),
-      source: source.trim(),
-      launch_handle: launchHandle.trim(),
-      result: 'recorded',
-    })
-  })
+    },
+    MODEL_EVIDENCE_MUTEX_OPTIONS,
+  )
 }
 
 /** The labeled default evidence for one declared worker spec. */
@@ -3106,15 +3135,6 @@ export function recordPendingWorkerModelProbe(
   })
 }
 
-/**
- * How long a probe waits for another command to release the run mutex.
- *
- * Every hold on that mutex is a state read and a state write, so a queue of
- * ordinary commands drains far inside this bound. It exists to refuse a
- * genuinely wedged holder rather than to pace normal contention.
- */
-const PROBE_MUTEX_WAIT_MS = 10_000
-
 /** What starting one detached worker model probe left behind. */
 export interface StartedWorkerModelProbe {
   evidence: RunModelEvidence
@@ -3180,7 +3200,7 @@ export function probeRunInvocationModel(
   /** One record per parallel evidence worker the invocation declares. */
   evidence_workers: RunModelEvidence[]
 } {
-  const contended = { waitForHolderMs: PROBE_MUTEX_WAIT_MS }
+  const contended = MODEL_EVIDENCE_MUTEX_OPTIONS
   const plan = withOperationMutex(
     operationMutexPath(root, runId),
     () => {
@@ -4371,7 +4391,7 @@ export function assertDelegationAgentName(agent: string): void {
 function writeLabeledDelegationArtifact(
   root: string,
   invocation: Invocation,
-  agent: string,
+  agent: string | null,
 ): { artifact_path: string | null; skipped: string | null } {
   const delegation = invocation.delegation
 
@@ -4391,6 +4411,16 @@ function writeLabeledDelegationArtifact(
         'own delegation evidence at `pan delegate`.',
     }
   }
+
+  // A referenced delegation always names its projected agent, and a label a
+  // supervisor cannot launch (a persona slug, an empty string) is worse than
+  // no artifact, so a missing name fails here rather than being guessed.
+  invariant(
+    agent !== null && agent.trim().length > 0,
+    `Stage '${invocation.stage.slug}' delegation names no projected agent ` +
+      'to label its delegation artifact with.',
+    { code: 'DELEGATION_AGENT_UNRESOLVED' },
+  )
 
   const body = readText(resolveInside(root, delegation.delivery_prompt_path))
 
@@ -4974,6 +5004,11 @@ export function prepareInvocation(
       attempt,
       created_at: now(),
       workspace_root: state.workspace_root || '.',
+      installation_mode: isSelfDevelopmentInstallation(root)
+        ? 'self_development'
+        : isDetachedInstallation(root)
+          ? 'detached'
+          : 'embedded',
       ...(state.managed_worktree
         ? { managed_worktree: state.managed_worktree }
         : {}),
@@ -5265,11 +5300,22 @@ export function prepareInvocation(
   // The delegation artifact and the probe belong to the delivery the
   // supervisor is about to perform, and both need the mutex this block no
   // longer holds: the probe records its marker through its own transaction.
-  if (options.agent !== undefined && result.invocation) {
+  // A Cursor stage already names its projected agent on the invocation, so a
+  // bare prepare can produce the complete delivery packet. `--agent` remains
+  // the explicit label override. External and orchestrator stages still pass
+  // through the helper so the result explains why no artifact was written.
+  if (
+    result.invocation &&
+    (options.prepareDelegation === true || options.agent !== undefined)
+  ) {
+    // Only a referenced-mode delegation writes an artifact, and every such
+    // delegation names its projected agent, so the label is never derived
+    // from a persona: a persona slug is not an agent a supervisor can launch.
     const written = writeLabeledDelegationArtifact(
       root,
       result.invocation,
-      options.agent,
+      options.agent ??
+        cursorAgentName(result.invocation.delegation?.cursor_agent_path),
     )
     const probe =
       written.artifact_path === null
@@ -7588,7 +7634,7 @@ function recoveryRouteFor(
     return (
       `A run awaiting an operator continues with ` +
       `\`${pan} decide ${state.run_id} <approve|reject|revise> --note "<directive>"\`; ` +
-      `route it to another stage with \`${pan} set-stage ${state.run_id} <stage> --note "<directive>"\`.`
+      `route it to another stage with \`${pan} set-stage ${state.run_id} --stage <stage> --note "<directive>"\`.`
     )
   }
 
@@ -9624,17 +9670,36 @@ export function waiveGate(
       ? transferWorktreeClaim(root, state, options.adoptPlanFromRunId, waiverId)
       : null
 
+    const preservesPreparedInvocation =
+      holdsInvocation &&
+      target === stage.slug &&
+      state.current_invocation !== null
+    const preparedInvocation = preservesPreparedInvocation
+      ? state.current_invocation
+      : null
+    const preparedPendingAction = preservesPreparedInvocation
+      ? state.pending_action
+      : null
+
     clearSameReasonTracker(state, stage.slug)
     state.status = 'running'
     state.pause_reason = null
     state.operator_pause = null
-    state.current_invocation = null
+    state.current_invocation = preparedInvocation
     state.consecutive_failures = 0
 
-    applyTransition(root, state, stage, 'success', {
-      overrideTarget: target,
-      operatorDirected: true,
-    })
+    if (preparedPendingAction) {
+      // A waiver on a stage that still holds its prepared card, whether it
+      // names criteria or the whole stage, changes what submission may
+      // accept; it does not discard the worker output or card that is
+      // already ready to submit.
+      state.pending_action = preparedPendingAction
+    } else {
+      applyTransition(root, state, stage, 'success', {
+        overrideTarget: target,
+        operatorDirected: true,
+      })
+    }
 
     state.last_decision_path = artifactPath
 

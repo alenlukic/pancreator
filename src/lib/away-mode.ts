@@ -84,6 +84,25 @@ export interface AwayDecisionRecord {
   error?: string
 }
 
+/** CLI response that hands an accepted evaluation directly to apply. */
+export function awayEvaluationResponse(
+  pan: string,
+  decision: AwayDecisionRecord,
+): AwayDecisionRecord & {
+  apply_ready_decision_id: string | null
+  apply_command: string | null
+} {
+  const applyReady = decision.result === 'accepted'
+
+  return {
+    ...decision,
+    apply_ready_decision_id: applyReady ? decision.decision_id : null,
+    apply_command: applyReady
+      ? `${pan} away apply ${decision.run_id} --decision ${decision.decision_id}`
+      : null,
+  }
+}
+
 function awayPath(root: string, name: string): string {
   return path.join(root, AWAY_DIRECTORY, name)
 }
@@ -1159,7 +1178,7 @@ export function recordAwayEvaluation(
 export const AWAY_SUBCOMMAND_OPTIONS: Record<string, string[]> = {
   status: ['--json'],
   evaluate: ['--json'],
-  apply: ['--decision', '--action', '--json'],
+  apply: ['--decision', '--action', '--worktree', '--json'],
 }
 
 /**

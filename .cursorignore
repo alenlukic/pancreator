@@ -1,5 +1,11 @@
-# Worktree checkouts are full copies of this repository. Each carries its own
-# AGENTS.md, and Cursor otherwise discovers those as nested instruction files.
-worktrees/
-runtime/worktrees/
-.claude/worktrees/
+# Worktree checkouts are full copies of this repository. Suppress only their
+# instruction files so Cursor can still read and edit the declared workspace.
+worktrees/**/AGENTS.md
+worktrees/**/CLAUDE.md
+worktrees/**/.cursorrules
+runtime/worktrees/**/AGENTS.md
+runtime/worktrees/**/CLAUDE.md
+runtime/worktrees/**/.cursorrules
+.claude/worktrees/**/AGENTS.md
+.claude/worktrees/**/CLAUDE.md
+.claude/worktrees/**/.cursorrules
