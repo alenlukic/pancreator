@@ -229,20 +229,27 @@ function versionSources(
 }
 
 /**
- * The allocation a worktree still holds: its latest record whose version no
- * consulted branch has published yet. A release that already landed frees the
- * worktree to allocate again; a repeated request before then returns the same
- * version, which is what makes a retried ship stage idempotent.
+ * The allocation a worktree still holds: its latest record for the same bump
+ * whose version no consulted branch has published yet. A release that already
+ * landed frees the worktree to allocate again; a repeated request before then
+ * returns the same version, which is what makes a retried ship stage
+ * idempotent. A different bump is a different candidate and allocates anew,
+ * because the validator binds the accepted version to the bump it was handed
+ * out for.
  */
 function heldAllocation(
   allocations: ReleaseAllocationRecord[],
   workspace: string,
+  bump: ReleaseBump,
   published: Set<string>,
 ): ReleaseAllocationRecord | null {
-  const own = allocations.filter((record) => record.workspace === workspace)
-  const latest = own.at(-1)
+  const latest = allocations
+    .filter((record) => record.workspace === workspace)
+    .at(-1)
 
-  return latest && !published.has(latest.version) ? latest : null
+  return latest && latest.bump === bump && !published.has(latest.version)
+    ? latest
+    : null
 }
 
 /**
@@ -284,7 +291,7 @@ export function allocateReleaseVersion(
           .filter((source) => !source.source.startsWith('allocations'))
           .map((source) => source.version),
       )
-      const held = heldAllocation(allocations, worktreePath, published)
+      const held = heldAllocation(allocations, worktreePath, bump, published)
 
       if (held) {
         return { status: 'reused', allocation: held, ledger_path: ledgerPath }

@@ -76,6 +76,17 @@ test('two worktrees allocating against one base receive distinct versions, and a
   assert.equal(repeat.status, 'reused')
   assert.equal(repeat.allocation.version, one.allocation.version)
   assert.equal(readReleaseAllocations(root).length, 2)
+
+  // A steward that reconsiders the bump is handed a fresh number for it, not
+  // the minor one the validator would then refuse under a patch bump.
+  const rebumped = allocateReleaseVersion(root, first.name, 'patch')
+
+  assert.equal(rebumped.status, 'allocated')
+  assert.equal(
+    rebumped.allocation.version,
+    nextSemanticVersion(two.allocation.version, 'patch'),
+  )
+  assert.equal(readReleaseAllocations(root).length, 3)
   assert.ok(
     readFileSync(one.ledger_path, 'utf8').includes(one.allocation.version),
   )
