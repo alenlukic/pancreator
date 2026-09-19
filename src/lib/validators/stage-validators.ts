@@ -2205,7 +2205,14 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     const rerun =
       text.length > 0 ? profileCommandInText(input.root, text) : null
 
-    if (rerun) {
+    const configuredProfile = rerun
+      ? loadRepositoryChecks(input.root).profiles[rerun.profile]
+      : undefined
+    const readOnlyConfiguration =
+      rerun?.profile === 'configuration' &&
+      configuredProfile?.commands.length === 1
+
+    if (rerun && !readOnlyConfiguration) {
       issues.push(
         issue(
           'plan.case_reruns_profile',

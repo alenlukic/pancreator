@@ -2207,6 +2207,42 @@ test('plan trace validates pan commands against the shared CLI option grammar', 
   assert.equal(validResult.status, 'passed', JSON.stringify(validResult.issues))
 })
 
+test('plan trace accepts a read-only configuration verification method', () => {
+  const root = validatorFixtureRoot('pan-plan-configuration-profile-')
+  const target = 'output.json'
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      setup: [],
+      profiles: {
+        configuration: {
+          description: 'read-only configuration validation',
+          probes: [],
+          commands: ['npm run validate'],
+        },
+      },
+    })}\n`,
+  )
+  writePlanWithQuestions(root, target, [], [], undefined, [
+    {
+      id: 'TP-CONFIG',
+      criterion: 'AC-01',
+      action: 'Run pan repository-check configuration',
+    },
+  ])
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+})
+
 test('plan trace rejects a test-plan case that reruns a profile', () => {
   const root = validatorFixtureRoot('pan-plan-profile-rerun-')
   const target = 'output.json'

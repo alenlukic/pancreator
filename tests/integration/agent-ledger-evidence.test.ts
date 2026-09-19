@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  AGENT_PROFILE_EXECUTION_ALLOWANCE,
+  agentProfileExecutionAllowance,
   agentRecordedProfilePasses,
 } from '../../src/lib/agent-ledger-evidence.js'
 import { buildInvocationInputs } from '../../src/lib/context.js'
@@ -18,6 +18,7 @@ import type {
   InvocationEvidenceWorker,
   InvocationReference,
   RunState,
+  StageDefinition,
   StageHistoryItem,
 } from '../../src/lib/types.js'
 import { createFixture, writeJson } from '../helpers.js'
@@ -210,6 +211,8 @@ test('the ledger yields the latest passing execution of each profile', () => {
   assert.deepEqual(agentRecordedProfilePasses(root, RUN_ID), [
     {
       profile: 'fast',
+      invokedBy: 'agent',
+      workerRole: null,
       evidencePath: 'agent/evidence/second.log',
       fingerprint: 'fp-current',
       invocationId: 'verify-1',
@@ -251,6 +254,7 @@ test('a card cites an agent-recorded pass at the current fingerprint', () => {
     status: 'passed',
     started_at: '2026-09-13T10:00:00.000Z',
     invoked_by: 'agent',
+    worker_role: 'review',
     evidence_log: `runtime/logs/workflows/${RUN_ID}/agent/evidence/agent-fast.log`,
   })
 
@@ -279,11 +283,53 @@ test('a card cites an agent-recorded pass at the current fingerprint', () => {
   // The card names the recorded pass and the ledger it came from, and stops
   // calling the workspace superseded.
   assert.match(fast.description, /agent-recorded pass/u)
+  assert.match(fast.description, /role `review`/u)
   assert.match(fast.description, /`verify-1`/u)
   assert.ok(fast.description.includes(ledgerPath))
   assert.match(fast.description, /the current workspace/u)
   assert.doesNotMatch(fast.description, /superseded/u)
   assert.match(fast.condition ?? '', /gate_evidence_citations/u)
+})
+
+test('a harness ledger pass renders as a prepare prefetch', () => {
+  const root = createFixture()
+  const implement = historyItem('implement', 'implement-1', 'fp-before')
+
+  implement.deterministic = [
+    {
+      id: 'implement.unit_tests',
+      type: 'shell',
+      hard: true,
+      passed: true,
+      command: 'pan repository-check fast',
+      exit_code: 0,
+      timed_out: false,
+      evidence_path: 'agent/evidence/implement-fast.log',
+      workspace_fingerprint: 'fp-before',
+    },
+  ]
+  writeJson(path.join(root, implement.output_path), {
+    data: { implementation: { changed_files: [] } },
+  })
+  recordLedgerEntry(root, {
+    profile: 'fast',
+    invocation_id: 'verify-1',
+    workspace_fingerprint: 'fp-current',
+    status: 'passed',
+    started_at: '2026-09-13T10:00:00.000Z',
+    invoked_by: 'harness',
+    evidence_log: 'agent/evidence/prefetch-fast.log',
+  })
+
+  const fast = verifyGateEvidence(
+    root,
+    stateWith([implement]),
+    'fp-current',
+  ).find((item) => item.gate_evidence?.profile === 'fast')
+
+  assert.ok(fast)
+  assert.match(fast.description, /harness prefetch at prepare/u)
+  assert.doesNotMatch(fast.description, /agent-recorded pass/u)
 })
 
 test('a ledger pass does not displace evidence already at the current fingerprint', () => {
@@ -355,14 +401,19 @@ test('a returning verification bounds execution by the remediation blast radius'
       attempt: 2,
       invocationId: 'verify-2',
       workspaceFingerprint: 'fp-current',
-    }).carried_case_scope
+    }).remediation_return
 
   // A first visit has no earlier result to carry, so nothing is bounded.
   assert.equal(scopeOf([implement]), undefined)
 
-  // A remediation that declared no changed path bounds nothing either.
+  // A remediation that declared no changed path is still a return visit. The
+  // marker is present and only its radius is empty, because the profile
+  // prohibition does not depend on how far the repair reached.
   writeJson(path.join(root, remediate.output_path), { data: {} })
-  assert.equal(scopeOf([implement, verify, remediate]), undefined)
+  assert.deepEqual(scopeOf([implement, verify, remediate]), {
+    remediation_invocation_id: 'remediate-1',
+    blast_radius: [],
+  })
 
   writeJson(path.join(root, remediate.output_path), {
     data: { implementation: { changed_files: ['src/lib/narrow.ts'] } },
@@ -379,7 +430,7 @@ test('a returning verification bounds execution by the remediation blast radius'
     {
       ...baseInvocation(root),
       attempt: 2,
-      inputs: { references: [], carried_case_scope: scope },
+      inputs: { references: [], remediation_return: scope },
     },
     qaWorker(),
   )
@@ -393,6 +444,33 @@ test('a returning verification bounds execution by the remediation blast radius'
   assert.match(brief, /Carry every other case forward/u)
   assert.match(brief, /`carried_from`/u)
   assert.match(brief, /changes no profile allowance/u)
+  assert.match(brief, /MUST NOT run a cost-bearing or mutating/u)
+  assert.match(brief, /read-only single-command profile remains allowed/u)
+  assert.doesNotMatch(brief, /When your scope allows one validation run/u)
+
+  // An empty blast radius is the shape a successful remediation that
+  // declared no changed path produces. It still forbids the profile run and
+  // still tells the worker it is on a return visit.
+  const unbounded = renderEvidenceWorkerBrief(
+    {
+      ...baseInvocation(root),
+      attempt: 2,
+      inputs: {
+        references: [],
+        remediation_return: {
+          remediation_invocation_id: 'remediate-1',
+          blast_radius: [],
+        },
+      },
+    },
+    qaWorker(),
+  )
+
+  assert.match(unbounded, /return visit after remediation `remediate-1`/u)
+  assert.match(unbounded, /MUST NOT run a cost-bearing or mutating/u)
+  assert.doesNotMatch(unbounded, /When your scope allows one validation run/u)
+  assert.match(unbounded, /execute your scope in full and carry no case/u)
+  assert.doesNotMatch(unbounded, /Carry every other case forward/u)
 
   // A first visit says none of it.
   const first = renderEvidenceWorkerBrief(baseInvocation(root), qaWorker())
@@ -445,16 +523,17 @@ test('a card states one rule about agent-side profile execution', () => {
   // The card carries both branches, which is what let them disagree.
   assert.deepEqual(currency.sort(), [false, true])
 
+  const allowance = agentProfileExecutionAllowance(false)
   const rules = new Set(
     references.map((item) =>
-      (item.condition ?? '').includes(AGENT_PROFILE_EXECUTION_ALLOWANCE)
-        ? AGENT_PROFILE_EXECUTION_ALLOWANCE
+      (item.condition ?? '').includes(allowance)
+        ? allowance
         : (item.condition ?? ''),
     ),
   )
 
   // One rule, stated once, whichever branch the evidence fell into.
-  assert.deepEqual([...rules], [AGENT_PROFILE_EXECUTION_ALLOWANCE])
+  assert.deepEqual([...rules], [allowance])
 
   for (const reference of references) {
     assert.doesNotMatch(reference.condition ?? '', /Do not run the/u)
@@ -465,10 +544,164 @@ test('a card states one rule about agent-side profile execution', () => {
   const declared = BUILT_IN_VERIFICATION_LEVELS.light.summary
 
   assert.match(declared, /fast profile once/u)
-  assert.match(AGENT_PROFILE_EXECUTION_ALLOWANCE, /fast profile once/u)
+  assert.match(allowance, /fast profile once/u)
   assert.match(declared, /never run full/u)
-  assert.match(
-    AGENT_PROFILE_EXECUTION_ALLOWANCE,
-    /never runs the full profile/u,
+  assert.match(allowance, /never runs the full profile/u)
+})
+
+/**
+ * Anything that reads as permission to execute a repository-check profile.
+ *
+ * The pattern is deliberately wider than the sentence any one surface
+ * writes, because the defect this guard exists for was an offer on a surface
+ * nobody thought to check.
+ */
+const PROFILE_RUN_OFFER =
+  /may run the fast|run the fast profile once|allows one validation run|You may run the fast|fast profile once, only as/iu
+
+/** Every shipped verify stage that delegates evidence workers. */
+function shippedVerifyStages(
+  root: string,
+): Array<{ slug: string; stage: StageDefinition }> {
+  return ['delivery', 'delivery-chunk', 'delivery-candidate', 'metacritic']
+    .map((slug) => ({
+      slug,
+      stage: stageBySlug(loadWorkflow(root, slug), 'verify'),
+    }))
+    .filter(({ stage }) => (stage.evidence_workers ?? []).length > 0)
+}
+
+/** The history that puts a verify stage on a return visit after repair. */
+function returnHistory(root: string): StageHistoryItem[] {
+  const implement = historyItem('implement', 'implement-1', 'fp-before')
+  const verify = historyItem('verify', 'verify-1', 'fp-before')
+  const remediate = historyItem('remediate', 'remediate-1', 'fp-current')
+
+  verify.outcome = 'failure'
+  implement.deterministic = [
+    {
+      id: 'implement.unit_tests',
+      type: 'shell',
+      hard: true,
+      passed: true,
+      command: 'pan repository-check fast',
+      exit_code: 0,
+      timed_out: false,
+      evidence_path: `runtime/logs/workflows/${RUN_ID}/agent/evidence/implement-1.fast.log`,
+      workspace_fingerprint: 'fp-current',
+    },
+  ]
+  writeJson(path.join(root, implement.output_path), {
+    data: { implementation: { changed_files: [] } },
+  })
+  writeJson(path.join(root, remediate.output_path), {
+    data: { implementation: { changed_files: ['src/lib/narrow.ts'] } },
+  })
+
+  return [implement, verify, remediate]
+}
+
+/** One evidence worker of a shipped stage, with its real scope text. */
+function shippedWorker(
+  stage: StageDefinition,
+  index: number,
+): InvocationEvidenceWorker {
+  const worker = (stage.evidence_workers ?? [])[index]
+
+  assert.ok(worker)
+
+  return {
+    role: worker.role,
+    persona: worker.persona,
+    agent: `pan-${worker.persona}`,
+    model: 'model',
+    scope: worker.scope,
+    brief_path: `runtime/logs/workflows/${RUN_ID}/agent/invocations/verify-2.${worker.role}.md`,
+    evidence_path: `runtime/logs/workflows/${RUN_ID}/agent/evidence/${worker.role}.md`,
+  }
+}
+
+// The previous guard asserted only that render.ts's own first-visit sentence
+// was absent, from a fixture with a stand-in scope and no gate-evidence
+// references. Both surviving offers lived outside what it could see: the
+// stage definition's scope text and the allowance on every gate-evidence
+// reference. This one renders the whole shipped document and reads all of it.
+test('no shipped return-visit evidence brief offers a profile run anywhere', () => {
+  const root = createFixture()
+  const history = returnHistory(root)
+
+  for (const { slug, stage } of shippedVerifyStages(root)) {
+    const inputs = buildInvocationInputs({
+      root,
+      state: stateWith(history),
+      stage,
+      attempt: 2,
+      invocationId: 'verify-2',
+      workspaceFingerprint: 'fp-current',
+    })
+
+    // The fixture must reach both surfaces, or the assertion below proves
+    // nothing about the document a worker actually receives.
+    assert.ok(inputs.remediation_return, `${slug} must be a return visit`)
+    assert.ok(
+      inputs.references.some((item) => item.gate_evidence),
+      `${slug} must carry gate-evidence references`,
+    )
+
+    for (const [index] of (stage.evidence_workers ?? []).entries()) {
+      const worker = shippedWorker(stage, index)
+      const brief = renderEvidenceWorkerBrief(
+        { ...baseInvocation(root), attempt: 2, inputs },
+        worker,
+      )
+
+      assert.ok(
+        brief.includes(worker.scope),
+        `${slug}/${worker.role} brief must carry the shipped scope`,
+      )
+      assert.doesNotMatch(
+        brief,
+        PROFILE_RUN_OFFER,
+        `${slug}/${worker.role} return brief must not offer a profile run`,
+      )
+      assert.match(brief, /MUST NOT run a cost-bearing or mutating/u)
+    }
+  }
+})
+
+// The repair must withdraw the offer on a return, not delete it everywhere:
+// a first visit still owes its worker one validation run.
+test('a shipped first-visit evidence brief still offers its one validation run', () => {
+  const root = createFixture()
+  const implement = historyItem('implement', 'implement-1', 'fp-before')
+
+  writeJson(path.join(root, implement.output_path), {
+    data: { implementation: { changed_files: [] } },
+  })
+
+  const { slug, stage } = shippedVerifyStages(root)[0] ?? {
+    slug: '',
+    stage: undefined,
+  }
+
+  assert.ok(stage, 'the delivery verify stage must declare evidence workers')
+
+  const inputs = buildInvocationInputs({
+    root,
+    state: stateWith([implement]),
+    stage,
+    attempt: 1,
+    invocationId: 'verify-1',
+    workspaceFingerprint: 'fp-current',
+  })
+
+  assert.equal(inputs.remediation_return, undefined, `${slug} is a first visit`)
+
+  const brief = renderEvidenceWorkerBrief(
+    { ...baseInvocation(root), inputs },
+    shippedWorker(stage, 0),
   )
+
+  assert.match(brief, PROFILE_RUN_OFFER)
+  assert.doesNotMatch(brief, /MUST NOT run a cost-bearing or mutating/u)
 })

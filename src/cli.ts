@@ -187,6 +187,7 @@ import {
   invocationValidationPath,
   validateRepository,
 } from './lib/validation.js'
+import { PRIMER_BODY_FRESHNESS_LIMIT } from './lib/validators/target-repo-primer.js'
 import { buildValidationMap } from './lib/requirements/map.js'
 import { loadRegistry } from './lib/requirements/registry.js'
 import { resolveRequirements } from './lib/requirements/resolve.js'
@@ -1406,6 +1407,9 @@ async function main(): Promise<void> {
         ...(workerActions.length > 0 ? { worker_actions: workerActions } : {}),
         ...(result.prepared_delegation
           ? { prepared_delegation: result.prepared_delegation }
+          : {}),
+        ...(result.prepared_evidence
+          ? { prepared_evidence: result.prepared_evidence }
           : {}),
         advisories: result.advisories,
       })
@@ -4485,6 +4489,7 @@ async function main(): Promise<void> {
           ...(agent ? { agent } : {}),
           ...(model ? { model } : {}),
           launchMode: parseWorkerLaunchMode(option(args, '--launch-mode')),
+          ...(hasFlag(args, '--new-attempt') ? { newAttempt: true } : {}),
         })
 
         print(
@@ -4496,6 +4501,9 @@ async function main(): Promise<void> {
                 (launch.evidence_attempt
                   ? `, brief ${launch.evidence_attempt.brief_path}, evidence ` +
                     `${launch.evidence_attempt.evidence_path}`
+                  : '') +
+                (launch.warnings?.length
+                  ? `\nWarning: ${launch.warnings.join('\nWarning: ')}`
                   : ''),
           json,
         )
@@ -4807,6 +4815,22 @@ async function main(): Promise<void> {
         gate_cache: {
           ...gateCacheStatus(root),
           disable_with: `${GATE_CACHE_ENV}=0`,
+        },
+        // Advisory: `PRIMER-001` makes the primer mandatory reading in every
+        // installation, so doctor states its freshness even where repository
+        // validation stays silent. A drifted primer is a readiness gap the
+        // librarian closes with `/pan-build-docs`, not a doctor failure.
+        target_repo_primer: {
+          ...(validation.target_repo_primer ?? {
+            source_head: null,
+            current_head: null,
+            generated_at: null,
+            drifted: false,
+            stamp_predates_source: false,
+            body_freshness: 'unverified' as const,
+            message: 'no target repository primer is present',
+          }),
+          limit: PRIMER_BODY_FRESHNESS_LIMIT,
         },
         repository_check_environment: {
           profiles_without_probes: Object.entries(repositoryChecks.profiles)

@@ -140,7 +140,37 @@ export function gitChangedPathsBetween(
     `${base}...${head}`,
   ])
 
-  return result.stdout
+  return diffNameOnlyPaths(result.stdout)
+}
+
+/**
+ * Repository-relative paths whose content differs between two commit trees.
+ *
+ * A three-dot diff answers "what did this branch add since the fork", which
+ * counts a path the base already holds at the same content whenever the two
+ * commits fork. A rebase makes exactly that shape, so a caller asking what
+ * changed between two specific trees must compare the trees themselves.
+ */
+export function gitChangedPathsBetweenCommits(
+  root: string,
+  base: string,
+  head: string,
+  options: { detectRenames?: boolean } = {},
+): string[] {
+  const result = runGit(root, [
+    'diff',
+    '--name-only',
+    ...(options.detectRenames === false ? ['--no-renames'] : []),
+    '--end-of-options',
+    base,
+    head,
+  ])
+
+  return diffNameOnlyPaths(result.stdout)
+}
+
+function diffNameOnlyPaths(stdout: string): string[] {
+  return stdout
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
@@ -595,6 +625,18 @@ export function gitCommitChangedPaths(root: string, commit: string): string[] {
   ])
 
   return result.stdout.split('\0').filter(Boolean).sort()
+}
+
+/** Author date of one commit as an ISO-8601 instant, or null when unknown. */
+export function gitCommitDate(root: string, commit: string): string | null {
+  const result = runGit(
+    root,
+    ['show', '-s', '--format=%cI', '--end-of-options', commit],
+    { allowFailure: true },
+  )
+  const value = result.stdout.trim()
+
+  return result.status === 0 && value.length > 0 ? value : null
 }
 
 /** Subject line recorded by one commit. */
@@ -1215,13 +1257,7 @@ export function gitWorkspaceSnapshot(
   }
 }
 
-/**
- * Newest ancestor of `head` that a ref other than the current branch already
- * holds, or null when this branch carries its history alone.
- *
- * Null is also the answer when the branch rejoins shared history at more than
- * one commit, because no single commit bounds the window there.
- */
+/** Newest shared-history boundary of this branch, when unique. */
 function sharedHistoryTip(workspaceDir: string, head: string): string | null {
   const branch = gitCurrentBranch(workspaceDir)
   const result = runGit(
@@ -1252,31 +1288,6 @@ function sharedHistoryTip(workspaceDir: string, head: string): string | null {
 }
 
 /**
- * Commit the change window starts from.
- *
- * The caller's base normally bounds it. The release sync a ship stage must
- * run rebases the branch onto a fetched main, which puts commits the working
- * tree never produced above that base; a window opened at the base would
- * report every path the upstream advance carried as a workspace change. When
- * the shared history this branch now sits on is ahead of the base, it is the
- * truthful start instead. Shared history at or behind the base leaves the
- * base as the tighter bound.
- */
-function commitWindowStart(
-  workspaceDir: string,
-  base: string,
-  head: string,
-): string {
-  const shared = sharedHistoryTip(workspaceDir, head)
-
-  if (shared === null || shared === base) {
-    return base
-  }
-
-  return gitIsAncestor(workspaceDir, shared, base) ? base : shared
-}
-
-/**
  * Content of every path the commits between the window start and `head`
  * touched, read from the working tree. Null when the caller named no base,
  * when HEAD has not moved, or when the range does not resolve, which leaves
@@ -1295,12 +1306,31 @@ function commitAbsorbedContent(
   let changed: string[]
 
   try {
-    changed = gitChangedPathsBetween(
-      workspaceDir,
-      commitWindowStart(workspaceDir, base, head),
-      head,
-      { detectRenames: false },
-    )
+    // The direct tree comparison is the outer bound: replayed commits whose
+    // content the recorded base already held disappear from it. It must be a
+    // two-commit tree diff, because a three-dot diff reads from the fork
+    // point and so reports the replayed content a rebase moved. When a rebase
+    // also introduced upstream content, intersect that bound with this
+    // branch's post-shared-history delta so the upstream advance disappears.
+    const direct = gitChangedPathsBetweenCommits(workspaceDir, base, head, {
+      detectRenames: false,
+    })
+    const shared = sharedHistoryTip(workspaceDir, head)
+
+    if (
+      shared === null ||
+      shared === base ||
+      gitIsAncestor(workspaceDir, shared, base)
+    ) {
+      changed = direct
+    } else {
+      const branchDelta = new Set(
+        gitChangedPathsBetweenCommits(workspaceDir, shared, head, {
+          detectRenames: false,
+        }),
+      )
+      changed = direct.filter((relativePath) => branchDelta.has(relativePath))
+    }
   } catch {
     // A base the workspace no longer holds, for example after a rebase, is a
     // missing comparison rather than a failure of the snapshot.

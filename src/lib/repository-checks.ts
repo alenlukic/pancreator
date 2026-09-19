@@ -1149,6 +1149,8 @@ export function recordAgentRepositoryCheckForRuns(
    * what keeps their entries — and the artifacts those entries name — apart.
    */
   workerRole: string | null = null,
+  /** Invocation being prepared, before state.current_invocation is durable. */
+  invocationIdOverride: string | null = null,
 ): string[] {
   const recorded: string[] = []
   let fingerprint: string | null = null
@@ -1162,7 +1164,10 @@ export function recordAgentRepositoryCheckForRuns(
 
     appendJsonLine(evidence.absolute, {
       profile: result.profile,
-      invocation_id: loadState(root, runId).current_invocation?.id ?? null,
+      invocation_id:
+        invocationIdOverride ??
+        loadState(root, runId).current_invocation?.id ??
+        null,
       ...(workerRole ? { worker_role: workerRole } : {}),
       workspace_fingerprint: fingerprint,
       status: result.status,

@@ -241,3 +241,14 @@ test('a prepared verify card carries the baseline and implement-gate walls', () 
     /After implement: 1305 tests in 118\.0s .*90\.000ms marginal per test/u,
   )
 })
+
+test('review guidance cites the configured wall authority', () => {
+  const skill = readFileSync(
+    path.join(process.cwd(), 'library/skills/review-squad-pancreator.md'),
+    'utf8',
+  )
+
+  assert.match(skill, /configured `fast_wall` ceiling/u)
+  assert.match(skill, /`ship.fast_wall_ceiling`/u)
+  assert.doesNotMatch(skill, /No suite-duration ceiling is in force/u)
+})

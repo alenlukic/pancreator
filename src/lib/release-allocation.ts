@@ -5,6 +5,7 @@ import {
   gitBranchExists,
   gitDefaultBranch,
   gitHead,
+  gitRevParse,
   gitShowFile,
   INTEGRATION_BRANCH,
 } from './git.js'
@@ -359,4 +360,58 @@ export function releaseAllocationFor(
       )
       .at(-1) ?? null
   )
+}
+
+/** Allocation authorizing this workspace/version regardless of bump. */
+export function releaseAllocationForVersion(
+  root: string,
+  workspace: string,
+  proposedVersion: string,
+): ReleaseAllocationRecord | null {
+  const resolved = path.resolve(workspace)
+
+  return (
+    readReleaseAllocations(root)
+      .filter(
+        (record) =>
+          path.resolve(record.workspace) === resolved &&
+          record.version === proposedVersion,
+      )
+      .at(-1) ?? null
+  )
+}
+
+export interface ReleaseVersionCollision {
+  branch: string
+  commit: string
+  version: string
+}
+
+/** Published branch tip that already owns a proposed release version. */
+export function releaseVersionCollision(
+  root: string,
+  proposedVersion: string,
+): ReleaseVersionCollision | null {
+  const repositoryRoot = workspaceRepositoryRoot(root)
+  const branches = new Set<string>([INTEGRATION_BRANCH])
+  const defaultBranch = gitDefaultBranch(repositoryRoot)
+
+  if (defaultBranch) {
+    branches.add(defaultBranch)
+  }
+
+  for (const branch of branches) {
+    if (
+      gitBranchExists(repositoryRoot, branch) &&
+      versionAtRef(repositoryRoot, branch) === proposedVersion
+    ) {
+      return {
+        branch,
+        commit: gitRevParse(repositoryRoot, branch),
+        version: proposedVersion,
+      }
+    }
+  }
+
+  return null
 }
