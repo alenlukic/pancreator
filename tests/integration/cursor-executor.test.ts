@@ -40,7 +40,7 @@ import { checkpoint } from './delivery-helpers.js'
 
 /** Flags the installed CLI declares. A case may drop one to fail preflight. */
 const HELP_FLAGS =
-  '--output-format --trust --model --resume --workspace --add-dir'
+  '--output-format --trust --force --model --resume --workspace --add-dir'
 
 function withCursorFixture<T>(
   root: string,
@@ -128,7 +128,13 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
     const passed = adapter.run('canonical prompt')
 
     assert.equal(passed.ok, true, passed.error ?? 'adapter failed')
-    assert.equal(readFileSync(promptPath, 'utf8'), 'canonical prompt')
+    // A worktree-bound worker receives the harness path rule ahead of the
+    // canonical prompt, which itself is delivered unchanged.
+    const delivered = readFileSync(promptPath, 'utf8')
+
+    assert.ok(delivered.startsWith('## Execution context\n'))
+    assert.ok(delivered.includes(`\`${workspace}\``))
+    assert.ok(delivered.endsWith('\ncanonical prompt'))
     assert.equal(passed.session_id, 'cursor-session')
     assert.equal(passed.reported_model, 'Expected Variant')
     assert.deepEqual(passed.model_verification, {
@@ -470,7 +476,7 @@ test('headless Cursor preflight pauses when the CLI drops a required flag', () =
         'cursor',
       )
     },
-    '--output-format --trust --model --resume --add-dir',
+    '--output-format --trust --force --model --resume --add-dir',
   )
 })
 
