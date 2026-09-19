@@ -369,6 +369,61 @@ export function withFakeEvaluator<T>(
   }
 }
 
+/**
+ * A fake `cursor-agent` that answers the away evaluator and the horizon
+ * arbiter with different documents. The prompt travels over stdin, and the
+ * arbiter prompt opens with a fixed sentence, so the script selects its reply
+ * by that marker. `arbiter` may be `null` to make the arbiter exchange fail
+ * (no JSON), which exercises the deterministic fallback.
+ */
+export function withFakeEvaluatorAndArbiter<T>(
+  root: string,
+  evaluator: unknown,
+  arbiter: unknown | null,
+  body: () => T,
+): T {
+  const binary = path.join(root, 'fake-cursor-agent')
+  const evaluatorReply = JSON.stringify({
+    session_id: 'evaluator-session',
+    result: JSON.stringify(evaluator),
+  })
+  const arbiterReply =
+    arbiter === null
+      ? 'not json'
+      : JSON.stringify({
+          session_id: 'arbiter-session',
+          result: JSON.stringify(arbiter),
+        })
+
+  writeFileSync(
+    binary,
+    [
+      '#!/bin/sh',
+      'input=$(cat)',
+      'case "$input" in',
+      `  *"You are the arbiter of a long-horizon session"*) printf '%s\\n' '${arbiterReply.replaceAll("'", "'\\''")}' ;;`,
+      `  *) printf '%s\\n' '${evaluatorReply.replaceAll("'", "'\\''")}' ;;`,
+      'esac',
+      '',
+    ].join('\n'),
+  )
+  chmodSync(binary, 0o755)
+
+  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+
+  try {
+    return body()
+  } finally {
+    if (previousBinary === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
+    }
+  }
+}
+
 export function withStub<T>(
   stubPath: string,
   mode: string | null,

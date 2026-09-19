@@ -36,6 +36,14 @@ import {
   type AwayOption,
 } from './away-mode.js'
 import { applyAwayDecision, evaluateAwayState } from './away-orchestration.js'
+import {
+  appendArbiterRecord,
+  applyArbiterAction,
+  arbitrateHorizonStop,
+  type ArbiterAction,
+  type ArbitrateOptions,
+  type HorizonHardBlock,
+} from './horizon-arbiter.js'
 import { resolveOrCreateWorktree } from './worktrees.js'
 import type { RunContract, RunState } from './types.js'
 
@@ -845,6 +853,7 @@ function startWorkflowTask(
 export function nextHorizonTask(
   root: string,
   sessionId: string,
+  options: ArbitrateOptions = {},
 ): HorizonNextResult {
   return withOperationMutex(mutexPath(root, sessionId), () => {
     let state = skipBlockedDependents(loadHorizonSession(root, sessionId))
@@ -919,18 +928,25 @@ export function nextHorizonTask(
       }
 
       if (!executed.ok) {
-        state = writeDeferral(
+        state = arbitrateTaskStop(
           root,
           state,
           executed.task,
+          null,
           executed.error ?? 'The prompt task executor failed.',
           [executed.artifact_path],
+          options,
         )
       }
+      const settled = state.tasks.find((task) => task.id === selected.id)
       state = writeHandoff(
         root,
         sessionTerminalState(state),
-        executed.ok ? 'finished' : 'deferred',
+        executed.ok
+          ? 'finished'
+          : settled?.status === 'pending'
+            ? 'restarted'
+            : 'deferred',
         selected.id,
       )
       return {
@@ -1075,12 +1091,25 @@ function stopRunForDeferral(
   )
 }
 
+/**
+ * Why a task left the session. Only three writers exist: the arbiter naming
+ * one of the four hard blocks, the arbiter and its fallback both failing to
+ * act (a harness condition, never an operator-owned block), and the
+ * operator's own `defer` command. A deferral with no classification is not
+ * possible, so a post-run review always knows which authority ended the task.
+ */
+export type HorizonDeferralClassification =
+  | { kind: 'hard_block'; hard_block: HorizonHardBlock; reasoning: string }
+  | { kind: 'harness_unrecoverable' }
+  | { kind: 'operator' }
+
 function writeDeferral(
   root: string,
   state: HorizonSessionState,
   task: HorizonTask,
   reason: string,
   evidence: string[],
+  classification: HorizonDeferralClassification,
 ): HorizonSessionState {
   stopRunForDeferral(root, task, reason)
   const dependentIds = transitiveHorizonDependents(state, task.id)
@@ -1088,6 +1117,7 @@ function writeDeferral(
     schema_version: 1,
     task: task.id,
     reason,
+    classification,
     rung_history: task.ladder,
     evidence_paths: evidence,
     dependents: dependentIds,
@@ -1107,6 +1137,10 @@ function writeDeferral(
     resolveInside(root, inboxPath),
     `# Deferred horizon task ${task.id}\n\n` +
       `Reason: ${reason}\n\n` +
+      `Classification: ${classification.kind}` +
+      (classification.kind === 'hard_block'
+        ? ` (${classification.hard_block})\n\nArbiter reasoning: ${classification.reasoning}\n\n`
+        : '\n\n') +
       `Dependents: ${dependentIds.join(', ') || 'none'}\n\n` +
       `Evidence:\n${evidence.map((item) => `- ${item}`).join('\n')}\n`,
   )
@@ -1135,11 +1169,109 @@ function writeDeferral(
   }
 }
 
+/**
+ * Put one stop before the arbiter and apply its outcome to the session.
+ *
+ * This is the only path from a stop to the deferral ledger that the harness
+ * itself takes. The arbiter overrides by default; a task defers only when the
+ * arbiter names a hard block or when neither it nor its fallback could act.
+ * `continued` leaves the task running so the next checkpoint drives the run
+ * it just nudged; `restart` returns the task to `pending` so the session
+ * reopens it from its stored request.
+ */
+function arbitrateTaskStop(
+  root: string,
+  state: HorizonSessionState,
+  task: HorizonTask,
+  run: RunState | null,
+  stopReason: string,
+  evidence: string[],
+  options: ArbitrateOptions,
+): HorizonSessionState {
+  const outcome = arbitrateHorizonStop(
+    root,
+    {
+      sessionId: state.session_id,
+      taskId: task.id,
+      taskTitle: task.title,
+      run,
+      stopReason,
+    },
+    options,
+  )
+
+  switch (outcome.outcome) {
+    case 'continued':
+      return persistHorizonSession(root, state, 'task_stop_overridden', {
+        task_id: task.id,
+        run_id: run?.run_id ?? null,
+        stop_reason: stopReason,
+        action: outcome.action,
+        reasoning: outcome.reasoning,
+      })
+    case 'restart': {
+      if (run) {
+        stopRunForDeferral(
+          root,
+          task,
+          `restarted by the arbiter: ${stopReason}`,
+        )
+      }
+
+      const reopened: HorizonTask = {
+        ...task,
+        status: 'pending',
+        run_id: null,
+        replan_run_id: null,
+      }
+
+      return persistHorizonSession(
+        root,
+        {
+          ...state,
+          active_task_id:
+            state.active_task_id === task.id ? null : state.active_task_id,
+          tasks: state.tasks.map((candidate) =>
+            candidate.id === task.id ? reopened : candidate,
+          ),
+        },
+        'task_restarted',
+        {
+          task_id: task.id,
+          run_id: run?.run_id ?? null,
+          stop_reason: stopReason,
+          reasoning: outcome.reasoning,
+        },
+      )
+    }
+    case 'hard_block':
+      return writeDeferral(
+        root,
+        state,
+        task,
+        `[${outcome.hard_block}] ${stopReason}`,
+        evidence,
+        {
+          kind: 'hard_block',
+          hard_block: outcome.hard_block,
+          reasoning: outcome.reasoning,
+        },
+      )
+    case 'harness_unrecoverable':
+      return writeDeferral(root, state, task, outcome.reason, evidence, {
+        kind: 'harness_unrecoverable',
+      })
+    default:
+      return state
+  }
+}
+
 function reconcileDrivenTask(
   root: string,
   state: HorizonSessionState,
   task: HorizonTask,
   driven: HeadlessDriverResult,
+  options: ArbitrateOptions = {},
 ): HorizonSessionState {
   const run = driven.state
   task = synchronizeLadder(task, run)
@@ -1167,12 +1299,14 @@ function reconcileDrivenTask(
     const failureRecord = run.horizon_ladder?.failure_record_path
 
     if (!failureRecord) {
-      return writeDeferral(
+      return arbitrateTaskStop(
         root,
         state,
         task,
+        run,
         driven.handoff_reason ?? 'ladder exhausted',
         [],
+        options,
       )
     }
     const recorded = recordHorizonReplan(root, run.run_id)
@@ -1198,16 +1332,18 @@ function reconcileDrivenTask(
   }
 
   if (operatorOnly || ladderExhausted || driven.stop.type === 'terminal') {
-    return writeDeferral(
+    return arbitrateTaskStop(
       root,
       state,
       task,
+      run,
       driven.handoff_reason ?? run.pause_reason ?? 'task could not continue',
       [
         ...(run.horizon_ladder?.failure_record_path
           ? [run.horizon_ladder.failure_record_path]
           : []),
       ],
+      options,
     )
   }
 
@@ -1421,6 +1557,7 @@ export function driveRunUnderAwayMode(
 export function checkpointHorizonSession(
   root: string,
   sessionId: string,
+  options: ArbitrateOptions = {},
 ): { session: HorizonSessionState; driven: HeadlessDriverResult } {
   return withOperationMutex(mutexPath(root, sessionId), () => {
     let state = loadHorizonSession(root, sessionId)
@@ -1441,7 +1578,7 @@ export function checkpointHorizonSession(
         ? attempt.driven
         : operatorOnlyStop(attempt.driven, attempt.blocked)
 
-    state = reconcileDrivenTask(root, state, task, driven)
+    state = reconcileDrivenTask(root, state, task, driven, options)
 
     const transitioned = state.active_task_id === null
 
@@ -1480,11 +1617,117 @@ export function deferHorizonTask(
       fail(`Unknown horizon task: ${taskId}`)
     }
 
-    state = writeDeferral(root, state, task, reason, evidence)
+    state = writeDeferral(root, state, task, reason, evidence, {
+      kind: 'operator',
+    })
     state = writeHandoff(root, sessionTerminalState(state), 'deferred', taskId)
     return persistHorizonSession(root, state, 'task_deferred', {
       task_id: taskId,
       reason,
+    })
+  })
+}
+
+/**
+ * Reinstate a deferred task on the supervisor's own reasoning.
+ *
+ * A deferral record names which authority ended the task. When the
+ * supervisor reading the post-run record does not confirm the hard block, or
+ * finds a harness failure, this is the override: the action applies to the
+ * task's run (or the task reopens from its request), its dependents come back
+ * to `pending`, and the session returns to `running` so `horizon start`
+ * drives it again. The decision and its reasoning join the arbiter ledger
+ * under the `supervisor` actor.
+ */
+export function reinstateHorizonTask(
+  root: string,
+  sessionId: string,
+  taskId: string,
+  action: ArbiterAction,
+  reasoning: string,
+): HorizonSessionState {
+  return withOperationMutex(mutexPath(root, sessionId), () => {
+    let state = loadHorizonSession(root, sessionId)
+    const task = state.tasks.find((candidate) => candidate.id === taskId)
+
+    if (!task) {
+      fail(`Unknown horizon task: ${taskId}`)
+    }
+
+    if (task.status !== 'deferred' && task.status !== 'failed') {
+      fail(
+        `Horizon task '${taskId}' is '${task.status}'; only a deferred or failed task can be reinstated.`,
+      )
+    }
+
+    if (reasoning.trim().length === 0) {
+      fail(
+        'Reinstating a task requires --reason with the supervisor reasoning.',
+      )
+    }
+
+    if (state.active_task_id && state.active_task_id !== taskId) {
+      fail(
+        `Horizon session '${sessionId}' already runs task '${state.active_task_id}'.`,
+      )
+    }
+
+    const run = taskRunState(root, task)
+    const runAcceptsAction =
+      run !== null && run.status !== 'succeeded' && run.status !== 'failed'
+    const restart = action.type === 'restart-task' || !runAcceptsAction
+
+    if (!restart && run) {
+      applyArbiterAction(root, run, action, reasoning)
+    }
+
+    appendArbiterRecord(root, {
+      session_id: sessionId,
+      task_id: taskId,
+      run_id: run?.run_id ?? null,
+      stop_reason: 'supervisor reinstatement of a deferred task',
+      round: 0,
+      verdict: { verdict: 'override', action, reasoning },
+      result: 'applied',
+      exchange_path: null,
+      actor: 'supervisor',
+    })
+
+    const dependentIds = transitiveHorizonDependents(state, taskId)
+    const reinstated: HorizonTask = restart
+      ? { ...task, status: 'pending', run_id: null, replan_run_id: null }
+      : { ...task, status: 'running' }
+
+    state = {
+      ...state,
+      status: 'running',
+      active_task_id: restart ? null : taskId,
+      tasks: state.tasks.map((candidate) => {
+        if (candidate.id === taskId) {
+          return reinstated
+        }
+
+        if (
+          dependentIds.includes(candidate.id) &&
+          candidate.status === 'blocked'
+        ) {
+          return { ...candidate, status: 'pending' }
+        }
+
+        return candidate
+      }),
+    }
+    // A dependent whose other dependency is still deferred goes back to
+    // `blocked` here, so only the work this reinstatement actually frees
+    // becomes eligible.
+    state = skipBlockedDependents(state)
+    state = writeHandoff(root, state, 'reinstated', taskId)
+
+    return persistHorizonSession(root, state, 'task_reinstated', {
+      task_id: taskId,
+      run_id: run?.run_id ?? null,
+      action,
+      reasoning,
     })
   })
 }

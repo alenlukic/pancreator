@@ -67,9 +67,14 @@ import {
   latestHorizonHandoff,
   loadHorizonSession,
   nextHorizonTask,
+  reinstateHorizonTask,
   startHorizonSession,
   type HorizonQueueTaskInput,
 } from './lib/horizon.js'
+import {
+  ARBITER_ACTIONS,
+  type ArbiterActionType,
+} from './lib/horizon-arbiter.js'
 import {
   applyAwayDecision,
   evaluateAwayState,
@@ -3619,6 +3624,53 @@ async function main(): Promise<void> {
       if (sub === 'resume') {
         print(
           latestHorizonHandoff(root, requiredPositional(rest[0], 'session-id')),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'reinstate') {
+        const actionType = requiredArgument(
+          option(args, '--action'),
+          '--action',
+        )
+
+        if (!(ARBITER_ACTIONS as readonly string[]).includes(actionType)) {
+          throw new PanError(
+            `Unknown reinstate action '${actionType}'. Known: ${ARBITER_ACTIONS.join(', ')}.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const decision = option(args, '--decision')
+
+        if (
+          decision !== undefined &&
+          decision !== null &&
+          decision !== 'approve' &&
+          decision !== 'reject' &&
+          decision !== 'revise'
+        ) {
+          throw new PanError(
+            `--decision must be approve, reject, or revise, not '${decision}'.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const stage = option(args, '--stage')
+        print(
+          reinstateHorizonTask(
+            root,
+            requiredPositional(rest[0], 'session-id'),
+            requiredArgument(option(args, '--task'), '--task'),
+            {
+              type: actionType as ArbiterActionType,
+              note: requiredArgument(option(args, '--note'), '--note'),
+              ...(stage ? { stage } : {}),
+              ...(decision ? { decision } : {}),
+            },
+            requiredArgument(option(args, '--reason'), '--reason'),
+          ),
           asJson,
         )
         return

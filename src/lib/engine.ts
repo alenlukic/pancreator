@@ -7754,6 +7754,52 @@ export function decideRunAsAway(
   return decideRunWithActor(root, runId, decision, note, null, 'away')
 }
 
+/**
+ * Lift the operator-only mark from a paused run's pending decision so a
+ * long-horizon arbiter override can act on it.
+ *
+ * The mark exists so away mode cannot take a decision the harness classified
+ * as the operator's. HORIZON-001 names four hard blocks and nothing else, and
+ * the session arbiter reasons about each stop against that list before it
+ * acts. A stop it did not classify as a hard block is not the operator's, so
+ * the mark is lifted with the arbiter's reasoning recorded on the run. The
+ * run stays paused; the caller applies the override action next.
+ */
+export function liftOperatorOnlyPauseForHorizon(
+  root: string,
+  runId: string,
+  reasoning: string,
+): RunState {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(reasoning.trim().length > 0, 'Override reasoning is required.', {
+      code: 'HORIZON_OVERRIDE_REASON_REQUIRED',
+    })
+    invariant(
+      state.horizon !== undefined,
+      'Only a long-horizon run accepts an arbiter override.',
+      { code: 'HORIZON_OVERRIDE_FORBIDDEN' },
+    )
+
+    if (
+      state.pending_action.type !== 'operator_decision' ||
+      state.pending_action.operator_only !== true
+    ) {
+      return state
+    }
+
+    state.pending_action = { type: 'operator_decision' }
+    persistRun(root, state, 'horizon_override_lifted_operator_only', {
+      reasoning,
+      stage: state.current_stage,
+      pause_reason: state.pause_reason ?? null,
+    })
+
+    return state
+  })
+}
+
 /** One launched evidence worker whose declared report does not exist yet. */
 export interface InFlightEvidenceWorker {
   role: string

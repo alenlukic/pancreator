@@ -741,8 +741,22 @@ condition the worker caused itself, a transient evaluator or executor failure,
 and any ordinary judgment call are decided and recorded, never deferred. To
 make that hold, the shipped profile allows `waive-gate`, sizes the decision
 budget at 12 per run, re-evaluates a failed evaluator reply, and falls through
-to the next ranked option when a selected option does not apply. Read
-`governance/handbooks/horizon/long-horizon.md` for the hard-block table.
+to the next ranked option when a selected option does not apply.
+
+No function ends a task. Every stop that is not a terminal success passes to
+the session arbiter, a model exchange that reasons about the stop against the
+four hard blocks and overrides by default (`resume`, `set-stage`, `decide`,
+`waive-gate`, or `restart-task`, each with a directive the next worker acts
+on). A task defers only when the arbiter names the hard block it confirmed, or
+when the arbiter and its deterministic fallback both fail to act past the
+override bound; the deferral record carries that classification
+(`hard_block`, `harness_unrecoverable`, or `operator`). Every arbiter round is
+in `runtime/logs/horizon/<session-id>/arbiter.jsonl`. After the run,
+`pan horizon reinstate <session-id> --task <id> --action <...> --note <directive> --reason <text>`
+is your override of a deferral you do not confirm; it frees the task's
+dependents and returns the session to `running` so `horizon start` drives it
+again. Read `governance/handbooks/horizon/long-horizon.md` for the hard-block
+and arbiter tables.
 
 ### Long-horizon sessions
 

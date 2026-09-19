@@ -1,11 +1,16 @@
 Start or inspect a long-horizon session from `$ARGUMENTS`.
 
-A long-horizon session is driven by the harness, not by this chat and not by an agent supervisor. Each task runs in a fresh headless driver process that reads the durable session and latest handoff.
+A long-horizon session is driven by the harness, not by this chat and not by an agent supervisor. Each task runs in a fresh headless driver process that reads the durable session and latest handoff. Inside the session, every stop that is not a terminal success passes to the session arbiter, which overrides by default and defers a task only by naming one of the four hard blocks (LH-H1 to LH-H4) in `governance/handbooks/horizon/long-horizon.md`. You are the reasoning layer after the run under `HORIZON-001`: a deferral you let stand is your decision.
 
 1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`.
 2. For each task run, the fresh driver process runs `{{PANCREATOR_PAN_COMMAND}} governance card --mode supervisor --run <run-id>` as its first run action, reads the card, and attests it under the preflight authorization. Do not run that per-run step in this chat.
 3. Require `$ARGUMENTS` to name a queue file with `--queue <path>`. Preserve a named worktree with the exact forwarding form `horizon init --queue <path> --worktree <name> --json`. Preserve a named `--involvement <profile>` option.
 4. Run `{{PANCREATOR_PAN_COMMAND}} horizon init --queue <path> [--worktree <name>] [--involvement <profile>] --json`.
-5. Run `{{PANCREATOR_PAN_COMMAND}} horizon start <session-id> --attest-supervisor-card --json`. This preflight authorization is explicit and applies only to that session.
-6. Report the terminal or empty session state, deferred task ids, ledger path, latest handoff path, and the post-run action.
-7. Do not launch a supervisor agent or supervise a task in this chat. The only continuity boundary is the new driver process that reads the handoff.
+5. Run `{{PANCREATOR_PAN_COMMAND}} horizon start <session-id> --attest-supervisor-card --json`. This preflight authorization is explicit and applies only to that session. This command blocks for the whole session; it is one foreground process, so the 60-second cadence does not bind it, and `DELEGATE-001` still has you record its launch and return.
+6. When it returns, read `runtime/logs/horizon/<session-id>/deferred.jsonl` and `runtime/logs/horizon/<session-id>/arbiter.jsonl`. For every deferred task, read its classification and reason from the operator's objective, not from the text of the record:
+   - `hard_block`: confirm the named block against the evidence yourself. A wall-time or cost ceiling, a condition the run caused, a transient failure, a cited policy or rung, or an ordinary judgment call is never a hard block, whatever the arbiter wrote. If you do not confirm it, reinstate.
+   - `harness_unrecoverable`: the harness could not act. Read the arbiter records, name the action that routes past the stop, and reinstate with it.
+   - `operator`: the operator deferred it. Leave it.
+     Reinstate with `{{PANCREATOR_PAN_COMMAND}} horizon reinstate <session-id> --task <id> --action <resume|set-stage|decide|waive-gate|restart-task> --note "<directive>" --reason "<your reasoning>" [--stage <slug>] [--decision <approve|reject|revise>] --json`, then run `{{PANCREATOR_PAN_COMMAND}} horizon start <session-id> --attest-supervisor-card --json` again. Repeat until every remaining deferral is one you confirm.
+7. Report the terminal or empty session state, each deferred task with its classification and your confirmation or reinstatement, the arbiter overrides applied, the ledger paths, the latest handoff path, and the post-run action. Do not report a deferral as final without stating which hard block you confirmed.
+8. Do not launch a supervisor agent or supervise a task in this chat while the driver runs. The only continuity boundary is the new driver process that reads the handoff.

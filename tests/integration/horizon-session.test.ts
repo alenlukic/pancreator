@@ -10,6 +10,7 @@ import {
   horizonStatus,
   initHorizonSession,
   nextHorizonTask,
+  reinstateHorizonTask,
   startHorizonSession,
   type HorizonQueueTaskInput,
 } from '../../src/lib/horizon.js'
@@ -29,7 +30,9 @@ import {
   submitCurrentStage,
   submitStageOutput,
   withFakeEvaluator,
+  withFakeEvaluatorAndArbiter,
 } from './delivery-helpers.js'
+import { readArbiterLedger } from '../../src/lib/horizon-arbiter.js'
 
 /** One request file per task: `createRun` claims an inbox item exclusively. */
 function request(root: string, id: string): string {
@@ -275,7 +278,7 @@ test('deferral blocks transitive dependents and leaves unrelated work eligible',
   )
 })
 
-test('a blocker no permitted action can clear defers the task and advances the session', () => {
+test('a stop the evaluator cannot clear reaches the arbiter, which defers only by naming a hard block', () => {
   const root = createFixture()
   const created = initHorizonSession(root, threeTaskQueue(root), {
     sessionId: 'session-unclearable',
@@ -288,16 +291,12 @@ test('a blocker no permitted action can clear defers the task and advances the s
   const opened = nextHorizonTask(root, created.session_id)
   const runId = opened.run?.run_id as string
 
-  // A paused run whose blocker the away evaluator cannot resolve is the
-  // fourth rung: the task leaves the session, the session does not stop.
-  pauseRun(root, runId, 'A blocker holds the run.')
-
-  // The evaluator marks its only ranking infeasible, so the guardrail
-  // selection leaves nothing to apply. This is a ranking rejection rather
-  // than an evaluator or executor failure, and the reason assertion below is
-  // what separates the two: an evaluator failure is retried, a rejected
-  // ranking is the deferral rung.
-  const checkpointed = withFakeEvaluator(
+  // The evaluator marks its only ranking infeasible, so the away loop has
+  // nothing to apply. That used to be the deferral rung by itself. Now the
+  // stop reaches the arbiter, and the task leaves the session only because
+  // the arbiter names a hard block. The pause happens inside the fixture so
+  // its binary is not a workspace change made while the run was paused.
+  const checkpointed = withFakeEvaluatorAndArbiter(
     root,
     {
       ranked_options: [
@@ -314,7 +313,17 @@ test('a blocker no permitted action can clear defers the task and advances the s
         },
       ],
     },
-    () => checkpointHorizonSession(root, created.session_id),
+    {
+      verdict: 'hard_block',
+      hard_block: 'LH-H2',
+      reasoning:
+        'The stage needs a registry credential that the recovery flow could not find, so no agent can manufacture access.',
+    },
+    () => {
+      pauseRun(root, runId, 'A blocker holds the run.')
+
+      return checkpointHorizonSession(root, created.session_id)
+    },
   )
 
   assert.equal(checkpointed.driven.stop.type, 'operator_pause')
@@ -332,10 +341,146 @@ test('a blocker no permitted action can clear defers the task and advances the s
   )
   assert.equal(checkpointed.session.active_task_id, null)
   assert.equal(checkpointed.session.status, 'running')
-  assert.equal(deferralLedger(root, created.session_id).length, 1)
+
+  const ledger = deferralLedger(root, created.session_id) as Array<{
+    reason: string
+    classification: { kind: string; hard_block?: string }
+  }>
+
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.classification.kind, 'hard_block')
+  assert.equal(ledger[0]?.classification.hard_block, 'LH-H2')
+  assert.match(ledger[0]?.reason ?? '', /^\[LH-H2\] /u)
+
+  const arbiter = readArbiterLedger(root, created.session_id)
+
+  assert.deepEqual(
+    arbiter.map((record) => [record.result, record.verdict?.hard_block]),
+    [['hard_block', 'LH-H2']],
+  )
 
   const advanced = nextHorizonTask(root, created.session_id)
   assert.equal(advanced.task?.id, 'unrelated')
+})
+
+test('the arbiter overrides a stop by default and the supervisor can reinstate a deferred task', () => {
+  const root = createFixture()
+  const created = initHorizonSession(root, threeTaskQueue(root), {
+    sessionId: 'session-override',
+    involvement: 'long-horizon',
+  })
+  startHorizonSession(root, created.session_id, {
+    attestSupervisorCard: true,
+  })
+
+  const opened = nextHorizonTask(root, created.session_id)
+  const runId = opened.run?.run_id as string
+  const infeasible = {
+    ranked_options: [
+      {
+        rank: 1,
+        action: 'resume',
+        feasible: false,
+        rationale: 'Nothing the run can do clears this blocker.',
+        evidence: ['runtime/evidence/blocker.json'],
+        rollback_plan: {
+          steps: ['Pause the run again.'],
+          verification: 'Confirm the run is paused.',
+        },
+      },
+    ],
+  }
+
+  // The away loop has nothing to apply, so the stop reaches the arbiter. The
+  // arbiter's default is override: it resumes the run with a directive, and
+  // the task keeps its slot rather than leaving the session.
+  const overridden = withFakeEvaluatorAndArbiter(
+    root,
+    infeasible,
+    {
+      verdict: 'override',
+      action: {
+        type: 'resume',
+        note: 'The blocker is a wall-time ceiling the run itself moved; re-attempt the stage and record the excess.',
+      },
+      reasoning:
+        'A cost-backed ceiling is never a hard block, and the run caused the overshoot with its own samples.',
+    },
+    () => {
+      pauseRun(root, runId, 'A blocker holds the run.')
+
+      return checkpointHorizonSession(root, created.session_id)
+    },
+  )
+
+  assert.equal(
+    overridden.session.tasks.find((task) => task.id === 'first')?.status,
+    'running',
+  )
+  assert.equal(overridden.session.active_task_id, 'first')
+  assert.deepEqual(
+    readArbiterLedger(root, created.session_id).map((record) => [
+      record.result,
+      record.verdict?.action?.type,
+    ]),
+    [['applied', 'resume']],
+  )
+
+  // The operator's own defer is the one deferral that needs no arbiter. Its
+  // record says so, and the supervisor's reinstatement is the override of
+  // that record: the task and its dependent return, the session runs again,
+  // and the reasoning joins the arbiter ledger under the supervisor actor.
+  const deferred = deferHorizonTask(
+    root,
+    created.session_id,
+    'first',
+    'Set aside for review.',
+  )
+
+  assert.equal(
+    deferred.tasks.find((task) => task.id === 'dependent')?.status,
+    'blocked',
+  )
+  assert.deepEqual(
+    (
+      deferralLedger(root, created.session_id) as Array<{
+        classification: { kind: string }
+      }>
+    ).map((record) => record.classification),
+    [{ kind: 'operator' }],
+  )
+
+  const reinstated = reinstateHorizonTask(
+    root,
+    created.session_id,
+    'first',
+    { type: 'restart-task', note: 'Reopen from the stored request.' },
+    'The review found no hard block; the task continues from its request.',
+  )
+
+  assert.equal(
+    reinstated.tasks.find((task) => task.id === 'first')?.status,
+    'pending',
+  )
+  assert.equal(
+    reinstated.tasks.find((task) => task.id === 'first')?.run_id,
+    null,
+  )
+  assert.equal(
+    reinstated.tasks.find((task) => task.id === 'dependent')?.status,
+    'pending',
+  )
+  assert.equal(reinstated.status, 'running')
+  assert.equal(reinstated.active_task_id, null)
+  assert.equal(
+    readArbiterLedger(root, created.session_id).at(-1)?.actor,
+    'supervisor',
+  )
+
+  const reopened = nextHorizonTask(root, created.session_id)
+
+  assert.equal(reopened.task?.id, 'first')
+  assert.notEqual(reopened.run?.run_id, runId)
 })
 
 test('a selected option that fails to apply falls through to the next ranked option instead of deferring', () => {
@@ -361,7 +506,7 @@ test('a selected option that fails to apply falls through to the next ranked opt
     steps: ['Pause the run again.'],
     verification: 'Confirm the run is paused.',
   }
-  const checkpointed = withFakeEvaluator(
+  const checkpointed = withFakeEvaluatorAndArbiter(
     root,
     {
       ranked_options: [
@@ -383,6 +528,12 @@ test('a selected option that fails to apply falls through to the next ranked opt
           rollback_plan,
         },
       ],
+    },
+    {
+      verdict: 'hard_block',
+      hard_block: 'LH-H3',
+      reasoning:
+        'The fixture worker cannot run, so any later stop is settled here rather than driven further.',
     },
     () => {
       pauseRun(root, runId, 'A blocker holds the run.')
@@ -412,7 +563,7 @@ test('a selected option that fails to apply falls through to the next ranked opt
   )
 })
 
-test('an exhausted away-decision budget defers the task instead of the session', () => {
+test('an unavailable arbiter falls back to a re-attempt, and only the override bound ends the task as a harness failure', () => {
   const root = createFixture()
   const created = initHorizonSession(root, threeTaskQueue(root), {
     sessionId: 'session-budget',
@@ -435,8 +586,10 @@ test('an exhausted away-decision budget defers the task instead of the session',
   )
   const state = read(statePath) as RunState
 
-  // A guardrail the away-mode ledger enforces raises rather than returning,
-  // and that error belongs to the one task, not to the whole session.
+  // A spent decision budget raises inside the away loop. That error used to
+  // defer the task on its own. It is a mechanical condition, so it reaches
+  // the arbiter; with the arbiter returning no JSON at all, the
+  // deterministic fallback re-attempts the stage rather than deferring.
   state.away_mode = {
     ...(state.away_mode as NonNullable<RunState['away_mode']>),
     guardrails: {
@@ -445,19 +598,64 @@ test('an exhausted away-decision budget defers the task instead of the session',
     },
   }
   writeJson(statePath, state)
-  pauseRun(root, runId, 'The run needs a decision no guardrail permits.')
 
-  const checkpointed = checkpointHorizonSession(root, created.session_id)
+  const first = withFakeEvaluatorAndArbiter(root, {}, null, () => {
+    pauseRun(root, runId, 'The run needs a decision no guardrail permits.')
+
+    return checkpointHorizonSession(root, created.session_id)
+  })
 
   assert.match(
-    checkpointed.driven.handoff_reason ?? '',
+    first.driven.handoff_reason ?? '',
     /away evaluator reached no usable decision/u,
   )
   assert.equal(
-    checkpointed.session.tasks.find((task) => task.id === 'first')?.status,
+    first.session.tasks.find((task) => task.id === 'first')?.status,
+    'running',
+  )
+  assert.equal(first.session.active_task_id, 'first')
+  assert.deepEqual(
+    readArbiterLedger(root, created.session_id).map((record) => record.result),
+    [
+      'evaluator_failed',
+      'evaluator_failed',
+      'evaluator_failed',
+      'fallback_applied',
+    ],
+  )
+
+  // The fixture worker cannot run, so every re-attempt stops the same way.
+  // The override bound is what ends the task, and it is recorded as a
+  // harness failure rather than as a hard block.
+  let session = first.session
+
+  for (let round = 0; round < 12 && session.active_task_id === 'first'; ) {
+    session = withFakeEvaluatorAndArbiter(
+      root,
+      {},
+      null,
+      () => checkpointHorizonSession(root, created.session_id).session,
+    )
+    round += 1
+  }
+
+  assert.equal(
+    session.tasks.find((task) => task.id === 'first')?.status,
     'deferred',
   )
-  assert.equal(checkpointed.session.status, 'running')
+  assert.equal(session.status, 'running')
+
+  const ledger = deferralLedger(root, created.session_id) as Array<{
+    classification: { kind: string }
+  }>
+
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.classification.kind, 'harness_unrecoverable')
+  assert.ok(
+    readArbiterLedger(root, created.session_id).some(
+      (record) => record.result === 'override_bound',
+    ),
+  )
   assert.equal(nextHorizonTask(root, created.session_id).task?.id, 'unrelated')
 })
 
@@ -625,7 +823,20 @@ test('a ladder exhaustion re-plans once, defers on the second, and the session s
     'ladder_exhausted',
   )
 
-  const deferred = checkpointHorizonSession(root, created.session_id)
+  // A second exhaustion after the one re-plan is still not a deferral on the
+  // harness's own verdict: the arbiter reasons about it, and here names the
+  // unrepairable correctness failure. The hard block is what defers the task.
+  const deferred = withFakeEvaluatorAndArbiter(
+    root,
+    {},
+    {
+      verdict: 'hard_block',
+      hard_block: 'LH-H3',
+      reasoning:
+        'Two implement attempts and a scoped re-plan failed the same acceptance criterion; no permitted action repairs the correctness failure.',
+    },
+    () => checkpointHorizonSession(root, created.session_id),
+  )
 
   assert.equal(
     deferred.session.tasks.find((task) => task.id === 'ladder')?.status,
@@ -641,10 +852,17 @@ test('a ladder exhaustion re-plans once, defers on the second, and the session s
     task: string
     dependents: string[]
     rung_history: { replans_spent: number }
+    classification: { kind: string; hard_block?: string }
   }>
 
   assert.equal(records.length, 1)
   assert.equal(records[0]?.task, 'ladder')
+  assert.deepEqual(records[0]?.classification, {
+    kind: 'hard_block',
+    hard_block: 'LH-H3',
+    reasoning:
+      'Two implement attempts and a scoped re-plan failed the same acceptance criterion; no permitted action repairs the correctness failure.',
+  })
   assert.deepEqual(records[0]?.dependents, ['dependent'])
   assert.equal(records[0]?.rung_history.replans_spent, 1)
 

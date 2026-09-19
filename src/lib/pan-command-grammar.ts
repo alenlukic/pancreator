@@ -137,8 +137,10 @@ export const HELP_BODY = `Usage:
   pan horizon start <session-id> --attest-supervisor-card [--json]
   pan horizon next|status|checkpoint|resume <session-id> [--json]
   pan horizon defer <session-id> --task <id> --reason <text> [--evidence <path>]... [--json]
+  pan horizon reinstate <session-id> --task <id> --action <resume|set-stage|decide|waive-gate|restart-task> --note <directive> --reason <text> [--stage <stage-slug>] [--decision <approve|reject|revise>] [--json]
   pan horizon abandon <session-id> --reason <text> [--json]
-      A horizon session runs one eligible task per fresh driver process. Deferral blocks only transitive dependents and keeps unrelated tasks eligible.
+      A horizon session runs one eligible task per fresh driver process. The harness never defers a task on its own verdict: every stop passes to the session arbiter, which overrides unless it names one of the four hard blocks (LH-H1 to LH-H4) in the long-horizon handbook. Each verdict is in runtime/logs/horizon/<session-id>/arbiter.jsonl, and every deferral carries its classification (hard_block, harness_unrecoverable, operator). Deferral blocks only transitive dependents and keeps unrelated tasks eligible.
+      reinstate is the supervisor's override of a recorded deferral: it applies the action to the task's run (or reopens the task), frees its dependents, returns the session to running, and records the reasoning under the supervisor actor. Run 'pan horizon start <session-id> --attest-supervisor-card' afterwards to drive it.
   pan cohort init --plan-run <run-id> [--from <branch>] [--max-parallel <n>] [--json]
       --max-parallel caps the concurrent chunk runs of the session (default 4).
   pan cohort start <cohort-id> [--cohort <index>] [--json]
