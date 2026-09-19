@@ -80,8 +80,8 @@ export type CompletionEvidence =
  * `--cadence-seconds` still overrides it for an operator-directed exception.
  */
 export const DEFAULT_WATCH_CADENCE_SECONDS = 60
-/** Consecutive unchanged wakes that `DELEGATE-001` calls a stall. */
-export const DEFAULT_STALL_WAKES = 2
+/** Unchanged duration before `DELEGATE-001` permits a stall verdict. */
+export const DEFAULT_STALL_TIMEOUT_SECONDS = 5 * 60
 /** Bound so a watch never outlives an abandoned session silently. */
 export const DEFAULT_WATCH_TIMEOUT_SECONDS = 4 * 60 * 60
 /** Floor that keeps a fractional test cadence from becoming a busy loop. */
@@ -180,6 +180,8 @@ export interface WatchResult {
   output_path: string
   record_path: string
   cadence_seconds: number
+  stall_timeout_seconds: number
+  /** Compatibility count derived from the duration and active cadence. */
   stall_wakes: number
   timeout_seconds: number
   armings: number
@@ -193,6 +195,8 @@ export interface WatchResult {
 export interface WatchOptions {
   invocationId?: string
   cadenceSeconds?: number
+  stallTimeoutSeconds?: number
+  /** Test and compatibility override; ordinary callers configure a duration. */
   stallWakes?: number
   timeoutSeconds?: number
   markBackground?: boolean
@@ -930,6 +934,7 @@ export function markDelegationBackground(
     run_id: runId,
     invocation_id: invocationId,
     launch_mode: 'background',
+    redline_category: PLATFORM_ACTION_CATEGORY.id,
     launched_at: launchedAt,
     launched_at_source: launch?.launched_at_source ?? null,
     first_marked_at: firstMarkedAt,
@@ -1441,7 +1446,11 @@ export async function watchInvocation(
   const invocationId = invocation.invocation_id
 
   const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
-  const stallWakes = options.stallWakes ?? DEFAULT_STALL_WAKES
+  const stallTimeoutSeconds =
+    options.stallTimeoutSeconds ?? DEFAULT_STALL_TIMEOUT_SECONDS
+  const stallWakes =
+    options.stallWakes ??
+    Math.max(1, Math.ceil(stallTimeoutSeconds / cadenceSeconds))
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
 
   const sleep = options.sleep ?? defaultSleep
@@ -1498,6 +1507,7 @@ export async function watchInvocation(
       output_path: invocation.output.path,
       record_path: recordRelative,
       cadence_seconds: cadenceSeconds,
+      stall_timeout_seconds: stallTimeoutSeconds,
       stall_wakes: stallWakes,
       timeout_seconds: timeoutSeconds,
       armings,
@@ -1631,7 +1641,7 @@ export async function watchInvocation(
     } else {
       heldOutput = null
 
-      if (unchangedWakes >= stallWakes) {
+      if (unchangedWakes >= stallWakes && options.agentState !== 'running') {
         // A worker that scaffolded its output and then died leaves the same
         // still files as one that is thinking. The harness cannot tell those
         // apart, so it reports what it knows and sends the supervisor to the
@@ -1639,9 +1649,7 @@ export async function watchInvocation(
         // supervisor already looked and said the agent is running, which is
         // the answer the stall check was asking for.
         if (observation.output_is_scaffold) {
-          if (options.agentState !== 'running') {
-            terminal = 'unverified'
-          }
+          terminal = 'unverified'
         } else {
           terminal = 'stalled'
         }
@@ -1961,6 +1969,14 @@ export interface RedlineCategory {
   harness_authority: string
 }
 
+/** A platform action taken on the session, distinct from guidance it emitted. */
+export const PLATFORM_ACTION_CATEGORY: RedlineCategory = {
+  id: 'platform_initiated_detach',
+  description:
+    'The platform detached a foreground launch from the session without the supervisor choosing a background mode.',
+  harness_authority: 'DELEGATE-001, OPERATOR-001',
+}
+
 /** Categories of platform guidance pre-declared non-authoritative in a run. */
 export const REDLINE_CATEGORIES: RedlineCategory[] = [
   {
@@ -2051,6 +2067,7 @@ export interface RedlineRecord {
   authority_source: string
   policy_basis: string[]
   non_authoritative_guidance: RedlineCategory[]
+  platform_action_categories: RedlineCategory[]
   statement: string
   declarations: RedlineDeclaration[]
 }
@@ -2114,6 +2131,7 @@ export function writeRedlineRecord(
       authority_source: 'AGENTS.md, section "Authority and context"',
       policy_basis: ['OPERATOR-001', 'DELEGATE-001', 'ORCH-001'],
       non_authoritative_guidance: REDLINE_CATEGORIES,
+      platform_action_categories: [PLATFORM_ACTION_CATEGORY],
       statement:
         'The supervisor pre-declares the listed platform guidance categories ' +
         'non-authoritative for this run. Harness governance and the operator ' +

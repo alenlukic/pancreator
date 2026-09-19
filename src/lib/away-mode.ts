@@ -4,7 +4,7 @@ import path from 'node:path'
 import { errorMessage, invariant, PanError } from './errors.js'
 import {
   panInvocationsInText,
-  panProseInvocationError,
+  validatePanInvocation,
 } from './pan-command-grammar.js'
 import {
   appendJsonLine,
@@ -32,6 +32,8 @@ const LEDGER_LOCK = 'decisions.lock'
 export interface AwayRollbackPlan {
   steps: string[]
   verification: string
+  complete: boolean
+  issues: string[]
 }
 
 export interface AwayOption {
@@ -50,6 +52,7 @@ export interface AwayBlocker {
     | 'stage_blocked'
     | 'operator_decision'
     | 'operator_approval'
+    | 'operator_question'
     | 'hypervisor_incident'
   summary: string
   stage: string | null
@@ -168,18 +171,19 @@ function parseOption(value: unknown, index: number): AwayOption {
     `${source}.rollback_plan.steps`,
   )
 
-  for (const step of rollbackSteps) {
-    for (const argv of panInvocationsInText(step)) {
-      const refusal = panProseInvocationError(argv)
+  const rollbackIssues = rollbackSteps.flatMap((step) =>
+    panInvocationsInText(step).flatMap((argv) => {
+      const validation = validatePanInvocation(argv)
 
-      invariant(
-        refusal === null,
-        `${source}.rollback_plan.steps names \`pan ${argv.join(' ')}\`. ` +
-          refusal,
-        { code: 'INVALID_AWAY_DECISION' },
-      )
-    }
-  }
+      return validation.valid
+        ? []
+        : [
+            `pan ${argv.join(' ')}: ${
+              validation.error ?? 'The command is not accepted by the CLI.'
+            }`,
+          ]
+    }),
+  )
 
   return {
     rank: value.rank as number,
@@ -190,6 +194,8 @@ function parseOption(value: unknown, index: number): AwayOption {
     rollback_plan: {
       steps: rollbackSteps,
       verification: value.rollback_plan.verification,
+      complete: rollbackIssues.length === 0,
+      issues: rollbackIssues,
     },
     ...(typeof value.note === 'string' ? { note: value.note } : {}),
     ...(typeof value.stage === 'string' ? { stage: value.stage } : {}),
@@ -219,6 +225,12 @@ export function parseAwayOptions(value: unknown): AwayOption[] {
 }
 
 function hardDenialReason(option: AwayOption): string | null {
+  if (!option.rollback_plan.complete) {
+    return `The rollback plan is incomplete: ${option.rollback_plan.issues.join(
+      ' ',
+    )}`
+  }
+
   if (option.action === 'set-stage' && !option.stage) {
     return 'set-stage requires a target stage.'
   }
@@ -305,21 +317,105 @@ export function awayBlockerCanBeCleared(
   return selection.selected !== null
 }
 
-/** Identify only the blocker classes the approved away-mode design permits. */
+/**
+ * The operator's own last decision on this run. An away decision is not one:
+ * away mode answering a gate cannot retire a question addressed to the
+ * human, which is the whole premise of the refusal below.
+ */
+function lastOperatorDecisionAt(state: RunState): string | null {
+  const decided = (state.operator_feedback ?? []).filter(
+    (item) => (item.source ?? 'operator') === 'operator',
+  )
+
+  return decided.at(-1)?.timestamp ?? null
+}
+
+/**
+ * The unanswered operator question standing on this run, if any.
+ *
+ * Every stage output submitted since the operator last decided is read, not
+ * only the newest: a question raised by one stage survives the next stage
+ * writing an output that carries none, and only the operator's own decision
+ * retires it.
+ *
+ * An output that exists but cannot be read or parsed returns a question
+ * rather than nothing. The read cannot show that no question stands, and an
+ * unreadable record is not evidence of consent. A path with no file yet is
+ * the ordinary state before a stage submits and is not treated as one.
+ */
+export function openOperatorQuestion(
+  root: string | undefined,
+  state: RunState,
+): string | null {
+  if (!root) {
+    return null
+  }
+
+  const decidedAt = lastOperatorDecisionAt(state)
+  const unanswered = state.stage_history.filter(
+    (item) => decidedAt === null || item.submitted_at > decidedAt,
+  )
+
+  for (const item of [...unanswered].reverse()) {
+    const absolute = item.output_path ? path.join(root, item.output_path) : null
+
+    if (!absolute || !fileExists(absolute)) {
+      continue
+    }
+
+    let output: unknown
+
+    try {
+      output = readJson(absolute)
+    } catch (error) {
+      return boundedText(
+        `The stage output '${item.output_path}' could not be read, so an ` +
+          `unanswered operator question cannot be ruled out: ${errorMessage(error)}`,
+      )
+    }
+
+    const question =
+      isRecord(output) && isRecord(output.operator_question)
+        ? output.operator_question.question
+        : null
+
+    if (typeof question === 'string' && question.trim().length > 0) {
+      return boundedText(question)
+    }
+  }
+
+  return null
+}
+
 export function awayModeTrigger(
   state: RunState,
   incident?: { health: AgentHealth; summary: string },
+  root?: string,
 ): AwayBlocker | null {
   if (!state.away_mode?.enabled) {
     return null
   }
 
+  // A hypervisor incident keeps the precedence it had before the question
+  // class existed. Classification order is not the safety boundary: an open
+  // question refuses evaluation whatever class the trigger reports, so a
+  // stalled agent is still classified as one and still reaches recovery.
   if (incident?.health === 'stalled' || incident?.health === 'dead') {
     return {
       type: 'hypervisor_incident',
       summary: incident.summary,
       stage: state.current_stage,
       agent_health: incident.health,
+    }
+  }
+
+  const operatorQuestion = openOperatorQuestion(root, state)
+
+  if (operatorQuestion) {
+    return {
+      type: 'operator_question',
+      summary: operatorQuestion,
+      stage: state.stage_history.at(-1)?.stage ?? state.current_stage,
     }
   }
 
@@ -488,6 +584,8 @@ export function recordDeterministicShipApproval(
     rollback_plan: {
       steps: ['Start a new remediation run for a later product change.'],
       verification: 'Confirm that no external release action occurred.',
+      complete: true,
+      issues: [],
     },
   }
   const record: AwayDecisionRecord = {
@@ -508,6 +606,62 @@ export function recordDeterministicShipApproval(
     result: 'accepted',
     evidence_references: evidence,
     recorded_at: recordedAt,
+  }
+
+  appendAwayDecision(root, record)
+
+  return record
+}
+
+export const OPERATOR_QUESTION_REFUSAL =
+  'An unanswered operator question stands on this run, so away mode refuses ' +
+  'this blocker without ranking any option.'
+
+/**
+ * Refuse one blocker deterministically because a worker asked the operator a
+ * question that nobody has answered.
+ *
+ * `ASK-001` forbids proceeding on an assumed answer. The question already
+ * reaches the evaluator as context, but context is guidance to a ranking
+ * model rather than a refusal, so the refusal lives above every caller and
+ * the ledger keeps the record an unattended run is reviewed from.
+ */
+export function recordOperatorQuestionRefusal(
+  root: string,
+  state: RunState,
+  blocker: AwayBlocker,
+  question: string,
+  recordedAt = new Date().toISOString(),
+): AwayDecisionRecord {
+  const awayMode = state.away_mode
+
+  invariant(awayMode?.enabled, 'Away mode is disabled for this run.', {
+    code: 'AWAY_MODE_DISABLED',
+  })
+
+  const record: AwayDecisionRecord = {
+    schema_version: 1,
+    decision_id: randomUUID(),
+    decision_kind: 'operator_question_refusal',
+    run_id: state.run_id,
+    invocation_id: state.current_invocation?.id ?? null,
+    blocker,
+    ranked_options: [],
+    selected_action: null,
+    rejected_options: [
+      { rank: 0, reason: `${OPERATOR_QUESTION_REFUSAL} ${question}` },
+    ],
+    guardrails: awayMode.guardrails,
+    result: 'rejected',
+    evidence_references: parseEvidenceReferences(
+      [
+        resolveRunLayout(root, state.run_id).state.relative,
+        state.stage_history.at(-1)?.output_path,
+      ].filter((item): item is string => typeof item === 'string'),
+      'evidence_references',
+    ),
+    recorded_at: recordedAt,
+    error: `${OPERATOR_QUESTION_REFUSAL} ${question}`,
   }
 
   appendAwayDecision(root, record)

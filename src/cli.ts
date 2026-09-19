@@ -258,7 +258,7 @@ import {
   resolveRunCitation,
 } from './lib/workflow-artifacts.js'
 import {
-  DEFAULT_STALL_WAKES,
+  DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
   formatWakeLine,
   parseAgentState,
@@ -1848,7 +1848,7 @@ async function main(): Promise<void> {
       }
 
       const state = getRunState(root, runId)
-      const blocker = awayModeTrigger(state)
+      const blocker = awayModeTrigger(state, undefined, root)
 
       if (subcommand === 'status') {
         const runDecisions = readAwayDecisionLedger(root).filter(
@@ -4583,10 +4583,10 @@ async function main(): Promise<void> {
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),
         cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
-        stallWakes: parsePositiveInteger(
-          option(args, '--stall-wakes'),
-          '--stall-wakes',
-          DEFAULT_STALL_WAKES,
+        stallTimeoutSeconds: parsePositiveInteger(
+          option(args, '--stall-timeout-seconds'),
+          '--stall-timeout-seconds',
+          DEFAULT_STALL_TIMEOUT_SECONDS,
         ),
         timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
         markBackground: hasFlag(args, '--mark-background'),

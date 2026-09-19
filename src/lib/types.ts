@@ -811,6 +811,8 @@ export type AwayDecisionKind =
   | 'hypervisor_quarantine'
   /** The evaluator could not run or returned no ranking; not a decision. */
   | 'evaluator_failure'
+  /** An unanswered operator question refused the blocker before ranking. */
+  | 'operator_question_refusal'
 
 export type RunActionActor = 'operator' | 'away'
 
@@ -1172,6 +1174,11 @@ export interface StageOutput {
   criteria: CriterionEvaluation[]
   risks: string[]
   unknowns: string[]
+  operator_question?: {
+    question: string
+    reason: string
+    evidence: string[]
+  }
   platform_guidance_conflicts?: PlatformGuidanceConflict[]
   workspace_changes?: WorkspaceChangeAttribution
   target_instruction_evidence?: TargetInstructionEvidence

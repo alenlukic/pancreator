@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import {
   appendFileSync,
+  chmodSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -32,6 +34,7 @@ import {
 } from '../../src/lib/away-mode.js'
 import { evaluateAwayState } from '../../src/lib/away-orchestration.js'
 import { PanError } from '../../src/lib/errors.js'
+import { driveRunUnderAwayMode } from '../../src/lib/horizon.js'
 import type { CursorAgentResult } from '../../src/lib/executors/cursor-agent.js'
 import {
   AWAY_MODE_ACTIONS,
@@ -295,37 +298,39 @@ test('away mode rejects duplicate ranks and missing action details', () => {
       }),
     /repository-relative path references/u,
   )
-  assert.throws(
-    () =>
-      parseAwayOptions({
-        ranked_options: [
-          {
-            ...option(1, 'resume'),
-            rollback_plan: {
-              steps: [
-                'Run ./bin/pan governance card --mode harden --output-path card.md.',
-              ],
-              verification: 'Confirm the card is restored.',
-            },
-          },
-        ],
-      }),
-    /--output-path.*Accepted:.*--out/u,
-  )
-  assert.doesNotThrow(() =>
-    parseAwayOptions({
-      ranked_options: [
-        {
-          ...option(1, 'resume'),
-          rollback_plan: {
-            steps: [
-              'Run ./bin/pan governance card --mode harden --out card.md.',
-            ],
-            verification: 'Confirm the card is restored.',
-          },
+  const rollbackOptions = parseAwayOptions({
+    ranked_options: [
+      {
+        ...option(1, 'resume'),
+        rollback_plan: {
+          steps: ['Run ./bin/pan run status --run run-id.'],
+          verification: 'Confirm the prior run status.',
         },
-      ],
-    }),
+      },
+      {
+        ...option(2, 'resume'),
+        rollback_plan: {
+          steps: ['Run ./bin/pan status run-id.'],
+          verification: 'Confirm the prior run status.',
+        },
+      },
+    ],
+  })
+
+  assert.equal(rollbackOptions[0]?.rollback_plan.complete, false)
+  assert.match(
+    rollbackOptions[0]?.rollback_plan.issues[0] ?? '',
+    /Unknown pan command surface 'run status'/u,
+  )
+  assert.equal(rollbackOptions[1]?.rollback_plan.complete, true)
+  assert.deepEqual(rollbackOptions[1]?.rollback_plan.issues, [])
+
+  const rollbackSelection = selectAwayOption(rollbackOptions, awayConfig())
+
+  assert.equal(rollbackSelection.selected?.rank, 2)
+  assert.match(
+    rollbackSelection.rejected[0]?.reason ?? '',
+    /rollback plan is incomplete.*run status/iu,
   )
 
   const selection = selectAwayOption(
@@ -859,6 +864,399 @@ test('the gate context carries what the graded output declares unsettled', () =>
         'The graded output declares an operator decision as its next action.',
     },
   ])
+})
+
+// A rollback step can name a real command carrying an option the CLI does
+// not accept, which the unknown-command case does not reach. The recorded
+// decision, not the parsed option, is the layer that has to refuse it.
+test('an unaccepted rollback option downgrades the recorded decision', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = blockedRun(root)
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
+  const record = recordAwayEvaluation(
+    root,
+    state,
+    blocker,
+    {
+      ranked_options: [
+        {
+          ...option(1, 'resume'),
+          rollback_plan: {
+            steps: [
+              'Run ./bin/pan governance card --mode harden --output-path card.md.',
+            ],
+            verification: 'Confirm the card is restored.',
+          },
+        },
+        {
+          ...option(2, 'resume'),
+          rollback_plan: {
+            steps: [
+              'Run ./bin/pan governance card --mode harden --out card.md.',
+            ],
+            verification: 'Confirm the card is restored.',
+          },
+        },
+      ],
+    },
+    '2026-09-19T12:00:00.000Z',
+  )
+
+  assert.equal(record.ranked_options[0]?.rollback_plan.complete, false)
+  assert.match(
+    record.ranked_options[0]?.rollback_plan.issues[0] ?? '',
+    /--output-path.*Accepted:.*--out/u,
+  )
+  assert.equal(record.selected_action?.rank, 2)
+  assert.equal(record.selected_action?.rollback_plan.complete, true)
+  assert.match(
+    record.rejected_options[0]?.reason ?? '',
+    /rollback plan is incomplete.*--output-path/u,
+  )
+
+  // The ledger check is the record's own gate. An accepted decision whose
+  // plan failed the command-grammar check is not a complete plan, whatever
+  // its step count and verification text say.
+  assert.deepEqual(validateAwayDecisionLedger(handlerInput(root)), {
+    status: 'passed',
+    issues: [],
+  })
+
+  appendFileSync(
+    awayDecisionLedgerPath(root),
+    `${JSON.stringify({
+      ...record,
+      decision_id: 'incomplete-rollback',
+      selected_action: {
+        ...record.ranked_options[0],
+        rollback_plan: record.ranked_options[0]?.rollback_plan,
+      },
+    })}\n`,
+  )
+
+  const validated = validateAwayDecisionLedger(handlerInput(root))
+
+  assert.equal(validated.status, 'failed')
+  assert.deepEqual(
+    validated.issues.map((issue) => issue.code),
+    ['away.decision.rollback'],
+  )
+})
+
+/** One stage output on disk, and the history item that points at it. */
+function stageOutput(
+  root: string,
+  state: RunState,
+  stage: string,
+  submittedAt: string,
+  body: string,
+): StageHistoryItem {
+  const relative = `runtime/logs/workflows/${state.run_id}/agent/outputs/${stage}.json`
+
+  mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+  writeFileSync(path.join(root, relative), body)
+
+  return {
+    ...blockedHistoryItem(stage),
+    outcome: 'success',
+    output_path: relative,
+    submitted_at: submittedAt,
+  }
+}
+
+function questionOutput(question: string): string {
+  return JSON.stringify({
+    schema_version: 1,
+    operator_question: {
+      question,
+      reason:
+        'The available evidence permits two materially different choices.',
+      evidence: ['runtime/logs/workflows/run/operator/request.md'],
+    },
+  })
+}
+
+function awaitingApproval(state: RunState): void {
+  state.away_mode = awayConfig()
+  state.status = 'awaiting_operator'
+  state.pending_action = {
+    type: 'operator_approval',
+    stage: 'plan',
+    proposed_transition: 'succeeded',
+  }
+}
+
+// The question was read from the newest stage output alone, so the next
+// stage writing an output with none retired a question nobody had answered.
+// Only the operator's own decision does that; an away decision cannot answer
+// a question addressed to the operator.
+test('an operator question outlives a later stage output and retires on the operator', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+
+  awaitingApproval(state)
+  state.stage_history = [
+    stageOutput(
+      root,
+      state,
+      'plan',
+      '2026-09-19T10:00:00.000Z',
+      questionOutput('Which store owns the retry record?'),
+    ),
+    stageOutput(
+      root,
+      state,
+      'implement',
+      '2026-09-19T11:00:00.000Z',
+      JSON.stringify({ schema_version: 1, summary: 'No question here.' }),
+    ),
+  ]
+
+  assert.equal(
+    awayModeTrigger(state, undefined, root)?.type,
+    'operator_question',
+  )
+
+  // Away mode answering a gate is not the operator answering the question.
+  state.operator_feedback = [
+    {
+      decision: 'approve',
+      source: 'away',
+      from_stage: 'plan',
+      to_stage: 'implement',
+      attempt: 1,
+      note: 'Away continuation.',
+      path: 'runtime/logs/workflows/run/agent/decisions/away-1.md',
+      timestamp: '2026-09-19T12:00:00.000Z',
+    },
+  ]
+
+  assert.equal(
+    awayModeTrigger(state, undefined, root)?.type,
+    'operator_question',
+  )
+
+  state.operator_feedback = [
+    ...(state.operator_feedback ?? []),
+    {
+      decision: 'approve',
+      source: 'operator',
+      from_stage: 'plan',
+      to_stage: 'implement',
+      attempt: 1,
+      note: 'The queue owns it.',
+      path: 'runtime/logs/workflows/run/agent/decisions/operator-1.md',
+      timestamp: '2026-09-19T13:00:00.000Z',
+    },
+  ]
+
+  assert.equal(
+    awayModeTrigger(state, undefined, root)?.type,
+    'operator_approval',
+  )
+})
+
+// An unreadable output cannot show that no question stands, and away mode
+// treated the failed read as consent.
+test('an unreadable stage output refuses away ranking instead of failing open', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+
+  awaitingApproval(state)
+  state.stage_history = [
+    stageOutput(root, state, 'plan', '2026-09-19T10:00:00.000Z', '{ not json'),
+  ]
+
+  const blocker = awayModeTrigger(state, undefined, root)
+
+  assert.equal(blocker?.type, 'operator_question')
+  assert.match(blocker?.summary ?? '', /could not be read/u)
+  assert.ok(blocker)
+
+  let evaluatorCalls = 0
+  const record = evaluateAwayState(root, state, blocker, {
+    runEvaluator: () => {
+      evaluatorCalls += 1
+
+      return evaluatorResult('{}', {
+        ranked_options: [option(1, 'approve')],
+      })
+    },
+  })
+
+  assert.equal(evaluatorCalls, 0)
+  assert.equal(record.decision_kind, 'operator_question_refusal')
+})
+
+// A hypervisor incident keeps the precedence it held before the question
+// class existed. The refusal reads the run, so the reordering cannot reopen
+// the hole that a ranked class-specific check left.
+test('a hypervisor incident keeps precedence and an open question still refuses', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+
+  awaitingApproval(state)
+  state.stage_history = [
+    stageOutput(
+      root,
+      state,
+      'plan',
+      '2026-09-19T10:00:00.000Z',
+      questionOutput('Which store owns the retry record?'),
+    ),
+  ]
+
+  const blocker = awayModeTrigger(
+    state,
+    { health: 'stalled', summary: 'The worker stopped writing.' },
+    root,
+  )
+
+  assert.equal(blocker?.type, 'hypervisor_incident')
+  assert.ok(blocker)
+
+  let evaluatorCalls = 0
+  const record = evaluateAwayState(root, state, blocker, {
+    runEvaluator: () => {
+      evaluatorCalls += 1
+
+      return evaluatorResult('{}', {
+        ranked_options: [option(1, 'approve')],
+      })
+    },
+  })
+
+  assert.equal(evaluatorCalls, 0)
+  assert.equal(record.decision_kind, 'operator_question_refusal')
+  assert.equal(record.blocker.type, 'hypervisor_incident')
+  assert.match(record.error ?? '', /which store owns/iu)
+})
+
+// The blocker class alone changed nothing: both production callers passed it
+// to the evaluator, which then ranked an option that answers the question by
+// assumption. The refusal, not the classification, is the contract.
+test('an unanswered operator question refuses away ranking on both paths', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+
+  state.away_mode = awayConfig()
+  state.status = 'awaiting_operator'
+  state.pending_action = {
+    type: 'operator_approval',
+    stage: 'plan',
+    proposed_transition: 'succeeded',
+  }
+  gradeLastStage(root, state, {
+    schema_version: 1,
+    operator_question: {
+      question: 'Which store owns the retry record?',
+      reason:
+        'The available evidence permits two materially different choices.',
+      evidence: ['runtime/logs/workflows/run/operator/request.md'],
+    },
+  })
+
+  const blocker = awayModeTrigger(state, undefined, root)
+
+  assert.equal(blocker?.type, 'operator_question')
+  assert.match(blocker?.summary ?? '', /which store owns/iu)
+  assert.ok(blocker)
+
+  // The `pan away evaluate` path. The stub stands in for the evaluator the
+  // CLI would spawn, and its call count is the assertion.
+  let evaluatorCalls = 0
+  const record = evaluateAwayState(root, state, blocker, {
+    runEvaluator: () => {
+      evaluatorCalls += 1
+
+      return evaluatorResult('{}', { ranked_options: [option(1, 'approve')] })
+    },
+    recordedAt: () => '2026-09-19T12:00:00.000Z',
+  })
+
+  assert.equal(evaluatorCalls, 0)
+  assert.equal(record.decision_kind, 'operator_question_refusal')
+  assert.equal(record.result, 'rejected')
+  assert.equal(record.selected_action, null)
+  assert.deepEqual(record.ranked_options, [])
+  assert.match(record.rejected_options[0]?.reason ?? '', /operator question/iu)
+
+  // The refusal is a ledger record rather than a thrown error, so an
+  // unattended run is reviewable from the ledger alone.
+  const ledger = readAwayDecisionLedger(root).filter(
+    (entry) => entry.run_id === state.run_id,
+  )
+
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.decision_kind, 'operator_question_refusal')
+  assert.equal(countAwayDecisions(root, state.run_id), 0)
+
+  // The horizon path. `driveRunUnderAwayMode` reaches the same refusal, and
+  // the fake binary would record a marker if any evaluator spawn happened.
+  const marker = path.join(root, 'evaluator-ran.txt')
+  const binary = path.join(root, 'fake-cursor-agent')
+
+  writeFileSync(
+    binary,
+    ['#!/bin/sh', `printf 'ran\\n' >> '${marker}'`, "printf '{}\\n'", ''].join(
+      '\n',
+    ),
+  )
+  chmodSync(binary, 0o755)
+
+  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+
+  try {
+    const driven = driveRunUnderAwayMode(
+      root,
+      state.run_id,
+      { attestSupervisorCard: false, attestedBy: 'test' },
+      () => ({
+        state,
+        stop: {
+          type: 'operator_pause',
+          action: 'operator_approval',
+          stage: 'plan',
+          operator_only: false,
+          reason: 'The run waits for approval.',
+        },
+        handoff_reason: null,
+        steps: 1,
+        decisions_applied: [],
+        last_autostart: null,
+        supervisor_card_attested_by: null,
+      }),
+    )
+
+    assert.match(driven.blocked ?? '', /unanswered operator question/iu)
+    assert.match(driven.blocked ?? '', /which store owns/iu)
+    assert.equal(existsSync(marker), false)
+  } finally {
+    if (previousBinary === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
+    }
+  }
 })
 
 test('an output declaring no blocker ranks approval as it does today', () => {

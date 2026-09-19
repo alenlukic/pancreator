@@ -13,6 +13,7 @@ import { submitOutput } from '../../src/lib/engine.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
 import { operationMutexPath } from '../../src/lib/state.js'
 import {
+  DEFAULT_STALL_TIMEOUT_SECONDS,
   DEFAULT_WATCH_CADENCE_SECONDS,
   DELEGATION_UNOBSERVED,
   backgroundMarkerPath,
@@ -116,6 +117,52 @@ test('watch reports stalled after the configured unchanged wakes', async () => {
     [1, 2],
   )
   assert.equal(wakes.at(-1)?.terminal_state, 'stalled')
+})
+
+test('stall duration remains constant when cadence changes', async () => {
+  assert.equal(DEFAULT_STALL_TIMEOUT_SECONDS, 5 * 60)
+
+  const first = preparedRun()
+  const firstClock = fakeClock()
+  const firstResult = await watchInvocation(first.root, first.state.run_id, {
+    cadenceSeconds: 0.1,
+    stallTimeoutSeconds: 0.3,
+    timeoutSeconds: 1,
+    ...firstClock,
+  })
+
+  const second = preparedRun()
+  const secondClock = fakeClock()
+  const secondResult = await watchInvocation(second.root, second.state.run_id, {
+    cadenceSeconds: 0.15,
+    stallTimeoutSeconds: 0.3,
+    timeoutSeconds: 1,
+    ...secondClock,
+  })
+
+  assert.equal(firstResult.state, 'stalled')
+  assert.equal(secondResult.state, 'stalled')
+  assert.equal(firstResult.wakes, 3)
+  assert.equal(secondResult.wakes, 2)
+  assert.equal(firstResult.elapsed_seconds, secondResult.elapsed_seconds)
+  assert.equal(firstResult.stall_timeout_seconds, 0.3)
+  assert.equal(secondResult.stall_timeout_seconds, 0.3)
+})
+
+test('a recorded running worker is never stalled by unchanged files', async () => {
+  const { root, state } = preparedRun()
+  const clock = fakeClock()
+
+  const result = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: 0.1,
+    stallTimeoutSeconds: 0.1,
+    timeoutSeconds: 0.3,
+    agentState: 'running',
+    ...clock,
+  })
+
+  assert.equal(result.state, 'timed_out')
+  assert.equal(result.wakes, 3)
 })
 
 test('a worker that edits only the workspace or nested evidence is not called stalled', async () => {
@@ -330,6 +377,12 @@ test('the first watch arming records the launch time and never resets it', async
     'background',
     'a mode learned later fills a gap without moving the clock',
   )
+  const marker = read(
+    path.join(root, backgroundMarkerPath(root, state.run_id, invocationId)),
+  ) as { launched_at: string; redline_category: string }
+
+  assert.equal(marker.launched_at, first.launched_at)
+  assert.equal(marker.redline_category, 'platform_initiated_detach')
 })
 
 // The supervisor is the only party that knows when it made the call, so its
@@ -850,6 +903,7 @@ test('the scaffold a worker writes before it starts is not a finished worker', a
   // after scaffolding, so the watch says so instead of guessing either way.
   const watched = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
+    stallTimeoutSeconds: CADENCE_SECONDS * 2,
   })
 
   assert.equal(watched.state, 'unverified')

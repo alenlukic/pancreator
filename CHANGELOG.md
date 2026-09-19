@@ -1,5 +1,27 @@
 # Changelog
 
+## [6.21.0] - 2026-09-19
+
+This release bounds executor write grants, records prompt-task tool policy, and measures worker liveness as a duration.
+
+### Changed
+
+- Measure the watch stall window as five minutes so a cadence change does not alter the liveness rule ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Stop the away evaluator when a stage output carries an unanswered operator question ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Withhold the shell tool from a stage whose write roots exclude the workspace, on OpenAI and Claude Code ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Grant a prompt task the workspace plus the run runtime directory, and record `granted_roots` and `tool_policy` ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Deny prompt-task writes outside those roots with `sandbox-exec` on macOS. Observe the whole root when the host cannot enforce that bound ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Record a platform-initiated detach as its own redline category. Measure watch lateness from the launch record ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+
+### Added
+
+- Add a structured `operator_question` field on the stage output contract ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Add write-sandbox profile generation for prompt-task launches ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+
+### Fixed
+
+- Mark a rollback plan incomplete when a generated pan command is not in the CLI grammar ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+
 ## [6.20.0] - 2026-09-19
 
 This release makes the operator's chat session the supervisor of a long-horizon session end to end, adds a session arbiter so no harness verdict can end a task, closes the four hard blocks that may stop long-horizon work, and refuses any landing on `pan-dev` that carries no release.

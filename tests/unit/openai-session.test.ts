@@ -12,7 +12,10 @@ import {
   type OpenAiSessionRequest,
   type OpenAiTranscript,
 } from '../../src/lib/executors/openai-session.js'
-import type { OpenAiToolPolicy } from '../../src/lib/executors/openai-tools.js'
+import {
+  OPENAI_TOOL_NAMES,
+  type OpenAiToolPolicy,
+} from '../../src/lib/executors/openai-tools.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const SENTINEL = 'sk-test-SENTINEL-DO-NOT-LEAK'
@@ -114,6 +117,7 @@ function harness(turns: Turn[], overrides: Partial<OpenAiSessionRequest> = {}) {
     workspaceDir,
     readRoots: [workspaceDir],
     writeRoots: [workspaceDir],
+    allowedTools: [...OPENAI_TOOL_NAMES],
     maxResultBytes: 4096,
     shellTimeoutMs: 5_000,
   }
