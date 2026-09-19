@@ -765,6 +765,12 @@
       "policies": ["DELEGATE-001"]
     },
     {
+      "persona": "harness-workflow-qa",
+      "workflow": "standalone",
+      "stage": "trace",
+      "policies": ["DELEGATE-001", "RUNTIME-001"]
+    },
+    {
       "persona": "decomposer",
       "workflow": "*",
       "stage": "*",

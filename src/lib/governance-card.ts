@@ -433,6 +433,25 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT modify source, workflow state, or governance, and MUST NOT push, publish, deploy, or start a workflow run.',
     ],
   },
+  trace: {
+    kind: 'standalone',
+    persona: 'harness-workflow-qa',
+    workflow: 'standalone',
+    stage: 'trace',
+    title: 'Harness feature trace',
+    summary:
+      'Exercise the core mechanics of one newly merged harness feature, ' +
+      'including one sanctioned failure path, and write one durable trace report.',
+    boundaries: [
+      PROTECTED_PATH_RULE,
+      'Every mutating exercise MUST run in an isolated workspace: the named worktree, a worktree created for the trace, or a throwaway copy of a toy fixture.',
+      'A failure injection MUST use an input-level fault directive, a process-level interruption followed by the documented recovery command, or a precondition arranged with supported commands. You MUST NOT hand-edit generated run state, invocation cards, snapshots, stage outputs, or events.jsonl.',
+      'You MUST NOT supervise a workflow run or launch a supervisor subagent. A workflow that needs supervision belongs in the operator’s own `/pan-start` or `/pan-resume` session.',
+      'You MUST write the report under `runtime/logs/traces/<trace-id>/report.md`, clean up trace artifacts through supported commands, and name any residue.',
+      'When the trace confirms a defect, you MUST write at most one remediation intake under `runtime/inbox/queue/`, name its harness repair category, and MUST NOT repair the defect in this session.',
+      'You MUST NOT push, publish, deploy, delete branches, or perform destructive source-control actions.',
+    ],
+  },
   'qa-workflow': {
     kind: 'standalone',
     persona: 'harness-workflow-qa',

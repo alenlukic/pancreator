@@ -34,6 +34,10 @@
     {
       "command": "pan-style",
       "card_mode": "style"
+    },
+    {
+      "command": "pan-trace",
+      "card_mode": "trace"
     }
   ],
   "supervisor_commands": [
@@ -56,6 +60,10 @@
         "style scan --worktree <name> --json",
         "style checkpoint --worktree <name> --json"
       ]
+    },
+    {
+      "command": "pan-trace",
+      "worktree_forwarding": ["governance card --mode trace --worktree <name>"]
     },
     {
       "command": "pan-harden",

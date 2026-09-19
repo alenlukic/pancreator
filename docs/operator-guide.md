@@ -336,6 +336,31 @@ configuration patch, rollback, reconciliation, or containment action. It puts
 one implementation-ready remediation intake in `runtime/inbox/queue/` when an
 issue does not have a verified root-cause repair.
 
+### Trace newly merged harness functionality
+
+Use `/pan-trace <feature | PR link | commit hash> [--worktree <name>]` for a
+cheap smoke trace of newly merged harness functionality. The trace learns the
+intended design from repository evidence, drives the core mechanics through
+their normal entry points, exercises one sanctioned failure path, and cleans up
+its throwaway artifacts. It does not add the per-stage checklists, root-cause
+analysis, or waiver bookkeeping that `/pan-qa-workflow` requires.
+
+Choose the instrument by the evidence you need:
+
+- Use `/pan-trace` for one inexpensive, passthrough check of core mechanics
+  after a merge.
+- Use `/pan-qa-workflow` for full checklisted workflow validation and
+  root-cause analysis.
+- Use `pan eval` for a repeatable toy scenario with deterministic graders.
+
+A trace writes
+`runtime/logs/traces/<UTC-timestamp>-<target-slug>/report.md`. The report has
+these sections in order: `Summary`, `Target`, `Mechanics`, `Exercise`,
+`Evidence`, `Failure injection`, `Verdicts`, `Cleanup`, and `Defects`.
+Each mechanic has a verdict of `worked`, `failed`, `not exercised`, or
+`blocked`. A blocked verdict means the environment prevented a product
+verdict.
+
 ## Invocation and delegation validation
 
 `INVOCATION-001` is the normative invocation-card and delegation policy. Each

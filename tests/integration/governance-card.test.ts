@@ -246,7 +246,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, harden, investigation, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, harden, investigation, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, trace, tune-harness, unbound, write-pr/u,
   )
 })
 
@@ -681,6 +681,31 @@ test('the supervisor mode refuses a run-less card', () => {
       error instanceof PanError &&
       error.code === 'SUPERVISOR_CARD_REQUIRES_RUN',
   )
+})
+
+test('the trace card resolves runtime rules and binds a named worktree', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'trace',
+    outputPath: 'runtime/inbox/trace-card.md',
+    worktreeName: 'trace-target',
+  })
+  const ids = card.policies.map((policy) => policy.id)
+
+  assert.ok(ids.includes('DELEGATE-001'))
+  assert.ok(ids.includes('RUNTIME-001'))
+  assert.equal(card.worktree?.name, 'trace-target')
+  assert.equal(card.worktree?.path, 'worktrees/operator/trace-target')
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /Harness feature trace/u)
+  assert.match(written, /\*\*DELEGATE-001 ·/u)
+  assert.match(written, /\*\*RUNTIME-001 ·/u)
+  assert.match(written, /MUST NOT hand-rename/u)
+  assert.match(written, /## 🚧 Boundaries/u)
+  assert.match(written, /## 🌳 Workspace worktree/u)
+  assert.ok(written.includes('`worktrees/operator/trace-target`'))
 })
 
 test('the card-less command modes resolve their persona governance', () => {
