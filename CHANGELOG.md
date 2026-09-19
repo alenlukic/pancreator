@@ -1,5 +1,29 @@
 # Changelog
 
+## [6.24.0] - 2026-09-19
+
+This release makes the suite-cost gate advisory. It also adds a multiplexed cohort wait, a bounded runtime rewrite, and progress output on long commands.
+
+### Changed
+
+- Make `ship.fast_wall_ceiling` advisory. A breach records a run advisory and a performance intake, and it does not route the run ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Restore `fast_wall.ceiling_ms` to 120000. Keep that value until a tuning pass revisits it ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Exclude a fast-wall sample above the host-load threshold or from a non-gate caller, and count it in `unqualified_runs` ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Report `insufficient_samples` when the qualified window holds fewer than five samples ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Read only the runtime directories that can hold a durable name reference. Exclude `runtime/tmp/` and unknown siblings ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Print each `pan archive` maintenance pass on stderr. Print the entry-gate id and timeout before a gated `pan prepare` ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+
+### Added
+
+- Add `pan watch --cohort` and a multi-target wait that returns on the first change ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Add `fast_wall.max_load_average_per_cpu` and `fast_wall.minimum_qualified_samples` beside the existing ceiling ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Record host load and caller class on each new fast-wall series entry ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+
+### Fixed
+
+- Wake a cohort supervisor on the first finished sibling, not on a single blocked wait ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Stop a default scan of scratch space during a runtime-name rewrite ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+
 ## [6.22.0] - 2026-09-19
 
 This release repairs eight internal-consistency defects. A late worker-record call no longer rewrites a launched contract. Primer freshness, verify return visits, ship scope, and release allocation now match the stated rules.
