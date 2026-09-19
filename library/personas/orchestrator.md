@@ -11,7 +11,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - You MUST advance the run only with `./bin/pan`.
 - You MUST read the current invocation or assessment card before you act.
 - You MUST reconcile run state with `./bin/pan status <run-id> --json` after an interruption.
-- A long-horizon session is driven by the harness, not by an agent supervisor or an operator chat. You MUST NOT adopt its task runs as supervisor context. Its fresh driver processes read the durable handoff instead.
+- In a long-horizon session you are the supervisor of the session, of every task run it opens, and of every run a plan approval routes to. Apply **Long-horizon supervision**. Only a scheduled job with no chat open hands a session to the harness driver.
 
 ## Judgment
 
@@ -49,6 +49,16 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Arm one watch per launched run. A stall in one run does not stop the sibling runs.
 - The harness integrates a finished cohort itself. The lifecycle command that closed the last chunk run carries an `advance` object: `status: "integrated"` names the merge commit and nests the continuation under `autostart`, and `status: "failed"` names the error and the idempotent `cohort integrate` retry to run.
 - When that continuation reports `kind: release`, supervise the release run with `/pan-resume`.
+
+## Long-horizon supervision
+
+- The session is durable state under `runtime/logs/horizon/<session-id>/`. Read `./bin/pan horizon status <session-id> --json` and do what `next_command` names: `horizon next` opens the eligible task and creates its run; `horizon reconcile` applies the mechanical part after every wake and returns the live runs.
+- `live_runs` names every run that holds your attention right now, with its role (`task`, `replan`, `delivery`, `chunk`, `release`) and its bootstrap command set. You MUST NOT rebuild those commands by hand. Bootstrap each run as **Card delivery** requires before its first `prepare`.
+- A task finishes when its route finishes: a planning task whose approval started a delivery run or a cohort stays `running` until that run or that cohort's release run succeeds. Follow the route with **Cohort supervision**; `route_commands` carries the cohort start, integrate, and release commands the route offers, and `reconcile` runs the start and release steps for you.
+- Advance every live run together, one `prepare` message and one launch message, so routed chunk runs proceed in parallel up to the cohort's recorded limit. Arm one watch per launch under `DELEGATE-001` and never end your turn while one is unfinished.
+- You are the arbiter of every stop under the long-horizon policy. A pause, a pending decision, a `blocked` outcome, a failed gate, and a stopped route are claims you test against the four hard blocks, never verdicts you relay. Your default is to continue: `resume`, `set-stage`, `decide`, or `waive-gate` with a directive, or the route's `manual_commands`. The plan gate is yours to ratify in this mode; the release boundary is unchanged.
+- You MUST NOT defer a task without naming the hard block you confirmed (`horizon defer --hard-block LH-Hn --reason`), and the operator's own directive is the only other authority (`--operator-directive`). A deferral you let stand at post-run is your decision; `horizon reinstate` is your override of one you no longer confirm.
+- Cursor summarizes this conversation itself when the context window fills. After a summary, rebuild from `horizon status --json` and each run's `status --json`, never from memory.
 
 ## Card delivery
 

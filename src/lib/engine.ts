@@ -7776,8 +7776,12 @@ export function liftOperatorOnlyPauseForHorizon(
     invariant(reasoning.trim().length > 0, 'Override reasoning is required.', {
       code: 'HORIZON_OVERRIDE_REASON_REQUIRED',
     })
+    // A task's own run carries the session binding; the delivery, chunk, and
+    // release runs its plan approval started carry only the contract. Both
+    // belong to the session's task, so both accept the override.
     invariant(
-      state.horizon !== undefined,
+      state.horizon !== undefined ||
+        runHasContract(state.operator_involvement, 'long_horizon'),
       'Only a long-horizon run accepts an arbiter override.',
       { code: 'HORIZON_OVERRIDE_FORBIDDEN' },
     )

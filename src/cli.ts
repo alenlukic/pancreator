@@ -67,13 +67,16 @@ import {
   latestHorizonHandoff,
   loadHorizonSession,
   nextHorizonTask,
+  reconcileHorizonSession,
   reinstateHorizonTask,
   startHorizonSession,
   type HorizonQueueTaskInput,
 } from './lib/horizon.js'
 import {
   ARBITER_ACTIONS,
+  HORIZON_HARD_BLOCKS,
   type ArbiterActionType,
+  type HorizonHardBlock,
 } from './lib/horizon-arbiter.js'
 import {
   applyAwayDecision,
@@ -3527,6 +3530,16 @@ async function main(): Promise<void> {
         let state = startHorizonSession(root, sessionId, {
           attestSupervisorCard: hasFlag(args, '--attest-supervisor-card'),
         })
+
+        // The operator's chat session is the supervisor by default: start
+        // arms the session and hands back, and the chat opens and advances
+        // each task itself. Only a scheduled job with no chat open drives the
+        // session in harness-owned processes.
+        if (!hasFlag(args, '--headless')) {
+          print(horizonStatus(root, sessionId), asJson)
+          return
+        }
+
         let childCount = 0
 
         while (state.status === 'running' && childCount < 10_000) {
@@ -3621,6 +3634,17 @@ async function main(): Promise<void> {
         return
       }
 
+      if (sub === 'reconcile') {
+        print(
+          reconcileHorizonSession(
+            root,
+            requiredPositional(rest[0], 'session-id'),
+          ),
+          asJson,
+        )
+        return
+      }
+
       if (sub === 'resume') {
         print(
           latestHorizonHandoff(root, requiredPositional(rest[0], 'session-id')),
@@ -3677,6 +3701,26 @@ async function main(): Promise<void> {
       }
 
       if (sub === 'defer') {
+        const hardBlock = option(args, '--hard-block')
+        const operatorDirective = hasFlag(args, '--operator-directive')
+
+        if (!hardBlock && !operatorDirective) {
+          throw new PanError(
+            'horizon defer requires --hard-block <LH-H1|LH-H2|LH-H3|LH-H4> naming the hard block you confirmed, or --operator-directive when the operator asked for the deferral. No other authority ends a long-horizon task (HORIZON-001).',
+            { code: 'HORIZON_DEFER_UNAUTHORIZED' },
+          )
+        }
+
+        if (
+          hardBlock &&
+          !(HORIZON_HARD_BLOCKS as readonly string[]).includes(hardBlock)
+        ) {
+          throw new PanError(
+            `Unknown hard block '${hardBlock}'. Known: ${HORIZON_HARD_BLOCKS.join(', ')}.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
         print(
           deferHorizonTask(
             root,
@@ -3684,6 +3728,12 @@ async function main(): Promise<void> {
             requiredArgument(option(args, '--task'), '--task'),
             requiredArgument(option(args, '--reason'), '--reason'),
             repeatedOption(args, '--evidence'),
+            hardBlock
+              ? {
+                  kind: 'hard_block',
+                  hard_block: hardBlock as HorizonHardBlock,
+                }
+              : { kind: 'operator_directive' },
           ),
           asJson,
         )

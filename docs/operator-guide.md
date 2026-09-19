@@ -774,20 +774,38 @@ its task ids.
 ```
 
 Start is one preflight operation. It records the selected involvement profile,
-arms away mode for the session, records the override, and records permission for
-the driver to attest each task run's supervisor card. Without
-`--attest-supervisor-card`, preflight refuses before any task starts. After a
-successful start, the harness advances tasks until the session is terminal or no
-eligible task remains. It does not publish, deploy, or take an operator-only
+arms away mode for the session, records the override, and records permission to
+attest each task run's supervisor card. Without `--attest-supervisor-card`,
+preflight refuses before any task starts. Start then returns: your chat session
+(`/pan-horizon`) is the supervisor of the session, of every task run it opens,
+and of every run a task's plan approval routes to. `horizon status --json`
+names the next session command (`horizon next` to open the eligible task,
+`horizon reconcile` after a wake), lists every live run under `live_runs` with
+its bootstrap commands (card, attest, redline, model evidence), and lists the
+cohort commands the active task's route offers under `route_commands`. The
+supervisor advances the live runs with the ordinary lifecycle commands, launches
+routed chunk runs in parallel up to the cohort's limit, and reasons about every
+stop itself as the arbiter; nothing publishes, deploys, or takes an operator-only
 release decision.
+
+`horizon start --headless` is the substrate for a scheduled job with no chat
+open: the harness advances tasks in one driver process per task until the
+session is terminal or no eligible task remains, and the harness arbiter reasons
+about each stop. `pan schedule` passes that flag itself.
 
 The session state lives at
 `runtime/logs/horizon/<session-id>/session.json`. An append-only `events.jsonl`
-sits beside it. Only one task runs at a time. A task becomes eligible when all of
-its dependencies succeeded; declared queue order breaks ties. Deferring a task
-marks only its transitive dependents blocked and leaves unrelated tasks eligible.
-The deferral is written both to `deferred.jsonl` and to an actionable request
-under `runtime/inbox/queue/`. Deferring the active task pauses its run before
+sits beside it. Only one task runs at a time, and a task finishes when its
+route finishes: a planning task whose approval starts one delivery run or a
+cohort stays `running`, with `route` recorded on the task, until that run or
+the cohort's release run succeeds. A task becomes eligible when all of its
+dependencies succeeded; declared queue order breaks ties. Deferring a task
+requires the authority the command enforces: `--hard-block <LH-H1..LH-H4>`
+with your reasoning, or `--operator-directive` when you asked for it yourself.
+Deferral marks only the task's transitive dependents blocked and leaves
+unrelated tasks eligible. The deferral is written both to `deferred.jsonl`,
+with its classification, and to an actionable request under
+`runtime/inbox/queue/`. Deferring the active task pauses its run before
 the session releases the slot, and the session refuses to open the next task
 while any task's run is still in flight, so two workflows never mutate one
 workspace at the same time. A run already resting in a pause keeps the pending
@@ -800,7 +818,8 @@ Failures use one fixed per-task ladder:
    strategy switch and routes to the workflow's declared repair stage.
 3. The next exhaustion starts one planning run from the structured failure
    record, scoped to the task and its dependents.
-4. A second exhaustion or a human-only blocker defers the task.
+4. A second exhaustion reaches the arbiter, which defers the task only by
+   naming one of the four hard blocks.
 
 The failure signature is the sorted set of failed hard criteria, or the
 validation-only marker. The counters live on the task's run and survive ordinary
@@ -809,18 +828,21 @@ rungs because no queue exists to receive a deferral.
 
 Every started, finished, deferred, excluded, and quiescent transition writes a
 JSON handoff and a readable companion under `handoffs/`. The handoff carries the
-queue shape, last task, open deferrals, and one next action. Each task runs in a
-new driver process that reads the latest handoff and session record. That process
-boundary is the only continuity mechanism. `pan horizon resume <session-id>` is a
-post-run inspection command that reads the latest handoff; the running session
-does not wait for it.
+queue shape, last task, open deferrals, and one next action. Cursor summarizes
+the supervising conversation itself when its context window fills; the session
+record, the handoff, and each run's state are what the supervisor rebuilds from
+afterwards. Under `--headless`, each task instead runs in a new driver process
+that reads the latest handoff. `pan horizon resume <session-id>` reads the
+latest handoff for inspection.
 
 Useful inspection and post-run controls:
 
 ```sh
 ./bin/pan horizon status <session-id> --json
+./bin/pan horizon reconcile <session-id> --json
 ./bin/pan horizon resume <session-id> --json
-./bin/pan horizon defer <session-id> --task <id> --reason '<reason>' --json
+./bin/pan horizon defer <session-id> --task <id> --hard-block LH-H2 --reason '<reason>' --json
+./bin/pan horizon reinstate <session-id> --task <id> --action resume --note '<directive>' --reason '<reason>' --json
 ./bin/pan horizon abandon <session-id> --reason '<reason>' --json
 ```
 

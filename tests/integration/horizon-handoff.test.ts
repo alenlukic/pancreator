@@ -122,8 +122,10 @@ test('a session advancing three tasks opens each one in its own driver process',
     involvement: 'long-horizon',
   })
 
-  // `pan horizon start` is the only boundary mechanism: it opens each task in
-  // a driver process of its own rather than continuing the previous one.
+  // `pan horizon start --headless` is the driver-process boundary mechanism:
+  // it opens each task in a driver process of its own rather than continuing
+  // the previous one. Without the flag, start arms the session and returns
+  // for the chat supervisor.
   withFakeEvaluator(root, { ok: true }, () =>
     execFileSync(
       process.execPath,
@@ -133,6 +135,7 @@ test('a session advancing three tasks opens each one in its own driver process',
         'start',
         'boundary-session',
         '--attest-supervisor-card',
+        '--headless',
         '--json',
       ],
       { cwd: root, encoding: 'utf8', timeout: 120_000 },

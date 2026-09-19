@@ -450,6 +450,9 @@ function runSessionAction(
       'start',
       session.session_id,
       '--attest-supervisor-card',
+      // A scheduled job has no chat open, so the harness-owned driver is the
+      // supervisor here and the session arbiter reasons about every stop.
+      '--headless',
       '--json',
     ],
     {
