@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -21,6 +22,8 @@ import type { Invocation } from '../../src/lib/types.js'
 import { invocationEvidencePaths } from '../../src/lib/watch.js'
 import { createFixture, read } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
+
+const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
 /** A run standing at the verify stage, which declares two evidence workers. */
 function verifyInvocation(): {
@@ -58,50 +61,242 @@ function readInvocation(
   ) as Invocation
 }
 
-// A stalled review worker was relaunched, and the second launch was handed
-// the first one's declared report path. The first worker's evidence was
-// overwritten in place, and the verification read one report where two
-// executions had happened.
-test('a relaunched evidence worker writes its own report and leaves the first intact', () => {
+test('prepare selects an evidence-role agent before launch and recording', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  setRunStage(root, run.run_id, 'verify', 'Verify the current workspace.')
+
+  const prepared = prepareInvocation(root, run.run_id, {
+    agent: 'pan-reviewer',
+  })
+
+  assert.ok(prepared.invocation)
+  assert.deepEqual(prepared.prepared_evidence, {
+    role: 'review',
+    agent: 'pan-reviewer',
+    prompt_path: prepared.invocation.evidence_workers?.[0].brief_path,
+    evidence_path: prepared.invocation.evidence_workers?.[0].evidence_path,
+    attempt: 1,
+  })
+
+  const report = prepared.prepared_evidence?.evidence_path
+
+  assert.ok(report)
+  writeFileSync(path.join(root, report), '# completed review\n')
+
+  const recorded = recordDelegatedWorker(root, run.run_id, {
+    handle: 'bc-review-returned',
+    invocationId: prepared.invocation.invocation_id,
+    role: 'review',
+    agent: 'pan-reviewer',
+  })
+
+  assert.equal(recorded.record.attempt, 1)
+  assert.equal(recorded.evidence_attempt?.evidence_path, report)
+})
+
+// `--agent` asks two questions at once when one persona serves the stage
+// worker and an evidence role: which evidence launch is this, and does the
+// stage still owe its delegation artifact. Answering only the first dropped
+// the artifact `pan submit` later requires.
+test('a shared agent name prepares the evidence launch and the stage delegation', () => {
+  const root = createFixture()
+  const stagePath = path.join(
+    root,
+    'library',
+    'workflows',
+    'delivery',
+    'stages',
+    'verify.json',
+  )
+  const stage = JSON.parse(readFileSync(stagePath, 'utf8')) as {
+    persona: string
+    evidence_workers: Array<{ persona: string; role: string }>
+  }
+  const shared = stage.evidence_workers[0]
+
+  assert.ok(shared)
+
+  // The stage worker and the review evidence worker now project to one
+  // agent name, which is the ambiguity the repair has to resolve.
+  stage.persona = shared.persona
+  writeFileSync(stagePath, `${JSON.stringify(stage, null, 2)}\n`)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  setRunStage(root, run.run_id, 'verify', 'Verify the current workspace.')
+
+  const prepared = prepareInvocation(root, run.run_id)
+  const agent = (prepared.invocation?.evidence_workers ?? [])[0]?.agent
+
+  assert.ok(agent)
+
+  const shipped = prepareInvocation(root, run.run_id, { agent })
+
+  assert.equal(shipped.prepared_evidence?.role, shared.role)
+  assert.ok(
+    shipped.prepared_delegation,
+    'the stage delegation is still prepared for its own agent',
+  )
+  assert.ok(shipped.prepared_delegation.artifact_path)
+  assert.ok(
+    existsSync(path.join(root, shipped.prepared_delegation.artifact_path)),
+  )
+})
+
+// A foreground evidence worker can finish before Cursor returns the platform
+// handle. Recording that handle attaches to the report's prepared attempt.
+test('a completed evidence report receives its late platform handle', () => {
   const { root, runId, invocation } = verifyInvocation()
   const invocationId = invocation.invocation_id
-
   const first = (invocation.evidence_workers ?? [])[0]
-  const firstReport = path.join(root, first.evidence_path)
   const firstBody = '# Review evidence, first attempt\n'
 
-  writeFileSync(firstReport, firstBody)
+  writeFileSync(path.join(root, first.evidence_path), firstBody)
 
-  const relaunch = recordDelegatedWorker(root, runId, {
-    handle: 'bc-relaunch',
+  const recorded = recordDelegatedWorker(root, runId, {
+    handle: 'bc-returned',
     invocationId,
     role: first.role,
+  })
+
+  assert.ok(recorded.evidence_attempt)
+  assert.equal(recorded.record.attempt, 1)
+  assert.equal(recorded.evidence_attempt.evidence_path, first.evidence_path)
+  assert.equal(recorded.evidence_attempt.brief_path, first.brief_path)
+  assert.equal(recorded.warnings, undefined)
+  assert.equal(
+    readFileSync(path.join(root, first.evidence_path), 'utf8'),
+    firstBody,
+  )
+  assert.deepEqual(
+    (readInvocation(root, runId, invocationId).evidence_workers ?? [])
+      .find((worker) => worker.role === first.role)
+      ?.attempts?.map((attempt) => attempt.attempt),
+    [1],
+  )
+})
+
+// A stalled worker relaunched before its first handle was ever recorded is
+// indistinguishable on disk from a late handle for the launch that wrote the
+// report. The caller knows which one it is, so it says so.
+test('an explicit new attempt protects the report of an unrecorded relaunch', () => {
+  const { root, runId, invocation } = verifyInvocation()
+  const invocationId = invocation.invocation_id
+  const first = (invocation.evidence_workers ?? [])[0]
+  const firstBody = '# partial evidence from the stalled worker\n'
+
+  writeFileSync(path.join(root, first.evidence_path), firstBody)
+
+  const relaunch = recordDelegatedWorker(root, runId, {
+    handle: 'bc-relaunch-unrecorded',
+    invocationId,
+    role: first.role,
+    newAttempt: true,
   })
 
   assert.ok(relaunch.evidence_attempt)
   assert.equal(relaunch.record.attempt, 2)
   assert.notEqual(relaunch.evidence_attempt.evidence_path, first.evidence_path)
-  assert.notEqual(relaunch.evidence_attempt.brief_path, first.brief_path)
-
-  writeFileSync(
-    path.join(root, relaunch.evidence_attempt.evidence_path),
-    '# Review evidence, second attempt\n',
+  assert.equal(
+    readFileSync(path.join(root, first.evidence_path), 'utf8'),
+    firstBody,
   )
+  assert.match(relaunch.warnings?.[0] ?? '', /prepared card/u)
+})
 
-  assert.equal(readFileSync(firstReport, 'utf8'), firstBody)
+// Attempt 1 can stay unrecorded while attempt 2 carries a handle. A handle
+// that arrives after that must not attach behind the recorded attempt.
+test('a late handle does not attach behind a recorded newer attempt', () => {
+  const { root, runId, invocation } = verifyInvocation()
+  const invocationId = invocation.invocation_id
+  const first = (invocation.evidence_workers ?? [])[0]
 
-  const amended = readInvocation(root, runId, invocationId)
-  const attempts = (amended.evidence_workers ?? []).find(
-    (worker) => worker.role === first.role,
-  )?.attempts
+  writeFileSync(path.join(root, first.evidence_path), '# stalled\n')
 
-  assert.deepEqual(
-    attempts?.map((attempt) => attempt.attempt),
-    [1, 2],
+  const second = recordDelegatedWorker(root, runId, {
+    handle: 'bc-second',
+    invocationId,
+    role: first.role,
+    newAttempt: true,
+  })
+
+  assert.equal(second.record.attempt, 2)
+
+  const third = recordDelegatedWorker(root, runId, {
+    handle: 'bc-third',
+    invocationId,
+    role: first.role,
+  })
+
+  assert.equal(third.record.attempt, 3)
+  assert.notEqual(
+    third.evidence_attempt?.evidence_path,
+    first.evidence_path,
+    'attempt 1 stays unrecorded rather than receiving a later launch',
   )
+})
 
-  // The consuming card names both attempts, so the verification that reads it
-  // cannot silently consume one report of two.
+// A role whose prepared attempt already carries a handle is a genuine
+// relaunch. It receives fresh paths and reports the prepared-card impact.
+test('a genuine evidence relaunch allocates attempt two and warns', () => {
+  const { root, runId, invocation } = verifyInvocation()
+  const invocationId = invocation.invocation_id
+  const first = (invocation.evidence_workers ?? [])[0]
+
+  recordDelegatedWorker(root, runId, {
+    handle: 'bc-first',
+    invocationId,
+    role: first.role,
+  })
+  writeFileSync(path.join(root, first.evidence_path), '# first attempt\n')
+
+  const {
+    PANCREATOR_ROOT: _root,
+    PANCREATOR_EXEC_ROOT: _execRoot,
+    PANCREATOR_BUILD_READY: _buildReady,
+    ...env
+  } = process.env
+  const command = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'worker',
+      'record',
+      runId,
+      '--handle',
+      'bc-relaunch',
+      '--invocation',
+      invocationId,
+      '--role',
+      first.role,
+      '--json',
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...env, PANCREATOR_ROOT: root },
+    },
+  )
+  const relaunch = JSON.parse(command.stdout) as ReturnType<
+    typeof recordDelegatedWorker
+  >
+
+  assert.equal(command.status, 0, command.stderr)
+  assert.equal(relaunch.record.attempt, 2)
+  assert.ok(relaunch.evidence_attempt)
+  assert.notEqual(relaunch.evidence_attempt.evidence_path, first.evidence_path)
+  assert.equal(relaunch.warnings?.length, 1)
+  assert.match(relaunch.warnings?.[0] ?? '', /prepared card/u)
+  assert.match(relaunch.warnings?.[0] ?? '', /sha256:[0-9a-f]{64}/u)
+
   const card = readFileSync(
     path.join(
       root,
@@ -138,6 +333,11 @@ test('a relaunch leaves the card a running stage worker attested unmoved', () =>
 
   assert.ok(attestedManifest)
 
+  recordDelegatedWorker(root, runId, {
+    handle: 'bc-evidence-first',
+    invocationId,
+    role: first.role,
+  })
   writeFileSync(path.join(root, first.evidence_path), '# first attempt\n')
 
   const relaunch = recordDelegatedWorker(root, runId, {

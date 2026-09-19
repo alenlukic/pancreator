@@ -14,10 +14,12 @@ import {
   recordCohortBaselines,
   releaseCohortBaselineClaim,
 } from './cohorts.js'
+import { agentRecordedProfilePasses } from './agent-ledger-evidence.js'
 import {
   buildContextReference,
   buildInvocationInputs,
   operatorStageRepairContext,
+  remediationReturn,
   summarizePriorFailure,
 } from './context.js'
 import {
@@ -188,6 +190,9 @@ import type { RatifiedAcceptanceCriterion } from './verification.js'
 import {
   adoptedBaselineWorkspaceDivergence,
   loadRepositoryChecks,
+  recordAgentRepositoryCheckForRuns,
+  recordProfileGatePass,
+  repositoryCheckProfileName,
   runRepositoryCheck,
   runRepositorySetup,
   summarizeRepositoryCheckResult,
@@ -442,6 +447,8 @@ export interface PrepareInvocationResult {
   advisories: string[]
   /** What `--agent` had the harness write and start, when it was passed. */
   prepared_delegation?: PreparedDelegation
+  /** Evidence-role launch selected and allocated by `--agent`. */
+  prepared_evidence?: PreparedEvidenceDelegation
 }
 
 /** Delivery artifacts `pan prepare --agent <name>` owns for one invocation. */
@@ -453,6 +460,14 @@ export interface PreparedDelegation {
   /** In-flight worker model evidence, or null when no probe started. */
   model_evidence: RunModelEvidence | null
   probe_pid: number | null
+}
+
+export interface PreparedEvidenceDelegation {
+  role: string
+  agent: string
+  prompt_path: string
+  evidence_path: string
+  attempt: number
 }
 
 export interface OperationProgressOptions {
@@ -4456,6 +4471,221 @@ function resolveStageForAttempt(
   return persona ? { ...stage, persona } : stage
 }
 
+/** Refresh stale interior checks before a post-remediation verification. */
+/**
+ * Refresh every interior profile whose evidence the intervening remediation
+ * superseded, before a returning verify stage delegates (`VERIFY-001`).
+ *
+ * A profile that fails here says the repair is incomplete, which is an
+ * ordinary workflow outcome rather than a programmer error. Throwing left
+ * `pan prepare` with no route and no durable record, so the failure returns
+ * the run along the stage's own failure transition instead, with the
+ * execution recorded in the run's repository-check ledger.
+ */
+function refreshReturningVerifyProfiles(
+  root: string,
+  state: RunState,
+  workflow: WorkflowDefinition,
+  stage: StageDefinition,
+  invocationId: string,
+  onProgress?: (message: string) => void,
+): 'pass' | 'routed' | 'paused' {
+  // The card's return marker and this refresh MUST answer "is this a return
+  // visit" the same way. They used different predicates, so a history of
+  // verify(failure), remediate(success), verify(blocked) rendered a brief
+  // that forbade profile execution while the harness refreshed nothing.
+  const returnVisit = remediationReturn(root, state, stage)
+
+  if (!returnVisit) {
+    return 'pass'
+  }
+
+  const remediation = state.stage_history.find(
+    (item) => item.invocation_id === returnVisit.remediation_invocation_id,
+  )
+
+  if (!remediation) {
+    return 'pass'
+  }
+
+  const workspace = workspaceSnapshotForRun(root, state)
+  const currentProfiles = new Set<string>()
+
+  // Evidence produced before remediation is stale by ordering even when the
+  // fixture or a no-op repair leaves the Git fingerprint unchanged. Only the
+  // remediation submission itself can make a profile current for this return.
+  for (const result of remediation.deterministic) {
+    const profile = result.command
+      ? repositoryCheckProfileName(result.command)
+      : null
+
+    if (
+      profile &&
+      result.passed &&
+      result.workspace_fingerprint === workspace.fingerprint
+    ) {
+      currentProfiles.add(profile)
+    }
+  }
+
+  // A refresh this function already performed is current evidence too. The
+  // return predicate now spans a blocked retry, so without this the same
+  // profiles would execute again at every prepare of the same workspace.
+  for (const pass of agentRecordedProfilePasses(root, state.run_id)) {
+    if (pass.fingerprint === workspace.fingerprint) {
+      currentProfiles.add(pass.profile)
+    }
+  }
+
+  for (const profile of collectStageRepositoryCheckProfiles(
+    workflow.stages,
+    state,
+  )) {
+    if (currentProfiles.has(profile.name)) {
+      continue
+    }
+
+    onProgress?.(
+      `refreshing post-remediation '${profile.name}' evidence before verify`,
+    )
+    const startedAt = now()
+    const result = runRepositoryCheck(root, profile.name, {
+      timeout_ms: profile.timeout_ms,
+      workspace: state.workspace_root || '.',
+    })
+
+    if (result.status !== 'passed') {
+      recordAgentRepositoryCheckForRuns(
+        root,
+        [state.run_id],
+        result,
+        startedAt,
+        'harness',
+        null,
+        false,
+        null,
+        invocationId,
+      )
+
+      return routeFailedVerifyProfileRefresh(
+        root,
+        state,
+        stage,
+        profile.name,
+        result,
+        onProgress,
+      )
+    }
+
+    const pass = recordProfileGatePass(root, profile.name, result, {
+      run_ids: [state.run_id],
+      fingerprint_before: workspace.fingerprint,
+      started_at: startedAt,
+      initiator: 'harness',
+    })
+
+    if (!pass) {
+      // The profile passed but the workspace moved under it, so the pass
+      // proves nothing about the tree verify is about to read. That is the
+      // same unusable outcome as a failure and takes the same durable route.
+      recordAgentRepositoryCheckForRuns(
+        root,
+        [state.run_id],
+        result,
+        startedAt,
+        'harness',
+        null,
+        false,
+        null,
+        invocationId,
+      )
+
+      return routeFailedVerifyProfileRefresh(
+        root,
+        state,
+        stage,
+        profile.name,
+        result,
+        onProgress,
+        'the workspace moved while the refresh ran, so its pass could not be recorded',
+      )
+    }
+
+    recordAgentRepositoryCheckForRuns(
+      root,
+      [state.run_id],
+      result,
+      startedAt,
+      'harness',
+      pass.evidence_path,
+      false,
+      null,
+      invocationId,
+    )
+  }
+
+  return 'pass'
+}
+
+/**
+ * Send a run whose post-remediation profile refresh failed back along the
+ * verify stage's own failure transition, the same route a failing verdict
+ * takes. A workflow limit that intercepts the route pauses the run for the
+ * operator, exactly as it does for a failed entry gate.
+ */
+function routeFailedVerifyProfileRefresh(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  profileName: string,
+  result: ReturnType<typeof runRepositoryCheck>,
+  onProgress?: (message: string) => void,
+  cause = `the profile ended with status '${result.status}'`,
+): 'routed' | 'paused' {
+  const target = stage.transitions.failure
+  const reason =
+    `Post-remediation '${profileName}' refresh did not produce usable ` +
+    `evidence before verify: ${cause}. The repaired workspace does not ` +
+    'satisfy a profile this stage reads, so the run returns for repair ' +
+    'rather than verifying against superseded evidence.'
+
+  onProgress?.(reason)
+  recordRunAdvisories(
+    state,
+    { kind: 'verify_profile_refresh', source: 'prepare', stage: stage.slug },
+    [reason],
+  )
+
+  if (!target) {
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision', operator_only: true }
+    writeDecision(root, state, 'Post-remediation refresh failed', reason, [
+      `Send the run back for repair with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+    ])
+    persistRun(root, state, 'run_paused', { reason, stage: stage.slug })
+
+    return 'paused'
+  }
+
+  applyTransition(root, state, stage, 'failure')
+
+  if (state.status !== 'running') {
+    persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+    return 'paused'
+  }
+
+  persistRun(root, state, 'verify_profile_refresh_failed', {
+    stage: stage.slug,
+    profile: profileName,
+    routed_to: target,
+  })
+
+  return 'routed'
+}
+
 /** Agent-registry bookkeeping a lifecycle call owes once its state is durable. */
 interface PreparedInvocationRegistration {
   run_id: string
@@ -4676,6 +4906,20 @@ export function prepareInvocation(
       stage.slug,
       attempt,
     )
+
+    if (
+      refreshReturningVerifyProfiles(
+        root,
+        state,
+        workflow,
+        stage,
+        invocationId,
+        options.onProgress,
+      ) !== 'pass'
+    ) {
+      return { state, invocation: null, advisories }
+    }
+
     const layout = resolveRunLayout(root, runId)
 
     const outputPath = layout.output(invocationId).relative
@@ -5266,28 +5510,62 @@ export function prepareInvocation(
   // supervisor is about to perform, and both need the mutex this block no
   // longer holds: the probe records its marker through its own transaction.
   if (options.agent !== undefined && result.invocation) {
-    const written = writeLabeledDelegationArtifact(
-      root,
-      result.invocation,
-      options.agent,
+    const invocation = result.invocation
+    const evidenceWorker = (invocation.evidence_workers ?? []).find(
+      (worker) => worker.agent === options.agent,
     )
-    const probe =
-      written.artifact_path === null
-        ? null
-        : startDetachedWorkerModelProbe(
-            root,
-            runId,
-            result.invocation.invocation_id,
-          )
+    // One agent name can serve an evidence role and the stage worker at
+    // once, because both names come from the same persona projection.
+    // Answering only the evidence question then dropped the stage's own
+    // delegation artifact, so each question is answered on its own.
+    const stageAgentPath = invocation.delegation?.cursor_agent_path
+    const delegatesStage =
+      stageAgentPath !== undefined &&
+      path.basename(stageAgentPath, path.extname(stageAgentPath)) ===
+        options.agent
+    let prepared: PrepareInvocationResult = result
 
-    return {
-      ...result,
-      prepared_delegation: {
-        ...written,
-        model_evidence: probe?.evidence ?? null,
-        probe_pid: probe?.probe_pid ?? null,
-      },
+    if (evidenceWorker) {
+      const evidenceAttempt = evidenceWorkerAttempts(evidenceWorker).at(-1)
+
+      invariant(evidenceAttempt, 'Prepared evidence worker has no attempt.', {
+        code: 'EVIDENCE_ATTEMPT_MISSING',
+      })
+
+      prepared = {
+        ...prepared,
+        prepared_evidence: {
+          role: evidenceWorker.role,
+          agent: evidenceWorker.agent,
+          prompt_path: evidenceAttempt.brief_path,
+          evidence_path: evidenceAttempt.evidence_path,
+          attempt: evidenceAttempt.attempt,
+        },
+      }
     }
+
+    if (!evidenceWorker || delegatesStage) {
+      const written = writeLabeledDelegationArtifact(
+        root,
+        invocation,
+        options.agent,
+      )
+      const probe =
+        written.artifact_path === null
+          ? null
+          : startDetachedWorkerModelProbe(root, runId, invocation.invocation_id)
+
+      prepared = {
+        ...prepared,
+        prepared_delegation: {
+          ...written,
+          model_evidence: probe?.evidence ?? null,
+          probe_pid: probe?.probe_pid ?? null,
+        },
+      }
+    }
+
+    return prepared
   }
 
   return result
@@ -8296,12 +8574,21 @@ export interface RecordDelegatedWorkerOptions {
   agent?: string
   model?: string
   launchMode?: DelegatedWorkerRecord['launch_mode']
+  /**
+   * Allocate a fresh evidence attempt instead of attaching to the latest
+   * declared one. The caller knows it relaunched a worker whose first handle
+   * was never recorded; nothing on disk distinguishes that from a late
+   * handle for the launch that wrote the report already there.
+   */
+  newAttempt?: boolean
 }
 
 export interface DelegatedWorkerLaunch {
   record: DelegatedWorkerRecord
   /** Paths this launch owns, when the role is an evidence worker. */
   evidence_attempt?: EvidenceWorkerAttempt
+  /** Non-blocking notice when recording the launch extends a prepared card. */
+  warnings?: string[]
 }
 
 function readInvocationRecord(
@@ -8415,6 +8702,7 @@ export function recordDelegatedWorker(
     let declaredPaths = [invocation.output.path]
     let harnessPaths: string[] = []
     let evidenceAttempt: EvidenceWorkerAttempt | undefined
+    const warnings: string[] = []
 
     if (role !== STAGE_WORKER_ROLE) {
       const worker = (invocation.evidence_workers ?? []).find(
@@ -8432,16 +8720,42 @@ export function recordDelegatedWorker(
         { code: 'EVIDENCE_ROLE_UNKNOWN' },
       )
 
-      // A report already on disk holds its name even when no launch was
-      // recorded for it, so the ordinal is the later of the two answers.
-      attempt = Math.max(
-        attempt,
-        nextAttemptOrdinal(
-          resolveRunLayout(root, runId).evidence('.').absolute,
-          `${invocationId}.${role}-evidence`,
-          '.md',
-        ),
+      const recordedAttempts = new Set(
+        recordedForRole.map((item) => item.attempt),
       )
+      const declaredAttempts = [...(worker.attempts ?? [])].sort(
+        (left, right) => right.attempt - left.attempt,
+      )
+      // Only the latest declared attempt is attachable. An older attempt
+      // left unrecorded stays unrecorded, because a handle that attaches
+      // behind an attempt that already carries one names the wrong launch.
+      const latestDeclared = declaredAttempts[0]
+      const attachable =
+        options.newAttempt === true ||
+        latestDeclared === undefined ||
+        recordedAttempts.has(latestDeclared.attempt)
+          ? undefined
+          : latestDeclared
+
+      // `prepare` allocates the evidence paths before launch. Recording the
+      // handle afterwards attaches it to that allocation, whether or not the
+      // worker already wrote its report. A role whose latest attempt already
+      // carries a handle receives a new attempt, and so does a caller that
+      // asked for one because it relaunched an unrecorded worker.
+      attempt =
+        attachable?.attempt ??
+        Math.max(
+          attempt,
+          // A new attempt sits above every declared one. Without this floor
+          // an unrecorded earlier attempt lowers the count and the fresh
+          // allocation lands back on paths another launch already owns.
+          (latestDeclared?.attempt ?? 0) + 1,
+          nextAttemptOrdinal(
+            resolveRunLayout(root, runId).evidence('.').absolute,
+            `${invocationId}.${role}-evidence`,
+            '.md',
+          ),
+        )
 
       const existing = (worker.attempts ?? []).find(
         (item) => item.attempt === attempt,
@@ -8460,6 +8774,17 @@ export function recordDelegatedWorker(
 
       if (!existing) {
         worker.attempts = [...(worker.attempts ?? []), evidenceAttempt]
+        const cardPath = resolveRunLayout(root, runId).invocation(
+          invocationId,
+          '.md',
+        ).relative
+        const cardDigest =
+          invocation.contract_manifest?.contract_sha256 ?? 'unavailable'
+        warnings.push(
+          `Recording role '${role}' allocated attempt ${attempt} and would ` +
+            `change the paths required by prepared card '${cardPath}' ` +
+            `(sha256:${cardDigest}); continuing.`,
+        )
         writeTextAtomic(
           resolveInside(root, evidenceAttempt.brief_path),
           renderEvidenceWorkerBrief(invocation, {
@@ -8507,6 +8832,7 @@ export function recordDelegatedWorker(
     return {
       record,
       ...(evidenceAttempt ? { evidence_attempt: evidenceAttempt } : {}),
+      ...(warnings.length > 0 ? { warnings } : {}),
     }
   })
 }

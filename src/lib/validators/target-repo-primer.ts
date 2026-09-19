@@ -1,9 +1,101 @@
 import path from 'node:path'
 
 import { hasHeading, parseMarkdown } from '../markdown.js'
+import { gitCommitDate, gitHead, gitShowFile } from '../git.js'
 import { readText } from '../io.js'
-import { isTargetInstallation } from '../project-config.js'
+import {
+  configuredWorkspaceRoot,
+  isTargetInstallation,
+} from '../project-config.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
+
+/**
+ * What no check on this file can establish, stated where a reader of the
+ * result meets it. A generated document cannot be proved current from its
+ * own bytes: only the generator knows whether the body describes the commit
+ * the header names.
+ */
+export const PRIMER_BODY_FRESHNESS_LIMIT =
+  'These fields read the primer header against the repository. Whether the ' +
+  'body describes the stamped commit is not checkable from the file, and ' +
+  'only a `/pan-build-docs` regeneration establishes it.'
+
+export interface TargetRepoPrimerFreshness {
+  source_head: string | null
+  current_head: string | null
+  generated_at: string | null
+  /** The stamped commit is not the checkout's current commit. */
+  drifted: boolean
+  /**
+   * `generated-at` precedes the commit `source-head` names, so the two
+   * header fields cannot both describe one generation. This detects a stamp
+   * moved forward over an older body. It does not detect a stamp moved
+   * forward together with its timestamp, which leaves no trace in the file.
+   */
+  stamp_predates_source: boolean
+  /** Always `unverified`; see `PRIMER_BODY_FRESHNESS_LIMIT`. */
+  body_freshness: 'unverified'
+  message: string | null
+}
+
+function metadataValue(content: string, key: string): string | null {
+  const pattern = new RegExp(`<!--\\s*${key}:\\s*([^>]+?)\\s*-->`, 'iu')
+
+  return pattern.exec(content)?.[1]?.trim() ?? null
+}
+
+/**
+ * Compare the primer's stamped source commit with the repository it
+ * describes.
+ *
+ * The primer describes the deliverable workspace, so the comparison reads
+ * that workspace's HEAD rather than the harness root's. The two coincide in
+ * self-development and diverge in a detached installation.
+ *
+ * A stamp is also checked against the body beneath it: a `generated-at` that
+ * predates the commit `source-head` names means the stamp was moved forward
+ * on its own, which reports a stale primer as fresh.
+ */
+export function targetRepoPrimerFreshness(
+  root: string,
+  targetPath = 'docs/target-repo-primer.md',
+): TargetRepoPrimerFreshness {
+  const content = readText(path.join(root, targetPath))
+  const sourceHead = metadataValue(content, 'source-head')
+  const generatedAt = metadataValue(content, 'generated-at')
+  const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+  const currentHead = gitHead(workspaceRoot)
+  const stamped = sourceHead !== null && sourceHead !== 'unavailable'
+  const drifted = stamped && currentHead !== null && sourceHead !== currentHead
+  // A revision reaches Git only after it looks like one. `source-head` is
+  // file-sourced, so the shape check runs before the value is passed on.
+  const stampedAt =
+    stamped && /^[0-9a-f]{7,40}$/iu.test(sourceHead)
+      ? gitCommitDate(workspaceRoot, sourceHead)
+      : null
+  const generatedMs = generatedAt === null ? NaN : Date.parse(generatedAt)
+  const stampPredatesSource =
+    stampedAt !== null &&
+    !Number.isNaN(generatedMs) &&
+    generatedMs < Date.parse(stampedAt)
+
+  return {
+    source_head: sourceHead,
+    current_head: currentHead,
+    generated_at: generatedAt,
+    drifted,
+    stamp_predates_source: stampPredatesSource,
+    body_freshness: 'unverified',
+    message: drifted
+      ? `target repository primer drift: source-head ${sourceHead} does not ` +
+        `match current HEAD ${currentHead}; run /pan-build-docs`
+      : stampPredatesSource
+        ? `target repository primer stamp is inconsistent: generated-at ` +
+          `${generatedAt} precedes source-head ${sourceHead}, so the two ` +
+          'header fields describe different generations; run /pan-build-docs'
+        : null,
+  }
+}
 
 function issue(code: string, message: string): HandlerResult['issues'][number] {
   return { code, message }
@@ -363,6 +455,29 @@ export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
         'Primer metadata source-head MUST be a Git hash or unavailable',
       ),
     )
+  } else if (sourceHead.trim() !== 'unavailable') {
+    const stampedVersion = gitShowFile(
+      input.root,
+      sourceHead.trim(),
+      'VERSION',
+    )?.trim()
+
+    if (stampedVersion) {
+      const summary = sectionBody(content, 'Summary')
+      const renderedVersion =
+        /\bversion\s+`?v?(\d+\.\d+\.\d+)`?/iu.exec(summary)?.[1] ?? null
+
+      if (renderedVersion !== stampedVersion) {
+        issues.push(
+          issue(
+            'primer.version_mismatch',
+            `Primer Summary version MUST equal VERSION at source-head ` +
+              `${sourceHead.trim()}: expected ${stampedVersion}, got ` +
+              `${renderedVersion ?? 'no rendered version'}`,
+          ),
+        )
+      }
+    }
   }
 
   const architecture = sectionBody(content, 'Architecture')

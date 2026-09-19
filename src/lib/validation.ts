@@ -105,6 +105,7 @@ import {
 import { liveRunsBoundToWorktree } from './state.js'
 import { validateCommandGovernance } from './governance/command-coverage.js'
 import { validateTargetAuthoring } from './target-authoring.js'
+import { targetRepoPrimerFreshness } from './validators/target-repo-primer.js'
 import {
   listWorkflowSlugs,
   loadWorkflow,
@@ -3779,7 +3780,10 @@ function harnessRootWrites(
     return []
   }
 
-  const after = gitWorkspaceSnapshot(root, { commitBase: harnessBefore.head })
+  // Compare the working tree to its current HEAD. An independent clean commit
+  // advances the harness branch but is not a write by this stage; an
+  // uncommitted tracked edit remains visible in the snapshot delta.
+  const after = gitWorkspaceSnapshot(root)
 
   return workspaceChangedPathsFromSnapshots(harnessBefore, after)
     .filter((relativePath) => !relativePath.startsWith('runtime/'))
@@ -4847,6 +4851,19 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
   }
 
+  const primerPath = path.join(root, 'docs', 'target-repo-primer.md')
+  // `PRIMER-001` makes this file mandatory reading for every agent in every
+  // installation, so its freshness is computed wherever it exists and rides
+  // the shared validation result that `pan doctor` reports. Only the warning
+  // is self-development-scoped, because a fresh embedded install owes zero.
+  const primerFreshness = fileExists(primerPath)
+    ? targetRepoPrimerFreshness(root)
+    : null
+
+  if (selfDevelopment && primerFreshness?.message) {
+    warnings.push(primerFreshness.message)
+  }
+
   errors.push(...validateQuestionToolAccess(root))
   errors.push(...validateEvalScenarios(root))
   errors.push(...harnessRepairCategoryErrors(root))
@@ -5201,6 +5218,9 @@ export function validateRepository(root: string): RepositoryValidationResult {
     ok: errors.length === 0,
     errors,
     warnings,
+    ...(primerFreshness ? { target_repo_primer: primerFreshness } : {}),
+    // The hash identifies the validation verdict. Primer freshness is an
+    // advisory reading of a generated file and is deliberately outside it.
     report_hash: sha256({ errors, warnings }),
   }
 }

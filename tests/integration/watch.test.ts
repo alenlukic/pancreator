@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   existsSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   utimesSync,
   writeFileSync,
@@ -300,6 +301,71 @@ test('watch completes an already-present output after one confirming wake and st
     'output_younger_than_cadence',
     'the held observation names why it was held',
   )
+})
+
+test('a mark-background re-arm preserves the existing launch clock', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const launchedAt = new Date(Date.now() - 120_000).toISOString()
+
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    launchedAt,
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+    launchMode: 'foreground',
+  })
+  writeStageOutput(root, state)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    markBackground: true,
+    agentState: 'completed',
+  })
+  const launch = readLaunchRecord(root, state.run_id, invocationId)
+
+  assert.equal(watched.state, 'completed')
+  assert.equal(launch?.launched_at, launchedAt)
+  assert.equal(launch?.launched_at_source, 'supervisor')
+  assert.equal(launch?.launch_mode, 'background')
+})
+
+// The recorded symptom was a lateness advisory measured from the re-arming
+// rather than the launch. The clock an arming records itself must survive a
+// later detach for the same reason a supervisor-supplied one does.
+test('a mark-background re-arm preserves a clock the first arming recorded', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const armedMs = Date.now() - 300_000
+
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    defaultLaunchedAtMs: armedMs,
+    defaultSource: 'watch_arm',
+  })
+
+  const armed = readLaunchRecord(root, state.run_id, invocationId)
+
+  writeStageOutput(root, state)
+  await watchInvocation(root, state.run_id, {
+    markBackground: true,
+    agentState: 'completed',
+  })
+
+  const launch = readLaunchRecord(root, state.run_id, invocationId)
+
+  assert.equal(launch?.launched_at, armed?.launched_at)
+  assert.equal(launch?.launched_at_source, 'watch_arm')
+
+  // The detach is therefore measured from the launch rather than from the
+  // re-arming. This launch is 300 seconds old, so the mark is correctly
+  // late; measured from the re-arming it would have read as immediate,
+  // which is the reading the preserved clock exists to prevent.
+  const marker = JSON.parse(
+    readFileSync(
+      path.join(root, backgroundMarkerPath(root, state.run_id, invocationId)),
+      'utf8',
+    ),
+  ) as { launched_at: string; mark_delay_seconds: number; late: boolean }
+
+  assert.equal(marker.launched_at, armed?.launched_at)
+  assert.ok(marker.mark_delay_seconds >= 300)
+  assert.equal(marker.late, true)
 })
 
 test('watch --mark-background writes the background marker beside the record', async () => {

@@ -216,9 +216,9 @@ Prefer a measurement to an estimate and name the command that would produce it.
 
 Rank by absolute cost removed from the critical path, and separate one-time
 cost from cost paid every run.
-No suite-duration ceiling is in force.
-Judge a suite-cost change by its delta against the base revision, not against a
-fixed bound.
+Read the configured `fast_wall` ceiling and the `ship.fast_wall_ceiling`
+criterion as the authority for the current suite budget. Judge a suite-cost
+change by its delta against the base revision as well as that configured budget.
 Cost that sits off the critical path is a note.
 
 ## Joining

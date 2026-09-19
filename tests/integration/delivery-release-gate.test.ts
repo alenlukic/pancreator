@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
-import { stageBySlug } from '../../src/lib/workflow.js'
+import {
+  getRunState,
+  prepareInvocation,
+  resumeRun,
+} from '../../src/lib/engine.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   assertNoShellGate,
   checkpoint,
@@ -28,13 +32,17 @@ const PROFILE_FULL_COMMAND =
 const PROFILE_LEAK_COMMAND =
   `node -e "if(process.env.PAN_TEST_PROFILE){require('node:fs')` +
   `.appendFileSync('runtime/profile-leak.txt','x')}"`
+const PROFILE_FAST_COMMAND = `node -e "require('node:fs').appendFileSync('runtime/fast-refresh.txt','x')"`
 
 test('a remediate to verify return never runs full; the ship release gate runs it exactly once', () => {
   const { root, runId, workflow, state } = checkpoint(
     'delivery@verify-prepared',
     checksVariant('checks=full-marker', {
       static: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
-      fast: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
+      fast: {
+        probes: [],
+        commands: [PROFILE_LEAK_COMMAND, PROFILE_FAST_COMMAND],
+      },
       full: { probes: [], commands: [PROFILE_FULL_COMMAND] },
       configuration: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
     }),
@@ -51,6 +59,10 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   assert.equal(state.repository_check_baselines?.configuration, undefined)
   assert.equal(fullRuns(root), 0)
   assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
+  const fastBeforeRemediation = readFileSync(
+    path.join(root, 'runtime/fast-refresh.txt'),
+    'utf8',
+  ).length
 
   // A failing verdict forwards to remediate without running full.
   const failed = submitStageOutput(
@@ -85,9 +97,14 @@ test('a remediate to verify return never runs full; the ship release gate runs i
     undefined,
   )
 
-  // Verify carries no repository-check gate at all.
+  // Preparing the return visit refreshes stale fast evidence before any
+  // evidence worker is delegated. Static is already current from remediation.
   const verified = submitStageOutput(root, runId, verifyStage, 'success')
 
+  assert.equal(
+    readFileSync(path.join(root, 'runtime/fast-refresh.txt'), 'utf8').length,
+    fastBeforeRemediation + 1,
+  )
   assert.equal(verified.record.outcome, 'success')
   assert.equal(verified.state.current_stage, 'ship')
   assertNoShellGate(verified.record.evaluation.deterministic)
@@ -144,6 +161,84 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   assert.equal(fullSuite.evidence_path, gate.last_result.evidence_path)
   assert.equal(shipped.record.outcome, 'success')
   assert.equal(fullRuns(root), 1)
+})
+
+// The card's return marker and the harness refresh answered "is this a
+// return visit" with different predicates. A verify that blocked after the
+// remediation pauses the run; on resume the brief still marked the return
+// and forbade profile execution, while prepare refreshed nothing, so the
+// verifier was told to cite evidence the harness had not retaken.
+test('a verify that blocked after remediation still refreshes stale evidence on resume', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    checksVariant('checks=full-marker', {
+      static: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
+      fast: {
+        probes: [],
+        commands: [PROFILE_LEAK_COMMAND, PROFILE_FAST_COMMAND],
+      },
+      full: { probes: [], commands: [PROFILE_FULL_COMMAND] },
+      configuration: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
+    }),
+  )
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
+  const fastRuns = () =>
+    readFileSync(path.join(root, 'runtime/fast-refresh.txt'), 'utf8').length
+
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-BLOCKED-1')
+    },
+  )
+  submitStageOutput(root, runId, remediateStage, 'success')
+
+  // A `blocked` verify owes its blocking reason instead of a verdict, and
+  // skips the criteria it never reached.
+  submitStageOutput(root, runId, verifyStage, 'blocked', [], (output) => {
+    output.criteria = output.criteria.map((criterion) => ({
+      ...criterion,
+      result: 'skipped',
+      explanation: 'Verification lacks the required evidence.',
+    }))
+    output.data.verify = {
+      blocking_reason: 'An evidence worker returned no report.',
+      missing_evidence_paths: ['qa-evidence.md'],
+    }
+  })
+
+  const blocked = getRunState(root, runId)
+
+  // That submission's own prepare was the first return, and it refreshed.
+  const afterBlockedVerify = fastRuns()
+
+  assert.equal(blocked.stage_history.at(-1)?.outcome, 'blocked')
+  assert.equal(blocked.status, 'paused')
+
+  // The operator resumes the same stage. The last history entry is now the
+  // blocked verify rather than the remediation, which is the shape that
+  // skipped the refresh, and the workspace has moved since that refresh.
+  resumeRun(root, runId, 'verify')
+  writeFileSync(path.join(root, 'src', 'retry.ts'), 'export const r = 1\n')
+
+  const prepared = prepareInvocation(root, runId)
+
+  assert.ok(prepared.invocation)
+  assert.ok(
+    prepared.invocation.inputs.remediation_return,
+    'the card still marks the return after a blocked retry',
+  )
+  assert.equal(
+    fastRuns(),
+    afterBlockedVerify + 1,
+    'the harness refreshes the interior profile the moved workspace staled',
+  )
+  assert.equal(fullRuns(root), 0)
 })
 
 test('thorough verification runs full at the ship release gate on its own result and routes a failure to remediate, which returns through verify', () => {
@@ -242,4 +337,20 @@ test('thorough verification runs full at the ship release gate on its own result
   assert.equal(ship.state.entry_gates?.ship?.failures, 0)
   assert.equal(ship.state.entry_gates?.ship?.routed_to, undefined)
   assert.equal(ship.state.entry_gates?.ship?.last_result.passed, true)
+})
+
+test('delivery-chunk remediation gates configuration', () => {
+  const root = checkpoint('delivery@verify-prepared').root
+  const remediate = stageBySlug(
+    loadWorkflow(root, 'delivery-chunk'),
+    'remediate',
+  )
+  const commands = remediate.criteria
+    .filter((criterion) => criterion.type === 'shell')
+    .map((criterion) => criterion.command)
+
+  assert.deepEqual(commands, [
+    'pan repository-check static',
+    'pan repository-check configuration',
+  ])
 })

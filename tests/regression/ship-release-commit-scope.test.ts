@@ -321,6 +321,47 @@ test('the mandated release sync passes the scope criterion across a rebase', () 
   )
 })
 
+test('a rebased base that already holds the replayed content reports nothing', () => {
+  const root = createFixture()
+
+  // The upstream branch forks before the topic commit, so the rebase replays
+  // content the recorded base already holds at the same bytes.
+  fixtureGit(['branch', UPSTREAM_BRANCH], { cwd: root, encoding: 'utf8' })
+  writeFileSync(path.join(root, 'src', 'replayed.ts'), 'export const r = 1\n')
+  commitAll(root, 'topic: add the replayed content')
+
+  const before = gitWorkspaceSnapshot(root)
+  const state = shipRunState(RUN_ID, [
+    claimStage(root, RUN_ID, 'implement', []),
+  ])
+
+  fixtureGit(['checkout', '-q', UPSTREAM_BRANCH], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  writeFileSync(
+    path.join(root, 'src', 'upstream-feature.ts'),
+    'export const u = 1\n',
+  )
+  commitAll(root, 'upstream: add the feature')
+  fixtureGit(['checkout', '-q', '-'], { cwd: root, encoding: 'utf8' })
+  rebaseOntoUpstream(root)
+
+  const after = gitWorkspaceSnapshot(root, { commitBase: before.head })
+
+  assert.deepEqual(
+    Object.keys(after.commit_content ?? {}),
+    [],
+    'a two-commit tree diff holds neither the replayed nor the upstream path',
+  )
+
+  const scope = scopeResult(root, state, before)
+
+  assert.equal(scope.passed, true)
+  assert.doesNotMatch(scope.explanation ?? '', /src\/replayed\.ts/u)
+  assert.doesNotMatch(scope.explanation ?? '', /upstream/u)
+})
+
 test('an upstream advance does not launder an external edit across the rebase', () => {
   const root = createFixture()
 

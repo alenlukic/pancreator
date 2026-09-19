@@ -227,7 +227,8 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
   const alphaBaselines = alphaPrepared.state.repository_check_baselines
   const baselineDirectory = cohortBaselineDirectory(root, session.cohort_id)
 
-  assert.ok(alphaBaselines?.fast)
+  assert.ok(alphaBaselines?.configuration)
+  assert.ok(alphaBaselines.fast)
   assert.ok(alphaBaselines.static)
   assert.equal(alphaBaselines.full, undefined)
   assert.equal(
@@ -269,7 +270,11 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
   ).repository_check_baselines
 
   assert.ok(recorded)
-  assert.deepEqual(Object.keys(recorded).sort(), ['fast', 'static'])
+  assert.deepEqual(Object.keys(recorded).sort(), [
+    'configuration',
+    'fast',
+    'static',
+  ])
   assert.equal(recorded.fast?.captured_by_run_id, alpha)
   assert.equal(recorded.fast?.artifact_path, alphaBaselines.fast.artifact_path)
   assert.equal(
@@ -322,11 +327,11 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
 
   assert.deepEqual(
     adoption.map((advisory) => advisory.source),
-    ['prepare', 'prepare'],
+    ['prepare', 'prepare', 'prepare'],
     'one advisory per adopted interior gate profile',
   )
 
-  for (const profile of ['fast', 'static']) {
+  for (const profile of ['configuration', 'fast', 'static']) {
     const advisory = adoption.find((item) =>
       item.message.includes(`'${profile}' baseline`),
     )
@@ -364,7 +369,7 @@ test('a baseline artifact that names no capture workspace is adopted without one
   const alphaWorkspace = loadState(root, alpha).workspace_root
   const legacyDirectory = 'runtime/logs/cohorts/cohort-legacy/baselines'
 
-  for (const profile of ['fast', 'static']) {
+  for (const profile of ['configuration', 'fast', 'static']) {
     writeJson(
       path.join(root, legacyDirectory, `pre-implementation-${profile}.json`),
       {
