@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.17.0] - 2026-09-19
+
+This release adds `/pan-trace`. The command runs a cheap end-to-end smoke of a newly merged harness feature.
+
+### Added
+
+- Add the `/pan-trace` command and the `trace` card mode ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Register `pan-trace` as a card command and as a target-mutating command ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Add the `trace` policy lookup row for persona `harness-workflow-qa` ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Document the choice among `/pan-trace`, `/pan-qa-workflow`, and `pan eval` ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Add integration tests for command registration and the trace card ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+
 ## [6.16.1] - 2026-09-19
 
 This release adds four `openai:` bracket options for the Astra Responses API. A persona can set `mode`, `context`, `summary`, and `verbosity`. The `context` option has no replay effect yet.
