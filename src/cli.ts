@@ -4606,10 +4606,10 @@ async function main(): Promise<void> {
           cadenceSeconds: parseCadenceSeconds(
             option(args, '--cadence-seconds'),
           ),
-          stallWakes: parsePositiveInteger(
-            option(args, '--stall-wakes'),
-            '--stall-wakes',
-            DEFAULT_STALL_WAKES,
+          stallTimeoutSeconds: parsePositiveInteger(
+            option(args, '--stall-timeout-seconds'),
+            '--stall-timeout-seconds',
+            DEFAULT_STALL_TIMEOUT_SECONDS,
           ),
           timeoutSeconds: parseTimeoutSeconds(
             option(args, '--timeout-seconds'),

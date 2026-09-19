@@ -1741,6 +1741,7 @@ export interface MultiplexedWatchOptions {
   cadenceSeconds?: number
   /** Mark every target as a platform-backgrounded launch. */
   markBackground?: boolean
+  stallTimeoutSeconds?: number
   stallWakes?: number
   timeoutSeconds?: number
   /** Injected for tests. Defaults to a real timer. */
@@ -1815,7 +1816,13 @@ export async function watchInvocations(
   )
 
   const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
-  const stallWakes = options.stallWakes ?? DEFAULT_STALL_WAKES
+  // The stall window is a duration, as for the focused watch, so a cadence
+  // change does not alter the liveness rule.
+  const stallTimeoutSeconds =
+    options.stallTimeoutSeconds ?? DEFAULT_STALL_TIMEOUT_SECONDS
+  const stallWakes =
+    options.stallWakes ??
+    Math.max(1, Math.ceil(stallTimeoutSeconds / cadenceSeconds))
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
   const sleep = options.sleep ?? defaultSleep
   const now = options.now ?? Date.now
