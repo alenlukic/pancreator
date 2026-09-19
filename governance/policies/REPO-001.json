@@ -4,9 +4,9 @@
   "severity": "hard",
   "summary": "Target-repository verification MUST use commands and toolchain entrypoints verified from that repository rather than Pancreator language or package-manager assumptions.",
   "instructions": [
-    "Agents MUST treat runtime/repository-checks.json as the scoped deterministic verification profile for the active workspace and MUST NOT substitute guessed npm, Python, Rust, Java, or other ecosystem commands.",
-    "Commands that depend on a particular interpreter, virtual environment, package manager, compiler, SDK, or runtime MUST use the repository-declared explicit entrypoint when available instead of an ambiguous PATH alias.",
-    "Implementation, review, and QA MUST use the same configured profile commands for equivalent checks. Missing profiles or commands MUST be reported as not configured and MUST NOT be represented as passing validation. Equivalent means the same check, not the same breadth: an agent that iterates on a narrower selection still uses the configured command for the profile it runs.",
+    "Agents MUST treat runtime/repository-checks.json as the scoped deterministic verification profile for the active workspace. They MUST NOT substitute guessed npm, Python, Rust, Java, or other ecosystem commands.",
+    "Some commands depend on a particular interpreter, virtual environment, package manager, compiler, SDK, or runtime. Each of those commands MUST use the repository-declared explicit entrypoint when available, instead of an ambiguous PATH alias.",
+    "Implementation, review, and QA MUST use the same configured profile commands for equivalent checks. Agents MUST report missing profiles or commands as not configured, and MUST NOT represent them as passing validation. Equivalent means the same check, not the same breadth: an agent that iterates on a narrower selection still uses the configured command for the profile it runs.",
     "The gate cache is harness-owned. An agent-run `pan repository-check` never consults it, so an agent gains nothing by clearing it. Agents MUST NOT set or clear PAN_GATE_CACHE. The variable leaks into any test run started from the same shell and fails the tests that cover the cache."
   ]
 }

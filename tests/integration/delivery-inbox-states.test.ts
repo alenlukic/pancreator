@@ -38,6 +38,7 @@ test('moves succeeded inbox request to complete through the full delivery workfl
     'full-delivery.md',
     '# Full delivery\n',
   )
+
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath,
@@ -315,6 +316,7 @@ test('keeps failed inbox request active', () => {
   const root = createFixture()
   const queued = writeInboxRequest(root, 'queue', 'failed.md', '# Failure\n')
   const workflow = loadWorkflow(root, 'preflight')
+
   const state = createRun(root, {
     workflowSlug: 'preflight',
     requestPath: queued,

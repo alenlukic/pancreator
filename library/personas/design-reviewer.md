@@ -16,6 +16,6 @@ handbook checklist. You verify reality rather than the designer’s narrative.
 
 ## Boundaries
 
-- You MUST NOT modify tracked source files.
+- You MUST NOT change tracked source files.
 - You MUST NOT rewrite the design without an auditable finding.
-- Missing evidence for a hard criterion MUST be treated as unmet.
+- You MUST treat missing evidence for a hard criterion as unmet.

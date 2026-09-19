@@ -2,7 +2,13 @@ import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { errorMessage } from './lib/errors.js'
-import type { OpenAiReasoningEffort } from './lib/executors/openai-client.js'
+import type {
+  OpenAiReasoningContext,
+  OpenAiReasoningEffort,
+  OpenAiReasoningMode,
+  OpenAiReasoningSummary,
+  OpenAiTextVerbosity,
+} from './lib/executors/openai-client.js'
 import {
   readOpenAiTranscript,
   redactOpenAiKey,
@@ -30,6 +36,10 @@ export interface OpenAiAgentRequest {
   stage: string
   session_id: string
   reasoning_effort?: OpenAiReasoningEffort
+  reasoning_mode?: OpenAiReasoningMode
+  reasoning_context?: OpenAiReasoningContext
+  reasoning_summary?: OpenAiReasoningSummary
+  text_verbosity?: OpenAiTextVerbosity
   max_output_tokens?: number
   max_tool_rounds: number
   request_timeout_ms: number
@@ -161,6 +171,18 @@ export async function runOpenAiAgentCli(
     toolPolicy: request.tool_policy,
     ...(request.reasoning_effort !== undefined
       ? { reasoningEffort: request.reasoning_effort }
+      : {}),
+    ...(request.reasoning_mode !== undefined
+      ? { reasoningMode: request.reasoning_mode }
+      : {}),
+    ...(request.reasoning_context !== undefined
+      ? { reasoningContext: request.reasoning_context }
+      : {}),
+    ...(request.reasoning_summary !== undefined
+      ? { reasoningSummary: request.reasoning_summary }
+      : {}),
+    ...(request.text_verbosity !== undefined
+      ? { textVerbosity: request.text_verbosity }
       : {}),
     ...(request.max_output_tokens !== undefined
       ? { maxOutputTokens: request.max_output_tokens }

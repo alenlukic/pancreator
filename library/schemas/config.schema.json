@@ -75,6 +75,27 @@
         }
       }
     },
+    "installations": {
+      "type": "array",
+      "description": "Operator-declared Pancreator installation roots on this machine. Values belong in config_overrides.json.",
+      "items": {
+        "type": "object",
+        "required": ["id", "path"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^/",
+            "description": "Absolute path to the installation root. The loader rejects a relative path."
+          }
+        }
+      }
+    },
     "fast_wall": {
       "type": "object",
       "description": "Optional self-development fast-lane wall ceiling. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date and never changes for machine load.",

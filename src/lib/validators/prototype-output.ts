@@ -570,6 +570,7 @@ function validateIntakeOutput(
   const questions = Array.isArray(brief?.technical_questions)
     ? brief.technical_questions
     : []
+
   const seen = new Set<string>()
 
   for (const [index, question] of questions.entries()) {

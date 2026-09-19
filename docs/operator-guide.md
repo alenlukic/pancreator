@@ -106,11 +106,14 @@ declared next action names an operator decision cannot be approved. Add
 honored when it matches the recorded recommendation and refused with
 `AWAY_ACTION_REFUSED` when it does not, so the apply never substitutes a
 different action. An option an away subcommand does not accept is refused with
-`UNKNOWN_OPTION`. Pan validates the selected
-action and its rollback plan before apply. Each evaluation and apply result
-appends to `runtime/logs/away-mode/decisions.jsonl`; no command rewrites prior
-records. Use the selected record's `rollback_plan` for manual reversal, then
-append a linked record through the same decision service.
+`UNKNOWN_OPTION`. Pan validates the selected action and its rollback plan before
+apply. Each evaluator transport or parse attempt writes distinct
+`away-evaluator-*.json` exchange evidence, and an invalid reply is retried once.
+Only a valid decision or one generic exhausted evaluator failure appends to
+`runtime/logs/away-mode/decisions.jsonl`; apply results append there too. The
+ledger contains neither raw malformed replies nor per-attempt parse errors, and
+no command rewrites prior records. Use the selected record's `rollback_plan` for
+manual reversal, then append a linked record through the same decision service.
 
 A successful ship packet uses a deterministic approval record. That record does
 not consume the evaluated decision budget. The approval changes workflow state
@@ -336,6 +339,31 @@ configuration patch, rollback, reconciliation, or containment action. It puts
 one implementation-ready remediation intake in `runtime/inbox/queue/` when an
 issue does not have a verified root-cause repair.
 
+### Trace newly merged harness functionality
+
+Use `/pan-trace <feature | PR link | commit hash> [--worktree <name>]` for a
+cheap smoke trace of newly merged harness functionality. The trace learns the
+intended design from repository evidence, drives the core mechanics through
+their normal entry points, exercises one sanctioned failure path, and cleans up
+its throwaway artifacts. It does not add the per-stage checklists, root-cause
+analysis, or waiver bookkeeping that `/pan-qa-workflow` requires.
+
+Choose the instrument by the evidence you need:
+
+- Use `/pan-trace` for one inexpensive, passthrough check of core mechanics
+  after a merge.
+- Use `/pan-qa-workflow` for full checklisted workflow validation and
+  root-cause analysis.
+- Use `pan eval` for a repeatable toy scenario with deterministic graders.
+
+A trace writes
+`runtime/logs/traces/<UTC-timestamp>-<target-slug>/report.md`. The report has
+these sections in order: `Summary`, `Target`, `Mechanics`, `Exercise`,
+`Evidence`, `Failure injection`, `Verdicts`, `Cleanup`, and `Defects`.
+Each mechanic has a verdict of `worked`, `failed`, `not exercised`, or
+`blocked`. A blocked verdict means the environment prevented a product
+verdict.
+
 ## Invocation and delegation validation
 
 `INVOCATION-001` is the normative invocation-card and delegation policy. Each
@@ -456,6 +484,41 @@ intake, a named subset of categories, or a fixed count when you want a
 different set. The command does not modify the investigated run or implement
 the repair.
 
+### Sweep registered embedded installations
+
+Keep machine-local installation roots in the untracked
+`config_overrides.json`, not in the tracked `config.json`:
+
+```json
+{
+  "installations": [
+    { "id": "rowspace", "path": "/Users/alen/Dev/rowspace/.pancreator" },
+    { "id": "cumulus", "path": "/Users/alen/Dev/cumulus/.pancreator" },
+    {
+      "id": "portfolio-demo",
+      "path": "/Users/alen/Dev/portfolio-demo/.pancreator"
+    },
+    { "id": "skills", "path": "/Users/alen/Dev/skills/.pancreator" }
+  ]
+}
+```
+
+Each entry has a stable lowercase `id` and an absolute harness-root `path`.
+Inspect the registry with `./bin/pan installs list --json`. A missing or
+unreadable installation is reported on its own row and does not hide the other
+entries. Each row carries the installation's `version`, the `harness_version`
+of this checkout, and `stale`, which is `true` when the two differ and `null`
+when either is unknown, so an installation that fell behind is visible without
+a manual comparison.
+
+Run `/pan-repair installs` to sweep every registered installation, or append a
+comma-separated id list to narrow the sweep. The technician classifies queued
+items as harness-directed or target-owned and consolidates only harness work in
+the source checkout. After every consolidated intake passes its validator, the
+supervising session uses `pan installs archive`; the command refuses any inbox
+item whose file name the validated intake does not cite. The installed harness
+versions do not need updates.
+
 Use `/pan-spotfix <request>` only when the operator deliberately selects
 lightweight execution and the request satisfies `WORK-001`: one coherent change,
 no unresolved structural decision, no more than three core implementation files
@@ -525,7 +588,10 @@ the target's head, resolving a worktree when your checkout sits elsewhere, so
 the agents verify findings against the tree the diff applies to rather than
 whatever you happen to have open. And it runs
 `pan governance review-scope --target <ref>`, which reports every conflict of
-interest the target carries, by tier. **Instrument** paths — the lineup, a
+interest the target carries, by tier. Its `closure_tracking` field is `tracked`
+when `closure_revision` names the closure commit and `untracked` when an
+installed closure sits outside the target's revisions; the latter reports a null
+`closure_revision`. **Instrument** paths — the lineup, a
 charter, the coordinator, the mode policy, an entry point, the scope check, or
 the reviewer's model mapping — leave the squad's verdict for an independent
 `pan-reviewer`, because a charter cannot find a defect introduced into that
@@ -665,6 +731,33 @@ mode-scoped policy set only. It does not lower verification, review depth,
 correctness checks, the release boundary, or any operator-owned irreversible
 action.
 
+A long-horizon task stops for four hard blocks and nothing else: an action an
+invariant reserves for you (push, publication, deployment, history rewrite,
+destructive reset, branch deletion, external release), a secret or authorization
+that is genuinely absent, a correctness or security failure no permitted action
+can repair, and a destructive action you did not direct. A cost-, speed-, or
+wall-time-backed criterion (a wall ceiling, a rolling average, a budget), a
+condition the worker caused itself, a transient evaluator or executor failure,
+and any ordinary judgment call are decided and recorded, never deferred. To
+make that hold, the shipped profile allows `waive-gate`, sizes the decision
+budget at 12 per run, re-evaluates a failed evaluator reply, and falls through
+to the next ranked option when a selected option does not apply.
+
+No function ends a task. Every stop that is not a terminal success passes to
+the session arbiter, a model exchange that reasons about the stop against the
+four hard blocks and overrides by default (`resume`, `set-stage`, `decide`,
+`waive-gate`, or `restart-task`, each with a directive the next worker acts
+on). A task defers only when the arbiter names the hard block it confirmed, or
+when the arbiter and its deterministic fallback both fail to act past the
+override bound; the deferral record carries that classification
+(`hard_block`, `harness_unrecoverable`, or `operator`). Every arbiter round is
+in `runtime/logs/horizon/<session-id>/arbiter.jsonl`. After the run,
+`pan horizon reinstate <session-id> --task <id> --action <...> --note <directive> --reason <text>`
+is your override of a deferral you do not confirm; it frees the task's
+dependents and returns the session to `running` so `horizon start` drives it
+again. Read `governance/handbooks/horizon/long-horizon.md` for the hard-block
+and arbiter tables.
+
 ### Long-horizon sessions
 
 A long-horizon session owns an ordered queue of workflow tasks and one-off prompt
@@ -681,20 +774,38 @@ its task ids.
 ```
 
 Start is one preflight operation. It records the selected involvement profile,
-arms away mode for the session, records the override, and records permission for
-the driver to attest each task run's supervisor card. Without
-`--attest-supervisor-card`, preflight refuses before any task starts. After a
-successful start, the harness advances tasks until the session is terminal or no
-eligible task remains. It does not publish, deploy, or take an operator-only
+arms away mode for the session, records the override, and records permission to
+attest each task run's supervisor card. Without `--attest-supervisor-card`,
+preflight refuses before any task starts. Start then returns: your chat session
+(`/pan-horizon`) is the supervisor of the session, of every task run it opens,
+and of every run a task's plan approval routes to. `horizon status --json`
+names the next session command (`horizon next` to open the eligible task,
+`horizon reconcile` after a wake), lists every live run under `live_runs` with
+its bootstrap commands (card, attest, redline, model evidence), and lists the
+cohort commands the active task's route offers under `route_commands`. The
+supervisor advances the live runs with the ordinary lifecycle commands, launches
+routed chunk runs in parallel up to the cohort's limit, and reasons about every
+stop itself as the arbiter; nothing publishes, deploys, or takes an operator-only
 release decision.
+
+`horizon start --headless` is the substrate for a scheduled job with no chat
+open: the harness advances tasks in one driver process per task until the
+session is terminal or no eligible task remains, and the harness arbiter reasons
+about each stop. `pan schedule` passes that flag itself.
 
 The session state lives at
 `runtime/logs/horizon/<session-id>/session.json`. An append-only `events.jsonl`
-sits beside it. Only one task runs at a time. A task becomes eligible when all of
-its dependencies succeeded; declared queue order breaks ties. Deferring a task
-marks only its transitive dependents blocked and leaves unrelated tasks eligible.
-The deferral is written both to `deferred.jsonl` and to an actionable request
-under `runtime/inbox/queue/`. Deferring the active task pauses its run before
+sits beside it. Only one task runs at a time, and a task finishes when its
+route finishes: a planning task whose approval starts one delivery run or a
+cohort stays `running`, with `route` recorded on the task, until that run or
+the cohort's release run succeeds. A task becomes eligible when all of its
+dependencies succeeded; declared queue order breaks ties. Deferring a task
+requires the authority the command enforces: `--hard-block <LH-H1..LH-H4>`
+with your reasoning, or `--operator-directive` when you asked for it yourself.
+Deferral marks only the task's transitive dependents blocked and leaves
+unrelated tasks eligible. The deferral is written both to `deferred.jsonl`,
+with its classification, and to an actionable request under
+`runtime/inbox/queue/`. Deferring the active task pauses its run before
 the session releases the slot, and the session refuses to open the next task
 while any task's run is still in flight, so two workflows never mutate one
 workspace at the same time. A run already resting in a pause keeps the pending
@@ -707,7 +818,8 @@ Failures use one fixed per-task ladder:
    strategy switch and routes to the workflow's declared repair stage.
 3. The next exhaustion starts one planning run from the structured failure
    record, scoped to the task and its dependents.
-4. A second exhaustion or a human-only blocker defers the task.
+4. A second exhaustion reaches the arbiter, which defers the task only by
+   naming one of the four hard blocks.
 
 The failure signature is the sorted set of failed hard criteria, or the
 validation-only marker. The counters live on the task's run and survive ordinary
@@ -716,18 +828,21 @@ rungs because no queue exists to receive a deferral.
 
 Every started, finished, deferred, excluded, and quiescent transition writes a
 JSON handoff and a readable companion under `handoffs/`. The handoff carries the
-queue shape, last task, open deferrals, and one next action. Each task runs in a
-new driver process that reads the latest handoff and session record. That process
-boundary is the only continuity mechanism. `pan horizon resume <session-id>` is a
-post-run inspection command that reads the latest handoff; the running session
-does not wait for it.
+queue shape, last task, open deferrals, and one next action. Cursor summarizes
+the supervising conversation itself when its context window fills; the session
+record, the handoff, and each run's state are what the supervisor rebuilds from
+afterwards. Under `--headless`, each task instead runs in a new driver process
+that reads the latest handoff. `pan horizon resume <session-id>` reads the
+latest handoff for inspection.
 
 Useful inspection and post-run controls:
 
 ```sh
 ./bin/pan horizon status <session-id> --json
+./bin/pan horizon reconcile <session-id> --json
 ./bin/pan horizon resume <session-id> --json
-./bin/pan horizon defer <session-id> --task <id> --reason '<reason>' --json
+./bin/pan horizon defer <session-id> --task <id> --hard-block LH-H2 --reason '<reason>' --json
+./bin/pan horizon reinstate <session-id> --task <id> --action resume --note '<directive>' --reason '<reason>' --json
 ./bin/pan horizon abandon <session-id> --reason '<reason>' --json
 ```
 
@@ -1042,13 +1157,23 @@ Supported bracket options:
 
 | Option              | Values                                                     | Default                 |
 | ------------------- | ---------------------------------------------------------- | ----------------------- |
+| `context`           | `auto`, `current_turn`, `all_turns`                        | the API's own default   |
 | `effort`            | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` | the model's own default |
 | `max-output-tokens` | a positive integer                                         | the model's own default |
 | `max-tool-rounds`   | a positive integer                                         | `60`                    |
+| `mode`              | `standard`, `pro`                                          | the model's own default |
 | `session-resume`    | `true`, `false`                                            | `true`                  |
+| `summary`           | `auto`, `concise`, `detailed`                              | no summary              |
 | `timeout-ms`        | an integer of at least `1000`                              | `3600000`               |
+| `verbosity`         | `low`, `medium`, `high`                                    | the model's own default |
 
-Effort is validated against the enum above rather than against a per-model catalog, so a specific model may still reject a value the harness accepts; the API error names that model's own set. The tool-result cap is a fixed harness bound of `262144` bytes, not a mapping option.
+`effort`, `mode`, `context`, and `summary` set the Responses `reasoning` parameter; `verbosity` sets `text.verbosity`. Each is sent only when the mapping names it, so an option you omit leaves the API default in place. `verbosity` shapes answer detail and is not a token bound — `max-output-tokens` is that one.
+
+Every enum is validated against the set above rather than against a per-model catalog, so a specific model may still reject a value the harness accepts; the API error names that model's own set. `gpt-6-astra`, for example, rejects `effort=none` and `effort=minimal`, and bounds `max-output-tokens` to 16–128000. The tool-result cap is a fixed harness bound of `262144` bytes, not a mapping option.
+
+`context` has a harness-side caveat. The API is called with retention disabled, and the local transcript replays only messages and tool calls, so no reasoning item from an earlier turn is ever resent. `all_turns` and `auto` therefore have nothing earlier to reuse, and they behave like `current_turn` until the transcript also replays encrypted reasoning items. The option is accepted and forwarded so a mapping is ready when that lands; set it today only if you want that recorded intent.
+
+Do not read `context` here as the Cursor `context` option, which sizes a model's context window. Executor prefixes select independent option sets, and this one names the Responses `reasoning.context` parameter.
 
 Requirements and behavior:
 
@@ -1454,6 +1579,44 @@ The `impacted` profile in `runtime/repository-checks.json` runs the same
 command. An embedded target may declare its own `impacted` command in its
 `repository-checks.json`; the harness never treats that profile as a gate.
 
+## Read a gate's failure classification
+
+When a repository-check gate fails, the harness asks of each newly failing
+test whether the change could have caused it, and records the answer in the
+gate's evidence log under `--- failure classifications ---`.
+
+A test the change's import closure does not reach, and that the baseline was
+not already failing, is rerun once on its own through the profile's
+`isolation_command`. A rerun that passes, and whose transcript names the test,
+makes the failure `environment_or_flake`: the gate passes with an advisory
+naming the test and both results. Anything else keeps the failure.
+
+The other dispositions each say why no pass was granted. `reproduced` means
+the test failed again alone. `in_change_closure` means the change reaches the
+test, so it is never reclassified. `isolation_unproven` means the rerun exited
+cleanly but never reported the test, which is what a selector that matches
+nothing looks like. `isolation_unavailable` means the harness could not
+diagnose at all, and its `reason` distinguishes a profile with no
+`isolation_command` from a workspace with no change evidence.
+
+`isolation_command` is optional, and a profile without one keeps today's
+behavior: every new failure fails the gate. A target repository gains the
+classification only by declaring a command that runs one named test, with
+`{file}` for the test file and `{test_pattern}` for the test name as an
+anchored regular expression, or `{test}` for the name literally:
+
+```json
+"fast": {
+  "commands": ["pytest -q"],
+  "isolation_command": "pytest -q {file}::{test}"
+}
+```
+
+Prefer `{test_pattern}` for any runner whose filter is a pattern. A literal
+name containing `(`, `.`, or `|` is read as regular-expression syntax, and a
+filter that matches nothing exits successfully — which is why a clean exit
+alone never earns a pass.
+
 ## Govern the fast-lane wall
 
 Self-development only. Every complete `npm test` run appends one record to
@@ -1529,10 +1692,16 @@ has its own standalone mode, its own scan-and-checkpoint command, and its own
 checkpoint cache. Neither gates a stage, joins a repository-check profile, or
 becomes a stage criterion.
 
-`/pan-conform` repairs operator-timed prose. It scans the harness-owned
-`docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`,
-which it may edit, and reports rendered workflow HTML and `CHANGELOG.md` without
-editing them. Its
+`/pan-conform` repairs operator-timed prose and harness instruction text. It
+scans the harness-owned `docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`,
+and `runtime/research/*.md`, which it may edit. `STE-001` binds its
+durable-instruction rules to every instruction surface, so the pass also edits
+`AGENTS.md`, `governance/criteria/*.md`, `governance/policies/*.json`,
+`library/personas/*.md`, `library/skills/*.md`, `library/cursor/commands/*.md`,
+and `library/cursor/rules/*.mdc`. In a policy file it repairs only the text of
+an `instructions[]` entry. `governance/handbooks/` stays out, because a handbook
+is guidance rather than instruction text. The pass reports rendered workflow
+HTML and `CHANGELOG.md` without editing them. Its
 issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
 `runtime/cache/conform.json`.
 
@@ -1540,10 +1709,20 @@ issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
 detected language owns: TypeScript, JavaScript, and Python. In a self-development
 checkout the workspace is this repository. In an embedded installation the
 workspace is the target repository, and the harness at `<target>/.pancreator` is
-report-only. Its countable issues come from `CODE-STYLE-VALIDATE-001`, and its
-checkpoint lives at `runtime/cache/style.json`. `npm run lint`, or the formatter
-the target declares, stays authoritative for mechanical style, so the pass
-repairs only the judgment-level rules the style handbooks state.
+report-only. Its checkpoint lives at `runtime/cache/style.json`, and records
+the hash of every eligible file, so a scan selects the files that changed since
+the last pass. The pass reads every selected file against the complete style
+handbook, whether or not the scanner reports an issue in it.
+`CODE-STYLE-VALIDATE-001` reports the handbook rules a scanner can decide:
+unbraced bodies, a missing blank line before an independent block, a local
+declaration group larger than four, a `switch` without `default`, and the
+lexical restrictions such as `any`, `!`, `var`, default exports, `function`
+expressions, and `@ts-ignore`. Rules that need the reader's judgment, such as
+just-in-time declarations, stay with the agent. `npm run lint`, or the formatter
+the target declares, stays authoritative for mechanical style, and the scanner
+does not repeat a rule the formatter owns. A construct the handbook lets a
+documented exception satisfy carries `// style: allow <code> <reason>` on the
+line above it; the reason is mandatory.
 
 Both commands accept `--since <ref>` or `--all`, and `/pan-style` also accepts
 `--worktree <name>`. Without a checkpoint the bare scan inspects the complete
@@ -1598,7 +1777,16 @@ has already been updated by the release steward. Before approval, confirm:
 
 Approval marks the workflow succeeded. It does not itself create a commit, PR, merge, or deployment.
 
-Agents commit and merge on `pan-dev` or on a branch that lands on `pan-dev`. Landing work on `main` is your promotion step: merge or fast-forward `pan-dev` into `main` yourself, then push. `./bin/install` creates a missing `pan-dev` from the target's HEAD on a fresh install or refresh, so a target normally carries the branch before its first run; `pan doctor` reports when it does not.
+Agents commit and merge on a branch that lands on `pan-dev`. In the Pancreator
+repository itself nothing lands on `pan-dev` without a proper version: a change
+to any installable harness input reaches `pan-dev` only inside a release, so the
+branch carries the release commit and the `release/index.json` commit for a new
+`VERSION` before it merges, and no installable change after that release
+commit. `bin/check-landing` enforces this from the `pre-commit` and
+`pre-merge-commit` hooks under `.githooks/` (`npm run prepare` sets
+`core.hooksPath`; `npm ci` runs it), refusing a direct installable commit on
+`pan-dev` or `main` and a merge whose source has no release. The installer
+applies the same test to a clean checkout. Landing work on `main` is your promotion step: merge or fast-forward `pan-dev` into `main` yourself, then push. `./bin/install` creates a missing `pan-dev` from the target's HEAD on a fresh install or refresh, so a target normally carries the branch before its first run; `pan doctor` reports when it does not.
 
 ### Rejecting a release packet
 

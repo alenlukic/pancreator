@@ -75,7 +75,8 @@
           "role": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$",
-            "description": "Unique evidence dimension slug, for example 'review' or 'qa'."
+            "not": { "enum": ["worker", "supervisor"] },
+            "description": "Unique evidence dimension slug, for example 'review' or 'qa'. Reserved CLI roles 'worker' and 'supervisor' are forbidden."
           },
           "scope": {
             "type": "string",

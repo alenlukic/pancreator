@@ -14,6 +14,12 @@ Usage: npm run benchmark -- [--fast] [--full]
 Run each selected repository-check profile three times in sequence and report
 the wall-clock duration and result of every run. Both flags run fast first,
 then full. Without a flag the fast profile is benchmarked.
+
+This measures one workspace. To compare a baseline workspace against a
+candidate in one paired session, run:
+
+  ./bin/pan tests benchmark --baseline-workspace <dir> \
+    --candidate-workspace <dir> --population-tolerance <n>
 EOF
 }
 

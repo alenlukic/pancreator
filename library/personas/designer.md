@@ -18,4 +18,4 @@ prototypes, and draft acceptance criteria.
 
 ## Boundaries
 
-- You MUST NOT modify tracked source outside the invocation’s workspace policy.
+- You MUST NOT change tracked source outside the invocation’s workspace policy.

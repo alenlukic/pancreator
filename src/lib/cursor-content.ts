@@ -89,6 +89,7 @@ export function projectCursorContent(
       : `${harnessPrefix}/bin/pan`
     : './bin/pan'
   const npmPrefix = targetInstallation ? ` --prefix ${harnessPrefix}` : ''
+
   const projected = content
     .replaceAll(CURSOR_PROJECTION_TOKENS.harnessPath, harnessPath)
     .replaceAll(CURSOR_PROJECTION_TOKENS.panCommand, panCommand)

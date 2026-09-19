@@ -33,7 +33,7 @@
     "finished_at": { "type": "string" },
     "exit_code": { "type": "integer" },
     "status": {
-      "enum": ["passed", "failed", "blocked", "invalid"]
+      "enum": ["passed", "failed", "blocked", "invalid", "not_applicable"]
     },
     "executor": { "enum": ["agent", "harness"] },
     "issues": {
@@ -53,6 +53,19 @@
       "type": "array",
       "items": { "type": "string" }
     },
-    "workspace_fingerprint": { "type": "string" }
+    "workspace_fingerprint": { "type": "string" },
+    "comparison_base": {
+      "type": "object",
+      "required": ["source", "workspace_root"],
+      "properties": {
+        "source": {
+          "enum": ["invocation.workspace_before", "workspace.cumulative_diff"]
+        },
+        "workspace_root": { "type": "string" },
+        "fingerprint": { "type": "string" },
+        "invocation_path": { "type": "string" },
+        "run_id": { "type": "string" }
+      }
+    }
   }
 }

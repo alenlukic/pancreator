@@ -227,6 +227,7 @@ function generateOne(
     history.stage,
     state.workflow_slug,
   )
+
   const brief = generatedOperatorBrief({
     profile,
     title: `${invocation.stage.title} brief`,

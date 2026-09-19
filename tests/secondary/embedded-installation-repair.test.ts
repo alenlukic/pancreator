@@ -113,6 +113,7 @@ test('embedded installer refresh preserves policy extensions and migrates legacy
       'governance',
       'registries',
     )
+
     const policyExtension = path.join(
       registries,
       'policy_lookup.d',
@@ -131,6 +132,7 @@ test('embedded installer refresh preserves policy extensions and migrates legacy
       'policies',
       'ROWSPACE-001.json',
     )
+
     const lookupTable = path.join(registries, 'policy_lookup_table.json')
     const pristineLookup = readFileSync(lookupTable, 'utf8')
 

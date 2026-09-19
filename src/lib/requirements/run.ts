@@ -24,6 +24,7 @@ export interface RunRequirementOptions {
   targetPath: string
   executor: 'agent' | 'harness'
   workspaceFingerprint?: string
+  comparisonBase?: RequirementValidationResult['comparison_base']
   invocation?: Record<string, unknown>
   runState?: Record<string, unknown>
   catalog?: ReturnType<typeof loadRegistry>
@@ -111,6 +112,13 @@ export function inferTargetKind(targetPath: string): string {
     return 'tune-record-json'
   }
 
+  if (
+    targetPath.includes('governance/policies/') &&
+    targetPath.endsWith('.json')
+  ) {
+    return 'policy-json'
+  }
+
   if (targetPath.includes('.delegation.md')) {
     return 'delegation-markdown'
   }
@@ -123,7 +131,7 @@ export function inferTargetKind(targetPath: string): string {
     return 'html-artifact'
   }
 
-  if (targetPath.endsWith('.md')) {
+  if (targetPath.endsWith('.md') || targetPath.endsWith('.mdc')) {
     return 'markdown-artifact'
   }
 
@@ -134,24 +142,34 @@ export function inferTargetKind(targetPath: string): string {
   return 'unknown'
 }
 
-export function registryStageSlug(registryId: string): string | null {
-  const mapping: Record<string, string> = {
-    'INTAKE-VALIDATE-001': 'intake',
-    'PLAN-TRACE-VALIDATE-001': 'plan',
-    'COHORT-PLAN-VALIDATE-001': 'plan',
-    'CHILD-SPEC-VALIDATE-001': 'plan',
-    'IMPLEMENTATION-CLAIMS-VALIDATE-001': 'implement',
-    'REVIEW-VALIDATE-001': 'review',
-    'QA-VALIDATE-001': 'test',
-    'RELEASE-VALIDATE-001': 'ship',
-    'DECOMPOSITION-VALIDATE-001': 'decompose',
-    'TARGET-REPO-PRIMER-VALIDATE-001': 'build-docs',
-    'HARNESS-REPAIR-VALIDATE-001': 'repair',
-    'INVESTIGATION-VALIDATE-001': 'investigate',
-    'SPOTFIX-VALIDATE-001': 'spotfix',
+export function registryStageSlugs(registryId: string): readonly string[] {
+  const mapping: Record<string, readonly string[]> = {
+    'INTAKE-VALIDATE-001': ['intake'],
+    'PLAN-TRACE-VALIDATE-001': ['plan'],
+    'COHORT-PLAN-VALIDATE-001': ['plan'],
+    'CHILD-SPEC-VALIDATE-001': ['plan'],
+    'IMPLEMENTATION-CLAIMS-VALIDATE-001': ['implement', 'remediate'],
+    'REVIEW-VALIDATE-001': ['review'],
+    'QA-VALIDATE-001': ['test'],
+    'RELEASE-VALIDATE-001': ['ship'],
+    'DECOMPOSITION-VALIDATE-001': ['decompose'],
+    'TARGET-REPO-PRIMER-VALIDATE-001': ['build-docs'],
+    'HARNESS-REPAIR-VALIDATE-001': ['repair'],
+    'INVESTIGATION-VALIDATE-001': ['investigate'],
+    'SPOTFIX-VALIDATE-001': ['spotfix'],
   }
 
-  return mapping[registryId] ?? null
+  return mapping[registryId] ?? []
+}
+
+/** Whether a registry is stage-neutral or explicitly supports this stage. */
+export function registryAppliesToStage(
+  registryId: string,
+  stageSlug: string,
+): boolean {
+  const stages = registryStageSlugs(registryId)
+
+  return stages.length === 0 || stages.includes(stageSlug)
 }
 
 function validationResultPath(
@@ -177,6 +195,7 @@ export function runRequirement(
   const absoluteTarget = path.isAbsolute(options.targetPath)
     ? options.targetPath
     : path.join(options.root, options.targetPath)
+
   const catalog = options.catalog ?? loadRegistry(options.root)
   const entry = catalog.entries.get(options.requirement.registry_id)
   const handler = entry ? getHandler(entry.handler) : undefined
@@ -368,6 +387,9 @@ function buildResult(
     evidence_paths: fields.evidence_paths ?? [],
     ...(options.workspaceFingerprint
       ? { workspace_fingerprint: options.workspaceFingerprint }
+      : {}),
+    ...(options.comparisonBase
+      ? { comparison_base: options.comparisonBase }
       : {}),
   }
 }

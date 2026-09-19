@@ -1264,6 +1264,7 @@ function removeSessionResources(
     ...state.pending,
   ]
   const registered = new Set(gitWorktreePaths(root))
+
   const removedWorktrees: string[] = []
   const removedAgents: string[] = []
   const forcedRemovals = new Set<string>()

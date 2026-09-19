@@ -37,7 +37,7 @@ create the escalation item described below.
 6. Run one validation cycle. A cycle is an implementation edit set followed by
    validation. Select that validation with `## Test selection` below.
 7. When validation fails, use the evidence to make a bounded correction and run
-   the next cycle. Perform no more than three cycles total.
+   the next cycle. Run no more than three cycles total.
 
 Do not broaden scope to force a pass. A newly discovered non-lightweight
 requirement ends lightweight execution.
@@ -77,15 +77,15 @@ When a changed path yields no impacted test:
 
 The final successful cycle MUST establish all of the following:
 
-- the configured repository-check profiles applicable to the change pass;
-- direct checks and any target-documented build, static, or focused test commands pass;
-- every acceptance criterion has concrete evidence;
+- the configured repository-check profiles applicable to the change pass
+- direct checks and any target-documented build, static, or focused test commands pass
+- every acceptance criterion has concrete evidence
 - each changed path the impacted mapping did not reach is named, with the
-  judgment cohort you ran for it;
+  judgment cohort you ran for it
 - existing behavior outside the requested change remains intact.
 
-`REPO-001` on the active card owns command authority and the gate cache; this
-skill does not restate it.
+`REPO-001` on the active card owns command authority and the gate cache.
+This skill does not restate it.
 A missing profile, unavailable dependency, timeout, or check that cannot run is
 not a pass. Record it as incomplete validation and determine whether systematic
 routing is required.
@@ -98,12 +98,12 @@ third failed validation cycle.
 Create a uniquely named Markdown item at
 `runtime/inbox/queue/spotfix-escalation-<UTC timestamp>-<slug>.md` containing:
 
-- the original request or investigator output verbatim;
-- acceptance criteria;
-- root-cause and scope findings;
-- files changed or partially changed;
-- each validation cycle, command, result, and relevant error;
-- unresolved blockers and risks;
+- the original request or investigator output verbatim
+- acceptance criteria
+- root-cause and scope findings
+- files changed or partially changed
+- each validation cycle, command, result, and relevant error
+- unresolved blockers and risks
 - the recommended systematic workflow entry point and next action.
 
 Do not claim success after escalation. `SPOT-001` and `ACTION-001` on the

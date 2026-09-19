@@ -267,6 +267,7 @@ export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const content = readText(path.join(input.root, input.targetPath))
   const parsed = parseMarkdown(content)
+
   const requiredSections = [
     'Summary',
     'Administrative commands',

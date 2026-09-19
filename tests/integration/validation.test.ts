@@ -172,6 +172,7 @@ test('delegation source falls back to the layout of the run it belongs to', () =
       root,
     ),
   ]
+
   const legacyRunDirectory = path.join(root, runRelative)
 
   mkdirSync(legacyRunDirectory, { recursive: true })
@@ -302,9 +303,11 @@ function qaPersonaStage(root: string) {
 test('preserved full-suite evidence classifies as environment-blocked', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
+
   const qaStage = qaPersonaStage(root)
   const verifyStage = stageBySlug(workflow, 'verify')
   const implementStage = stageBySlug(workflow, 'implement')
+
   const baseline = preservedFullSuiteBaseline()
   const importError = 'E   ImportError: cannot import name orm_models'
   const rows: Array<{
@@ -453,6 +456,7 @@ function attestedOutput(
 test('attestation validator passes a complete in-order declaration', () => {
   const root = createFixture()
   const { invocation, attestation } = attestedFixture(root)
+
   const validate = (output: Record<string, unknown>) =>
     validateInvocationAttestation(invocation, output)
   const failedCheck = (

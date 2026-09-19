@@ -197,6 +197,21 @@
           "path": "data.implementation.remediation[].evidence[]",
           "type": "string",
           "format": "non-empty string array of paths, commands, or observations proving the remediation"
+        },
+        {
+          "path": "data.blocked.missing_precondition",
+          "type": "string",
+          "format": "required when top-level result is blocked; states the precondition implementation could not obtain"
+        },
+        {
+          "path": "data.blocked.supplying_command",
+          "type": "string",
+          "format": "required when top-level result is blocked; the command or action that would supply the precondition"
+        },
+        {
+          "path": "data.blocked.evidence[]",
+          "type": "string",
+          "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
         }
       ]
     },

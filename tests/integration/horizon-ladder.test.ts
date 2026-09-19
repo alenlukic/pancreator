@@ -160,7 +160,7 @@ test('two long-horizon retries stay inside the declared stage attempt ceiling', 
   assert.match(third.state.horizon_ladder?.directive ?? '', /Change strategy/u)
 })
 
-test('a blocked release gate inside the contract pauses for the operator alone', () => {
+test('a blocked release gate inside the contract stays an away-mode blocker', () => {
   const { root, runId, workflow } = checkpoint('delivery@ship-prepared', {
     key: 'long-horizon-ship-blocked',
     run: { involvement: 'long-horizon' },
@@ -173,13 +173,15 @@ test('a blocked release gate inside the contract pauses for the operator alone',
 
   assert.equal(paused.status, 'paused')
   assert.equal(paused.pending_action.type, 'operator_decision')
+  // HORIZON-001 names four hard blocks; a stage's `blocked` is not one of
+  // them, so the pause is not operator-only and the evaluator gets to test
+  // the claim before the task can reach the deferral rung.
   assert.equal(
     paused.pending_action.type === 'operator_decision' &&
       paused.pending_action.operator_only,
-    true,
+    undefined,
   )
-  // Rung four owns this pause, so no away-mode blocker class claims it.
-  assert.equal(awayModeTrigger(paused), null)
+  assert.equal(awayModeTrigger(paused)?.type, 'stage_blocked')
 })
 
 test('a blocked release gate outside the contract stays an away-mode blocker', () => {

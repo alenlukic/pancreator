@@ -12,7 +12,10 @@ import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
 import { readTargetExtensionManifest } from './target-authoring.js'
 import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
-import { resolveOrCreateWorktree } from './worktrees.js'
+import {
+  resolveOrCreateWorktree,
+  workspaceRepositoryRoot,
+} from './worktrees.js'
 import { gitShowFile } from './git.js'
 import {
   resolveReviewDimensionSelection,
@@ -331,7 +334,10 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'Scan operator artifacts for Simplified Technical English issues, ' +
       'repair eligible prose, and record a clean checkpoint.',
     boundaries: [
-      'You MUST edit only the harness-owned `docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`, whatever the installation mode.',
+      'You MUST edit only the harness-owned operator artifacts `docs/issues/**/*.md`, `runtime/pr-descriptions/*.md`, and `runtime/research/*.md`, whatever the installation mode.',
+      'You MUST also repair the harness instruction surfaces `AGENTS.md`, `governance/criteria/*.md`, `governance/policies/*.json`, `library/personas/*.md`, `library/skills/*.md`, `library/cursor/commands/*.md`, and `library/cursor/rules/*.mdc`. In a policy file you MUST edit only the text of an `instructions[]` entry.',
+      'You MUST NOT restyle `governance/handbooks/`. Handbooks are guidance, and `STE-001` leaves them outside its writing rules.',
+      'You MUST run `pan models --sync` after a repair under `library/cursor/`, because that canonical source leaves the local projection stale.',
       'You MUST report rendered workflow HTML and `CHANGELOG.md` but MUST NOT edit either. `CHANGELOG.md` is release metadata a ship stage and `/pan-release` own, and it is scanned only in self-development.',
       'You MUST NOT edit a target-tracked file. No target-repository path is in the conform editable set.',
       'You MUST validate each edited file with `pan requirements run --registry SIMPLIFIED-ENGLISH-VALIDATE-001` before you checkpoint.',
@@ -430,6 +436,25 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT modify source, workflow state, or governance, and MUST NOT push, publish, deploy, or start a workflow run.',
     ],
   },
+  trace: {
+    kind: 'standalone',
+    persona: 'harness-workflow-qa',
+    workflow: 'standalone',
+    stage: 'trace',
+    title: 'Harness feature trace',
+    summary:
+      'Exercise the core mechanics of one newly merged harness feature, ' +
+      'including one sanctioned failure path, and write one durable trace report.',
+    boundaries: [
+      PROTECTED_PATH_RULE,
+      'Every mutating exercise MUST run in an isolated workspace: the named worktree, a worktree created for the trace, or a throwaway copy of a toy fixture.',
+      'A failure injection MUST use an input-level fault directive, a process-level interruption followed by the documented recovery command, or a precondition arranged with supported commands. You MUST NOT hand-edit generated run state, invocation cards, snapshots, stage outputs, or events.jsonl.',
+      'You MUST NOT supervise a workflow run or launch a supervisor subagent. A workflow that needs supervision belongs in the operator’s own `/pan-start` or `/pan-resume` session.',
+      'You MUST write the report under `runtime/logs/traces/<trace-id>/report.md`, clean up trace artifacts through supported commands, and name any residue.',
+      'When the trace confirms a defect, you MUST write at most one remediation intake under `runtime/inbox/queue/`, name its harness repair category, and MUST NOT repair the defect in this session.',
+      'You MUST NOT push, publish, deploy, delete branches, or perform destructive source-control actions.',
+    ],
+  },
   'qa-workflow': {
     kind: 'standalone',
     persona: 'harness-workflow-qa',
@@ -521,7 +546,10 @@ interface BaseConductBlock {
   tainted: string[]
 }
 
-function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
+function baseConductBlock(
+  targetRoot: string,
+  scope: ReviewScope,
+): BaseConductBlock {
   const tiers = conflictsByTier(scope.conflicts)
   const policies: BaseConductPolicy[] = []
   const otherConduct: string[] = []
@@ -535,7 +563,7 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
       continue
     }
 
-    const text = gitShowFile(root, scope.base, conflict.path)
+    const text = gitShowFile(targetRoot, scope.base, conflict.path)
 
     if (text === null) {
       // The change added this policy, so no base rule binds the session.
@@ -695,6 +723,7 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
   const lines = ['## 🎯 Review dimensions', '']
   const slugList = (slugs: string[]): string =>
     slugs.length > 0 ? slugs.map((slug) => `\`${slug}\``).join(', ') : 'none'
+
   if (selection.default) {
     lines.push(
       'The operator selected no dimension set. The squad runs the full ' +
@@ -990,20 +1019,25 @@ export function buildGovernanceCard(
     )}/${options.mode}-card.md`
 
   const baseConduct = options.baseRef
-    ? baseConductBlock(
-        root,
-        // The scope check reads the closure from its own checkout, so it runs
-        // in the worktree bound to the target head. Both revisions share one
-        // object database, so the base-conduct block keeps reading `root`.
-        resolveReviewScope(
-          worktree ? path.resolve(root, worktree.path) : root,
-          {
+    ? (() => {
+        const targetRoot = worktree
+          ? path.resolve(root, worktree.path)
+          : workspaceRepositoryRoot(root)
+        // A self-development worktree carries the tracked closure at the
+        // target revision. Target worktrees do not carry the installed harness,
+        // so their closure stays rooted at the installation instead.
+        const closureRoot =
+          worktree && !isTargetInstallation(root) ? targetRoot : root
+
+        return baseConductBlock(
+          targetRoot,
+          resolveReviewScope(closureRoot, targetRoot, {
             head: options.targetRef ?? 'HEAD',
             base: options.baseRef,
             closureRevision: options.closureRevision,
-          },
-        ),
-      )
+          }),
+        )
+      })()
     : null
   const markdown = renderGovernanceCardMarkdown({
     mode,

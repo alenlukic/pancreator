@@ -3,6 +3,10 @@ import path from 'node:path'
 
 import { errorMessage, invariant, PanError } from './errors.js'
 import {
+  panInvocationsInText,
+  panProseInvocationError,
+} from './pan-command-grammar.js'
+import {
   appendJsonLine,
   fileExists,
   isRecord,
@@ -159,6 +163,24 @@ function parseOption(value: unknown, index: number): AwayOption {
     { code: 'INVALID_AWAY_DECISION' },
   )
 
+  const rollbackSteps = parseStringArray(
+    value.rollback_plan.steps,
+    `${source}.rollback_plan.steps`,
+  )
+
+  for (const step of rollbackSteps) {
+    for (const argv of panInvocationsInText(step)) {
+      const refusal = panProseInvocationError(argv)
+
+      invariant(
+        refusal === null,
+        `${source}.rollback_plan.steps names \`pan ${argv.join(' ')}\`. ` +
+          refusal,
+        { code: 'INVALID_AWAY_DECISION' },
+      )
+    }
+  }
+
   return {
     rank: value.rank as number,
     action: value.action,
@@ -166,10 +188,7 @@ function parseOption(value: unknown, index: number): AwayOption {
     rationale: value.rationale,
     evidence: parseEvidenceReferences(value.evidence, `${source}.evidence`),
     rollback_plan: {
-      steps: parseStringArray(
-        value.rollback_plan.steps,
-        `${source}.rollback_plan.steps`,
-      ),
+      steps: rollbackSteps,
       verification: value.rollback_plan.verification,
     },
     ...(typeof value.note === 'string' ? { note: value.note } : {}),
@@ -603,9 +622,11 @@ export function awayGateContext(
   const operatorRequest = fileExists(requestPath)
     ? boundedText(readText(requestPath))
     : null
+
   const last = state.stage_history.at(-1)
   let summary: string | null = null
   let nextAction: string | null = null
+
   const artifacts: string[] = []
   const openQuestions: string[] = []
   const unknowns: string[] = []
@@ -718,6 +739,7 @@ const AWAY_OPTION_SHAPE = {
 
 /** Bounded copy of one evaluator exchange, written beside the run evidence. */
 export interface AwayEvaluatorExchange {
+  attempt?: number
   ok: boolean
   exit_code: number | null
   timed_out: boolean
@@ -726,14 +748,17 @@ export interface AwayEvaluatorExchange {
   stderr: string
   value?: unknown
   error?: string
+  parse_error?: string
 }
 
 const EXCHANGE_STREAM_MAX = 20_000
 
 /**
  * Persist the evaluator prompt and its raw response at
- * agent/evidence/away-evaluator-<timestamp>.json. The ledger holds only the
- * parsed verdict, so this record is what explains a rejected ranking.
+ * agent/evidence/away-evaluator-<timestamp>-attempt-<n>-<uuid>.json. The UUID keeps
+ * concurrent evaluations distinct while the attempt suffix orders retries. The
+ * ledger holds only the parsed
+ * verdict, so this record is what explains a rejected ranking.
  */
 export function recordAwayEvaluatorExchange(
   root: string,
@@ -743,8 +768,10 @@ export function recordAwayEvaluatorExchange(
   recordedAt = new Date().toISOString(),
 ): string {
   const layout = resolveRunLayout(root, state.run_id)
+  const attemptSuffix =
+    exchange.attempt === undefined ? '' : `-attempt-${exchange.attempt}`
   const target = layout.evidence(
-    `away-evaluator-${recordedAt.replace(/[:.]/gu, '-')}.json`,
+    `away-evaluator-${recordedAt.replace(/[:.]/gu, '-')}${attemptSuffix}-${randomUUID()}.json`,
   )
 
   writeJsonAtomic(target.absolute, {
@@ -753,6 +780,7 @@ export function recordAwayEvaluatorExchange(
     invocation_id: state.current_invocation?.id ?? null,
     recorded_at: recordedAt,
     prompt,
+    ...(exchange.attempt !== undefined ? { attempt: exchange.attempt } : {}),
     ok: exchange.ok,
     exit_code: exchange.exit_code,
     timed_out: exchange.timed_out,
@@ -761,6 +789,9 @@ export function recordAwayEvaluatorExchange(
     stderr: exchange.stderr.slice(-EXCHANGE_STREAM_MAX),
     ...(exchange.value !== undefined ? { value: exchange.value } : {}),
     ...(exchange.error !== undefined ? { error: exchange.error } : {}),
+    ...(exchange.parse_error !== undefined
+      ? { parse_error: exchange.parse_error }
+      : {}),
   })
 
   return target.relative
@@ -793,7 +824,8 @@ export function awayEvaluatorPrompt(
     JSON.stringify(AWAY_OPTION_SHAPE),
     'rank starts at 1 with no gaps. action is one of allowed_actions. evidence entries are paths taken from evidence_references or stage_artifacts. rollback_plan.steps is a non-empty array of strings and rollback_plan.verification is one string.',
     'revise needs note. waive-gate needs note. set-stage needs stage. Otherwise omit note and stage.',
-    'Rank waive-gate only when the blocker has a mechanical or administrative root cause, or a blast radius limited enough to remediate separately, and the run would otherwise stop for the rest of the operator absence. Prefer revise or resume when the work itself can still be repaired. The note becomes the recorded waiver directive, so it states the reason, what is deferred, and the destination stage or the gate it gives up.',
+    'Rank waive-gate when the blocker has a mechanical or administrative root cause, when the failing criterion is backed only by cost, speed, or wall time (a wall ceiling, a rolling average, a budget, a cadence), or when its blast radius is limited enough to remediate separately, and the run would otherwise stop for the rest of the operator absence. Never waive a criterion that protects correctness or security. Prefer revise or resume when the work itself can still be repaired. The note becomes the recorded waiver directive, so it states the reason, what is deferred, and the destination stage or the gate it gives up.',
+    'The operator is absent by design and expects continuous progress. A blocker the stage worker itself caused (its own test run moved a measurement, its own commit changed a fingerprint) and a transient failure are never reasons to leave the run stopped. Rank every allowed action that keeps the run moving above any that leaves it waiting; leaving the run waiting is the worst outcome except for an irreversible action.',
     JSON.stringify({
       run_id: state.run_id,
       invocation_id: state.current_invocation?.id ?? null,
@@ -853,12 +885,16 @@ export function awayEvaluatorFailureLimitError(
   )
 }
 
-/** Append one rejected record when the evaluator cannot return ranked options. */
+const AWAY_EVALUATOR_EXHAUSTED_ERROR =
+  'The away evaluator exhausted two attempts without a valid decision. ' +
+  'Read the referenced evaluator exchange evidence.'
+
+/** Append one generic rejected record after both evaluator attempts fail. */
 export function recordAwayEvaluationFailure(
   root: string,
   state: RunState,
   blocker: AwayBlocker,
-  error: string,
+  evidenceReferences: string[],
   recordedAt = new Date().toISOString(),
 ): AwayDecisionRecord {
   const awayMode = state.away_mode
@@ -867,6 +903,10 @@ export function recordAwayEvaluationFailure(
     code: 'AWAY_MODE_DISABLED',
   })
 
+  const references = parseEvidenceReferences(
+    evidenceReferences,
+    'evidence_references',
+  )
   const record: AwayDecisionRecord = {
     schema_version: 1,
     decision_id: randomUUID(),
@@ -876,16 +916,16 @@ export function recordAwayEvaluationFailure(
     blocker,
     ranked_options: [],
     selected_action: null,
-    rejected_options: [{ rank: 0, reason: error }],
+    rejected_options: [{ rank: 0, reason: AWAY_EVALUATOR_EXHAUSTED_ERROR }],
     guardrails: awayMode.guardrails,
     result: 'rejected',
-    evidence_references: [],
+    evidence_references: references,
     recorded_at: recordedAt,
-    error,
+    error: AWAY_EVALUATOR_EXHAUSTED_ERROR,
   }
 
-  // An execution failure is not a decision, so it leaves the decision budget
-  // alone. It has its own ceiling of the same size, so the ledger stays
+  // An exhausted evaluation is not a decision, so it leaves the decision
+  // budget alone. It has its own ceiling of the same size, so the ledger stays
   // bounded when the evaluator fails every time.
   return withOperationMutex(
     awayPath(root, LEDGER_LOCK),
@@ -918,21 +958,9 @@ export function recordAwayEvaluation(
     code: 'AWAY_MODE_DISABLED',
   })
 
-  // A ranking the parser rejects is an evaluator defect, not a decision the
-  // operator's budget should pay for. It takes the failure route and ceiling.
-  let options: AwayOption[]
-
-  try {
-    options = parseAwayOptions(evaluatorValue)
-  } catch (error) {
-    return recordAwayEvaluationFailure(
-      root,
-      state,
-      blocker,
-      errorMessage(error),
-      recordedAt,
-    )
-  }
+  // Orchestration validates each attempt before this durable decision append.
+  // A direct invalid call throws without changing the append-only ledger.
+  const options = parseAwayOptions(evaluatorValue)
 
   // The decision limit is checked and the record appended under one lock, so
   // concurrent evaluations cannot both pass the limit before either appends.

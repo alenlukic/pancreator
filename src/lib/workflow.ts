@@ -66,6 +66,7 @@ const JSON_TYPE_NAMES = new Set<JsonTypeName>([
   'number',
   'boolean',
 ])
+const RESERVED_EVIDENCE_WORKER_ROLES = new Set(['worker', 'supervisor'])
 
 function parseCriterion(value: unknown, source: string): Criterion {
   invariant(isRecord(value), `${source} MUST be an object.`, {
@@ -335,6 +336,11 @@ function parseEvidenceWorkers(
       `${entrySource}.role MUST be a lowercase slug.`,
       { code: 'INVALID_WORKFLOW' },
     )
+    invariant(
+      !RESERVED_EVIDENCE_WORKER_ROLES.has(role),
+      `${entrySource}.role '${role}' is reserved for CLI model evidence.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
     invariant(!roles.has(role), `${source} roles MUST be unique.`, {
       code: 'INVALID_WORKFLOW',
     })
@@ -441,6 +447,7 @@ export function parseStage(
     `${source}.gate MUST name a supported gate.`,
     { code: 'INVALID_WORKFLOW' },
   )
+
   if (value.executor !== undefined) {
     invariant(
       typeof value.executor === 'string' &&
@@ -449,6 +456,7 @@ export function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+
   if (value.gate_relaxable !== undefined) {
     invariant(
       typeof value.gate_relaxable === 'boolean',
@@ -456,6 +464,7 @@ export function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+
   if (value.checkpoint !== undefined) {
     invariant(
       typeof value.checkpoint === 'string' &&
@@ -464,6 +473,7 @@ export function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+
   invariant(
     typeof value.prompt === 'string' || typeof value.prompt_path === 'string',
     `${source} MUST define prompt or prompt_path.`,

@@ -160,9 +160,11 @@ export function cursorAuthenticationReadiness(
 ): CursorAuthenticationReadiness {
   const processKey = process.env.CURSOR_API_KEY
   const fromProcess = typeof processKey === 'string' && processKey.length > 0
+
   const candidates = dotEnvCandidates(root)
   const supplying =
     candidates.find((candidate) => candidate.key !== null) ?? null
+
   const advisories: string[] = []
   let source: CursorApiKeySource | null = null
   let sourcePath: string | null = null

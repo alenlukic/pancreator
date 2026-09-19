@@ -1068,6 +1068,7 @@ export function removeWorktree(
     const index = readWorktreeIndex(root)
     const record = recordByName(index, name)
     const worktreePath = absoluteWorktreePath(root, record)
+
     const resolved = resolveRecordRepository(root, record)
     const repositoryRoot = resolved.repositoryRoot
     const present =

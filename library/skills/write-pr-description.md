@@ -14,7 +14,7 @@ RFC 2119 meanings.
 
 The description is for a human reviewer who has not read the diff. Lead with
 impact and intent, not file inventory. Save the body for the operator to paste
-into `gh pr create`; never open the PR yourself.
+into `gh pr create`. Never open the PR yourself.
 
 ## Invocation modes
 
@@ -69,14 +69,15 @@ In fallback mode, the file MUST contain only the sections below, in this exact
 order. The first line is outside the `##` heading structure.
 
 1. **Suggested PR title (line 1).** One line with a Conventional Commits type
-   and a concise subject (for example `feat: add workflow artifact
-finalization`). Use `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or
-   another appropriate [Conventional Commits](https://www.conventionalcommits.org/)
-   type. The title MUST reflect the headline change, not a file list.
-2. **`## Summary`** — always. One prose paragraph only; 2–4 sentences; 40–90
+   and a concise subject, for example `feat: add workflow artifact
+finalization`.
+   Use `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or another type from
+   [Conventional Commits](https://www.conventionalcommits.org/).
+   The title MUST reflect the headline change, not a file list.
+2. **`## Summary`** — always. One prose paragraph only, 2–4 sentences, 40–90
    words typical. Lead with why the change matters. State what changed at
    feature or subsystem level. MUST NOT enumerate paths, modules, or tests.
-3. **`## Changelist`** — always. Unordered list (`-` bullets) only; 3–7 bullets
+3. **`## Changelist`** — always. Unordered list (`-` bullets) only, 3–7 bullets
    typical (8 only when distinct user-visible capabilities ship together). Each
    bullet is one thematic outcome or capability, not one touched file.
 
@@ -115,10 +116,12 @@ MUST validate it as one literal Git ref before this skill runs.
    implementation, review, QA, and release packet draft) when present.
 
 Every Summary claim, Changelist bullet, and walkthrough statement MUST be
-traceable to the Git delta or an artifact you read. You MUST NOT invent changes.
+traceable to the Git delta or an artifact you read.
+You MUST NOT invent changes.
+
 When the Git delta reveals paths not explained by prior stage artifacts, fold
-them into Summary and Changelist as grouped thematic items; MUST NOT emit one
-bullet per unexplained path.
+them into Summary and Changelist as grouped thematic items.
+You MUST NOT emit one bullet per unexplained path.
 
 ## Steps
 
@@ -151,4 +154,4 @@ Before saving:
 - `PR-001` and `ACTION-001` on the active card own the source-control and
   pull-request prohibitions. This skill writes one file and nothing else.
 - The operator or supervisor applies the saved body with `gh pr create` or
-  `--body-file`; that step is outside this skill.
+  `--body-file`. That step is outside this skill.

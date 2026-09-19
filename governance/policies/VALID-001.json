@@ -4,16 +4,16 @@
   "severity": "hard",
   "summary": "Required artifacts and structured outputs MUST pass their resolved policy-bound validators before they are represented as complete.",
   "instructions": [
-    "When the active invocation declares a validator requirement, the producing agent MUST run that validator against the exact final target after the last edit and before submission or emission.",
-    "A required validation MUST count as passed only when the declared validator exits successfully, returns its expected result shape, and identifies the validator version and exact target it checked.",
-    "A missing validator, non-zero exit, timeout, malformed result, stale target, or target mismatch MUST be corrected and rerun within the active attempt budget or MUST be reported using the requirement's declared failure route; manual inspection MUST NOT substitute for a required validator.",
+    "When the active invocation declares a validator requirement, the producing agent MUST run that validator against the exact final target. It MUST run the validator after the last edit and before submission or emission.",
+    "A required validation MUST count as passed only when the declared validator exits successfully and returns its expected result shape. The result MUST identify the validator version and the exact target it checked.",
+    "The agent MUST correct and rerun a missing validator, non-zero exit, timeout, malformed result, stale target, or target mismatch. It MUST do so within the active retry budget, or MUST report the failure through the requirement's declared failure route. Manual inspection MUST NOT substitute for a required validator.",
     {
-      "text": "When a validator is authoritative, the harness MUST rerun it against the submitted bytes, persist the result as evidence, and MUST treat an agent-run result as early feedback rather than gate evidence (`stage-output-validate`).",
+      "text": "When a validator is authoritative, the harness MUST rerun it against the submitted bytes and persist the result as evidence. It MUST treat an agent-run result as early feedback rather than gate evidence (`stage-output-validate`).",
       "audience": ["harness"]
     },
     "Validation evidence MUST identify the governing policy, validator id and version, executable path, target path, target checksum when available, command, outcome, and evidence artifact path.",
     {
-      "text": "The invocation card MUST contain only the resolved validator requirements for that invocation and MUST NOT inline the full validator catalog or unrelated validation rules (`stage-output-validate`).",
+      "text": "The invocation card MUST contain only the resolved validator requirements for that invocation. It MUST NOT inline the full validator catalog or unrelated validation rules (`stage-output-validate`).",
       "audience": ["harness"]
     },
     {

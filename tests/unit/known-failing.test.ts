@@ -3,12 +3,40 @@ import test from 'node:test'
 
 import {
   creditKnownFailures,
+  executedTestNames,
+  isolationExecutedTest,
   parseKnownFailingTests,
+  parseTestFailureIdentity,
 } from '../../src/lib/known-failing.js'
 import type {
   RepositoryCheckCommandResult,
   RepositoryCheckResult,
 } from '../../src/lib/repository-checks.js'
+
+test('failure headlines expose identities for isolated reruns', () => {
+  assert.deepEqual(
+    parseTestFailureIdentity(
+      'FAILED tests/unit/test_box.py::test_poll - AssertionError: mismatch',
+    ),
+    {
+      file: 'tests/unit/test_box.py',
+      case: 'test_poll',
+      diagnostic:
+        'FAILED tests/unit/test_box.py::test_poll - AssertionError: mismatch',
+    },
+  )
+  assert.deepEqual(
+    parseTestFailureIdentity(
+      'not ok - parses a box (<workspace>/dist/tests/unit/box.test.js:12)',
+    ),
+    {
+      file: '<workspace>/dist/tests/unit/box.test.js',
+      case: 'parses a box',
+      diagnostic:
+        'not ok - parses a box (<workspace>/dist/tests/unit/box.test.js:12)',
+    },
+  )
+})
 
 function failingCommand(
   command: string,
@@ -308,4 +336,61 @@ test('a fully declared reporter transcript leaves nothing undeclared', () => {
 
   assert.equal(credit.credited.length, 2)
   assert.deepEqual(credit.undeclared, [])
+})
+
+test('an isolation transcript names the tests the runner executed', () => {
+  assert.deepEqual(
+    executedTestNames(
+      [
+        'TAP version 13',
+        '# Subtest: names it',
+        'ok 1 - names it',
+        '    not ok 2 - a nested case',
+        'ok 3 - a filtered case # SKIP',
+        'ok 4 - a deferred case # TODO',
+        'tests/unit/test_box.py::test_poll PASSED',
+        'FAILED tests/unit/test_box.py::test_flush - AssertionError',
+        '\u2714 a spec reporter case (2.5ms)',
+      ].join('\n'),
+    ),
+    [
+      'names it',
+      'names it',
+      'a nested case',
+      'test_poll',
+      'test_flush',
+      'a spec reporter case',
+    ],
+  )
+})
+
+test('an isolation pass counts only when the transcript names the test', () => {
+  // The whole reclassification rests on this question. A runner reports a
+  // filter that selected nothing as a clean exit, and the top-level `ok` line
+  // it still prints names the file rather than the case.
+  const noMatch = [
+    'TAP version 13',
+    '1..0',
+    '# Subtest: dist/tests/unit/outside.test.js',
+    'ok 1 - dist/tests/unit/outside.test.js',
+    '# pass 1',
+    '# fail 0',
+  ].join('\n')
+
+  assert.equal(isolationExecutedTest(noMatch, 'outside case'), false)
+  assert.equal(
+    isolationExecutedTest('ok 1 - outside case', 'outside case'),
+    true,
+  )
+  // A suite path reported around the case still identifies it.
+  assert.equal(
+    isolationExecutedTest('\u2714 a suite > outside case', 'outside case'),
+    true,
+  )
+  // A longer name that merely ends with the case is a different test.
+  assert.equal(
+    isolationExecutedTest('ok 1 - the other outside case', 'outside case'),
+    false,
+  )
+  assert.equal(isolationExecutedTest('ok 1 - outside case', ''), false)
 })

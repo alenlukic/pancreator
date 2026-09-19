@@ -315,6 +315,7 @@ export function applyOperatorInvolvement(
   const gates = profile.gates ?? {}
   const contracts = profile.contracts ?? []
   const wildcard = gates['*']
+
   const applied: ResolvedOperatorInvolvement['applied_gates'] = {}
 
   for (const stage of workflow.stages) {

@@ -16,9 +16,11 @@ export function parseMarkdown(content: string): ParsedMarkdown {
     .replaceAll('\r\n', '\n')
     .replaceAll('\r', '\n')
     .split('\n')
+
   const headings: MarkdownHeading[] = []
   const fences: Array<{ language: string; line: number }> = []
   const links: Array<{ text: string; href: string; line: number }> = []
+
   let inFence = false
 
   for (const [index, line] of lines.entries()) {

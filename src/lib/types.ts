@@ -51,6 +51,10 @@ export interface ExternalRequestSettings {
   model: string
   store: false
   reasoning_effort?: string
+  reasoning_mode?: string
+  reasoning_context?: string
+  reasoning_summary?: string
+  text_verbosity?: string
   max_output_tokens?: number
   max_tool_rounds: number
   timeout_ms: number
@@ -595,6 +599,14 @@ export interface RequirementIssue {
   line?: number
 }
 
+export interface RequirementComparisonBase {
+  source: 'invocation.workspace_before' | 'workspace.cumulative_diff'
+  workspace_root: string
+  fingerprint?: string
+  invocation_path?: string
+  run_id?: string
+}
+
 export interface RequirementValidationResult {
   schema_version: 1
   requirement_id: string
@@ -613,6 +625,7 @@ export interface RequirementValidationResult {
   issues: RequirementIssue[]
   evidence_paths: string[]
   workspace_fingerprint?: string
+  comparison_base?: RequirementComparisonBase
 }
 
 export interface PolicyLookupRow {
@@ -736,8 +749,18 @@ export interface LocalReleaseRebaseOverride {
   resolved_commit: string | null
 }
 
+export interface LocalReleaseAdvisory {
+  code: 'RELEASE_LOCAL_DEFAULT_AHEAD'
+  message: string
+  details: {
+    default_branch: string
+    fetched_main: string
+    local_head: string
+  }
+}
+
 export interface LocalReleaseSyncResult {
-  status: 'synchronized' | 'conflict'
+  status: 'already_current' | 'synchronized' | 'conflict'
   worktree: ManagedWorktreeReference
   branch: string
   remote: string
@@ -747,13 +770,14 @@ export interface LocalReleaseSyncResult {
   /** Operator override of the default rebase target, when one was used. */
   rebase_override: LocalReleaseRebaseOverride | null
   checkpoint_commit: string | null
+  advisories: LocalReleaseAdvisory[]
   /** Paths a `read-only-input` attribution kept out of the checkpoint. */
   withheld_paths: string[]
   conflicted_paths: string[]
 }
 
 export interface LocalReleaseContinueResult {
-  status: 'complete' | 'conflict'
+  status: 'not_needed' | 'complete' | 'conflict'
   worktree: ManagedWorktreeReference
   branch: string
   /** Paths a `read-only-input` attribution kept out of the continuation. */
@@ -769,6 +793,7 @@ export interface LocalReleaseFinalizeResult {
   fetched_main: string
   release_commit: string
   index_commit: string
+  advisories: LocalReleaseAdvisory[]
   clean: boolean
 }
 
@@ -861,6 +886,11 @@ export interface AgentHealthView {
   recovery: AgentRecoveryState
 }
 
+export interface RegisteredInstallation {
+  id: string
+  path: string
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
@@ -885,6 +915,8 @@ export interface ProjectConfig {
   away_mode?: AwayModeConfig
   /** Calendar-triggered unattended work. Disabled in the shipped config. */
   schedule?: ScheduleConfig
+  /** Operator-declared Pancreator installation roots on this machine. */
+  installations?: RegisteredInstallation[]
 }
 
 export type ScheduleWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
@@ -1609,6 +1641,33 @@ export interface RepositoryCheckDelta {
   }
 }
 
+export type GateFailureDisposition =
+  | 'environment_or_flake'
+  | 'reproduced'
+  | 'in_change_closure'
+  | 'isolation_unavailable'
+  /**
+   * The isolation command exited cleanly but its transcript never names the
+   * failing test, so nothing proves the test ran. A filter that selects
+   * nothing produces exactly this shape, and crediting it would convert a
+   * real failure into a pass.
+   */
+  | 'isolation_unproven'
+
+export interface GateFailureClassification {
+  file: string
+  test: string
+  initial_diagnostic: string
+  disposition: GateFailureDisposition
+  /** Why a non-reclassifying disposition was reached, for counting across runs. */
+  reason?: string
+  isolation_command?: string
+  isolation_exit_code?: number | null
+  isolation_timed_out?: boolean
+  /** Whether the rerun transcript names the failing test as executed. */
+  isolation_executed?: boolean
+}
+
 export interface DeterministicResult {
   id: string
   type: 'shell' | 'state'
@@ -1661,6 +1720,7 @@ export interface DeterministicResult {
   preexisting_failure?: boolean
   environment_blocked?: boolean
   repository_check_delta?: RepositoryCheckDelta
+  failure_classifications?: GateFailureClassification[]
   workspace_fingerprint: string
   delta?: WorkspaceDelta
   /**
@@ -1949,6 +2009,8 @@ export interface RunModelEvidence {
   declared_spec: string | null
   effective_model: string | null
   source: string
+  /** Cursor or executor handle for the launch this manual evidence describes. */
+  launch_handle?: string
   /**
    * `pending` marks a detached probe in flight and `unavailable` a probe that
    * produced no answer. Neither is usable evidence on its own, so submission

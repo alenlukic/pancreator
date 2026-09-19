@@ -44,6 +44,14 @@
       "transforms": ["policy-rule"]
     },
     {
+      "id": "cursor-delegation-policy-rule",
+      "source": "governance/policies/DELEGATE-001.json",
+      "target": ".cursor/rules/pan-subagent-supervision.mdc",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule"]
+    },
+    {
       "id": "cursor-browser-policy-rule",
       "source": "governance/policies/BROWSER-001.json",
       "target": ".cursor/rules/pan-browser-isolation.mdc",

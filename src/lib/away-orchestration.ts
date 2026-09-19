@@ -5,6 +5,7 @@ import {
   awayEvaluatorPrompt,
   countAwayDecisions,
   countAwayEvaluatorFailures,
+  parseAwayOptions,
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
   recordAwayEvaluatorExchange,
@@ -18,7 +19,7 @@ import {
   setRunStageAsAway,
   waiveGate,
 } from './engine.js'
-import { PanError } from './errors.js'
+import { errorMessage, PanError } from './errors.js'
 import { runCursorAgentJson } from './executors/cursor-agent.js'
 import { hypervisorEventsPath } from './hypervisor.js'
 import {
@@ -44,6 +45,11 @@ function required(value: string | null | undefined, name: string): string {
   }
 
   return value
+}
+
+export interface AwayEvaluationOptions {
+  runEvaluator?: typeof runCursorAgentJson
+  recordedAt?: () => string
 }
 
 /** The hypervisor model the run snapshotted, never a later configuration edit. */
@@ -95,13 +101,20 @@ export function applyAwayDecision(
         selected.action,
         selected.note ?? selected.rationale,
       )
-    case 'resume':
-      return resumeRunAsAway(
-        root,
-        state.run_id,
-        selected.stage ?? state.current_stage,
-        selected.note ?? selected.rationale,
-      )
+    case 'resume': {
+      const stage = selected.stage ?? state.current_stage
+      const note = selected.note ?? selected.rationale
+
+      // The evaluator ranks `resume` to mean "re-attempt the stage". Only a
+      // paused run can literally resume; a run awaiting the operator reaches
+      // the same re-attempt through an away-authored stage set. Failing here
+      // instead turned a sound ranking into a deferred task (HORIZON-001).
+      if (state.status !== 'paused' && stage) {
+        return setRunStageAsAway(root, state.run_id, stage, note)
+      }
+
+      return resumeRunAsAway(root, state.run_id, stage, note)
+    }
     case 'set-stage':
       return setRunStageAsAway(
         root,
@@ -129,6 +142,7 @@ export function evaluateAwayState(
   root: string,
   state: RunState,
   blocker: AwayBlocker,
+  options: AwayEvaluationOptions = {},
 ): AwayDecisionRecord {
   if (
     blocker.type === 'operator_approval' &&
@@ -167,25 +181,50 @@ export function evaluateAwayState(
       .split(path.sep)
       .join('/'),
   })
-  const evaluation = runCursorAgentJson({
-    cwd: root,
-    installationRoot: root,
-    model: hypervisorModelForRun(root, state),
-    prompt,
-  })
+  const runEvaluator = options.runEvaluator ?? runCursorAgentJson
+  const recordedAt = options.recordedAt ?? (() => new Date().toISOString())
+  const evidenceReferences: string[] = []
 
-  // The ledger keeps only the parsed verdict. The prompt and the raw response
-  // are what diagnose a rejected ranking, so they land beside the run evidence.
-  recordAwayEvaluatorExchange(root, state, prompt, evaluation)
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const evaluation = runEvaluator({
+      cwd: root,
+      installationRoot: root,
+      model: hypervisorModelForRun(root, state),
+      prompt,
+    })
+    let parseError: string | undefined
 
-  if (!evaluation.ok || evaluation.value === undefined) {
-    return recordAwayEvaluationFailure(
+    if (evaluation.ok && evaluation.value !== undefined) {
+      try {
+        parseAwayOptions(evaluation.value)
+      } catch (error) {
+        parseError = errorMessage(error)
+      }
+    }
+
+    const transportError =
+      !evaluation.ok || evaluation.value === undefined
+        ? (evaluation.error ?? 'The away evaluator returned no decision.')
+        : undefined
+    const evidenceReference = recordAwayEvaluatorExchange(
       root,
       state,
-      blocker,
-      evaluation.error ?? 'The away evaluator returned no decision.',
+      prompt,
+      {
+        ...evaluation,
+        attempt,
+        ...(transportError ? { error: transportError } : {}),
+        ...(parseError ? { parse_error: parseError } : {}),
+      },
+      recordedAt(),
     )
+
+    evidenceReferences.push(evidenceReference)
+
+    if (!transportError && !parseError) {
+      return recordAwayEvaluation(root, state, blocker, evaluation.value)
+    }
   }
 
-  return recordAwayEvaluation(root, state, blocker, evaluation.value)
+  return recordAwayEvaluationFailure(root, state, blocker, evidenceReferences)
 }

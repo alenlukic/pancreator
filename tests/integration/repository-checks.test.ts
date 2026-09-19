@@ -117,6 +117,7 @@ test('an elided baseline loads its full result before comparison', () => {
   const artifactDirectory = 'runtime/logs/workflows/run-1/agent/artifacts/json'
   const summaryPath = `${artifactDirectory}/baseline-static.json`
   const fullPath = `${artifactDirectory}/baseline-static.full.json`
+
   const count = Math.ceil(
     (SUMMARY_STREAM_HEAD_BYTES + SUMMARY_STREAM_TAIL_BYTES) / 24,
   )
@@ -124,6 +125,7 @@ test('an elided baseline loads its full result before comparison', () => {
     { length: count },
     (_, index) => `stable diagnostic ${index}`,
   )
+
   const check = (stderr: string): RepositoryCheckResult => ({
     profile: 'static',
     status: 'failed',
@@ -795,6 +797,7 @@ test('a concurrent profile runs its commands together and records each one', asy
   const { root } = makeInstallation()
   const delayMs = 900
   const stdout: string[] = []
+
   // TP-10: each command brackets its own delay in a shared log. An elapsed
   // ceiling would measure the scheduling of a suite that runs its own tests
   // concurrently; the recorded order measures these three commands.
@@ -901,6 +904,141 @@ test('a concurrent profile ends every unfinished command at the shared deadline'
   }
 })
 
+test('an isolation command must select both the failing file and case', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      probes: [],
+      commands: ['npm test'],
+      isolation_command: 'npm test -- {file}',
+    },
+  })
+
+  assert.throws(
+    () => loadRepositoryChecks(root),
+    /isolation_command MUST be .* \{file\} and either \{test_pattern\} or \{test\}/u,
+  )
+
+  for (const isolationCommand of [
+    'npm test -- {file} --case {test}',
+    'npm test -- {file} --name-pattern {test_pattern}',
+  ]) {
+    writeChecks(root, {
+      fast: {
+        probes: [],
+        commands: ['npm test'],
+        isolation_command: isolationCommand,
+      },
+    })
+
+    assert.equal(
+      loadRepositoryChecks(root).profiles.fast?.isolation_command,
+      isolationCommand,
+    )
+  }
+})
+
+/**
+ * The self-development runtime configuration is untracked per-installation
+ * state that nothing regenerates. A selector added to the tracked template
+ * therefore reached no live gate, and the whole classifier sat inert in the
+ * one installation that declares one. Adoption is keyed on identical
+ * commands, so an operator-rewritten profile keeps its own configuration.
+ */
+test('a self-development profile adopts the template isolation command', () => {
+  const { root } = makeInstallation()
+  const templateCommand = './run-one -- --pattern {test_pattern} --file {file}'
+
+  writeFileSync(
+    path.join(root, 'config.json'),
+    `${JSON.stringify({ schema_version: 1, installation_mode: 'self_development' }, null, 2)}\n`,
+  )
+  mkdirSync(path.join(root, 'library/templates'), { recursive: true })
+  writeFileSync(
+    path.join(
+      root,
+      'library/templates/repository-checks.self-development.json',
+    ),
+    `${JSON.stringify({
+      schema_version: 1,
+      profiles: {
+        fast: {
+          probes: [],
+          commands: ['npm test'],
+          isolation_command: templateCommand,
+        },
+      },
+    })}\n`,
+  )
+
+  writeChecks(root, { fast: { probes: [], commands: ['npm test'] } })
+
+  assert.equal(
+    loadRepositoryChecks(root).profiles.fast?.isolation_command,
+    templateCommand,
+  )
+
+  // An operator who replaced the command replaced the runner too, so the
+  // template's selector no longer describes anything this profile runs.
+  writeChecks(root, { fast: { probes: [], commands: ['npm run verify'] } })
+
+  assert.equal(
+    loadRepositoryChecks(root).profiles.fast?.isolation_command,
+    undefined,
+  )
+})
+
+/**
+ * An eval grader reads the profile commands of a synthetic run directory that
+ * holds a repository-check file and nothing else. Loading those profiles must
+ * not start requiring a harness configuration the directory never had.
+ */
+test('a directory with no harness configuration still loads its profiles', () => {
+  const bare = createTestTempDirectory('bare-checks-')
+
+  mkdirSync(path.join(bare, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(bare, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      profiles: { fast: { probes: [], commands: ['npm test'] } },
+    })}\n`,
+  )
+
+  assert.deepEqual(loadRepositoryChecks(bare).profiles.fast?.commands, [
+    'npm test',
+  ])
+})
+
+test('a target installation adopts no isolation command', () => {
+  const { root } = makeInstallation()
+
+  mkdirSync(path.join(root, 'library/templates'), { recursive: true })
+  writeFileSync(
+    path.join(
+      root,
+      'library/templates/repository-checks.self-development.json',
+    ),
+    `${JSON.stringify({
+      schema_version: 1,
+      profiles: {
+        fast: {
+          probes: [],
+          commands: ['npm test'],
+          isolation_command: 'node --test --name {test_pattern} {file}',
+        },
+      },
+    })}\n`,
+  )
+  writeChecks(root, { fast: { probes: [], commands: ['npm test'] } })
+
+  assert.equal(
+    loadRepositoryChecks(root).profiles.fast?.isolation_command,
+    undefined,
+  )
+})
+
 test('the concurrent field must be a boolean and the gate runner ignores it', () => {
   const { root } = makeInstallation()
 
@@ -953,7 +1091,9 @@ test('a synchronous timeout ends the whole process tree, not only the shell', as
   })
 
   const startedAt = Date.now()
-  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 250 })
+  // Give the loaded test runner time to start the shell and heartbeat before
+  // exercising the timeout path. The timeout remains the behavior under test.
+  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 2000 })
   const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')
@@ -1436,6 +1576,7 @@ test('the fast-profile allowance follows the evidence workers of the invocation 
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const layout = resolveRunLayout(root, run.run_id)
   const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE).absolute
   const record = (invocationId: string): string =>
@@ -1544,6 +1685,7 @@ test('an agent clean profile pass is recorded where the gate looks for it', () =
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
   const result = commandLineResult(root)
   const recorded = recordProfileGatePass(root, 'fast', result, {
@@ -1591,6 +1733,7 @@ test('two permitted executions at one fingerprint keep their own evidence logs',
     fingerprint_before: fingerprint,
     started_at: '2026-09-12T09:00:00.000Z',
   }
+
   const passes = ['review', 'qa'].map((role) => {
     const result = commandLineResult(root)
     const recorded = recordProfileGatePass(root, 'fast', result, options)
@@ -1650,6 +1793,7 @@ test('an agent profile run that proves nothing is not recorded as a pass', () =>
     fingerprint_before: fingerprint,
     started_at: '2026-09-12T09:00:00.000Z',
   }
+
   const timedOut = commandLineResult(root)
 
   timedOut.results = [{ ...timedOut.results[0], timed_out: true }]
@@ -1737,6 +1881,7 @@ test('a recorded pass answers a repeated request for the same profile', () => {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const layout = resolveRunLayout(root, run.run_id)
   const ledger = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE)
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
@@ -1797,10 +1942,12 @@ test('a reusable pass needs the same invocation, fingerprint, profile, and clean
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const ledger = resolveRunLayout(root, run.run_id).evidence(
     AGENT_REPOSITORY_CHECK_RUNS_FILE,
   ).absolute
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+
   const entry = (overrides: Record<string, unknown> = {}): string =>
     `${JSON.stringify({
       profile: 'fast',

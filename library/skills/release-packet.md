@@ -4,8 +4,8 @@ Use when preparing the ship stage's release proposal.
 
 ## Principle
 
-The packet is a proposal the operator can act on in one read. It never performs
-the irreversible action; it makes the decision easy and safe.
+The packet is a proposal the operator can act on in one read. It never does
+the irreversible action. It makes the decision easy and safe.
 
 ## Contents
 
@@ -26,7 +26,7 @@ the irreversible action; it makes the decision easy and safe.
 
 ## Checks before proposing
 
-- Review and QA passed against the current workspace fingerprint; if evidence is
+- Review and QA passed against the current workspace fingerprint. If evidence is
   stale, stop and report it.
 - The proposed commit/PR text matches the actual change and does not overstate.
 

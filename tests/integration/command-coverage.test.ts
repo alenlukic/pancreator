@@ -314,6 +314,60 @@ test('pan-polish is registered with its polish card and forwards its worktree', 
   )
 })
 
+test('pan-trace is registered with its trace card and forwards its worktree', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-trace.md'),
+    'utf8',
+  )
+
+  for (const invocation of panInvocations(command)) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
+    )
+  }
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+    target_mutating_commands: Array<{
+      command: string
+      worktree_forwarding: string[]
+    }>
+  }
+  const trace = registry.card_commands.find(
+    (entry) => entry.command === 'pan-trace',
+  )
+  const mutating = registry.target_mutating_commands.find(
+    (entry) => entry.command === 'pan-trace',
+  )
+
+  assert.deepEqual(trace, { command: 'pan-trace', card_mode: 'trace' })
+  assert.ok(mutating)
+  assert.deepEqual(mutating.worktree_forwarding, [
+    'governance card --mode trace --worktree <name>',
+  ])
+  assert.match(command, /governance card --mode trace --worktree <name>/u)
+  assert.deepEqual(run(root).errors, [])
+
+  assert.ok(trace)
+  trace.card_mode = 'qa-workflow'
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes(
+        'pan-trace.md MUST run `pan governance card --mode qa-workflow`',
+      ),
+    ),
+  )
+})
+
 test('pan-research is registered with its research card and validates its document', () => {
   const root = createFixture()
   const command = readFileSync(

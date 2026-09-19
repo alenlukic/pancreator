@@ -88,6 +88,7 @@ function parseTemplate(content: string): {
   allowsBodyTitle: boolean
 } {
   const lines = content.split('\n')
+
   const sections: TemplateSection[] = []
   let current: TemplateSection | null = null
   let fence: string | null = null

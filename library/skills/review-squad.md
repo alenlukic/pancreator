@@ -10,9 +10,10 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 ## Principle
 
 One reviewer reading a whole diff carries every review lens at once and drops
-some of them. A squad splits the lenses. The reviewer stays the coordinator: it
-delegates one narrow charter per dimension, then joins the returned findings into
-one ranked set.
+some of them. A squad splits the lenses.
+
+The reviewer stays the coordinator. It delegates one narrow charter per
+dimension, then joins the returned findings into one ranked set.
 
 The squad changes only how findings are gathered. The coordinator still owns
 the verdict, the remediation boundary, and routing.
@@ -43,10 +44,12 @@ whether or not its rule matches.
 ### Operator-selected dimensions
 
 Without a selection, the lineup is the set the rules above or the harness
-lineup resolve. That set is the default lineup. A standalone `/pan-review`
-session MAY carry an operator selection from `--dimensions <a,b,c>`. The
-selection reaches the coordinator through the review card, which records it
-and refuses an unknown slug before any agent launches.
+lineup resolve. That set is the default lineup.
+
+A standalone `/pan-review` session MAY carry an operator selection from
+`--dimensions <a,b,c>`. The selection reaches the coordinator through the
+review card, which records it and refuses an unknown slug before any agent
+launches.
 
 - When a selection is present, the lineup MUST be exactly the selected set.
 - Activation rules and the harness lineup swap MUST NOT change a selected set.
@@ -60,50 +63,56 @@ and refuses an unknown slug before any agent launches.
 ### Harness lineup
 
 A review whose target is the Pancreator harness itself uses a different set of
-dimensions. When `library/skills/review-squad-pancreator.md` is present, read it
-and resolve the lineup from there instead of the tables above. The rest of this
-skill still governs the pass. That file ships only in a Pancreator source
-checkout. In a target installation it is absent and this paragraph does not
-apply.
+dimensions.
+When `library/skills/review-squad-pancreator.md` is present, read it and
+resolve the lineup from there instead of the tables above.
+The rest of this skill still governs the pass.
+
+That file ships only in a Pancreator source checkout. In a target installation
+it is absent and this paragraph does not apply.
 
 ## Process
 
 1. Capture the review target once to a scratch file: under the run's runtime
    directory when a run owns the review, and beside the governance card when a
-   standalone session does. The coordinator captures when a run owns the
-   review; the session captures for a standalone review. Every dimension agent
-   reads that same captured diff.
+   standalone session does.
+   The coordinator captures when a run owns the review, and the session
+   captures for a standalone review.
+   Every dimension agent reads that same captured diff.
 2. Read whatever states the intent — the card, the plan, the acceptance
    criteria, the implementation record, or, for a standalone target, its commit
-   subjects and the operator's request. Write a short intent brief: what the
-   change does, why, and which follow-ups it defers. When the target states no
-   intent, say so in the brief; nothing can then be dropped as already answered.
+   subjects and the operator's request.
+   Write a short intent brief that says what the change does, why, and which
+   follow-ups it defers.
+   When the target states no intent, say so in the brief, and nothing can then
+   be dropped as already answered.
 3. Resolve the lineup. State which conditional dimensions activated and which
    ones the diff skipped. When the operator selected dimensions, the lineup is
    that set. State the default-lineup dimensions it leaves out.
-4. Delegate one subagent per dimension in the lineup, in one message, so they run
-   at the same time. Each prompt MUST carry the captured diff path, the review
-   workspace path, the intent brief, the dimension charter text, and the
-   finding shape. These dimension
-   agents are nested spawns, so Cursor runs them on its default model by
-   platform behavior. A shepherd review accepts that for charter-scoped finding
-   work. A standalone session under `REVIEW-001` does not, and issues this
-   fan-out itself at the top level, then returns the raw findings to the
-   coordinator. Either way a dimension agent sits at the nesting limit and MUST
-   NOT spawn further subagents.
-5. When a subagent cannot start, apply that charter yourself before you join the
+4. Delegate one subagent per dimension in the lineup, in one message, so they
+   run at the same time.
+   Each prompt MUST carry the captured diff path, the review workspace path,
+   the intent brief, the dimension charter text, and the finding shape.
+5. These dimension agents are nested spawns, so Cursor runs them on its default
+   model by platform behavior.
+   A shepherd review accepts that for charter-scoped finding work.
+   A standalone session under `REVIEW-001` does not, and issues this fan-out
+   itself at the top level, then returns the raw findings to the coordinator.
+   Either way a dimension agent sits at the nesting limit and MUST NOT spawn
+   further subagents.
+6. When a subagent cannot start, apply that charter yourself before you join the
    results. Do not drop a dimension from a stated lineup without saying so. A
    standalone session reports an undelivered charter to the coordinator at
    join time rather than applying it.
-6. Join the findings. Merge duplicates, drop what the intent brief already
+7. Join the findings. Merge duplicates, drop what the intent brief already
    answers, then rank. Under `REVIEW-001` the session does not do this: it
    returns the raw findings to the coordinator, which joins them in join mode.
-7. Judge the ranked set as the coordinator: repair what falls inside your
+8. Judge the ranked set as the coordinator: repair what falls inside your
    remediation boundary, amend any acceptance criterion the findings prove
-   unworkable as written, and route the rest. Criterion amendment belongs to
-   the coordinator, never to a dimension agent. A standalone review has no
-   remediation boundary and no criteria to amend, so the coordinator routes
-   everything and the session acts on nothing.
+   unworkable as written, and route the rest.
+   Criterion amendment belongs to the coordinator, never to a dimension agent.
+   A standalone review has no remediation boundary and no criteria to amend, so
+   the coordinator routes everything and the session acts on nothing.
 
 ### Repeat reviews
 
@@ -173,10 +182,10 @@ findings, each one verified.
 - **Missing negative coverage.** A rejection or denial path with no test that
   asserts the rejection.
 
-Method: read the whole diff first and build a model of the intent. For each hunk,
-ask which input or failure makes it wrong, and follow that into the surrounding
-code. Trace the failure-then-retry path for anything that writes more than one
-store.
+Method: read the whole diff first and build a model of the intent.
+For each hunk, ask which input or failure makes it wrong, and follow that into
+the surrounding code.
+Trace the failure-then-retry path for anything that writes more than one store.
 
 ### Security
 
@@ -203,10 +212,11 @@ rare and almost always blocking.
 - **Infra blast radius.** A job an untrusted event can trigger against
   infrastructure, or a permission set broader than the task needs.
 
-Proportionality governs this dimension. Do not report a risk the declared threat
-model already absorbs. Local development tooling carries a relaxed bar, where the
-correct finding is to record the scope rather than to harden the code. "An
-attacker who already controls the backend could do this" is not a finding.
+Proportionality governs this dimension.
+Do not report a risk the declared threat model already absorbs.
+Local development tooling carries a relaxed bar, where the correct finding is
+to record the scope rather than to harden the code.
+"An attacker who already controls the backend could do this" is not a finding.
 
 Method: map the trust boundaries the change adds. For each path from input to a
 sensitive sink, name what the attacker controls and which check stands in the
@@ -241,9 +251,10 @@ bug, speed, or taste review.
   where a shared fake exists, or a test that asserts every field.
 
 Method: for each new function and type, ask which layer owns it and whether it
-landed there. Check the call sites behind each optional parameter. Confirm a
-violation against the surrounding code, and lower the priority when the pattern
-predates the change.
+landed there. Check the call sites behind each optional parameter.
+
+Confirm a violation against the surrounding code, and lower the priority when
+the pattern predates the change.
 
 ### Simplification
 
@@ -298,9 +309,10 @@ numbers.
   than the metrics pipeline, or per-item logging inside a hot loop.
 
 Method: for every knob, queue, loop, and table, ask what the count is now and
-what breaks at one hundred times that count. Put that number in the finding, and
-read the real limits rather than assuming them. When you cannot confirm a
-capacity concern, say which number would settle it.
+what breaks at one hundred times that count.
+Put that number in the finding, and read the real limits rather than assuming
+them.
+When you cannot confirm a capacity concern, say which number would settle it.
 
 ### Frontend
 
@@ -328,8 +340,8 @@ the exact API for a "the library already does it" finding.
 ## Boundaries
 
 - A dimension agent MUST NOT edit any file. It returns findings only.
-- Bounded remediation belongs to the coordinator, and it MUST be disclosed in
-  the review artifact.
+- Bounded remediation belongs to the coordinator, and the coordinator MUST
+  disclose it in the review artifact.
 - Do not report a style preference. Every finding needs a failure scenario or a
   counted maintenance cost.
 - A dimension that returns nothing MUST appear in the review artifact as empty

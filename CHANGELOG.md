@@ -1,5 +1,178 @@
 # Changelog
 
+## [6.20.0] - 2026-09-19
+
+This release makes the operator's chat session the supervisor of a long-horizon session end to end, adds a session arbiter so no harness verdict can end a task, closes the four hard blocks that may stop long-horizon work, and refuses any landing on `pan-dev` that carries no release.
+
+### Changed
+
+- Supervise a long-horizon session from the chat: `horizon start` arms the session and returns, `horizon status --json` lists every live run with its bootstrap commands, and `horizon reconcile` applies the mechanical part of each wake. A task finishes when its route finishes, so the delivery run or cohort a plan approval starts is supervised rather than orphaned ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad)).
+- Route every long-horizon stop through the session arbiter before any deferral: a rejected ranking, a spent budget, an apply error, an unparseable evaluator reply, or an exhausted ladder is evidence the arbiter reasons about, and a task defers only when it names one of the four hard blocks ([3ce507b0](https://github.com/alenlukic/pancreator/commit/3ce507b02b9970ca5800e7ac1dd93deda1553acd)).
+- Close the long-horizon hard-block list to four (LH-H1 to LH-H4): a cost- or wall-time-backed criterion, a self-caused condition, a transient failure, and any ordinary judgment call are decided and recorded, never deferred. The profile allows `waive-gate` and sizes the decision budget at 12 per run; a failed away apply falls through to the next ranked option ([41c2c5b8](https://github.com/alenlukic/pancreator/commit/41c2c5b8a6a5e9c41758e05f2a8767b6d923b16f)).
+- State the 60-second observation rule as one statement with no exceptions, refuse to end a turn while an observed process is unfinished, and project `DELEGATE-001` as an always-on Cursor rule ([41c2c5b8](https://github.com/alenlukic/pancreator/commit/41c2c5b8a6a5e9c41758e05f2a8767b6d923b16f)).
+- Require a named authority on `horizon defer`: `--hard-block <LH-H1..LH-H4>` or `--operator-directive` ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad)).
+
+### Added
+
+- `horizon reconcile`, `horizon reinstate`, and `horizon start --headless` for the scheduled-job substrate ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad), [3ce507b0](https://github.com/alenlukic/pancreator/commit/3ce507b02b9970ca5800e7ac1dd93deda1553acd)).
+- `bin/check-landing` with `pre-commit` and `pre-merge-commit` hooks under `.githooks/`, wired by `npm run prepare`: a direct installable commit on `pan-dev` or `main`, and a merge whose source carries no new indexed release, are refused ([de81dcab](https://github.com/alenlukic/pancreator/commit/de81dcab4007e4fcb180e792de39f11a109e7bab), [b2c536e5](https://github.com/alenlukic/pancreator/commit/b2c536e58ede5ec78f2f627f79a5780db87d3fc2)).
+
+## [6.19.0] - 2026-09-19
+
+This release repairs eleven live command defects on the ship, inbox, and validator paths. It also allocates concurrent release versions from one shared ledger.
+
+### Changed
+
+- Resolve a requirement stage from the invocation, so `pan output validate` runs claims checks on remediate outputs ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Bind `pan requirements run --invocation` to the attempt workspace. Name the comparison base when only `--run` is given ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Skip release sync when the fetched ref is already an ancestor. Otherwise rebase in merge-preserving mode ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Return `not_needed` from `pan release continue` when no rebase is active ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Reuse a complete release pair on retry. Refuse a dirty tree before the first release commit ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- List every regular inbox file. Report an unlistable file with its reason ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Accept every model-evidence role the invocation declares ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Keep a current-run suite-profile index entry. Write `recorded_at` from the profile artifact ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Read embedded review-scope closure from the installation when `.pancreator/` is untracked ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Retry one malformed away-evaluator reply before a ledger write. Keep parse text out of the decision record ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Accept a blocked implement result with empty acceptance results when blocked data is present ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Allocate release versions from one shared ledger so concurrent worktrees do not collide ([d3e12776](https://github.com/alenlukic/pancreator/commit/d3e127769417d2fe59d424c56b449270ab4e7d64)).
+- Reuse a held allocation only for the same bump ([732f74ab](https://github.com/alenlukic/pancreator/commit/732f74ab68183ecfb10ad6bd510bf8016516a4e5)).
+- Pass `--force` and a path-resolution preamble so a headless stage worker can read its contract ([89fd41fd](https://github.com/alenlukic/pancreator/commit/89fd41fd368925d95b1c6d7802cb558b8413938b)).
+- Raise the headless worker bound and record executor failures ([6ca005cf](https://github.com/alenlukic/pancreator/commit/6ca005cf5141738509ed99630749172070191c29)).
+- Skip the RFC 2119 keyword definition in the directive-ownership audit. `pan validate` now reports zero warnings ([c575264f](https://github.com/alenlukic/pancreator/commit/c575264fb92554e5daa0c6d96a15fc49956c44b4)).
+- Fail a repair intake that names a sibling file this checkout does not hold ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b29c7bce8e274bb01d0068995fb46cb12a)).
+- Report `harness_version` and a stale flag from `pan installs list` ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b29c7bce8e274bb01d0068995fb46cb12a)).
+- Raise the TEST-001 fast-wall ceiling from 120000 ms to 160000 ms ([e4ec3882](https://github.com/alenlukic/pancreator/commit/e4ec38828994f8153cf7bfc25a96abfb8533999b)).
+
+### Added
+
+- Add `pan release allocate` as the version authority for a managed ship ([d3e12776](https://github.com/alenlukic/pancreator/commit/d3e127769417d2fe59d424c56b449270ab4e7d64)).
+- Add `--invocation` on `pan requirements run` ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Add a blocked-data contract on every delivery implement stage ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+
+### Fixed
+
+- Fail release sync when a rebase drops a merge the branch carried ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Stop a second release pair for the same version after a blocked ship ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Keep a newer suite-profile index entry instead of an older scan ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Show captured `.txt` requests in `pan inbox` ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Submit a blocked implement output that carries blocked data ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+
+## [6.18.0] - 2026-09-19
+
+This release classifies load-sensitive gate failures, allocates concurrent release versions, and repairs headless workers. Plan validation now rejects a pan option that the CLI does not accept.
+
+### Changed
+
+- Classify a new gate failure outside the change import graph as `environment_or_flake` when one isolated rerun passes ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Raise the TEST-001 rolling fast-wall ceiling from 120s to 160s ([e4ec3882](https://github.com/alenlukic/pancreator/commit/e4ec38828994f8153cf7bfc25a96abfb8533999b)).
+
+### Added
+
+- Add `pan release allocate` so concurrent worktrees take distinct versions from one ledger ([d3e12776](https://github.com/alenlukic/pancreator/commit/d3e12776)).
+- Add a shared pan option grammar for plan cases, rollback steps, and command files ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Add a benchmark session record that pairs a baseline sample with a candidate sample ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Flag a stale installation on `pan installs list` ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b2)).
+- Refuse a repair intake that names a sibling intake file this checkout does not hold ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b2)).
+
+### Fixed
+
+- Let headless stage workers read their contract, honor `--force`, and use an hours-long bound ([6ca005cf](https://github.com/alenlukic/pancreator/commit/6ca005cf5141738509ed99630749172070191c29)).
+- Reuse a held release allocation only for the same bump ([732f74ab](https://github.com/alenlukic/pancreator/commit/732f74ab)).
+- Stop `pan validate` from reporting RFC 2119 keyword-definition warnings ([c575264f](https://github.com/alenlukic/pancreator/commit/c575264f)).
+- Repair three regression guards so they fail against the pre-change state ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+- Render the suite-profile advisory in both shapes and drop the doubled blank line ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
+
+## [6.17.0] - 2026-09-19
+
+This release adds `/pan-trace`. The command runs a cheap end-to-end smoke of a newly merged harness feature.
+
+### Added
+
+- Add the `/pan-trace` command and the `trace` card mode ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Register `pan-trace` as a card command and as a target-mutating command ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Add the `trace` policy lookup row for persona `harness-workflow-qa` ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Document the choice among `/pan-trace`, `/pan-qa-workflow`, and `pan eval` ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+- Add integration tests for command registration and the trace card ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
+
+## [6.16.1] - 2026-09-19
+
+This release adds four `openai:` bracket options for the Astra Responses API. A persona can set `mode`, `context`, `summary`, and `verbosity`. The `context` option has no replay effect yet.
+
+### Added
+
+- Add `mode`, `context`, `summary`, and `verbosity` as `openai:` bracket options for `reasoning` and `text.verbosity` ([e22825ee](https://github.com/alenlukic/pancreator/commit/e22825ee7d7b3849521d4010b32713c2dbb4114c)).
+
+## [6.16.0] - 2026-09-18
+
+This release extends the style scanner and the `/pan-style` command. The scanner reports the handbook rules it can decide. The command reads every file that changed after the last checkpoint.
+
+### Changed
+
+- Extend `CODE-STYLE-VALIDATE-001` so the scanner reports the TypeScript handbook rules it can decide ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Route every eligible file that changed after the last checkpoint through the complete style handbook ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Run the fast test profile before the `/pan-style` checkpoint ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Document the wider scanner and command scope in the operator guide and `pan style` help ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Apply the handbook pass to 118 source and test files ([7372472a](https://github.com/alenlukic/pancreator/commit/7372472ad9e6ae3e9a9ef0371af60e9c13b84b76)).
+- Replace a non-null assertion and a cast in the horizon test with a type guard ([a23e7c19](https://github.com/alenlukic/pancreator/commit/a23e7c193bed5b06c224666346fae705ad1db496)).
+
+### Added
+
+- Add scanner codes for unbraced bodies, block spacing, large declaration groups, and a `switch` without `default` ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add scanner codes for default exports, mutable exports, function expressions, private fields, and `debugger` ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add scanner codes for restricted features, wrapper constructors, the arguments object, and TypeScript suppressions ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add a documented exception as `// style: allow <code> <reason>`, or `# style: allow` in Python ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+- Add exhaustive `default` branches in `versioning.ts`, `engine.ts`, `cohorts.ts`, and `render.ts` ([7372472a](https://github.com/alenlukic/pancreator/commit/7372472ad9e6ae3e9a9ef0371af60e9c13b84b76)).
+
+### Fixed
+
+- Follow a `${}` substitution in the template masker so a nested template does not end the outer template early ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
+
+## [6.15.0] - 2026-09-18
+
+This release extends `/pan-conform` to the harness instruction surfaces that STE-001 names. The scanner and the validator now cover those files. The first operator conform pass repairs the copy debt.
+
+### Changed
+
+- Extend the `/pan-conform` editable set to `AGENTS.md`, policy files, criteria, personas, skills, commands, and rules ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+- Reword STE-001 instruction 2 so the governance exclusion covers only non-instruction files ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+- Repair instruction-surface copy against STE-001 after the scanner change ([a14cc27f](https://github.com/alenlukic/pancreator/commit/a14cc27fcae3997bc325d156b55ddaa63e1b80c2)).
+
+### Added
+
+- Add a `policy-json` target type so `SIMPLIFIED-ENGLISH-VALIDATE-001` counts policy instruction text ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+
+### Fixed
+
+- Accept a policy file and an `.mdc` rule as validator targets ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
+
+## [6.14.0] - 2026-09-18
+
+This release indexes the merged tree. Versions 6.12.0 and 6.13.0 were cut in parallel on separate branches, so neither indexed commit describes a tree holding both features. This release restores the release identity the installer checks.
+
+### Changed
+
+- Index a release commit whose harness payload matches the merge of the design composition of 6.12.0 and the embedded installation registry of 6.13.0 ([ff415dc4](https://github.com/alenlukic/pancreator/commit/ff415dc4)).
+- Drop the stale version from the `AGENTS.md` header ([38bd2d5f](https://github.com/alenlukic/pancreator/commit/38bd2d5f)).
+
+## [6.13.0] - 2026-09-18
+
+This release adds a machine-local registry of embedded installations. Operators can list those installs and archive cited inbox items from the source checkout. The version is 6.13.0 because pan-dev already holds 6.12.0.
+
+### Changed
+
+- Point `/pan-repair installs` at every registered install and write one intake set in this repository ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+- Document the registry, the two installs commands, and the sweep ([f657a7f8](https://github.com/alenlukic/pancreator/commit/f657a7f8ff5bd63c588a032f11eb2b96e7e85447)).
+
+### Added
+
+- Add an optional `installations` array with `id` and absolute `path` ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+- Add `pan installs list` and `pan installs archive` ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+- Add `archiveInboxRequest` for a terminal inbox item ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+
+### Fixed
+
+- Match a cited inbox file name as a whole path segment ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
+
 ## [6.12.0] - 2026-09-18
 
 This release adds an optional design composition for planning and delivery runs. The operator selects the option at run creation. A run without the option keeps the current graph.

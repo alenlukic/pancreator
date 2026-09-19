@@ -433,6 +433,7 @@ function renderSupervisorProcedureBody(
           '',
         )
       : delegation.persona
+
   // `pan watch` and `pan worker record` share one command prefix built in
   // `prepare`, and that prefix — `./bin/pan` in the harness checkout, an
   // absolute path in a target installation — reaches this renderer only
@@ -881,9 +882,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         `- \`${item.path}\` — ${item.description}`,
         ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
       ])
+
   const requiredReferences = referenceLines('required')
   const conditionalReferences = referenceLines('conditional')
   const indexReferences = referenceLines('index_only')
+
   const missingRequired = invocation.inputs.missing_required ?? []
   const contextReference = invocation.inputs.context_reference
   const contextReferenceLines = contextReference
@@ -894,6 +897,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         contextReference.actual_content_sha256,
       ).slice(1)
     : []
+
   const policies = renderPolicyBlocks(invocation.policies, 3, 'agent')
   const requirements = invocation.requirements
     ? [
@@ -907,6 +911,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   const harnessRequirements = requirements.filter(
     (requirement) => requirement.executor === 'harness',
   )
+
   const requirementRows = agentRequirements.length
     ? [
         '| Policy | Requirement | Registry | Phase | Executor | Enforcement | Target | Success | Failure route |',
@@ -926,12 +931,14 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       `- \`${requirement.registry_id}@${requirement.registry_version}\` — ` +
       `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement}); harness-owned, no agent action.`,
   )
+
   const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
   const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>
     command === false
       ? `- 🚫 **${id}** — disabled by run configuration.`
       : `- 🛠️ **${id}** — overridden: \`${command}\``,
   )
+
   const priorFailure = invocation.prior_failure
   const priorFailureReasons =
     (priorFailure?.failed_hard_criteria.length ?? 0) +
@@ -1049,6 +1056,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           : []),
       ]
     : []
+
   const stageRepair = invocation.operator_stage_repair
   const stageRepairLines = stageRepair
     ? [
@@ -1068,6 +1076,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         '',
       ]
     : []
+
   const involvement = invocation.operator_involvement
   const appliedGateEntries = Object.entries(involvement?.applied_gates ?? {})
   const involvementLines = involvement
@@ -1098,6 +1107,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           : ['Every stage uses its workflow-declared gate.', '']),
       ]
     : []
+
   const verification = invocation.verification
   const verificationGateEntries = Object.entries(verification?.gates ?? {})
   const verificationLines = verification
@@ -1132,6 +1142,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           : []),
       ]
     : []
+
   const operatorBrief = invocation.output.operator_brief
   const declaredArtifactLines = invocation.output.artifacts
     ? [
@@ -1529,6 +1540,11 @@ function renderDeliveryHandoff(
         `Delivery route failed: ${handoff.error}`,
         ...handoff.manual_commands.map((command) => `  Manual: ${command}`),
       ]
+    default: {
+      const exhaustive: never = handoff
+
+      throw new Error(`Unhandled delivery handoff kind: ${String(exhaustive)}`)
+    }
   }
 }
 

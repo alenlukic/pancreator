@@ -9,15 +9,18 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 ## Principle
 
 Review feedback on an open pull request arrives on its own schedule, from humans
-and from review bots. The shepherd watches one PR so the operator does not have
-to: it collects feedback until the PR goes quiet, judges each item against the
-code and against the author's own review history, implements only what survives
-that judgment, gates every change through the local review squad, and pushes the
-reviewed result back to the PR branch. Then it watches again.
+and from review bots.
+
+The shepherd watches one PR so the operator does not have to.
+It collects feedback until the PR goes quiet, judges each item against the code
+and against the author's own review history, implements only what survives that
+judgment, gates every change through the local review squad, and pushes the
+reviewed result back to the PR branch.
+Then it watches again.
 
 The shepherd is a filter, not a relay. Feedback becomes a change only after the
-shepherd has verified the claim in the code and cleared it against the ledger.
-An unactioned item is not a failure; a rejected item with a recorded reason is a
+shepherd verifies the claim in the code and clears it against the ledger.
+An unactioned item is not a failure. A rejected item with a recorded reason is a
 correct outcome.
 
 ## Vocabulary
@@ -37,11 +40,11 @@ correct outcome.
    report when the PR is closed or merged, or when `gh` cannot reach it.
 2. Confirm the workspace is on the PR head branch with no uncommitted changes
    that the shepherd did not make. Check out the head branch when the operator
-   has directed it; otherwise stop and report the mismatch.
-3. Confirm no mutating workflow agent is executing against the same workspace.
+   directed it. Otherwise stop and report the mismatch.
+3. Confirm that no mutating workflow agent runs against the same workspace.
 4. Create the session ledger. Seed it with every feedback item that already
    exists on the PR, marked `preexisting`. Preexisting items are history for
-   bot-discipline checks; the shepherd MUST NOT action them unless the operator
+   bot-discipline checks. The shepherd MUST NOT action them unless the operator
    asked for that explicitly.
 5. Record the head commit SHA. Every later push is measured from it.
 
@@ -63,13 +66,13 @@ own comments and commits are not feedback.
 2. Run poll cycles. Append every new item to the ledger as `open` when it
    arrives.
 3. Close the window at **quiescence**: the window has run its 15 cycles, and at
-   least one full cycle has passed with no new item. Feedback in cycle 15 or
-   later therefore extends the window; a window with feedback never ends on a
-   cycle that produced any.
+   least one full cycle passed with no new item.
+   Feedback in cycle 15 or later thus extends the window.
+   A window with feedback never ends on a cycle that produced any.
 4. An empty batch — 15 cycles, no feedback — ends the session.
 5. A non-empty batch goes to assessment. When every item in the batch is
    rejected or deferred, the session ends. Otherwise implement, review, and
-   push, then open the next window; when this was the eighth window, end the
+   push, then open the next window. When this was the eighth window, end the
    session instead.
 
 The session also ends when the PR is closed or merged externally, when three
@@ -91,13 +94,15 @@ implementation begins:
   final report, not to the diff.
 
 Verify before you accept: read the code the item points at, and reproduce the
-claimed defect where a cheap check exists. A question addressed to the operator
-is deferred, not answered on their behalf. Weight a human maintainer's comment
-above a bot's, but the same verification applies to both.
+claimed defect where a cheap check exists.
+
+A question addressed to the operator is deferred, not answered on their behalf.
+Weight a human maintainer's comment above a bot's, but the same verification
+applies to both.
 
 ## Bot discipline
 
-A review bot has no memory and no accountability; the ledger supplies both.
+A review bot has no memory and no accountability. The ledger supplies both.
 Before judging any bot item, re-read that bot's ledger history on this PR and
 check, in order:
 
@@ -127,13 +132,13 @@ MUST NOT post any PR comment unless the operator directed it.
    directory.
 3. Delegate one `pan-shepherd-reviewer` subagent with: the captured diff path,
    the repository root as the review workspace path, an intent brief listing
-   each accepted item and why it was accepted, and the ledger path. It coordinates the review squad per `library/skills/review-squad.md`
-   and returns a ranked finding set with a pass or fail verdict. It edits
-   nothing. Its model comes from the `shepherd-reviewer` mapping in
-   `config.json`, so the squad's model is configured independently of the
-   run-time reviewer.
+   each accepted item and why it was accepted, and the ledger path.
+   It coordinates the review squad per `library/skills/review-squad.md`, returns
+   a ranked finding set with a pass or fail verdict, and it edits nothing.
+   Its model comes from the `shepherd-reviewer` mapping in `config.json`, so the
+   squad's model is configured independently of the run-time reviewer.
 4. On fail, repair the blocking findings and re-review the delta. A batch gets
-   at most **3** implement-review iterations; a batch still failing after the
+   at most **3** implement-review iterations. A batch still failing after the
    third ends the session with nothing pushed and the failure in the report.
 5. On pass, commit with a message naming the actioned items, and push to the PR
    head branch. Never force-push, never another branch, never a merge.
@@ -143,8 +148,8 @@ MUST NOT post any PR comment unless the operator directed it.
 Every session ends with one operator-facing report: PR and branch, windows
 used, each batch with per-item dispositions and rationales, pushes made with
 SHAs, review iterations spent, deferred items, recorded bot contradictions,
-conflicts, and thrash, and the ledger path. Missing evidence is reported as
-missing, not filled in.
+conflicts, and thrash, and the ledger path.
+Missing evidence is reported as missing, not filled in.
 
 ## Ledger shape
 
@@ -171,7 +176,7 @@ as history.
 ## Boundaries
 
 - Invocation of `/pan-shepherd` authorizes commits and pushes to the shepherded
-  PR's head branch only, and only for changes the review squad has passed.
+  PR's head branch only, and only for changes the review squad passed.
 - The shepherd MUST NOT merge, close, retarget, or rebase the PR, and MUST NOT
   push to any other branch or force-push.
 - The shepherd MUST NOT create, advance, or write state for a workflow run.

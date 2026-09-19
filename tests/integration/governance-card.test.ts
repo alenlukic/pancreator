@@ -94,6 +94,7 @@ test('every standalone mode renders a card with its policies inlined', () => {
 
       for (const instruction of policy.instructions) {
         const bullet = `- ${instruction.text}`
+
         if (policyInstructionAppliesToCard(instruction, 'agent')) {
           assert.ok(
             written.includes(bullet),
@@ -109,7 +110,9 @@ test('every standalone mode renders a card with its policies inlined', () => {
       }
 
       for (const guidance of policy.guidance ?? []) {
-        if (!guidance.reference) continue
+        if (!guidance.reference) {
+          continue
+        }
 
         assert.ok(
           written.includes(
@@ -243,7 +246,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, harden, investigation, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, harden, investigation, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, trace, tune-harness, unbound, write-pr/u,
   )
 })
 
@@ -680,6 +683,31 @@ test('the supervisor mode refuses a run-less card', () => {
   )
 })
 
+test('the trace card resolves runtime rules and binds a named worktree', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'trace',
+    outputPath: 'runtime/inbox/trace-card.md',
+    worktreeName: 'trace-target',
+  })
+  const ids = card.policies.map((policy) => policy.id)
+
+  assert.ok(ids.includes('DELEGATE-001'))
+  assert.ok(ids.includes('RUNTIME-001'))
+  assert.equal(card.worktree?.name, 'trace-target')
+  assert.equal(card.worktree?.path, 'worktrees/operator/trace-target')
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /Harness feature trace/u)
+  assert.match(written, /\*\*DELEGATE-001 ·/u)
+  assert.match(written, /\*\*RUNTIME-001 ·/u)
+  assert.match(written, /MUST NOT hand-rename/u)
+  assert.match(written, /## 🚧 Boundaries/u)
+  assert.match(written, /## 🌳 Workspace worktree/u)
+  assert.ok(written.includes('`worktrees/operator/trace-target`'))
+})
+
 test('the card-less command modes resolve their persona governance', () => {
   const root = createFixture()
   const expectations: Record<string, string[]> = {
@@ -712,6 +740,7 @@ test('the review card scopes the closure from the bound worktree when the main c
   const git = (args: string[]) =>
     execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
   const base = git(['rev-parse', 'HEAD'])
+
   const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')
   const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
     instructions: string[]
@@ -772,5 +801,51 @@ test('the review card scopes the closure from the bound worktree when the main c
   assert.match(
     readFileSync(path.join(root, explicit.path), 'utf8'),
     /## 🧭 Conduct under the base revision/u,
+  )
+})
+
+test('a target review card keeps its closure at the installation root', () => {
+  const root = createFixture()
+  const target = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    installation_mode?: string
+    workspace_root?: string
+  }
+
+  config.installation_mode = 'detached'
+  config.workspace_root = target
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: target, encoding: 'utf8' }).trim()
+  const base = git(['rev-parse', 'HEAD'])
+
+  const policyPath = path.join(target, 'governance/policies/GLOBAL-002.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: string[]
+  }
+
+  policy.instructions.push('Agents MUST record a target-only clause.')
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+  git(['add', 'governance/policies/GLOBAL-002.json'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  const head = git(['rev-parse', 'HEAD'])
+
+  createWorktree(root, 'target-review', { from: head })
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/target-review-card.md',
+    worktreeName: 'target-review',
+    baseRef: base,
+    targetRef: head,
+  })
+
+  assert.equal(card.worktree?.name, 'target-review')
+  assert.match(
+    readFileSync(path.join(root, card.path), 'utf8'),
+    /\*\*GLOBAL-002 · base text\*\*/u,
   )
 })

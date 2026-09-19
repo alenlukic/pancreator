@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import {
   existsSync,
   mkdirSync,
   readFileSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs'
@@ -11,6 +13,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  archiveInboxRequest,
   claimInboxRequest,
   finishInboxRequest,
   migrateLegacyInboxLayout,
@@ -46,7 +49,7 @@ function inboxRoot(): string {
   return createTestTempDirectory('pancreator-inbox-unit-')
 }
 
-test('listInbox ignores nested directories and non-Markdown files', () => {
+test('listInbox includes every regular file and ignores nested directories', () => {
   const root = createTestTempDirectory('pancreator-inbox-unit-')
   const oldest = new Date('2024-01-01T12:00:00.000Z')
   const middle = new Date('2024-01-02T12:00:00.000Z')
@@ -72,15 +75,98 @@ test('listInbox ignores nested directories and non-Markdown files', () => {
 
     assert.deepEqual(
       items.map((item) => item.file_name),
-      ['newest.md', 'middle.md', 'alpha.md', 'oldest.md', 'zebra.md'],
+      [
+        'newest.md',
+        'notes.txt',
+        'middle.md',
+        'alpha.md',
+        'oldest.md',
+        'zebra.md',
+      ],
     )
     assert.deepEqual(
       items.map((item) => item.title),
-      ['Newest', 'Middle', 'A', 'Oldest', 'Z'],
+      ['Newest', 'notes.txt', 'Middle', 'A', 'Oldest', 'Z'],
     )
     assert.equal(items[0]?.modified_at, newest.toISOString())
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('listInbox reports invalid UTF-8 without mutating any inbox file', () => {
+  const root = inboxRoot()
+  const files = [
+    ['queue', 'plain.txt', Buffer.from('plain text without a heading\n')],
+    ['active', 'invalid.bin', Buffer.from([0xc3, 0x28])],
+    ['canceled', 'request.md', Buffer.from('# Canceled request\n')],
+    ['complete', 'result.data', Buffer.from('complete\n')],
+  ] as const
+
+  for (const [status, fileName, content] of files) {
+    const target = path.join(root, 'runtime/inbox', status, fileName)
+
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(target, content)
+  }
+
+  const nested = path.join(root, 'runtime/inbox/queue/nested/ignored.txt')
+
+  mkdirSync(path.dirname(nested), { recursive: true })
+  writeFileSync(nested, 'nested\n', 'utf8')
+
+  const snapshot = (target: string) => {
+    const content = readFileSync(target)
+    const stat = statSync(target)
+
+    return {
+      content,
+      sha256: createHash('sha256').update(content).digest('hex'),
+      stat: {
+        mode: stat.mode,
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+      },
+    }
+  }
+  const before = new Map(
+    files.map(([status, fileName]) => {
+      const target = path.join(root, 'runtime/inbox', status, fileName)
+
+      return [target, snapshot(target)] as const
+    }),
+  )
+  const items = listInbox(root)
+
+  assert.deepEqual(
+    items.map((item) => [item.status, item.file_name]),
+    [
+      ['queue', 'plain.txt'],
+      ['active', 'invalid.bin'],
+      ['canceled', 'request.md'],
+      ['complete', 'result.data'],
+    ],
+  )
+  assert.equal(
+    items.find((item) => item.file_name === 'plain.txt')?.title,
+    'plain.txt',
+  )
+  assert.equal(
+    items.find((item) => item.file_name === 'plain.txt')?.reason,
+    undefined,
+  )
+
+  const invalid = items.find((item) => item.file_name === 'invalid.bin')
+
+  assert.equal(invalid?.title, 'invalid.bin')
+  assert.ok((invalid?.reason?.length ?? 0) > 0)
+  assert.equal(
+    items.some((item) => item.file_name === 'ignored.txt'),
+    false,
+  )
+
+  for (const [target, prior] of before) {
+    assert.deepEqual(snapshot(target), prior)
   }
 })
 
@@ -186,6 +272,7 @@ test('listInbox falls back to a unique date-sequence base match', () => {
       '# Different sequence\n',
       modifiedAt,
     )
+
     // Two run directories share the 0150 base, so that base is ambiguous.
     for (const ambiguous of [
       '63319_Aug-21-0150_first-run',
@@ -357,10 +444,14 @@ test('a finished request takes a suffixed name when history holds its name', () 
 test('migrates legacy inbox layout into status directories', () => {
   const root = createFixture()
   const legacyPath = path.join(root, 'runtime/inbox/legacy-unlinked.md')
+  const legacyTextPath = path.join(root, 'runtime/inbox/legacy-notes.txt')
+  const finderArtifactPath = path.join(root, 'runtime/inbox/.DS_Store')
   const archivePath = path.join(root, 'runtime/inbox/archive/preserved.md')
 
   mkdirSync(path.dirname(legacyPath), { recursive: true })
   writeFileSync(legacyPath, '# Unlinked\n', 'utf8')
+  writeFileSync(legacyTextPath, 'Unlinked text\n', 'utf8')
+  writeFileSync(finderArtifactPath, Buffer.from([0, 0, 0, 1, 0x42, 0x75]))
 
   mkdirSync(path.dirname(archivePath), { recursive: true })
   writeFileSync(archivePath, '# Preserved\n', 'utf8')
@@ -460,11 +551,25 @@ test('migrates legacy inbox layout into status directories', () => {
 
   const summary = migrateLegacyInboxLayout(root)
 
-  assert.equal(summary.migrated_files, 4)
+  assert.equal(summary.migrated_files, 5)
   assert.equal(summary.updated_runs, 3)
   assert.equal(
     existsSync(path.join(root, 'runtime/inbox/queue/legacy-unlinked.md')),
     true,
+  )
+  assert.equal(
+    readFileSync(
+      path.join(root, 'runtime/inbox/queue/legacy-notes.txt'),
+      'utf8',
+    ),
+    'Unlinked text\n',
+  )
+  // A dot-prefixed host artifact is not a request. The sweep leaves it in
+  // place rather than queueing it as one the operator never wrote.
+  assert.equal(existsSync(finderArtifactPath), true)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/queue/.DS_Store')),
+    false,
   )
 
   for (const item of linkedCases) {
@@ -512,12 +617,13 @@ test('renderInbox writes a stable table and names an empty inbox', () => {
         modified_at: '2024-02-02T10:00:00.000Z',
         run_id: null,
         status: 'complete',
+        reason: 'invalid UTF-8',
       },
     ]),
     [
-      'STATUS\tFILE\tTITLE\tMODIFIED\tRUN',
-      'queue\tnewest.md\tNewest\t2024-03-03T12:00:00.000Z\t10000_Mar-03-1200_inbox',
-      'complete\theading-free.md\theading-free.md\t2024-02-02T10:00:00.000Z\t-',
+      'STATUS\tFILE\tTITLE\tMODIFIED\tRUN\tREASON',
+      'queue\tnewest.md\tNewest\t2024-03-03T12:00:00.000Z\t10000_Mar-03-1200_inbox\t-',
+      'complete\theading-free.md\theading-free.md\t2024-02-02T10:00:00.000Z\t-\tinvalid UTF-8',
       '',
     ].join('\n'),
   )
@@ -530,6 +636,7 @@ test('runtime maintenance migrates a legacy complete item before archiving it', 
   const root = inboxRoot()
   const runId = '63309_Aug-31-0403_complete-item'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+
   const legacyAbsolute = path.join(root, 'runtime/inbox/legacy-complete.md')
   const stale = new Date('2026-06-22T21:22:54.051Z')
 
@@ -601,8 +708,10 @@ test('runtime maintenance migrates and archives old workflow directories', () =>
   const legacyRunId = '20200101T120000000Z-abcdef12'
   const createdAt = new Date('2020-01-01T12:00:00.000Z')
   const currentRunId = makeWorkflowRunId(createdAt, 'old-fixture')
+
   const logDirectory = path.join(root, 'runtime/logs/workflows', legacyRunId)
   const stateDirectory = path.join(root, 'runtime/workflows', legacyRunId)
+
   const write = (target: string, content: string): void => {
     mkdirSync(path.dirname(target), { recursive: true })
     writeFileSync(target, content, 'utf8')
@@ -834,5 +943,64 @@ test('restoreInboxRequest refuses a completed and an already-queued item', () =>
       status,
     )
     assert.equal(existsSync(absolute), true)
+  }
+})
+
+test('archiveInboxRequest moves terminal work safely and refuses live history', () => {
+  const root = inboxRoot()
+  const permitted = [
+    'runtime/inbox/queue/queued.md',
+    'runtime/inbox/complete/completed.md',
+    'runtime/inbox/canceled/canceled.md',
+    'runtime/inbox/legacy.md',
+  ]
+
+  for (const relative of permitted) {
+    const absolute = path.join(root, relative)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, `# ${path.basename(relative)}\n`, 'utf8')
+
+    const archived = archiveInboxRequest(root, relative)
+
+    assert.equal(archived.from, relative)
+    assert.match(archived.to, /^runtime\/inbox\/archive\//u)
+    assert.equal(existsSync(absolute), false)
+    assert.equal(existsSync(path.join(root, archived.to)), true)
+  }
+
+  const queueCollision = 'runtime/inbox/queue/collision.md'
+  const completeCollision = 'runtime/inbox/complete/collision.md'
+
+  for (const relative of [queueCollision, completeCollision]) {
+    const absolute = path.join(root, relative)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, '# Collision\n', 'utf8')
+  }
+
+  assert.equal(
+    archiveInboxRequest(root, queueCollision).to,
+    'runtime/inbox/archive/collision.md',
+  )
+  assert.equal(
+    archiveInboxRequest(root, completeCollision).to,
+    'runtime/inbox/archive/collision-2.md',
+  )
+
+  const active = 'runtime/inbox/active/live.md'
+  const activeAbsolute = path.join(root, active)
+
+  mkdirSync(path.dirname(activeAbsolute), { recursive: true })
+  writeFileSync(activeAbsolute, '# Live\n', 'utf8')
+
+  for (const relative of [active, 'runtime/inbox/archive/collision.md']) {
+    assert.throws(
+      () => archiveInboxRequest(root, relative),
+      (error: unknown) =>
+        error instanceof PanError && error.code === 'INVALID_INBOX_TRANSITION',
+      relative,
+    )
+    assert.equal(existsSync(path.join(root, relative)), true)
   }
 })

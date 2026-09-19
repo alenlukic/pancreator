@@ -144,8 +144,15 @@ test('the shipped long-horizon profile is listed and snapshots its mode', () => 
   assert.deepEqual(listing.profiles['long-horizon']?.away_mode, {
     enabled: true,
     guardrails: {
-      allowed_actions: ['approve', 'reject', 'revise', 'resume', 'set-stage'],
-      max_decisions_per_run: 3,
+      allowed_actions: [
+        'approve',
+        'reject',
+        'revise',
+        'resume',
+        'set-stage',
+        'waive-gate',
+      ],
+      max_decisions_per_run: 12,
       max_remediation_attempts_per_agent: 2,
     },
   })
@@ -169,6 +176,7 @@ test('the shipped long-horizon profile is listed and snapshots its mode', () => 
     'revise',
     'resume',
     'set-stage',
+    'waive-gate',
   ])
   assert.equal(state.configuration_overrides, undefined)
 

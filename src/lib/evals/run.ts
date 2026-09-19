@@ -170,9 +170,11 @@ function operatorSteps(
   const pan = panCommand(root)
   const runId = state.run_id
   const decisions = loaded.scenario.operator_decisions ?? []
+
   const card = state.supervisor_card
   const cardUnattested =
     card !== undefined && card.attested_sha256 !== card.sha256
+
   const grade = `${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}`
 
   return [
@@ -287,6 +289,7 @@ export function runEval(
   const loaded = loadEvalScenario(root, scenarioName)
   const { scenario } = loaded
   const evalId = uniqueEvalId(root, scenario.name)
+
   const evalDirRelative = `${EVAL_RUNS_DIR}/${evalId}`
   const evalDir = path.join(root, evalDirRelative)
   const workspace = path.join(evalDir, 'workspace')
@@ -325,6 +328,7 @@ export function runEval(
   const runId = created.run_id
   const decisionsApplied: { stage: string; decision: string }[] = []
   const pendingDecisions = [...(scenario.operator_decisions ?? [])]
+
   const metadata: EvalRunMetadata = {
     schema_version: 1,
     eval_id: evalId,

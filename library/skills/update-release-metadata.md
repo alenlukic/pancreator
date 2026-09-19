@@ -45,7 +45,22 @@ Select the highest applicable impact across the complete release delta:
 - `patch`: backward-compatible fixes, documentation, tests, maintenance, and
   internal refactors shipped as a release
 
-Calculate the exact next stable version from the committed current version:
+In a managed worktree, take the proposed version from the allocation
+authority instead of computing it:
+
+```sh
+./bin/pan release allocate --worktree <name> --bump <major|minor|patch> --run <run-id> --json
+```
+
+The result's `allocation.version` is the proposed version. It is the next
+stable version above every published and allocated version. Thus a concurrent
+release in another worktree cannot hold the same number.
+
+A repeat for the same worktree returns the same version until that release
+lands. Do not allocate a second time to refresh it.
+
+Outside a managed worktree, calculate the exact next stable version from the
+committed current version:
 
 - major: `<major + 1>.0.0`
 - minor: `<major>.<minor + 1>.0`

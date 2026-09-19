@@ -69,13 +69,15 @@ test('a task id that cannot name a path is refused at queue parse', () => {
 })
 
 test('eligibility keeps declared order and dependent traversal stays scoped', () => {
-  const state = {
+  const state: Pick<HorizonSessionState, 'tasks'> = {
     tasks: [task('first'), task('dependent', ['first']), task('unrelated')],
-  } as Pick<HorizonSessionState, 'tasks'>
+  }
 
   assert.equal(eligibleHorizonTask(state)?.id, 'first')
   assert.deepEqual(transitiveHorizonDependents(state, 'first'), ['dependent'])
 
-  state.tasks[0] = { ...state.tasks[0]!, status: 'succeeded' }
+  const [first] = state.tasks
+  assert.ok(first)
+  state.tasks[0] = { ...first, status: 'succeeded' }
   assert.equal(eligibleHorizonTask(state)?.id, 'dependent')
 })

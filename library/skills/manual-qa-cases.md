@@ -21,11 +21,11 @@ For each case, record:
 
 1. Derive at least one case per acceptance criterion, or justify non-
    applicability.
-2. Execute each case from a clean, known state.
+2. Run each case from a clean, known state.
 3. Classify any defect: product (route to implement), environment (route to the
    owning surface), or harness/test (route to its owner).
 
 ## Boundaries
 
-Do not modify source to make a case pass. Fail on any unresolved blocking defect
+Do not change source to make a case pass. Fail on any unresolved blocking defect
 or any uncovered hard acceptance criterion.

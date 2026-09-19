@@ -84,6 +84,8 @@ export interface RepositoryCheckProfile {
   environment_probes?: string[]
   probes: string[]
   commands: string[]
+  /** Command template for one isolated test; requires `{file}` and `{test}`. */
+  isolation_command?: string
   /**
    * The profile declares its commands independent of one another, so the
    * asynchronous runner MAY execute them together. Probes stay serial because
@@ -605,6 +607,7 @@ export function compareRepositoryCheckToBaseline(
 
   const baselineDiagnostics = failureDiagnostics(baseline)
   const currentDiagnostics = failureDiagnostics(current)
+
   const added: RepositoryCheckDiagnostic[] = []
   const fixed: RepositoryCheckDiagnostic[] = []
   const carried: RepositoryCheckDiagnostic[] = []
@@ -886,6 +889,85 @@ function validateProfileSemantics(
   }
 }
 
+/**
+ * A single-test selector substitutes the failing test's file and name.
+ *
+ * `{test_pattern}` receives the name as an anchored regular expression, which
+ * is what a runner whose filter is a pattern needs; `{test}` receives the
+ * literal name for a runner that selects by node id. A template carrying
+ * neither cannot select one test, so the gate keeps its failure instead.
+ */
+function isIsolationCommand(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.includes('{file}') &&
+    (value.includes('{test_pattern}') || value.includes('{test}'))
+  )
+}
+
+/**
+ * Isolation commands the tracked self-development template declares.
+ *
+ * The self-development runtime configuration is untracked per-installation
+ * state that nothing regenerates, so a runner capability added to the tracked
+ * template would otherwise never reach a live gate here. The adoption is
+ * narrow on purpose: it applies only when the installed profile runs exactly
+ * the template's commands, so a profile an operator rewrote never inherits a
+ * selector for a runner it no longer invokes.
+ */
+function templateIsolationCommands(
+  root: string,
+  filePath: string,
+): Map<string, { commands: string[]; isolation_command: string }> {
+  const adopted = new Map<
+    string,
+    { commands: string[]; isolation_command: string }
+  >()
+  const templatePath = path.join(
+    root,
+    'library',
+    'templates',
+    'repository-checks.self-development.json',
+  )
+
+  // The file check comes first and the installation mode second. Reading the
+  // mode needs `config.json`, and a caller may hold a bare directory that has
+  // a repository-check file and nothing else; loading its profiles must not
+  // start depending on a harness configuration it never had.
+  if (
+    path.resolve(templatePath) === path.resolve(filePath) ||
+    !fileExists(templatePath) ||
+    !isSelfDevelopmentInstallation(root)
+  ) {
+    return adopted
+  }
+
+  const template = readJson(templatePath)
+
+  if (!isRecord(template) || !isRecord(template.profiles)) {
+    return adopted
+  }
+
+  for (const [name, profile] of Object.entries(template.profiles)) {
+    if (
+      !isRecord(profile) ||
+      !isIsolationCommand(profile.isolation_command) ||
+      !Array.isArray(profile.commands) ||
+      !profile.commands.every((command) => typeof command === 'string')
+    ) {
+      continue
+    }
+
+    adopted.set(name, {
+      commands: profile.commands as string[],
+      isolation_command: profile.isolation_command,
+    })
+  }
+
+  return adopted
+}
+
 export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
   const filePath = repositoryChecksSourcePath(root)
 
@@ -927,6 +1009,14 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
       `${filePath}.profiles.${name}.concurrent MUST be a boolean when present.`,
       { code: 'INVALID_REPOSITORY_CHECKS' },
     )
+    invariant(
+      rawProfile.isolation_command === undefined ||
+        isIsolationCommand(rawProfile.isolation_command),
+      `${filePath}.profiles.${name}.isolation_command MUST be a non-empty ` +
+        'string containing {file} and either {test_pattern} or {test} when ' +
+        'present.',
+      { code: 'INVALID_REPOSITORY_CHECKS' },
+    )
 
     profiles[name] = {
       ...(typeof rawProfile.description === 'string'
@@ -934,6 +1024,9 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
         : {}),
       ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
       ...(rawProfile.concurrent === true ? { concurrent: true } : {}),
+      ...(typeof rawProfile.isolation_command === 'string'
+        ? { isolation_command: rawProfile.isolation_command }
+        : {}),
       environment_probes: stringArray(
         rawProfile.environment_probes ?? [],
         `${filePath}.profiles.${name}.environment_probes`,
@@ -946,6 +1039,21 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
         rawProfile.commands ?? [],
         `${filePath}.profiles.${name}.commands`,
       ),
+    }
+  }
+
+  for (const [name, template] of templateIsolationCommands(root, filePath)) {
+    const profile = profiles[name]
+
+    if (
+      profile &&
+      profile.isolation_command === undefined &&
+      sameCommands(profile.commands, template.commands)
+    ) {
+      profiles[name] = {
+        ...profile,
+        isolation_command: template.isolation_command,
+      }
     }
   }
 
@@ -1307,6 +1415,7 @@ export function recordProfileGatePass(
   const evidence = resolveRunLayout(root, runId).evidence(
     `${agentGatePassArtifactId(profileName, snapshot.fingerprint, attempt)}.log`,
   )
+
   // The execution wrote its profile only when this command told the reporter
   // where to put it, which it does for the profiled profile and a named run.
   const suiteProfile = agentGatePassSuiteProfile(
@@ -1389,6 +1498,7 @@ function agentFastRunAllowance(
     const invocationPath = layout.invocation(invocationId, '.json').absolute
     const record = fileExists(invocationPath) ? readJson(invocationPath) : null
     const state = loadState(root, runId)
+
     const stageSlug =
       isRecord(record) &&
       isRecord(record.stage) &&
@@ -1501,6 +1611,7 @@ export function runRepositorySetup(
   )
   const commands = config.setup ?? []
   const timeoutMs = options.timeout_ms ?? DEFAULT_TIMEOUT_MS
+
   const results: RepositoryCheckCommandResult[] = []
   let status: RepositorySetupResult['status'] =
     commands.length > 0 ? 'passed' : 'not_configured'
@@ -1616,6 +1727,7 @@ function execute(
   env: Record<string, string> = {},
 ): RepositoryCheckCommandResult {
   const startedAt = Date.now()
+
   // Output goes to files, not pipes. `spawnSync` with pipes returns only when
   // every holder of the pipe has closed it, so a timed-out `npm test` whose
   // shell was killed still blocked the gate until the orphaned node processes
@@ -1627,6 +1739,7 @@ function execute(
   )
   const stdoutPath = path.join(captureDirectory, 'stdout')
   const stderrPath = path.join(captureDirectory, 'stderr')
+
   // Read-write, because the same descriptors read the capture back once the
   // shell exits.
   const stdoutFd = openSync(stdoutPath, 'w+')
@@ -1646,6 +1759,7 @@ function execute(
       detached,
     }
     const result = spawnSync(command, [], spawnOptions)
+
     const timedOut =
       result.error instanceof Error &&
       'code' in result.error &&
@@ -1728,10 +1842,12 @@ function executeStreaming(
 
       child.kill(signal)
     }
+
     let stdout = ''
     let stderr = ''
     let timedOut = false
     let settled = false
+
     let timeoutHandle: NodeJS.Timeout | undefined
     let killHandle: NodeJS.Timeout | undefined
 
@@ -1951,6 +2067,7 @@ export function runRepositoryCheck(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
+
   const workspaceRoot = repositoryCheckWorkspaceRoot(root, options.workspace)
   const timeoutMs = effectiveTimeout(
     config,
@@ -2049,6 +2166,7 @@ export async function runRepositoryCheckStreaming(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
+
   const workspaceRoot = repositoryCheckWorkspaceRoot(root, options.workspace)
   const timeoutMs = effectiveTimeout(
     config,

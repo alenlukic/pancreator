@@ -128,6 +128,7 @@ test('the hard ship criterion exposes an over-ceiling average', () => {
         (criterion) => criterion.id === 'ship.fast_wall_ceiling',
       ),
     }
+
     const snapshot = gitWorkspaceSnapshot(root)
     const evaluated = evaluateDeterministicCriteria(
       root,

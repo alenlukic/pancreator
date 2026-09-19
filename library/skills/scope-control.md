@@ -12,10 +12,10 @@ future one.
 
 - Each material change maps to an acceptance criterion or a documented enabling
   change. If it maps to neither, drop it or surface it for approval.
-- Existing abstractions are preferred over new ones; existing boundaries are
+- Existing abstractions are preferred over new ones. Existing boundaries are
   preserved unless the plan changes them explicitly.
 - Refactoring is in scope only when the criteria require it or it is the
-  smallest safe path to them; otherwise record it as a follow-up.
+  smallest safe path to them. Otherwise record it as a follow-up.
 - Behavior outside the requested change is preserved and covered by existing
   tests.
 

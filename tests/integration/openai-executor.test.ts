@@ -21,11 +21,7 @@ import { delegationValidationPath } from '../../src/lib/validation.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture, makeOutput } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
-import {
-  installOpenAiFixture,
-  OPENAI_SPEC,
-  runWorkflow,
-} from './delivery-helpers.js'
+import { installOpenAiFixture, runWorkflow } from './delivery-helpers.js'
 import {
   OPENAI_SENTINEL_KEY,
   startFakeOpenAi,
@@ -151,10 +147,19 @@ function everyFileUnder(directory: string): string[] {
   return found
 }
 
+/**
+ * Every Astra request parameter at once. The delegation crosses a process
+ * boundary, so this is the only place that proves each option survives the
+ * mapping, the adapter, the agent entrypoint, and the session loop.
+ */
+const ASTRA_SPEC =
+  'openai:gpt-6-astra[context=current_turn,effort=high,mode=pro,' +
+  'session-resume=true,summary=concise,verbosity=low]'
+
 test('an openai stage runs the tool loop and submits its own output', async () => {
   const root = createFixture()
 
-  installOpenAiFixture(root, ['planner'])
+  installOpenAiFixture(root, ['planner'], ASTRA_SPEC)
 
   const state = withFakeOpenAi('http://127.0.0.1:1/unused', () =>
     createRun(root, {
@@ -172,7 +177,7 @@ test('an openai stage runs the tool loop and submits its own output', async () =
   )
 
   assert.equal(snapshot.executors?.planner, 'openai')
-  assert.equal(snapshot.personas.planner, OPENAI_SPEC)
+  assert.equal(snapshot.personas.planner, ASTRA_SPEC)
 
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
@@ -183,7 +188,8 @@ test('an openai stage runs the tool loop and submits its own output', async () =
   assert.equal(invocation.stage.persona_executor, 'openai')
   assert.equal(
     invocation.stage.model,
-    'gpt-6-astra[effort=high,session-resume=true]',
+    'gpt-6-astra[context=current_turn,effort=high,mode=pro,' +
+      'session-resume=true,summary=concise,verbosity=low]',
   )
   assert.equal(invocation.delegation?.executor, 'openai')
 
@@ -230,6 +236,14 @@ test('an openai stage runs the tool loop and submits its own output', async () =
     for (const request of requests) {
       assert.equal(request.body.store, false)
       assert.equal(request.body.previous_response_id, undefined)
+      // Each mapped Astra parameter reaches the API body on every round.
+      assert.deepEqual(request.body.reasoning, {
+        effort: 'high',
+        mode: 'pro',
+        context: 'current_turn',
+        summary: 'concise',
+      })
+      assert.deepEqual(request.body.text, { verbosity: 'low' })
     }
 
     // Every tool ran, and the result of each returned to the model.
@@ -257,6 +271,10 @@ test('an openai stage runs the tool loop and submits its own output', async () =
       model: 'gpt-6-astra',
       store: false,
       reasoning_effort: 'high',
+      reasoning_mode: 'pro',
+      reasoning_context: 'current_turn',
+      reasoning_summary: 'concise',
+      text_verbosity: 'low',
       max_tool_rounds: 60,
       timeout_ms: 3_600_000,
       max_tool_result_bytes: 262_144,

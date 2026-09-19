@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -158,6 +164,7 @@ function writeProfile(
   relative: string,
   testCount: number,
   wallClockMs: number,
+  recordedAt = '2026-08-29T00:00:00.000Z',
 ): void {
   const absolute = path.join(root, relative)
 
@@ -167,7 +174,7 @@ function writeProfile(
     JSON.stringify({
       schema_version: 1,
       lane: 'unit+integration',
-      recorded_at: '2026-08-29T00:00:00.000Z',
+      recorded_at: recordedAt,
       test_count: testCount,
       pass_count: testCount,
       fail_count: 0,
@@ -295,10 +302,11 @@ function succeededRun(
   updatedAt: string,
   testCount = 10,
   wallClockMs = 3000,
+  profileRecordedAt = '2026-08-29T00:00:00.000Z',
 ): RunState {
   const profilePath = evidenceProfilePath(runId)
 
-  writeProfile(root, profilePath, testCount, wallClockMs)
+  writeProfile(root, profilePath, testCount, wallClockMs, profileRecordedAt)
 
   const state = {
     ...runState(runId, profilePath, 'succeeded'),
@@ -400,6 +408,138 @@ test('a missing suite-profile index falls back to the scan and rebuilds itself',
   assert.deepEqual(second.value, first.value)
 })
 
+test('success and scan writers index the profile artifact timestamp', () => {
+  const root = createTestTempDirectory('pancreator-suite-index-time-')
+  const profileRecordedAt = '2026-08-29T01:02:03.000Z'
+  const prior = succeededRun(
+    root,
+    'run-prior',
+    '2026-08-29T05:00:00.000Z',
+    10,
+    3000,
+    profileRecordedAt,
+  )
+
+  // The scan still selects by succeeded-state recency, not profile time.
+  succeededRun(
+    root,
+    'run-older-state',
+    '2026-08-29T03:00:00.000Z',
+    10,
+    3000,
+    '2026-08-29T10:00:00.000Z',
+  )
+
+  const direct = recordSuiteProfileIndexEntry(root, prior)
+
+  assert.ok(direct)
+  assert.equal(direct.recorded_at, profileRecordedAt)
+
+  rmSync(path.join(root, SUITE_PROFILE_INDEX_PATH))
+
+  const currentPath = evidenceProfilePath('run-now')
+  const current = {
+    ...runState('run-now', currentPath),
+    updated_at: '2026-08-30T00:00:00.000Z',
+  }
+
+  writeProfile(root, currentPath, 12, 4200)
+
+  const lookup = lookupPreviousSucceededRunProfile(root, current)
+  const rebuilt = JSON.parse(
+    readFileSync(path.join(root, SUITE_PROFILE_INDEX_PATH), 'utf8'),
+  ) as {
+    workspaces: Record<
+      string,
+      { run_id: string; profile_path: string; recorded_at: string }
+    >
+  }
+
+  assert.equal(lookup.value?.run_id, prior.run_id)
+  assert.equal(lookup.value?.recorded_at, profileRecordedAt)
+  assert.deepEqual(rebuilt.workspaces['.'], direct)
+})
+
+test('a usable current-run index entry stays byte-for-byte unchanged', () => {
+  const root = createTestTempDirectory('pancreator-suite-current-index-')
+  const currentPath = evidenceProfilePath('run-now')
+  const current = {
+    ...runState('run-now', currentPath, 'succeeded'),
+    updated_at: '2026-08-30T00:00:00.000Z',
+  }
+
+  writeProfile(root, currentPath, 12, 4200)
+  succeededRun(root, 'run-prior', '2026-08-29T03:04:05.000Z')
+
+  const written = recordSuiteProfileIndexEntry(root, current)
+  const indexPath = path.join(root, SUITE_PROFILE_INDEX_PATH)
+  const before = readFileSync(indexPath)
+  const lookup = lookupPreviousSucceededRunProfile(root, current)
+  const after = readFileSync(indexPath)
+
+  assert.equal(written?.recorded_at, '2026-08-29T00:00:00.000Z')
+  assert.equal(lookup.source, 'scan')
+  assert.equal(lookup.value?.run_id, 'run-prior')
+  assert.deepEqual(after, before)
+})
+
+test('missing and unreadable indexed profiles rebuild with artifact time', () => {
+  for (const failure of ['missing', 'unreadable'] as const) {
+    const root = createTestTempDirectory(
+      `pancreator-suite-indexed-profile-${failure}-`,
+    )
+    const currentPath = evidenceProfilePath('run-now')
+    const indexed = succeededRun(
+      root,
+      'run-indexed',
+      '2026-08-29T05:00:00.000Z',
+    )
+    const priorUpdatedAt = '2026-08-29T03:04:05.000Z'
+    const priorProfileRecordedAt = '2026-08-29T02:03:04.000Z'
+
+    writeProfile(root, currentPath, 12, 4200)
+    recordSuiteProfileIndexEntry(root, indexed)
+    succeededRun(
+      root,
+      'run-prior',
+      priorUpdatedAt,
+      10,
+      3000,
+      priorProfileRecordedAt,
+    )
+
+    const indexedProfile = path.join(
+      root,
+      indexed.stage_history[0]?.deterministic[0]?.suite_profile_path ?? '',
+    )
+
+    if (failure === 'missing') {
+      rmSync(indexedProfile)
+    } else {
+      writeFileSync(indexedProfile, '{not json', 'utf8')
+    }
+
+    const current = {
+      ...runState('run-now', currentPath),
+      updated_at: '2026-08-30T00:00:00.000Z',
+    }
+    const lookup = lookupPreviousSucceededRunProfile(root, current)
+    const rebuilt = JSON.parse(
+      readFileSync(path.join(root, SUITE_PROFILE_INDEX_PATH), 'utf8'),
+    ) as {
+      workspaces: Record<
+        string,
+        { run_id: string; profile_path: string; recorded_at: string }
+      >
+    }
+
+    assert.equal(lookup.source, 'scan')
+    assert.equal(lookup.value?.run_id, 'run-prior')
+    assert.equal(rebuilt.workspaces['.']?.run_id, 'run-prior')
+    assert.equal(rebuilt.workspaces['.']?.recorded_at, priorProfileRecordedAt)
+  }
+})
+
 test('a cached gate summary names the cached pass', () => {
   const summary: SuiteProfileSummary = {
     profile_path: 'runtime/logs/workflows/run-x/agent/evidence/p.json',
@@ -443,7 +583,9 @@ test('the verify card shows fast-wall measurements around implementation', () =>
     },
   }).join('\n')
 
+  assert.match(section, /This section is advisory\./u)
   assert.match(section, /Implement-stage fast wall/u)
+  assert.doesNotMatch(section, /\n\n\n/u)
   assert.match(
     section,
     /Before implement: 1300 tests in 119\.0s .*100\.000ms marginal per test.*\(phase `baseline`\)/u,
@@ -471,6 +613,51 @@ test('the verify card shows fast-wall measurements around implementation', () =>
 
   assert.match(withoutMarginal, /Before implement: no fast-lane record\./u)
   assert.match(withoutMarginal, /marginal cost unavailable/u)
+})
+
+test('the verify card combines suite and fast-wall profiles without doubled framing', () => {
+  const summary: SuiteProfileSummary = {
+    profile_path: 'runtime/logs/workflows/run-x/agent/evidence/profile.json',
+    gate_id: 'ship.full_suite',
+    stage: 'ship',
+    cached: false,
+    lane: 'all',
+    test_count: 10,
+    pass_count: 10,
+    fail_count: 0,
+    wall_clock_ms: 2000,
+    slowest_files: [],
+    slowest_tests: [],
+  }
+  const section = renderSuiteProfileSection(summary, {
+    series_path: 'runtime/fast-wall-series.jsonl',
+    before: {
+      recorded_at: '2026-09-15T01:00:00.000Z',
+      wall_clock_ms: 1000,
+      test_count: 9,
+      worker_count: 2,
+      phase: 'baseline',
+      marginal_wall_ms_per_test: 50,
+    },
+    after: {
+      recorded_at: '2026-09-15T02:00:00.000Z',
+      wall_clock_ms: 1100,
+      test_count: 10,
+      worker_count: 2,
+      phase: 'implement.unit_tests',
+      marginal_wall_ms_per_test: 55,
+    },
+  }).join('\n')
+
+  assert.match(section, /This section is advisory\./u)
+  assert.match(section, /Source: `.*profile\.json` from the ship gate/u)
+  assert.match(section, /### Implement-stage fast wall/u)
+  assert.match(section, /### Slowest files/u)
+  assert.ok(
+    section.indexOf('### Implement-stage fast wall') <
+      section.indexOf('### Slowest files'),
+  )
+  assert.doesNotMatch(section, /\n\n\n/u)
 })
 
 test('fixture sidecars live in the runner scratch tree, not the profile target', () => {

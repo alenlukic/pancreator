@@ -103,6 +103,7 @@ export function resolveRoots(options: ResolveRootsOptions): ResolvedRoots {
 
   const workspaceRoot = canonicalize(workspaceRootCandidate)
   const projectConfig = readProjectConfig(installationRoot)
+
   const configuredStateRoot =
     options.state_root ??
     process.env.PANCREATOR_STATE_ROOT ??

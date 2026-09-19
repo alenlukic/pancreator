@@ -207,6 +207,7 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
     { id: 'alpha', cohort_index: 1 },
     { id: 'beta', cohort_index: 1 },
   ])
+
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
   const [alpha, beta] = started.chunks.map((chunk) => chunk.run_id)
@@ -353,6 +354,7 @@ test('a baseline artifact that names no capture workspace is adopted without one
     { id: 'alpha', cohort_index: 1 },
     { id: 'beta', cohort_index: 1 },
   ])
+
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
   const [alpha, beta] = started.chunks.map((chunk) => chunk.run_id)
@@ -522,6 +524,7 @@ test('cleaning a session removes its chunk worktrees and keeps the branches', ()
     { id: 'alpha', cohort_index: 1 },
     { id: 'beta', cohort_index: 1 },
   ])
+
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
   const workspaces = started.chunks.map(

@@ -1984,6 +1984,7 @@ function standardizeTemporalFileNamesIn(
     const { date, slugSeed } = temporalFileSource(absolute)
     const extension = path.extname(entry.name)
     const slug = standardizedFileSlug(absolute, slugSeed)
+
     const prefix = temporalNamePrefix(date)
     let target = `${prefix}_${slug}${extension}`
     let ordinal = 2
@@ -2180,6 +2181,7 @@ export function migrateRunSuffixes(
   root = findProjectRoot(),
 ): RunSuffixMigrationSummary {
   const runtimeRoot = path.join(root, 'runtime')
+
   const mappings = new Map<string, string>()
   const moves: Array<{ parent: string; source: string; target: string }> = []
   const skipped: string[] = []
@@ -2740,6 +2742,7 @@ export function maintainWorkflowRuntime(
   const names = standardizeRuntimeFileNames(root)
   const migration = migrateWorkflowNames(root)
   const suffixes = migrateRunSuffixes(root)
+
   const references = repairWorkflowInboxReferences(root)
   const archive = archiveWorkflowDirectories(root, options)
 

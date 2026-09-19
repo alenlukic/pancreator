@@ -436,6 +436,7 @@ test('a run occupies a worktree while it is not terminal, by binding or workspac
     path: 'worktrees/operator/shared',
     branch: 'shared',
   }
+
   let sequence = 0
   const writeRun = (
     status: RunStatus,

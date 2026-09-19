@@ -6,15 +6,17 @@ recurring job. Read the skill relevant to your current step.
 
 ## Convention
 
-Every skill executes under the global operating policy, `PRINCIPLES-001`, and
-the policies on the active card. A skill supplies procedure where deviation is
-costly and does not restate the mission, the ranked principles, or the
-universal invariants. A skill exists when a class of work benefits from
-accumulated domain knowledge, a repeatable workflow, fragile sequencing,
-non-obvious edge cases, deterministic commands, or explicit safety
-requirements. Each skill states when it applies, its preferred workflow, its
-important edge cases, and its hard constraints, and it names deterministic
-commands where they exist.
+Every skill runs under the global operating policy, `PRINCIPLES-001`, and the
+policies on the active card.
+A skill supplies procedure where deviation is costly and does not restate the
+mission, the ranked principles, or the universal invariants.
+
+A skill exists when a class of work benefits from accumulated domain knowledge,
+a repeatable workflow, fragile sequencing, non-obvious edge cases,
+deterministic commands, or explicit safety requirements.
+Each skill states when it applies, its preferred workflow, its important edge
+cases, and its hard constraints, and it names deterministic commands where they
+exist.
 
 ## Cross-cutting
 
@@ -29,7 +31,7 @@ commands where they exist.
   prompt for one-shot execution.
 - [`research.md`](research.md) - research an operator-named subject from
   supplied context and web sources, and write one sourced document.
-- [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
+- [`spotfix.md`](spotfix.md) - make or escalate one operator-selected lightweight change.
 - [`harden.md`](harden.md) - bring a session's ad-hoc changes to a mergeable
   state, stopping at the integration boundary.
 - [`shepherd-pr.md`](shepherd-pr.md) - watch one GitHub PR for review feedback,

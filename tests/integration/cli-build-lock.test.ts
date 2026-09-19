@@ -29,6 +29,7 @@ test('build lock keeps the CLI available during concurrent commands', async () =
   const root = createTestTempDirectory('pancreator-build-lock-')
   const binDirectory = path.join(root, 'bin')
   const toolDirectory = path.join(root, 'tools')
+
   const runBuilt = path.join(binDirectory, 'run-built')
   const command = path.join(root, 'read-cli')
   const started = path.join(root, 'command-started')

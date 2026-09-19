@@ -25,6 +25,7 @@ interface Fixture {
 
 function fixture(): Fixture {
   const base = createTestTempDirectory('openai-tools-')
+
   const harnessRoot = path.join(base, 'harness')
   const workspaceDir = path.join(base, 'worktrees', 'chunk')
   const outsideDir = path.join(base, 'outside')

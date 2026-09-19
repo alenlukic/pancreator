@@ -1,12 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../fixture-template.js'
 import {
   gitCommonDir,
   gitDirtyEntries,
+  gitRebaseOnto,
   gitStatusPaths,
   gitWorkspaceSnapshot,
   parsePorcelainStatus,
@@ -16,6 +17,13 @@ import {
 } from '../../src/lib/git.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
 import { createTestTempDirectory } from '../temp.js'
+
+function git(root: string, args: string[]): string {
+  return execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+}
 
 test('status paths include both sides of a rename', () => {
   const root = createFixture()
@@ -180,4 +188,70 @@ test('the porcelain reader keeps a rename source whole', () => {
     { status: 'R ', path: 'dest/file.ts', source: 'src/file.ts' },
     { status: '??', path: 'new.ts', source: null },
   ])
+})
+
+test('gitRebaseOnto preserves a no-ff merge on divergent history', () => {
+  const root = createFixture()
+  const baseBranch = git(root, ['branch', '--show-current'])
+
+  git(root, ['switch', '-q', '-c', 'cohort-integration'])
+  writeFileSync(
+    path.join(root, 'src', 'integration.ts'),
+    'export const integration = true\n',
+  )
+  git(root, ['add', 'src/integration.ts'])
+  git(root, ['commit', '-qm', 'feat: integration base'])
+
+  git(root, ['switch', '-q', '-c', 'cohort-chunk'])
+  writeFileSync(
+    path.join(root, 'src', 'cohort-chunk.ts'),
+    'export const cohortChunk = true\n',
+  )
+  git(root, ['add', 'src/cohort-chunk.ts'])
+  git(root, ['commit', '-qm', 'feat: cohort chunk'])
+  git(root, ['switch', '-q', 'cohort-integration'])
+  git(root, [
+    'merge',
+    '-q',
+    '--no-ff',
+    'cohort-chunk',
+    '-m',
+    'merge: cohort chunk',
+  ])
+
+  const originalMerge = git(root, ['rev-parse', 'HEAD'])
+
+  git(root, ['switch', '-q', baseBranch])
+  writeFileSync(path.join(root, 'upstream.txt'), 'upstream advance\n')
+  git(root, ['add', 'upstream.txt'])
+  git(root, ['commit', '-qm', 'feat: upstream advance'])
+
+  const upstream = git(root, ['rev-parse', 'HEAD'])
+
+  git(root, ['switch', '-q', 'cohort-integration'])
+
+  const rebased = gitRebaseOnto(root, upstream)
+
+  assert.equal(rebased.succeeded, true, rebased.stderr)
+  assert.notEqual(git(root, ['rev-parse', 'HEAD']), originalMerge)
+
+  const mergeCommits = git(root, ['rev-list', '--merges', `${upstream}..HEAD`])
+    .split('\n')
+    .filter(Boolean)
+
+  assert.equal(mergeCommits.length, 1)
+  assert.equal(
+    git(root, ['rev-list', '--parents', '-n', '1', mergeCommits[0]]).split(' ')
+      .length,
+    3,
+    'the rebased integration commit retains both parents',
+  )
+  assert.equal(
+    readFileSync(path.join(root, 'src', 'integration.ts'), 'utf8'),
+    'export const integration = true\n',
+  )
+  assert.equal(
+    readFileSync(path.join(root, 'src', 'cohort-chunk.ts'), 'utf8'),
+    'export const cohortChunk = true\n',
+  )
 })

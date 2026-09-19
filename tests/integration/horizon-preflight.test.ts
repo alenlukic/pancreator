@@ -13,7 +13,10 @@ import {
   startHorizonSession,
 } from '../../src/lib/horizon.js'
 import { createFixture, read, writeJson } from '../helpers.js'
-import { withFakeEvaluator } from './delivery-helpers.js'
+import {
+  withFakeEvaluator,
+  withFakeEvaluatorAndArbiter,
+} from './delivery-helpers.js'
 
 const PROMPT = 'Return one result.'
 
@@ -138,8 +141,18 @@ test('an authorized session attests its first invocation without stopping', () =
   assert.ok(card)
   assert.notEqual(card.attested_sha256, card.sha256)
 
-  withFakeEvaluator(root, { ok: true }, () =>
-    checkpointHorizonSession(root, 'preflight-armed'),
+  // The fixture has no worker, so the first delegation stops the run. The
+  // arbiter names a hard block here so the run rests where the driver left
+  // it; the prepared invocation below is this test's subject, not the stop.
+  withFakeEvaluatorAndArbiter(
+    root,
+    { ok: true },
+    {
+      verdict: 'hard_block',
+      hard_block: 'LH-H2',
+      reasoning: 'The fixture declares no worker executor.',
+    },
+    () => checkpointHorizonSession(root, 'preflight-armed'),
   )
 
   // The authorization the preflight recorded is what lets the driver attest

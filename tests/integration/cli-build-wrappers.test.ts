@@ -136,6 +136,7 @@ test('run-tests records only the complete configured fast lane', () => {
     'file-durations.json',
   )
   const observed = path.join(fixture.root, 'fast-wall-call')
+
   const testFiles = [
     'dist/tests/unit/unit.test.js',
     'dist/tests/unit/second-unit.test.js',
@@ -285,6 +286,7 @@ test('run-tests orders recorded files slowest first and preserves a fresh order'
   const fixture = createBuildScriptFixture()
   const testDirectory = path.join(fixture.root, 'dist', 'tests', 'unit')
   const observed = path.join(fixture.root, 'observed')
+
   const fast = path.join(testDirectory, 'fast.test.js')
   const slow = path.join(testDirectory, 'slow.test.js')
   const command = [

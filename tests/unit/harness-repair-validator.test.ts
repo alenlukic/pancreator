@@ -27,9 +27,11 @@ function scratchRoot(): string {
 function validate(
   content: string,
   targetPath = 'runtime/inbox/harness-repair.md',
+  prepare: (root: string) => void = () => {},
 ) {
   const root = scratchRoot()
 
+  prepare(root)
   mkdirSync(path.dirname(path.join(root, targetPath)), { recursive: true })
   writeFileSync(path.join(root, targetPath), content)
 
@@ -331,6 +333,52 @@ test('harness repair validator fails a filename slug that contradicts the declar
   )
 
   assert.deepEqual(unslugged.issues, [])
+})
+
+test('harness repair validator resolves every sibling intake it names', () => {
+  const own = 'harness-repair-20260911T071836Z-build-retry-loop.md'
+  const archived = 'harness-repair-20260910T000000Z-perf-slow-gate.md'
+  const queued = 'harness-repair-20260910T000000Z-oob-policy-owner.md'
+  const missing = 'harness-repair-20260910T000000Z-fric-dropped-candidate.md'
+  const placeSiblings = (root: string) => {
+    for (const [status, name] of [
+      ['archive', archived],
+      ['queue', queued],
+    ] as const) {
+      const directory = path.join(root, 'runtime', 'inbox', status)
+
+      mkdirSync(directory, { recursive: true })
+      writeFileSync(path.join(directory, name), '# Sibling\n')
+    }
+  }
+  const citing = (names: string[]) =>
+    VALID_INTAKE.replace(
+      'Do not repair the target application or rewrite historical run records.',
+      `Order this repair after ${names.map((name) => `\`${name}\``).join(' and ')}, and read \`${own}\` for the run shape.`,
+    )
+
+  // A sibling in any inbox status resolves, and a self-reference is not a sibling.
+  const resolved = validate(
+    citing([archived, queued]),
+    `runtime/inbox/queue/${own}`,
+    placeSiblings,
+  )
+
+  assert.deepEqual(resolved.issues, [])
+
+  const dangling = validate(
+    citing([archived, missing, missing]),
+    `runtime/inbox/queue/${own}`,
+    placeSiblings,
+  )
+  const siblingIssues = dangling.issues.filter(
+    (item) => item.code === 'repair.sibling_reference',
+  )
+
+  assert.equal(dangling.status, 'failed')
+  assert.equal(siblingIssues.length, 1, 'one issue per unresolved name')
+  assert.ok(siblingIssues[0].message.includes(missing))
+  assert.ok(!siblingIssues[0].message.includes(archived))
 })
 
 test('harness repair validator rejects missing transcript accounting and stable ids', () => {

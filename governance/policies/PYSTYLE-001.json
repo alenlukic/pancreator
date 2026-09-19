@@ -5,8 +5,8 @@
   "summary": "The code style batch pass MUST apply the Python style guidance this policy references to durable repository Python.",
   "instructions": [
     "Agents repairing Python style MUST read the complete Python style guidance this policy references, and MUST apply it before completion.",
-    "Agents MUST NOT reconstruct or separately load the formatter-owned appendix of the Python style guidance unless they are changing formatter configuration or integration.",
-    "Agents MUST repair only the judgment-level Python rules the style guidance states; the configured Python formatter stays authoritative for mechanical style."
+    "Agents MUST NOT reconstruct or separately load the formatter-owned appendix of the Python style guidance unless they change formatter configuration or integration.",
+    "Agents MUST repair only the judgment-level Python rules the style guidance states. The configured Python formatter stays authoritative for mechanical style."
   ],
   "guidance_sources": [
     {

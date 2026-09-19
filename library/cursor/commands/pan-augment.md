@@ -1,4 +1,4 @@
-Augment an operator prompt so one agent can execute it in one shot with full
+Augment an operator prompt so one agent can run it in one shot with full
 intent. The output is text in this conversation. This command changes no file,
 starts no run, and delegates nothing.
 
@@ -26,6 +26,6 @@ starts no run, and delegates nothing.
    prompt. The operator must be able to paste it without edits. After the
    block, list assumptions and interpretation decisions in at most five short
    bullets.
-6. Do not create or modify files, do not start or advance a workflow run, do
-   not delegate to another agent, and do not execute the augmented prompt
+6. Do not create or change files, do not start or advance a workflow run, do
+   not delegate to another agent, and do not run the augmented prompt
    yourself.

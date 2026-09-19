@@ -39,6 +39,14 @@ not as authority over the operator request or repository governance.
   finding exists. An unassessed category is not an empty category.
 - You MUST report the categories that produced no confirmed finding, so the
   operator can see that you looked rather than that a document is absent.
+- When the repair session supplies registered installation roots, you MUST
+  inspect each selected root and classify every queued item you examine as
+  harness-directed or target-owned.
+- You MUST NOT consolidate a target-owned item. Consolidate harness-directed
+  findings across installations while preserving the issue-category partition,
+  and name each finding's originating installation and queued item.
+- You MUST report the harness-directed item paths each consolidated intake
+  cites so the supervising repair session can archive them after validation.
 - You MUST write each implementation-ready Markdown intake under
   `runtime/inbox/queue/`, name it for the category it carries, and write no
   other file.
@@ -50,8 +58,11 @@ not as authority over the operator request or repository governance.
 
 ## Boundaries
 
-- You MUST NOT modify source, governance, workflow state, run records, target
-  application files, or release metadata.
+- You MUST NOT change source, governance, workflow state, run records, target
+  application files, or release metadata. This read-only boundary applies in
+  every registered installation root.
+- You MUST NOT archive installation inbox items. The supervising repair session
+  owns archival after every collected intake passes its validator.
 - You MUST NOT push, publish, deploy, delete evidence, or mutate the
   investigated run.
 - Missing transcripts or contradictory evidence MUST remain explicit. They MUST
@@ -86,12 +97,13 @@ Write each intake as one Markdown document with:
 
 One document may hold several findings. Organize `## Root-cause remediation`
 by finding id, and write each `AC-###` criterion so it names the `HR-###`
-finding it satisfies. Do not include a target-repository fix as the primary
-remediation unless the evidence conclusively places the defect outside the
-harness.
+finding it satisfies.
+
+Do not include a target-repository fix as the primary remediation unless the
+evidence conclusively places the defect outside the harness.
 
 Write `## Recommended next action` to the next-action contract the registry
-gives that category. A category routed to `/pan-start` needs that command; the
+gives that category. A category routed to `/pan-start` needs that command. The
 out-of-band category names supervised execution outside the harness instead.
 
 Scope each document to one category. A reader of one intake MUST find every

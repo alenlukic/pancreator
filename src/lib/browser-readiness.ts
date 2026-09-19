@@ -144,8 +144,10 @@ export function browserReadiness(
   const args = serverArguments(chromeDevtools)
   const executablePath = argumentValue(args, '--executablePath')
   const browserUrl = argumentValue(args, '--browserUrl')
+
   const chromeDevtoolsConfigured = chromeDevtools !== undefined
   const chromeDevtoolsIsolated = args.includes('--isolated')
+
   // Attached mode: the server joins the one shared Chrome for Testing instance
   // instead of launching a browser, so --executablePath and --isolated do not
   // apply. Readiness is judged from configuration; the running instance is
@@ -154,6 +156,7 @@ export function browserReadiness(
     browserUrl !== null && LOOPBACK_BROWSER_URL.test(browserUrl)
   const launchesIsolatedBundle =
     chromeDevtoolsIsolated && executablePath === chrome.path
+
   const readiness: BrowserReadiness = {
     ready:
       chrome.path !== null &&

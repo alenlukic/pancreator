@@ -147,6 +147,7 @@ function writePlanWithQuestions(
       verification: { method: 'unit test', expected: 'passes' },
     },
   ],
+  testPlan: unknown[] = [],
 ): void {
   writeFileSync(
     path.join(root, target),
@@ -164,6 +165,7 @@ function writePlanWithQuestions(
           open_questions: openQuestions,
         },
         acceptance_criteria: criteria,
+        test_plan: testPlan,
         open_question_dispositions: dispositions,
       },
     })}\n`,
@@ -392,6 +394,7 @@ test('implementation validator binds acceptance coverage to accepted plan', () =
   const runId = 'run-impl-accepted-plan'
   const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
   const absolute = path.join(root, target)
+
   const acceptedInvocation = 'plan-1-accepted'
   const rejectedInvocation = 'plan-2-rejected'
   const acceptedOutput = `runtime/logs/workflows/${runId}/outputs/plan-1-test.json`
@@ -681,6 +684,55 @@ test('release validator requires structured change-list entries', () => {
   )
 })
 
+test('release rollback commands use the shared pan option grammar', () => {
+  const root = validatorFixtureRoot('pan-release-rollback-command-')
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          change_list: [],
+          validation: [],
+          rollback:
+            './bin/pan governance card --mode harden --output-path card.md',
+          waivers: [],
+          follow_up_cases: [],
+          governance_artifact_review: {
+            issues_reviewed: [],
+            repairs: [],
+            escalations: [],
+            summary: 'No issues.',
+          },
+          deferred_acceptance_criteria: [],
+          commit_message: 'Release',
+          pr_body: 'Release',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SHIP-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+  })
+  const rollbackIssue = result.issues.find(
+    (item) => item.code === 'release.rollback_command_invalid',
+  )
+
+  assert.ok(rollbackIssue)
+  assert.match(rollbackIssue.message, /--output-path/u)
+  assert.match(rollbackIssue.message, /Accepted:.*--out/u)
+})
+
 test('release validator diffs the declared workspace instead of its dirty parent', () => {
   const root = validatorFixtureRoot('pan-release-worktree-')
   const workspaceRoot = path.join(root, 'declared-worktree')
@@ -949,6 +1001,7 @@ test('self-development release validator requires a real next-version bump', () 
   })
 
   assert.equal(historyResult.status, 'failed')
+
   for (const code of [
     'release.current_version_mismatch',
     'release.baseline_version_mismatch',
@@ -1128,6 +1181,7 @@ test('a malformed pull-request description path is a coded issue, not a thrown e
 test('release validator reads metadata from selected workspace', () => {
   const root = createFixture()
   const target = 'output.json'
+
   const currentVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
   const proposedVersion = nextSemanticVersion(currentVersion, 'patch')
   const baselineCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -1156,6 +1210,7 @@ test('release validator reads metadata from selected workspace', () => {
   }
 
   lockJson.version = proposedVersion ?? ''
+
   if (lockJson.packages['']) {
     lockJson.packages[''].version = proposedVersion ?? ''
   }
@@ -2112,6 +2167,46 @@ test('verify validator rejects a QA case whose steps rerun a configured profile'
   assert.ok(reruns.some((item) => item.message.includes('`static`')))
 })
 
+test('plan trace validates pan commands against the shared CLI option grammar', () => {
+  const root = validatorFixtureRoot('pan-plan-command-grammar-')
+  const invalid = 'invalid-command.json'
+  const valid = 'valid-command.json'
+
+  writePlanWithQuestions(root, invalid, [], [], undefined, [
+    {
+      id: 'TP-INVALID',
+      command: './bin/pan governance card --mode harden --output-path <file>',
+    },
+  ])
+  writePlanWithQuestions(root, valid, [], [], undefined, [
+    {
+      id: 'TP-VALID',
+      command: './bin/pan governance card --mode harden --out <file>',
+    },
+  ])
+
+  const invalidResult = validatePlanTrace({
+    root,
+    targetPath: invalid,
+    requirement: planTraceRequirement,
+  })
+  const commandIssue = invalidResult.issues.find(
+    (item) => item.code === 'plan.case_invalid_pan_invocation',
+  )
+
+  assert.ok(commandIssue)
+  assert.match(commandIssue.message, /--output-path/u)
+  assert.match(commandIssue.message, /Accepted:.*--out/u)
+
+  const validResult = validatePlanTrace({
+    root,
+    targetPath: valid,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(validResult.status, 'passed', JSON.stringify(validResult.issues))
+})
+
 test('plan trace rejects a test-plan case that reruns a profile', () => {
   const root = validatorFixtureRoot('pan-plan-profile-rerun-')
   const target = 'output.json'
@@ -2183,8 +2278,10 @@ test('plan file paths resolve against the workspace root', () => {
   const root = createTestTempDirectory('plan-trace-root-')
   const workspace = createTestTempDirectory('pan-workspace-')
   const targetFile = path.join(workspace, 'app', 'model.py')
+
   const sibling = createTestTempDirectory('pan-sibling-repo-')
   const siblingFile = path.join(sibling, 'model.py')
+
   const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
 
   installFieldContract(root)
@@ -2299,6 +2396,199 @@ function contractIssues(issues: Array<{ code: string; message: string }>) {
   )
 }
 
+test('implementation claims accept declared blocked data but reject empty success acceptance', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-blocked/outputs/implement-1-test.json'
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: ['fixture-service status exited 3: not running'],
+      },
+      acceptance_results: [],
+    },
+  })
+
+  const blocked = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(blocked.status, 'passed', JSON.stringify(blocked.issues))
+
+  // The plan asks a blocked output to carry evidence for the gap it names, so
+  // a reason with nothing behind it is not an honest refusal.
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: [],
+      },
+      acceptance_results: [],
+    },
+  })
+
+  const unevidenced = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(unevidenced.status, 'failed')
+  assert.ok(
+    unevidenced.issues.some((issue) => issue.code === 'blocked.evidence'),
+    JSON.stringify(unevidenced.issues),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: ['fixture-service status exited 3: not running'],
+      },
+      acceptance_results: {},
+    },
+  })
+
+  const nonArrayAcceptance = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.ok(
+    nonArrayAcceptance.issues.some(
+      (issue) => issue.code === 'blocked.acceptance_results',
+    ),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: ['fixture-service status exited 3: not running'],
+      },
+      implementation: {
+        changed_files: [],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [
+        { id: 'AC-01', result: 'pass', evidence: ['unsupported claim'] },
+      ],
+    },
+  })
+
+  const claimed = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(claimed.status, 'failed')
+  assert.ok(
+    claimed.issues.some((issue) => issue.code === 'blocked.acceptance_results'),
+  )
+  assert.ok(
+    claimed.issues.some(
+      (issue) => issue.code === 'blocked.implementation_forbidden',
+    ),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'success',
+    data: {
+      implementation: {
+        changed_files: [],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [],
+    },
+  })
+
+  const success = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(success.status, 'failed')
+  assert.ok(success.issues.some((issue) => issue.code === 'acceptance.missing'))
+})
+
+test('a blocked implement output discloses its workspace edits through workspace_changes', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-blocked-edits/outputs/implement-1-test.json'
+  const before = gitWorkspaceSnapshot(root)
+  const blocked = {
+    missing_precondition:
+      'The child specification names criteria without text.',
+    supplying_command: 'pan plan show --run run-blocked-edits',
+    evidence: ['runtime/logs/workflows/run-blocked-edits/operator/request.md'],
+  }
+
+  // The worker edited a tracked file before it found the gap and stopped.
+  // `data.implementation` is forbidden on a blocked result, so the edit has
+  // no claim list to appear in; the Git delta still holds it.
+  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: { blocked, acceptance_results: [] },
+  })
+
+  const undisclosed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(undisclosed.status, 'failed')
+  assert.ok(
+    undisclosed.issues.some(
+      (issue) =>
+        issue.code === 'blocked.diff_not_disclosed' &&
+        issue.message.includes('src/base.ts'),
+    ),
+    JSON.stringify(undisclosed.issues),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    workspace_changes: {
+      attribution: 'internal',
+      paths: ['src/base.ts'],
+      explanation:
+        'Started the base edit before the specification gap surfaced.',
+    },
+    data: { blocked, acceptance_results: [] },
+  })
+
+  const disclosed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(disclosed.status, 'passed', JSON.stringify(disclosed.issues))
+
+  // Without an invocation snapshot the cumulative working-tree diff is the
+  // observable delta, and it owes the same disclosure.
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: { blocked, acceptance_results: [] },
+  })
+
+  const cumulative = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.ok(
+    cumulative.issues.some(
+      (issue) => issue.code === 'blocked.diff_not_disclosed',
+    ),
+    JSON.stringify(cumulative.issues),
+  )
+})
 test('implementation claims disclose every attributed workspace path', () => {
   const root = createFixture()
   const target =
@@ -2709,6 +2999,7 @@ test('the field contract guard reaches a required child of any stage', () => {
     readFileSync(path.join(root, contractPath), 'utf8'),
   ) as Record<string, unknown>
   const stages = source.stages as Record<string, Record<string, unknown>>
+
   const requirement = {
     policy_id: 'CONTRACT-001',
     requirement_id: 'shared-stage-field-contract',
@@ -2808,6 +3099,7 @@ test('plan field contract declares every validator-enforced shape', () => {
       }
     }
   }
+
   const declared = new Set(source.stages.plan.fields.map((field) => field.path))
   const enforced = new Set(
     source.stages.plan.validators.flatMap(

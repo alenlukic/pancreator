@@ -811,6 +811,7 @@ export function applyTargetAuthoringDraft(
 
   const draft = parseDraft(readJson(resolveInside(root, inputPath)), inputPath)
   const previous = existingManifest(root, draft.extension_id)
+
   const policies = resolvedPolicyIds(root, draft, previous)
   const projection = renderProjection(root, draft)
   const manifest = manifestFor(draft, policies, projection)
@@ -841,6 +842,7 @@ export function applyTargetAuthoringDraft(
 
   ensureDir(extensionRoot)
   writeTextAtomic(path.join(root, manifest.content_path), draft.content)
+
   if (manifest.agent_path && projection) {
     writeTextAtomic(path.join(root, manifest.agent_path), projection)
   }

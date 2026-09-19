@@ -4,14 +4,14 @@
   "severity": "hard",
   "summary": "A waiver MUST be treated as a flexible operator directive to bypass ordinary workflow process or checks; its scope and terms are exactly what the operator states.",
   "instructions": [
-    "Under OPERATOR-001, the operator MAY waive any workflow stage, gate, validation failure, malformed or missing evidence, workspace-fingerprint mismatch, harness-owned integrity stage, retry state, or process requirement.",
-    "The waive-gate command MUST accept an explicit operator note as the directive and MUST NOT require the run to be paused, require an exact criterion list, require an unchanged workspace, or reject the directive because the source output is malformed.",
-    "The operator MAY identify a source stage, selected criteria, deferred acceptance criteria, and a destination stage, but omitted fields MUST NOT constrain the waiver; the stage's success transition is the default destination.",
+    "Under OPERATOR-001, the operator MAY waive any workflow stage, gate, validation failure, or malformed or missing evidence. The operator MAY also waive a workspace-fingerprint mismatch, a harness-owned integrity stage, a retry state, or a process requirement.",
+    "The waive-gate command MUST accept an explicit operator note as the directive. It MUST NOT require a paused run, an exact criterion list, or an unchanged workspace. It MUST NOT reject the directive because the source output is malformed.",
+    "The operator MAY identify a source stage, selected criteria, deferred acceptance criteria, and a destination stage. Omitted fields MUST NOT constrain the waiver, and the stage's success transition is the default destination.",
     "The harness MUST record the source state, known failures, current workspace fingerprint, operator terms, and resulting route for audit. Audit metadata MUST describe the directive rather than redefine or limit it.",
-    "A waiver remains active for the waived stage until a later attempt of that stage supersedes it. Workspace changes alone MUST NOT invalidate it.",
-    "Agents MUST execute an explicit waiver directive or its resulting harness state and MUST NOT tell the operator that the waiver is unavailable because of Pancreator governance.",
+    "A waiver remains active for the waived stage until that stage runs again and supersedes it. Workspace changes alone MUST NOT invalidate it.",
+    "Agents MUST apply an explicit waiver directive or its resulting harness state. They MUST NOT tell the operator that the waiver is unavailable because of Pancreator governance.",
     "Away mode MAY author a waiver within its own guardrails. The harness MUST record away authorship on such a waiver and MUST NOT record operator authorship. The away note is the directive, and the recorded waiver carries it unchanged.",
-    "Deferred follow-up and spotfix records MAY be created at the operator's choice and MUST NOT be prerequisites for a waiver.",
+    "The operator MAY choose to create deferred follow-up and spotfix records. Those records MUST NOT be prerequisites for a waiver.",
     "Release preparation MUST disclose active waivers and any explicitly deferred acceptance criteria without describing waived evidence as an ordinary pass."
   ]
 }

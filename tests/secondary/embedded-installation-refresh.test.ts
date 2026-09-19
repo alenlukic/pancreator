@@ -21,9 +21,11 @@ import {
 test('embedded installer refresh reconciles persona mappings and agent ownership while preserving target state', () => {
   const project = cloneInstalledProject()
   const pancreatorDir = path.join(project, '.pancreator')
+
   const customCoderModel = 'operator-custom-coder-model[fast=false]'
   const retiredPersona = 'tech-lead'
   const retiredModel = 'retired-persona-model[fast=false]'
+
   const legacyAgent = path.join(project, '.cursor', 'agents', 'coder.md')
   const markerPath = path.join(pancreatorDir, 'install.json')
   const configJsonPath = path.join(pancreatorDir, 'config.json')
@@ -379,9 +381,11 @@ test('refresh removes only unmodified files from retired payload entries', () =>
   const pancreatorDir = path.join(project, '.pancreator')
   const markerPath = path.join(pancreatorDir, 'install.json')
   const testsDirectory = path.join(pancreatorDir, 'tests', 'unit')
+
   const unmodifiedPath = path.join(testsDirectory, 'unmodified.test.ts')
   const modifiedPath = path.join(testsDirectory, 'modified.test.ts')
   const targetAddedPath = path.join(testsDirectory, 'target-added.test.ts')
+
   const shippedUnmodified = 'shipped unmodified\n'
   const shippedModified = 'shipped original\n'
   const localModified = 'local modification\n'

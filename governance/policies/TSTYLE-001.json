@@ -5,8 +5,8 @@
   "summary": "The code style batch pass MUST apply the TypeScript style guidance this policy references to durable repository TypeScript and TSX.",
   "instructions": [
     "Agents repairing TypeScript style MUST read the complete TypeScript style guidance this policy references, and MUST apply it before completion.",
-    "Agents MUST NOT reconstruct or separately load the formatter-owned appendix of the TypeScript style guidance unless they are changing formatter configuration or integration.",
-    "Agents MUST repair only the judgment-level TypeScript rules the style guidance states; the configured TypeScript formatter stays authoritative for mechanical style."
+    "Agents MUST NOT reconstruct or separately load the formatter-owned appendix of the TypeScript style guidance unless they change formatter configuration or integration.",
+    "Agents MUST repair only the judgment-level TypeScript rules the style guidance states. The configured TypeScript formatter stays authoritative for mechanical style."
   ],
   "guidance_sources": [
     {

@@ -77,6 +77,10 @@ test('pan inbox --json reports the queued item shape', () => {
     '# Oldest\n',
     new Date('2024-01-01T12:00:00.000Z'),
   )
+  const invalidPath = path.join(root, 'runtime/inbox/active/invalid.bin')
+
+  mkdirSync(path.dirname(invalidPath), { recursive: true })
+  writeFileSync(invalidPath, Buffer.from([0xc3, 0x28]))
 
   const items = JSON.parse(
     execFileSync(process.execPath, [CLI, 'inbox', '--json'], {
@@ -89,11 +93,16 @@ test('pan inbox --json reports the queued item shape', () => {
     modified_at: string
     run_id: string | null
     status: string
+    reason?: string
   }>
 
   assert.deepEqual(
     items.map((item) => item.file_name),
-    ['newest.md', 'oldest.md'],
+    ['newest.md', 'oldest.md', 'invalid.bin'],
+  )
+  assert.ok(
+    (items.find((item) => item.file_name === 'invalid.bin')?.reason?.length ??
+      0) > 0,
   )
   assert.deepEqual(Object.keys(items[0] ?? {}), [
     'file_name',

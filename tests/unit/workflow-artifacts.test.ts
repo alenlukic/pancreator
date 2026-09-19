@@ -303,9 +303,10 @@ test('finalization leaves an alias from every in-flight invocation prefix to its
 test('a citation that escapes the run resolves to nothing', () => {
   const root = createTestTempDirectory('pancreator-citation-')
   const outside = createTestTempDirectory('pancreator-citation-outside-')
+  const outsideFile = path.join(outside, 'hosts')
+
   const runId = '63308_Sep-01-0092_citation'
   const siblingRunId = '63308_Sep-01-0093_sibling'
-  const outsideFile = path.join(outside, 'hosts')
 
   writeState(root, runId, 'succeeded')
   writeState(root, siblingRunId, 'succeeded')
@@ -358,6 +359,7 @@ test('historical repair reports unique changes and preserves ambiguities', () =>
     runDirectory,
     `state-revision-1-${'a'.repeat(64)}.json`,
   )
+
   const ambiguousContent = 'Reference plan-1-aaaaaaaa must stay unchanged.\n'
   const unrelatedContent = 'Reference verify-1-bbbbbbbb must stay unchanged.\n'
   const immutableContent = '{"invocation_id":"verify-1-bbbbbbbb"}\n'
@@ -399,6 +401,7 @@ test('an unreadable run state skips that run and records the skip', () => {
   const root = createTestTempDirectory('pancreator-repair-skip-')
   const healthyRunId = '63308_Sep-01-0091_healthy'
   const brokenRunId = '63308_Sep-01-0092_broken'
+
   const healthyDirectory = path.join(
     root,
     'runtime/logs/workflows',
@@ -593,6 +596,7 @@ test('workflow migration repairs in-flight prefixes without finalizing', () => {
   const runId = '63379_Jun-22_5f354f23'
   const migratedId = '63379_Jun-22-0158_5f354f23'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+
   const groupedInvocationIds = [
     '999_plan-1_02e65dfc',
     '997_implement-1_12e65dfc',
@@ -648,6 +652,7 @@ test('workflow archive moves runs older than retention into archive directories'
   const root = createTestTempDirectory('pancreator-archive-')
   const oldRunId = '63379_Jun-22-0158_5f354f23'
   const recentRunId = '63372_Jun-29-0158_6f354f23'
+
   const oldLogDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
   const oldStateDirectory = path.join(root, 'runtime/workflows', oldRunId)
   const tuneRecord = path.join(
@@ -727,6 +732,7 @@ test('retention sweeps run-local worker scripts and finalization keeps them', ()
   const runId = '63379_Jun-22-0158_5f354f23'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const script = path.join(runDirectory, 'scripts', 'check-delta.mjs')
+
   const invocationIds = ['plan-1-aaaaaaaa']
 
   writeWorkflowSnapshot(runDirectory)
@@ -1079,6 +1085,7 @@ test('archival covers best-of-N sessions and temporal runtime files', () => {
   const root = createTestTempDirectory('pan-archive-extended-')
   const oldBonId = '63379_Jun-22-0158_output-simpl'
   const freshBonId = '63372_Jun-29-0158_other-keywor'
+
   const oldSessionId = '63379_Jun-22-0158_aaaaaaaa'
   const freshSessionId = '63372_Jun-29-0158_bbbbbbbb'
   const oldSession = path.join(root, 'runtime/logs/sessions', oldSessionId)

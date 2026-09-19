@@ -543,6 +543,7 @@ test('invocation validation fails when a guidance reference is omitted', () => {
   const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
+
   const { guidance, reference } = engineeringGuidance(invocation)
   const prefix = 'policy.ENG-001.guidance.1'
 
@@ -658,6 +659,7 @@ test('invocation validation fails when a guidance reference is omitted', () => {
 test('status summary renders a dedicated validation section for pass state', () => {
   const invocationId = 'implement-1-abcd'
   const runId = 'run-1'
+
   const invocationValidation = buildValidationArtifact({
     run_id: runId,
     invocation_id: invocationId,
@@ -1146,6 +1148,7 @@ test('the evidence brief names the fast command only when no passed fast gate is
 test('the launch step carries the watch pointer, command, and ordering', () => {
   const root = sharedFixture()
   const invocation = delegatedInvocation(root)
+
   const delegateDigest = 'd'.repeat(64)
   const redlineRecordPath =
     'runtime/logs/workflows/run-fixture/agent/delegation-redlines.md'

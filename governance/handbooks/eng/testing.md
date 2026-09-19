@@ -46,6 +46,10 @@ Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.t
 
 Do not assert a ceiling on total elapsed time as the proof that work ran concurrently or that a call did not block. The suite runs under `--test-concurrency`, so a measured interval includes scheduling the test does not control, and the assertion becomes a statement about the machine. Prove concurrency from recorded intervals that overlap, and prove a non-blocking return by observing that the stub had not yet answered when the call returned. Keep a generous absolute timeout as a hang guard, never as the proof.
 
+### TP-11 · Regression signal
+
+A test cited as the regression guard for an acceptance criterion MUST be demonstrated against the pre-change state. The demonstration MUST show that the guard fails when the criterion is violated, and its output or reproducible mutation MUST be recorded with the acceptance evidence. A passing post-change run alone does not prove that the guard detects the regression.
+
 ## Lanes
 
 Place each test in the documented lane that matches its cost and boundary:

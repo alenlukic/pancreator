@@ -117,6 +117,7 @@ test('run preparation reports live pipeline-config drift from its snapshot', () 
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
+
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     active_config: string
@@ -156,6 +157,15 @@ test('paused remediation note is attached to the next implement invocation', () 
     'blocked',
   )
   blockedOutput.summary = 'Implementation paused for a remediation restart.'
+  blockedOutput.data.blocked = {
+    missing_precondition: 'Operator direction is required before restarting.',
+    supplying_command: 'pan decide <run-id> --action retry',
+    evidence: [
+      'runtime/logs/workflows/<run-id>/agent/decisions/away-feedback-1.md',
+    ],
+  }
+  delete blockedOutput.data.implementation
+  blockedOutput.data.acceptance_results = []
   writeJson(path.join(root, implementInvocation.output.path), blockedOutput)
   writeCanonicalDelegation(root, implementInvocation)
 

@@ -43,6 +43,52 @@ test('delivery workflow starts at implement and stages are addressable', () => {
   }
 })
 
+test('workflow evidence workers reject reserved CLI roles', () => {
+  const root = createFixture()
+  const verify = stageBySlug(loadWorkflow(root, 'delivery'), 'verify')
+
+  assert.deepEqual(
+    verify.evidence_workers?.map((worker) => worker.role),
+    ['review', 'qa'],
+  )
+
+  const stagePath = path.join(
+    root,
+    'library/workflows/delivery/stages/verify.json',
+  )
+  const stage = JSON.parse(readFileSync(stagePath, 'utf8')) as {
+    evidence_workers: Array<{ role: string }>
+  }
+
+  for (const role of ['worker', 'supervisor']) {
+    stage.evidence_workers[0].role = role
+    writeFileSync(stagePath, `${JSON.stringify(stage)}\n`)
+
+    assert.throws(
+      () => loadWorkflow(root, 'delivery'),
+      new RegExp(`role '${role}' is reserved`, 'u'),
+    )
+  }
+})
+
+test('every delivery implement stage declares actionable blocked data', () => {
+  const root = sharedFixture()
+  const expected = {
+    blocked: 'object',
+    'blocked.missing_precondition': 'string',
+    'blocked.supplying_command': 'string',
+    'blocked.evidence': 'array',
+  }
+
+  for (const slug of ['delivery', 'delivery-chunk', 'delivery-candidate']) {
+    assert.deepEqual(
+      stageBySlug(loadWorkflow(root, slug), 'implement').blocked_required_data,
+      expected,
+      `${slug}/implement blocked contract changed`,
+    )
+  }
+})
+
 test('the planning plan stage is worker-owned while intake stages stay supervisor-owned', () => {
   const root = sharedFixture()
   const planningPlan = stageBySlug(loadWorkflow(root, 'planning'), 'plan')

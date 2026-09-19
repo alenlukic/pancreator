@@ -19,7 +19,8 @@
     "fast": {
       "description": "Run Pancreator's compiled automated test suite.",
       "probes": ["node --version", "npm --version"],
-      "commands": ["npm test"]
+      "commands": ["npm test"],
+      "isolation_command": "./bin/run-tests -- node --test --test-name-pattern={test_pattern} --test-reporter=tap --test-reporter-destination=stdout {file}"
     },
     "impacted": {
       "description": "Iteration profile, never a gate: select and run only the lane tests whose static import closure reaches the changed files. Run fast once at the end.",

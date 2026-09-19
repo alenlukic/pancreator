@@ -103,6 +103,7 @@ test('forced generation preserves existing HTML and source after render failure'
   const root = createFixture()
   const { runId, invocationId } = submitSuppressedPlan(root)
   const layout = resolveRunLayout(root, runId)
+
   const htmlPath = layout.operatorHtml(invocationId).absolute
   const sourcePath = layout.artifactJson(`${invocationId}.brief.json`).absolute
   const temporaryPath = layout.artifactJson(

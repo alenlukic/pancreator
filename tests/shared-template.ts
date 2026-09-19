@@ -196,6 +196,7 @@ export function sharedTemplate<Metadata>(
   const templatePath = path.join(root, name)
   const metadataPath = path.join(root, `${name}.json`)
   const lockPath = path.join(root, `${name}.lock`)
+
   const deadline = Date.now() + LOCK_TIMEOUT_MS
 
   while (Date.now() < deadline) {

@@ -250,6 +250,7 @@ export function validateCommandGovernance(
     registry.card_commands.map((entry) => [entry.command, entry.card_mode]),
   )
   const supervisor = new Set(registry.supervisor_commands)
+
   const targetMutating = new Map(
     registry.target_mutating_commands.map((entry) => [
       entry.command,
@@ -262,6 +263,7 @@ export function validateCommandGovernance(
       item.expires_with,
     ]),
   )
+
   const commands = listCommands(root)
   const known = new Set(commands)
 

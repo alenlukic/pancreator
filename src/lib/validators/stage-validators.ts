@@ -24,8 +24,13 @@ import {
 } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
+import { inboxTemporalScanDirectories } from '../inbox.js'
 import { readProjectConfig } from '../project-config.js'
 import { loadRepositoryChecks } from '../repository-checks.js'
+import {
+  panInvocationsInText,
+  panProseInvocationError,
+} from '../pan-command-grammar.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { resolveTargetInstructionPaths } from '../target-instructions.js'
 import {
@@ -33,7 +38,9 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from '../git.js'
 import type { WorkspaceSnapshot } from '../types.js'
+import { releaseAllocationFor } from '../release-allocation.js'
 import {
+  compareVersions,
   isReleaseMetadataPath,
   isSemanticVersion,
   nextSemanticVersion,
@@ -981,6 +988,7 @@ function assessmentVerdictForInvocation(
   const assessmentsDirectory = path.dirname(
     layout.assessment('placeholder').absolute,
   )
+
   const currentPath = path.join(
     assessmentsDirectory,
     `${invocationId}.assessment.json`,
@@ -1220,6 +1228,7 @@ export function validateTargetInstructionCoverage(
       )
     : []
   const workspaceRoot = workspaceRootFromInput(input)
+
   const output = readJson(path.join(input.root, input.targetPath))
   const outputData =
     isRecord(output) && isRecord(output.data) ? output.data : null
@@ -1233,6 +1242,7 @@ export function validateTargetInstructionCoverage(
           (item): item is string => typeof item === 'string',
         )
       : []
+
   const diff = workspaceSourceChanges(workspaceRoot)
   const workspaceBefore =
     isRecord(input.invocation) && isRecord(input.invocation.workspace_before)
@@ -1257,6 +1267,7 @@ export function validateTargetInstructionCoverage(
   const requiredReadPaths = [
     ...new Set([...invocationReadPaths, ...finalReadPaths]),
   ].sort()
+
   const evidence =
     isRecord(output) && isRecord(output.target_instruction_evidence)
       ? output.target_instruction_evidence
@@ -1335,9 +1346,125 @@ export function validateImplementationClaims(
   input: HandlerInput,
 ): HandlerResult {
   const issues: HandlerResult['issues'] = []
+
   const absolute = path.join(input.root, input.targetPath)
-  const value = readJson(absolute) as Record<string, unknown>
+  const parsed: unknown = readJson(absolute)
+
+  if (!isRecord(parsed)) {
+    return {
+      status: 'failed',
+      issues: [issue('output.shape', 'stage output MUST be an object')],
+    }
+  }
+
+  const value = parsed
   const data = isRecord(value.data) ? value.data : {}
+
+  if (value.result === 'blocked') {
+    const blocked = isRecord(data.blocked) ? data.blocked : null
+
+    if (!blocked) {
+      issues.push(
+        issue(
+          'blocked.missing',
+          'data.blocked is required for a blocked result',
+        ),
+      )
+    } else {
+      for (const field of [
+        'missing_precondition',
+        'supplying_command',
+      ] as const) {
+        const fieldValue = blocked[field]
+
+        if (typeof fieldValue !== 'string' || fieldValue.trim().length === 0) {
+          issues.push(
+            issue(
+              'blocked.shape',
+              `data.blocked.${field} MUST be a non-empty string`,
+            ),
+          )
+        }
+      }
+    }
+
+    if (
+      !Array.isArray(data.acceptance_results) ||
+      data.acceptance_results.length !== 0
+    ) {
+      issues.push(
+        issue(
+          'blocked.acceptance_results',
+          'data.acceptance_results MUST be an empty array for a blocked result',
+        ),
+      )
+    }
+
+    if (data.implementation !== undefined) {
+      issues.push(
+        issue(
+          'blocked.implementation_forbidden',
+          'data.implementation MUST NOT be present for a blocked result',
+        ),
+      )
+    }
+
+    if (blocked) {
+      const evidence = blocked.evidence
+
+      if (
+        !Array.isArray(evidence) ||
+        evidence.length === 0 ||
+        !evidence.every(
+          (entry) => typeof entry === 'string' && entry.trim().length > 0,
+        )
+      ) {
+        issues.push(
+          issue(
+            'blocked.evidence',
+            'data.blocked.evidence MUST be a non-empty array of non-empty ' +
+              'strings proving the missing precondition',
+          ),
+        )
+      }
+    }
+
+    // A blocked worker may still have edited the tree before it stopped.
+    // `data.implementation` is forbidden here, so the only honest place for
+    // those paths is top-level `workspace_changes.paths`, reconciled against
+    // the Git delta rather than against a claim list that cannot exist.
+    const blockedWorkspaceRoot = workspaceRootFromInput(input)
+    const blockedAttemptFiles = attemptChangedPaths(input, blockedWorkspaceRoot)
+    const blockedDiff =
+      blockedAttemptFiles === null
+        ? workspaceSourceChanges(blockedWorkspaceRoot)
+        : null
+    const owedBlockedDisclosure =
+      blockedAttemptFiles ?? (blockedDiff?.ok ? blockedDiff.files : [])
+    const blockedAttribution = isRecord(value.workspace_changes)
+      ? value.workspace_changes
+      : null
+    const blockedAttributedPaths = Array.isArray(blockedAttribution?.paths)
+      ? blockedAttribution.paths.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : []
+
+    for (const file of owedBlockedDisclosure) {
+      if (!blockedAttributedPaths.includes(file)) {
+        issues.push(
+          issue(
+            'blocked.diff_not_disclosed',
+            `File changed by this blocked attempt but not listed in ` +
+              `workspace_changes.paths: ${file}`,
+          ),
+        )
+      }
+    }
+
+    return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+  }
+
   const implementation = isRecord(data.implementation)
     ? data.implementation
     : null
@@ -2087,6 +2214,20 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
             'the case must exercise a focused scenario instead',
         ),
       )
+    }
+
+    for (const argv of panInvocationsInText(text)) {
+      const refusal = panProseInvocationError(argv)
+
+      if (refusal) {
+        issues.push(
+          issue(
+            'plan.case_invalid_pan_invocation',
+            `Test-plan case ${caseId} names \`pan ${argv.join(' ')}\`. ` +
+              refusal,
+          ),
+        )
+      }
     }
   }
 
@@ -2855,6 +2996,7 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   const failedCase = qaCases.some(
     (item) => isRecord(item) && item.result === 'fail',
   )
+
   const failingEvidence = blockerFinding || failedAcceptance || failedCase
   const passingVerdict = verdict === 'pass' || verdict === 'pass_with_warnings'
   const failingVerdict =
@@ -2971,6 +3113,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     const localRelease = isRecord(release.local_release)
       ? release.local_release
       : null
+
     const releaseCommit =
       localRelease && typeof localRelease.release_commit === 'string'
         ? localRelease.release_commit
@@ -2983,6 +3126,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
       localRelease && typeof localRelease.fetched_main === 'string'
         ? localRelease.fetched_main
         : ''
+
     const localBranch =
       localRelease && typeof localRelease.branch === 'string'
         ? localRelease.branch
@@ -3019,6 +3163,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         fetchedMain,
         releaseCommit,
       ])
+
       const clean = gitOutput(workspaceRoot, [
         'status',
         '--porcelain=v1',
@@ -3149,12 +3294,14 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         typeof versioning.baseline_commit === 'string'
           ? versioning.baseline_commit
           : ''
+
       const rawUpdatedFiles = Array.isArray(versioning.updated_files)
         ? versioning.updated_files
         : []
       const updatedFiles = rawUpdatedFiles.filter(
         (entry): entry is string => typeof entry === 'string',
       )
+
       const rationale =
         typeof versioning.rationale === 'string'
           ? versioning.rationale.trim()
@@ -3198,12 +3345,25 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           currentVersion,
           recommendation as ReleaseBump,
         )
+        // A worktree that shares its base with a concurrent release cannot
+        // take the exact next version, so the allocation ledger may hand it
+        // a higher one for the same bump. Anything else is still a mismatch.
+        const allocated =
+          expected !== null &&
+          isSemanticVersion(proposedVersion) &&
+          compareVersions(proposedVersion, expected) > 0 &&
+          releaseAllocationFor(
+            input.root,
+            workspaceRoot,
+            proposedVersion,
+            recommendation,
+          ) !== null
 
-        if (expected !== proposedVersion) {
+        if (expected !== proposedVersion && !allocated) {
           issues.push(
             issue(
               'release.proposed_version_mismatch',
-              `release.versioning.proposed_version MUST be ${expected ?? 'a valid next version'} for a ${recommendation} bump from ${currentVersion}`,
+              `release.versioning.proposed_version MUST be ${expected ?? 'a valid next version'} for a ${recommendation} bump from ${currentVersion}, or a higher version pan release allocate handed this worktree for the same bump`,
             ),
           )
         }
@@ -3418,6 +3578,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         : null,
     )
     .filter((entry): entry is string => typeof entry === 'string')
+
   const diffResult = workspaceSourceChanges(workspaceRootFromInput(input))
 
   if (rawChangeList.length !== changeList.length) {
@@ -3481,6 +3642,19 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
 
   if (rollback.trim().length === 0) {
     issues.push(issue('release.rollback', 'rollback_plan MUST be non-empty'))
+  }
+
+  for (const argv of panInvocationsInText(rollback)) {
+    const refusal = panProseInvocationError(argv)
+
+    if (refusal) {
+      issues.push(
+        issue(
+          'release.rollback_command_invalid',
+          `rollback_plan names \`pan ${argv.join(' ')}\`. ` + refusal,
+        ),
+      )
+    }
   }
 
   const governanceReview = isRecord(release.governance_artifact_review)
@@ -3549,6 +3723,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const deferred = Array.isArray(release.deferred_acceptance_criteria)
     ? release.deferred_acceptance_criteria
     : []
+
   const runWaivers = Array.isArray(input.runState?.operator_gate_waivers)
     ? input.runState.operator_gate_waivers
     : []
@@ -3568,6 +3743,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     },
     currentFingerprint,
   )
+
   const runDeferred = Array.isArray(
     input.runState?.deferred_acceptance_criteria,
   )
@@ -3773,6 +3949,7 @@ export function validateDecompositionArtifact(
   const content = readText(path.join(input.root, input.targetPath))
   const parsed = parseMarkdown(content)
   const lower = content.toLowerCase()
+
   const requiredHeadings = [
     'decision',
     'scope summary',
@@ -4002,6 +4179,60 @@ function basenameCarriesSlug(basename: string, slug: string): boolean {
   return new RegExp(`(?:^|-)${slug}(?:-|$)`, 'u').test(basename)
 }
 
+const SIBLING_INTAKE_PATTERN =
+  /\bharness-repair-\d{8}T\d{6}Z-[a-z0-9-]+\.md\b/gu
+
+/**
+ * An intake cites a sibling by file name alone, and the sibling may sit in any
+ * inbox status of this checkout or of a registered installation, because a
+ * consolidated sweep names the items it read in each installation's queue.
+ */
+function inboxRootsForSiblingIntakes(root: string): string[] {
+  const roots = [root]
+
+  try {
+    for (const installation of readProjectConfig(root)?.installations ?? []) {
+      roots.push(installation.path)
+    }
+  } catch {
+    // An unreadable configuration is another validator's finding; the
+    // sibling check then resolves against this checkout alone.
+  }
+
+  return roots
+}
+
+function inboxHoldsFile(root: string, fileName: string): boolean {
+  const directories = ['runtime/inbox', ...inboxTemporalScanDirectories()]
+
+  return directories.some((directory) =>
+    fileExists(path.join(root, directory, fileName)),
+  )
+}
+
+function unresolvedSiblingIntakes(
+  root: string,
+  targetPath: string,
+  content: string,
+): string[] {
+  const ownName = path.basename(targetPath)
+  const roots = inboxRootsForSiblingIntakes(root)
+  const unresolved = new Set<string>()
+
+  for (const match of content.matchAll(SIBLING_INTAKE_PATTERN)) {
+    const name = match[0]
+
+    if (
+      name !== ownName &&
+      !roots.some((inboxRoot) => inboxHoldsFile(inboxRoot, name))
+    ) {
+      unresolved.add(name)
+    }
+  }
+
+  return [...unresolved]
+}
+
 export function validateHarnessRepairIntake(
   input: HandlerInput,
 ): HandlerResult {
@@ -4009,6 +4240,7 @@ export function validateHarnessRepairIntake(
   const content = readText(path.join(input.root, input.targetPath))
   const lower = content.toLowerCase()
   const parsed = parseMarkdown(content)
+
   const categories = loadHarnessRepairCategories(input.root)
   const requiredHeadings = [
     'original report',
@@ -4101,6 +4333,19 @@ export function validateHarnessRepairIntake(
     }
   }
 
+  for (const name of unresolvedSiblingIntakes(
+    input.root,
+    input.targetPath,
+    content,
+  )) {
+    issues.push(
+      issue(
+        'repair.sibling_reference',
+        `Intake names sibling intake '${name}', which no inbox of this checkout or of a registered installation holds`,
+      ),
+    )
+  }
+
   for (const heading of requiredHeadings) {
     if (!hasHeading(parsed, heading)) {
       issues.push(
@@ -4135,12 +4380,14 @@ export function validateHarnessRepairIntake(
     const start = match.index ?? 0
     const nextFinding = findingMatches[index + 1]?.index ?? content.length
     const remainder = content.slice(start, nextFinding)
+
     const nextTopLevelSection = /^##\s+/mu.exec(
       remainder.slice(match[0].length),
     )
     const end = nextTopLevelSection
       ? start + match[0].length + nextTopLevelSection.index
       : nextFinding
+
     const block = content.slice(start, Math.min(end, nextFinding))
     const blockLower = block.toLowerCase()
     const findingId = match[1]

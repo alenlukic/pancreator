@@ -26,7 +26,7 @@ import {
   scaffoldOperatorBrief,
   validateBriefSystem,
 } from './briefs.js'
-import { errorMessage, invariant } from './errors.js'
+import { PanError, errorMessage, invariant } from './errors.js'
 import {
   canonicalPersonaMapping,
   type ParsedPersonaMapping,
@@ -143,7 +143,7 @@ import { resolveRequirements } from './requirements/resolve.js'
 import {
   inferTargetKind,
   isPassingResult,
-  registryStageSlug,
+  registryAppliesToStage,
   resolveRequirementTargetPath,
   runRequirement,
 } from './requirements/run.js'
@@ -1618,6 +1618,7 @@ function captureRepositoryCheckBaselines(
       `pre-implementation-${profile.name}.full.json`,
     )
     const recordedAt = now()
+
     const { summary, elided } = summarizeRepositoryCheckResult(result)
     const environmentProbes =
       repositoryChecks.profiles[profile.name]?.environment_probes ?? []
@@ -2302,11 +2303,13 @@ function sameReasonTrackers(state: RunState): SameReasonFailureTrackers {
 
 function clearSameReasonTracker(state: RunState, stageSlug: string): void {
   const trackers = state.same_reason_failures
+
   if (!trackers?.[stageSlug]) {
     return
   }
 
   delete trackers[stageSlug]
+
   if (Object.keys(trackers).length === 0) {
     delete state.same_reason_failures
   }
@@ -2687,21 +2690,16 @@ function applyTransition(
   }
 
   if (target === 'paused') {
-    // A release-gated stage reports `blocked` only for a concern the operator
-    // owns, which is `SHIP-001`'s legitimate-diagnostics pause. Marking it
-    // operator-only under the long-horizon contract is what carries it to the
-    // session's fourth rung instead of into away-mode evaluation.
-    const operatorOnly =
-      outcome === 'blocked' &&
-      stage.entry_gate !== undefined &&
-      runHasContract(state.operator_involvement, 'long_horizon')
-
+    // A `blocked` at a release-gated stage used to be marked operator-only
+    // under the long-horizon contract, which carried it straight to the
+    // session's deferral rung. HORIZON-001 now names four hard blocks and
+    // nothing else; a stage's `blocked` is a claim the away evaluator tests
+    // (revise, set-stage, or a recorded waiver of a cost-backed criterion),
+    // not a verdict. The release boundary itself is unchanged: away mode
+    // still cannot push, publish, or deploy.
     state.status = 'paused'
     state.pause_reason = `Stage '${stage.slug}' reported ${outcome}.`
-    state.pending_action = {
-      type: 'operator_decision',
-      ...(operatorOnly ? { operator_only: true as const } : {}),
-    }
+    state.pending_action = { type: 'operator_decision' }
 
     writeDecision(
       root,
@@ -2795,6 +2793,7 @@ function persistModelEvidence(
     evidence_path: evidencePath,
     timestamp: now(),
   }
+
   const items = [...(state.model_evidence ?? [])]
 
   if (index === -1) {
@@ -2926,6 +2925,72 @@ function declaredWorkerSpecs(invocation: Invocation): DeclaredWorkerSpec[] {
       label: `evidence worker role '${worker.role}'`,
     })),
   ]
+}
+
+/** Record sourced model evidence for one role declared by an invocation. */
+export function recordInvocationModelEvidence(
+  root: string,
+  runId: string,
+  invocationId: string,
+  role: string,
+  effectiveModel: string,
+  source: string,
+  launchHandle: string,
+): RunModelEvidence {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const values = [
+      ['--invocation', invocationId],
+      ['--role', role],
+      ['--effective-model', effectiveModel],
+      ['--source', source],
+      ['--launch-handle', launchHandle],
+    ] as const
+
+    for (const [name, value] of values) {
+      invariant(value.trim().length > 0, `${name} is required.`, {
+        code: 'INVALID_ARGUMENT',
+      })
+    }
+
+    const state = loadState(root, runId)
+    const { invocation } = readInvocationRecord(root, state, invocationId)
+
+    invariant(
+      invocation.run_id === runId && invocation.invocation_id === invocationId,
+      `Invocation '${invocationId}' does not belong to run '${runId}'.`,
+      { code: 'INVALID_INVOCATION' },
+    )
+
+    const roleName = role.trim()
+    const declaredWorkers = declaredWorkerSpecs(invocation)
+    const declared = declaredWorkers.find((item) =>
+      item.role === 'worker'
+        ? roleName === 'worker'
+        : item.worker_role === roleName,
+    )
+    const declaredRoles = declaredWorkers.map((item) =>
+      item.role === 'worker' ? 'worker' : (item.worker_role as string),
+    )
+
+    invariant(
+      declared,
+      `Role '${roleName}' is not declared by invocation '${invocationId}'. ` +
+        `Declared roles: ${declaredRoles.join(', ')}.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+
+    return persistModelEvidence(root, state, {
+      role: declared.role,
+      invocation_id: invocationId,
+      ...(declared.worker_role ? { worker_role: declared.worker_role } : {}),
+      persona: declared.persona,
+      declared_spec: declared.spec,
+      effective_model: effectiveModel.trim(),
+      source: source.trim(),
+      launch_handle: launchHandle.trim(),
+      result: 'recorded',
+    })
+  })
 }
 
 /** The labeled default evidence for one declared worker spec. */
@@ -3996,9 +4061,9 @@ export function resolveSubmitValidators(
       continue
     }
 
-    const requiredStage = registryStageSlug(requirement.registry_id)
-
-    if (requiredStage && requiredStage !== invocation.stage.slug) {
+    if (
+      !registryAppliesToStage(requirement.registry_id, invocation.stage.slug)
+    ) {
       continue
     }
 
@@ -4517,6 +4582,7 @@ export function prepareInvocation(
     const model = mapping.model_spec
     const externalExecutor =
       mapping.executor !== 'cursor' ? mapping.executor : undefined
+
     // An invocation that was prepared but never submitted did no work, so it
     // must not spend an attempt. This happens whenever a card is superseded —
     // most often after an operator pause — and previously the discarded card
@@ -4528,6 +4594,7 @@ export function prepareInvocation(
         (item) => item.stage === stage.slug && item.attempt === recordedAttempt,
       )
     const attempt = lastAttemptSubmitted ? recordedAttempt + 1 : recordedAttempt
+
     // An operator refinement round is not a failed attempt. It raises the
     // ceiling instead of consuming budget reserved for failures, so directing a
     // plan through several revisions cannot exhaust the retry allowance the
@@ -4607,6 +4674,7 @@ export function prepareInvocation(
       attempt,
     )
     const layout = resolveRunLayout(root, runId)
+
     const outputPath = layout.output(invocationId).relative
     const briefSourcePath = layout.artifactJson(
       `${invocationId}.brief.json`,
@@ -4614,6 +4682,7 @@ export function prepareInvocation(
     const briefRenderedPath = layout.operatorHtml(invocationId).relative
     const prDescriptionPath =
       layout.operatorMarkdown('pr-description.md').relative
+
     const jsonPath = layout.invocation(invocationId, '.json').relative
     const markdownPath = layout.invocation(invocationId, '.md').relative
     const supervisorProcedurePath = layout.invocation(
@@ -4621,6 +4690,7 @@ export function prepareInvocation(
       '.supervisor.md',
     ).relative
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
+
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
     // Parallel evidence workers run as top-level named agents so their
     // persona-model mappings hold. Resolving them at prepare time makes a
@@ -4675,6 +4745,7 @@ export function prepareInvocation(
       (artifactsRequested || isSelfDevelopmentInstallation(root))
         ? resolvePrDescriptionContext(workspaceDirectory(root, state), policies)
         : undefined
+
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
       workflow: workflow.slug,
@@ -4720,6 +4791,7 @@ export function prepareInvocation(
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
             `${delegationArtifactPath}, then submit ${outputPath}.`
+
     // The supervisor delegates from the continuation loop, where it holds no
     // card of its own. Resolving its policies here puts the delivery contract
     // on the artifact it must already read to perform the delegation. For an
@@ -4832,6 +4904,7 @@ export function prepareInvocation(
     const briefVocabulary = artifactsRequested
       ? resolveBriefVocabulary(root)
       : undefined
+
     const requiredData = { ...(stage.required_data ?? {}) }
     const fieldContract = stageFieldContract(
       root,
@@ -5312,6 +5385,13 @@ function ensureExecutorReady(
       return ensureClaudeCodeReady(state)
     case 'openai':
       return ensureOpenAiReady(root, state)
+    default: {
+      const exhaustive: never = executor
+
+      throw new PanError(`Unhandled persona executor: ${String(exhaustive)}`, {
+        code: 'EXECUTOR_UNSUPPORTED',
+      })
+    }
   }
 }
 
@@ -5506,6 +5586,7 @@ function createOpenAiAdapter(
   const apiKey = credential.key ?? ''
   const entrypoint = openAiAgentEntrypoint()
   const options = context.mapping.options
+
   const sessionTimeoutMs =
     context.timeoutOverrideMs ??
     positiveIntegerOption(options, 'timeout-ms') ??
@@ -5515,6 +5596,20 @@ function createOpenAiAdapter(
     OPENAI_SESSION_DEFAULTS.maxToolRounds
   const maxOutputTokens = positiveIntegerOption(options, 'max-output-tokens')
   const effort = options.effort
+  // Validated against their enums by parsePersonaMapping, so the adapter
+  // forwards them as-is rather than re-deriving the accepted sets here.
+  const mode = options.mode
+  const reasoningContext = options.context
+  const summary = options.summary
+  const verbosity = options.verbosity
+  const responseParameters = {
+    ...(effort ? { reasoning_effort: effort } : {}),
+    ...(mode ? { reasoning_mode: mode } : {}),
+    ...(reasoningContext ? { reasoning_context: reasoningContext } : {}),
+    ...(summary ? { reasoning_summary: summary } : {}),
+    ...(verbosity ? { text_verbosity: verbosity } : {}),
+  }
+
   const toolPolicy = openAiToolPolicy(
     context.root,
     context.workspaceDir,
@@ -5530,7 +5625,7 @@ function createOpenAiAdapter(
   const requestSettings: ExternalRequestSettings = {
     model: context.mapping.model,
     store: false,
-    ...(effort ? { reasoning_effort: effort } : {}),
+    ...responseParameters,
     ...(maxOutputTokens !== undefined
       ? { max_output_tokens: maxOutputTokens }
       : {}),
@@ -5553,7 +5648,7 @@ function createOpenAiAdapter(
         invocation_id: context.invocationId,
         stage: context.stage.slug,
         session_id: sessionId,
-        ...(effort ? { reasoning_effort: effort } : {}),
+        ...responseParameters,
         ...(maxOutputTokens !== undefined
           ? { max_output_tokens: maxOutputTokens }
           : {}),
@@ -5575,6 +5670,7 @@ function createOpenAiAdapter(
           : {}),
         tool_policy: toolPolicy,
       }
+
       const argv = [entrypoint]
       const startedAt = Date.now()
       const spawned = spawnSync(process.execPath, argv, {
@@ -5587,12 +5683,14 @@ function createOpenAiAdapter(
         maxBuffer: 64 * 1024 * 1024,
         env: { ...process.env, OPENAI_API_KEY: apiKey },
       })
+
       const durationMs = Date.now() - startedAt
       const timedOut =
         (spawned.error as NodeJS.ErrnoException | undefined)?.code ===
         'ETIMEDOUT'
       const stdout = sanitize(spawned.stdout ?? '')
       const stderr = sanitize(spawned.stderr ?? '')
+
       const base = {
         binary: process.execPath,
         argv,
@@ -5780,6 +5878,7 @@ export function delegateInvocation(
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
     const invocationId = invocation.invocation_id
+
     const pipelineConfig = loadRunPipelineConfig(root, state)
     // The invocation carries the persona the prepared card resolved, which for
     // a verdict-routed stage can differ from the stage's default persona.
@@ -5837,6 +5936,7 @@ export function delegateInvocation(
       options.timeoutMs ??
       (configuredTimeout ? Number(configuredTimeout) : undefined)
     const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+
     const selectAdapter = (): ExternalExecutorAdapter => {
       switch (executor) {
         case 'cursor':
@@ -5871,6 +5971,14 @@ export function delegateInvocation(
               ? { timeoutOverrideMs: options.timeoutMs }
               : {}),
           })
+        default: {
+          const exhaustive: never = executor
+
+          throw new PanError(
+            `Unhandled persona executor: ${String(exhaustive)}`,
+            { code: 'EXECUTOR_UNSUPPORTED' },
+          )
+        }
       }
     }
     const adapter: ExternalExecutorAdapter = selectAdapter()
@@ -5903,6 +6011,7 @@ export function delegateInvocation(
     const lastFeedback = [...(state.operator_feedback ?? [])]
       .reverse()
       .find((item) => item.to_stage === stage.slug)
+
     const revisionRound =
       lastFeedback?.decision === 'revise' &&
       lastForStage !== undefined &&
@@ -5929,6 +6038,7 @@ export function delegateInvocation(
 
     const cardMarkdown = readText(resolveInside(root, promptPath))
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
+
     let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
     let deliveredPrompt = cardMarkdown
     let result: ExternalExecutorRunResult
@@ -6365,6 +6475,7 @@ export function submitOutput(
   const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
+
     const materialized = materializeOutputSubmission(
       root,
       state,
@@ -6610,6 +6721,7 @@ export function submitOutput(
         const mode = deliveredSource.mode
         const deliveredSourcePath = deliveredSource.path
         const deliveredAbsolute = resolveInside(root, deliveredSourcePath)
+
         const delegationMarkdown = readText(delegationAbsolute)
         const delegationValidation = fileExists(deliveredAbsolute)
           ? validateDelegationMarkdown(
@@ -6756,6 +6868,7 @@ export function submitOutput(
       briefRenderFailed && briefRenderedPath
         ? messages.filter((message) => !message.includes(briefRenderedPath))
         : messages
+
     // A missing or mismatched attestation blocks every stage, because it means
     // the harness cannot show that the worker held the contract it acted on.
     // A required or authoritative harness validator failure blocks whichever
@@ -6783,6 +6896,7 @@ export function submitOutput(
             ...blockingCriterionErrors,
             ...blockingValidatorErrors,
           ]
+
     const declaredNonSuccess =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -6796,6 +6910,7 @@ export function submitOutput(
       (criterion) =>
         criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
     )
+
     const rejectingValidatorIds = [
       ...new Set(
         harnessValidation.blocking_errors
@@ -6888,6 +7003,7 @@ export function submitOutput(
       ...validation.errors,
       ...harnessValidation.errors,
     ]
+
     const briefContract = invocation.output.operator_brief
 
     let briefSourceRecord: StageHistoryItem['operator_brief_source']
@@ -7363,11 +7479,13 @@ function recordOperatorFeedback(
   const feedback = state.operator_feedback ?? []
   const index = feedback.length + 1
   const attempt = state.attempts[fromStage.slug] ?? 1
+
   // Control records document operator decisions for workers and audit, so they
   // live beside the decision records rather than in the operator directory.
   const relativePath = resolveRunLayout(root, state.run_id).decision(
     `${source}-feedback-${index}.md`,
   ).relative
+
   const heading =
     source === 'away'
       ? 'Away-mode remediation directive'
@@ -7636,6 +7754,56 @@ export function decideRunAsAway(
   return decideRunWithActor(root, runId, decision, note, null, 'away')
 }
 
+/**
+ * Lift the operator-only mark from a paused run's pending decision so a
+ * long-horizon arbiter override can act on it.
+ *
+ * The mark exists so away mode cannot take a decision the harness classified
+ * as the operator's. HORIZON-001 names four hard blocks and nothing else, and
+ * the session arbiter reasons about each stop against that list before it
+ * acts. A stop it did not classify as a hard block is not the operator's, so
+ * the mark is lifted with the arbiter's reasoning recorded on the run. The
+ * run stays paused; the caller applies the override action next.
+ */
+export function liftOperatorOnlyPauseForHorizon(
+  root: string,
+  runId: string,
+  reasoning: string,
+): RunState {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(reasoning.trim().length > 0, 'Override reasoning is required.', {
+      code: 'HORIZON_OVERRIDE_REASON_REQUIRED',
+    })
+    // A task's own run carries the session binding; the delivery, chunk, and
+    // release runs its plan approval started carry only the contract. Both
+    // belong to the session's task, so both accept the override.
+    invariant(
+      state.horizon !== undefined ||
+        runHasContract(state.operator_involvement, 'long_horizon'),
+      'Only a long-horizon run accepts an arbiter override.',
+      { code: 'HORIZON_OVERRIDE_FORBIDDEN' },
+    )
+
+    if (
+      state.pending_action.type !== 'operator_decision' ||
+      state.pending_action.operator_only !== true
+    ) {
+      return state
+    }
+
+    state.pending_action = { type: 'operator_decision' }
+    persistRun(root, state, 'horizon_override_lifted_operator_only', {
+      reasoning,
+      stage: state.current_stage,
+      pause_reason: state.pause_reason ?? null,
+    })
+
+    return state
+  })
+}
+
 /** One launched evidence worker whose declared report does not exist yet. */
 export interface InFlightEvidenceWorker {
   role: string
@@ -7773,11 +7941,13 @@ function setRunStageWithActor(
     const sourceAttempt = state.current_stage
       ? (state.attempts[state.current_stage] ?? 0)
       : 0
+
     const feedback = state.operator_feedback ?? []
     const index = feedback.length + 1
     const relativePath = resolveRunLayout(root, state.run_id).decision(
       `${actor}-feedback-${index}.md`,
     ).relative
+
     const body = [
       actor === 'operator'
         ? '# Operator stage repair'
@@ -7879,16 +8049,19 @@ function ratifyPausedWorkspaceChanges(
 
   const ratificationId = `pause-${randomUUID()}`
   const changedPaths = workspaceChangedPathsFromSnapshots(before, current)
+
   const beforePaths = new Set(before.entries.map((entry) => entry.slice(3)))
   const afterPaths = new Set(current.entries.map((entry) => entry.slice(3)))
   const deletedPaths = [...beforePaths]
     .filter((relativePath) => !afterPaths.has(relativePath))
     .sort()
+
   const ratifications = state.operator_workspace_ratifications ?? []
   const relativePath = resolveRunLayout(root, state.run_id).decision(
     `operator-pause-ratification-${ratifications.length + 1}.md`,
   ).relative
   const actor = pause.actor ?? 'operator'
+
   const body = [
     actor === 'supervisor'
       ? '# Supervisor-paused workspace ratification'
@@ -8227,6 +8400,7 @@ export function recordDelegatedWorker(
     const recordedForRole = (state.delegated_workers ?? []).filter(
       (item) => item.invocation_id === invocationId && item.role === role,
     )
+
     let attempt = recordedForRole.length + 1
     let declaredPaths = [invocation.output.path]
     let harnessPaths: string[] = []
@@ -8566,11 +8740,14 @@ export function recordWorkspaceDirective(
     const relativePath = resolveRunLayout(root, runId).evidence(
       `workspace-directive-${records.length + 1}.md`,
     ).relative
+
     const actingRole = options.actingRole ?? 'supervisor'
     const disposition =
       options.disposition ?? DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION
+
     const timestamp = now()
     const beforeFingerprint = lastAccountableFingerprint(state)
+
     const record: WorkspaceDirectiveRecord = {
       directive_id: `directive-${randomUUID()}`,
       acting_role: actingRole,
@@ -9190,6 +9367,7 @@ export function waiveGate(
     }
 
     let record: TaskRecord | null = null
+
     if (
       history?.record_path &&
       fileExists(resolveInside(root, history.record_path))
@@ -9211,10 +9389,12 @@ export function waiveGate(
         : inferredBlockers.length > 0
           ? inferredBlockers
           : ['*']
+
     const bypassedBeyondRequest = inferredBlockers.filter(
       (blocker) => !waivedCriteria.includes(blocker),
     )
     const wholeStageBypass = bypassedBeyondRequest.length > 0
+
     // A waiver on a stage whose card is prepared or whose worker is running
     // names a blocker in that attempt, not a decision to discard it. Routing
     // forward by default threw away the prepared invocation.
@@ -9257,6 +9437,7 @@ export function waiveGate(
         details: { stage: stage.slug, gate: stageGate, default_target: target },
       },
     )
+
     if (!['succeeded', 'failed', 'canceled', 'paused'].includes(target)) {
       stageBySlug(workflow, target)
     }
@@ -9304,6 +9485,7 @@ export function waiveGate(
     const deferred = normalizeIdentifiers(
       options.deferredAcceptanceCriteria ?? [],
     )
+
     if (options.createSpotfixCase) {
       invariant(
         deferred.length > 0 && history,
@@ -9318,6 +9500,7 @@ export function waiveGate(
     const artifactPath = resolveRunLayout(root, state.run_id).decision(
       `gate-waiver-${waivers.length + 1}.md`,
     ).relative
+
     const sourceEvidencePath =
       assessment?.verdict === 'fail' && assessmentPath
         ? assessmentPath
@@ -9338,6 +9521,7 @@ export function waiveGate(
         : undefined
     const actor = options.actor ?? 'operator'
     const authorship = actor === 'away' ? 'Away-mode' : 'Operator'
+
     const body = [
       `# ${authorship} waiver directive`,
       '',
@@ -9644,6 +9828,7 @@ export function validateOutputForSubmission(
 
   const workflow = loadRunWorkflow(root, state)
   const stage = stageBySlug(workflow, invocation.stage.slug)
+
   // The harness renders the operator brief during submission, so its absence
   // before submit is expected.
   const renderedPath = invocation.output.operator_brief?.rendered_path
@@ -9676,6 +9861,7 @@ export function validateOutputForSubmission(
   const submittedRecord = isRecord(effectiveValue)
     ? effectiveValue
     : ({} as Record<string, unknown>)
+
   // Before submit the output may still sit outside its declared path, or
   // only in memory. Output-targeted validators then read the file under
   // validation, or a scratch copy of the value that is removed afterwards, so
@@ -9687,6 +9873,7 @@ export function validateOutputForSubmission(
     options.submittedPath !== undefined
       ? resolveInside(root, options.submittedPath)
       : null
+
   let scratchOutput: string | null = null
   const outputTargetPath = (): string => {
     // The operator's file wins. A stale copy at the declared path must not
@@ -9719,10 +9906,14 @@ export function validateOutputForSubmission(
   }
 
   try {
+    const reportedValidators = new Set<string>()
+
     for (const {
       requirement,
       target_path: targetPath,
     } of resolveSubmitValidators(root, invocation, submittedRecord, catalog)) {
+      reportedValidators.add(requirement.registry_id)
+
       if (renderedPath && targetPath === renderedPath) {
         checks.push({
           id: `validator.${requirement.registry_id}`,
@@ -9758,6 +9949,22 @@ export function validateOutputForSubmission(
           ? `${requirement.registry_id} passed (${requirement.enforcement})`
           : `${requirement.registry_id} ${result.status} (${requirement.enforcement}): ` +
             result.issues.map((issue) => issue.message).join('; '),
+      })
+    }
+
+    for (const declared of invocation.output.field_contract?.validators ?? []) {
+      if (reportedValidators.has(declared.registry_id)) {
+        continue
+      }
+
+      const passed = declared.enforcement === 'advises'
+
+      checks.push({
+        id: `validator.${declared.registry_id}`,
+        passed,
+        message:
+          `${declared.registry_id} could not be resolved from the invocation ` +
+          `requirements (${declared.enforcement})`,
       })
     }
   } finally {
@@ -9813,9 +10020,11 @@ export function delegateEvidenceWorkers(
   const stage = stageBySlug(workflow, state.current_stage)
   const invocation = readInvocation(root, state.current_invocation.json_path)
   const pipelineConfig = loadRunPipelineConfig(root, state)
+
   const workspaceDir = workspaceDirectory(root, state)
   const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
   const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+
   const results: EvidenceWorkerDelegation[] = []
   let cursorPreflighted = false
 

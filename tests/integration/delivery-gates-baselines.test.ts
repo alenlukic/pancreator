@@ -106,6 +106,7 @@ test('new repository-check diagnostics still block implementation', () => {
 test('a repository-check gate credits an inherited failure the stage fixed', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
+
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',

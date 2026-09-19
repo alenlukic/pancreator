@@ -116,6 +116,7 @@ class InventoryCollector {
   }
 }
 
+// style: allow style.default_export Node loads a test reporter through its default export.
 export default async function* inventoryReporter(
   source: AsyncIterable<TestEvent>,
 ): AsyncGenerator<string> {

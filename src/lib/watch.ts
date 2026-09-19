@@ -588,10 +588,12 @@ export function observeInvocation(
 ): WatchObservation {
   const outputPath = invocation.output.path
   const outputAbsolute = resolveInside(root, outputPath)
+
   let outputPresent = false
   let outputParses = false
   let outputMatches = false
   let outputIsScaffold = false
+
   let missingRequired: string[] = []
 
   if (fileExists(outputAbsolute)) {
@@ -906,11 +908,13 @@ export function markDelegationBackground(
   const relative = backgroundMarkerPath(root, runId, invocationId)
   const absolute = resolveInside(root, relative)
   const existing = fileExists(absolute) ? readJson(absolute) : null
+
   const markedAt = new Date().toISOString()
   const firstMarkedAt =
     isRecord(existing) && typeof existing.first_marked_at === 'string'
       ? existing.first_marked_at
       : markedAt
+
   // Only the launch record answers when supervision was owed. Without this
   // number a supervisor that armed the watch at once and one that armed it
   // after an operator reprimand leave identical evidence.
@@ -1291,6 +1295,7 @@ export function recordForegroundReturn(
   const invocation = resolveWatchedInvocation(root, runId, options.invocationId)
   const invocationId = invocation.invocation_id
   const returnedMs = Date.now()
+
   // File times carry sub-millisecond precision; `Date.now()` does not, so a
   // fractional mtime taken in the same millisecond would read as later.
   const invocationRecord = observePath(
@@ -1434,13 +1439,17 @@ export async function watchInvocation(
 ): Promise<WatchResult> {
   const invocation = resolveWatchedInvocation(root, runId, options.invocationId)
   const invocationId = invocation.invocation_id
+
   const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
   const stallWakes = options.stallWakes ?? DEFAULT_STALL_WAKES
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
+
   const sleep = options.sleep ?? defaultSleep
   const now = options.now ?? Date.now
+
   const recordRelative = watchRecordPath(root, runId, invocationId)
   const recordAbsolute = resolveInside(root, recordRelative)
+
   const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
 
@@ -1555,6 +1564,7 @@ export async function watchInvocation(
   let unchangedWakes = 0
   let armings = 0
   let wakes = 0
+
   // Wakes keep an absolute schedule so the time an observation takes does not
   // push every later wake back. A wake that already fell due is taken at once;
   // the schedule then restarts from now rather than firing a burst.
@@ -1845,6 +1855,7 @@ export function summarizeDelegationObservation(
 ): DelegationObservation {
   const watch = summarizeDelegationWatch(root, runId, invocationId)
   const foregroundReturn = summarizeForegroundReturn(root, runId, invocationId)
+
   // The exemption rests on the execution record `pan delegate` writes. A
   // hand-supplied output for a harness-dispatched stage has no such record
   // and is as unobserved as any other.
@@ -2080,11 +2091,13 @@ export function writeRedlineRecord(
     const state: RunState = loadState(root, runId)
     const relative = redlineRecordPath(root, runId)
     const absolute = resolveInside(root, relative)
+
     const existing = fileExists(absolute) ? readJson(absolute) : null
     const priorDeclarations =
       isRecord(existing) && Array.isArray(existing.declarations)
         ? (existing.declarations as RedlineDeclaration[])
         : []
+
     const declaration: RedlineDeclaration = {
       declared_at: new Date().toISOString(),
       occasion,

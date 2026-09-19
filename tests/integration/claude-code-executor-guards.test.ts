@@ -120,6 +120,7 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
   const root = createFixture()
   const agentPath = path.join(root, '.cursor', 'agents', 'pan-planner.md')
   const before = readFileSync(agentPath, 'utf8')
+
   const configPath = path.join(root, 'config.json')
   const original = readFileSync(configPath, 'utf8')
   const config = JSON.parse(original) as {

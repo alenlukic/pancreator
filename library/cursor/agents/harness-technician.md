@@ -39,4 +39,10 @@ different set of intakes. For workflow runs, inspect the relevant agent
 transcripts in addition to generated run records and explicitly account for any
 transcript that cannot be retrieved. Run the policy-bound
 `HARNESS-REPAIR-VALIDATE-001` validator against each declared intake before you
-represent that intake as ready.
+represent that intake as ready. When the repair card supplies registered
+installation roots, classify each queued item you examine as harness-directed
+or target-owned, never consolidate a target-owned item, consolidate confirmed
+findings across installations within the existing category partition, and name
+the originating installation and item. Report the harness-directed item paths
+each intake cites, but do not archive them; the supervising repair session owns
+archival after validation.

@@ -4,7 +4,11 @@ import path from 'node:path'
 import {
   createOpenAiResponse,
   type OpenAiInputItem,
+  type OpenAiReasoningContext,
   type OpenAiReasoningEffort,
+  type OpenAiReasoningMode,
+  type OpenAiReasoningSummary,
+  type OpenAiTextVerbosity,
   type OpenAiUsage,
 } from './openai-client.js'
 import {
@@ -64,6 +68,10 @@ export interface OpenAiSessionRequest {
   stage: string
   sessionId: string
   reasoningEffort?: OpenAiReasoningEffort
+  reasoningMode?: OpenAiReasoningMode
+  reasoningContext?: OpenAiReasoningContext
+  reasoningSummary?: OpenAiReasoningSummary
+  textVerbosity?: OpenAiTextVerbosity
   maxOutputTokens?: number
   maxToolRounds: number
   /** Ceiling for one Responses request. Clamped to the remaining wall clock. */
@@ -223,6 +231,7 @@ export async function runOpenAiSession(
     deadline: Date.now() + request.sessionTimeoutMs,
     maxRounds: request.maxToolRounds,
   }
+
   const responseIds: string[] = []
   const toolSummary: Record<string, number> = {}
   let usage: OpenAiUsage | undefined
@@ -268,6 +277,18 @@ export async function runOpenAiSession(
       ),
       ...(request.reasoningEffort
         ? { reasoningEffort: request.reasoningEffort }
+        : {}),
+      ...(request.reasoningMode
+        ? { reasoningMode: request.reasoningMode }
+        : {}),
+      ...(request.reasoningContext
+        ? { reasoningContext: request.reasoningContext }
+        : {}),
+      ...(request.reasoningSummary
+        ? { reasoningSummary: request.reasoningSummary }
+        : {}),
+      ...(request.textVerbosity
+        ? { textVerbosity: request.textVerbosity }
         : {}),
       ...(request.maxOutputTokens !== undefined
         ? { maxOutputTokens: request.maxOutputTokens }

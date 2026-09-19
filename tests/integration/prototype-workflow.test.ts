@@ -117,6 +117,7 @@ test('operator-authorized narrowing lets approach advance to build', () => {
     title: 'Narrowed spike',
   })
   const runId = state.run_id
+
   const layout = path.join('runtime/logs/workflows', runId, 'agent')
   const decisionPath = `${layout}/decisions/operator-feedback-1.md`
 
