@@ -10006,7 +10006,11 @@ export interface EvidenceWorkerDelegation {
 export function delegateEvidenceWorkers(
   root: string,
   runId: string,
-  options: OperationProgressOptions & { headless?: boolean } = {},
+  options: OperationProgressOptions & {
+    headless?: boolean
+    /** Dispatch only these roles, so a caller can run the workers in parallel processes. */
+    roles?: string[]
+  } = {},
 ): EvidenceWorkerDelegation[] {
   const state = loadState(root, runId)
 
@@ -10029,6 +10033,10 @@ export function delegateEvidenceWorkers(
   let cursorPreflighted = false
 
   for (const worker of invocation.evidence_workers ?? []) {
+    if (options.roles && !options.roles.includes(worker.role)) {
+      continue
+    }
+
     const evidenceAbsolute = resolveInside(root, worker.evidence_path)
     const base = {
       role: worker.role,

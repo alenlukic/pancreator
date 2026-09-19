@@ -12,6 +12,7 @@ import {
   DEFAULT_WORKFLOW_SLUG,
   decideRun,
   armWorkerWatch,
+  delegateEvidenceWorkers,
   delegateInvocation,
   getRunStatus,
   getRunState,
@@ -1429,8 +1430,46 @@ async function main(): Promise<void> {
         timeoutMs = parsedTimeout
       }
 
+      // --headless lets the operator's own session dispatch a Cursor persona
+      // through the harness path when the platform exposes no projected
+      // agent to launch: the cursor-agent CLI receives the mapped model
+      // explicitly, so the model fidelity INVOCATION-001 protects holds, and
+      // the harness authors the delegation evidence itself. As in the
+      // headless driver, the stage's evidence workers run first; --evidence-only
+      // runs those (optionally one --role) and returns, so a supervisor can
+      // dispatch them in parallel processes before the stage worker.
+      const headless = hasFlag(args, '--headless')
+      const evidenceOnly = hasFlag(args, '--evidence-only')
+      const evidenceRole = option(args, '--role')
+
+      if (headless || evidenceOnly) {
+        const workers = delegateEvidenceWorkers(root, runId, {
+          headless: true,
+          ...(evidenceRole ? { roles: [evidenceRole] } : {}),
+          onProgress: (message) =>
+            process.stderr.write(`[pan delegate:${runId}] ${message}\n`),
+        })
+        const failed = workers.filter((worker) => !worker.ok)
+
+        if (evidenceOnly || failed.length > 0) {
+          print({
+            status:
+              failed.length > 0 ? 'evidence_failed' : 'evidence_delegated',
+            run_id: runId,
+            evidence_workers: workers,
+          })
+
+          if (failed.length > 0) {
+            process.exitCode = 1
+          }
+
+          return
+        }
+      }
+
       const result = delegateInvocation(root, runId, {
         ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        ...(headless ? { headless: true } : {}),
         onProgress: (message) =>
           process.stderr.write(`[pan delegate:${runId}] ${message}\n`),
       })
