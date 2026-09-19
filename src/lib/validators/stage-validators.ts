@@ -24,6 +24,7 @@ import {
 } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
+import { inboxTemporalScanDirectories } from '../inbox.js'
 import { readProjectConfig } from '../project-config.js'
 import { loadRepositoryChecks } from '../repository-checks.js'
 import { resolveRunLayout } from '../run-layout.js'
@@ -4017,6 +4018,60 @@ function basenameCarriesSlug(basename: string, slug: string): boolean {
   return new RegExp(`(?:^|-)${slug}(?:-|$)`, 'u').test(basename)
 }
 
+const SIBLING_INTAKE_PATTERN =
+  /\bharness-repair-\d{8}T\d{6}Z-[a-z0-9-]+\.md\b/gu
+
+/**
+ * An intake cites a sibling by file name alone, and the sibling may sit in any
+ * inbox status of this checkout or of a registered installation, because a
+ * consolidated sweep names the items it read in each installation's queue.
+ */
+function inboxRootsForSiblingIntakes(root: string): string[] {
+  const roots = [root]
+
+  try {
+    for (const installation of readProjectConfig(root)?.installations ?? []) {
+      roots.push(installation.path)
+    }
+  } catch {
+    // An unreadable configuration is another validator's finding; the
+    // sibling check then resolves against this checkout alone.
+  }
+
+  return roots
+}
+
+function inboxHoldsFile(root: string, fileName: string): boolean {
+  const directories = ['runtime/inbox', ...inboxTemporalScanDirectories()]
+
+  return directories.some((directory) =>
+    fileExists(path.join(root, directory, fileName)),
+  )
+}
+
+function unresolvedSiblingIntakes(
+  root: string,
+  targetPath: string,
+  content: string,
+): string[] {
+  const ownName = path.basename(targetPath)
+  const roots = inboxRootsForSiblingIntakes(root)
+  const unresolved = new Set<string>()
+
+  for (const match of content.matchAll(SIBLING_INTAKE_PATTERN)) {
+    const name = match[0]
+
+    if (
+      name !== ownName &&
+      !roots.some((inboxRoot) => inboxHoldsFile(inboxRoot, name))
+    ) {
+      unresolved.add(name)
+    }
+  }
+
+  return [...unresolved]
+}
+
 export function validateHarnessRepairIntake(
   input: HandlerInput,
 ): HandlerResult {
@@ -4115,6 +4170,19 @@ export function validateHarnessRepairIntake(
         ),
       )
     }
+  }
+
+  for (const name of unresolvedSiblingIntakes(
+    input.root,
+    input.targetPath,
+    content,
+  )) {
+    issues.push(
+      issue(
+        'repair.sibling_reference',
+        `Intake names sibling intake '${name}', which no inbox of this checkout or of a registered installation holds`,
+      ),
+    )
   }
 
   for (const heading of requiredHeadings) {

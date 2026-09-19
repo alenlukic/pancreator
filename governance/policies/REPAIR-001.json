@@ -25,7 +25,8 @@
     "Every embedded-installation sweep finding MUST name its originating installation and queued item. This provenance rule is judgment-only, and `pan installs archive` deterministically enforces the intake-citation guard before archival.",
     "The harness technician MUST remain read-only in every registered installation and MUST report the harness-directed item paths each consolidated intake cites without archiving them.",
     "The supervising repair session MUST archive installation inbox items only after every intake it collected passes every resolved policy-bound validator. It MUST use `pan installs archive`, and MUST archive only cited harness-directed items.",
-    "A repair input that does not begin with `installs` MUST keep the existing single-report investigation behavior unchanged."
+    "A repair input that does not begin with `installs` MUST keep the existing single-report investigation behavior unchanged.",
+    "The harness technician MUST query the commit log for a carried finding's intake file name and finding id before re-verification. A closing repair names both in its commit message, so a commit that names the finding is its disposition. Only a finding no commit names needs re-verification against the repository."
   ],
   "requirements": [
     {
