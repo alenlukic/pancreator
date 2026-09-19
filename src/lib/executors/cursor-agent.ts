@@ -26,8 +26,29 @@ function stderrSummary(stderr: string): string {
   return ` ${lastLine.slice(0, STDERR_SUMMARY_MAX)}`
 }
 
+/** Bound for a probe or an away evaluation, which answers one question. */
 const DEFAULT_TIMEOUT_MS = 120_000
+/**
+ * Bound for a stage-worker session. A coder implementing an intake works for
+ * hours, and the first real headless worker was killed at the probe bound
+ * while it was still reading the repository. A persona's `timeout-ms` option
+ * overrides this.
+ */
+const DEFAULT_SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024
+/**
+ * A stage session streams every tool result through stdout, and two minutes
+ * of repository reading produced 1.5 MB, so the probe bound would kill a
+ * working session long before its timeout.
+ */
+const MAX_SESSION_OUTPUT_BYTES = 768 * 1024 * 1024
+
+function effectiveTimeoutMs(request: CursorAgentRequest): number {
+  return (
+    request.timeoutMs ??
+    (request.requireTrust ? DEFAULT_SESSION_TIMEOUT_MS : DEFAULT_TIMEOUT_MS)
+  )
+}
 
 /** Binary used for bounded Cursor evaluations and session recovery. */
 export function cursorAgentBinary(): string {
@@ -336,8 +357,10 @@ function runCursorAgent(
     // from stdin when no positional prompt is given, as claude-code.ts relies
     // on for the same reason.
     input: request.prompt,
-    timeout: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: effectiveTimeoutMs(request),
+    maxBuffer: request.requireTrust
+      ? MAX_SESSION_OUTPUT_BYTES
+      : MAX_OUTPUT_BYTES,
   })
 
   const durationMs = Date.now() - startedAt
@@ -371,7 +394,7 @@ function runCursorAgent(
       stdout,
       stderr,
       error: timedOut
-        ? `Cursor agent timed out after ${request.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms.`
+        ? `Cursor agent timed out after ${effectiveTimeoutMs(request)}ms.`
         : spawned.signal
           ? `Cursor agent was killed by ${spawned.signal}.${stderrSummary(stderr)}`
           : `Cursor agent exited with status ${String(spawned.status)}.${stderrSummary(stderr)}`,

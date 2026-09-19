@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 import { maybeStartDelivery, type DeliveryAutostartResult } from './cohorts.js'
+import { PanError } from './errors.js'
 import {
   decideRun,
   delegateEvidenceWorkers,
@@ -278,10 +279,36 @@ export function driveRun(
       }
 
       options.onProgress?.(`delegating ${invocation.stage.slug} to ${executor}`)
-      const delegated = delegateInvocation(root, runId, {
-        onProgress: options.onProgress,
-        headless: true,
-      })
+      let delegated: ReturnType<typeof delegateInvocation>
+
+      try {
+        delegated = delegateInvocation(root, runId, {
+          onProgress: options.onProgress,
+          headless: true,
+        })
+      } catch (error) {
+        // A worker that timed out or died is a recorded fact, not a driver
+        // crash. Letting it escape took the whole session down, and a caller
+        // that retried the checkpoint relaunched the same worker each time.
+        // The stop is operator-only: relaunching without a diagnosis spends
+        // another full session on the same failure.
+        if (
+          error instanceof PanError &&
+          error.code === 'EXTERNAL_EXECUTOR_FAILED'
+        ) {
+          handoffReason = `delegation failed: ${error.message}`
+          stop = {
+            type: 'operator_pause',
+            action: 'operator_decision',
+            stage: invocation.stage.slug,
+            operator_only: true,
+            reason: handoffReason,
+          }
+          break
+        }
+
+        throw error
+      }
 
       if (!delegated.execution) {
         handoffReason = `delegation paused the run: ${delegated.state.pause_reason ?? 'unknown reason'}`
