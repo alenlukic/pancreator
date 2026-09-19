@@ -26,6 +26,10 @@
       "audience": ["harness"]
     },
     {
+      "text": "Repository validation MUST reject a `.cursorignore` rule that excludes a managed worktree root. Worktree instruction files MAY remain ignored, but the invocation workspace itself MUST remain available to ordinary file tools (`projection-validate`).",
+      "audience": ["harness"]
+    },
+    {
       "text": "The context-bloat disposition record MUST cover each detected duplicate group and installer monkeypatch through the registered directive-audit requirement. The record MUST give a rationale and evidence for each retained exception (`directive-audit`).",
       "audience": ["harness"]
     },

@@ -262,6 +262,7 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
     'VERSION',
     'package-lock.json',
     '.gitignore',
+    '.cursorignore',
   ]) {
     cpSync(path.join(REPO_ROOT, entry), path.join(root, entry))
   }

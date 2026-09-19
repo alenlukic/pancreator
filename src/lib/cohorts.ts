@@ -2505,6 +2505,10 @@ function routeDelivery(
       }
     }
 
+    if (!existing) {
+      assertPlanningWorktreeCommitted(root, state)
+    }
+
     // Init records the cohort handoff on the plan run itself.
     const session =
       existing ??
@@ -2533,6 +2537,61 @@ function routeDelivery(
 /** The one command that completes a failed route by hand. */
 function routeRetryCommand(root: string, planRunId: string): string {
   return `${panCommand(root)} cohort route --plan-run ${planRunId}`
+}
+
+/**
+ * Refuse a cohort fan-out while the planning worktree holds uncommitted work.
+ *
+ * A single-chunk route inherits the planning worktree and carries that work
+ * forward in place. A cohort cannot: every chunk worktree branches from the
+ * committed head of the base branch, so anything uncommitted in the planning
+ * tree stays behind, and an unattended approval is exactly when nobody
+ * compares the two trees. The route stops and names the commit the operator
+ * owes; the recorded retry command routes once the tree is clean. An
+ * attributed read-only input is exempt, as at every other clean-tree gate.
+ */
+function assertPlanningWorktreeCommitted(
+  root: string,
+  planState: RunState,
+): void {
+  const worktree = planState.managed_worktree
+
+  if (!worktree) {
+    return
+  }
+
+  const worktreePath = path.resolve(root, worktree.path)
+
+  // A planning worktree the operator already removed holds nothing to carry.
+  if (!isGitRepository(worktreePath)) {
+    return
+  }
+
+  const cleanliness = workspaceCleanliness(root, worktreePath)
+
+  if (cleanliness.clean) {
+    return
+  }
+
+  invariant(
+    false,
+    cleanTreeRefusal(cleanliness, {
+      action:
+        `Plan run ${planState.run_id} cannot fan out into a cohort from ` +
+        `planning worktree '${worktree.name}'`,
+      remedy:
+        'Every chunk worktree branches from the committed head, so this ' +
+        `work would be left behind. Commit it on branch '${worktree.branch}' ` +
+        `in ${worktree.path}, then run '${routeRetryCommand(root, planState.run_id)}'.`,
+    }),
+    {
+      code: 'COHORT_PLANNING_WORKTREE_DIRTY',
+      details: {
+        worktree: worktree.name,
+        blocking_paths: cleanliness.blocking.map((entry) => entry.path),
+      },
+    },
+  )
 }
 
 function deliveryWorktreeName(planRunId: string, chunkId: string): string {
@@ -2687,20 +2746,23 @@ function startSingleDeliveryRun(
     { code: 'COHORT_CHILD_SPEC_NOT_FOUND' },
   )
 
-  // The derived name keeps an unattended route reproducible. An operator who
-  // already prepared a worktree — a rebased branch, a warmed install — had no
-  // way to say so and got a second checkout beside the one they meant to use.
+  // The planning run's managed worktree is the operator's selected delivery
+  // workspace too. Reusing it carries any attributed or uncommitted plan-time
+  // work forward in place instead of silently branching from its committed
+  // head. An explicit route option still overrides the inherited choice.
+  const selectedWorktreeName =
+    options.worktreeName ?? planState.managed_worktree?.name
   const worktreeName =
-    options.worktreeName ?? deliveryWorktreeName(planState.run_id, chunk.id)
+    selectedWorktreeName ?? deliveryWorktreeName(planState.run_id, chunk.id)
   const existingWorktree = readWorktreeIndex(root).worktrees.find(
     (entry) => entry.name === worktreeName,
   )
 
   invariant(
-    options.worktreeName === undefined || existingWorktree !== undefined,
+    selectedWorktreeName === undefined || existingWorktree !== undefined,
     `Worktree '${worktreeName}' does not exist. Create it with ` +
       `${panCommand(root)} worktree create ${worktreeName}, or omit ` +
-      '--worktree to let the route derive and create one.',
+      '--worktree on an unbound planning run to let the route derive and create one.',
     { code: 'WORKTREE_NOT_FOUND', details: { worktree: worktreeName } },
   )
 

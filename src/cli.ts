@@ -122,6 +122,7 @@ import {
 import {
   AWAY_SUBCOMMAND_OPTIONS,
   awayDecisionLedgerPath,
+  awayEvaluationResponse,
   awayModeTrigger,
   readAwayDecisionLedger,
   recordAwayApplyResult,
@@ -549,6 +550,7 @@ function integerOption(args: string[], name: string): number | null {
 export const WORKTREE_CAPABLE_SURFACES = [
   'init',
   'decide',
+  'away apply',
   'cohort route',
   'horizon init',
   'prepare',
@@ -1375,6 +1377,7 @@ async function main(): Promise<void> {
 
       const result = prepareInvocation(root, runId, {
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
+        prepareDelegation: true,
         ...(agent !== null ? { agent } : {}),
         onProgress: (message) =>
           process.stderr.write(`[pan next:${runId}] ${message}\n`),
@@ -1895,7 +1898,9 @@ async function main(): Promise<void> {
           )
         }
 
-        print(evaluateAwayState(root, state, blocker), json)
+        const decision = evaluateAwayState(root, state, blocker)
+
+        print(awayEvaluationResponse(pan, decision), json)
         return
       }
 
@@ -1993,10 +1998,15 @@ async function main(): Promise<void> {
         // Same hook as `pan decide`: it runs after the applied decision is
         // durable and outside the try above, so a routing failure neither rolls
         // back the approval nor records a `failed` beside the `applied`.
-        const autostart = maybeStartDelivery(root, next, {
-          actor: 'away',
-          action: decision.selected_action?.action ?? '',
-        })
+        const autostart = maybeStartDelivery(
+          root,
+          next,
+          {
+            actor: 'away',
+            action: decision.selected_action?.action ?? '',
+          },
+          deliveryRouteOptions(args),
+        )
         const advance = maybeAdvanceCohort(root, next)
 
         print(
@@ -4616,7 +4626,10 @@ async function main(): Promise<void> {
           : `watch ${result.state}: invocation ${result.invocation_id}, ` +
               `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s, ` +
               `record ${result.record_path}, launch ` +
-              `${launchRecordPath(root, runId, result.invocation_id)}`,
+              `${launchRecordPath(root, runId, result.invocation_id)}` +
+              (result.rearm_command
+                ? `; re-arm with: ${result.rearm_command}`
+                : ''),
         json,
       )
       process.exitCode = WATCH_EXIT_CODES[result.state]

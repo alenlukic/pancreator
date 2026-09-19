@@ -6,6 +6,7 @@ import {
   renderSuiteProfileStatusLine,
 } from './suite-profile.js'
 import { sha256 } from './io.js'
+import { cursorAgentName } from './projection.js'
 import {
   renderContextReferenceBlock,
   renderPolicyBlocks,
@@ -257,12 +258,9 @@ export function orderedWorkerActions(
 
   const { delegation } = invocation
   const stageAgent =
-    typeof delegation?.cursor_agent_path === 'string'
-      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
-          /\.md$/u,
-          '',
-        )
-      : (delegation?.persona ?? invocation.stage.persona)
+    cursorAgentName(delegation?.cursor_agent_path) ??
+    delegation?.persona ??
+    invocation.stage.persona
 
   return [
     ...evidenceWorkers.map((worker, index) => ({
@@ -428,12 +426,7 @@ function renderSupervisorProcedureBody(
   // The launch must bind to this named definition: it alone carries the
   // persona's model mapping, and an ad-hoc spawn runs the executor default.
   const namedAgent =
-    typeof delegation.cursor_agent_path === 'string'
-      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
-          /\.md$/u,
-          '',
-        )
-      : delegation.persona
+    cursorAgentName(delegation.cursor_agent_path) ?? delegation.persona
 
   // `pan watch` and `pan worker record` share one command prefix built in
   // `prepare`, and that prefix — `./bin/pan` in the harness checkout, an
@@ -784,8 +777,19 @@ export function renderEvidenceWorkerBrief(
     ...(harnessRoot
       ? [
           '',
-          `**Harness root** \`${harnessRoot}\` — every \`./bin/pan\` command ` +
-            'in this brief runs from this directory, not the workspace.',
+          `**Harness root** \`${harnessRoot}\` — lifecycle and evidence ` +
+            'commands run from this installation directory.',
+          ...(invocation.installation_mode === 'self_development' &&
+          invocation.managed_worktree
+            ? [
+                '',
+                `**Verification root** Commands that exercise changed harness ` +
+                  `source run from \`${harnessRoot}\` as ` +
+                  `\`PANCREATOR_EXEC_ROOT=${harnessRoot}/${invocation.workspace_root} ./bin/pan …\`. ` +
+                  'Bare `./bin/pan` remains the installation-root form for ' +
+                  'lifecycle and evidence commands.',
+              ]
+            : []),
         ]
       : []),
     '',

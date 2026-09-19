@@ -1316,6 +1316,8 @@ export interface Invocation {
   attempt: number
   created_at: string
   workspace_root: string
+  /** Installation topology captured so rendered execution roots stay exact. */
+  installation_mode?: 'self_development' | 'embedded' | 'detached'
   /** Managed worktree identity bound to this run, when selected at init. */
   managed_worktree?: ManagedWorktreeReference
   /** Absolute harness root. Present when the workspace is not the harness checkout, so an external worker resolves harness-relative paths. */

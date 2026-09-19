@@ -17,6 +17,7 @@ import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   DEFAULT_WATCH_CADENCE_SECONDS,
   DELEGATION_UNOBSERVED,
+  WATCH_EXIT_CODES,
   backgroundMarkerPath,
   blockedOutputSnapshotPath,
   completionEvidenceForObservation,
@@ -263,6 +264,16 @@ test('watch reports timed_out at the timeout when the paths keep changing', asyn
 
   assert.equal(result.state, 'timed_out')
   assert.equal(result.wakes, 3)
+  assert.equal(WATCH_EXIT_CODES.completed, 0)
+  assert.equal(WATCH_EXIT_CODES.timed_out, 3)
+  assert.match(
+    result.rearm_command ?? '',
+    new RegExp(
+      `^\\./bin/pan watch ${state.run_id} --invocation ` +
+        `${result.invocation_id} .*--timeout-seconds ${CADENCE_SECONDS * 3}$`,
+      'u',
+    ),
+  )
   // Whole milliseconds on the fake clock: 300 ms, not 0.1 * 3 in floating point.
   assert.ok(result.elapsed_seconds >= 0.3)
 })
