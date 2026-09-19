@@ -237,6 +237,38 @@ test('away mode rejects duplicate ranks and missing action details', () => {
       }),
     /repository-relative path references/u,
   )
+  assert.throws(
+    () =>
+      parseAwayOptions({
+        ranked_options: [
+          {
+            ...option(1, 'resume'),
+            rollback_plan: {
+              steps: [
+                'Run ./bin/pan governance card --mode harden --output-path card.md.',
+              ],
+              verification: 'Confirm the card is restored.',
+            },
+          },
+        ],
+      }),
+    /--output-path.*Accepted:.*--out/u,
+  )
+  assert.doesNotThrow(() =>
+    parseAwayOptions({
+      ranked_options: [
+        {
+          ...option(1, 'resume'),
+          rollback_plan: {
+            steps: [
+              'Run ./bin/pan governance card --mode harden --out card.md.',
+            ],
+            verification: 'Confirm the card is restored.',
+          },
+        },
+      ],
+    }),
+  )
 
   const selection = selectAwayOption(
     parseAwayOptions({

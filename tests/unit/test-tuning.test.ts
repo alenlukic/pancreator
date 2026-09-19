@@ -5,10 +5,12 @@ import test from 'node:test'
 
 import {
   buildBenchmarkFromProfiles,
+  buildBenchmarkSessionRecord,
   identityKey,
   partitionRetainedSet,
   validatePassOverlap,
   validateTuneRecordShape,
+  type BenchmarkSample,
   type PassInterval,
   type TestIdentity,
   type TuneRecord,
@@ -99,6 +101,99 @@ const priorRecord = (benchmark: TuneRecord['benchmark']): TuneRecord => {
     },
   }
 }
+
+const benchmarkSample = (
+  workspace: string,
+  fingerprint: string,
+  population: string[],
+  average: number,
+): BenchmarkSample => ({
+  workspace,
+  workspace_fingerprint: fingerprint,
+  final_workspace_fingerprint: fingerprint,
+  profile: 'fast',
+  test_count: population.length,
+  test_population: population,
+  wall_clock_ms: [average, average, average],
+  average_wall_clock_ms: average,
+  results: ['passed', 'passed', 'passed'],
+})
+
+test('benchmark sessions pair both samples and refuse incomplete comparisons', () => {
+  const baseline = benchmarkSample(
+    'worktrees/baseline',
+    'baseline-fingerprint',
+    ['tests/unit/a.test.ts::a'],
+    100,
+  )
+  const candidate = benchmarkSample(
+    'worktrees/candidate',
+    'candidate-fingerprint',
+    ['tests/unit/a.test.ts::a'],
+    80,
+  )
+  const compared = buildBenchmarkSessionRecord({
+    session_id: 'benchmark-one',
+    population_tolerance: 0,
+    baseline,
+    candidate,
+    recorded_at: '2026-09-19T10:00:00.000Z',
+  })
+
+  assert.equal(compared.baseline?.workspace_fingerprint, 'baseline-fingerprint')
+  assert.equal(
+    compared.candidate?.workspace_fingerprint,
+    'candidate-fingerprint',
+  )
+  assert.deepEqual(compared.baseline?.test_population, [
+    'tests/unit/a.test.ts::a',
+  ])
+  assert.deepEqual(compared.comparison, {
+    status: 'compared',
+    population_delta: 0,
+    average_wall_clock_ms_delta: -20,
+  })
+
+  const missing = buildBenchmarkSessionRecord({
+    session_id: 'benchmark-missing',
+    population_tolerance: 0,
+    baseline,
+    candidate: null,
+  })
+
+  assert.equal(missing.comparison.status, 'refused')
+  assert.match(
+    missing.comparison.status === 'refused' ? missing.comparison.reason : '',
+    /no candidate sample/u,
+  )
+})
+
+test('benchmark sessions refuse populations beyond the declared tolerance', () => {
+  const baseline = benchmarkSample(
+    'worktrees/baseline',
+    'baseline-fingerprint',
+    ['tests/unit/a.test.ts::a'],
+    100,
+  )
+  const candidate = benchmarkSample(
+    'worktrees/candidate',
+    'candidate-fingerprint',
+    ['tests/unit/a.test.ts::a', 'tests/unit/b.test.ts::b'],
+    80,
+  )
+  const refused = buildBenchmarkSessionRecord({
+    session_id: 'benchmark-mismatch',
+    population_tolerance: 0,
+    baseline,
+    candidate,
+  })
+
+  assert.deepEqual(refused.comparison, {
+    status: 'refused',
+    population_delta: 1,
+    reason: 'The test populations differ by 1, above the declared tolerance 0.',
+  })
+})
 
 test('partitionRetainedSet produces three disjoint groups', () => {
   const retained = [sample('a.test.ts', 'one'), sample('b.test.ts', 'two')]

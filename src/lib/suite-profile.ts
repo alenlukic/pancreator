@@ -567,12 +567,11 @@ export function renderSuiteProfileSection(
   summary: SuiteProfileSummary | null,
   fastWall?: FastWallStageSummary,
 ): string[] {
-  const lines = ['## 📈 Suite profile', '']
+  const lines = ['## 📈 Suite profile', '', 'This section is advisory.']
 
   if (summary) {
     lines.push(
-      'This section is advisory. It records the one profiled `full` run, the ' +
-        'release gate at ship entry.',
+      'It records the one profiled `full` run, the release gate at ship entry.',
       '',
       `- Source: \`${summary.profile_path}\` from the ${summary.stage} gate ` +
         `\`${summary.gate_id}\`` +
@@ -618,7 +617,7 @@ export function renderSuiteProfileSection(
         : `- ${label}: no fast-lane record.`
 
     lines.push(
-      '',
+      ...(lines.at(-1) === '' ? [] : ['']),
       '### Implement-stage fast wall',
       '',
       `Source: \`${fastWall.series_path}\`. The before point is the run's ` +

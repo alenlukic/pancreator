@@ -660,21 +660,31 @@ test('the best-of-N candidate planner receives no specification hierarchy or coh
 
   // The card renders the title beside the id, so a title carries the same
   // vocabulary onto the card that a summary or an instruction does.
-  for (const policy of candidate) {
-    for (const text of [
-      policy.title,
-      policy.summary,
-      ...policy.instructions.map((instruction) => instruction.text),
-    ]) {
-      for (const term of hierarchyTerms) {
-        assert.equal(
-          text.toLowerCase().includes(term),
-          false,
-          `${policy.id} MUST NOT reach the candidate planner with "${term}"`,
-        )
-      }
-    }
-  }
+  const hierarchyViolations = (policies: typeof candidate): string[] =>
+    policies.flatMap((policy) =>
+      [
+        policy.title,
+        policy.summary,
+        ...policy.instructions.map((instruction) => instruction.text),
+      ].flatMap((policyText) =>
+        hierarchyTerms
+          .filter((term) => policyText.toLowerCase().includes(term))
+          .map((term) => `${policy.id}:${term}`),
+      ),
+    )
+
+  assert.deepEqual(hierarchyViolations(candidate), [])
+
+  // Reproduce the omitted-title guard: a title alone introduces the forbidden
+  // vocabulary. The shared predicate must observe it without help from the
+  // summary or instructions.
+  assert.deepEqual(
+    hierarchyViolations([
+      { ...candidate[0], title: 'Candidate cohort policy' },
+      ...candidate.slice(1),
+    ]),
+    [`${candidate[0]?.id}:cohort`],
+  )
 
   const hierarchyValidators = [
     'COHORT-PLAN-VALIDATE-001',
@@ -972,6 +982,33 @@ test('TEST-001 resolves testing.md for self-development test personas', () => {
   }).map((policy) => policy.id)
 
   assert.equal(targetIds.includes('TEST-001'), false)
+})
+
+test('regression guards require recorded pre-change signal evidence', () => {
+  const root = sharedFixture()
+  const surfaces = [
+    'governance/handbooks/eng/testing.md',
+    'library/personas/coder.md',
+    'library/personas/reviewer.md',
+  ]
+
+  for (const relative of surfaces) {
+    const content = readFileSync(
+      path.join(root, relative),
+      'utf8',
+    ).toLowerCase()
+
+    assert.match(content, /pre-change state/u, relative)
+    assert.match(content, /record/u, relative)
+  }
+
+  assert.match(
+    readFileSync(
+      path.join(root, 'governance/handbooks/eng/testing.md'),
+      'utf8',
+    ),
+    /### TP-11 · Regression signal/u,
+  )
 })
 
 test('TEST-001 permits directed mechanical governance and preserves judgment boundaries', () => {
@@ -1346,15 +1383,60 @@ test('no conform policy forbids an edit the conform boundary requires', () => {
 
   // Absence is not the contract. The carve-out MUST be stated, so a revert to
   // an exclusion covering all of `docs/` fails here rather than passing.
-  assert.ok(
-    exclusions.some((sentence) => {
+  const hasCarveOut = (sentences: string[], required: string): boolean =>
+    sentences.some((sentence) => {
       const exceptAt = sentence.search(/\bexcept\b/u)
 
-      return (
-        exceptAt !== -1 && sentence.slice(exceptAt).includes('docs/issues/')
-      )
-    }),
-    `no rendered conform instruction carves docs/issues/ out of its exclusion:\n${rendered.join('\n')}`,
+      return exceptAt !== -1 && sentence.slice(exceptAt).includes(required)
+    })
+
+  for (const required of ['docs/issues/', 'governance/policies/']) {
+    assert.ok(
+      hasCarveOut(exclusions, required),
+      `no rendered conform instruction carves ${required} out of its exclusion:\n${rendered.join('\n')}`,
+    )
+  }
+  assert.equal(
+    hasCarveOut(
+      ['All documentation under docs/ is outside the writing rules.'],
+      'docs/issues/',
+    ),
+    false,
+    'the pre-change broad docs exclusion must fail the carve-out guard',
+  )
+  assert.equal(
+    hasCarveOut(
+      [
+        'Source code, code comments, commit messages, README.md, and governance/ are also outside those rules.',
+      ],
+      'governance/policies/',
+    ),
+    false,
+    'the pre-change broad governance exclusion must fail the policy carve-out guard',
+  )
+  // The pre-change sentence above carries no `except`, so it would fail for
+  // any argument and demonstrates nothing about the carve-out itself. This
+  // pair does: one sentence, one `except`, and the verdict turns only on
+  // which path the clause names.
+  assert.equal(
+    hasCarveOut(
+      [
+        'Everything under governance/ is outside those rules, except governance/handbooks/.',
+      ],
+      'governance/policies/',
+    ),
+    false,
+    'a carve-out naming another path must not satisfy the policy carve-out',
+  )
+  assert.equal(
+    hasCarveOut(
+      [
+        'Everything under governance/ is outside those rules, except governance/handbooks/.',
+      ],
+      'governance/handbooks/',
+    ),
+    true,
+    'the predicate reads the path the except clause actually names',
   )
 
   // The boundary reserves release metadata, so nothing on the card may hand it
@@ -1800,13 +1882,25 @@ test('mode governance explains every rule and carries the two canonical tables',
   assert.match(handbook, /\| LH-01\s+\|/u)
   assert.match(handbook, /\| LH-R4\s+\|/u)
 
-  const policyText = [
-    horizon.summary,
-    ...horizon.instructions.map((instruction) => instruction.text),
-    regular.summary,
-    ...regular.instructions.map((instruction) => instruction.text),
-    handbook,
-  ].join('\n')
+  const policyText = (
+    horizonPolicy: typeof horizon,
+    regularPolicy: typeof regular,
+  ): string =>
+    [
+      horizonPolicy.title,
+      horizonPolicy.summary,
+      ...horizonPolicy.instructions.map((instruction) => instruction.text),
+      regularPolicy.title,
+      regularPolicy.summary,
+      ...regularPolicy.instructions.map((instruction) => instruction.text),
+      handbook,
+    ].join('\n')
 
-  assert.doesNotMatch(policyText, /\b[A-Z][A-Z0-9]*-\d{3}\b/u)
+  const policyIdPattern = /\b[A-Z][A-Z0-9]*-\d{3}\b/u
+
+  assert.doesNotMatch(policyText(horizon, regular), policyIdPattern)
+  assert.match(
+    policyText({ ...horizon, title: 'HORIZON-999 mode' }, regular),
+    policyIdPattern,
+  )
 })

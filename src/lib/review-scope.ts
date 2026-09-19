@@ -37,6 +37,7 @@ export const REVIEW_MACHINERY_PATTERNS = [
   'src/lib/review-dimensions.ts',
   'src/lib/review-scope.ts',
   'src/lib/governance-card.ts',
+  'src/lib/pan-command-grammar.ts',
   'src/lib/policies.ts',
   'src/lib/policy-guidance.ts',
   'src/lib/policy-instructions.ts',

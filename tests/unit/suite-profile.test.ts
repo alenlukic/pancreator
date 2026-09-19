@@ -443,7 +443,9 @@ test('the verify card shows fast-wall measurements around implementation', () =>
     },
   }).join('\n')
 
+  assert.match(section, /This section is advisory\./u)
   assert.match(section, /Implement-stage fast wall/u)
+  assert.doesNotMatch(section, /\n\n\n/u)
   assert.match(
     section,
     /Before implement: 1300 tests in 119\.0s .*100\.000ms marginal per test.*\(phase `baseline`\)/u,
@@ -471,6 +473,51 @@ test('the verify card shows fast-wall measurements around implementation', () =>
 
   assert.match(withoutMarginal, /Before implement: no fast-lane record\./u)
   assert.match(withoutMarginal, /marginal cost unavailable/u)
+})
+
+test('the verify card combines suite and fast-wall profiles without doubled framing', () => {
+  const summary: SuiteProfileSummary = {
+    profile_path: 'runtime/logs/workflows/run-x/agent/evidence/profile.json',
+    gate_id: 'ship.full_suite',
+    stage: 'ship',
+    cached: false,
+    lane: 'all',
+    test_count: 10,
+    pass_count: 10,
+    fail_count: 0,
+    wall_clock_ms: 2000,
+    slowest_files: [],
+    slowest_tests: [],
+  }
+  const section = renderSuiteProfileSection(summary, {
+    series_path: 'runtime/fast-wall-series.jsonl',
+    before: {
+      recorded_at: '2026-09-15T01:00:00.000Z',
+      wall_clock_ms: 1000,
+      test_count: 9,
+      worker_count: 2,
+      phase: 'baseline',
+      marginal_wall_ms_per_test: 50,
+    },
+    after: {
+      recorded_at: '2026-09-15T02:00:00.000Z',
+      wall_clock_ms: 1100,
+      test_count: 10,
+      worker_count: 2,
+      phase: 'implement.unit_tests',
+      marginal_wall_ms_per_test: 55,
+    },
+  }).join('\n')
+
+  assert.match(section, /This section is advisory\./u)
+  assert.match(section, /Source: `.*profile\.json` from the ship gate/u)
+  assert.match(section, /### Implement-stage fast wall/u)
+  assert.match(section, /### Slowest files/u)
+  assert.ok(
+    section.indexOf('### Implement-stage fast wall') <
+      section.indexOf('### Slowest files'),
+  )
+  assert.doesNotMatch(section, /\n\n\n/u)
 })
 
 test('fixture sidecars live in the runner scratch tree, not the profile target', () => {

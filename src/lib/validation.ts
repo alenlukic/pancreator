@@ -17,13 +17,19 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { validateEvalScenarios } from './evals/scenario.js'
-import { creditKnownFailures } from './known-failing.js'
+import {
+  creditKnownFailures,
+  isolationExecutedTest,
+  parseTestFailureIdentity,
+  repositoryCheckTestFailures,
+} from './known-failing.js'
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   adoptedBaselineWorkspaceDivergence,
   assertRepositoryChecksValid,
   commandFailureDiagnostics,
   compareRepositoryCheckToBaseline,
+  loadRepositoryChecks,
   repositoryCheckProfileName,
   runRepositoryCheck,
 } from './repository-checks.js'
@@ -49,6 +55,7 @@ import {
   FAST_WALL_SERIES_ROOT_ENV,
 } from './fast-wall-series.js'
 import { auditTestScratchDirectories } from './test-scratch-audit.js'
+import { buildModuleGraphByRegex, selectImpactedTests } from './test-impact.js'
 import {
   filterPolicyInstructionsForCard,
   policyInstructionAppliesToCard,
@@ -91,6 +98,7 @@ import {
   gitHead,
   gitIsAncestor,
   gitWorkspaceSnapshot,
+  snapshotEntryPath,
   workspaceAbsorbedPathsFromSnapshots,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
@@ -118,6 +126,7 @@ import type {
   CriterionEvaluation,
   DeterministicResult,
   ExternalDelegationRecord,
+  GateFailureClassification,
   Invocation,
   InvocationContractManifest,
   InvocationDeliveryMode,
@@ -2476,6 +2485,278 @@ function isInfrastructureDiagnostic(diagnostic: string): boolean {
   )
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'"'"'`)}'`
+}
+
+/**
+ * A literal test name as an anchored regular expression.
+ *
+ * Every single-test selector this repository configures takes a pattern, not
+ * a literal. A name carrying `(`, `.`, or `|` therefore selects the wrong
+ * tests or, far worse, no test at all — and a filter that selects nothing
+ * exits cleanly.
+ */
+function testNamePattern(value: string): string {
+  return `^${value.replaceAll(/[\\^$.*+?()[\]{}|/]/gu, '\\$&')}$`
+}
+
+/**
+ * Environment for an isolated rerun.
+ *
+ * A rerun must be a standalone runner invocation. `node --test` marks its
+ * children with `NODE_TEST_CONTEXT`, and a runner that finds that marker
+ * declines to run any file and still exits zero — a clean exit that executed
+ * nothing, which is the one signal this classifier must never read as a pass.
+ */
+function isolationEnvironment(): NodeJS.ProcessEnv {
+  const { NODE_TEST_CONTEXT: _testContext, ...environment } = process.env
+
+  return environment
+}
+
+/**
+ * Substitute one isolation-command placeholder with a shell-quoted value.
+ *
+ * The replacement is supplied as a function because a replacement *string*
+ * reads `$&` and `$'` as patterns, and an anchored test pattern ends in
+ * exactly `$'`.
+ */
+function substituteIsolationToken(
+  template: string,
+  token: string,
+  value: string,
+): string {
+  return template.replaceAll(token, () => shellQuote(value))
+}
+
+function relativeFailureFile(file: string, workspaceDir: string): string {
+  const normalized = file.replaceAll('\\', '/')
+  const workspace = workspaceDir.replaceAll('\\', '/').replace(/\/$/u, '')
+
+  if (normalized.startsWith('<workspace>/')) {
+    return normalized.slice('<workspace>/'.length)
+  }
+
+  if (normalized.startsWith(`${workspace}/`)) {
+    return normalized.slice(workspace.length + 1)
+  }
+
+  return normalized.replace(/^\.\//u, '')
+}
+
+function sourceTestPath(file: string): string {
+  return file.startsWith('dist/tests/') && file.endsWith('.js')
+    ? file.slice('dist/'.length).replace(/\.js$/u, '.ts')
+    : file
+}
+
+function failureKey(file: string, testCase: string): string {
+  return `${sourceTestPath(file)}\u0000${testCase}`
+}
+
+export function classifyGateTestFailures(options: {
+  root: string
+  workspace: WorkspaceSnapshot
+  /**
+   * The snapshot this stage started from. A stage that commits its work leaves
+   * a clean tree, so the dirty entries alone no longer describe what changed.
+   */
+  before?: WorkspaceSnapshot
+  workspaceDir: string
+  profileName: string
+  criterion: Criterion
+  baseline: RepositoryCheckResult
+  current: RepositoryCheckResult
+  comparison: ReturnType<typeof compareRepositoryCheckToBaseline>
+}): {
+  classifications: GateFailureClassification[]
+  reclassifiedPass: boolean
+  advisory: string | null
+} {
+  if (options.comparison.passed) {
+    return { classifications: [], reclassifiedPass: false, advisory: null }
+  }
+
+  const currentFailures = repositoryCheckTestFailures(options.current)
+  const baselineFailures = new Set(
+    repositoryCheckTestFailures(options.baseline).map((failure) =>
+      failureKey(
+        relativeFailureFile(failure.file, options.workspaceDir),
+        failure.case,
+      ),
+    ),
+  )
+
+  if (currentFailures.length === 0) {
+    return { classifications: [], reclassifiedPass: false, advisory: null }
+  }
+
+  // The closure needs every path this stage touched, and a stage that commits
+  // its work leaves none of them dirty. Without the absorbed paths the change
+  // set empties at exactly the moment the classifier runs, and an empty change
+  // set makes every failure look out of closure — the inverse of the guarantee.
+  const changed = [
+    ...new Set([
+      ...options.workspace.entries.map(snapshotEntryPath),
+      ...(options.before
+        ? workspaceAbsorbedPathsFromSnapshots(options.before, options.workspace)
+        : []),
+    ]),
+  ]
+  let impacted = new Set<string>()
+  let graphFiles = new Set<string>()
+
+  try {
+    const graph = buildModuleGraphByRegex(options.workspaceDir)
+    const selection = selectImpactedTests(graph, changed)
+
+    impacted = new Set(selection.selected)
+    graphFiles = new Set(graph.files)
+  } catch {
+    // A missing graph is an unavailable diagnosis, never permission to pass.
+  }
+
+  // No change evidence is an unknown closure, not an empty one. Reclassifying
+  // under it would reach its maximum precisely when the harness knows least,
+  // so the gate keeps its failure and says why.
+  const changeEvidence = changed.length > 0
+
+  const isolationTemplate = loadRepositoryChecks(options.root).profiles[
+    options.profileName
+  ]?.isolation_command
+  const classifications: GateFailureClassification[] = []
+  const seenFailures = new Set<string>()
+
+  for (const failure of currentFailures) {
+    const isolatedFile = relativeFailureFile(failure.file, options.workspaceDir)
+    const sourceFile = sourceTestPath(isolatedFile)
+    const key = failureKey(isolatedFile, failure.case)
+
+    if (seenFailures.has(key)) {
+      continue
+    }
+
+    seenFailures.add(key)
+
+    if (baselineFailures.has(key)) {
+      continue
+    }
+
+    if (!changeEvidence || !graphFiles.has(sourceFile) || !isolationTemplate) {
+      classifications.push({
+        file: sourceFile,
+        test: failure.case,
+        initial_diagnostic: failure.diagnostic,
+        disposition: 'isolation_unavailable',
+        reason: !changeEvidence
+          ? 'no_change_evidence'
+          : graphFiles.has(sourceFile)
+            ? 'no_isolation_command'
+            : 'test_outside_import_graph',
+      })
+      continue
+    }
+
+    if (impacted.has(sourceFile)) {
+      classifications.push({
+        file: sourceFile,
+        test: failure.case,
+        initial_diagnostic: failure.diagnostic,
+        disposition: 'in_change_closure',
+      })
+      continue
+    }
+
+    const command = substituteIsolationToken(
+      substituteIsolationToken(
+        substituteIsolationToken(isolationTemplate, '{file}', isolatedFile),
+        '{test_pattern}',
+        testNamePattern(failure.case),
+      ),
+      '{test}',
+      failure.case,
+    )
+    const rerun = spawnSync(command, {
+      cwd: options.workspaceDir,
+      encoding: 'utf8',
+      shell: true,
+      timeout: options.criterion.timeout_ms ?? 120_000,
+      maxBuffer: 10 * 1024 * 1024,
+      env: isolationEnvironment(),
+    })
+    const timedOut =
+      isNodeError(rerun.error) && rerun.error.code === 'ETIMEDOUT'
+    const cleanExit = rerun.status === 0 && !rerun.error
+    // An exit code answers "did the command succeed", and the question here is
+    // "did the failing test run and pass". Those differ whenever the selector
+    // matches nothing, which is the normal outcome for a name carrying
+    // regular-expression syntax.
+    const executed = isolationExecutedTest(
+      `${rerun.stdout ?? ''}\n${rerun.stderr ?? ''}`,
+      failure.case,
+    )
+    const disposition: GateFailureClassification['disposition'] = !cleanExit
+      ? 'reproduced'
+      : executed
+        ? 'environment_or_flake'
+        : 'isolation_unproven'
+
+    classifications.push({
+      file: sourceFile,
+      test: failure.case,
+      initial_diagnostic: failure.diagnostic,
+      disposition,
+      ...(disposition === 'isolation_unproven'
+        ? { reason: 'isolation_rerun_did_not_report_the_test' }
+        : {}),
+      isolation_command: command,
+      isolation_exit_code: rerun.status,
+      isolation_timed_out: timedOut,
+      isolation_executed: executed,
+    })
+  }
+
+  const reclassifiedDiagnostics = new Set(
+    classifications
+      .filter((entry) => entry.disposition === 'environment_or_flake')
+      .map((entry) => entry.initial_diagnostic),
+  )
+  const substantive = options.comparison.delta.new.filter(
+    (entry) => !entry.diagnostic.startsWith('<status>'),
+  )
+  const allFailingCommandsIdentified = options.current.results
+    .filter((entry) => !entry.passed)
+    .every(
+      (entry) =>
+        entry.kind === 'command' &&
+        !entry.timed_out &&
+        commandFailureDiagnostics(entry, options.current.workspace_root).some(
+          (diagnostic) => parseTestFailureIdentity(diagnostic) !== null,
+        ),
+    )
+  const reclassifiedPass =
+    allFailingCommandsIdentified &&
+    substantive.length > 0 &&
+    substantive.every((entry) => reclassifiedDiagnostics.has(entry.diagnostic))
+  const reclassified = classifications.filter(
+    (entry) => entry.disposition === 'environment_or_flake',
+  )
+  const advisory =
+    reclassified.length === 0
+      ? null
+      : reclassified
+          .map(
+            (entry) =>
+              `Gate failure '${entry.file}::${entry.test}' failed in the ` +
+              'profile and passed its one isolated rerun; classified as ' +
+              '`environment_or_flake`.',
+          )
+          .join(' ')
+
+  return { classifications, reclassifiedPass, advisory }
+}
+
 function runShellCheck(
   root: string,
   runDirectory: string,
@@ -2487,7 +2768,7 @@ function runShellCheck(
   commandOverride?: string,
   artifactId = stage.slug,
   onProgress?: (message: string) => void,
-  options: { entryGate?: boolean } = {},
+  options: { entryGate?: boolean; beforeSnapshot?: WorkspaceSnapshot } = {},
 ): DeterministicResult {
   const workspaceFingerprint = workspace.fingerprint
   const requestedCommand = commandOverride ?? criterion.command ?? ''
@@ -2736,6 +3017,35 @@ function runShellCheck(
     }
   }
 
+  const failureClassification =
+    profileName &&
+    repositoryResult &&
+    baselineResult &&
+    baselineComparison &&
+    !skipped
+      ? classifyGateTestFailures({
+          root,
+          workspace,
+          ...(options.beforeSnapshot ? { before: options.beforeSnapshot } : {}),
+          workspaceDir,
+          profileName,
+          criterion,
+          baseline: baselineResult,
+          current: repositoryResult,
+          comparison: baselineComparison,
+        })
+      : { classifications: [], reclassifiedPass: false, advisory: null }
+
+  if (failureClassification.advisory && repositoryResult) {
+    repositoryResult.advisories.push(failureClassification.advisory)
+  }
+
+  if (failureClassification.classifications.length > 0) {
+    stdout +=
+      '\n--- failure classifications ---\n' +
+      `${JSON.stringify(failureClassification.classifications, null, 2)}\n`
+  }
+
   // A gate with no baseline is judged on its own exit code. That is correct —
   // a verification level baselines only the source-mutating profiles — but the
   // failure it produces looks identical to a regression the run introduced,
@@ -2821,11 +3131,15 @@ function runShellCheck(
     ? false
     : !skipped &&
       (baselineComparison
-        ? baselineComparison.passed
+        ? baselineComparison.passed || failureClassification.reclassifiedPass
         : commandSucceeded || creditedAsBaseline)
   const inheritedFailureOnly = Boolean(
     (baselineComparison?.passed && !commandSucceeded) || creditedAsBaseline,
   )
+  const classificationExplanation = failureClassification.reclassifiedPass
+    ? (failureClassification.advisory ??
+      'Every new gate failure passed its one isolated rerun.')
+    : null
 
   const suiteProfilePath =
     suiteProfileTarget && repositoryResult && fileExists(suiteProfileTarget)
@@ -2874,7 +3188,8 @@ function runShellCheck(
           }
         : baselineComparison
           ? {
-              explanation: baselineComparison.explanation,
+              explanation:
+                classificationExplanation ?? baselineComparison.explanation,
               repository_check_delta: baselineComparison.delta,
               ...(inheritedFailureOnly ? { preexisting_failure: true } : {}),
               ...(environmentBlocked ? { environment_blocked: true } : {}),
@@ -2926,6 +3241,9 @@ function runShellCheck(
       ? { baseline_evidence_path: baselineEvidencePath }
       : {}),
     ...(suiteProfilePath ? { suite_profile_path: suiteProfilePath } : {}),
+    ...(failureClassification.classifications.length > 0
+      ? { failure_classifications: failureClassification.classifications }
+      : {}),
     workspace_fingerprint: workspaceFingerprint,
   }
 }
@@ -3685,6 +4003,7 @@ export function evaluateDeterministicCriteria(
             typeof override === 'string' ? override : undefined,
             artifactId,
             onProgress,
+            { beforeSnapshot },
           ),
         )
       }

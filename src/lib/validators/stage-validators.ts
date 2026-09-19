@@ -27,6 +27,10 @@ import { activeOperatorGateWaivers } from '../waivers.js'
 import { inboxTemporalScanDirectories } from '../inbox.js'
 import { readProjectConfig } from '../project-config.js'
 import { loadRepositoryChecks } from '../repository-checks.js'
+import {
+  panInvocationsInText,
+  panProseInvocationError,
+} from '../pan-command-grammar.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { resolveTargetInstructionPaths } from '../target-instructions.js'
 import {
@@ -2096,6 +2100,20 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
         ),
       )
     }
+
+    for (const argv of panInvocationsInText(text)) {
+      const refusal = panProseInvocationError(argv)
+
+      if (refusal) {
+        issues.push(
+          issue(
+            'plan.case_invalid_pan_invocation',
+            `Test-plan case ${caseId} names \`pan ${argv.join(' ')}\`. ` +
+              refusal,
+          ),
+        )
+      }
+    }
   }
 
   issues.push(...criterionProducerIssues(criteria))
@@ -3509,6 +3527,19 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
 
   if (rollback.trim().length === 0) {
     issues.push(issue('release.rollback', 'rollback_plan MUST be non-empty'))
+  }
+
+  for (const argv of panInvocationsInText(rollback)) {
+    const refusal = panProseInvocationError(argv)
+
+    if (refusal) {
+      issues.push(
+        issue(
+          'release.rollback_command_invalid',
+          `rollback_plan names \`pan ${argv.join(' ')}\`. ` + refusal,
+        ),
+      )
+    }
   }
 
   const governanceReview = isRecord(release.governance_artifact_review)

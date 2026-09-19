@@ -39,6 +39,157 @@ function isFailureHeadline(line: string): boolean {
   return FAILURE_HEADLINE_PATTERNS.some((pattern) => pattern.test(line))
 }
 
+export interface TestFailureIdentity {
+  file: string
+  case: string
+  diagnostic: string
+}
+
+/** Parse one runner headline into the test identity an isolation command needs. */
+export function parseTestFailureIdentity(
+  diagnostic: string,
+): TestFailureIdentity | null {
+  const pytest = /^(?:FAILED|ERROR)\s+(\S+)::(.+?)(?:\s+-\s+|$)/u.exec(
+    diagnostic,
+  )
+
+  if (pytest) {
+    return {
+      file: pytest[1] as string,
+      case: (pytest[2] as string).trim(),
+      diagnostic,
+    }
+  }
+
+  const named = /(?:^|\s)(?:FAIL|×|✕|✗)\s+(\S+)\s+>\s+(.+)$/u.exec(diagnostic)
+
+  if (named) {
+    return {
+      file: named[1] as string,
+      case: (named[2] as string).trim(),
+      diagnostic,
+    }
+  }
+
+  const node =
+    /^not ok(?:\s+\d+)?\s+-\s+(.+?)\s+\((.+):(\d+)(?::\d+)?\)$/u.exec(
+      diagnostic,
+    )
+
+  if (node) {
+    return {
+      file: node[2] as string,
+      case: (node[1] as string).trim(),
+      diagnostic,
+    }
+  }
+
+  return null
+}
+
+/**
+ * Records that name a test the runner actually executed, whatever the verdict.
+ *
+ * A pass is proof only when the transcript names the test that was supposed to
+ * run. Every configured runner reports a filter that selected nothing as a
+ * clean exit, so an exit code alone cannot tell "the failing test passed this
+ * time" apart from "the filter matched no test at all".
+ */
+const EXECUTED_TEST_PATTERNS = [
+  // TAP: `ok 3 - names it`, `not ok 3 - names it`, and the subtest header the
+  // runner prints before a test starts. A SKIP or TODO directive means the
+  // case was reported without being run.
+  /^(?:not )?ok\s+\d+\s*-\s*(.+)$/u,
+  /^# Subtest:\s*(.+)$/u,
+  // node --test spec reporter, vitest, and jest.
+  /^[\u2714\u2716\u2713\u00d7\u2715\u2717]\s+(.+?)(?:\s+\(\d+(?:\.\d+)?\s*ms\))?$/u,
+  // pytest verbose, in both orders it prints.
+  /^\S+::(.+?)\s+(?:PASSED|FAILED|ERROR)\b/u,
+  /^(?:PASSED|FAILED|ERROR)\s+\S+::(.+?)(?:\s+-\s+.*)?$/u,
+]
+
+const TAP_DIRECTIVE = /\s+#\s*(?:SKIP|TODO)\b.*$/iu
+
+/** Test names an isolation transcript reports as executed. */
+export function executedTestNames(output: string): string[] {
+  const names: string[] = []
+
+  for (const rawLine of output.split(/\r?\n/u)) {
+    const line = rawLine.trim()
+
+    for (const pattern of EXECUTED_TEST_PATTERNS) {
+      const match = pattern.exec(line)
+
+      if (!match) {
+        continue
+      }
+
+      const name = (match[1] as string).trim()
+
+      // A directive reports a case the runner declined to execute.
+      if (TAP_DIRECTIVE.test(name)) {
+        break
+      }
+
+      names.push(name)
+      break
+    }
+  }
+
+  return names
+}
+
+/**
+ * Whether an isolation transcript proves the named test executed.
+ *
+ * A runner reports a nested case under its ancestry, and this repository's own
+ * reporter prints the leaf name alone, so a reported name counts when it is
+ * the case or ends with it after a suite separator.
+ */
+export function isolationExecutedTest(
+  output: string,
+  testCase: string,
+): boolean {
+  const wanted = testCase.trim()
+
+  if (wanted.length === 0) {
+    return false
+  }
+
+  return executedTestNames(output).some(
+    (name) =>
+      name === wanted ||
+      name.endsWith(` > ${wanted}`) ||
+      name.endsWith(`::${wanted}`),
+  )
+}
+
+/** Every parseable failing test in a repository-check result. */
+export function repositoryCheckTestFailures(
+  result: RepositoryCheckResult,
+): TestFailureIdentity[] {
+  const failures: TestFailureIdentity[] = []
+
+  for (const entry of result.results) {
+    if (entry.passed || entry.timed_out || entry.kind === 'probe') {
+      continue
+    }
+
+    for (const diagnostic of commandFailureDiagnostics(
+      entry,
+      result.workspace_root,
+    )) {
+      const identity = parseTestFailureIdentity(diagnostic)
+
+      if (identity) {
+        failures.push(identity)
+      }
+    }
+  }
+
+  return failures
+}
+
 function splitOnce(
   value: string,
   separators: readonly string[],

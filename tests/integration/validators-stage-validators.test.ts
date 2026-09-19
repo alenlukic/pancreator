@@ -147,6 +147,7 @@ function writePlanWithQuestions(
       verification: { method: 'unit test', expected: 'passes' },
     },
   ],
+  testPlan: unknown[] = [],
 ): void {
   writeFileSync(
     path.join(root, target),
@@ -164,6 +165,7 @@ function writePlanWithQuestions(
           open_questions: openQuestions,
         },
         acceptance_criteria: criteria,
+        test_plan: testPlan,
         open_question_dispositions: dispositions,
       },
     })}\n`,
@@ -680,6 +682,55 @@ test('release validator requires structured change-list entries', () => {
   assert.ok(
     result.issues.some((issue) => issue.code === 'release.change_list_shape'),
   )
+})
+
+test('release rollback commands use the shared pan option grammar', () => {
+  const root = validatorFixtureRoot('pan-release-rollback-command-')
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          change_list: [],
+          validation: [],
+          rollback:
+            './bin/pan governance card --mode harden --output-path card.md',
+          waivers: [],
+          follow_up_cases: [],
+          governance_artifact_review: {
+            issues_reviewed: [],
+            repairs: [],
+            escalations: [],
+            summary: 'No issues.',
+          },
+          deferred_acceptance_criteria: [],
+          commit_message: 'Release',
+          pr_body: 'Release',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SHIP-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+  })
+  const rollbackIssue = result.issues.find(
+    (item) => item.code === 'release.rollback_command_invalid',
+  )
+
+  assert.ok(rollbackIssue)
+  assert.match(rollbackIssue.message, /--output-path/u)
+  assert.match(rollbackIssue.message, /Accepted:.*--out/u)
 })
 
 test('release validator diffs the declared workspace instead of its dirty parent', () => {
@@ -2114,6 +2165,46 @@ test('verify validator rejects a QA case whose steps rerun a configured profile'
   ])
   assert.ok(reruns.some((item) => item.message.includes('`fast`')))
   assert.ok(reruns.some((item) => item.message.includes('`static`')))
+})
+
+test('plan trace validates pan commands against the shared CLI option grammar', () => {
+  const root = validatorFixtureRoot('pan-plan-command-grammar-')
+  const invalid = 'invalid-command.json'
+  const valid = 'valid-command.json'
+
+  writePlanWithQuestions(root, invalid, [], [], undefined, [
+    {
+      id: 'TP-INVALID',
+      command: './bin/pan governance card --mode harden --output-path <file>',
+    },
+  ])
+  writePlanWithQuestions(root, valid, [], [], undefined, [
+    {
+      id: 'TP-VALID',
+      command: './bin/pan governance card --mode harden --out <file>',
+    },
+  ])
+
+  const invalidResult = validatePlanTrace({
+    root,
+    targetPath: invalid,
+    requirement: planTraceRequirement,
+  })
+  const commandIssue = invalidResult.issues.find(
+    (item) => item.code === 'plan.case_invalid_pan_invocation',
+  )
+
+  assert.ok(commandIssue)
+  assert.match(commandIssue.message, /--output-path/u)
+  assert.match(commandIssue.message, /Accepted:.*--out/u)
+
+  const validResult = validatePlanTrace({
+    root,
+    targetPath: valid,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(validResult.status, 'passed', JSON.stringify(validResult.issues))
 })
 
 test('plan trace rejects a test-plan case that reruns a profile', () => {

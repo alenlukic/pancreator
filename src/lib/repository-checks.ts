@@ -84,6 +84,8 @@ export interface RepositoryCheckProfile {
   environment_probes?: string[]
   probes: string[]
   commands: string[]
+  /** Command template for one isolated test; requires `{file}` and `{test}`. */
+  isolation_command?: string
   /**
    * The profile declares its commands independent of one another, so the
    * asynchronous runner MAY execute them together. Probes stay serial because
@@ -887,6 +889,85 @@ function validateProfileSemantics(
   }
 }
 
+/**
+ * A single-test selector substitutes the failing test's file and name.
+ *
+ * `{test_pattern}` receives the name as an anchored regular expression, which
+ * is what a runner whose filter is a pattern needs; `{test}` receives the
+ * literal name for a runner that selects by node id. A template carrying
+ * neither cannot select one test, so the gate keeps its failure instead.
+ */
+function isIsolationCommand(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.includes('{file}') &&
+    (value.includes('{test_pattern}') || value.includes('{test}'))
+  )
+}
+
+/**
+ * Isolation commands the tracked self-development template declares.
+ *
+ * The self-development runtime configuration is untracked per-installation
+ * state that nothing regenerates, so a runner capability added to the tracked
+ * template would otherwise never reach a live gate here. The adoption is
+ * narrow on purpose: it applies only when the installed profile runs exactly
+ * the template's commands, so a profile an operator rewrote never inherits a
+ * selector for a runner it no longer invokes.
+ */
+function templateIsolationCommands(
+  root: string,
+  filePath: string,
+): Map<string, { commands: string[]; isolation_command: string }> {
+  const adopted = new Map<
+    string,
+    { commands: string[]; isolation_command: string }
+  >()
+  const templatePath = path.join(
+    root,
+    'library',
+    'templates',
+    'repository-checks.self-development.json',
+  )
+
+  // The file check comes first and the installation mode second. Reading the
+  // mode needs `config.json`, and a caller may hold a bare directory that has
+  // a repository-check file and nothing else; loading its profiles must not
+  // start depending on a harness configuration it never had.
+  if (
+    path.resolve(templatePath) === path.resolve(filePath) ||
+    !fileExists(templatePath) ||
+    !isSelfDevelopmentInstallation(root)
+  ) {
+    return adopted
+  }
+
+  const template = readJson(templatePath)
+
+  if (!isRecord(template) || !isRecord(template.profiles)) {
+    return adopted
+  }
+
+  for (const [name, profile] of Object.entries(template.profiles)) {
+    if (
+      !isRecord(profile) ||
+      !isIsolationCommand(profile.isolation_command) ||
+      !Array.isArray(profile.commands) ||
+      !profile.commands.every((command) => typeof command === 'string')
+    ) {
+      continue
+    }
+
+    adopted.set(name, {
+      commands: profile.commands as string[],
+      isolation_command: profile.isolation_command,
+    })
+  }
+
+  return adopted
+}
+
 export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
   const filePath = repositoryChecksSourcePath(root)
 
@@ -928,6 +1009,14 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
       `${filePath}.profiles.${name}.concurrent MUST be a boolean when present.`,
       { code: 'INVALID_REPOSITORY_CHECKS' },
     )
+    invariant(
+      rawProfile.isolation_command === undefined ||
+        isIsolationCommand(rawProfile.isolation_command),
+      `${filePath}.profiles.${name}.isolation_command MUST be a non-empty ` +
+        'string containing {file} and either {test_pattern} or {test} when ' +
+        'present.',
+      { code: 'INVALID_REPOSITORY_CHECKS' },
+    )
 
     profiles[name] = {
       ...(typeof rawProfile.description === 'string'
@@ -935,6 +1024,9 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
         : {}),
       ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
       ...(rawProfile.concurrent === true ? { concurrent: true } : {}),
+      ...(typeof rawProfile.isolation_command === 'string'
+        ? { isolation_command: rawProfile.isolation_command }
+        : {}),
       environment_probes: stringArray(
         rawProfile.environment_probes ?? [],
         `${filePath}.profiles.${name}.environment_probes`,
@@ -947,6 +1039,21 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
         rawProfile.commands ?? [],
         `${filePath}.profiles.${name}.commands`,
       ),
+    }
+  }
+
+  for (const [name, template] of templateIsolationCommands(root, filePath)) {
+    const profile = profiles[name]
+
+    if (
+      profile &&
+      profile.isolation_command === undefined &&
+      sameCommands(profile.commands, template.commands)
+    ) {
+      profiles[name] = {
+        ...profile,
+        isolation_command: template.isolation_command,
+      }
     }
   }
 

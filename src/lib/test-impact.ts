@@ -488,38 +488,33 @@ function addEdge(map: Map<string, Set<string>>, from: string, to: string) {
   map.set(from, targets)
 }
 
-/** Build the module graph of `src/**` and `tests/**`. */
-export async function buildModuleGraph(
+/** Build one graph with a selected parser implementation. */
+function assembleModuleGraph(
   root: string,
-  options: { directories?: string[]; parser?: 'typescript' | 'regex' } = {},
-): Promise<ModuleGraph> {
-  const started = performance.now()
-  const directories = options.directories ?? ['src', 'tests']
+  directories: string[],
+  parse: (file: string, source: string) => ParsedSpecifiers,
+  parser: ModuleGraph['parser'],
+  started: number,
+): ModuleGraph {
   const files = directories.flatMap((directory) =>
     listTypeScriptFiles(root, directory),
   )
   const fileSet = new Set(files)
-
-  const ts = options.parser === 'regex' ? null : await loadTypeScript(root)
   const binScripts = listBinScripts(root)
   const fixtureDirectories = listFixtureDirectories(root)
 
   const imports = new Map<string, Set<string>>()
   const dependents = new Map<string, Set<string>>()
-
   const binReferences = new Map<string, Set<string>>()
   const fixtureReferences = new Map<string, Set<string>>()
   const dataReferences = new Map<string, Set<string>>()
-
   const typeOnlyTargets = new Set<string>()
   const specialReferences = new Map<string, SpecialReferences>()
   const cliSource = fileSet.has('src/cli.ts') ? 'src/cli.ts' : null
 
   for (const file of files) {
     const source = readFileSync(path.join(root, file), 'utf8')
-    const parsed = ts
-      ? parseSpecifiersByTypeScript(ts, file, source)
-      : parseSpecifiersByRegex(source)
+    const parsed = parse(file, source)
 
     imports.set(file, new Set())
 
@@ -540,8 +535,6 @@ export async function buildModuleGraph(
       }
     }
 
-    // One pass per module extracts every bin, fixture, and CLI reference. A
-    // helper's references propagate to the lane tests that import it below.
     const refs = extractSpecialReferences(
       source,
       binScripts,
@@ -558,8 +551,6 @@ export async function buildModuleGraph(
     }
   }
 
-  // Propagate: a lane test depends on every special reference reachable
-  // through the modules it imports, including test helpers.
   for (const [module, refs] of specialReferences) {
     const tests = laneTestsDependingOn(module, dependents)
 
@@ -572,16 +563,12 @@ export async function buildModuleGraph(
         addEdge(fixtureReferences, `tests/fixtures/${name}`, test)
       }
 
-      // Only the test side seeds data references. A `governance/policies`
-      // literal inside a src module would otherwise propagate to every test
-      // that transitively imports it, which is most of the lane.
       if (module.startsWith('tests/')) {
         for (const literal of refs.data) {
           addEdge(dataReferences, literal, test)
         }
       }
 
-      // A test that spawns the CLI depends on the whole CLI program.
       if (refs.cli && cliSource) {
         addEdge(imports, test, cliSource)
         addEdge(dependents, cliSource, test)
@@ -597,9 +584,44 @@ export async function buildModuleGraph(
     fixtureReferences,
     dataReferences,
     typeOnlyTargets,
-    parser: ts ? 'typescript' : 'regex',
+    parser,
     build_ms: Math.round(performance.now() - started),
   }
+}
+
+/** Build the module graph synchronously with the dependency-free parser. */
+export function buildModuleGraphByRegex(
+  root: string,
+  options: { directories?: string[] } = {},
+): ModuleGraph {
+  const started = performance.now()
+
+  return assembleModuleGraph(
+    root,
+    options.directories ?? ['src', 'tests'],
+    (_file, source) => parseSpecifiersByRegex(source),
+    'regex',
+    started,
+  )
+}
+
+/** Build the module graph of `src/**` and `tests/**`. */
+export async function buildModuleGraph(
+  root: string,
+  options: { directories?: string[]; parser?: 'typescript' | 'regex' } = {},
+): Promise<ModuleGraph> {
+  const started = performance.now()
+  const ts = options.parser === 'regex' ? null : await loadTypeScript(root)
+
+  return assembleModuleGraph(
+    root,
+    options.directories ?? ['src', 'tests'],
+    ts
+      ? (file, source) => parseSpecifiersByTypeScript(ts, file, source)
+      : (_file, source) => parseSpecifiersByRegex(source),
+    ts ? 'typescript' : 'regex',
+    started,
+  )
 }
 
 export interface Reach {

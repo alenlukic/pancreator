@@ -34,6 +34,7 @@ test('the coordinator, its policy, and both entry points are machinery', () => {
   // change to it cannot be graded by the squad it shapes.
   const conflicts = reviewMachineryConflicts([
     'src/lib/review-dimensions.ts',
+    'src/lib/pan-command-grammar.ts',
     'governance/policies/REVIEW-001.json',
     'governance/policies/SHEPHERD-001.json',
     'library/cursor/agents/shepherd-reviewer.md',
@@ -44,7 +45,7 @@ test('the coordinator, its policy, and both entry points are machinery', () => {
     'src/lib/io.ts',
   ])
 
-  assert.equal(conflicts.length, 8)
+  assert.equal(conflicts.length, 9)
   assert.equal(conflicts.includes('src/lib/io.ts'), false)
 })
 
@@ -264,6 +265,7 @@ test('the tests of each machinery module are derived substrate', () => {
     'tests/*/review-dimensions*.test.ts',
     'tests/*/review-scope*.test.ts',
     'tests/*/governance-card*.test.ts',
+    'tests/*/pan-command-grammar*.test.ts',
     'tests/*/policies*.test.ts',
     'tests/*/policy-guidance*.test.ts',
     'tests/*/policy-instructions*.test.ts',
@@ -291,20 +293,24 @@ test('the tests of each machinery module are derived substrate', () => {
   )
 })
 
-test('the governance block of the real cli.ts holds the case, the parser, and the card help', () => {
+test('the governance machinery owns the CLI entry points and shared help', () => {
   // The synthetic fixture below proves the slicing rules; this proves they
   // still find the entry points in the file they are written for.
   const block = cliGovernanceBlock(
     readFileSync(path.join(process.cwd(), 'src', 'cli.ts'), 'utf8'),
   )
+  const help = readFileSync(
+    path.join(process.cwd(), 'src', 'lib', 'pan-command-grammar.ts'),
+    'utf8',
+  )
 
   assert.ok(block)
   assert.ok(block.includes("case 'governance': {"))
   assert.ok(block.includes('function commaSeparatedOption('))
-  assert.ok(block.includes('pan governance card --mode <'))
-  assert.ok(block.includes('pan governance review-scope --target <ref>'))
-  assert.ok(block.includes('--base (review mode) renders'))
   assert.ok(!block.includes("case 'best-of-n': {"))
+  assert.ok(help.includes('pan governance card --mode <'))
+  assert.ok(help.includes('pan governance review-scope --target <ref>'))
+  assert.ok(help.includes('--base (review mode) renders'))
 })
 
 test('only a change inside the governance case of cli.ts is an entry-point change', () => {
