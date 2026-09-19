@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.16.1] - 2026-09-19
+
+This release adds four `openai:` bracket options for the Astra Responses API. A persona can set `mode`, `context`, `summary`, and `verbosity`. The `context` option has no replay effect yet.
+
+### Added
+
+- Add `mode`, `context`, `summary`, and `verbosity` as `openai:` bracket options for `reasoning` and `text.verbosity` ([e22825ee](https://github.com/alenlukic/pancreator/commit/e22825ee7d7b3849521d4010b32713c2dbb4114c)).
+
 ## [6.16.0] - 2026-09-18
 
 This release extends the style scanner and the `/pan-style` command. The scanner reports the handbook rules it can decide. The command reads every file that changed after the last checkpoint.
