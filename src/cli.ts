@@ -25,6 +25,7 @@ import {
   probeRunInvocationModel,
   startDetachedWorkerModelProbe,
   quarantineRunForAgent,
+  recordInvocationModelEvidence,
   recordSupervisorModelEvidence,
   resumeRun,
   setRunStage,
@@ -184,7 +185,7 @@ import { resolveRequirements } from './lib/requirements/resolve.js'
 import {
   inferTargetKind,
   isPassingResult,
-  registryStageSlug,
+  registryAppliesToStage,
   resolveRequirementTargetPath,
   runRequirement,
 } from './lib/requirements/run.js'
@@ -268,6 +269,7 @@ import {
   resolveOrCreateWorktree,
   resolveWorktreeWorkspace,
   resolveWorkspacePathOrWorktree,
+  workspaceRepositoryRoot,
   type WorktreeRecord,
 } from './lib/worktrees.js'
 import {
@@ -355,8 +357,9 @@ export const HELP_BODY = `Usage:
   pan tests wall [--json]
       Report the rolling 24-hour fast-lane wall average, permitted ceiling, marginal wall cost per test, and pass or fail verdict.
   pan release sync --worktree <name> --message <message> [--run <run-id>] [--onto <ref> | --no-rebase] [--json]
-      Sync refuses with RELEASE_REMOTE_BEHIND_LOCAL when the fetched remote head is behind the point this branch shares with the local default branch, because the rebase would rewrite commits that branch already carries. It never retargets on its own. --onto <ref> rebases onto a ref the operator names, normally the local integration head; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result.
+      Returns already_current without rebasing when the selected target is already an ancestor of the branch head. Otherwise sync rebases in Git's merge-preserving mode and refuses success with RELEASE_REBASE_TOPOLOGY_LOST when the result drops a merge commit the branch carried or no longer descends from the target; replayed commit hashes are expected to change. --onto <ref> rebases onto a ref the operator names; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result. Sync and finalize return RELEASE_LOCAL_DEFAULT_AHEAD in advisories when the local default branch is ahead of fetched main.
   pan release continue --worktree <name> [--run <run-id>] [--json]
+      Returns not_needed with exit 0 when no rebase is active.
   pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
   pan release allocate --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--json]
       Hand the worktree the next release version above every version published on its head, on pan-dev, on the local default branch, or already allocated, and record the allocation in runtime/release/allocations.jsonl before any release commit exists. Two worktrees allocating against the same base receive different versions, and a repeated request from a worktree whose allocation has not landed returns the same version. The ship validator accepts the allocated version in place of the exact next version for the same bump.
@@ -379,7 +382,7 @@ export const HELP_BODY = `Usage:
       --resolve reads a citation of this run's artifacts — a path or a bare invocation id — through the run's invocation alias map and names the current path. Resequencing at finalization is what leaves a citation stale; the alias map is written then.
   pan list [--json]
   pan inbox [--json]
-      List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
+      List every regular file directly under each runtime/inbox/ lifecycle directory, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status. Unreadable items remain visible with a reason.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
   pan installs list [--json]
@@ -388,6 +391,8 @@ export const HELP_BODY = `Usage:
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
+  pan models evidence --run <run-id> --invocation <invocation-id> --role <worker|evidence-role> --effective-model <model> --source <source> --launch-handle <handle> [--json]
+      Worker evidence accepts only the stage role \`worker\` and evidence-worker roles declared by that invocation. The declared model spec comes from the invocation snapshot.
   pan models --probe --run <run-id> --invocation <invocation-id> [--await-probe] [--json]
       Records an in-flight marker, starts a detached probe, and returns. --await-probe performs the live call in the foreground; the detached child passes it.
       --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
@@ -398,7 +403,8 @@ export const HELP_BODY = `Usage:
   pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
-  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <workflow|assessment|spotfix|investigation|repair|decomposition|documentation|standalone> --registry <id> --target <path> [--run <run-id> | --worktree <name>] [--json]
+  pan requirements run [--invocation <id-or-path> | --persona <p> --workflow <w> --stage <s> --kind <workflow|assessment|spotfix|investigation|repair|decomposition|documentation|standalone>] --registry <id> [--target <path>] [--run <run-id> | --worktree <name>] [--json]
+      --invocation accepts an exact JSON snapshot path or, with --run, an invocation id from that run.
       --run or --worktree binds the check to that run's or worktree's workspace instead of the installation root.
   pan pr-description context [--worktree <name>] [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
@@ -411,6 +417,7 @@ export const HELP_BODY = `Usage:
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
+      closure_tracking is tracked or untracked. closure_revision is null when the target repository does not track the installation closure.
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
   pan best-of-n refresh-agents <bon-id> [--json]
@@ -982,6 +989,107 @@ function invocationKindOption(
   return value as InvocationKind
 }
 
+/** Normalize invocation paths; resolve bare ids through their run layout. */
+function requirementsRunInvocationPath(
+  root: string,
+  invocationReference: string,
+  runId: string | null,
+): string {
+  const isPathReference =
+    path.isAbsolute(invocationReference) ||
+    invocationReference.includes('/') ||
+    invocationReference.includes('\\') ||
+    path.extname(invocationReference).length > 0
+
+  if (isPathReference) {
+    try {
+      return toRepoRelative(root, invocationReference)
+    } catch (error) {
+      if (error instanceof PanError && error.code === 'PATH_ESCAPE') {
+        throw new PanError(
+          `Invocation path must remain inside the harness root: ` +
+            `${invocationReference}. Pass a harness-relative path inside the ` +
+            'root, or pass an invocation id together with --run <run-id>.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
+      throw error
+    }
+  }
+
+  if (!runId) {
+    throw new PanError(
+      `Invocation id '${invocationReference}' requires --run <run-id>. ` +
+        'Alternatively, pass the exact invocation JSON snapshot path.',
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  return resolveRunLayout(root, runId).invocation(invocationReference, '.json')
+    .relative
+}
+
+/** Load and validate the invocation fields `requirements run` consumes. */
+function requirementsRunInvocation(
+  root: string,
+  invocationPath: string,
+): Invocation {
+  const value: unknown = readInvocationFromPath(root, invocationPath)
+  const validRequirement = (entry: unknown): boolean =>
+    isRecord(entry) &&
+    typeof entry.policy_id === 'string' &&
+    typeof entry.requirement_id === 'string' &&
+    typeof entry.registry_id === 'string' &&
+    typeof entry.registry_version === 'string' &&
+    (entry.kind === 'automation' || entry.kind === 'validator') &&
+    typeof entry.phase === 'string' &&
+    typeof entry.executor === 'string' &&
+    typeof entry.target === 'string' &&
+    isRecord(entry.arguments) &&
+    typeof entry.enforcement === 'string' &&
+    typeof entry.failure_route === 'string'
+
+  if (
+    !isRecord(value) ||
+    typeof value.invocation_id !== 'string' ||
+    value.invocation_id.length === 0 ||
+    typeof value.run_id !== 'string' ||
+    value.run_id.length === 0 ||
+    typeof value.workspace_root !== 'string' ||
+    value.workspace_root.length === 0 ||
+    !isRecord(value.workflow) ||
+    typeof value.workflow.slug !== 'string' ||
+    !isRecord(value.stage) ||
+    typeof value.stage.slug !== 'string' ||
+    typeof value.stage.persona !== 'string' ||
+    !isRecord(value.output) ||
+    typeof value.output.path !== 'string' ||
+    !isRecord(value.workspace_before) ||
+    (value.workspace_before.kind !== 'git' &&
+      value.workspace_before.kind !== 'filesystem') ||
+    typeof value.workspace_before.fingerprint !== 'string' ||
+    !Array.isArray(value.workspace_before.entries) ||
+    !value.workspace_before.entries.every(
+      (entry) => typeof entry === 'string',
+    ) ||
+    !isRecord(value.requirements) ||
+    !Array.isArray(value.requirements.validation_requirements) ||
+    !value.requirements.validation_requirements.every(validRequirement) ||
+    !Array.isArray(value.requirements.automation_requirements) ||
+    !value.requirements.automation_requirements.every(validRequirement)
+  ) {
+    throw new PanError(
+      `--invocation does not contain the workflow, stage, output, ` +
+        `workspace_before, and requirement fields needed by requirements run: ` +
+        invocationPath,
+      { code: 'INVALID_INVOCATION' },
+    )
+  }
+
+  return value as unknown as Invocation
+}
+
 function print(value: unknown, asJson = false): void {
   if (asJson || typeof value !== 'string') {
     process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
@@ -1274,9 +1382,7 @@ function runAgentPreSubmitValidators(
       return []
     }
 
-    const requiredStage = registryStageSlug(requirement.registry_id)
-
-    if (requiredStage && requiredStage !== stageSlug) {
+    if (!registryAppliesToStage(requirement.registry_id, stageSlug)) {
       return []
     }
 
@@ -2942,29 +3048,46 @@ async function main(): Promise<void> {
 
       if (args[0] === 'evidence') {
         const role = requiredArgument(option(args, '--role'), '--role')
+        const effectiveModel = requiredArgument(
+          option(args, '--effective-model'),
+          '--effective-model',
+        )
+        const source = requiredArgument(option(args, '--source'), '--source')
+        const requiredRunId = requiredArgument(runId, '--run')
 
-        if (role !== 'supervisor') {
-          throw new PanError(
-            `models evidence supports only role 'supervisor'; got '${role}'.`,
-            { code: 'INVALID_ARGUMENT' },
+        if (role === 'supervisor') {
+          const recorded = recordSupervisorModelEvidence(
+            root,
+            requiredRunId,
+            effectiveModel,
+            source,
           )
+
+          print(
+            {
+              ...recorded.evidence,
+              advisories: recorded.advisories.map(
+                (advisory) => advisory.message,
+              ),
+            },
+            true,
+          )
+          return
         }
 
-        const recorded = recordSupervisorModelEvidence(
-          root,
-          requiredArgument(runId, '--run'),
-          requiredArgument(
-            option(args, '--effective-model'),
-            '--effective-model',
-          ),
-          requiredArgument(option(args, '--source'), '--source'),
-        )
-
         print(
-          {
-            ...recorded.evidence,
-            advisories: recorded.advisories.map((advisory) => advisory.message),
-          },
+          recordInvocationModelEvidence(
+            root,
+            requiredRunId,
+            requiredArgument(invocationId, '--invocation'),
+            role,
+            effectiveModel,
+            source,
+            requiredArgument(
+              option(args, '--launch-handle'),
+              '--launch-handle',
+            ),
+          ),
           true,
         )
         return
@@ -3325,7 +3448,7 @@ async function main(): Promise<void> {
       }
 
       if (sub === 'review-scope') {
-        const scope = resolveReviewScope(root, {
+        const scope = resolveReviewScope(root, workspaceRepositoryRoot(root), {
           head: requiredArgument(option(args, '--target'), '--target'),
           base: option(args, '--base'),
           defaultBranch: option(args, '--default-branch'),
@@ -3337,6 +3460,7 @@ async function main(): Promise<void> {
         print({
           base: scope.base,
           head: scope.head,
+          closure_tracking: scope.closure_tracking,
           closure_revision: scope.closure_revision,
           changed_path_count: scope.changed_paths.length,
           independent: scope.independent,
@@ -3929,33 +4053,87 @@ async function main(): Promise<void> {
       }
 
       if (sub === 'run') {
-        const persona = requiredArgument(option(args, '--persona'), '--persona')
-        const workflow = requiredArgument(
-          option(args, '--workflow'),
-          '--workflow',
+        const runOption = option(args, '--run')
+        const invocationReference = option(args, '--invocation')
+        const invocationPath = invocationReference
+          ? requirementsRunInvocationPath(root, invocationReference, runOption)
+          : null
+        const invocation = invocationPath
+          ? requirementsRunInvocation(root, invocationPath)
+          : null
+        const contextualArgument = (
+          name: string,
+          invocationValue: string | undefined,
+        ): string => {
+          const explicit = option(args, name)
+
+          if (explicit && invocationValue && explicit !== invocationValue) {
+            throw new PanError(
+              `${name} '${explicit}' does not match invocation value ` +
+                `'${invocationValue}'.`,
+              { code: 'INVALID_ARGUMENT' },
+            )
+          }
+
+          return requiredArgument(explicit ?? invocationValue ?? null, name)
+        }
+        const persona = contextualArgument(
+          '--persona',
+          invocation?.stage.persona,
         )
-        const stage = requiredArgument(option(args, '--stage'), '--stage')
-        const invocationKind = invocationKindOption(args, true)
+        const workflow = contextualArgument(
+          '--workflow',
+          invocation?.workflow.slug,
+        )
+        const stage = contextualArgument('--stage', invocation?.stage.slug)
+        const explicitKind = invocationKindOption(args, invocation === null)
+        const invocationKind = explicitKind ?? 'workflow'
+
+        if (invocation && invocationKind !== 'workflow') {
+          throw new PanError(
+            `--kind '${invocationKind}' does not match a workflow invocation.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
 
         const registryId = requiredArgument(
           option(args, '--registry'),
           '--registry',
         )
         const targetPath = requiredArgument(
-          option(args, '--target'),
+          option(args, '--target') ?? invocation?.output.path ?? null,
           '--target',
         )
-        let validatorInvocation: Record<string, unknown> | undefined
+        let validatorInvocation: Record<string, unknown> | undefined =
+          invocation
+            ? (invocation as unknown as Record<string, unknown>)
+            : undefined
 
         // Handlers that inspect the workspace (changed files, Git state,
-        // evidence paths) resolve it from the run state. Outside a submit the
-        // agent names the bound run or its worktree, so the check runs against
-        // the stage workspace rather than the installation root.
-        const runOption = option(args, '--run')
+        // evidence paths) resolve it from the exact invocation snapshot when
+        // supplied. Otherwise the run state or selected worktree identifies
+        // the workspace, preserving the standalone command contract.
+        if (invocation && runOption && runOption !== invocation.run_id) {
+          throw new PanError(
+            `--run '${runOption}' does not match invocation run ` +
+              `'${invocation.run_id}'.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
         const boundRunState = runOption
           ? (getRunState(root, runOption) as unknown as Record<string, unknown>)
           : null
         const worktreeOption = option(args, '--worktree')
+
+        if (invocation && worktreeOption) {
+          throw new PanError(
+            '--invocation and --worktree cannot be used together; the ' +
+              'invocation already names its exact workspace.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
         const worktreeWorkspace = worktreeOption
           ? readWorktreeIndex(root).worktrees.find(
               (entry) => entry.name === worktreeOption,
@@ -3973,7 +4151,8 @@ async function main(): Promise<void> {
 
         const workspaceRoot = path.resolve(
           root,
-          worktreeWorkspace?.path ??
+          invocation?.workspace_root ??
+            worktreeWorkspace?.path ??
             (typeof boundRunState?.workspace_root === 'string'
               ? boundRunState.workspace_root
               : configuredWorkspaceRoot(root)),
@@ -3983,7 +4162,7 @@ async function main(): Promise<void> {
           workspace_root: workspaceRoot,
         }
 
-        if (registryId === 'PR-DESCRIPTION-VALIDATE-001') {
+        if (!invocation && registryId === 'PR-DESCRIPTION-VALIDATE-001') {
           const policies = resolvePolicies(root, {
             persona,
             workflow,
@@ -4001,16 +4180,18 @@ async function main(): Promise<void> {
           }
         }
 
-        const manifest = resolveRequirements(root, {
-          persona,
-          workflow,
-          stage,
-          invocation_kind: invocationKind,
-          invocation: {
-            output_path: targetPath,
-            artifact_paths: [targetPath],
-          },
-        })
+        const manifest =
+          invocation?.requirements ??
+          resolveRequirements(root, {
+            persona,
+            workflow,
+            stage,
+            invocation_kind: invocationKind,
+            invocation: {
+              output_path: targetPath,
+              artifact_paths: [targetPath],
+            },
+          })
         const governingPolicy =
           registryId === 'CODE-STYLE-VALIDATE-001'
             ? codeStylePolicyId(targetPath)
@@ -4079,11 +4260,28 @@ async function main(): Promise<void> {
           )
         }
 
+        const comparisonBase = invocation
+          ? {
+              source: 'invocation.workspace_before' as const,
+              workspace_root: workspaceRoot,
+              fingerprint: invocation.workspace_before.fingerprint,
+              invocation_path: requiredArgument(invocationPath, '--invocation'),
+              run_id: invocation.run_id,
+            }
+          : {
+              source: 'workspace.cumulative_diff' as const,
+              workspace_root: workspaceRoot,
+              ...(runOption ? { run_id: runOption } : {}),
+            }
         const result = runRequirement({
           root,
           requirement: selected[0],
           targetPath,
           executor: 'agent',
+          ...(invocation
+            ? { workspaceFingerprint: invocation.workspace_before.fingerprint }
+            : {}),
+          comparisonBase,
           ...(validatorInvocation ? { invocation: validatorInvocation } : {}),
           runState: validatorRunState,
           catalog,
@@ -4231,8 +4429,18 @@ async function main(): Promise<void> {
               }
             : [
                 ...submission.checks
-                  .filter((check) => !check.passed)
+                  .filter(
+                    (check) =>
+                      !check.passed && !check.id.startsWith('validator.'),
+                  )
                   .map((check) => `${check.id}: FAIL ${check.message}`),
+                ...submission.checks
+                  .filter((check) => check.id.startsWith('validator.'))
+                  .map(
+                    (check) =>
+                      `${check.id}: ${check.passed ? 'PASS' : 'FAIL'} ` +
+                      check.message,
+                  ),
                 `submission checks: ${
                   submission.passed
                     ? `pass (${submission.checks.length} checks)`

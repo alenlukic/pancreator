@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -217,6 +217,488 @@ test('output validate mirrors the deterministic submission checks', () => {
       return true
     },
   )
+})
+
+test('output validate runs implementation claims for a remediate invocation', () => {
+  const clone = checkpoint('delivery@verify-failed-once')
+  const { root, runId, state, workflow } = clone
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'remediate')
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'remediate'),
+    'success',
+    state,
+  )
+  const invocationPath = resolveRunLayout(root, runId).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+
+  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'output',
+      'validate',
+      runId,
+      '--file',
+      invocation.output.path,
+      '--invocation',
+      invocationPath,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    passed: boolean
+    submission_checks: Array<{ id: string; passed: boolean }>
+  }
+  const claims = result.submission_checks.find(
+    (check) => check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.equal(result.passed, true, stdout)
+  assert.equal(claims?.passed, true, stdout)
+})
+
+test('output validate names a declared validator it cannot resolve and enforces it', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+    title: 'Unresolved validator fixture',
+  })
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+  assert.ok(invocation.output.field_contract)
+
+  invocation.output.field_contract.validators.push({
+    registry_id: 'FIXTURE-UNRESOLVED-VALIDATE-001',
+    enforcement: 'blocks',
+  })
+
+  const invocationPath = resolveRunLayout(root, state.run_id).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(loadWorkflow(root, 'planning'), 'plan'),
+  )
+
+  writeJson(path.join(root, invocationPath), invocation)
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const execution = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'output',
+      'validate',
+      state.run_id,
+      '--file',
+      invocation.output.path,
+      '--invocation',
+      invocationPath,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(execution.stdout) as {
+    passed: boolean
+    submission_checks: Array<{ id: string; passed: boolean; message: string }>
+  }
+  const unresolved = result.submission_checks.find(
+    (check) => check.id === 'validator.FIXTURE-UNRESOLVED-VALIDATE-001',
+  )
+
+  assert.equal(execution.status, 1)
+  assert.equal(result.passed, false)
+  assert.equal(unresolved?.passed, false)
+  assert.match(unresolved?.message ?? '', /could not be resolved/u)
+})
+
+test('requirements run resolves an invocation id and mirrors submission claims', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const changedSource = path.join(root, 'AGENTS.md')
+
+  writeFileSync(
+    changedSource,
+    `${readFileSync(changedSource, 'utf8')}\n// Fixture-only attempt delta.\n`,
+  )
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+  const implementation = output.data.implementation as Record<string, unknown>
+
+  implementation.changed_files = ['config.json']
+
+  const invocationPath = resolveRunLayout(root, runId).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+
+  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const mirror = validateOutputForSubmission(root, runId, invocation, output)
+  const mirroredClaims = mirror.checks.find(
+    (check) => check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.equal(mirroredClaims?.passed, false)
+
+  const execution = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--invocation',
+      invocation.invocation_id,
+      '--run',
+      runId,
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(execution.stdout) as {
+    status: string
+    issues: Array<{ message: string }>
+    comparison_base: {
+      source: string
+      fingerprint: string
+      invocation_path: string
+    }
+  }
+
+  assert.equal(execution.status, 1)
+  assert.equal(result.status, 'failed')
+  assert.equal(result.comparison_base.source, 'invocation.workspace_before')
+  assert.equal(result.comparison_base.invocation_path, invocationPath)
+  assert.equal(
+    result.comparison_base.fingerprint,
+    invocation.workspace_before.fingerprint,
+  )
+  assert.ok(
+    result.issues.some((issue) =>
+      mirroredClaims?.message.includes(issue.message),
+    ),
+    `${mirroredClaims?.message} != ${JSON.stringify(result.issues)}`,
+  )
+})
+
+test('requirements run accepts a harness-relative invocation path', () => {
+  const { root, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+  const invocationPath = resolveRunLayout(root, invocation.run_id).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--invocation',
+      invocationPath,
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    status: string
+    comparison_base: { invocation_path: string }
+  }
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.comparison_base.invocation_path, invocationPath)
+})
+
+test('requirements run accepts an absolute invocation path inside the harness root', () => {
+  const { root, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+  const invocationPath = resolveRunLayout(root, invocation.run_id).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--invocation',
+      path.join(root, invocationPath),
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    status: string
+    comparison_base: { invocation_path: string }
+  }
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.comparison_base.invocation_path, invocationPath)
+})
+
+test('requirements run rejects an absolute invocation path outside the harness root', () => {
+  const { root } = checkpoint('delivery@implement-prepared')
+  const outsidePath = path.join(path.dirname(root), 'outside-invocation.json')
+  const execution = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--invocation',
+      outsidePath,
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal(execution.status, 1)
+  assert.match(execution.stderr, /INVALID_ARGUMENT/u)
+  assert.match(execution.stderr, /inside the harness root/u)
+})
+
+test('requirements run rejects a relative invocation path escape before reading', () => {
+  const { root } = checkpoint('delivery@implement-prepared')
+  const execution = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--invocation',
+      '../outside.json',
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal(execution.status, 1)
+  assert.match(execution.stderr, /INVALID_ARGUMENT/u)
+  assert.match(execution.stderr, /Invocation path must remain inside/u)
+  assert.doesNotMatch(execution.stderr, /ENOENT|UNEXPECTED_ERROR/u)
+})
+
+test('requirements run rejects an inside-root symlink that resolves outside', () => {
+  const { root } = checkpoint('delivery@implement-prepared')
+  const linkPath = 'runtime/outside-invocation-link.json'
+  const outsidePath = path.join(
+    path.dirname(root),
+    `${path.basename(root)}-outside-invocation.json`,
+  )
+
+  writeFileSync(outsidePath, '{not valid invocation json', 'utf8')
+  symlinkSync(outsidePath, path.join(root, linkPath))
+
+  try {
+    const execution = spawnSync(
+      process.execPath,
+      [
+        CLI,
+        'requirements',
+        'run',
+        '--invocation',
+        linkPath,
+        '--registry',
+        'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8' },
+    )
+
+    assert.equal(execution.status, 1)
+    assert.match(execution.stderr, /INVALID_ARGUMENT/u)
+    assert.match(execution.stderr, /Invocation path must remain inside/u)
+    assert.doesNotMatch(execution.stderr, /JSON|UNEXPECTED_ERROR/u)
+  } finally {
+    rmSync(outsidePath, { force: true })
+  }
+})
+
+test('requirements run rejects an invocation id without --run', () => {
+  const { root, invocation } = checkpoint('delivery@implement-prepared')
+
+  assert.ok(invocation)
+
+  const execution = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--invocation',
+      invocation.invocation_id,
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal(execution.status, 1)
+  assert.match(execution.stderr, /INVALID_ARGUMENT/u)
+  assert.match(execution.stderr, /requires --run <run-id>/u)
+})
+
+test('requirements run with --run names its cumulative comparison base', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--persona',
+      'coder',
+      '--workflow',
+      'delivery',
+      '--stage',
+      'implement',
+      '--kind',
+      'workflow',
+      '--registry',
+      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      '--target',
+      invocation.output.path,
+      '--run',
+      runId,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    comparison_base: { source: string; run_id: string }
+  }
+
+  assert.deepEqual(result.comparison_base, {
+    source: 'workspace.cumulative_diff',
+    workspace_root: root,
+    run_id: runId,
+  })
+})
+
+test('blocked implement output is structurally submittable with empty acceptance results', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+    'blocked',
+  )
+
+  output.data = {
+    blocked: {
+      missing_precondition: 'The fixture dependency is unavailable.',
+      supplying_command: 'fixture dependency start',
+      evidence: ['fixture dependency status: stopped'],
+    },
+    acceptance_results: [],
+  }
+  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+
+  const mirror = validateOutputForSubmission(root, runId, invocation, output)
+  const claims = mirror.checks.find(
+    (check) => check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.equal(mirror.passed, true, JSON.stringify(mirror.checks))
+  assert.equal(claims?.passed, true, JSON.stringify(mirror.checks))
+
+  output.data.implementation = {
+    changed_files: [],
+    tests_added: [],
+    notes: [],
+  }
+  output.data.acceptance_results = [
+    { id: 'AC-01', result: 'pass', evidence: ['unsupported claim'] },
+  ]
+
+  const rejected = validateOutputForSubmission(root, runId, invocation, output)
+  const rejectedClaims = rejected.checks.find(
+    (check) => check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.equal(rejected.passed, false)
+  assert.equal(rejectedClaims?.passed, false)
+  assert.match(rejectedClaims?.message ?? '', /MUST be an empty array/u)
+  assert.match(rejectedClaims?.message ?? '', /MUST NOT be present/u)
 })
 
 // The harness renders the operator brief during submission, so the mirror must

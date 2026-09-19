@@ -104,7 +104,11 @@ export function failingVerify(findingId: string): Record<string, unknown> {
       },
     ],
     acceptance_results: [
-      { id: 'AC-01', result: 'fail', evidence: ['fixture'] },
+      {
+        id: 'AC-01',
+        result: 'fail',
+        evidence: ['The workflow fixture stalled before ship.'],
+      },
     ],
     remediation_guidance:
       'Rerun the workflow fixture; the run stalls before ship.',

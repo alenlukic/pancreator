@@ -1,9 +1,12 @@
-import { isRecord } from './io.js'
+import path from 'node:path'
+
+import { canonicalize, isRecord } from './io.js'
 import {
   gitChangedPathsBetween,
   gitMergeBase,
   gitRevParse,
   gitShowFile,
+  gitToplevel,
 } from './git.js'
 import { invariant } from './errors.js'
 import { resolvePolicies } from './policies.js'
@@ -585,10 +588,18 @@ export interface ReviewScope {
   base: string
   head: string
   /**
-   * The working-tree revision the closure was read from. It equals `head`
-   * unless the caller named another revision.
+   * Whether the target repository tracks the installation closure.
+   *
+   * Target installations keep the closure outside the target revision, even
+   * when an embedded installation sits below the target repository root.
    */
-  closure_revision: string
+  closure_tracking: 'tracked' | 'untracked'
+  /**
+   * The working-tree revision the tracked closure was read from. It equals
+   * `head` unless the caller named another revision, and is null when the
+   * target repository does not track the closure.
+   */
+  closure_revision: string | null
   /** Every path the three-dot diff changes. */
   changed_paths: string[]
   conflicts: ReviewConflict[]
@@ -606,23 +617,67 @@ export interface ResolveReviewScopeOptions {
   defaultBranch?: string | null
   /**
    * The revision the caller asserts the working tree sits at. Needed when
-   * that tree is not at `head`.
+   * a tracked closure tree is not at `head`. It does not apply to an
+   * untracked target-installation closure.
    */
   closureRevision?: string | null
 }
 
+function closureTracking(
+  closureRoot: string,
+  targetRoot: string,
+): ReviewScope['closure_tracking'] {
+  const relativeClosureRoot = path.relative(targetRoot, closureRoot)
+
+  if (
+    relativeClosureRoot === '..' ||
+    relativeClosureRoot.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeClosureRoot)
+  ) {
+    return 'untracked'
+  }
+
+  const trackedClosurePath = path.posix.join(
+    relativeClosureRoot.split(path.sep).join('/'),
+    'governance/registries/policy_lookup_table.json',
+  )
+
+  return gitShowFile(targetRoot, 'HEAD', trackedClosurePath) === null
+    ? 'untracked'
+    : 'tracked'
+}
+
 /** Resolve one review target and report every conflict of interest. */
 export function resolveReviewScope(
-  root: string,
+  closureRoot: string,
+  targetRoot: string,
   options: ResolveReviewScopeOptions,
 ): ReviewScope {
-  const head = gitRevParse(root, options.head)
-  const base = options.base
-    ? gitRevParse(root, options.base)
-    : gitMergeBase(root, options.defaultBranch ?? 'main', head)
-  const closureRevision = gitRevParse(root, 'HEAD')
+  const resolvedClosureRoot = canonicalize(path.resolve(closureRoot))
+  const resolvedTargetRoot = canonicalize(path.resolve(targetRoot))
+  const targetRepositoryRoot = canonicalize(gitToplevel(resolvedTargetRoot))
 
-  if (closureRevision !== head) {
+  invariant(
+    targetRepositoryRoot === resolvedTargetRoot,
+    `Review target root '${resolvedTargetRoot}' is not the Git repository ` +
+      `root '${targetRepositoryRoot}'.`,
+    { code: 'REVIEW_TARGET_ROOT_INVALID' },
+  )
+
+  const head = gitRevParse(resolvedTargetRoot, options.head)
+  const base = options.base
+    ? gitRevParse(resolvedTargetRoot, options.base)
+    : gitMergeBase(resolvedTargetRoot, options.defaultBranch ?? 'main', head)
+  const closure_tracking = closureTracking(
+    resolvedClosureRoot,
+    resolvedTargetRoot,
+  )
+  const closureRevision =
+    closure_tracking === 'tracked'
+      ? gitRevParse(resolvedClosureRoot, 'HEAD')
+      : null
+
+  if (closureRevision !== null && closureRevision !== head) {
     invariant(
       options.closureRevision,
       `The review closure is read from the working tree at ` +
@@ -632,7 +687,8 @@ export function resolveReviewScope(
       { code: 'REVIEW_CLOSURE_REVISION_MISMATCH' },
     )
     invariant(
-      gitRevParse(root, options.closureRevision) === closureRevision,
+      gitRevParse(resolvedClosureRoot, options.closureRevision) ===
+        closureRevision,
       `--closure-revision '${options.closureRevision}' does not resolve to ` +
         `the working tree HEAD ${closureRevision.slice(0, 12)}.`,
       { code: 'REVIEW_CLOSURE_REVISION_MISMATCH' },
@@ -647,16 +703,19 @@ export function resolveReviewScope(
   )
 
   // Rename detection hides the removed half of a renamed policy or lineup file.
-  const changedPaths = gitChangedPathsBetween(root, base, head, {
+  const changedPaths = gitChangedPathsBetween(resolvedTargetRoot, base, head, {
     detectRenames: false,
   })
-  const conflicts = classifyReviewPaths(changedPaths, buildReviewClosure(root))
+  const conflicts = classifyReviewPaths(
+    changedPaths,
+    buildReviewClosure(resolvedClosureRoot),
+  )
 
   if (
     changedPaths.includes('src/cli.ts') &&
     cliGovernanceBlocksChanged(
-      gitShowFile(root, base, 'src/cli.ts'),
-      gitShowFile(root, head, 'src/cli.ts'),
+      gitShowFile(resolvedTargetRoot, base, 'src/cli.ts'),
+      gitShowFile(resolvedTargetRoot, head, 'src/cli.ts'),
     )
   ) {
     conflicts.push({
@@ -669,8 +728,8 @@ export function resolveReviewScope(
   if (
     changedPaths.includes('config.json') &&
     reviewerMappingChanged(
-      gitShowFile(root, base, 'config.json'),
-      gitShowFile(root, head, 'config.json'),
+      gitShowFile(resolvedTargetRoot, base, 'config.json'),
+      gitShowFile(resolvedTargetRoot, head, 'config.json'),
     )
   ) {
     conflicts.push({
@@ -685,8 +744,8 @@ export function resolveReviewScope(
     .map((path) =>
       diffPolicyTexts(
         path,
-        gitShowFile(root, base, path),
-        gitShowFile(root, head, path),
+        gitShowFile(resolvedTargetRoot, base, path),
+        gitShowFile(resolvedTargetRoot, head, path),
       ),
     )
     .filter((delta): delta is StandardsDelta => delta !== null)
@@ -700,6 +759,7 @@ export function resolveReviewScope(
   return {
     base,
     head,
+    closure_tracking,
     closure_revision: closureRevision,
     changed_paths: changedPaths,
     conflicts,

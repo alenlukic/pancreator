@@ -17,8 +17,9 @@
     "Away mode MUST NOT run push, publication, deployment, or branch-deletion actions, and SHOULD NOT run gate-waiver actions.",
     "A gate waiver is appropriate only for a blocker with a mechanical or administrative root cause. A waiver also suits a blocker whose blast radius is limited enough to remediate separately. The evaluator MUST carry the reason in the option note, and the harness MUST record that reason on the waiver.",
     "The cohort plan route MAY create branches and worktrees under an away-mode approval, as the cohort policy provides.",
-    "Each evaluation and apply result MUST append one immutable ledger record.",
-    "The ledger MUST identify evaluated decisions, deterministic ship approvals, and hypervisor quarantine records. It MUST also identify evaluator failures as `evaluator_failure` records that consume no decision budget.",
+    "Each successful evaluation and each apply result MUST append one immutable ledger record. An unparseable evaluator reply MUST be retried exactly once before an exhausted evaluation appends at most one terminal record.",
+    "Each evaluator transport and parse attempt MUST be recorded in distinct `away-evaluator-*.json` exchange evidence. Intermediate attempt errors and raw malformed replies MUST NOT enter the decision ledger.",
+    "The ledger MUST identify evaluated decisions, deterministic ship approvals, and hypervisor quarantine records. It MUST also identify exhausted evaluator failures as generic `evaluator_failure` records that consume no decision budget and reference their exchange evidence.",
     "Applied away actions MUST record away authorship and MUST NOT record operator authorship.",
     "The ledger MUST contain bounded summaries and repository-relative evidence references."
   ],

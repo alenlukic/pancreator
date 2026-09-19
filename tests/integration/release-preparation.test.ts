@@ -29,6 +29,7 @@ import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { createFixture, writeJson } from '../helpers.js'
 import type { StageOutput } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
+import { runCli } from './worktree-helpers.js'
 
 function git(root: string, args: string[]): string {
   return execFileSync('git', args, {
@@ -175,14 +176,18 @@ function prepareReleaseCandidate(name: string): {
 const DESIGN_SOURCE = 'design-source.svg'
 
 /** Record `DESIGN_SOURCE` as a read-only input of the release worktree. */
-function attributeReadOnlyInput(root: string, worktreePath: string): void {
+function attributeReadOnlyInput(
+  root: string,
+  worktreePath: string,
+  paths: string[] = [DESIGN_SOURCE],
+): void {
   recordWorkspaceAttribution(root, {
     workspacePath: worktreePath,
     runId: 'run-fixture',
     actingRole: 'operator',
     directive: 'Keep the design source I exported out of the release.',
     disposition: 'read-only-input',
-    paths: [DESIGN_SOURCE],
+    paths,
     artifactPath: 'runtime/logs/workflows/run-fixture/evidence/directive-1.md',
   })
 }
@@ -288,6 +293,11 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
     )
     assert.equal(git(worktreePath, ['status', '--porcelain']), '')
 
+    const commitCountBeforeReplay = git(worktreePath, [
+      'rev-list',
+      '--count',
+      'HEAD',
+    ])
     const replayed = finalizeLocalRelease(
       root,
       record.name,
@@ -296,6 +306,21 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
 
     assert.equal(replayed.release_commit, finalized.release_commit)
     assert.equal(replayed.index_commit, finalized.index_commit)
+    assert.equal(
+      git(worktreePath, ['rev-list', '--count', 'HEAD']),
+      commitCountBeforeReplay,
+      'a repeated same-version finalization writes no second commit pair',
+    )
+    const replayedIndex = JSON.parse(
+      readFileSync(path.join(worktreePath, 'release', 'index.json'), 'utf8'),
+    ) as { releases: Array<{ version: string; commit: string }> }
+
+    assert.equal(
+      replayedIndex.releases.filter((entry) => entry.version === version)
+        .length,
+      1,
+      'the reused release version retains one index entry',
+    )
 
     const prPath = 'runtime/pr-descriptions/final.md'
 
@@ -463,6 +488,83 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
   }
 })
 
+test('release continuation refuses an unanchored manual rebase without mutation', () => {
+  const root = createFixture()
+
+  try {
+    git(root, ['branch', '-M', 'main'])
+
+    const record = createWorktree(root, 'release-unanchored-rebase')
+    const worktreePath = path.join(root, record.path)
+    const sourcePath = path.join('src', 'base.ts')
+    const initial = readFileSync(path.join(root, sourcePath), 'utf8')
+
+    writeFileSync(
+      path.join(worktreePath, sourcePath),
+      `${initial.trimEnd()}\nexport const unanchored = 'local'\n`,
+    )
+    git(worktreePath, ['add', sourcePath])
+    git(worktreePath, ['commit', '-m', 'feat: local manual rebase conflict'])
+
+    writeFileSync(
+      path.join(root, sourcePath),
+      `${initial.trimEnd()}\nexport const unanchored = 'main'\n`,
+    )
+    git(root, ['add', sourcePath])
+    git(root, ['commit', '-m', 'feat: main manual rebase conflict'])
+
+    assert.throws(() => git(worktreePath, ['rebase', 'main']))
+
+    const rebaseDirectory = path.resolve(
+      worktreePath,
+      git(worktreePath, ['rev-parse', '--git-path', 'rebase-merge']),
+    )
+    const snapshot = (): Record<string, string> => ({
+      head: git(worktreePath, ['rev-parse', 'HEAD']),
+      index: git(worktreePath, ['ls-files', '--stage']),
+      status: git(worktreePath, [
+        'status',
+        '--porcelain=v1',
+        '--untracked-files=all',
+      ]),
+    })
+    const beforeContinue = snapshot()
+
+    assert.equal(
+      fileExists(path.join(rebaseDirectory, 'pancreator-release-anchor')),
+      false,
+    )
+
+    let refusal: unknown = null
+
+    try {
+      continueLocalRelease(root, record.name)
+    } catch (error) {
+      refusal = error
+    }
+
+    assert.ok(refusal instanceof Error)
+    assert.equal(
+      'code' in refusal ? refusal.code : null,
+      'RELEASE_REBASE_ANCHOR_MISSING',
+    )
+    assert.match(refusal.message, /Finish or abort that rebase manually/u)
+    assert.match(refusal.message, /start release sync again/u)
+    assert.deepEqual(
+      snapshot(),
+      beforeContinue,
+      'the refused continuation changes neither status, HEAD, nor the index',
+    )
+    assert.equal(
+      fileExists(rebaseDirectory),
+      true,
+      'the unrelated manual rebase remains active',
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('release continuation preserves unresolved conflicts and completes staged resolutions', () => {
   const root = createFixture()
   const remote = createTestTempDirectory('pan-release-conflict-')
@@ -477,6 +579,15 @@ test('release continuation preserves unresolved conflicts and completes staged r
     const worktreePath = path.join(root, record.path)
     const sourcePath = path.join('src', 'base.ts')
     const initial = readFileSync(path.join(root, sourcePath), 'utf8')
+    const headBeforeContinue = git(worktreePath, ['rev-parse', 'HEAD'])
+    const notNeeded = runCli<{ status: string; conflicted_paths: string[] }>(
+      root,
+      ['release', 'continue', '--worktree', record.name],
+    )
+
+    assert.equal(notNeeded.status, 'not_needed')
+    assert.deepEqual(notNeeded.conflicted_paths, [])
+    assert.equal(git(worktreePath, ['rev-parse', 'HEAD']), headBeforeContinue)
 
     writeFileSync(
       path.join(root, sourcePath),
@@ -565,6 +676,110 @@ test('release continuation preserves unresolved conflicts and completes staged r
       git(worktreePath, ['status', '--porcelain=v1']),
       `?? ${DESIGN_SOURCE}`,
       'the continuation left the operator input untracked and unstaged',
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(remote, { recursive: true, force: true })
+  }
+})
+
+test('release continuation completes a conflicted rebase that rewrites the pre-sync head', () => {
+  const root = createFixture()
+  const remote = createTestTempDirectory('pan-release-conflicted-lineage-')
+
+  try {
+    execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })
+    git(root, ['branch', '-M', 'main'])
+    git(root, ['remote', 'add', 'origin', remote])
+    git(root, ['push', '-u', 'origin', 'main'])
+
+    const record = createWorktree(root, 'release-conflicted-lineage')
+    const worktreePath = path.join(root, record.path)
+    const sourcePath = path.join('src', 'base.ts')
+    const initial = readFileSync(path.join(root, sourcePath), 'utf8')
+
+    writeFileSync(
+      path.join(worktreePath, sourcePath),
+      `${initial.trimEnd()}\nexport const lineage = 'local'\n`,
+    )
+    git(worktreePath, ['add', sourcePath])
+    git(worktreePath, ['commit', '-m', 'feat: committed local lineage'])
+
+    const preSyncHead = git(worktreePath, ['rev-parse', 'HEAD'])
+
+    writeFileSync(
+      path.join(root, sourcePath),
+      `${initial.trimEnd()}\nexport const lineage = 'remote'\n`,
+    )
+    git(root, ['add', sourcePath])
+    git(root, ['commit', '-m', 'feat: conflicting remote lineage'])
+    git(root, ['push', 'origin', 'main'])
+
+    const synchronized = syncLocalRelease(
+      root,
+      record.name,
+      'feat: unused clean checkpoint',
+    )
+
+    assert.equal(synchronized.status, 'conflict')
+    assert.equal(synchronized.checkpoint_commit, null)
+    assert.deepEqual(synchronized.conflicted_paths, [sourcePath])
+
+    const rebaseDirectory = path.resolve(
+      worktreePath,
+      git(worktreePath, ['rev-parse', '--git-path', 'rebase-merge']),
+    )
+    const anchorPath = path.join(rebaseDirectory, 'pancreator-release-anchor')
+
+    assert.deepEqual(JSON.parse(readFileSync(anchorPath, 'utf8')), {
+      pre_sync_head: preSyncHead,
+      rebase_target: synchronized.rebase_target,
+      replayed_merges: [],
+    })
+
+    writeFileSync(
+      path.join(worktreePath, sourcePath),
+      `${initial.trimEnd()}\nexport const lineage = 'resolved'\n`,
+    )
+    git(worktreePath, ['add', sourcePath])
+
+    const completed = continueLocalRelease(root, record.name)
+
+    assert.equal(completed.status, 'complete')
+    assert.deepEqual(completed.conflicted_paths, [])
+
+    const postSyncHead = git(worktreePath, ['rev-parse', 'HEAD'])
+
+    // The committed local head was itself replayed, so its hash is gone from
+    // the result. That is what a rebase does; the lineage check compares the
+    // merges the range carried, and this range carried none.
+    assert.notEqual(postSyncHead, preSyncHead)
+    assert.throws(() =>
+      git(worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        preSyncHead,
+        postSyncHead,
+      ]),
+    )
+    assert.equal(
+      git(worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        synchronized.rebase_target ?? '',
+        postSyncHead,
+      ]),
+      '',
+      'the completed rebase descends from the fetched target',
+    )
+    assert.equal(
+      readFileSync(path.join(worktreePath, sourcePath), 'utf8'),
+      `${initial.trimEnd()}\nexport const lineage = 'resolved'\n`,
+    )
+    assert.equal(
+      fileExists(anchorPath),
+      false,
+      'Git removes the ephemeral marker with the completed rebase metadata',
     )
   } finally {
     rmSync(root, { recursive: true, force: true })
@@ -686,6 +901,152 @@ test('release sync rejects every unsafe path class without repository mutation',
   }
 })
 
+test('release finalization refuses success when a post-commit hook dirties the tree', () => {
+  const candidate = prepareReleaseCandidate('release-post-commit-dirty')
+
+  try {
+    const hooksDirectory = path.resolve(
+      candidate.worktreePath,
+      git(candidate.worktreePath, ['rev-parse', '--git-path', 'hooks']),
+    )
+    const hookPath = path.join(hooksDirectory, 'post-commit')
+
+    mkdirSync(hooksDirectory, { recursive: true })
+    writeFileSync(
+      hookPath,
+      `#!/bin/sh
+subject="$(git log -1 --format=%s)"
+if [ "$subject" = 'chore: index release v${candidate.version}' ]; then
+  printf '%s\n' '// dirtied after the index commit' >> src/base.ts
+fi
+`,
+    )
+    chmodSync(hookPath, 0o755)
+
+    let refusal: unknown = null
+
+    try {
+      finalizeLocalRelease(
+        candidate.root,
+        candidate.record.name,
+        candidate.fetchedMain,
+      )
+    } catch (error) {
+      refusal = error
+    }
+
+    assert.ok(refusal instanceof Error)
+    assert.equal(
+      'code' in refusal ? refusal.code : null,
+      'RELEASE_WORKTREE_DIRTY',
+    )
+    assert.match(refusal.message, /src\/base\.ts/u)
+    assert.equal(
+      git(candidate.worktreePath, ['log', '-1', '--format=%s']),
+      `chore: index release v${candidate.version}`,
+      'the refusal happens after both release commits exist',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['status', '--porcelain=v1']),
+      'M src/base.ts',
+    )
+
+    // The pair the block left behind is complete, so a retry meets it as a
+    // finalized release with a dirty non-metadata path and refuses before any
+    // commit rather than writing a second pair for the same version.
+    const commitCountAfterBlock = git(candidate.worktreePath, [
+      'rev-list',
+      '--count',
+      'HEAD',
+    ])
+
+    assert.equal(
+      errorCode(() =>
+        finalizeLocalRelease(
+          candidate.root,
+          candidate.record.name,
+          candidate.fetchedMain,
+        ),
+      ),
+      'RELEASE_SCOPE_INVALID',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['rev-list', '--count', 'HEAD']),
+      commitCountAfterBlock,
+      'the retry writes no second release pair',
+    )
+  } finally {
+    rmSync(candidate.root, { recursive: true, force: true })
+    rmSync(candidate.remote, { recursive: true, force: true })
+  }
+})
+
+test('release finalization refuses an unclassifiable tracked edit before any commit', () => {
+  const candidate = prepareReleaseCandidate('release-dirty-before-commit')
+
+  try {
+    // The HR-009 shape: a tracked file the operator recorded as a read-only
+    // input and then modified. The record withholds it from every harness
+    // commit and the modification blocks a clean tree, so finalization can
+    // neither commit it nor ignore it.
+    const sourcePath = path.join('src', 'base.ts')
+
+    writeFileSync(
+      path.join(candidate.worktreePath, sourcePath),
+      "export const base = 'misattributed edit'\n",
+    )
+    attributeReadOnlyInput(candidate.root, candidate.worktreePath, [sourcePath])
+
+    const headBeforeFinalize = git(candidate.worktreePath, [
+      'rev-parse',
+      'HEAD',
+    ])
+    const commitCountBeforeFinalize = git(candidate.worktreePath, [
+      'rev-list',
+      '--count',
+      'HEAD',
+    ])
+
+    let refusal: unknown = null
+
+    try {
+      finalizeLocalRelease(
+        candidate.root,
+        candidate.record.name,
+        candidate.fetchedMain,
+      )
+    } catch (error) {
+      refusal = error
+    }
+
+    assert.ok(refusal instanceof Error)
+    assert.equal(
+      'code' in refusal ? refusal.code : null,
+      'RELEASE_WORKTREE_DIRTY',
+    )
+    assert.match(refusal.message, /src\/base\.ts/u)
+    assert.match(refusal.message, /found work it cannot classify/u)
+    assert.equal(
+      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
+      headBeforeFinalize,
+      'the refusal leaves the branch at the head the attempt found',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['rev-list', '--count', 'HEAD']),
+      commitCountBeforeFinalize,
+      'neither release commit was written',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['diff', '--cached', '--name-only']),
+      '',
+      'nothing was staged on the way to the refusal',
+    )
+  } finally {
+    rmSync(candidate.root, { recursive: true, force: true })
+    rmSync(candidate.remote, { recursive: true, force: true })
+  }
+})
+
 test('release finalization neither commits nor refuses over a recorded read-only input', () => {
   const candidate = prepareReleaseCandidate('release-withheld')
 
@@ -695,6 +1056,14 @@ test('release finalization neither commits nor refuses over a recorded read-only
     writeFileSync(path.join(candidate.worktreePath, DESIGN_SOURCE), '<svg/>\n')
     attributeReadOnlyInput(candidate.root, candidate.worktreePath)
 
+    writeFileSync(
+      path.join(candidate.root, 'local-main-only.txt'),
+      'local integration advance\n',
+    )
+    git(candidate.root, ['add', 'local-main-only.txt'])
+    git(candidate.root, ['commit', '-qm', 'feat: advance local main only'])
+
+    const localMain = git(candidate.root, ['rev-parse', 'HEAD'])
     const finalized = finalizeLocalRelease(
       candidate.root,
       candidate.record.name,
@@ -703,6 +1072,20 @@ test('release finalization neither commits nor refuses over a recorded read-only
 
     assert.equal(finalized.version, candidate.version)
     assert.equal(finalized.clean, true)
+    assert.deepEqual(finalized.advisories, [
+      {
+        code: 'RELEASE_LOCAL_DEFAULT_AHEAD',
+        message:
+          `Local default branch 'main' at ${localMain} is ahead of fetched ` +
+          `main ${candidate.fetchedMain}; release preparation kept the local ` +
+          `history and did not publish it.`,
+        details: {
+          default_branch: 'main',
+          fetched_main: candidate.fetchedMain,
+          local_head: localMain,
+        },
+      },
+    ])
     assert.doesNotMatch(
       git(candidate.worktreePath, [
         'diff-tree',
@@ -783,6 +1166,121 @@ test('release finalization recovers release-only and index-only partial states',
   }
 })
 
+test('release finalization refuses dirty metadata on a completed same-version pair', () => {
+  const candidate = prepareReleaseCandidate('release-finalized-dirty')
+
+  try {
+    const finalized = finalizeLocalRelease(
+      candidate.root,
+      candidate.record.name,
+      candidate.fetchedMain,
+    )
+    const headBeforeRetry = git(candidate.worktreePath, ['rev-parse', 'HEAD'])
+    const commitCountBeforeRetry = git(candidate.worktreePath, [
+      'rev-list',
+      '--count',
+      'HEAD',
+    ])
+    const changelogPath = path.join(candidate.worktreePath, 'CHANGELOG.md')
+
+    writeFileSync(
+      changelogPath,
+      `${readFileSync(changelogPath, 'utf8')}\nDirty retry metadata.\n`,
+    )
+    assert.equal(
+      readFileSync(path.join(candidate.worktreePath, 'VERSION'), 'utf8').trim(),
+      candidate.version,
+    )
+
+    let refusal: unknown = null
+
+    try {
+      finalizeLocalRelease(
+        candidate.root,
+        candidate.record.name,
+        candidate.fetchedMain,
+      )
+    } catch (error) {
+      refusal = error
+    }
+
+    assert.ok(refusal instanceof Error)
+    assert.equal(
+      'code' in refusal ? refusal.code : null,
+      'RELEASE_VERSION_ALREADY_FINALIZED_DIRTY',
+    )
+    assert.match(
+      refusal.message,
+      new RegExp(`Release v${candidate.version}`, 'u'),
+    )
+    assert.match(refusal.message, /CHANGELOG\.md/u)
+    assert.deepEqual('details' in refusal ? refusal.details : null, {
+      version: candidate.version,
+      release_commit: finalized.release_commit,
+      index_commit: finalized.index_commit,
+      dirty_paths: ['CHANGELOG.md'],
+    })
+    assert.equal(
+      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
+      headBeforeRetry,
+      'the dirty retry must leave the completed pair at HEAD',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['rev-list', '--count', 'HEAD']),
+      commitCountBeforeRetry,
+      'the dirty retry must not write a second release pair',
+    )
+  } finally {
+    rmSync(candidate.root, { recursive: true, force: true })
+    rmSync(candidate.remote, { recursive: true, force: true })
+  }
+})
+
+test('release finalization blocks before committing an invalid worktree', () => {
+  const candidate = prepareReleaseCandidate('release-blocked-cleanly')
+
+  try {
+    writeFileSync(
+      path.join(candidate.worktreePath, 'src', 'base.ts'),
+      "export const base = 'unexpected finalization edit'\n",
+    )
+
+    const headBeforeFinalize = git(candidate.worktreePath, [
+      'rev-parse',
+      'HEAD',
+    ])
+    const commitCountBeforeFinalize = git(candidate.worktreePath, [
+      'rev-list',
+      '--count',
+      'HEAD',
+    ])
+
+    assert.equal(
+      errorCode(() =>
+        finalizeLocalRelease(
+          candidate.root,
+          candidate.record.name,
+          candidate.fetchedMain,
+        ),
+      ),
+      'RELEASE_SCOPE_INVALID',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
+      headBeforeFinalize,
+      'a deterministic finalization block must not move the branch',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['rev-list', '--count', 'HEAD']),
+      commitCountBeforeFinalize,
+      'a blocked attempt writes neither release commit',
+    )
+  } finally {
+    rmSync(candidate.root, { recursive: true, force: true })
+    rmSync(candidate.remote, { recursive: true, force: true })
+  }
+})
+
 /**
  * A release worktree branched from a local default branch that the remote has
  * not seen: the shape every self-development release takes, because this
@@ -826,18 +1324,305 @@ function prepareUnpushedIntegration(name: string): {
   }
 }
 
-test('release sync refuses a rebase that would rewrite local main, and records the override that proceeds', () => {
-  const behind = prepareUnpushedIntegration('release-behind')
+test('release sync leaves an already-current cohort integration merge untouched', () => {
+  const behind = prepareUnpushedIntegration('release-current')
 
   try {
     const headBeforeSync = git(behind.worktreePath, ['rev-parse', 'HEAD'])
+    const synchronized = syncLocalRelease(
+      behind.root,
+      behind.record.name,
+      'feat: checkpoint',
+    )
 
-    assert.notEqual(behind.localMain, behind.fetchedMain)
+    assert.equal(synchronized.status, 'already_current')
+    assert.equal(synchronized.fetched_main, behind.fetchedMain)
+    assert.equal(synchronized.rebase_target, behind.fetchedMain)
+    assert.equal(synchronized.checkpoint_commit, null)
+    assert.deepEqual(synchronized.advisories, [
+      {
+        code: 'RELEASE_LOCAL_DEFAULT_AHEAD',
+        message:
+          `Local default branch 'main' at ${behind.localMain} is ahead of ` +
+          `fetched main ${behind.fetchedMain}; release preparation kept the ` +
+          `local history and did not publish it.`,
+        details: {
+          default_branch: 'main',
+          fetched_main: behind.fetchedMain,
+          local_head: behind.localMain,
+        },
+      },
+    ])
+    assert.equal(
+      git(behind.worktreePath, ['rev-parse', 'HEAD']),
+      headBeforeSync,
+      'an already-current sync must not rewrite the integration head',
+    )
+    assert.equal(
+      git(behind.worktreePath, [
+        'rev-list',
+        '--parents',
+        '-n',
+        '1',
+        'HEAD',
+      ]).split(' ').length,
+      3,
+      'the cohort integration commit remains a two-parent merge',
+    )
+  } finally {
+    rmSync(behind.root, { recursive: true, force: true })
+    rmSync(behind.remote, { recursive: true, force: true })
+  }
+})
+
+test('release sync fast-forwards without flattening a cohort integration merge', () => {
+  const root = createFixture()
+  const remote = createTestTempDirectory('pan-release-merge-rebase-')
+
+  try {
+    execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })
+    git(root, ['branch', '-M', 'main'])
+    git(root, ['remote', 'add', 'origin', remote])
+    git(root, ['push', '-u', 'origin', 'main'])
+
+    git(root, ['switch', '-q', '-c', 'chunk-one'])
+    writeFileSync(
+      path.join(root, 'src', 'chunk.ts'),
+      'export const chunk = 1\n',
+    )
+    git(root, ['add', 'src/chunk.ts'])
+    git(root, ['commit', '-qm', 'feat: chunk one'])
+    git(root, ['switch', '-q', 'main'])
+    git(root, ['merge', '-q', '--no-ff', 'chunk-one', '-m', 'merge: chunk one'])
+
+    const integrationMerge = git(root, ['rev-parse', 'HEAD'])
+    const record = createWorktree(root, 'release-merge-rebase')
+    const worktreePath = path.join(root, record.path)
+
+    writeFileSync(path.join(root, 'remote-main.txt'), 'remote main change\n')
+    git(root, ['add', 'remote-main.txt'])
+    git(root, ['commit', '-qm', 'feat: advance remote main'])
+    git(root, ['push', '-q', 'origin', 'main'])
+
+    const remoteHead = git(root, ['rev-parse', 'HEAD'])
+    const synchronized = syncLocalRelease(root, record.name, 'feat: checkpoint')
+
+    assert.equal(synchronized.status, 'synchronized')
+    assert.equal(synchronized.fetched_main, remoteHead)
+    assert.equal(git(worktreePath, ['rev-parse', 'HEAD']), remoteHead)
+    assert.equal(
+      git(worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        integrationMerge,
+        'HEAD',
+      ]),
+      '',
+    )
+    assert.ok(
+      git(worktreePath, ['rev-list', '--merges', 'HEAD'])
+        .split('\n')
+        .includes(integrationMerge),
+      'the original cohort merge remains in the synchronized topology',
+    )
+    assert.equal(
+      git(worktreePath, [
+        'rev-list',
+        '--parents',
+        '-n',
+        '1',
+        integrationMerge,
+      ]).split(' ').length,
+      3,
+      'the synchronized cohort commit still has both parents',
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(remote, { recursive: true, force: true })
+  }
+})
+
+/**
+ * A release worktree carrying a cohort integration merge the remote has never
+ * seen, while the remote default branch advanced on its own: the one shape in
+ * which release sync must replay commits rather than fast-forward, and the
+ * shape HR-003 reported losing three `--no-ff` merges in.
+ */
+function prepareDivergentIntegration(name: string): {
+  root: string
+  remote: string
+  record: ReturnType<typeof createWorktree>
+  worktreePath: string
+  integrationMerge: string
+  remoteHead: string
+} {
+  const behind = prepareUnpushedIntegration(name)
+  const baseCommit = behind.fetchedMain
+
+  git(behind.root, ['switch', '-q', '-c', 'remote-advance', baseCommit])
+  writeFileSync(
+    path.join(behind.root, 'remote-main.txt'),
+    'remote main change\n',
+  )
+  git(behind.root, ['add', 'remote-main.txt'])
+  git(behind.root, ['commit', '-qm', 'feat: advance remote main'])
+  git(behind.root, ['push', '-q', 'origin', 'remote-advance:main'])
+
+  const remoteHead = git(behind.root, ['rev-parse', 'HEAD'])
+
+  git(behind.root, ['switch', '-q', 'main'])
+
+  return {
+    root: behind.root,
+    remote: behind.remote,
+    record: behind.record,
+    worktreePath: behind.worktreePath,
+    integrationMerge: behind.localMain,
+    remoteHead,
+  }
+}
+
+test('release sync replays a divergent cohort integration merge with its topology intact', () => {
+  const divergent = prepareDivergentIntegration('release-divergent-merge')
+
+  try {
+    const synchronized = syncLocalRelease(
+      divergent.root,
+      divergent.record.name,
+      'feat: checkpoint',
+    )
+
+    assert.equal(synchronized.status, 'synchronized')
+    assert.equal(synchronized.fetched_main, divergent.remoteHead)
+    assert.equal(synchronized.rebase_target, divergent.remoteHead)
+    assert.deepEqual(synchronized.conflicted_paths, [])
+
+    const postSyncHead = git(divergent.worktreePath, ['rev-parse', 'HEAD'])
+
+    assert.equal(
+      git(divergent.worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        divergent.remoteHead,
+        postSyncHead,
+      ]),
+      '',
+      'the synchronized branch descends from the fetched remote head',
+    )
+    // The replayed commits are new objects, so the integration merge's hash
+    // is gone from the branch. The contract is its topology, not its identity.
+    assert.throws(() =>
+      git(divergent.worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        divergent.integrationMerge,
+        postSyncHead,
+      ]),
+    )
+
+    const replayedMerges = git(divergent.worktreePath, [
+      'rev-list',
+      '--merges',
+      `${divergent.remoteHead}..HEAD`,
+    ])
+      .split('\n')
+      .filter(Boolean)
+
+    assert.equal(replayedMerges.length, 1, 'exactly one merge was replayed')
+    assert.equal(
+      git(divergent.worktreePath, [
+        'rev-list',
+        '--parents',
+        '-n',
+        '1',
+        replayedMerges[0] ?? '',
+      ]).split(' ').length,
+      3,
+      'the replayed cohort merge keeps both parents',
+    )
+    assert.equal(
+      git(divergent.worktreePath, [
+        'show',
+        '-s',
+        '--format=%s',
+        replayedMerges[0] ?? '',
+      ]),
+      'merge: chunk one',
+    )
+    assert.equal(
+      readFileSync(
+        path.join(divergent.worktreePath, 'src', 'chunk.ts'),
+        'utf8',
+      ),
+      'export const chunk = 1\n',
+    )
+    assert.equal(
+      readFileSync(
+        path.join(divergent.worktreePath, 'remote-main.txt'),
+        'utf8',
+      ),
+      'remote main change\n',
+    )
+  } finally {
+    rmSync(divergent.root, { recursive: true, force: true })
+    rmSync(divergent.remote, { recursive: true, force: true })
+  }
+})
+
+test('release sync refuses a completed rebase that flattened the branch merges', () => {
+  const divergent = prepareDivergentIntegration('release-flattened-merge')
+
+  try {
+    // Prepare the linear history a plain `git rebase` produces from this
+    // branch, then restore the merge so sync meets the divergent shape. A
+    // post-rewrite hook moves the branch to that linear history once sync's
+    // own rebase completes, which is the flattening the lineage check exists
+    // to catch, arriving through the only path a completed rebase offers.
+    git(divergent.worktreePath, ['rebase', '-q', divergent.remoteHead])
+
+    const flattenedHead = git(divergent.worktreePath, ['rev-parse', 'HEAD'])
+
+    assert.equal(
+      git(divergent.worktreePath, [
+        'rev-list',
+        '--merges',
+        '--count',
+        `${divergent.remoteHead}..${flattenedHead}`,
+      ]),
+      '0',
+    )
+    git(divergent.worktreePath, [
+      'reset',
+      '-q',
+      '--hard',
+      divergent.integrationMerge,
+    ])
+
+    const hooksDirectory = path.resolve(
+      divergent.worktreePath,
+      git(divergent.worktreePath, ['rev-parse', '--git-path', 'hooks']),
+    )
+    const hookPath = path.join(hooksDirectory, 'post-rewrite')
+
+    mkdirSync(hooksDirectory, { recursive: true })
+    writeFileSync(
+      hookPath,
+      `#!/bin/sh
+if [ "$1" = rebase ]; then
+  git reset -q --hard ${flattenedHead}
+fi
+`,
+    )
+    chmodSync(hookPath, 0o755)
 
     let refusal: unknown = null
 
     try {
-      syncLocalRelease(behind.root, behind.record.name, 'feat: checkpoint')
+      syncLocalRelease(
+        divergent.root,
+        divergent.record.name,
+        'feat: checkpoint',
+      )
     } catch (error) {
       refusal = error
     }
@@ -845,54 +1630,30 @@ test('release sync refuses a rebase that would rewrite local main, and records t
     assert.ok(refusal instanceof Error)
     assert.equal(
       'code' in refusal ? refusal.code : null,
-      'RELEASE_REMOTE_BEHIND_LOCAL',
+      'RELEASE_REBASE_TOPOLOGY_LOST',
     )
-    assert.ok(refusal.message.includes(behind.localMain))
-    assert.ok(refusal.message.includes(behind.fetchedMain))
-    // The refusal must leave the steward a recorded way through, so the
-    // message names both overrides alongside the push that removes the need
-    // for either.
-    assert.match(refusal.message, /--onto main/u)
-    assert.match(refusal.message, /--no-rebase/u)
-    assert.equal(
-      git(behind.worktreePath, ['rev-parse', 'HEAD']),
-      headBeforeSync,
+    assert.match(refusal.message, /1 merge commit\(s\) were replayed/u)
+    assert.match(refusal.message, /0 remain/u)
+    assert.match(
+      refusal.message,
+      /recover the preserved head before finalizing/u,
     )
-
-    writeFileSync(
-      path.join(behind.worktreePath, 'src', 'base.ts'),
-      "export const base = 'release candidate'\n",
-    )
-
-    const overridden = syncLocalRelease(
-      behind.root,
-      behind.record.name,
-      'feat: checkpoint release candidate',
-      undefined,
-      { onto: 'main' },
-    )
-
-    assert.equal(overridden.status, 'synchronized')
-    assert.equal(overridden.fetched_main, behind.fetchedMain)
-    assert.equal(overridden.rebase_target, behind.localMain)
-    assert.deepEqual(overridden.rebase_override, {
-      kind: 'onto',
-      requested_ref: 'main',
-      resolved_commit: behind.localMain,
+    assert.deepEqual('details' in refusal ? refusal.details : null, {
+      pre_sync_head: divergent.integrationMerge,
+      post_sync_head: flattenedHead,
+      rebase_target: divergent.remoteHead,
+      descends_from_target: true,
+      expected_merges: ['2 merge: chunk one'],
+      actual_merges: [],
     })
-    // The merge commit local main already carries survives the override.
     assert.equal(
-      git(behind.worktreePath, [
-        'merge-base',
-        '--is-ancestor',
-        behind.localMain,
-        'HEAD',
-      ]),
-      '',
+      git(divergent.worktreePath, ['rev-parse', 'HEAD']),
+      flattenedHead,
+      'the refusal names the branch head Git left behind',
     )
   } finally {
-    rmSync(behind.root, { recursive: true, force: true })
-    rmSync(behind.remote, { recursive: true, force: true })
+    rmSync(divergent.root, { recursive: true, force: true })
+    rmSync(divergent.remote, { recursive: true, force: true })
   }
 })
 
@@ -938,13 +1699,95 @@ test('release sync accepts --no-rebase and refuses both overrides together', () 
       ),
       'RELEASE_REBASE_OVERRIDE_CONFLICT',
     )
+
+    // `--onto` alone is the operator's route past a fetched head that is not
+    // the base they want. Naming the local default branch, which the branch
+    // already descends from, records the override and rewrites nothing.
+    const headBeforeOnto = git(behind.worktreePath, ['rev-parse', 'HEAD'])
+    const onto = syncLocalRelease(
+      behind.root,
+      behind.record.name,
+      'feat: checkpoint',
+      undefined,
+      { onto: 'main' },
+    )
+
+    assert.equal(onto.status, 'already_current')
+    assert.equal(onto.rebase_target, behind.localMain)
+    assert.deepEqual(onto.rebase_override, {
+      kind: 'onto',
+      requested_ref: 'main',
+      resolved_commit: behind.localMain,
+    })
+    assert.equal(onto.checkpoint_commit, null)
+    assert.equal(
+      git(behind.worktreePath, ['rev-parse', 'HEAD']),
+      headBeforeOnto,
+    )
+
+    // Naming a ref the branch does not descend from rebases onto it and
+    // records the same override shape on the synchronized result.
+    git(behind.root, [
+      'switch',
+      '-q',
+      '-c',
+      'operator-base',
+      behind.fetchedMain,
+    ])
+    writeFileSync(
+      path.join(behind.root, 'operator-base.txt'),
+      'operator-selected base\n',
+    )
+    git(behind.root, ['add', 'operator-base.txt'])
+    git(behind.root, ['commit', '-qm', 'feat: operator-selected base'])
+
+    const operatorBase = git(behind.root, ['rev-parse', 'HEAD'])
+
+    git(behind.root, ['switch', '-q', 'main'])
+
+    const rebased = syncLocalRelease(
+      behind.root,
+      behind.record.name,
+      'feat: checkpoint',
+      undefined,
+      { onto: 'operator-base' },
+    )
+
+    assert.equal(rebased.status, 'synchronized')
+    assert.equal(rebased.rebase_target, operatorBase)
+    assert.deepEqual(rebased.rebase_override, {
+      kind: 'onto',
+      requested_ref: 'operator-base',
+      resolved_commit: operatorBase,
+    })
+    assert.deepEqual(rebased.conflicted_paths, [])
+    assert.equal(
+      git(behind.worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        operatorBase,
+        'HEAD',
+      ]),
+      '',
+      'the branch now descends from the operator-selected base',
+    )
+    assert.equal(
+      git(behind.worktreePath, [
+        'rev-list',
+        '--merges',
+        '--count',
+        `${operatorBase}..HEAD`,
+      ]),
+      '1',
+      'the cohort integration merge survived the --onto rebase',
+    )
   } finally {
     rmSync(behind.root, { recursive: true, force: true })
     rmSync(behind.remote, { recursive: true, force: true })
   }
 })
 
-test('release sync rebases unchanged when the fetched head is equal to or ahead of local main', () => {
+test('release sync skips an ancestor target and rebases when the fetched head is ahead', () => {
   const root = createFixture()
   const remote = createTestTempDirectory('pan-release-ahead-')
 
@@ -968,7 +1811,7 @@ test('release sync rebases unchanged when the fetched head is equal to or ahead 
       'feat: checkpoint against an equal head',
     )
 
-    assert.equal(equal.status, 'synchronized')
+    assert.equal(equal.status, 'already_current')
     assert.equal(equal.rebase_target, equal.fetched_main)
     assert.equal(equal.rebase_override, null)
     assert.equal(git(equalWorktree, ['rev-parse', 'HEAD^']), equal.fetched_main)
@@ -1134,7 +1977,7 @@ test('waiver-based plan adoption moves the claim and releases the workspace', ()
       adopting.run_id,
     )
 
-    assert.equal(synchronized.status, 'synchronized')
+    assert.equal(synchronized.status, 'already_current')
   } finally {
     rmSync(remote, { recursive: true, force: true })
   }

@@ -9,7 +9,7 @@ import type {
 } from '../types.js'
 import type { RequirementContext } from './types.js'
 import { loadRegistry, type RegistryCatalog } from './registry.js'
-import { registryStageSlug } from './run.js'
+import { registryAppliesToStage } from './run.js'
 import { VALID_EXECUTORS, VALID_FAILURE_ROUTES, VALID_PHASES } from './types.js'
 
 const INLINE_PATH_PATTERN = /\.\/bin\/|\bnpm run\b|\bnode\s+/u
@@ -57,9 +57,7 @@ export function requirementApplies(
     return true
   }
 
-  const stageSlug = registryStageSlug(registryId)
-
-  if (stageSlug && stageSlug !== context.stage) {
+  if (!registryAppliesToStage(registryId, context.stage)) {
     return false
   }
 

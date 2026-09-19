@@ -618,7 +618,11 @@ function requiredData(
           ],
         },
         acceptance_results: [
-          { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+          {
+            id: 'AC-01',
+            result: 'pass',
+            evidence: ['The workflow fixture advances after remediation.'],
+          },
         ],
       }
     case 'implement':

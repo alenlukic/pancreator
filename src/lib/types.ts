@@ -599,6 +599,14 @@ export interface RequirementIssue {
   line?: number
 }
 
+export interface RequirementComparisonBase {
+  source: 'invocation.workspace_before' | 'workspace.cumulative_diff'
+  workspace_root: string
+  fingerprint?: string
+  invocation_path?: string
+  run_id?: string
+}
+
 export interface RequirementValidationResult {
   schema_version: 1
   requirement_id: string
@@ -617,6 +625,7 @@ export interface RequirementValidationResult {
   issues: RequirementIssue[]
   evidence_paths: string[]
   workspace_fingerprint?: string
+  comparison_base?: RequirementComparisonBase
 }
 
 export interface PolicyLookupRow {
@@ -740,8 +749,18 @@ export interface LocalReleaseRebaseOverride {
   resolved_commit: string | null
 }
 
+export interface LocalReleaseAdvisory {
+  code: 'RELEASE_LOCAL_DEFAULT_AHEAD'
+  message: string
+  details: {
+    default_branch: string
+    fetched_main: string
+    local_head: string
+  }
+}
+
 export interface LocalReleaseSyncResult {
-  status: 'synchronized' | 'conflict'
+  status: 'already_current' | 'synchronized' | 'conflict'
   worktree: ManagedWorktreeReference
   branch: string
   remote: string
@@ -751,13 +770,14 @@ export interface LocalReleaseSyncResult {
   /** Operator override of the default rebase target, when one was used. */
   rebase_override: LocalReleaseRebaseOverride | null
   checkpoint_commit: string | null
+  advisories: LocalReleaseAdvisory[]
   /** Paths a `read-only-input` attribution kept out of the checkpoint. */
   withheld_paths: string[]
   conflicted_paths: string[]
 }
 
 export interface LocalReleaseContinueResult {
-  status: 'complete' | 'conflict'
+  status: 'not_needed' | 'complete' | 'conflict'
   worktree: ManagedWorktreeReference
   branch: string
   /** Paths a `read-only-input` attribution kept out of the continuation. */
@@ -773,6 +793,7 @@ export interface LocalReleaseFinalizeResult {
   fetched_main: string
   release_commit: string
   index_commit: string
+  advisories: LocalReleaseAdvisory[]
   clean: boolean
 }
 
@@ -1960,6 +1981,8 @@ export interface RunModelEvidence {
   declared_spec: string | null
   effective_model: string | null
   source: string
+  /** Cursor or executor handle for the launch this manual evidence describes. */
+  launch_handle?: string
   /**
    * `pending` marks a detached probe in flight and `unavailable` a probe that
    * produced no answer. Neither is usable evidence on its own, so submission

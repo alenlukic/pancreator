@@ -157,6 +157,15 @@ test('paused remediation note is attached to the next implement invocation', () 
     'blocked',
   )
   blockedOutput.summary = 'Implementation paused for a remediation restart.'
+  blockedOutput.data.blocked = {
+    missing_precondition: 'Operator direction is required before restarting.',
+    supplying_command: 'pan decide <run-id> --action retry',
+    evidence: [
+      'runtime/logs/workflows/<run-id>/agent/decisions/away-feedback-1.md',
+    ],
+  }
+  delete blockedOutput.data.implementation
+  blockedOutput.data.acceptance_results = []
   writeJson(path.join(root, implementInvocation.output.path), blockedOutput)
   writeCanonicalDelegation(root, implementInvocation)
 

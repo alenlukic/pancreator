@@ -31,12 +31,17 @@ otherwise the request the card delivers, which is the ratified specification.
    not fail the stage.
 4. When self-development has a managed worktree, run
    `pan release sync --worktree <name> --message <message> --run <run-id>`.
-   Use the managed worktree and run id from the invocation. Sync refuses with
-   `RELEASE_REMOTE_BEHIND_LOCAL` when the rebase would rewrite a commit
-   already on the local default branch. Its message names the two recorded
-   overrides: `--onto <ref>` rebases onto the ref you name, and `--no-rebase`
-   keeps the local history as it stands. Continue only after sync reports
-   `synchronized`, whether it rebased or recorded an override.
+   Use the managed worktree and run id from the invocation. The recorded
+   overrides remain available: `--onto <ref>` rebases onto the ref you name,
+   and `--no-rebase` keeps the local history as it stands. Continue after sync
+   reports `synchronized` or `already_current`; both are successful results,
+   and the latter means the selected target was already an ancestor of the
+   branch. A rebase rewrites the replayed commit hashes; sync refuses with
+   `RELEASE_REBASE_TOPOLOGY_LOST` only when the result dropped a merge the
+   branch carried or no longer descends from the target. Stop and report
+   that refusal rather than finalize over it. Carry any
+   `RELEASE_LOCAL_DEFAULT_AHEAD` entry in `advisories` through finalization;
+   finalize recomputes it from the fetched-main hash.
    A legacy run without a managed worktree keeps metadata-only preparation.
 5. Apply the release-metadata procedure `VERSION-001` references. For a
    managed run, allocate the version with
@@ -44,6 +49,8 @@ otherwise the request the card delivers, which is the ratified specification.
    after you choose the bump, use `allocation.version` as `proposed_version`,
    and synchronize metadata after the rebase. Then run
    `pan release finalize --worktree <name> --fetched-main <hash> --run <run-id>`.
+   Finalize reuses a complete same-version release/index pair already at the
+   branch head, including a pair from an earlier attempt.
    In embedded mode, do not modify release metadata or create local commits.
    Stop there. Landing this release on the harness root's local default
    branch is an operator step after submit, so you MUST NOT fast-forward,

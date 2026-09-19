@@ -2305,6 +2305,199 @@ function contractIssues(issues: Array<{ code: string; message: string }>) {
   )
 }
 
+test('implementation claims accept declared blocked data but reject empty success acceptance', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-blocked/outputs/implement-1-test.json'
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: ['fixture-service status exited 3: not running'],
+      },
+      acceptance_results: [],
+    },
+  })
+
+  const blocked = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(blocked.status, 'passed', JSON.stringify(blocked.issues))
+
+  // The plan asks a blocked output to carry evidence for the gap it names, so
+  // a reason with nothing behind it is not an honest refusal.
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: [],
+      },
+      acceptance_results: [],
+    },
+  })
+
+  const unevidenced = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(unevidenced.status, 'failed')
+  assert.ok(
+    unevidenced.issues.some((issue) => issue.code === 'blocked.evidence'),
+    JSON.stringify(unevidenced.issues),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: ['fixture-service status exited 3: not running'],
+      },
+      acceptance_results: {},
+    },
+  })
+
+  const nonArrayAcceptance = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.ok(
+    nonArrayAcceptance.issues.some(
+      (issue) => issue.code === 'blocked.acceptance_results',
+    ),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: {
+      blocked: {
+        missing_precondition: 'The required fixture service is unavailable.',
+        supplying_command: 'fixture-service start',
+        evidence: ['fixture-service status exited 3: not running'],
+      },
+      implementation: {
+        changed_files: [],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [
+        { id: 'AC-01', result: 'pass', evidence: ['unsupported claim'] },
+      ],
+    },
+  })
+
+  const claimed = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(claimed.status, 'failed')
+  assert.ok(
+    claimed.issues.some((issue) => issue.code === 'blocked.acceptance_results'),
+  )
+  assert.ok(
+    claimed.issues.some(
+      (issue) => issue.code === 'blocked.implementation_forbidden',
+    ),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'success',
+    data: {
+      implementation: {
+        changed_files: [],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [],
+    },
+  })
+
+  const success = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(success.status, 'failed')
+  assert.ok(success.issues.some((issue) => issue.code === 'acceptance.missing'))
+})
+
+test('a blocked implement output discloses its workspace edits through workspace_changes', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-blocked-edits/outputs/implement-1-test.json'
+  const before = gitWorkspaceSnapshot(root)
+  const blocked = {
+    missing_precondition:
+      'The child specification names criteria without text.',
+    supplying_command: 'pan plan show --run run-blocked-edits',
+    evidence: ['runtime/logs/workflows/run-blocked-edits/operator/request.md'],
+  }
+
+  // The worker edited a tracked file before it found the gap and stopped.
+  // `data.implementation` is forbidden on a blocked result, so the edit has
+  // no claim list to appear in; the Git delta still holds it.
+  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: { blocked, acceptance_results: [] },
+  })
+
+  const undisclosed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(undisclosed.status, 'failed')
+  assert.ok(
+    undisclosed.issues.some(
+      (issue) =>
+        issue.code === 'blocked.diff_not_disclosed' &&
+        issue.message.includes('src/base.ts'),
+    ),
+    JSON.stringify(undisclosed.issues),
+  )
+
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    workspace_changes: {
+      attribution: 'internal',
+      paths: ['src/base.ts'],
+      explanation:
+        'Started the base edit before the specification gap surfaced.',
+    },
+    data: { blocked, acceptance_results: [] },
+  })
+
+  const disclosed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(disclosed.status, 'passed', JSON.stringify(disclosed.issues))
+
+  // Without an invocation snapshot the cumulative working-tree diff is the
+  // observable delta, and it owes the same disclosure.
+  writeJson(path.join(root, target), {
+    result: 'blocked',
+    data: { blocked, acceptance_results: [] },
+  })
+
+  const cumulative = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.ok(
+    cumulative.issues.some(
+      (issue) => issue.code === 'blocked.diff_not_disclosed',
+    ),
+    JSON.stringify(cumulative.issues),
+  )
+})
 test('implementation claims disclose every attributed workspace path', () => {
   const root = createFixture()
   const target =

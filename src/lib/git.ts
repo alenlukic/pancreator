@@ -1,5 +1,11 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
-import { readFileSync, realpathSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 
 import { PanError } from './errors.js'
@@ -407,7 +413,9 @@ export interface GitRebaseResult {
 
 /** Rebase the current branch and preserve conflicts for later continuation. */
 export function gitRebaseOnto(root: string, commit: string): GitRebaseResult {
-  const result = runGit(root, ['rebase', commit], { allowFailure: true })
+  const result = runGit(root, ['rebase', '--rebase-merges', commit], {
+    allowFailure: true,
+  })
 
   return {
     succeeded: result.status === 0,
@@ -451,6 +459,93 @@ export function gitRebaseInProgress(root: string): boolean {
     (mergePath.length > 0 && statPathExists(root, mergePath)) ||
     (applyPath.length > 0 && statPathExists(root, applyPath))
   )
+}
+
+const REBASE_METADATA_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]*$/u
+
+function activeRebaseMetadataDirectory(root: string): string | null {
+  for (const directoryName of ['rebase-merge', 'rebase-apply']) {
+    const result = runGit(root, ['rev-parse', '--git-path', directoryName], {
+      allowFailure: true,
+    })
+    const reported = result.status === 0 ? result.stdout.trim() : ''
+
+    if (reported.length === 0) {
+      continue
+    }
+
+    const absolute = path.resolve(root, reported)
+
+    try {
+      if (statSync(absolute).isDirectory()) {
+        return realpathSync.native(absolute)
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return null
+}
+
+function rebaseMetadataPath(root: string, name: string): string | null {
+  if (!REBASE_METADATA_NAME_PATTERN.test(name)) {
+    throw new PanError(`Invalid Git rebase metadata name: ${name}`, {
+      code: 'GIT_REBASE_METADATA_PATH_INVALID',
+    })
+  }
+
+  const directory = activeRebaseMetadataDirectory(root)
+
+  if (directory === null) {
+    return null
+  }
+
+  const candidate = path.resolve(directory, name)
+  const relative = path.relative(directory, candidate)
+
+  if (
+    relative.length === 0 ||
+    relative.startsWith('..') ||
+    path.isAbsolute(relative)
+  ) {
+    throw new PanError(`Git rebase metadata escapes its directory: ${name}`, {
+      code: 'GIT_REBASE_METADATA_PATH_INVALID',
+    })
+  }
+
+  return candidate
+}
+
+/** Read one harness-owned marker alongside an active Git rebase. */
+export function gitReadRebaseMetadata(
+  root: string,
+  name: string,
+): string | null {
+  const metadataPath = rebaseMetadataPath(root, name)
+
+  if (metadataPath === null || !existsSync(metadataPath)) {
+    return null
+  }
+
+  return readFileSync(metadataPath, 'utf8')
+}
+
+/** Write one harness-owned marker alongside an active Git rebase. */
+export function gitWriteRebaseMetadata(
+  root: string,
+  name: string,
+  content: string,
+): void {
+  const metadataPath = rebaseMetadataPath(root, name)
+
+  if (metadataPath === null) {
+    throw new PanError('Git rebase metadata requires an active rebase.', {
+      code: 'GIT_REBASE_NOT_ACTIVE',
+    })
+  }
+
+  writeFileSync(metadataPath, content, 'utf8')
 }
 
 function statPathExists(root: string, candidate: string): boolean {
@@ -507,6 +602,34 @@ export function gitCommitSubject(root: string, commit: string): string {
   const result = runGit(root, ['show', '-s', '--format=%s', commit])
 
   return result.stdout.trim()
+}
+
+/**
+ * Sorted `"<parent count> <subject>"` signatures of every merge commit in one
+ * revision range. A rebase rewrites commit hashes, so identity cannot tell
+ * whether the replayed history still carries its merges; the parent arity and
+ * subject of each merge survive `--rebase-merges` and do not survive a
+ * flattening rebase, which is the loss this signature exists to detect.
+ */
+export function gitMergeSignatures(root: string, range: string): string[] {
+  const result = runGit(root, [
+    'log',
+    '--merges',
+    '--no-decorate',
+    '--format=%P%x1f%s',
+    range,
+  ])
+
+  return result.stdout
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const separator = line.indexOf('\u001f')
+      const parents = line.slice(0, separator).split(' ').filter(Boolean)
+
+      return `${parents.length} ${line.slice(separator + 1)}`
+    })
+    .sort()
 }
 
 /**

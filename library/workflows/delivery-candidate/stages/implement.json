@@ -23,6 +23,12 @@
     "implementation.notes": "array",
     "acceptance_results": "array"
   },
+  "blocked_required_data": {
+    "blocked": "object",
+    "blocked.missing_precondition": "string",
+    "blocked.supplying_command": "string",
+    "blocked.evidence": "array"
+  },
   "criteria": [
     {
       "id": "implement.acceptance_claimed",

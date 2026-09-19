@@ -803,3 +803,49 @@ test('the review card scopes the closure from the bound worktree when the main c
     /## 🧭 Conduct under the base revision/u,
   )
 })
+
+test('a target review card keeps its closure at the installation root', () => {
+  const root = createFixture()
+  const target = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    installation_mode?: string
+    workspace_root?: string
+  }
+
+  config.installation_mode = 'detached'
+  config.workspace_root = target
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: target, encoding: 'utf8' }).trim()
+  const base = git(['rev-parse', 'HEAD'])
+
+  const policyPath = path.join(target, 'governance/policies/GLOBAL-002.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: string[]
+  }
+
+  policy.instructions.push('Agents MUST record a target-only clause.')
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+  git(['add', 'governance/policies/GLOBAL-002.json'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  const head = git(['rev-parse', 'HEAD'])
+
+  createWorktree(root, 'target-review', { from: head })
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/target-review-card.md',
+    worktreeName: 'target-review',
+    baseRef: base,
+    targetRef: head,
+  })
+
+  assert.equal(card.worktree?.name, 'target-review')
+  assert.match(
+    readFileSync(path.join(root, card.path), 'utf8'),
+    /\*\*GLOBAL-002 · base text\*\*/u,
+  )
+})

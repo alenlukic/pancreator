@@ -720,6 +720,7 @@ const AWAY_OPTION_SHAPE = {
 
 /** Bounded copy of one evaluator exchange, written beside the run evidence. */
 export interface AwayEvaluatorExchange {
+  attempt?: number
   ok: boolean
   exit_code: number | null
   timed_out: boolean
@@ -728,14 +729,17 @@ export interface AwayEvaluatorExchange {
   stderr: string
   value?: unknown
   error?: string
+  parse_error?: string
 }
 
 const EXCHANGE_STREAM_MAX = 20_000
 
 /**
  * Persist the evaluator prompt and its raw response at
- * agent/evidence/away-evaluator-<timestamp>.json. The ledger holds only the
- * parsed verdict, so this record is what explains a rejected ranking.
+ * agent/evidence/away-evaluator-<timestamp>-attempt-<n>-<uuid>.json. The UUID keeps
+ * concurrent evaluations distinct while the attempt suffix orders retries. The
+ * ledger holds only the parsed
+ * verdict, so this record is what explains a rejected ranking.
  */
 export function recordAwayEvaluatorExchange(
   root: string,
@@ -745,8 +749,10 @@ export function recordAwayEvaluatorExchange(
   recordedAt = new Date().toISOString(),
 ): string {
   const layout = resolveRunLayout(root, state.run_id)
+  const attemptSuffix =
+    exchange.attempt === undefined ? '' : `-attempt-${exchange.attempt}`
   const target = layout.evidence(
-    `away-evaluator-${recordedAt.replace(/[:.]/gu, '-')}.json`,
+    `away-evaluator-${recordedAt.replace(/[:.]/gu, '-')}${attemptSuffix}-${randomUUID()}.json`,
   )
 
   writeJsonAtomic(target.absolute, {
@@ -755,6 +761,7 @@ export function recordAwayEvaluatorExchange(
     invocation_id: state.current_invocation?.id ?? null,
     recorded_at: recordedAt,
     prompt,
+    ...(exchange.attempt !== undefined ? { attempt: exchange.attempt } : {}),
     ok: exchange.ok,
     exit_code: exchange.exit_code,
     timed_out: exchange.timed_out,
@@ -763,6 +770,9 @@ export function recordAwayEvaluatorExchange(
     stderr: exchange.stderr.slice(-EXCHANGE_STREAM_MAX),
     ...(exchange.value !== undefined ? { value: exchange.value } : {}),
     ...(exchange.error !== undefined ? { error: exchange.error } : {}),
+    ...(exchange.parse_error !== undefined
+      ? { parse_error: exchange.parse_error }
+      : {}),
   })
 
   return target.relative
@@ -855,12 +865,16 @@ export function awayEvaluatorFailureLimitError(
   )
 }
 
-/** Append one rejected record when the evaluator cannot return ranked options. */
+const AWAY_EVALUATOR_EXHAUSTED_ERROR =
+  'The away evaluator exhausted two attempts without a valid decision. ' +
+  'Read the referenced evaluator exchange evidence.'
+
+/** Append one generic rejected record after both evaluator attempts fail. */
 export function recordAwayEvaluationFailure(
   root: string,
   state: RunState,
   blocker: AwayBlocker,
-  error: string,
+  evidenceReferences: string[],
   recordedAt = new Date().toISOString(),
 ): AwayDecisionRecord {
   const awayMode = state.away_mode
@@ -869,6 +883,10 @@ export function recordAwayEvaluationFailure(
     code: 'AWAY_MODE_DISABLED',
   })
 
+  const references = parseEvidenceReferences(
+    evidenceReferences,
+    'evidence_references',
+  )
   const record: AwayDecisionRecord = {
     schema_version: 1,
     decision_id: randomUUID(),
@@ -878,16 +896,16 @@ export function recordAwayEvaluationFailure(
     blocker,
     ranked_options: [],
     selected_action: null,
-    rejected_options: [{ rank: 0, reason: error }],
+    rejected_options: [{ rank: 0, reason: AWAY_EVALUATOR_EXHAUSTED_ERROR }],
     guardrails: awayMode.guardrails,
     result: 'rejected',
-    evidence_references: [],
+    evidence_references: references,
     recorded_at: recordedAt,
-    error,
+    error: AWAY_EVALUATOR_EXHAUSTED_ERROR,
   }
 
-  // An execution failure is not a decision, so it leaves the decision budget
-  // alone. It has its own ceiling of the same size, so the ledger stays
+  // An exhausted evaluation is not a decision, so it leaves the decision
+  // budget alone. It has its own ceiling of the same size, so the ledger stays
   // bounded when the evaluator fails every time.
   return withOperationMutex(
     awayPath(root, LEDGER_LOCK),
@@ -920,21 +938,9 @@ export function recordAwayEvaluation(
     code: 'AWAY_MODE_DISABLED',
   })
 
-  // A ranking the parser rejects is an evaluator defect, not a decision the
-  // operator's budget should pay for. It takes the failure route and ceiling.
-  let options: AwayOption[]
-
-  try {
-    options = parseAwayOptions(evaluatorValue)
-  } catch (error) {
-    return recordAwayEvaluationFailure(
-      root,
-      state,
-      blocker,
-      errorMessage(error),
-      recordedAt,
-    )
-  }
+  // Orchestration validates each attempt before this durable decision append.
+  // A direct invalid call throws without changing the append-only ledger.
+  const options = parseAwayOptions(evaluatorValue)
 
   // The decision limit is checked and the record appended under one lock, so
   // concurrent evaluations cannot both pass the limit before either appends.
