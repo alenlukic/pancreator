@@ -1074,13 +1074,23 @@ Supported bracket options:
 
 | Option              | Values                                                     | Default                 |
 | ------------------- | ---------------------------------------------------------- | ----------------------- |
+| `context`           | `auto`, `current_turn`, `all_turns`                        | the API's own default   |
 | `effort`            | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` | the model's own default |
 | `max-output-tokens` | a positive integer                                         | the model's own default |
 | `max-tool-rounds`   | a positive integer                                         | `60`                    |
+| `mode`              | `standard`, `pro`                                          | the model's own default |
 | `session-resume`    | `true`, `false`                                            | `true`                  |
+| `summary`           | `auto`, `concise`, `detailed`                              | no summary              |
 | `timeout-ms`        | an integer of at least `1000`                              | `3600000`               |
+| `verbosity`         | `low`, `medium`, `high`                                    | the model's own default |
 
-Effort is validated against the enum above rather than against a per-model catalog, so a specific model may still reject a value the harness accepts; the API error names that model's own set. The tool-result cap is a fixed harness bound of `262144` bytes, not a mapping option.
+`effort`, `mode`, `context`, and `summary` set the Responses `reasoning` parameter; `verbosity` sets `text.verbosity`. Each is sent only when the mapping names it, so an option you omit leaves the API default in place. `verbosity` shapes answer detail and is not a token bound — `max-output-tokens` is that one.
+
+Every enum is validated against the set above rather than against a per-model catalog, so a specific model may still reject a value the harness accepts; the API error names that model's own set. `gpt-6-astra`, for example, rejects `effort=none` and `effort=minimal`, and bounds `max-output-tokens` to 16–128000. The tool-result cap is a fixed harness bound of `262144` bytes, not a mapping option.
+
+`context` has a harness-side caveat. The API is called with retention disabled, and the local transcript replays only messages and tool calls, so no reasoning item from an earlier turn is ever resent. `all_turns` and `auto` therefore have nothing earlier to reuse, and they behave like `current_turn` until the transcript also replays encrypted reasoning items. The option is accepted and forwarded so a mapping is ready when that lands; set it today only if you want that recorded intent.
+
+Do not read `context` here as the Cursor `context` option, which sizes a model's context window. Executor prefixes select independent option sets, and this one names the Responses `reasoning.context` parameter.
 
 Requirements and behavior:
 

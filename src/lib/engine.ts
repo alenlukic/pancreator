@@ -5535,6 +5535,19 @@ function createOpenAiAdapter(
     OPENAI_SESSION_DEFAULTS.maxToolRounds
   const maxOutputTokens = positiveIntegerOption(options, 'max-output-tokens')
   const effort = options.effort
+  // Validated against their enums by parsePersonaMapping, so the adapter
+  // forwards them as-is rather than re-deriving the accepted sets here.
+  const mode = options.mode
+  const reasoningContext = options.context
+  const summary = options.summary
+  const verbosity = options.verbosity
+  const responseParameters = {
+    ...(effort ? { reasoning_effort: effort } : {}),
+    ...(mode ? { reasoning_mode: mode } : {}),
+    ...(reasoningContext ? { reasoning_context: reasoningContext } : {}),
+    ...(summary ? { reasoning_summary: summary } : {}),
+    ...(verbosity ? { text_verbosity: verbosity } : {}),
+  }
 
   const toolPolicy = openAiToolPolicy(
     context.root,
@@ -5551,7 +5564,7 @@ function createOpenAiAdapter(
   const requestSettings: ExternalRequestSettings = {
     model: context.mapping.model,
     store: false,
-    ...(effort ? { reasoning_effort: effort } : {}),
+    ...responseParameters,
     ...(maxOutputTokens !== undefined
       ? { max_output_tokens: maxOutputTokens }
       : {}),
@@ -5574,7 +5587,7 @@ function createOpenAiAdapter(
         invocation_id: context.invocationId,
         stage: context.stage.slug,
         session_id: sessionId,
-        ...(effort ? { reasoning_effort: effort } : {}),
+        ...responseParameters,
         ...(maxOutputTokens !== undefined
           ? { max_output_tokens: maxOutputTokens }
           : {}),

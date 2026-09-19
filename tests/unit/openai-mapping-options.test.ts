@@ -58,11 +58,29 @@ test('the canonical form round-trips an openai spec with sorted options', () => 
 
 test('every supported openai option parses', () => {
   const mapping = parsePersonaMapping(
-    'openai:gpt-6-astra[effort=xhigh,max-output-tokens=4096,' +
-      'max-tool-rounds=25,session-resume=false,timeout-ms=1000]',
+    'openai:gpt-6-astra[context=all_turns,effort=xhigh,max-output-tokens=4096,' +
+      'max-tool-rounds=25,mode=pro,session-resume=false,summary=detailed,' +
+      'timeout-ms=1000,verbosity=low]',
   )
 
   assert.deepEqual(Object.keys(mapping.options).sort(), [...OPENAI_OPTION_KEYS])
+})
+
+test('each Astra enum option accepts every documented value', () => {
+  const enums: Record<string, string[]> = {
+    context: ['auto', 'current_turn', 'all_turns'],
+    mode: ['standard', 'pro'],
+    summary: ['auto', 'concise', 'detailed'],
+    verbosity: ['low', 'medium', 'high'],
+  }
+
+  for (const [key, values] of Object.entries(enums)) {
+    for (const value of values) {
+      const mapping = parsePersonaMapping(`openai:gpt-6-astra[${key}=${value}]`)
+
+      assert.equal(mapping.options[key], value, `${key}=${value}`)
+    }
+  }
 })
 
 test('an invalid openai option is rejected and names the supported set', () => {
@@ -90,6 +108,26 @@ test('an invalid openai option is rejected and names the supported set', () => {
     {
       spec: 'openai:gpt-6-astra[timeout-ms=50]',
       detail: /timeout-ms MUST be an integer of at least 1000/u,
+    },
+    {
+      spec: 'openai:gpt-6-astra[mode=turbo]',
+      detail:
+        /mode 'turbo' is not supported\. Supported values: standard, pro/u,
+    },
+    {
+      spec: 'openai:gpt-6-astra[context=every_turn]',
+      detail:
+        /context 'every_turn' is not supported\. Supported values: auto, current_turn, all_turns/u,
+    },
+    {
+      spec: 'openai:gpt-6-astra[summary=verbose]',
+      detail:
+        /summary 'verbose' is not supported\. Supported values: auto, concise, detailed/u,
+    },
+    {
+      spec: 'openai:gpt-6-astra[verbosity=max]',
+      detail:
+        /verbosity 'max' is not supported\. Supported values: low, medium, high/u,
     },
   ]
 

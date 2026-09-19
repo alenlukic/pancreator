@@ -11,6 +11,17 @@ export type OpenAiReasoningEffort =
   | 'xhigh'
   | 'max'
 
+/** Execution mode, selected separately from the effort level. */
+export type OpenAiReasoningMode = 'standard' | 'pro'
+
+/** Whether the model may reuse reasoning items from earlier turns. */
+export type OpenAiReasoningContext = 'auto' | 'current_turn' | 'all_turns'
+
+export type OpenAiReasoningSummary = 'auto' | 'concise' | 'detailed'
+
+/** Answer detail. Not a token bound; `maxOutputTokens` is that. */
+export type OpenAiTextVerbosity = 'low' | 'medium' | 'high'
+
 /**
  * One Responses conversation item. The harness resends the accumulated items
  * every round because `store: false` leaves nothing server-side to reference.
@@ -43,6 +54,10 @@ export interface OpenAiResponseRequest {
   input: string | OpenAiInputItem[]
   instructions?: string
   reasoningEffort?: OpenAiReasoningEffort
+  reasoningMode?: OpenAiReasoningMode
+  reasoningContext?: OpenAiReasoningContext
+  reasoningSummary?: OpenAiReasoningSummary
+  textVerbosity?: OpenAiTextVerbosity
   maxOutputTokens?: number
   tools?: OpenAiToolDefinition[]
   timeoutMs?: number
@@ -73,6 +88,24 @@ export interface OpenAiResponseResult {
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000
+
+/**
+ * The reasoning sub-parameters travel as one object, so they are collected
+ * here rather than spread individually: sending `reasoning: {}` would assert a
+ * configuration the caller never asked for.
+ */
+function reasoningParameters(
+  request: OpenAiResponseRequest,
+): Record<string, string> | undefined {
+  const reasoning: Record<string, string> = {
+    ...(request.reasoningEffort ? { effort: request.reasoningEffort } : {}),
+    ...(request.reasoningMode ? { mode: request.reasoningMode } : {}),
+    ...(request.reasoningContext ? { context: request.reasoningContext } : {}),
+    ...(request.reasoningSummary ? { summary: request.reasoningSummary } : {}),
+  }
+
+  return Object.keys(reasoning).length > 0 ? reasoning : undefined
+}
 
 function extractOutputText(body: Record<string, unknown>): string | undefined {
   if (typeof body.output_text === 'string') {
@@ -169,6 +202,8 @@ export async function createOpenAiResponse(
   const endpoint = request.endpoint ?? OPENAI_RESPONSES_URL
   const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
+  const reasoning = reasoningParameters(request)
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   let response: Response
@@ -185,8 +220,9 @@ export async function createOpenAiResponse(
         input: request.input,
         store: false,
         ...(request.instructions ? { instructions: request.instructions } : {}),
-        ...(request.reasoningEffort
-          ? { reasoning: { effort: request.reasoningEffort } }
+        ...(reasoning !== undefined ? { reasoning } : {}),
+        ...(request.textVerbosity
+          ? { text: { verbosity: request.textVerbosity } }
           : {}),
         ...(request.maxOutputTokens !== undefined
           ? { max_output_tokens: request.maxOutputTokens }
