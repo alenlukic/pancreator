@@ -1348,8 +1348,123 @@ export function validateImplementationClaims(
   const issues: HandlerResult['issues'] = []
 
   const absolute = path.join(input.root, input.targetPath)
-  const value = readJson(absolute) as Record<string, unknown>
+  const parsed: unknown = readJson(absolute)
+
+  if (!isRecord(parsed)) {
+    return {
+      status: 'failed',
+      issues: [issue('output.shape', 'stage output MUST be an object')],
+    }
+  }
+
+  const value = parsed
   const data = isRecord(value.data) ? value.data : {}
+
+  if (value.result === 'blocked') {
+    const blocked = isRecord(data.blocked) ? data.blocked : null
+
+    if (!blocked) {
+      issues.push(
+        issue(
+          'blocked.missing',
+          'data.blocked is required for a blocked result',
+        ),
+      )
+    } else {
+      for (const field of [
+        'missing_precondition',
+        'supplying_command',
+      ] as const) {
+        const fieldValue = blocked[field]
+
+        if (typeof fieldValue !== 'string' || fieldValue.trim().length === 0) {
+          issues.push(
+            issue(
+              'blocked.shape',
+              `data.blocked.${field} MUST be a non-empty string`,
+            ),
+          )
+        }
+      }
+    }
+
+    if (
+      !Array.isArray(data.acceptance_results) ||
+      data.acceptance_results.length !== 0
+    ) {
+      issues.push(
+        issue(
+          'blocked.acceptance_results',
+          'data.acceptance_results MUST be an empty array for a blocked result',
+        ),
+      )
+    }
+
+    if (data.implementation !== undefined) {
+      issues.push(
+        issue(
+          'blocked.implementation_forbidden',
+          'data.implementation MUST NOT be present for a blocked result',
+        ),
+      )
+    }
+
+    if (blocked) {
+      const evidence = blocked.evidence
+
+      if (
+        !Array.isArray(evidence) ||
+        evidence.length === 0 ||
+        !evidence.every(
+          (entry) => typeof entry === 'string' && entry.trim().length > 0,
+        )
+      ) {
+        issues.push(
+          issue(
+            'blocked.evidence',
+            'data.blocked.evidence MUST be a non-empty array of non-empty ' +
+              'strings proving the missing precondition',
+          ),
+        )
+      }
+    }
+
+    // A blocked worker may still have edited the tree before it stopped.
+    // `data.implementation` is forbidden here, so the only honest place for
+    // those paths is top-level `workspace_changes.paths`, reconciled against
+    // the Git delta rather than against a claim list that cannot exist.
+    const blockedWorkspaceRoot = workspaceRootFromInput(input)
+    const blockedAttemptFiles = attemptChangedPaths(input, blockedWorkspaceRoot)
+    const blockedDiff =
+      blockedAttemptFiles === null
+        ? workspaceSourceChanges(blockedWorkspaceRoot)
+        : null
+    const owedBlockedDisclosure =
+      blockedAttemptFiles ?? (blockedDiff?.ok ? blockedDiff.files : [])
+    const blockedAttribution = isRecord(value.workspace_changes)
+      ? value.workspace_changes
+      : null
+    const blockedAttributedPaths = Array.isArray(blockedAttribution?.paths)
+      ? blockedAttribution.paths.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : []
+
+    for (const file of owedBlockedDisclosure) {
+      if (!blockedAttributedPaths.includes(file)) {
+        issues.push(
+          issue(
+            'blocked.diff_not_disclosed',
+            `File changed by this blocked attempt but not listed in ` +
+              `workspace_changes.paths: ${file}`,
+          ),
+        )
+      }
+    }
+
+    return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+  }
+
   const implementation = isRecord(data.implementation)
     ? data.implementation
     : null

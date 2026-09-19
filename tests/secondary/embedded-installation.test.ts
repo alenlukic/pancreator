@@ -298,6 +298,76 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   )
 })
 
+test('installed review scope reports its untracked closure', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    gitInit(project)
+    git(project, ['add', 'README.md'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    const base = git(project, ['rev-parse', 'HEAD'])
+    const install = runInstaller(project)
+
+    assert.equal(install.status, 0, install.stderr)
+    assert.equal(git(project, ['ls-files', '--', '.pancreator']), '')
+
+    writeFileSync(
+      path.join(project, 'README.md'),
+      '# skeleton\n\nTarget revision.\n',
+    )
+    git(project, ['add', 'README.md'])
+    git(project, ['commit', '-qm', 'change target'])
+
+    const head = git(project, ['rev-parse', 'HEAD'])
+    // Run the installed compiled CLI directly, as the doctor case above does.
+    // A `--skip-dependencies` install carries no toolchain of its own, so the
+    // installed `bin/pan` wrapper can rebuild only through whatever `tsc` the
+    // parent process happens to have on PATH; the contract here is the
+    // installed command's answer, not the wrapper's build step.
+    const scopeCommand = run(
+      process.execPath,
+      [
+        path.join(project, '.pancreator', 'dist', 'src', 'cli.js'),
+        'governance',
+        'review-scope',
+        '--target',
+        head,
+        '--base',
+        base,
+        '--json',
+      ],
+      path.join(project, '.pancreator'),
+    )
+
+    assert.equal(
+      scopeCommand.status,
+      0,
+      `${scopeCommand.stdout}\n${scopeCommand.stderr}`,
+    )
+    assert.doesNotMatch(
+      `${scopeCommand.stdout}\n${scopeCommand.stderr}`,
+      /REVIEW_CLOSURE_REVISION_MISMATCH/u,
+    )
+
+    const scope = JSON.parse(scopeCommand.stdout) as {
+      base: string
+      head: string
+      closure_tracking: string
+      closure_revision: string | null
+      changed_path_count: number
+    }
+
+    assert.equal(scope.base, base)
+    assert.equal(scope.head, head)
+    assert.equal(scope.closure_tracking, 'untracked')
+    assert.equal(scope.closure_revision, null)
+    assert.equal(scope.changed_path_count, 1)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
 // The state before the first install is the condition under test, so this test
 // cannot start from the shared template.
 test('embedded installer stays out of target git state', () => {

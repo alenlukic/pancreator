@@ -102,6 +102,12 @@ test('a harness-routed entry-gate repair reaches release with no operator comman
         paths: ['src/repaired.ts'],
         explanation: 'The remediation the entry gate ordered changed this.',
       }
+      const implementation = output.data.implementation as Record<
+        string,
+        unknown
+      >
+
+      implementation.changed_files = ['src/repaired.ts']
       attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
     },
   )

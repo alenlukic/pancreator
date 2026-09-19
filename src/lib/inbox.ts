@@ -7,6 +7,7 @@ import {
   statSync,
 } from 'node:fs'
 import path from 'node:path'
+import { TextDecoder } from 'node:util'
 
 import { invariant, PanError } from './errors.js'
 import {
@@ -36,6 +37,8 @@ export interface InboxItem {
   run_id: string | null
   /** Lifecycle directory the item sits in. */
   status: InboxWorkStatus
+  /** Per-file decode or parse failure; the row remains visible. */
+  reason?: string
 }
 
 interface InboxEntry {
@@ -466,7 +469,10 @@ function runIdBase(value: string): string | null {
 }
 
 function resolveRunId(fileName: string, knownRunIds: string[]): string | null {
-  const stem = fileName.endsWith('.md') ? fileName.slice(0, -3) : fileName
+  const extension = path.extname(fileName)
+  const stem = extension
+    ? fileName.slice(0, fileName.length - extension.length)
+    : fileName
   let best: string | null = null
 
   for (const runId of knownRunIds) {
@@ -569,7 +575,14 @@ function findLatestMatchingRun(
   return matches[0] ?? null
 }
 
-/** Move direct legacy inbox Markdown files into status directories. */
+/**
+ * Move direct legacy inbox regular files into status directories.
+ *
+ * Any extension may be a request, so the sweep does not filter on one. A
+ * dot-prefixed name is not: it is a host or tool artifact such as `.DS_Store`,
+ * and moving it would turn a Finder side effect into a queued operator
+ * request. Such a file stays where it is, unlisted and unmoved.
+ */
 export function migrateLegacyInboxLayout(
   root: string,
 ): InboxLegacyMigrationSummary {
@@ -586,7 +599,7 @@ export function migrateLegacyInboxLayout(
   let updatedRuns = 0
 
   for (const entry of readdirSync(inboxDir, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) {
+    if (!entry.isFile() || entry.name.startsWith('.')) {
       continue
     }
 
@@ -612,6 +625,14 @@ export function migrateLegacyInboxLayout(
   return { migrated_files: migratedFiles, updated_runs: updatedRuns }
 }
 
+function inboxReadFailureReason(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message.trim()
+  }
+
+  return 'The inbox file could not be decoded or parsed.'
+}
+
 function listInboxStatus(
   root: string,
   status: InboxWorkStatus,
@@ -624,27 +645,50 @@ function listInboxStatus(
   }
 
   return readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .filter((entry) => entry.isFile())
     .map((entry) => {
       const filePath = path.join(directory, entry.name)
-      const stat = statSync(filePath)
-      const content = readFileSync(filePath, 'utf8')
+      let mtimeMs = 0
+      let modifiedAt = new Date(0).toISOString()
 
-      return {
-        mtimeMs: stat.mtimeMs,
-        item: {
-          file_name: entry.name,
-          title: extractTitle(content, entry.name),
-          modified_at: new Date(stat.mtimeMs).toISOString(),
-          run_id: resolveRunId(entry.name, knownRunIds),
-          status,
-        },
+      try {
+        const stat = statSync(filePath)
+
+        mtimeMs = stat.mtimeMs
+        modifiedAt = new Date(stat.mtimeMs).toISOString()
+
+        const content = new TextDecoder('utf-8', { fatal: true }).decode(
+          readFileSync(filePath),
+        )
+
+        return {
+          mtimeMs,
+          item: {
+            file_name: entry.name,
+            title: extractTitle(content, entry.name),
+            modified_at: modifiedAt,
+            run_id: resolveRunId(entry.name, knownRunIds),
+            status,
+          },
+        }
+      } catch (error) {
+        return {
+          mtimeMs,
+          item: {
+            file_name: entry.name,
+            title: entry.name,
+            modified_at: modifiedAt,
+            run_id: resolveRunId(entry.name, knownRunIds),
+            status,
+            reason: inboxReadFailureReason(error),
+          },
+        }
       }
     })
 }
 
 /**
- * List the Markdown inbox items of every lifecycle status.
+ * List every regular inbox file of every lifecycle status.
  *
  * `HR3-012`: the listing read `queue` alone, so an operator who wanted to see
  * an active, canceled, or completed item had to read the directories
@@ -681,11 +725,11 @@ export function renderInbox(items: InboxItem[]): string {
     return 'Inbox is empty.\n'
   }
 
-  const lines = ['STATUS\tFILE\tTITLE\tMODIFIED\tRUN']
+  const lines = ['STATUS\tFILE\tTITLE\tMODIFIED\tRUN\tREASON']
 
   for (const item of items) {
     lines.push(
-      `${item.status}\t${item.file_name}\t${item.title}\t${item.modified_at}\t${item.run_id ?? '-'}`,
+      `${item.status}\t${item.file_name}\t${item.title}\t${item.modified_at}\t${item.run_id ?? '-'}\t${item.reason ?? '-'}`,
     )
   }
 

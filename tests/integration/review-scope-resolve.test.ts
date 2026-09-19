@@ -42,9 +42,11 @@ test('the closure names real persona surfaces', () => {
 test('an identical base and head is clean and independent', () => {
   const root = createFixture()
   const head = git(root, ['rev-parse', 'HEAD'])
-  const scope = resolveReviewScope(root, { head, base: head })
+  const scope = resolveReviewScope(root, root, { head, base: head })
 
   assert.deepEqual(scope.changed_paths, [])
+  assert.equal(scope.closure_tracking, 'tracked')
+  assert.equal(scope.closure_revision, head)
   assert.equal(scope.clean, true)
   assert.equal(scope.independent, true)
   assert.deepEqual(scope.standards_delta, [])
@@ -55,7 +57,11 @@ test('a target with no merge base is rejected by code', () => {
   const head = git(root, ['rev-parse', 'HEAD'])
 
   assert.throws(
-    () => resolveReviewScope(root, { head, defaultBranch: 'no-such-branch' }),
+    () =>
+      resolveReviewScope(root, root, {
+        head,
+        defaultBranch: 'no-such-branch',
+      }),
     (error: unknown) =>
       error instanceof PanError && error.code === 'REVIEW_BASE_UNRESOLVED',
   )
@@ -73,7 +79,7 @@ test('a reviewer mapping change in config.json is an instrument conflict', () =>
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const head = commitAll(root, 'route the reviewer elsewhere')
-  const scope = resolveReviewScope(root, { head, base })
+  const scope = resolveReviewScope(root, root, { head, base })
 
   assert.deepEqual(
     scope.conflicts.filter((item) => item.path === 'config.json'),
@@ -107,7 +113,7 @@ test('a policy change yields one standards delta and a rename keeps both sides',
   ])
 
   const head = commitAll(root, 'change a rule and rename the lineup')
-  const scope = resolveReviewScope(root, { head, base })
+  const scope = resolveReviewScope(root, root, { head, base })
 
   assert.deepEqual(
     scope.standards_delta.map((delta) => [delta.policy, delta.status]),
@@ -142,7 +148,8 @@ test('a malformed policy is reported as malformed, not as a wholesale removal', 
   writeFileSync(policyPath, valid)
 
   const head = commitAll(root, 'repair the policy file')
-  const delta = resolveReviewScope(root, { head, base }).standards_delta[0]
+  const delta = resolveReviewScope(root, root, { head, base })
+    .standards_delta[0]
 
   assert.ok(delta)
   assert.equal(delta.malformed, 'base')
@@ -159,24 +166,30 @@ test('a scope check from a checkout at another head is refused unless the revisi
   const later = commitAll(root, 'move the working tree past the target')
 
   assert.throws(
-    () => resolveReviewScope(root, { head: base, base }),
+    () => resolveReviewScope(root, root, { head: base, base }),
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'REVIEW_CLOSURE_REVISION_MISMATCH',
   )
   assert.throws(
-    () => resolveReviewScope(root, { head: base, base, closureRevision: base }),
+    () =>
+      resolveReviewScope(root, root, {
+        head: base,
+        base,
+        closureRevision: base,
+      }),
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'REVIEW_CLOSURE_REVISION_MISMATCH',
   )
 
-  const scope = resolveReviewScope(root, {
+  const scope = resolveReviewScope(root, root, {
     head: base,
     base,
     closureRevision: 'HEAD',
   })
 
+  assert.equal(scope.closure_tracking, 'tracked')
   assert.equal(scope.closure_revision, later)
   assert.equal(scope.head, base)
 })
@@ -214,7 +227,7 @@ test('a change inside the governance case of cli.ts is an instrument conflict', 
   )
 
   const head = commitAll(root, 'edit the review-scope entry point')
-  const scope = resolveReviewScope(root, { head, base })
+  const scope = resolveReviewScope(root, root, { head, base })
 
   assert.deepEqual(
     scope.conflicts.filter((item) => item.path === 'src/cli.ts'),

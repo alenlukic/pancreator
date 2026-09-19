@@ -12,7 +12,10 @@ import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
 import { readTargetExtensionManifest } from './target-authoring.js'
 import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
-import { resolveOrCreateWorktree } from './worktrees.js'
+import {
+  resolveOrCreateWorktree,
+  workspaceRepositoryRoot,
+} from './worktrees.js'
 import { gitShowFile } from './git.js'
 import {
   resolveReviewDimensionSelection,
@@ -543,7 +546,10 @@ interface BaseConductBlock {
   tainted: string[]
 }
 
-function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
+function baseConductBlock(
+  targetRoot: string,
+  scope: ReviewScope,
+): BaseConductBlock {
   const tiers = conflictsByTier(scope.conflicts)
   const policies: BaseConductPolicy[] = []
   const otherConduct: string[] = []
@@ -557,7 +563,7 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
       continue
     }
 
-    const text = gitShowFile(root, scope.base, conflict.path)
+    const text = gitShowFile(targetRoot, scope.base, conflict.path)
 
     if (text === null) {
       // The change added this policy, so no base rule binds the session.
@@ -1013,20 +1019,25 @@ export function buildGovernanceCard(
     )}/${options.mode}-card.md`
 
   const baseConduct = options.baseRef
-    ? baseConductBlock(
-        root,
-        // The scope check reads the closure from its own checkout, so it runs
-        // in the worktree bound to the target head. Both revisions share one
-        // object database, so the base-conduct block keeps reading `root`.
-        resolveReviewScope(
-          worktree ? path.resolve(root, worktree.path) : root,
-          {
+    ? (() => {
+        const targetRoot = worktree
+          ? path.resolve(root, worktree.path)
+          : workspaceRepositoryRoot(root)
+        // A self-development worktree carries the tracked closure at the
+        // target revision. Target worktrees do not carry the installed harness,
+        // so their closure stays rooted at the installation instead.
+        const closureRoot =
+          worktree && !isTargetInstallation(root) ? targetRoot : root
+
+        return baseConductBlock(
+          targetRoot,
+          resolveReviewScope(closureRoot, targetRoot, {
             head: options.targetRef ?? 'HEAD',
             base: options.baseRef,
             closureRevision: options.closureRevision,
-          },
-        ),
-      )
+          }),
+        )
+      })()
     : null
   const markdown = renderGovernanceCardMarkdown({
     mode,

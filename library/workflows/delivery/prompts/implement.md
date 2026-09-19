@@ -50,7 +50,15 @@ Every new test file and every net-positive test delta needs an entry. A change
 with no new tests leaves `tests_added` empty. Each acceptance result states the criterion `id`,
 a `result`, and non-empty `evidence`. On a retry attempt, also populate
 `data.implementation.remediation` with one entry per prior failure cause:
-`cause`, `action`, and non-empty `evidence`. Follow the card's `output.operator_brief` contract.
+`cause`, `action`, and non-empty `evidence`. If implementation cannot start
+because a required precondition is unavailable, return `result: blocked`, leave
+`data.acceptance_results` empty, and populate `data.blocked` with a non-empty
+`missing_precondition`, the `supplying_command` that would provide it, and
+non-empty `evidence` (paths, commands, or observations) for the gap. Do not
+claim implementation fields for blocked work. When you edited tracked files
+before you stopped, list every such path in top-level `workspace_changes.paths`
+with `attribution: internal`; the claims validator reconciles that list against
+the Git delta. Follow the card's `output.operator_brief` contract.
 
 ## Done when
 

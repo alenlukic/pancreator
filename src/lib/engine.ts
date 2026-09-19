@@ -143,7 +143,7 @@ import { resolveRequirements } from './requirements/resolve.js'
 import {
   inferTargetKind,
   isPassingResult,
-  registryStageSlug,
+  registryAppliesToStage,
   resolveRequirementTargetPath,
   runRequirement,
 } from './requirements/run.js'
@@ -2932,6 +2932,72 @@ function declaredWorkerSpecs(invocation: Invocation): DeclaredWorkerSpec[] {
   ]
 }
 
+/** Record sourced model evidence for one role declared by an invocation. */
+export function recordInvocationModelEvidence(
+  root: string,
+  runId: string,
+  invocationId: string,
+  role: string,
+  effectiveModel: string,
+  source: string,
+  launchHandle: string,
+): RunModelEvidence {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const values = [
+      ['--invocation', invocationId],
+      ['--role', role],
+      ['--effective-model', effectiveModel],
+      ['--source', source],
+      ['--launch-handle', launchHandle],
+    ] as const
+
+    for (const [name, value] of values) {
+      invariant(value.trim().length > 0, `${name} is required.`, {
+        code: 'INVALID_ARGUMENT',
+      })
+    }
+
+    const state = loadState(root, runId)
+    const { invocation } = readInvocationRecord(root, state, invocationId)
+
+    invariant(
+      invocation.run_id === runId && invocation.invocation_id === invocationId,
+      `Invocation '${invocationId}' does not belong to run '${runId}'.`,
+      { code: 'INVALID_INVOCATION' },
+    )
+
+    const roleName = role.trim()
+    const declaredWorkers = declaredWorkerSpecs(invocation)
+    const declared = declaredWorkers.find((item) =>
+      item.role === 'worker'
+        ? roleName === 'worker'
+        : item.worker_role === roleName,
+    )
+    const declaredRoles = declaredWorkers.map((item) =>
+      item.role === 'worker' ? 'worker' : (item.worker_role as string),
+    )
+
+    invariant(
+      declared,
+      `Role '${roleName}' is not declared by invocation '${invocationId}'. ` +
+        `Declared roles: ${declaredRoles.join(', ')}.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+
+    return persistModelEvidence(root, state, {
+      role: declared.role,
+      invocation_id: invocationId,
+      ...(declared.worker_role ? { worker_role: declared.worker_role } : {}),
+      persona: declared.persona,
+      declared_spec: declared.spec,
+      effective_model: effectiveModel.trim(),
+      source: source.trim(),
+      launch_handle: launchHandle.trim(),
+      result: 'recorded',
+    })
+  })
+}
+
 /** The labeled default evidence for one declared worker spec. */
 function defaultModelEvidence(
   invocationId: string,
@@ -4000,9 +4066,9 @@ export function resolveSubmitValidators(
       continue
     }
 
-    const requiredStage = registryStageSlug(requirement.registry_id)
-
-    if (requiredStage && requiredStage !== invocation.stage.slug) {
+    if (
+      !registryAppliesToStage(requirement.registry_id, invocation.stage.slug)
+    ) {
       continue
     }
 
@@ -9795,10 +9861,14 @@ export function validateOutputForSubmission(
   }
 
   try {
+    const reportedValidators = new Set<string>()
+
     for (const {
       requirement,
       target_path: targetPath,
     } of resolveSubmitValidators(root, invocation, submittedRecord, catalog)) {
+      reportedValidators.add(requirement.registry_id)
+
       if (renderedPath && targetPath === renderedPath) {
         checks.push({
           id: `validator.${requirement.registry_id}`,
@@ -9834,6 +9904,22 @@ export function validateOutputForSubmission(
           ? `${requirement.registry_id} passed (${requirement.enforcement})`
           : `${requirement.registry_id} ${result.status} (${requirement.enforcement}): ` +
             result.issues.map((issue) => issue.message).join('; '),
+      })
+    }
+
+    for (const declared of invocation.output.field_contract?.validators ?? []) {
+      if (reportedValidators.has(declared.registry_id)) {
+        continue
+      }
+
+      const passed = declared.enforcement === 'advises'
+
+      checks.push({
+        id: `validator.${declared.registry_id}`,
+        passed,
+        message:
+          `${declared.registry_id} could not be resolved from the invocation ` +
+          `requirements (${declared.enforcement})`,
       })
     }
   } finally {

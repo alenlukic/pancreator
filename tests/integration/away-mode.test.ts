@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 import { Worker } from 'node:worker_threads'
@@ -24,7 +30,9 @@ import {
   selectAwayOption,
   unknownAwayOption,
 } from '../../src/lib/away-mode.js'
+import { evaluateAwayState } from '../../src/lib/away-orchestration.js'
 import { PanError } from '../../src/lib/errors.js'
+import type { CursorAgentResult } from '../../src/lib/executors/cursor-agent.js'
 import {
   AWAY_MODE_ACTIONS,
   panCommand,
@@ -82,6 +90,56 @@ function option(rank: number, action: AwayModeAction): Record<string, unknown> {
         }
       : {}),
   }
+}
+
+function evaluatorResult(stdout: string, value: unknown): CursorAgentResult {
+  return {
+    ok: true,
+    binary: 'fake-cursor-agent',
+    argv: [],
+    exit_code: 0,
+    timed_out: false,
+    duration_ms: 0,
+    stdout,
+    stderr: '',
+    value,
+  }
+}
+
+function evaluatorExchanges(
+  root: string,
+  state: RunState,
+): Array<{ path: string; record: Record<string, unknown> }> {
+  const directory = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    state.run_id,
+    'agent',
+    'evidence',
+  )
+
+  return readdirSync(directory)
+    .filter((name) => name.startsWith('away-evaluator-'))
+    .map((name) => ({
+      path: path.posix.join(
+        'runtime',
+        'logs',
+        'workflows',
+        state.run_id,
+        'agent',
+        'evidence',
+        name,
+      ),
+      record: JSON.parse(
+        readFileSync(path.join(directory, name), 'utf8'),
+      ) as Record<string, unknown>,
+    }))
+    .sort(
+      (left, right) =>
+        Number(left.record.attempt ?? 0) - Number(right.record.attempt ?? 0),
+    )
 }
 
 function scratchRoot(): string {
@@ -545,9 +603,15 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
     '2026-09-04T17:49:40.807Z',
   )
 
-  assert.equal(
+  assert.ok(
+    exchangePath.startsWith(
+      `runtime/logs/workflows/${state.run_id}/agent/evidence/away-evaluator-2026-09-04T17-49-40-807Z-`,
+    ),
     exchangePath,
-    `runtime/logs/workflows/${state.run_id}/agent/evidence/away-evaluator-2026-09-04T17-49-40-807Z.json`,
+  )
+  assert.match(
+    exchangePath,
+    /-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/u,
   )
 
   const exchange = JSON.parse(
@@ -559,6 +623,137 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
   assert.equal(exchange.error, 'Away evaluation MUST contain ranked_options.')
   assert.ok((exchange.stdout as string).endsWith('{"options":[]}'))
   assert.equal((exchange.stdout as string).length, 20_000)
+})
+
+test('the evaluator retries one malformed reply before appending one evaluated decision', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = blockedRun(root)
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+  const replies = [
+    evaluatorResult('RAW_MALFORMED_ATTEMPT_ONE', { options: [] }),
+    evaluatorResult('VALID_ATTEMPT_TWO', {
+      ranked_options: [option(1, 'resume')],
+    }),
+  ]
+  let calls = 0
+
+  const decision = evaluateAwayState(root, state, blocker, {
+    runEvaluator: () => {
+      calls += 1
+
+      if (calls === 2) {
+        assert.equal(readAwayDecisionLedger(root).length, 0)
+      }
+
+      const reply = replies[calls - 1]
+
+      assert.ok(reply)
+      return reply
+    },
+    recordedAt: () => '2026-09-19T12:00:00.000Z',
+  })
+
+  assert.equal(calls, 2)
+  assert.equal(decision.decision_kind, 'evaluated')
+  assert.equal(decision.selected_action?.action, 'resume')
+
+  const exchanges = evaluatorExchanges(root, state)
+
+  assert.equal(exchanges.length, 2)
+  assert.equal(new Set(exchanges.map((exchange) => exchange.path)).size, 2)
+  assert.match(exchanges[0]?.path ?? '', /-attempt-1-/u)
+  assert.match(exchanges[1]?.path ?? '', /-attempt-2-/u)
+  assert.deepEqual(
+    exchanges.map((exchange) => exchange.record.attempt),
+    [1, 2],
+  )
+  assert.equal(
+    exchanges[0]?.record.parse_error,
+    'Away evaluation MUST contain ranked_options.',
+  )
+  assert.equal(exchanges[0]?.record.stdout, 'RAW_MALFORMED_ATTEMPT_ONE')
+
+  const ledger = readAwayDecisionLedger(root)
+  const serializedLedger = JSON.stringify(ledger)
+
+  assert.equal(ledger.length, 1)
+  assert.equal(countAwayEvaluatorFailures(root, state.run_id), 0)
+  assert.doesNotMatch(serializedLedger, /RAW_MALFORMED_ATTEMPT_ONE/u)
+  assert.doesNotMatch(
+    serializedLedger,
+    /Away evaluation MUST contain ranked_options\./u,
+  )
+})
+
+test('the evaluator journals two malformed attempts and appends one generic exhausted failure', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = blockedRun(root)
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+  const replies = [
+    evaluatorResult('RAW_MALFORMED_ATTEMPT_ONE', { options: [] }),
+    evaluatorResult('RAW_MALFORMED_ATTEMPT_TWO', { options: [] }),
+  ]
+  let calls = 0
+
+  const failure = evaluateAwayState(root, state, blocker, {
+    runEvaluator: () => {
+      calls += 1
+
+      if (calls === 2) {
+        assert.equal(readAwayDecisionLedger(root).length, 0)
+      }
+
+      const reply = replies[calls - 1]
+
+      assert.ok(reply)
+      return reply
+    },
+    recordedAt: () => '2026-09-19T12:00:00.000Z',
+  })
+
+  assert.equal(calls, 2)
+
+  const exchanges = evaluatorExchanges(root, state)
+  const ledger = readAwayDecisionLedger(root)
+  const serializedLedger = JSON.stringify(ledger)
+  const exhaustedError =
+    'The away evaluator exhausted two attempts without a valid decision. ' +
+    'Read the referenced evaluator exchange evidence.'
+
+  assert.equal(exchanges.length, 2)
+  assert.equal(new Set(exchanges.map((exchange) => exchange.path)).size, 2)
+  assert.match(exchanges[0]?.path ?? '', /-attempt-1-/u)
+  assert.match(exchanges[1]?.path ?? '', /-attempt-2-/u)
+  assert.deepEqual(
+    exchanges.map((exchange) => exchange.record.attempt),
+    [1, 2],
+  )
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.decision_id, failure.decision_id)
+  assert.equal(failure.decision_kind, 'evaluator_failure')
+  assert.equal(failure.error, exhaustedError)
+  assert.deepEqual(failure.rejected_options, [
+    { rank: 0, reason: exhaustedError },
+  ])
+  assert.deepEqual(failure.evidence_references, [
+    exchanges[0]?.path,
+    exchanges[1]?.path,
+  ])
+  assert.equal(countAwayDecisions(root, state.run_id), 0)
+  assert.equal(countAwayEvaluatorFailures(root, state.run_id), 1)
+  assert.doesNotMatch(serializedLedger, /RAW_MALFORMED_ATTEMPT/u)
+  assert.doesNotMatch(
+    serializedLedger,
+    /Away evaluation MUST contain ranked_options\./u,
+  )
 })
 
 /** Write `output` as the run's last graded stage output. */
@@ -843,18 +1038,26 @@ test('evaluator failures have their own ceiling and leave the decision budget al
   const blocker = awayModeTrigger(state)
 
   assert.ok(blocker)
+  const firstExchange =
+    `runtime/logs/workflows/${state.run_id}/agent/evidence/` +
+    'away-evaluator-first.json'
   const failure = recordAwayEvaluationFailure(
     root,
     state,
     blocker,
-    'The evaluator failed.',
+    [firstExchange],
     '2026-08-21T12:00:00.000Z',
   )
 
   assert.equal(failure.decision_kind, 'evaluator_failure')
   assert.equal(failure.result, 'rejected')
   assert.equal(failure.selected_action, null)
-  assert.equal(failure.error, 'The evaluator failed.')
+  assert.equal(
+    failure.error,
+    'The away evaluator exhausted two attempts without a valid decision. ' +
+      'Read the referenced evaluator exchange evidence.',
+  )
+  assert.deepEqual(failure.evidence_references, [firstExchange])
   assert.equal(readAwayDecisionLedger(root).length, 1)
   // A spawn that could not run says nothing about what the operator would
   // decide, so the one decision this run may make is still available.
@@ -875,7 +1078,10 @@ test('evaluator failures have their own ceiling and leave the decision budget al
   const evidenceDirectory = `runtime/logs/workflows/${state.run_id}/agent/evidence`
 
   assert.throws(
-    () => recordAwayEvaluationFailure(root, state, blocker, 'It failed again.'),
+    () =>
+      recordAwayEvaluationFailure(root, state, blocker, [
+        `runtime/logs/workflows/${state.run_id}/agent/evidence/away-evaluator-second.json`,
+      ]),
     (error: unknown) => {
       assert.ok(error instanceof PanError)
       assert.equal(error.code, 'AWAY_EVALUATOR_FAILURE_LIMIT')
@@ -915,12 +1121,14 @@ test('evaluator failures have their own ceiling and leave the decision budget al
     },
   )
 
-  // A ranking the parser rejects is an evaluator defect, not a decision, so
-  // it takes the same route and hits the same ceiling.
+  // Orchestration owns retry and exhausted failure recording. A malformed
+  // direct durable call therefore throws without appending another row.
   assert.throws(
     () => recordAwayEvaluation(root, state, blocker, { options: [] }),
-    /failed as many times as the decision limit allows/u,
+    /MUST contain ranked_options/u,
   )
+  assert.equal(countAwayEvaluatorFailures(root, state.run_id), 1)
+  assert.equal(readAwayDecisionLedger(root).length, 1)
 
   const decided = recordAwayEvaluation(root, state, blocker, {
     ranked_options: [option(1, 'resume')],

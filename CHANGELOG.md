@@ -1,5 +1,45 @@
 # Changelog
 
+## [6.19.0] - 2026-09-19
+
+This release repairs eleven live command defects on the ship, inbox, and validator paths. It also allocates concurrent release versions from one shared ledger.
+
+### Changed
+
+- Resolve a requirement stage from the invocation, so `pan output validate` runs claims checks on remediate outputs ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Bind `pan requirements run --invocation` to the attempt workspace. Name the comparison base when only `--run` is given ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Skip release sync when the fetched ref is already an ancestor. Otherwise rebase in merge-preserving mode ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Return `not_needed` from `pan release continue` when no rebase is active ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Reuse a complete release pair on retry. Refuse a dirty tree before the first release commit ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- List every regular inbox file. Report an unlistable file with its reason ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Accept every model-evidence role the invocation declares ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Keep a current-run suite-profile index entry. Write `recorded_at` from the profile artifact ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Read embedded review-scope closure from the installation when `.pancreator/` is untracked ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Retry one malformed away-evaluator reply before a ledger write. Keep parse text out of the decision record ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Accept a blocked implement result with empty acceptance results when blocked data is present ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Allocate release versions from one shared ledger so concurrent worktrees do not collide ([d3e12776](https://github.com/alenlukic/pancreator/commit/d3e127769417d2fe59d424c56b449270ab4e7d64)).
+- Reuse a held allocation only for the same bump ([732f74ab](https://github.com/alenlukic/pancreator/commit/732f74ab68183ecfb10ad6bd510bf8016516a4e5)).
+- Pass `--force` and a path-resolution preamble so a headless stage worker can read its contract ([89fd41fd](https://github.com/alenlukic/pancreator/commit/89fd41fd368925d95b1c6d7802cb558b8413938b)).
+- Raise the headless worker bound and record executor failures ([6ca005cf](https://github.com/alenlukic/pancreator/commit/6ca005cf5141738509ed99630749172070191c29)).
+- Skip the RFC 2119 keyword definition in the directive-ownership audit. `pan validate` now reports zero warnings ([c575264f](https://github.com/alenlukic/pancreator/commit/c575264fb92554e5daa0c6d96a15fc49956c44b4)).
+- Fail a repair intake that names a sibling file this checkout does not hold ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b29c7bce8e274bb01d0068995fb46cb12a)).
+- Report `harness_version` and a stale flag from `pan installs list` ([b93d62b2](https://github.com/alenlukic/pancreator/commit/b93d62b29c7bce8e274bb01d0068995fb46cb12a)).
+- Raise the TEST-001 fast-wall ceiling from 120000 ms to 160000 ms ([e4ec3882](https://github.com/alenlukic/pancreator/commit/e4ec38828994f8153cf7bfc25a96abfb8533999b)).
+
+### Added
+
+- Add `pan release allocate` as the version authority for a managed ship ([d3e12776](https://github.com/alenlukic/pancreator/commit/d3e127769417d2fe59d424c56b449270ab4e7d64)).
+- Add `--invocation` on `pan requirements run` ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Add a blocked-data contract on every delivery implement stage ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+
+### Fixed
+
+- Fail release sync when a rebase drops a merge the branch carried ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Stop a second release pair for the same version after a blocked ship ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Keep a newer suite-profile index entry instead of an older scan ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Show captured `.txt` requests in `pan inbox` ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+- Submit a blocked implement output that carries blocked data ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
+
 ## [6.18.0] - 2026-09-19
 
 This release classifies load-sensitive gate failures, allocates concurrent release versions, and repairs headless workers. Plan validation now rejects a pan option that the CLI does not accept.

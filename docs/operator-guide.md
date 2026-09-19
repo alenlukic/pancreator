@@ -106,11 +106,14 @@ declared next action names an operator decision cannot be approved. Add
 honored when it matches the recorded recommendation and refused with
 `AWAY_ACTION_REFUSED` when it does not, so the apply never substitutes a
 different action. An option an away subcommand does not accept is refused with
-`UNKNOWN_OPTION`. Pan validates the selected
-action and its rollback plan before apply. Each evaluation and apply result
-appends to `runtime/logs/away-mode/decisions.jsonl`; no command rewrites prior
-records. Use the selected record's `rollback_plan` for manual reversal, then
-append a linked record through the same decision service.
+`UNKNOWN_OPTION`. Pan validates the selected action and its rollback plan before
+apply. Each evaluator transport or parse attempt writes distinct
+`away-evaluator-*.json` exchange evidence, and an invalid reply is retried once.
+Only a valid decision or one generic exhausted evaluator failure appends to
+`runtime/logs/away-mode/decisions.jsonl`; apply results append there too. The
+ledger contains neither raw malformed replies nor per-attempt parse errors, and
+no command rewrites prior records. Use the selected record's `rollback_plan` for
+manual reversal, then append a linked record through the same decision service.
 
 A successful ship packet uses a deterministic approval record. That record does
 not consume the evaluated decision budget. The approval changes workflow state
@@ -585,7 +588,10 @@ the target's head, resolving a worktree when your checkout sits elsewhere, so
 the agents verify findings against the tree the diff applies to rather than
 whatever you happen to have open. And it runs
 `pan governance review-scope --target <ref>`, which reports every conflict of
-interest the target carries, by tier. **Instrument** paths — the lineup, a
+interest the target carries, by tier. Its `closure_tracking` field is `tracked`
+when `closure_revision` names the closure commit and `untracked` when an
+installed closure sits outside the target's revisions; the latter reports a null
+`closure_revision`. **Instrument** paths — the lineup, a
 charter, the coordinator, the mode policy, an entry point, the scope check, or
 the reviewer's model mapping — leave the squad's verdict for an independent
 `pan-reviewer`, because a charter cannot find a defect introduced into that

@@ -66,6 +66,7 @@ const JSON_TYPE_NAMES = new Set<JsonTypeName>([
   'number',
   'boolean',
 ])
+const RESERVED_EVIDENCE_WORKER_ROLES = new Set(['worker', 'supervisor'])
 
 function parseCriterion(value: unknown, source: string): Criterion {
   invariant(isRecord(value), `${source} MUST be an object.`, {
@@ -333,6 +334,11 @@ function parseEvidenceWorkers(
     invariant(
       /^[a-z][a-z0-9-]*$/u.test(role),
       `${entrySource}.role MUST be a lowercase slug.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    invariant(
+      !RESERVED_EVIDENCE_WORKER_ROLES.has(role),
+      `${entrySource}.role '${role}' is reserved for CLI model evidence.`,
       { code: 'INVALID_WORKFLOW' },
     )
     invariant(!roles.has(role), `${source} roles MUST be unique.`, {

@@ -213,6 +213,8 @@ interface PreviousRunProfile {
   run_id: string
   profile_path: string
   profile: SuiteProfile
+  /** Timestamp recorded by the suite profile artifact itself. */
+  recorded_at: string
 }
 
 /** Where a previous-profile lookup came from, and what it cost. */
@@ -227,6 +229,7 @@ export interface PreviousRunProfileLookup {
 export interface SuiteProfileIndexEntry {
   run_id: string
   profile_path: string
+  /** Timestamp recorded inside the indexed profile artifact. */
   recorded_at: string
 }
 
@@ -316,13 +319,16 @@ export function recordSuiteProfileIndexEntry(
     return null
   }
 
+  const profile = loadSuiteProfile(root, recorded.result.suite_profile_path)
+
+  if (!profile) {
+    return null
+  }
+
   const entry: SuiteProfileIndexEntry = {
     run_id: state.run_id,
     profile_path: recorded.result.suite_profile_path,
-    recorded_at:
-      typeof state.updated_at === 'string'
-        ? state.updated_at
-        : new Date().toISOString(),
+    recorded_at: profile.recorded_at,
   }
 
   writeSuiteProfileIndexEntry(root, workspaceKey(state), entry)
@@ -376,7 +382,8 @@ export function previousSucceededRunProfileByScan(
 
     if (
       workspaceKey(other) !== workspaceKey(state) ||
-      !Array.isArray(other.stage_history)
+      !Array.isArray(other.stage_history) ||
+      typeof other.updated_at !== 'string'
     ) {
       continue
     }
@@ -395,8 +402,7 @@ export function previousSucceededRunProfileByScan(
       continue
     }
 
-    const updatedAt =
-      typeof other.updated_at === 'string' ? other.updated_at : ''
+    const updatedAt = other.updated_at
 
     if (!best || updatedAt > best.updated_at) {
       best = {
@@ -405,6 +411,7 @@ export function previousSucceededRunProfileByScan(
           run_id: other.run_id,
           profile_path: recorded.result.suite_profile_path,
           profile,
+          recorded_at: profile.recorded_at,
         },
       }
     }
@@ -417,9 +424,10 @@ export function previousSucceededRunProfileByScan(
  * The profile recorded by the most recent succeeded run in the same
  * workspace, read from the index when it holds the answer.
  *
- * A missing index entry, an unreadable profile, or an entry that names this
- * run falls back to the scan, and a scan that finds a profile rebuilds the
- * entry it was missing.
+ * A missing index entry or unreadable indexed profile falls back to the scan,
+ * and a scan that finds a profile rebuilds that genuine miss. A usable entry
+ * for the current run cannot answer "previous run", but remains the newest
+ * workspace pointer and is therefore left byte-for-byte unchanged.
  */
 export function lookupPreviousSucceededRunProfile(
   root: string,
@@ -427,31 +435,35 @@ export function lookupPreviousSucceededRunProfile(
 ): PreviousRunProfileLookup {
   const workspace = workspaceKey(state)
   const indexed = loadSuiteProfileIndex(root)?.workspaces[workspace]
+  const indexedProfile = indexed
+    ? loadSuiteProfile(root, indexed.profile_path)
+    : null
 
-  if (indexed && indexed.run_id !== state.run_id) {
-    const profile = loadSuiteProfile(root, indexed.profile_path)
-
-    if (profile) {
-      return {
-        value: {
-          run_id: indexed.run_id,
-          profile_path: indexed.profile_path,
-          profile,
-        },
-        source: 'index',
-        // The index and the profile it names are the whole cost.
-        file_reads: 2,
-      }
+  if (indexed && indexed.run_id !== state.run_id && indexedProfile) {
+    return {
+      value: {
+        run_id: indexed.run_id,
+        profile_path: indexed.profile_path,
+        profile: indexedProfile,
+        recorded_at: indexed.recorded_at,
+      },
+      source: 'index',
+      // The index and the profile it names are the whole cost.
+      file_reads: 2,
     }
   }
 
   const scanned = previousSucceededRunProfileByScan(root, state)
 
-  if (scanned.value) {
+  // A current-run entry is usable as the workspace's newest pointer even
+  // though this lookup must scan past it to answer "previous run".
+  const genuineMiss = !indexed || !indexedProfile
+
+  if (genuineMiss && scanned.value) {
     writeSuiteProfileIndexEntry(root, workspace, {
       run_id: scanned.value.run_id,
       profile_path: scanned.value.profile_path,
-      recorded_at: scanned.value.profile.recorded_at,
+      recorded_at: scanned.value.recorded_at,
     })
   }
 
