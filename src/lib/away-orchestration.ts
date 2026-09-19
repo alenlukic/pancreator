@@ -9,7 +9,9 @@ import {
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
   recordAwayEvaluatorExchange,
+  openOperatorQuestion,
   recordDeterministicShipApproval,
+  recordOperatorQuestionRefusal,
   type AwayBlocker,
   type AwayDecisionRecord,
 } from './away-mode.js'
@@ -144,6 +146,26 @@ export function evaluateAwayState(
   blocker: AwayBlocker,
   options: AwayEvaluationOptions = {},
 ): AwayDecisionRecord {
+  // Every caller that can reach the evaluator reaches it through this
+  // function, so the operator-question refusal sits here rather than at each
+  // call site, where the next caller would have to remember it.
+  //
+  // The refusal reads the run rather than the blocker class. A question
+  // stands against the run, and the trigger reports one class at a time, so
+  // keying the refusal to `operator_question` alone would let a hypervisor
+  // incident or a pending approval carry the same gate into a ranking.
+  const question = openOperatorQuestion(root, state)
+
+  if (question) {
+    return recordOperatorQuestionRefusal(
+      root,
+      state,
+      blocker,
+      question,
+      options.recordedAt?.(),
+    )
+  }
+
   if (
     blocker.type === 'operator_approval' &&
     blocker.stage === 'ship' &&

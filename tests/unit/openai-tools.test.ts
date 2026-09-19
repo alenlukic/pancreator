@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import {
   executeOpenAiTool,
+  openAiToolDefinitions,
   OPENAI_TOOL_NAMES,
   type OpenAiToolPolicy,
 } from '../../src/lib/executors/openai-tools.js'
@@ -56,12 +57,14 @@ function fixture(): Fixture {
       workspaceDir,
       readRoots: [workspaceDir, harnessRoot],
       writeRoots: [workspaceDir, runtimeTree],
+      allowedTools: [...OPENAI_TOOL_NAMES],
       ...bounds,
     },
     readOnly: {
       workspaceDir,
       readRoots: [workspaceDir, harnessRoot],
       writeRoots: [runtimeTree],
+      allowedTools: OPENAI_TOOL_NAMES.filter((name) => name !== 'run_shell'),
       ...bounds,
     },
   }
@@ -85,6 +88,26 @@ test('the catalog offers the seven tools the executor implements', () => {
     'search_text',
     'write_file',
   ])
+})
+
+test('read-only tool policy withholds shell while source policy keeps it', () => {
+  const { readOnly, sourceAllowed } = fixture()
+
+  assert.equal(
+    openAiToolDefinitions(readOnly).some((tool) => tool.name === 'run_shell'),
+    false,
+  )
+  assert.equal(
+    openAiToolDefinitions(sourceAllowed).some(
+      (tool) => tool.name === 'run_shell',
+    ),
+    true,
+  )
+
+  const refused = call('run_shell', { command: 'pwd' }, readOnly)
+
+  assert.equal(refused.ok, false)
+  assert.match(refused.output, /not granted to this stage/u)
 })
 
 test('the harness root is reachable when it differs from the workspace', () => {

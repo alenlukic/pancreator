@@ -18,7 +18,7 @@
       "audience": ["supervisor"]
     },
     {
-      "text": "The redline record MUST name the guidance categories pre-declared non-authoritative and the authority order from `AGENTS.md`. The categories cover text about polling, awaiting, and backgrounding, plus session-mode text, model and tool suggestions, and hints not to run commands.",
+      "text": "The redline record MUST name the guidance categories pre-declared non-authoritative and the authority order from `AGENTS.md`. The guidance categories cover text about polling, awaiting, and backgrounding, plus session-mode text, model and tool suggestions, and hints not to run commands. A platform-initiated detach MUST be recorded separately as a platform action, not as guidance the supervisor accepted or declined.",
       "audience": ["supervisor"]
     },
     {

@@ -164,7 +164,10 @@ import {
   openAiExecutorPreflight,
   resolveOpenAiApiKey,
 } from './executors/openai-auth.js'
-import type { OpenAiToolPolicy } from './executors/openai-tools.js'
+import {
+  OPENAI_TOOL_NAMES,
+  type OpenAiToolPolicy,
+} from './executors/openai-tools.js'
 import {
   OPENAI_SESSION_DEFAULTS,
   redactOpenAiKey,
@@ -5486,13 +5489,15 @@ export function claudeCodeToolPolicy(
   workspaceDir: string,
   stage: StageDefinition,
 ): { allowedTools: string[]; addDirs: string[] } {
+  const workspaceWritable = stageWriteRoots(root, workspaceDir, stage).includes(
+    workspaceDir,
+  )
   const allowedTools = [
     'Read',
     'Grep',
     'Glob',
-    'Bash',
-    ...(stageWriteRoots(root, workspaceDir, stage).includes(workspaceDir)
-      ? ['Write', 'Edit']
+    ...(workspaceWritable
+      ? ['Bash', 'Write', 'Edit']
       : claudeCodeWriteRules(root, workspaceDir)),
   ]
   const relative = path.relative(workspaceDir, root)
@@ -5515,6 +5520,11 @@ export function openAiToolPolicy(
     workspaceDir,
     readRoots: [...new Set([workspaceDir, root])],
     writeRoots: stageWriteRoots(root, workspaceDir, stage),
+    allowedTools: stageWriteRoots(root, workspaceDir, stage).includes(
+      workspaceDir,
+    )
+      ? [...OPENAI_TOOL_NAMES]
+      : OPENAI_TOOL_NAMES.filter((name) => name !== 'run_shell'),
     maxResultBytes: bounds.maxResultBytes,
     shellTimeoutMs: bounds.shellTimeoutMs,
   }

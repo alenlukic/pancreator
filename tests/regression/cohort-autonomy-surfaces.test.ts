@@ -239,10 +239,11 @@ test('the freed commit and merge did not loosen push, publication, deployment, o
     /MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization/u,
   )
   // `MUST NOT commit`, or a MUST NOT list that opens with commit, is the
-  // retired stance. A rule that merely mentions a release commit is not.
+  // retired stance. The installable-change restriction is narrower: it only
+  // forbids committing that change directly on pan-dev or main.
   assert.doesNotMatch(
     card,
-    /MUST NOT (?:\w+ )?commit\b/u,
+    /MUST NOT (?:\w+ )?commit\b(?! such a change directly on `pan-dev` or `main`)/u,
     'AGENTS.md puts commit back on a MUST NOT list',
   )
 })

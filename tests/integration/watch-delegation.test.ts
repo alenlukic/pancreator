@@ -296,6 +296,15 @@ test('the redline record names the non-authoritative categories and the AGENTS.m
       'command_execution_hints',
     ],
   )
+  assert.deepEqual(
+    second.platform_action_categories.map((item) => item.id),
+    ['platform_initiated_detach'],
+  )
+  assert.ok(
+    !second.non_authoritative_guidance.some(
+      (item) => item.id === 'platform_initiated_detach',
+    ),
+  )
   assert.deepEqual(second.policy_basis, [
     'OPERATOR-001',
     'DELEGATE-001',
