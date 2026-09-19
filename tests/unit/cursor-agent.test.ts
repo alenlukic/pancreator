@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   CURSOR_SESSION_REQUIRED_FLAGS,
   cursorAgentSessionArguments,
+  withWorkspaceContext,
 } from '../../src/lib/executors/cursor-agent.js'
 
 test('cursor stage arguments preserve the model spec and granted roots', () => {
@@ -20,6 +21,7 @@ test('cursor stage arguments preserve the model spec and granted roots', () => {
       '--output-format',
       'stream-json',
       '--trust',
+      '--force',
       '--model',
       model,
       '--workspace',
@@ -68,6 +70,7 @@ test('cursor stage arguments append the recorded session on resume', () => {
       '--output-format',
       'stream-json',
       '--trust',
+      '--force',
       '--model',
       'gpt-5.6-sol[reasoning=high]',
       '--resume',
@@ -77,5 +80,28 @@ test('cursor stage arguments append the recorded session on resume', () => {
       '--add-dir',
       '/harness/runtime',
     ],
+  )
+})
+
+test('a worktree-bound headless prompt is prefixed with the harness path rule', () => {
+  const prompt =
+    'Persona: `coder`.\n\nRead `runtime/logs/workflows/r/agent/invocations/i.md`.'
+  const prefixed = withWorkspaceContext(prompt, {
+    workspaceDir: '/harness/worktrees/operator/chain',
+    installationRoot: '/harness',
+  })
+
+  assert.ok(prefixed.startsWith('## Execution context\n'))
+  assert.ok(prefixed.includes('`/harness/worktrees/operator/chain`'))
+  assert.ok(prefixed.includes('read and write it as `/harness/runtime/...`'))
+  // The prompt body itself is delivered unchanged after the rule.
+  assert.ok(prefixed.endsWith(`\n${prompt}`))
+  // A worker whose workspace is the installation root needs no rule.
+  assert.equal(
+    withWorkspaceContext(prompt, {
+      workspaceDir: '/harness',
+      installationRoot: '/harness/',
+    }),
+    prompt,
   )
 })

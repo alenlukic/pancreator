@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import path from 'node:path'
 
 import { isRecord } from '../io.js'
 import type {
@@ -112,6 +113,7 @@ export function withSupportedFlags(
 export const CURSOR_SESSION_REQUIRED_FLAGS = [
   '--output-format',
   '--trust',
+  '--force',
   '--model',
   '--workspace',
   '--add-dir',
@@ -279,13 +281,21 @@ function cursorAgentArguments(
   ]
 }
 
-/** Exact non-interactive argument vector used for a stage-worker session. */
+/**
+ * Exact non-interactive argument vector used for a stage-worker session.
+ *
+ * `--force` is what lets a headless worker run a shell command at all. In
+ * print mode the CLI otherwise rejects every command it does not classify as
+ * read-only, and the first real headless stage worker was refused
+ * `shasum && wc && cat` on its own contract. The operator's deny hooks still
+ * apply: the flag allows commands "unless explicitly denied".
+ */
 export function cursorAgentSessionArguments(
   request: CursorArgumentRequest,
 ): string[] {
   return cursorAgentArguments(
     request,
-    ['--trust'],
+    ['--trust', '--force'],
     [
       ...(request.workspaceRoot ? ['--workspace', request.workspaceRoot] : []),
       ...(request.addDirs ?? []).flatMap((directory) => [
@@ -492,6 +502,44 @@ export function cursorAgentBinaryReadiness():
   return { ok: true, binary }
 }
 
+/**
+ * Prefix a headless stage prompt with the path-resolution rule its author
+ * assumed.
+ *
+ * Every delivery prompt and invocation card is written for a supervisor whose
+ * working directory is the installation root, so harness paths appear as
+ * `runtime/...`. A headless worker starts in the worktree instead, and the
+ * first real one resolved its own contract path against that worktree and
+ * reported it unreadable. The rule travels as transport context rather than
+ * as part of the recorded delivered prompt, which the delegation validator
+ * compares byte for byte against the delivery prompt on disk.
+ */
+export function withWorkspaceContext(
+  prompt: string,
+  options: Pick<CursorAgentAdapterOptions, 'workspaceDir' | 'installationRoot'>,
+): string {
+  const workspace = path.resolve(options.workspaceDir)
+  const root = path.resolve(options.installationRoot)
+
+  if (workspace === root) {
+    return prompt
+  }
+
+  return [
+    '## Execution context',
+    '',
+    `Your working directory and Cursor workspace are the managed worktree \`${workspace}\`.`,
+    `The harness installation root is \`${root}\`, granted as an additional workspace root.`,
+    'Every path in this prompt and in the contract it names that begins with',
+    '`runtime/` is relative to the installation root, not to your working',
+    `directory: read and write it as \`${root}/runtime/...\`. Repository source`,
+    'paths are relative to the worktree. Run `./bin/pan` from the installation',
+    'root when a path in the contract names it as the harness command.',
+    '',
+    prompt,
+  ].join('\n')
+}
+
 /** Adapt the existing cursor-agent session spawn to harness delegation. */
 export function createCursorAgentAdapter(
   options: CursorAgentAdapterOptions,
@@ -516,7 +564,7 @@ export function createCursorAgentAdapter(
     sanitize,
     run: (prompt, resumeSessionId) => {
       const result = runCursorAgentSession({
-        prompt,
+        prompt: withWorkspaceContext(prompt, options),
         cwd: options.workspaceDir,
         workspaceRoot: options.workspaceDir,
         addDirs: [options.runtimeDir],
