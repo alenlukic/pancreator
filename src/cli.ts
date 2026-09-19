@@ -240,6 +240,7 @@ import {
   appendFastWallRun,
   buildFastWallReport,
   FAST_WALL_AGENT_PHASE,
+  FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_PHASE_ENV,
   FAST_WALL_RUN_ID_ENV,
   FAST_WALL_SERIES_ROOT_ENV,
@@ -263,12 +264,14 @@ import {
   WATCH_EXIT_CODES,
   formatWakeLine,
   parseAgentState,
+  parseMultiplexedWatchTargets,
   parseCadenceSeconds,
   parsePositiveInteger,
   parseTimeoutSeconds,
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchInvocations,
   writeRedlineRecord,
 } from './lib/watch.js'
 import {
@@ -2371,6 +2374,11 @@ async function main(): Promise<void> {
         env: {
           [FAST_WALL_SERIES_ROOT_ENV]: root,
           [FAST_WALL_PHASE_ENV]: FAST_WALL_AGENT_PHASE,
+          [FAST_WALL_CALLER_CLASS_ENV]: harnessInitiated
+            ? 'prefetch'
+            : evidenceRun
+              ? 'agent'
+              : 'standalone',
           ...(evidenceRun
             ? { [FAST_WALL_RUN_ID_ENV]: evidenceRun.run_id }
             : {}),
@@ -2549,6 +2557,18 @@ async function main(): Promise<void> {
               })
             })(),
           load_average: loadAverage,
+          cpu_count:
+            integerOption(args, '--cpu-count') ??
+            (() => {
+              throw new PanError('--cpu-count is required.', {
+                code: 'INVALID_ARGUMENT',
+              })
+            })(),
+          caller_class: requiredArgument(
+            option(args, '--caller-class') ??
+              process.env[FAST_WALL_CALLER_CLASS_ENV],
+            '--caller-class',
+          ) as 'agent' | 'harness_gate' | 'prefetch' | 'standalone',
           wrapper_wall_clock_ms: wrapperWall,
           invoker: requiredArgument(option(args, '--invoker'), '--invoker'),
           run_id:
@@ -2892,6 +2912,10 @@ async function main(): Promise<void> {
             complete: hasComplete || !hasCanceled,
             canceled: hasCanceled,
           },
+          onProgress: ({ pass, phase, file_count: fileCount }) =>
+            process.stderr.write(
+              `[pan archive] ${pass} ${phase} (${fileCount} files)\n`,
+            ),
         }),
         hasFlag(args, '--json'),
       )
@@ -4545,6 +4569,66 @@ async function main(): Promise<void> {
       })
     }
     case 'watch': {
+      const targets = parseMultiplexedWatchTargets(option(args, '--targets'))
+
+      if (targets) {
+        if (
+          (args[0] !== undefined && !args[0].startsWith('--')) ||
+          hasFlag(args, '--foreground-returned') ||
+          option(args, '--invocation') !== null
+        ) {
+          throw new PanError(
+            '--targets is exclusive with a positional run id, --invocation, and --foreground-returned.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        if (option(args, '--agent-state') !== null) {
+          throw new PanError(
+            '--agent-state reports the one launched agent you inspected, so ' +
+              'it cannot speak for a group. Re-arm `pan watch <run-id> ' +
+              '--agent-state ...` on the target you looked at.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const result = await watchInvocations(root, targets, {
+          cadenceSeconds: parseCadenceSeconds(
+            option(args, '--cadence-seconds'),
+          ),
+          stallWakes: parsePositiveInteger(
+            option(args, '--stall-wakes'),
+            '--stall-wakes',
+            DEFAULT_STALL_WAKES,
+          ),
+          timeoutSeconds: parseTimeoutSeconds(
+            option(args, '--timeout-seconds'),
+          ),
+          markBackground: hasFlag(args, '--mark-background'),
+          onWake: process.stderr.isTTY
+            ? (entry) => process.stderr.write(`${formatWakeLine(entry)}\n`)
+            : undefined,
+        })
+        const named = (items: typeof result.moved): string =>
+          items.map((item) => `${item.run_id}:${item.invocation_id}`).join(', ')
+
+        print(
+          json
+            ? result
+            : `watch ${result.state}: ${result.moved.length} of ${result.targets} targets moved after ${result.wakes} wakes; ` +
+                (result.moved.length > 0
+                  ? named(result.moved)
+                  : 'no target moved') +
+                (result.stalled.length > 0
+                  ? `; needs inspection: ${named(result.stalled)}`
+                  : ''),
+          json,
+        )
+        process.exitCode =
+          result.state === 'changed' ? 0 : WATCH_EXIT_CODES[result.state]
+        return
+      }
+
       const runId = requiredArgument(args[0], 'run-id')
       const invocationId = option(args, '--invocation')
 

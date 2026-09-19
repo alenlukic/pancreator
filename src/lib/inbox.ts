@@ -585,6 +585,7 @@ function findLatestMatchingRun(
  */
 export function migrateLegacyInboxLayout(
   root: string,
+  onMove?: (source: string, target: string) => void,
 ): InboxLegacyMigrationSummary {
   ensureInboxStatusDirectories(root)
 
@@ -610,6 +611,10 @@ export function migrateLegacyInboxLayout(
       : 'queue'
     const targetRelative = moveInboxFile(root, legacyRelative, targetStatus)
 
+    onMove?.(
+      resolveInside(root, legacyRelative),
+      resolveInside(root, targetRelative),
+    )
     migratedFiles += 1
 
     if (matchedRun) {

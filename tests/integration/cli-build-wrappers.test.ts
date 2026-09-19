@@ -199,10 +199,12 @@ test('run-tests records only the complete configured fast lane', () => {
     )
 
     assert.equal(complete.status, 0, complete.stderr)
-    assert.match(
-      readFileSync(observed, 'utf8'),
-      /^tests record-fast-wall .*--worker-count /u,
-    )
+    const recordCommand = readFileSync(observed, 'utf8')
+
+    assert.match(recordCommand, /^tests record-fast-wall .*--worker-count /u)
+    assert.match(recordCommand, /--load-average [0-9.]+/u)
+    assert.match(recordCommand, /--cpu-count [1-9][0-9]*/u)
+    assert.match(recordCommand, /--caller-class standalone/u)
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
   }

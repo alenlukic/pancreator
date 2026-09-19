@@ -25,7 +25,7 @@ next actions without modifying repository state.
 Run `./bin/pan archive` to migrate recognized legacy workflow names and move
 workflow directories older than seven days into `archive/` under both runtime
 workflow roots. The command updates persisted path references and is idempotent;
-it never overwrites an existing archive target.
+it never overwrites an existing archive target. Runtime scales with the durable files and retained runs; each maintenance pass reports its start, finish, and file count on stderr.
 
 ## Run the agent hypervisor
 
@@ -252,6 +252,7 @@ return instead:
 
 ```bash
 ./bin/pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
+./bin/pan watch --targets <run-id>:<invocation-id>[,<run-id>:<invocation-id>...] [--cadence-seconds <n>] [--timeout-seconds <n>] [--json]
 ```
 
 The command writes `agent/evidence/<invocation-id>-foreground-return.json`
@@ -429,6 +430,8 @@ Request a brief for only the current stage before its invocation exists:
 ```sh
 ./bin/pan prepare <run-id> --operator-artifacts
 ```
+
+A `pan prepare` that enters a gated stage can run for the gate's configured timeout. It prints the criterion id and timeout on stderr before the gate starts.
 
 Requested invocations declare exact brief JSON and HTML paths. Submission renders and validates the HTML, then deletes a valid transient source.
 

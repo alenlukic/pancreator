@@ -111,9 +111,17 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   assert.equal(fullRuns(root), 0)
 
   // Ship entry runs full once and hands its suite profile to the card.
-  const ship = prepareInvocation(root, runId).invocation
+  const progress: string[] = []
+  const ship = prepareInvocation(root, runId, {
+    onProgress: (message) => progress.push(message),
+  }).invocation
 
   assert.ok(ship)
+  assert.ok(
+    progress.some((message) =>
+      /running entry gate ship\.full_suite .*timeout 1200000ms/u.test(message),
+    ),
+  )
   assert.equal(fullRuns(root), 1)
   assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
 

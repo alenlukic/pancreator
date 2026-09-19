@@ -1681,6 +1681,384 @@ export async function watchInvocation(
   }
 }
 
+export interface MultiplexedWatchTarget {
+  runId: string
+  invocationId: string
+}
+
+export function parseMultiplexedWatchTargets(
+  value: string | null,
+): MultiplexedWatchTarget[] | null {
+  if (value === null) {
+    return null
+  }
+
+  const targets = value.split(',').map((item) => {
+    const separator = item.indexOf(':')
+    const runId = separator === -1 ? '' : item.slice(0, separator).trim()
+    const invocationId =
+      separator === -1 ? '' : item.slice(separator + 1).trim()
+
+    invariant(
+      runId.length > 0 && invocationId.length > 0,
+      `Invalid watch target '${item}'. Use <run-id>:<invocation-id>.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+
+    return { runId, invocationId }
+  })
+
+  invariant(targets.length > 0, '--targets requires at least one target.', {
+    code: 'INVALID_ARGUMENT',
+  })
+
+  return targets
+}
+
+export interface MultiplexedWatchOptions {
+  cadenceSeconds?: number
+  /** Mark every target as a platform-backgrounded launch. */
+  markBackground?: boolean
+  stallWakes?: number
+  timeoutSeconds?: number
+  /** Injected for tests. Defaults to a real timer. */
+  sleep?: (milliseconds: number) => Promise<void>
+  /** Injected for tests alongside `sleep`. Defaults to `Date.now`. */
+  now?: () => number
+  onWake?: (entry: WatchRecordEntry) => void
+}
+
+export interface MultiplexedWatchMovement {
+  run_id: string
+  invocation_id: string
+  output_path: string
+  record_path: string
+  terminal_state: WatchTerminalState | null
+}
+
+export interface MultiplexedWatchResult {
+  state: 'changed' | 'stalled' | 'unverified' | 'timed_out'
+  targets: number
+  moved: MultiplexedWatchMovement[]
+  /**
+   * Targets whose own inspection ended the wait: one that sat unchanged for
+   * the stall bound, or one holding a scaffold nobody can verify. The
+   * supervisor owes each of these the recovery `DELEGATE-001` names.
+   */
+  stalled: MultiplexedWatchMovement[]
+  cadence_seconds: number
+  stall_wakes: number
+  timeout_seconds: number
+  wakes: number
+  started_at: string
+  ended_at: string
+  elapsed_seconds: number
+}
+
+/**
+ * Watch several independent run invocations on one cadence and return as soon
+ * as any target changes. Each target receives the same schema-1 `armed` and
+ * `wake` entries as the single-invocation watch, so submission readers remain
+ * unaware of which wait form produced their ledger.
+ *
+ * Each target also keeps the two guarantees the focused watch owes its one
+ * worker. A finished-looking output whose evidence is weak buys one confirming
+ * wake rather than a verdict, so a supervisor never advances a run whose worker
+ * is still writing. A target that sits unchanged for `stallWakes` wakes ends
+ * the wait with the stall signal, because a multiplexed wait that could only
+ * report movement would hold a cohort of stalled siblings until the timeout.
+ */
+export async function watchInvocations(
+  root: string,
+  targets: MultiplexedWatchTarget[],
+  options: MultiplexedWatchOptions = {},
+): Promise<MultiplexedWatchResult> {
+  invariant(
+    targets.length > 0,
+    'A multiplexed watch requires at least one target.',
+    {
+      code: 'INVALID_ARGUMENT',
+    },
+  )
+  const unique = new Set(
+    targets.map((target) => `${target.runId}:${target.invocationId}`),
+  )
+
+  invariant(
+    unique.size === targets.length,
+    'A multiplexed watch target MUST be unique.',
+    {
+      code: 'INVALID_ARGUMENT',
+    },
+  )
+
+  const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
+  const stallWakes = options.stallWakes ?? DEFAULT_STALL_WAKES
+  const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
+  const sleep = options.sleep ?? defaultSleep
+  const now = options.now ?? Date.now
+  const startedMs = now()
+  const startedAt = new Date(startedMs).toISOString()
+  const watched = targets.map((target) => {
+    const invocation = resolveWatchedInvocation(
+      root,
+      target.runId,
+      target.invocationId,
+    )
+    const recordRelative = watchRecordPath(
+      root,
+      target.runId,
+      invocation.invocation_id,
+    )
+
+    recordInvocationLaunch(root, target.runId, invocation.invocation_id, {
+      defaultLaunchedAtMs: startedMs,
+      defaultSource: 'watch_arm',
+      ...(options.markBackground ? { launchMode: 'background' as const } : {}),
+    })
+
+    if (options.markBackground) {
+      markDelegationBackground(root, target.runId, invocation.invocation_id)
+    }
+
+    const initial = observeInvocation(root, invocation)
+
+    return {
+      target,
+      invocation,
+      recordRelative,
+      recordAbsolute: resolveInside(root, recordRelative),
+      initial,
+      previousFingerprint: initial.fingerprint,
+      unchangedWakes: 0,
+      // Non-null means a finished-looking output is held for one more
+      // observation, exactly as the focused watch holds one.
+      heldOutput: null as string | null,
+    }
+  })
+  type WatchedTarget = (typeof watched)[number]
+  const finish = (
+    state: MultiplexedWatchResult['state'],
+    moved: MultiplexedWatchMovement[],
+    stalled: MultiplexedWatchMovement[],
+    wakes: number,
+  ): MultiplexedWatchResult => {
+    const endedMs = now()
+
+    return {
+      state,
+      targets: watched.length,
+      moved,
+      stalled,
+      cadence_seconds: cadenceSeconds,
+      stall_wakes: stallWakes,
+      timeout_seconds: timeoutSeconds,
+      wakes,
+      started_at: startedAt,
+      ended_at: new Date(endedMs).toISOString(),
+      elapsed_seconds: (endedMs - startedMs) / 1000,
+    }
+  }
+  const movement = (
+    item: WatchedTarget,
+    terminal: WatchTerminalState | undefined,
+  ): MultiplexedWatchMovement => ({
+    run_id: item.target.runId,
+    invocation_id: item.invocation.invocation_id,
+    output_path: item.invocation.output.path,
+    record_path: item.recordRelative,
+    terminal_state: terminal ?? null,
+  })
+  const evidenceFor = (
+    item: WatchedTarget,
+    observation: WatchObservation,
+  ): CompletionEvidence =>
+    completionEvidenceForObservation(
+      observation,
+      launchToOutputSeconds(
+        root,
+        item.target.runId,
+        item.invocation.invocation_id,
+      ),
+      cadenceSeconds,
+    )
+  const initiallyMoved: MultiplexedWatchMovement[] = []
+
+  for (const item of watched) {
+    const evidence = evidenceFor(item, item.initial)
+
+    if (evidence.strength === 'none') {
+      continue
+    }
+
+    const terminal = evidence.strength === 'strong' ? 'completed' : undefined
+    const terminalBasis =
+      evidence.strength === 'strong' ? evidence.basis : undefined
+    const hold = evidence.strength === 'weak' ? evidence.reason : undefined
+
+    if (hold !== undefined) {
+      item.heldOutput = outputSignature(item.initial)
+    }
+
+    const entry: WatchRecordEntry = {
+      schema_version: 1,
+      event: 'wake',
+      run_id: item.target.runId,
+      invocation_id: item.invocation.invocation_id,
+      recorded_at: item.initial.observed_at,
+      cadence_seconds: cadenceSeconds,
+      wake: 0,
+      observation: item.initial,
+      ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+      ...(hold ? { completion_hold: hold } : {}),
+      changed: true,
+      unchanged_wakes: 0,
+      ...(terminal ? { terminal_state: terminal } : {}),
+    }
+
+    appendJsonLine(item.recordAbsolute, entry)
+    options.onWake?.(entry)
+
+    if (terminal) {
+      initiallyMoved.push(movement(item, terminal))
+    }
+  }
+
+  if (initiallyMoved.length > 0) {
+    return finish('changed', initiallyMoved, [], 0)
+  }
+
+  const cadenceMs = Math.round(cadenceSeconds * 1000)
+  const timeoutMs = Math.round(timeoutSeconds * 1000)
+  let dueMs = startedMs + cadenceMs
+  let wakes = 0
+
+  for (;;) {
+    const armedAt = now()
+
+    if (dueMs < armedAt) {
+      dueMs = armedAt + cadenceMs
+    }
+
+    for (const item of watched) {
+      appendJsonLine(item.recordAbsolute, {
+        schema_version: 1,
+        event: 'armed',
+        run_id: item.target.runId,
+        invocation_id: item.invocation.invocation_id,
+        recorded_at: new Date(armedAt).toISOString(),
+        cadence_seconds: cadenceSeconds,
+        wake: wakes + 1,
+        wake_due_at: new Date(dueMs).toISOString(),
+      } satisfies WatchRecordEntry)
+    }
+
+    await sleep(Math.max(0, dueMs - now()))
+    dueMs += cadenceMs
+    wakes += 1
+    const moved: MultiplexedWatchMovement[] = []
+    const stalled: MultiplexedWatchMovement[] = []
+    const timedOut = now() - startedMs >= timeoutMs
+
+    for (const item of watched) {
+      const observation = observeInvocation(root, item.invocation)
+
+      snapshotBlockedOutput(
+        root,
+        item.target.runId,
+        item.invocation.invocation_id,
+      )
+
+      const changed = observation.fingerprint !== item.previousFingerprint
+
+      item.previousFingerprint = observation.fingerprint
+      item.unchangedWakes = changed ? 0 : item.unchangedWakes + 1
+
+      const evidence = evidenceFor(item, observation)
+      let terminal: WatchTerminalState | undefined
+      let terminalBasis: WatchRecordEntry['terminal_basis']
+      let hold: WeakCompletionReason | undefined
+
+      if (evidence.strength === 'strong') {
+        terminal = 'completed'
+        terminalBasis = evidence.basis
+      } else if (evidence.strength === 'weak') {
+        const signature = outputSignature(observation)
+
+        if (item.heldOutput === signature) {
+          // The confirming wake the held observation bought, across which the
+          // output did not move.
+          terminal = 'completed'
+          terminalBasis = 'confirming_wake'
+        } else {
+          item.heldOutput = signature
+          hold = evidence.reason
+        }
+      } else {
+        item.heldOutput = null
+
+        if (item.unchangedWakes >= stallWakes) {
+          // A scaffold that stopped moving is the case the focused watch
+          // refuses to call a stall: the supervisor must inspect the agent
+          // itself, which a group wait cannot report for one member.
+          terminal = observation.output_is_scaffold ? 'unverified' : 'stalled'
+        }
+      }
+
+      const movedNow =
+        terminal === 'completed' || (changed && hold === undefined)
+
+      if (!movedNow && terminal === undefined && timedOut) {
+        terminal = hold === undefined ? 'timed_out' : 'unverified'
+      }
+
+      const entry: WatchRecordEntry = {
+        schema_version: 1,
+        event: 'wake',
+        run_id: item.target.runId,
+        invocation_id: item.invocation.invocation_id,
+        recorded_at: observation.observed_at,
+        cadence_seconds: cadenceSeconds,
+        wake: wakes,
+        observation,
+        ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+        ...(hold ? { completion_hold: hold } : {}),
+        changed,
+        unchanged_wakes: item.unchangedWakes,
+        ...(terminal ? { terminal_state: terminal } : {}),
+      }
+
+      appendJsonLine(item.recordAbsolute, entry)
+      options.onWake?.(entry)
+
+      if (movedNow) {
+        moved.push(movement(item, terminal))
+      } else if (terminal === 'stalled' || terminal === 'unverified') {
+        stalled.push(movement(item, terminal))
+      }
+    }
+
+    if (moved.length > 0) {
+      return finish('changed', moved, stalled, wakes)
+    }
+
+    if (stalled.length > 0) {
+      return finish(
+        stalled.some((item) => item.terminal_state === 'stalled')
+          ? 'stalled'
+          : 'unverified',
+        [],
+        stalled,
+        wakes,
+      )
+    }
+
+    if (timedOut) {
+      return finish('timed_out', [], stalled, wakes)
+    }
+  }
+}
+
 /** One line per wake for an interactive terminal. */
 export function formatWakeLine(entry: WatchRecordEntry): string {
   const observation = entry.observation
