@@ -239,12 +239,16 @@ test('the freed commit and merge did not loosen push, publication, deployment, o
     /MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization/u,
   )
   // `MUST NOT commit`, or a MUST NOT list that opens with commit, is the
-  // retired stance. A rule that merely mentions a release commit is not.
-  assert.doesNotMatch(
-    card,
-    /MUST NOT (?:\w+ )?commit\b/u,
-    'AGENTS.md puts commit back on a MUST NOT list',
-  )
+  // retired stance. A rule that merely mentions a release commit is not, and
+  // neither is the versioned-landing rule, which forbids only a direct commit
+  // of an installable change on `pan-dev` or `main`.
+  for (const clause of card.match(/MUST NOT (?:\w+ )?commit\b[^.]*/gu) ?? []) {
+    assert.match(
+      clause,
+      /directly on `pan-dev` or `main`/u,
+      `AGENTS.md puts commit back on a MUST NOT list: ${clause}`,
+    )
+  }
 })
 
 test('every operator-owned action list surface states the pan-dev landing rule once and adds no branching clause', () => {
