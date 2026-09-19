@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.23.0] - 2026-09-19
+
+This release repairs nine mechanical-friction defects. Worktree-bound stages keep file tools. Prepare, watch, waiver, and plan-approval recovery name the next command.
+
+### Changed
+
+- Default `pan prepare` to the projected agent of the stage persona so a bare prepare writes the labeled delegation artifact ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- End a background watch that exhausts its wake budget with a distinct exit and the re-arm command ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Name the verification root in an evidence brief for a managed self-development worktree ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Name the status found and the command that applies on a refusal ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- State `/pan-start` dispositions for prose, an existing queue file, and an augment note ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Narrow `.cursorignore` to instruction files so worktree source stays readable ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Return a criterion waiver to the blocked point and keep finished stage output ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Refresh the disposable Cursor projection on worktree create and branch restore ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Inherit the planning worktree on a single-chunk route, and refuse to branch away from uncommitted work ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+
 ## [6.21.0] - 2026-09-19
 
 This release bounds executor write grants, records prompt-task tool policy, and measures worker liveness as a duration.
