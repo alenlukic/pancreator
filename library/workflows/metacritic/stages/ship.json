@@ -58,8 +58,8 @@
     {
       "id": "ship.fast_wall_ceiling",
       "type": "shell",
-      "hard": true,
-      "statement": "The TEST-001 rolling 24-hour fast-lane wall average is at or below the configured permitted ceiling.",
+      "hard": false,
+      "statement": "The TEST-001 rolling 24-hour qualified fast-lane wall average is reported as a non-blocking release advisory.",
       "command": "pan tests wall",
       "timeout_ms": 30000
     },

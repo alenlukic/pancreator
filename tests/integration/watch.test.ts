@@ -31,6 +31,7 @@ import {
   summarizeDelegationObservation,
   summarizeDelegationWatch,
   watchInvocation,
+  watchInvocations,
   watchRecordPath,
 } from '../../src/lib/watch.js'
 import { delegationPath } from '../../src/lib/validation.js'
@@ -41,9 +42,11 @@ import {
   currentInvocation,
   fakeClock,
   fillPreparedOutput,
+  multiplexedTargets,
   preparedRun,
   stillWritingClock,
   writeStageOutput,
+  writeTargetOutput,
 } from './watch-helpers.js'
 
 test('watch completes when the invocation output appears and records every arming and wake', async () => {
@@ -94,6 +97,164 @@ test('watch completes when the invocation output appears and records every armin
     summarizeDelegationObservation(root, state.run_id, invocationId).source,
     'watch_completed',
   )
+})
+
+test('multiplexed watch returns the first changed invocation and keeps ordinary ledgers', async () => {
+  const { root, targets } = multiplexedTargets(3)
+  const clock = fakeClock()
+  let wrote = false
+  const result = await watchInvocations(
+    root,
+    targets.map(({ runId, invocationId }) => ({ runId, invocationId })),
+    {
+      cadenceSeconds: CADENCE_SECONDS,
+      stallWakes: 10,
+      timeoutSeconds: 1,
+      now: clock.now,
+      sleep: async (milliseconds) => {
+        await clock.sleep(milliseconds)
+
+        if (!wrote) {
+          wrote = true
+          const moved = targets[1]
+
+          assert.ok(moved)
+          writeFileSync(
+            moved.layout.output(moved.invocationId).absolute,
+            `${JSON.stringify({
+              invocation_id: moved.invocationId,
+              result: 'success',
+              summary: 'done',
+              criteria: [],
+              data: {},
+            })}\n`,
+            'utf8',
+          )
+        }
+      },
+    },
+  )
+
+  assert.equal(result.state, 'changed')
+  assert.equal(result.targets, 3)
+  assert.deepEqual(
+    result.moved.map((item) => item.invocation_id),
+    ['multi-two'],
+  )
+  // A change is not a completion. This document is not one the supervisor
+  // could submit, so the wait names the target that moved and claims nothing
+  // about its terminal state.
+  assert.deepEqual(
+    result.moved.map((item) => item.terminal_state),
+    [null],
+  )
+  assert.deepEqual(result.stalled, [])
+
+  for (const { runId, invocationId } of targets) {
+    const entries = readWatchRecord(root, runId, invocationId)
+
+    assert.deepEqual(
+      entries.map((entry) => [entry.schema_version, entry.event, entry.wake]),
+      [
+        [1, 'armed', 1],
+        [1, 'wake', 1],
+      ],
+    )
+    assert.equal(entries.at(-1)?.run_id, runId)
+    assert.equal(entries.at(-1)?.invocation_id, invocationId)
+  }
+})
+
+// The focused watch holds a finished-looking output whose evidence is weak
+// for one confirming wake, because a worker that wrote a complete-looking
+// output can keep editing. A group wait that skipped that hold would hand the
+// supervisor a run whose submission is refused.
+test('multiplexed watch holds weak completion evidence for one confirming wake', async () => {
+  const { root, targets } = multiplexedTargets(2)
+  const held = targets[1]
+
+  assert.ok(held)
+
+  const clock = fakeClock()
+  let wrote = false
+  const result = await watchInvocations(
+    root,
+    targets.map(({ runId, invocationId }) => ({ runId, invocationId })),
+    {
+      cadenceSeconds: CADENCE_SECONDS,
+      stallWakes: 10,
+      timeoutSeconds: 60,
+      now: clock.now,
+      sleep: async (milliseconds) => {
+        await clock.sleep(milliseconds)
+
+        if (!wrote) {
+          wrote = true
+          writeTargetOutput(root, held)
+        }
+      },
+    },
+  )
+
+  assert.equal(result.state, 'changed')
+  assert.equal(result.wakes, 2)
+  assert.deepEqual(
+    result.moved.map((item) => [item.invocation_id, item.terminal_state]),
+    [[held.invocationId, 'completed']],
+  )
+
+  const wakes = readWatchRecord(root, held.runId, held.invocationId).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  assert.equal(wakes[0]?.completion_hold, 'output_younger_than_cadence')
+  assert.equal(wakes[0]?.terminal_state, undefined)
+  assert.equal(wakes[1]?.terminal_basis, 'confirming_wake')
+  assert.equal(wakes[1]?.terminal_state, 'completed')
+})
+
+// DELEGATE-001 makes the supervisor act on a stall, and the multiplexed wait
+// is what the cohort guidance now arms. Without this signal a cohort of
+// stalled siblings would hold the session until the four-hour timeout.
+test('multiplexed watch reports the targets that stalled', async () => {
+  const { root, targets } = multiplexedTargets(2)
+  const clock = fakeClock()
+  const result = await watchInvocations(
+    root,
+    targets.map(({ runId, invocationId }) => ({ runId, invocationId })),
+    {
+      cadenceSeconds: CADENCE_SECONDS,
+      stallWakes: 2,
+      timeoutSeconds: 60,
+      now: clock.now,
+      sleep: clock.sleep,
+    },
+  )
+
+  assert.equal(result.state, 'stalled')
+  assert.equal(result.wakes, 2)
+  assert.deepEqual(result.moved, [])
+  assert.deepEqual(
+    result.stalled.map((item) => [item.invocation_id, item.terminal_state]),
+    [
+      ['multi-one', 'stalled'],
+      ['multi-two', 'stalled'],
+    ],
+  )
+
+  const first = targets[0]
+
+  assert.ok(first)
+
+  const wakes = readWatchRecord(root, first.runId, first.invocationId).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  assert.deepEqual(
+    wakes.map((entry) => entry.unchanged_wakes),
+    [1, 2],
+  )
+  assert.equal(wakes.at(-1)?.terminal_state, 'stalled')
 })
 
 test('watch reports stalled after the configured unchanged wakes', async () => {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -134,14 +134,48 @@ test('selects complete canceled or both inbox archives', () => {
 
   writeExpired(canceledRoot, 'canceled', '63379_Jun-22-0158_flag-canceled.md')
 
-  const canceledOnly = JSON.parse(
-    execFileSync(
-      process.execPath,
-      [CLI, 'archive', '--days', '7', '--canceled', '--json'],
-      { cwd: canceledRoot, encoding: 'utf8' },
-    ) as string,
-  ) as { archive: { inbox_files: string[] } }
+  const canceledProcess = spawnSync(
+    process.execPath,
+    [CLI, 'archive', '--days', '7', '--canceled', '--json'],
+    { cwd: canceledRoot, encoding: 'utf8' },
+  )
 
+  assert.equal(canceledProcess.status, 0, canceledProcess.stderr)
+  const canceledOnly = JSON.parse(canceledProcess.stdout) as {
+    archive: { inbox_files: string[] }
+  }
+
+  const progressLines = canceledProcess.stderr.trim().split('\n')
+  const passes = [
+    'inbox_layout',
+    'names',
+    'migration',
+    'suffixes',
+    'references',
+    'archive',
+  ]
+
+  assert.equal(progressLines.length, passes.length * 2)
+  for (const pass of passes) {
+    assert.ok(
+      progressLines.some((line) =>
+        new RegExp(
+          `^\\[pan archive\\] ${pass} started \\(\\d+ files\\)$`,
+          'u',
+        ).test(line),
+      ),
+      `missing ${pass} start progress`,
+    )
+    assert.ok(
+      progressLines.some((line) =>
+        new RegExp(
+          `^\\[pan archive\\] ${pass} finished \\(\\d+ files\\)$`,
+          'u',
+        ).test(line),
+      ),
+      `missing ${pass} finish progress`,
+    )
+  }
   assert.deepEqual(canceledOnly.archive.inbox_files, [
     '63379_Jun-22-0158_flag-canceled.md',
   ])

@@ -49,6 +49,7 @@ import {
   suiteProfileEvidencePath,
 } from './suite-profile.js'
 import {
+  FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_CRITERION_ID,
   FAST_WALL_PHASE_ENV,
   FAST_WALL_RUN_ID_ENV,
@@ -2945,6 +2946,7 @@ function runShellCheck(
         [FAST_WALL_SERIES_ROOT_ENV]: root,
         [FAST_WALL_RUN_ID_ENV]: state.run_id,
         [FAST_WALL_PHASE_ENV]: criterion.id,
+        [FAST_WALL_CALLER_CLASS_ENV]: 'harness_gate',
         ...(suiteProfileTarget
           ? { [TEST_PROFILE_ENV]: suiteProfileTarget }
           : {}),

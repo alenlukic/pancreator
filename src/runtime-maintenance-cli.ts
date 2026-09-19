@@ -27,7 +27,13 @@ function main(): void {
   const retentionValue = option('--days')
   const retentionDays = retentionValue === null ? 7 : Number(retentionValue)
 
-  const summary = maintainWorkflowRuntime(root, { retentionDays })
+  const summary = maintainWorkflowRuntime(root, {
+    retentionDays,
+    onProgress: ({ pass, phase, file_count: fileCount }) =>
+      process.stderr.write(
+        `[pan archive] ${pass} ${phase} (${fileCount} files)\n`,
+      ),
+  })
 
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
 }

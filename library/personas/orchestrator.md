@@ -46,7 +46,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Take the per-run bootstrap from that result's `bootstrap` array. It names the card, attestation, redline, and model-evidence command of every live chunk run, so you MUST NOT rebuild them by hand.
 - Launch one worker per ready run in one message so the launches run in parallel.
 - Never launch two workers for one run.
-- Arm one watch per launched run. A stall in one run does not stop the sibling runs.
+- Arm every ready sibling in one multiplexed wait with `./bin/pan watch --targets <run-id>:<invocation-id>,...`; that command writes each ordinary per-invocation ledger itself. It returns when the first target changes, so advance that run and re-arm across the remainder. It exits `2` and names the targets that need inspection when one sits unchanged for the stall bound: stop re-arming that target and apply recovery. A stall in one run does not stop sibling runs.
 - The harness integrates a finished cohort itself. The lifecycle command that closed the last chunk run carries an `advance` object: `status: "integrated"` names the merge commit and nests the continuation under `autostart`, and `status: "failed"` names the error and the idempotent `cohort integrate` retry to run.
 - When that continuation reports `kind: release`, supervise the release run with `/pan-resume`.
 

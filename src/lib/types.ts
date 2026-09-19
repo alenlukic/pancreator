@@ -974,6 +974,10 @@ export interface FastWallConfig {
   ceiling_ms: number
   anchor_date: string
   weekly_allowance_ms: number
+  /** Maximum accepted one-minute load average divided by logical CPUs. */
+  max_load_average_per_cpu: number
+  /** Qualified samples required before the rolling average has a verdict. */
+  minimum_qualified_samples: number
 }
 
 export interface ResolvedRoots {
@@ -2010,6 +2014,8 @@ export interface RunAdvisory {
     | 'build_currency'
     /** A returning verify stage whose interior profile refresh failed. */
     | 'verify_profile_refresh'
+    /** A non-blocking suite-cost observation recorded at release time. */
+    | 'suite_cost'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string

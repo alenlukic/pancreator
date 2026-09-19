@@ -6,6 +6,7 @@ WRAPPER_STARTED_MS="$(node -e 'process.stdout.write(String(Date.now()))')"
 FAST_WALL_SERIES_ROOT="${PAN_FAST_WALL_SERIES_ROOT:-$ROOT}"
 FAST_WALL_RUN_ID="${PAN_FAST_WALL_RUN_ID:-standalone}"
 FAST_WALL_PHASE="${PAN_FAST_WALL_PHASE:-standalone}"
+FAST_WALL_CALLER_CLASS="${PAN_FAST_WALL_CALLER_CLASS:-standalone}"
 FAST_WALL_INVOKER="${npm_lifecycle_event:-manual}"
 
 # The wrapper owns these values. Test children must not inherit them and append
@@ -13,6 +14,7 @@ FAST_WALL_INVOKER="${npm_lifecycle_event:-manual}"
 unset PAN_FAST_WALL_SERIES_ROOT
 unset PAN_FAST_WALL_RUN_ID
 unset PAN_FAST_WALL_PHASE
+unset PAN_FAST_WALL_CALLER_CLASS
 unset npm_lifecycle_event
 
 usage() {
@@ -418,6 +420,9 @@ status=0
 FAST_WALL_LOAD_AVERAGE="$(
   node -e 'process.stdout.write(String(require("node:os").loadavg()[0]))'
 )"
+FAST_WALL_CPU_COUNT="$(
+  node -e 'process.stdout.write(String(require("node:os").availableParallelism()))'
+)"
 FAST_WALL_WORKER_COUNT="$(test_worker_count "$@")"
 FAST_WALL_QUALIFIES=0
 
@@ -436,6 +441,8 @@ if [[ "$FAST_WALL_QUALIFIES" -eq 1 ]] && ! node "$ROOT/dist/src/cli.js" tests re
   --duration-record "$FILE_DURATION_RECORD" \
   --worker-count "$FAST_WALL_WORKER_COUNT" \
   --load-average "$FAST_WALL_LOAD_AVERAGE" \
+  --cpu-count "$FAST_WALL_CPU_COUNT" \
+  --caller-class "$FAST_WALL_CALLER_CLASS" \
   --wrapper-wall-ms "$WRAPPER_WALL_MS" \
   --invoker "$FAST_WALL_INVOKER" \
   --run-id "$FAST_WALL_RUN_ID" \

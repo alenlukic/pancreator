@@ -120,6 +120,8 @@ test('the grammar accepts the surfaces and options the CLI really has', () => {
  * worktree gate are judged against.
  */
 const UNDOCUMENTED_INTERNAL_OPTIONS = new Set([
+  '--caller-class',
+  '--cpu-count',
   '--driver-child',
   '--duration-record',
   '--exit-code',

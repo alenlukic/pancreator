@@ -1023,9 +1023,6 @@ test('TEST-001 permits directed mechanical governance and preserves judgment bou
     instructions.some((instruction) =>
       terms.every((term) => instruction.includes(term)),
     )
-  const denies = (instruction: string): boolean =>
-    /\b(?:must not|may not|cannot|forbid\w*)\b/u.test(instruction)
-
   assert.ok(
     hasInstructionWith(
       'duration ceiling',
@@ -1033,11 +1030,12 @@ test('TEST-001 permits directed mechanical governance and preserves judgment bou
       'rolling daily average',
     ),
   )
-  assert.equal(
-    instructions
-      .filter((instruction) => instruction.includes('duration ceiling'))
-      .some(denies),
-    false,
+  assert.ok(
+    hasInstructionWith(
+      'duration ceiling',
+      'must not fail or route a stage',
+      'release advisory',
+    ),
   )
   assert.ok(
     hasInstructionWith(

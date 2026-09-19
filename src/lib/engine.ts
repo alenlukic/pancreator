@@ -90,6 +90,8 @@ import {
 import {
   buildFastWallStageSummary,
   FAST_WALL_BASELINE_PHASE,
+  FAST_WALL_CALLER_CLASS_ENV,
+  FAST_WALL_CRITERION_ID,
   FAST_WALL_PHASE_ENV,
   FAST_WALL_RUN_ID_ENV,
   FAST_WALL_SERIES_ROOT_ENV,
@@ -1628,6 +1630,7 @@ function captureRepositoryCheckBaselines(
         [FAST_WALL_SERIES_ROOT_ENV]: root,
         [FAST_WALL_RUN_ID_ENV]: state.run_id,
         [FAST_WALL_PHASE_ENV]: FAST_WALL_BASELINE_PHASE,
+        [FAST_WALL_CALLER_CLASS_ENV]: 'harness_gate',
       },
     })
     onProgress?.(
@@ -2122,7 +2125,7 @@ function runStageEntryGate(
   const artifactId = `${stage.slug}-entry-${executions}`
 
   onProgress?.(
-    `running entry gate ${criterion.id} for stage '${stage.slug}' before delegation`,
+    `running entry gate ${criterion.id} for stage '${stage.slug}' before delegation (timeout ${criterion.timeout_ms ?? 'default'}ms)`,
   )
 
   const result = runEntryGateCriterion(
@@ -2772,6 +2775,47 @@ function readInvocation(root: string, relativePath: string): Invocation {
  * Append advisories to run state so `pan status` recovers them after a resume.
  * The caller must persist the state.
  */
+function emitSuiteCostInboxItem(
+  root: string,
+  state: RunState,
+  message: string,
+  evidencePath?: string,
+): string {
+  const relative = queueInboxRelativePath(
+    `${state.run_id}-fast-wall-advisory.md`,
+  )
+  const absolute = resolveInside(root, relative)
+
+  if (fileExists(absolute)) {
+    return relative
+  }
+
+  ensureDir(path.dirname(absolute))
+  writeTextAtomic(
+    absolute,
+    [
+      '# Fast-lane suite-cost advisory',
+      '',
+      '**State:** The qualified rolling fast-lane wall average exceeded its configured advisory ceiling.',
+      '**Outcome:** The release remains unblocked. The observation is queued for harness performance tuning.',
+      '**Blockers:** None.',
+      '**Next action:** Run `/pan-tune-harness` to review the suite cost and configured ceiling.',
+      '**Category:** Performance (`perf`)',
+      '',
+      '## Observation',
+      '',
+      message,
+      '',
+      `- Run: \`${state.run_id}\``,
+      `- Criterion: \`${FAST_WALL_CRITERION_ID}\``,
+      ...(evidencePath ? [`- Evidence: \`${evidencePath}\``] : []),
+      '',
+    ].join('\n'),
+  )
+
+  return relative
+}
+
 function recordRunAdvisories(
   state: RunState,
   context: Omit<RunAdvisory, 'message' | 'recorded_at'>,
@@ -7287,6 +7331,34 @@ export function submitOutput(
     )
 
     advise('gate_bypass', evaluated.advisories)
+
+    const suiteCostFailure = evaluated.results.find(
+      (result) =>
+        result.id === FAST_WALL_CRITERION_ID &&
+        result.passed === false &&
+        result.skipped !== true,
+    )
+
+    if (suiteCostFailure) {
+      const message =
+        suiteCostFailure.explanation ??
+        'The qualified fast-lane wall average exceeded its configured advisory ceiling.'
+      const intakePath = emitSuiteCostInboxItem(
+        root,
+        state,
+        message,
+        suiteCostFailure.evidence_path,
+      )
+
+      advise('suite_cost', [`${message} Intake: ${intakePath}.`])
+      persistRun(root, state, 'suite_cost_advisory', {
+        stage: stage.slug,
+        invocation_id: invocation.invocation_id,
+        criterion: FAST_WALL_CRITERION_ID,
+        intake_path: intakePath,
+        evidence_path: suiteCostFailure.evidence_path ?? null,
+      })
+    }
 
     // A self-development release lane can execute a build compiled from a
     // tree other than the one it releases, so the run records which build

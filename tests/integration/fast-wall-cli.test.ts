@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import test from 'node:test'
 
 import { getRunState } from '../../src/lib/engine.js'
@@ -11,7 +11,12 @@ import type { Invocation, RunState, StageOutput } from '../../src/lib/types.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../fixture-template.js'
-import { checkpoint, prepareCheckpointRun } from './delivery-helpers.js'
+import {
+  checkpoint,
+  prepareCheckpointRun,
+  submitCurrentStage,
+  submitStageOutput,
+} from './delivery-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -26,6 +31,8 @@ function configureFastWall(root: string): void {
     ceiling_ms: 100,
     anchor_date: new Date().toISOString().slice(0, 10),
     weekly_allowance_ms: 0,
+    max_load_average_per_cpu: 1,
+    minimum_qualified_samples: 1,
   }
   writeFileSync(target, `${JSON.stringify(config, null, 2)}\n`)
 }
@@ -42,13 +49,15 @@ interface SeriesRow {
 
 function seriesRow(row: SeriesRow): string {
   return JSON.stringify({
-    schema_version: 2,
+    schema_version: 3,
     recorded_at: new Date().toISOString(),
     wrapper_wall_clock_ms: row.wall_clock_ms + 10,
     wrapper_overhead_ms: 10,
     test_count: 10,
     worker_count: 13,
     load_average: 4.5,
+    cpu_count: 16,
+    caller_class: 'harness_gate',
     workspace_fingerprint: 'fingerprint',
     invoker: 'test',
     run_id: 'run-one',
@@ -114,7 +123,7 @@ test('tests wall reports the average and exits with its verdict', () => {
   assert.equal(passReport.permitted_ceiling_ms, 100)
 })
 
-test('the hard ship criterion exposes an over-ceiling average', () => {
+test('the advisory ship criterion exposes an over-ceiling average without blocking', () => {
   const root = createFixture()
 
   configureFastWall(root)
@@ -155,11 +164,57 @@ test('the hard ship criterion exposes an over-ceiling average', () => {
     )
 
     assert.ok(result, workflow)
-    assert.equal(result.hard, true, workflow)
+    assert.equal(result.hard, false, workflow)
     assert.equal(result.passed, false, workflow)
     assert.match(result.explanation ?? '', /0\.2s rolling 24h average/u)
     assert.match(result.explanation ?? '', /permitted 0\.1s/u)
+    assert.match(
+      result.explanation ?? '',
+      /Operator action: run \/pan-tune-harness/u,
+    )
   }
+})
+
+test('a breached suite-cost advisory records run state and queues performance tuning', () => {
+  const { root, runId, workflow } = checkpoint('delivery@implement-baselined', {
+    key: 'fast-wall-advisory',
+    fixture: (root) => {
+      configureFastWall(root)
+      execFileSync('git', ['add', 'config.json'], { cwd: root })
+      execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
+        cwd: root,
+      })
+    },
+  })
+
+  const verified = submitCurrentStage(root, runId, 'success')
+
+  assert.equal(verified.record.outcome, 'success')
+  writeSeries(root, [{ wall_clock_ms: 200 }])
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'ship'),
+    'success',
+  )
+  const advisory = submitted.advisories.find(
+    (item) => item.kind === 'suite_cost',
+  )
+
+  assert.equal(
+    submitted.record.outcome,
+    'success',
+    JSON.stringify(submitted.record.evaluation),
+  )
+  assert.ok(advisory)
+  assert.match(advisory.message, /Operator action: run \/pan-tune-harness/u)
+  const intake = path.join(
+    root,
+    'runtime/inbox/queue',
+    `${runId}-fast-wall-advisory.md`,
+  )
+
+  assert.match(readFileSync(intake, 'utf8'), /Category:\*\* Performance/u)
 })
 
 test('a prepared verify card carries the baseline and implement-gate walls', () => {
