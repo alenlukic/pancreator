@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# Refuse a landing on pan-dev or main that carries no release.
+#
+# Nothing lands on the integration branch without a proper version: every
+# change to an installable harness input reaches pan-dev inside a release,
+# which means the branch being merged already carries the release commit and
+# the release/index.json commit for a VERSION above the one pan-dev holds. A
+# direct commit on pan-dev that touches an installable input is the same
+# defect from the other side, and it is refused too.
+#
+# The installer enforces the same invariant at install time: a clean checkout
+# installs only when its installable inputs match the indexed release. This
+# guard moves that refusal to the moment the landing is attempted, where the
+# fix is still cheap.
+#
+# Modes:
+#   check-landing pre-commit        refuse a direct commit on a protected branch
+#   check-landing pre-merge-commit  refuse a merge whose source has no release
+#   check-landing branch <ref>      report whether <ref> is landable onto HEAD
+#
+# Exit 0 permits, exit 1 refuses with the reason on stderr.
+set -euo pipefail
+
+mode="${1:-}"
+protected_re='^(pan-dev|main)$'
+
+# Installable inputs mirror SOURCE_PAYLOAD_ENTRIES in bin/install plus the two
+# files the installer also compares. release/index.json is the one file the
+# release flow itself changes after the release commit, so it is excluded.
+installable=(
+  .gitignore config.json .npmrc .prettierignore README.md CHANGELOG.md VERSION
+  bin docs governance library package-lock.json package.json prettier.config.js
+  release src target-extensions tsconfig.json
+)
+
+current_branch() {
+  git symbolic-ref --quiet --short HEAD 2>/dev/null || echo ""
+}
+
+touches_installable() {
+  # Arguments form a `git diff ...` invocation; the pathspec is appended.
+  local changed
+  changed="$(git "$@" -- "${installable[@]}" ':(exclude)release/index.json')"
+  [[ -n "$changed" ]]
+}
+
+version_at() {
+  git show "$1:VERSION" 2>/dev/null | tr -d '[:space:]' || true
+}
+
+indexed_commit_for() {
+  # $1 = ref, $2 = version; prints the indexed commit or nothing.
+  git show "$1:release/index.json" 2>/dev/null | node -e '
+    const fs = require("node:fs")
+    const version = process.argv[1]
+    const value = JSON.parse(fs.readFileSync(0, "utf8"))
+    const entry = (value.releases ?? []).find((item) => item.version === version)
+    process.stdout.write(typeof entry?.commit === "string" ? entry.commit : "")
+  ' "$2"
+}
+
+refuse() {
+  echo "check-landing: $1" >&2
+  echo "check-landing: nothing lands on pan-dev without a proper version. Do the work on a worktree branch, run the release flow there (/pan-release, or the ship stage), which creates the release commit and the release/index.json commit for a new VERSION, then merge that branch. VERSION-001 and ACTION-001 state the rule." >&2
+  exit 1
+}
+
+case "$mode" in
+  pre-commit)
+    branch="$(current_branch)"
+    [[ "$branch" =~ $protected_re ]] || exit 0
+
+    # A merge that needed conflict resolution commits through `git commit`.
+    # The merge hook has already judged the source, so that commit is a
+    # landing of the judged branch rather than a direct change.
+    if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+      exit 0
+    fi
+
+    if touches_installable diff --cached --name-only; then
+      refuse "a direct commit on '$branch' changes installable harness inputs."
+    fi
+    exit 0
+    ;;
+
+  pre-merge-commit)
+    branch="$(current_branch)"
+    [[ "$branch" =~ $protected_re ]] || exit 0
+
+    source_ref="$(git rev-parse -q --verify MERGE_HEAD 2>/dev/null || true)"
+    [[ -n "$source_ref" ]] || exit 0
+    exec "$0" branch "$source_ref"
+    ;;
+
+  branch)
+    source_ref="${2:-}"
+    [[ -n "$source_ref" ]] || {
+      echo "usage: check-landing branch <ref>" >&2
+      exit 2
+    }
+
+    base="$(git merge-base HEAD "$source_ref")"
+
+    if ! touches_installable diff --name-only "$base" "$source_ref"; then
+      # Only runtime records or tests changed: no release is owed.
+      exit 0
+    fi
+
+    head_version="$(version_at HEAD)"
+    source_version="$(version_at "$source_ref")"
+
+    if [[ -z "$source_version" ]]; then
+      refuse "'$source_ref' has no VERSION file."
+    fi
+
+    if [[ "$source_version" == "$head_version" ]]; then
+      refuse "'$source_ref' changes installable inputs but still carries VERSION $source_version, which HEAD already holds."
+    fi
+
+    indexed_commit="$(indexed_commit_for "$source_ref" "$source_version")"
+
+    if [[ -z "$indexed_commit" ]]; then
+      refuse "'$source_ref' carries VERSION $source_version but its release/index.json does not index it; run 'pan release finalize' on that worktree first."
+    fi
+
+    if ! git merge-base --is-ancestor "$indexed_commit" "$source_ref" 2>/dev/null; then
+      refuse "the release commit indexed for $source_version ($indexed_commit) is not on '$source_ref'."
+    fi
+
+    if touches_installable diff --name-only "$indexed_commit" "$source_ref"; then
+      refuse "'$source_ref' changes installable inputs after its indexed release commit for $source_version; release again before landing."
+    fi
+
+    exit 0
+    ;;
+
+  *)
+    echo "usage: check-landing pre-commit | pre-merge-commit | branch <ref>" >&2
+    exit 2
+    ;;
+esac
