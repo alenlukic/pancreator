@@ -31,7 +31,9 @@ import {
   awayBlockerCanBeCleared,
   awayModeTrigger,
   recordAwayApplyResult,
+  selectAwayOption,
   type AwayDecisionRecord,
+  type AwayOption,
 } from './away-mode.js'
 import { applyAwayDecision, evaluateAwayState } from './away-orchestration.js'
 import { resolveOrCreateWorktree } from './worktrees.js'
@@ -1239,6 +1241,70 @@ function operatorOnlyStop(
   }
 }
 
+/**
+ * How many evaluator failures one blocker absorbs before the task defers.
+ *
+ * Each `evaluateAwayState` call already retries an unparseable reply once. A
+ * failure record is transient by definition (HORIZON-001), so the session
+ * evaluates again rather than deferring a task over a reply that did not
+ * parse. The run's own evaluator-failure ceiling still bounds the total.
+ */
+const AWAY_EVALUATION_ATTEMPTS = 3
+
+/**
+ * Apply the selected option, then fall through the remaining allowed ranks
+ * when an apply fails. A ranking usually carries a second sound option, and
+ * ending the task over the first one's apply error was the defect that
+ * deferred a complete release over an inapplicable `resume` (HORIZON-001).
+ */
+function applyRankedAwayDecision(
+  root: string,
+  state: RunState,
+  decision: AwayDecisionRecord,
+): { applied: true } | { applied: false; reason: string } {
+  const tried = new Set<number>()
+  let candidate: AwayOption | null = decision.selected_action
+  let lastError = 'The away decision selected no action.'
+
+  while (candidate) {
+    tried.add(candidate.rank)
+    const attempt: AwayDecisionRecord = {
+      ...decision,
+      selected_action: candidate,
+    }
+
+    try {
+      applyAwayDecision(root, state, attempt)
+      recordAwayApplyResult(
+        root,
+        attempt,
+        'applied',
+        undefined,
+        candidate.action,
+      )
+
+      return { applied: true }
+    } catch (error) {
+      lastError = errorMessage(error)
+      recordAwayApplyResult(root, attempt, 'failed', lastError)
+    }
+
+    const remaining = decision.ranked_options.filter(
+      (option) => !tried.has(option.rank),
+    )
+    candidate = selectAwayOption(remaining, {
+      enabled: true,
+      guardrails: decision.guardrails,
+      source_sha256: state.away_mode?.source_sha256 ?? '',
+    }).selected
+  }
+
+  return {
+    applied: false,
+    reason: `The away decision did not apply: ${lastError}`,
+  }
+}
+
 /** Resolve one away-mode blocker, or state why no permitted action clears it. */
 function advanceAwayBlocker(
   root: string,
@@ -1253,14 +1319,38 @@ function advanceAwayBlocker(
     }
   }
 
-  let decision: AwayDecisionRecord
+  let decision: AwayDecisionRecord | null = null
+  let evaluatorError: string | null = null
 
-  try {
-    decision = evaluateAwayState(root, state, blocker)
-  } catch (error) {
+  for (let attempt = 1; attempt <= AWAY_EVALUATION_ATTEMPTS; attempt++) {
+    try {
+      const evaluated = evaluateAwayState(root, state, blocker)
+
+      if (evaluated.decision_kind === 'evaluator_failure') {
+        evaluatorError = evaluated.error ?? 'The away evaluator failed.'
+        continue
+      }
+
+      decision = evaluated
+      break
+    } catch (error) {
+      evaluatorError = errorMessage(error)
+
+      // A spent budget or failure ceiling will not change on another attempt.
+      if (
+        error instanceof PanError &&
+        (error.code === 'AWAY_DECISION_LIMIT' ||
+          error.code === 'AWAY_EVALUATOR_FAILURE_LIMIT')
+      ) {
+        break
+      }
+    }
+  }
+
+  if (!decision) {
     return {
       advanced: false,
-      reason: `The away evaluator reached no usable decision: ${errorMessage(error)}`,
+      reason: `The away evaluator reached no usable decision: ${evaluatorError ?? 'no decision'}`,
     }
   }
 
@@ -1276,22 +1366,10 @@ function advanceAwayBlocker(
     }
   }
 
-  try {
-    applyAwayDecision(root, state, decision)
-    recordAwayApplyResult(
-      root,
-      decision,
-      'applied',
-      undefined,
-      decision.selected_action?.action,
-    )
-  } catch (error) {
-    recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
+  const applied = applyRankedAwayDecision(root, state, decision)
 
-    return {
-      advanced: false,
-      reason: `The away decision did not apply: ${errorMessage(error)}`,
-    }
+  if (!applied.applied) {
+    return { advanced: false, reason: applied.reason }
   }
 
   return { advanced: true }

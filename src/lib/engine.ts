@@ -2690,21 +2690,16 @@ function applyTransition(
   }
 
   if (target === 'paused') {
-    // A release-gated stage reports `blocked` only for a concern the operator
-    // owns, which is `SHIP-001`'s legitimate-diagnostics pause. Marking it
-    // operator-only under the long-horizon contract is what carries it to the
-    // session's fourth rung instead of into away-mode evaluation.
-    const operatorOnly =
-      outcome === 'blocked' &&
-      stage.entry_gate !== undefined &&
-      runHasContract(state.operator_involvement, 'long_horizon')
-
+    // A `blocked` at a release-gated stage used to be marked operator-only
+    // under the long-horizon contract, which carried it straight to the
+    // session's deferral rung. HORIZON-001 now names four hard blocks and
+    // nothing else; a stage's `blocked` is a claim the away evaluator tests
+    // (revise, set-stage, or a recorded waiver of a cost-backed criterion),
+    // not a verdict. The release boundary itself is unchanged: away mode
+    // still cannot push, publish, or deploy.
     state.status = 'paused'
     state.pause_reason = `Stage '${stage.slug}' reported ${outcome}.`
-    state.pending_action = {
-      type: 'operator_decision',
-      ...(operatorOnly ? { operator_only: true as const } : {}),
-    }
+    state.pending_action = { type: 'operator_decision' }
 
     writeDecision(
       root,

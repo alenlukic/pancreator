@@ -21,6 +21,7 @@ import {
   resumeRun,
 } from '../../src/lib/engine.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
+import { readAwayDecisionLedger } from '../../src/lib/away-mode.js'
 import type { RunState } from '../../src/lib/types.js'
 import { attestRunCard, createFixture, read, writeJson } from '../helpers.js'
 import {
@@ -291,23 +292,24 @@ test('a blocker no permitted action can clear defers the task and advances the s
   // fourth rung: the task leaves the session, the session does not stop.
   pauseRun(root, runId, 'A blocker holds the run.')
 
-  // `waive-gate` is outside the long-horizon profile's allowed actions, so
-  // this ranking is rejected by the guardrail rather than by an evaluator or
-  // executor failure. The reason assertion below is what separates the two.
+  // The evaluator marks its only ranking infeasible, so the guardrail
+  // selection leaves nothing to apply. This is a ranking rejection rather
+  // than an evaluator or executor failure, and the reason assertion below is
+  // what separates the two: an evaluator failure is retried, a rejected
+  // ranking is the deferral rung.
   const checkpointed = withFakeEvaluator(
     root,
     {
       ranked_options: [
         {
           rank: 1,
-          action: 'waive-gate',
-          feasible: true,
-          rationale: 'Waive the gate that holds the run.',
+          action: 'resume',
+          feasible: false,
+          rationale: 'Nothing the run can do clears this blocker.',
           evidence: ['runtime/evidence/blocker.json'],
-          note: 'Waive the gate so the run continues.',
           rollback_plan: {
-            steps: ['Reinstate the gate and rerun the stage.'],
-            verification: 'Confirm the gate is enforced again.',
+            steps: ['Pause the run again.'],
+            verification: 'Confirm the run is paused.',
           },
         },
       ],
@@ -334,6 +336,80 @@ test('a blocker no permitted action can clear defers the task and advances the s
 
   const advanced = nextHorizonTask(root, created.session_id)
   assert.equal(advanced.task?.id, 'unrelated')
+})
+
+test('a selected option that fails to apply falls through to the next ranked option instead of deferring', () => {
+  const root = createFixture()
+  const created = initHorizonSession(root, threeTaskQueue(root), {
+    sessionId: 'session-fallthrough',
+    involvement: 'long-horizon',
+  })
+  startHorizonSession(root, created.session_id, {
+    attestSupervisorCard: true,
+  })
+
+  const opened = nextHorizonTask(root, created.session_id)
+  const runId = opened.run?.run_id as string
+
+  // Rank 1 is a waiver whose note names no destination, so the harness
+  // refuses to apply it. Rank 2 is a plain resume. Before HORIZON-001 named
+  // the closed hard-block list, the failed apply deferred the task; the
+  // ranking's second sound option must now carry the run instead. The pause
+  // happens inside the evaluator fixture so its binary is not a workspace
+  // change made while the run was paused, which away mode refuses to ratify.
+  const rollback_plan = {
+    steps: ['Pause the run again.'],
+    verification: 'Confirm the run is paused.',
+  }
+  const checkpointed = withFakeEvaluator(
+    root,
+    {
+      ranked_options: [
+        {
+          rank: 1,
+          action: 'waive-gate',
+          feasible: true,
+          rationale: 'Waive the gate that holds the run.',
+          evidence: ['runtime/evidence/blocker.json'],
+          note: 'Waive it.',
+          rollback_plan,
+        },
+        {
+          rank: 2,
+          action: 'resume',
+          feasible: true,
+          rationale: 'Re-attempt the stage.',
+          evidence: ['runtime/evidence/blocker.json'],
+          rollback_plan,
+        },
+      ],
+    },
+    () => {
+      pauseRun(root, runId, 'A blocker holds the run.')
+
+      return checkpointHorizonSession(root, created.session_id)
+    },
+  )
+
+  // The resume carried the run past the pause; whatever the fixture's stage
+  // worker does next is not this test's subject. The deferral reason, when
+  // one exists, must not be the first option's apply error.
+  assert.doesNotMatch(
+    checkpointed.driven.handoff_reason ?? '',
+    /did not apply/u,
+  )
+
+  const applies = readAwayDecisionLedger(root).filter(
+    (record) => record.run_id === runId && record.result !== 'accepted',
+  )
+
+  assert.deepEqual(
+    applies.map((record) => [record.result, record.applied_action ?? null]),
+    [
+      ['failed', null],
+      ['applied', 'resume'],
+    ],
+  )
 })
 
 test('an exhausted away-decision budget defers the task instead of the session', () => {

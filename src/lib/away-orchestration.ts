@@ -101,13 +101,20 @@ export function applyAwayDecision(
         selected.action,
         selected.note ?? selected.rationale,
       )
-    case 'resume':
-      return resumeRunAsAway(
-        root,
-        state.run_id,
-        selected.stage ?? state.current_stage,
-        selected.note ?? selected.rationale,
-      )
+    case 'resume': {
+      const stage = selected.stage ?? state.current_stage
+      const note = selected.note ?? selected.rationale
+
+      // The evaluator ranks `resume` to mean "re-attempt the stage". Only a
+      // paused run can literally resume; a run awaiting the operator reaches
+      // the same re-attempt through an away-authored stage set. Failing here
+      // instead turned a sound ranking into a deferred task (HORIZON-001).
+      if (state.status !== 'paused' && stage) {
+        return setRunStageAsAway(root, state.run_id, stage, note)
+      }
+
+      return resumeRunAsAway(root, state.run_id, stage, note)
+    }
     case 'set-stage':
       return setRunStageAsAway(
         root,

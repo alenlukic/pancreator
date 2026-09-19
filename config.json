@@ -136,7 +136,7 @@
         "contracts": ["technical_director"]
       },
       "long-horizon": {
-        "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged.",
+        "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged. waive-gate is allowed so a cost- or wall-time-backed criterion never stops a task; the decision budget is sized for a multi-hour run.",
         "gates": {
           "plan": "supervisor"
         },
@@ -149,9 +149,10 @@
               "reject",
               "revise",
               "resume",
-              "set-stage"
+              "set-stage",
+              "waive-gate"
             ],
-            "max_decisions_per_run": 3,
+            "max_decisions_per_run": 12,
             "max_remediation_attempts_per_agent": 2
           }
         }

@@ -156,7 +156,11 @@ test('AWAY-001 prohibits only the actions the operator kept, and bars no commit 
   assert.equal(
     prohibition,
     'Away mode MUST NOT run push, publication, deployment, or ' +
-      'branch-deletion actions, and SHOULD NOT run gate-waiver actions.',
+      'branch-deletion actions. It MAY run a gate-waiver action when the ' +
+      'guardrails allow it and the blocker is a criterion backed only by ' +
+      'cost, speed, wall time, or administration, or a failure with a ' +
+      'mechanical root cause. It SHOULD NOT waive a criterion that protects ' +
+      'correctness or security.',
   )
 
   // No other clause may put a commit or a merge back on the prohibited list.

@@ -24,3 +24,5 @@ Target verification MUST use commands configured from the target repository's ow
 `./.pancreator/bin/pan set-stage`, `pause`, and `waive-gate` are operator-owned decisions, and away mode MAY author a waiver within its own guardrails. Agents MUST NOT originate them, but MUST invoke them when the operator explicitly directs the action.
 
 Applicable language-specific guidance is delivered through the active invocation. Python target workspaces activate `PY-001`. Agents MUST read the guidance it references on the active card. Use `/pan-conform` for operator-timed prose repair, and `/pan-style` for code style repair.
+
+`DELEGATE-001` binds you from the moment you start any background subagent or background command until it ends: observe it at least every 60 seconds, and never end your turn while one is unfinished. A platform completion notification does not replace that cadence. Under a long-horizon contract you stop only for a hard block `HORIZON-001` enumerates; a cost-, speed-, or wall-time-backed bound, a condition you caused yourself, a transient failure, or any judgment call `PRINCIPLES-001` lets you make is decided, recorded, and passed.

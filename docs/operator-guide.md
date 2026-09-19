@@ -731,6 +731,19 @@ mode-scoped policy set only. It does not lower verification, review depth,
 correctness checks, the release boundary, or any operator-owned irreversible
 action.
 
+A long-horizon task stops for four hard blocks and nothing else: an action an
+invariant reserves for you (push, publication, deployment, history rewrite,
+destructive reset, branch deletion, external release), a secret or authorization
+that is genuinely absent, a correctness or security failure no permitted action
+can repair, and a destructive action you did not direct. A cost-, speed-, or
+wall-time-backed criterion (a wall ceiling, a rolling average, a budget), a
+condition the worker caused itself, a transient evaluator or executor failure,
+and any ordinary judgment call are decided and recorded, never deferred. To
+make that hold, the shipped profile allows `waive-gate`, sizes the decision
+budget at 12 per run, re-evaluates a failed evaluator reply, and falls through
+to the next ranked option when a selected option does not apply. Read
+`governance/handbooks/horizon/long-horizon.md` for the hard-block table.
+
 ### Long-horizon sessions
 
 A long-horizon session owns an ordered queue of workflow tasks and one-off prompt
