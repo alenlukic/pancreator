@@ -39,13 +39,13 @@ states the question `id`, a `disposition` of `resolved`, `deferred`, or
 `escalated`, an `answer` naming the answer or the decision still required, and
 `evidence`, which is required and must be non-empty for a resolved question.
 Each test-plan entry states `id`, the acceptance criterion it verifies
-(`criterion`), `setup`, `action`, and `expected`. A test-plan case MUST NOT run
+(`criterion`), `setup`, `action`, and `expected`. A test-plan case must not run
 a configured repository-check profile command or `pan repository-check
 <profile>`. The gates run those profiles, and the validator rejects such a case
 with `plan.case_reruns_profile`. Follow the card's `output.operator_brief` contract.
 
-If the change warrants a different verification level than the card shows, you
-MAY set `data.verification_recommendation` to
+If the change warrants a different verification level than the card shows, set
+`data.verification_recommendation` to
 `{ "level": <name>, "reason": <why> }`. The operator decides; do not assume
 the change.
 

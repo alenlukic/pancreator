@@ -6,6 +6,7 @@ import { loadPolicyCatalog, readPolicyLookupTable } from '../policies.js'
 import {
   auditAgentContext,
   type ContextAuditDuplicateGroup,
+  isDirectiveBoilerplate,
 } from './context-audit.js'
 
 const DIRECTIVE_PATTERN =
@@ -340,7 +341,9 @@ export function auditDirectives(root: string): DirectiveAuditResult {
       const lines = content.split('\n')
 
       for (const [index, line] of lines.entries()) {
-        if (isInCodeBlock(lines, index)) {
+        // The keyword definition names every directive keyword and issues
+        // no directive, so it is matched on its shape rather than its path.
+        if (isInCodeBlock(lines, index) || isDirectiveBoilerplate(line)) {
           continue
         }
 

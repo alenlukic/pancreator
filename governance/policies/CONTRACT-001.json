@@ -5,6 +5,7 @@
   "summary": "Agents creating or modifying machine-checkable normative contracts MUST assign policy ownership and deterministic automation or validator coverage.",
   "instructions": [
     "This rule covers a new or changed normative requirement for an output shape, required artifact, traceability relationship, deterministic operation, or machine-checkable invariant. The agent MUST identify its owning policy and a registered automation or validator id. When the registry capability does not yet exist, the agent MUST include an explicit implementation specification instead.",
+    "A handbook rule MUST apply broadly across repository work. An invocation-specific requirement MUST live in a policy, a workflow stage, or a prompt instead. A handbook addition MUST be high-signal and MUST NOT duplicate an existing authoritative rule without a concrete retrieval benefit.",
     "Validator and automation definitions MUST live in one canonical registry. Policies and applicability rules MUST reference stable ids and MUST NOT duplicate executable paths or command definitions.",
     "The harness MUST derive applicable automation and validation requirements from the policies resolved for an invocation. Agents MUST NOT maintain them in an independent second applicability map that can drift from policy selection.",
     {

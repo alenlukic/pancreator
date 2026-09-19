@@ -2,7 +2,7 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-Handbooks define durable repository standards. Applicable handbook content MUST reach each invocation card through policy `guidance_sources`. A card carries an audited reference naming the source path, the selected range, a content digest, and a read trigger. An invocation card, its embedded policies, and the guidance it references MUST remain the authoritative contract for a specific stage. Agents MUST NOT load unrelated handbooks speculatively.
+Handbooks define durable repository standards. Handbook content reaches an invocation card through a policy's `guidance_sources`: the card carries an audited reference naming the source path, the selected range, a content digest, and a read trigger. `GLOBAL-002` governs when an agent opens a handbook, and `CONTRACT-001` governs where a normative rule belongs.
 
 - [`eng/engineering.md`](eng/engineering.md) defines the language-agnostic engineering baseline.
 - [`eng/testing.md`](eng/testing.md) defines the self-development test standard and stable test principles.
@@ -13,4 +13,4 @@ Handbooks define durable repository standards. Applicable handbook content MUST 
 - [`typescript/style-guide.md`](typescript/style-guide.md) defines normative TypeScript and TSX style.
 - [`typescript/node.md`](typescript/node.md) defines Node.js runtime and durable-state practices.
 
-A handbook rule SHOULD apply broadly across repository work. Invocation-specific requirements MUST live in policies, workflow stages, or prompts instead. Handbook additions MUST be high-signal and MUST NOT duplicate an existing authoritative rule without a concrete retrieval benefit.
+A handbook holds rules that apply broadly across repository work. `CONTRACT-001` states where an invocation-specific requirement belongs and what a handbook addition owes.

@@ -232,7 +232,8 @@ function normalizeDirective(value: string): string {
     .toLowerCase()
 }
 
-function ignoredDirective(value: string): boolean {
+/** Report whether a sentence is the RFC 2119 keyword definition rather than a directive. */
+export function isDirectiveBoilerplate(value: string): boolean {
   const normalized = normalizeDirective(value)
 
   // A formatter wraps the RFC 2119 preamble, which leaves the RFC clause on a
@@ -271,7 +272,7 @@ function duplicateGroups(
 
     for (const [index, line] of item.content.split('\n').entries()) {
       for (const match of line.matchAll(DIRECTIVE_PATTERN)) {
-        if (ignoredDirective(match[0])) {
+        if (isDirectiveBoilerplate(match[0])) {
           continue
         }
 

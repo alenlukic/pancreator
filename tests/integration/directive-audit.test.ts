@@ -192,6 +192,41 @@ test('tolerated directive collisions raise no disposition demand', () => {
   )
 })
 
+test('the RFC 2119 keyword definition is not an unowned directive', () => {
+  const root = createFixture()
+  const directory = path.join(root, 'governance', 'handbooks', 'unowned')
+  const definition =
+    'The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.\n'
+  const shortDefinition =
+    'The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC 2119 and RFC 8174 meanings.\n'
+  const directive = 'Agents MUST record every observation before they act.\n'
+
+  // Two unowned handbooks open with the definition in its two repository
+  // shapes, so the exemption has to rest on the sentence, not on a path.
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(
+    path.join(directory, 'first.md'),
+    `# First\n\n${definition}\n${directive}`,
+  )
+  writeFileSync(
+    path.join(directory, 'second.md'),
+    `# Second\n\n${shortDefinition}`,
+  )
+
+  const result = auditDirectives(root)
+
+  assert.deepEqual(
+    result.warnings.filter((item) => item.includes('handbooks/unowned/')),
+    ['unowned advisory directive in governance/handbooks/unowned/first.md:5'],
+  )
+  assert.equal(
+    result.directives.some(
+      (item) => item.source.includes('handbooks/unowned/') && item.line === 3,
+    ),
+    false,
+  )
+})
+
 test('disposition layers cover groups, bind filenames, and reject id reuse', () => {
   const root = createFixture()
   const record = dispositionRecord(root)
