@@ -398,7 +398,7 @@ function runCursorAgent(
     // installation or workspace .env supplies it. Every cursor-agent spawn
     // authenticates the same way the model probe does, so an away evaluator
     // or an external-executor stage never fails auth that the probe passed.
-    env: probeEnvironment(request.installationRoot),
+    env: workerEnvironment(request.installationRoot),
     encoding: 'utf8',
     // The prompt travels over stdin, never as an argv element. Endpoint
     // security on an operator machine was observed to SIGKILL the cursor-agent
@@ -492,6 +492,28 @@ function runCursorAgent(
  * Run one tool-free Cursor evaluation. Ask mode prevents filesystem or shell
  * mutation while the evaluator ranks bounded options.
  */
+/**
+ * The environment a spawned worker inherits. `PANCREATOR_EXEC_ROOT` selects
+ * the build that executes the parent's own `pan` command (a release lane or a
+ * supervisor running a newer build), and it resolves against the checkout that
+ * supplies `bin/pan`, so inside a worker's worktree it names a directory that
+ * does not exist and every `./bin/pan` the worker runs fails with
+ * EXEC_ROOT_INVALID. The worker runs the installation's own build.
+ */
+function workerEnvironment(installationRoot: string): NodeJS.ProcessEnv {
+  const env = { ...(probeEnvironment(installationRoot) ?? process.env) }
+
+  if (env.PANCREATOR_EXEC_ROOT !== undefined) {
+    // bin/pan pins PANCREATOR_ROOT alongside the exec root so the executing
+    // build keeps run state on the installation. Both are the parent's
+    // choice; the worker's own bin/pan resolves the installation itself.
+    delete env.PANCREATOR_EXEC_ROOT
+    delete env.PANCREATOR_ROOT
+  }
+
+  return env
+}
+
 export function runCursorAgentJson(
   request: CursorAgentRequest,
 ): CursorAgentResult {

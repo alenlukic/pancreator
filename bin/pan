@@ -43,4 +43,10 @@ fi
 
 export PANCREATOR_ROOT="${PANCREATOR_ROOT:-$ROOT}"
 
+# Only this command moves builds. A child the command spawns (a gate's test
+# run, a worker's own bin/pan) resolves its build from its own checkout, so the
+# request must not travel: a test that spawns bin/pan inside a fixture would
+# otherwise execute the release-lane build against the fixture's sources.
+unset PANCREATOR_EXEC_ROOT
+
 exec "$EXEC_ROOT/bin/run-built" -- node "$EXEC_ROOT/dist/src/cli.js" "$@"

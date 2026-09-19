@@ -2391,6 +2391,7 @@ function isSameReasonSignature(current: string[], prior: string[]): boolean {
 
 type HorizonFailureAction =
   | { kind: 'retry' }
+  | { kind: 'route'; target: string }
   | { kind: 'strategy'; target: string }
   | { kind: 'exhausted'; reason: string }
 
@@ -2533,10 +2534,26 @@ export function classifyHorizonFailure(
 
   if (!repeated && ladder.retries_spent < 2) {
     ladder.retries_spent += 1
+
+    // A stage whose failure transition names another live stage already
+    // declares its repair route (verify -> remediate). The retry rung then
+    // spends its attempt on that route rather than on re-running the failed
+    // stage against an unchanged workspace, which can only reproduce the
+    // same verdict: two sessions spent a verifier, a reviewer, and a QA run
+    // per task on exactly that re-run before any remediation began.
+    const route = stage.transitions.failure
+    const repairs =
+      typeof route === 'string' &&
+      route !== stage.slug &&
+      !['succeeded', 'failed', 'canceled', 'paused'].includes(route)
+
     ladder.approaches_tried.push(
-      `retry ${ladder.retries_spent} at stage '${stage.slug}'`,
+      repairs
+        ? `retry ${ladder.retries_spent} via '${route}' from '${stage.slug}'`
+        : `retry ${ladder.retries_spent} at stage '${stage.slug}'`,
     )
-    return { kind: 'retry' }
+
+    return repairs ? { kind: 'route', target: route } : { kind: 'retry' }
   }
 
   if (ladder.strategy_switches_spent === 0) {
@@ -7573,6 +7590,9 @@ export function submitOutput(
           overrideTarget: stage.slug,
         })
         nextState = state.current_stage
+      } else if (horizonFailure?.kind === 'route') {
+        applyTransition(root, state, stage, 'failure')
+        nextState = state.current_stage
       } else if (horizonFailure?.kind === 'strategy') {
         recordOperatorFeedback(
           root,
@@ -10482,7 +10502,11 @@ export interface EvidenceWorkerDelegation {
 export function delegateEvidenceWorkers(
   root: string,
   runId: string,
-  options: OperationProgressOptions & { headless?: boolean } = {},
+  options: OperationProgressOptions & {
+    headless?: boolean
+    /** Dispatch only these roles, so a caller can run the workers in parallel processes. */
+    roles?: string[]
+  } = {},
 ): EvidenceWorkerDelegation[] {
   const state = loadState(root, runId)
 
@@ -10505,6 +10529,10 @@ export function delegateEvidenceWorkers(
   let cursorPreflighted = false
 
   for (const worker of invocation.evidence_workers ?? []) {
+    if (options.roles && !options.roles.includes(worker.role)) {
+      continue
+    }
+
     const evidenceAbsolute = resolveInside(root, worker.evidence_path)
     const base = {
       role: worker.role,
