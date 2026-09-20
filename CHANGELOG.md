@@ -1,5 +1,19 @@
 # Changelog
 
+## [6.32.2] - 2026-09-20
+
+This release orders the governance card ahead of the orientation list. An unbound agent takes its card before the first substantive response.
+
+### Changed
+
+- Order the governance-card requirement ahead of the orientation list on `AGENTS.md` and both Cursor rule surfaces ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+- Bind `COMMS-001` on the first chat report, before any card is resolved ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+- Move the unbound trigger to the first substantive response ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+
+### Added
+
+- Add four regression tests for card order, the denial clause, the `COMMS-001` chat rule, and live resolution through `STANDALONE_MODES.unbound` ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+
 ## [6.32.1] - 2026-09-20
 
 This release corrects two `pan debloat` scan defects. The orphan pass now sees live CLI entrypoints. The exclusive-reference cascade keeps facilities that the same scan already marked as used.

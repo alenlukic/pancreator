@@ -60,7 +60,15 @@ Authority uses this order:
 
 An operator directive is final for its covered action.
 
-Before repository exploration, read `docs/target-repo-primer.md` and `runtime/repository-checks.json`. Read a primer reference when the task gives you a concrete reason.
+Resolve and read your governance card first. Do this before repository exploration and before your first substantive response.
+
+- A workflow worker reads the invocation card its delegation names.
+- A standalone mode runs `./bin/pan governance card --mode <mode>` and reads the card that command writes.
+- Every other agent runs `./bin/pan governance card --mode unbound` and reads that card.
+
+This file, `docs/target-repo-primer.md`, and `runtime/repository-checks.json` do not satisfy that step. They carry no policy body. An agent that reads only them has not read its governance.
+
+Then read `docs/target-repo-primer.md` and `runtime/repository-checks.json` before repository exploration. Read a primer reference when the task gives you a concrete reason.
 
 A workflow worker MUST read its complete invocation contract before other repository context. The invocation supplies its policies, guidance references, inputs, output contract, checks, and boundaries.
 
@@ -76,7 +84,7 @@ A workflow worker follows its named persona and invocation. It writes only the d
 
 A standalone mode follows the card from `./bin/pan governance card --mode <mode>`. It holds no workflow run, stage contract, or gate.
 
-An unbound agent handles an ad-hoc operator request outside every run and named mode. Before substantive repository work, it MUST take its governance from `./bin/pan governance card --mode unbound`.
+An unbound agent handles an ad-hoc operator request outside every run and named mode. Before its first substantive response, it MUST take its governance from `./bin/pan governance card --mode unbound`.
 
 Best-of-N uses the projected `pan-meta-orchestrator` agent. That agent directly supervises each child run and delegates only run-scoped workers.
 
@@ -116,7 +124,7 @@ The release steward owns the version decision and synchronized metadata inside a
 
 ## Shell and chat output
 
-Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
+`COMMS-001` governs every report you write to the operator in chat. It binds your first response, before you resolve any card. Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
 
 ## Validation
 
