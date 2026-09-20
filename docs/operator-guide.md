@@ -467,10 +467,6 @@ remediation, and release preparation) when the plan holds one chunk, or into a
 cohort of parallel `delivery-chunk` runs followed by one release run when it
 holds more. See **Plan once, then deliver** for the state machine.
 
-Use `/pan-debug <problem>` when the cause or remediation scope is unclear. The
-investigator does not modify source; it returns root cause, proposed remediation,
-numbered acceptance criteria, and a `lightweight` or `systematic` recommendation.
-
 Use `/pan-repair <problem-or-artifact>` when the suspected defect is in
 Pancreator itself or when a workflow run needs a harness-level audit. The harness
 technician accepts prose, a file, or a run directory; reconstructs run behavior

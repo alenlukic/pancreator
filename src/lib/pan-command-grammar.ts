@@ -1,6 +1,6 @@
 const STANDALONE_MODE_NAMES =
   'author|best-of-n|build-briefs|build-docs|conform|debloat|decomposition|' +
-  'harden|investigation|pair|polish|qa-workflow|release|repair|research|' +
+  'harden|pair|polish|qa-workflow|release|repair|research|' +
   'review|shepherd|spotfix|style|supervisor|target|trace|tune-harness|' +
   'unbound|write-pr'
 

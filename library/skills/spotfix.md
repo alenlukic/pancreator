@@ -98,7 +98,7 @@ third failed validation cycle.
 Create a uniquely named Markdown item at
 `runtime/inbox/queue/spotfix-escalation-<UTC timestamp>-<slug>.md` containing:
 
-- the original request or investigator output verbatim
+- the original request or prior analysis verbatim
 - acceptance criteria
 - root-cause and scope findings
 - files changed or partially changed

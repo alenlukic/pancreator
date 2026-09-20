@@ -152,21 +152,6 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT push, publish, deploy, or invoke pan set-stage.',
     ],
   },
-  investigation: {
-    kind: 'investigation',
-    persona: 'investigator',
-    workflow: 'standalone',
-    stage: 'debug',
-    title: 'Investigation',
-    summary:
-      'Non-mutating root-cause analysis that defines acceptance criteria and ' +
-      'recommends exactly one work mode.',
-    boundaries: [
-      'You MUST NOT modify any workspace file.',
-      PROTECTED_PATH_RULE,
-      'You MUST recommend exactly one work mode and MUST justify it against the evidence.',
-    ],
-  },
   repair: {
     kind: 'repair',
     persona: 'harness-technician',

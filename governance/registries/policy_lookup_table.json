@@ -80,12 +80,6 @@
       "policies": ["REPO-001"]
     },
     {
-      "persona": "repo-technician",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["REPO-001"]
-    },
-    {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
@@ -658,19 +652,6 @@
       "policies": ["BESTOFN-001", "WORK-001"]
     },
     {
-      "persona": "hypervisor",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["HYPERVISOR-001", "AWAY-001", "ENG-001"]
-    },
-    {
-      "persona": "hypervisor",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["TS-001"],
-      "technology": "typescript"
-    },
-    {
       "persona": "debloater",
       "workflow": "*",
       "stage": "*",
@@ -790,22 +771,10 @@
       "policies": ["DECOMP-001"]
     },
     {
-      "persona": "investigator",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["DIAG-001", "WORK-001"]
-    },
-    {
       "persona": "harness-technician",
       "workflow": "*",
       "stage": "*",
       "policies": ["REPAIR-001"]
-    },
-    {
-      "persona": "repo-technician",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["DIAG-001", "WORK-001"]
     },
     {
       "persona": "spotfixer",

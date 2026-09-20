@@ -1,5 +1,43 @@
 # Changelog
 
+## [6.30.0] - 2026-09-20
+
+This release removes 15 unused harness facilities. The operator no longer sees `/pan-debug`, the investigation mode, or the preflight workflow.
+
+### Changed
+
+- Repair references in config, policy indexes, governance cards, command grammar, WORK-001, SPOT-001, and operator docs after the removal ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Keep `src/lib/hypervisor.ts`, the `pan hypervisor` CLI, and the `hypervisor` persona key so away mode can read health state ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+
+### Removed
+
+- Remove `/pan-debug` and the `investigation` standalone mode ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove the `hypervisor`, `investigator`, and `repo-technician` personas ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove policy DIAG-001 and policy HYPERVISOR-001 ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove skills `hypervisor`, `manual-qa-cases`, `map-acceptance-criteria`, `modern-code-review`, and `scope-control` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove the `preflight` workflow and the example templates `stage-artifact.example.md` and `supervisor-assessment.example.json` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+
+## [6.29.0] - 2026-09-20
+
+This release corrects the `/pan-debloat` reference graph. The scanner now treats a registration as a registry, not a use.
+
+### Changed
+
+- Classify the handler dispatch table in `src/lib/requirements/handlers.ts` as a registry ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Recover validator liveness from the resolve chain of policy requirement, registry entry, handler id, and module binding ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Strip comments from TypeScript before the literal scan ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Narrow the `code` referrer class to `src/` and `bin/` ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+
+### Added
+
+- Record `test_only_references` when every structural reference to a facility is its own tests ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Show that state as a candidate column and as a report section for facilities held off the list ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+
+### Fixed
+
+- Allow unused validators to become removal candidates. A registration in the dispatch table is no longer a use ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Do not treat a comment that names a facility as a live edge ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+
 ## [6.28.0] - 2026-09-20
 
 This release extends policy COMMS-001. Chat reports now obey a 250-word prose cap and a terminal-state report contract. Embedded installs also receive the always-apply rule `pan-chat-output.mdc`.
