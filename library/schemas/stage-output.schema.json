@@ -104,6 +104,21 @@
       },
       "description": "Open questions the operator should know about. Optional: absent means none to report."
     },
+    "operator_question": {
+      "type": "object",
+      "description": "A material question the worker asked and that remains unanswered. Optional: absent means no operator answer is pending.",
+      "additionalProperties": false,
+      "required": ["question", "reason", "evidence"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "platform_guidance_conflicts": {
       "type": "array",
       "description": "OPERATOR-001: each platform session mode or platform-injected instruction that conflicted with an operator directive, harness governance, or the persona brief. Optional: absent means no conflict arose. The harness records each entry as a run advisory that `pan status` lists.",

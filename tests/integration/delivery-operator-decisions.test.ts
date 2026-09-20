@@ -368,6 +368,7 @@ test('a misrouted resume and decide each name the run status and the routing com
       assert.equal(error.code, 'INVALID_RUN_ACTION')
       assert.match(error.message, /status is 'awaiting_operator'/u)
       assert.match(error.message, /decide .*<approve\|reject\|revise>/u)
+      assert.match(error.message, /set-stage .*--stage <stage>/u)
 
       return true
     },

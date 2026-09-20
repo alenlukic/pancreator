@@ -20,9 +20,11 @@
     "readiness_paths": ["node_modules", "dist"]
   },
   "fast_wall": {
-    "ceiling_ms": 200000,
+    "ceiling_ms": 120000,
     "anchor_date": "2026-09-14",
-    "weekly_allowance_ms": 1000
+    "weekly_allowance_ms": 1000,
+    "max_load_average_per_cpu": 1,
+    "minimum_qualified_samples": 5
   },
   "active_config": "balanced",
   "anthropic": {

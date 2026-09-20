@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 
 import { setRunStage } from '../../src/lib/engine.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation, RunState } from '../../src/lib/types.js'
 import {
   delegationUnobservedMessage,
@@ -144,6 +151,120 @@ export function preparedVerifyRun(): {
     state: prepared.state,
     invocation: prepared.invocation,
   }
+}
+
+export interface MultiplexedTarget {
+  runId: string
+  invocationId: string
+  layout: ReturnType<typeof resolveRunLayout>
+}
+
+/**
+ * Several independent prepared runs, cloned from one prepared fixture.
+ *
+ * A multiplexed wait needs one live run per target, and each target here
+ * carries its own run id, invocation id, and output path. Building each run
+ * through the engine instead would cost one full fixture per target.
+ */
+export function multiplexedTargets(count: number): {
+  root: string
+  targets: MultiplexedTarget[]
+} {
+  const { root, state } = preparedRun()
+  const original = currentInvocation(root, state)
+  const source = resolveRunLayout(root, state.run_id)
+  const names = ['multi-one', 'multi-two', 'multi-three']
+
+  assert.ok(count <= names.length, 'the fixture names at most three targets')
+
+  return {
+    root,
+    targets: names.slice(0, count).map((invocationId, index) => {
+      const runId = `${state.run_id}-multiplex-${index + 1}`
+      const layout = resolveRunLayout(root, runId)
+
+      cpSync(source.root.absolute, layout.root.absolute, { recursive: true })
+
+      const clonedState = JSON.parse(
+        readFileSync(layout.state.absolute, 'utf8'),
+      ) as Record<string, unknown>
+
+      clonedState.run_id = runId
+      writeFileSync(
+        layout.state.absolute,
+        `${JSON.stringify(clonedState)}\n`,
+        'utf8',
+      )
+      writeFileSync(
+        layout.invocation(invocationId, '.json').absolute,
+        `${JSON.stringify({
+          ...original,
+          run_id: runId,
+          invocation_id: invocationId,
+          workspace_root: '',
+          output: {
+            ...original.output,
+            path: layout.output(invocationId).relative,
+          },
+        })}\n`,
+        'utf8',
+      )
+
+      return { runId, invocationId, layout }
+    }),
+  }
+}
+
+/**
+ * Write one multiplexed target's stage output and pin its modification time
+ * just past the recorded launch.
+ *
+ * Pinning is what keeps the completion evidence weak whatever the host does:
+ * left at wall-clock now, the output ages past one cadence while the launch
+ * record keeps its time, and the watch completes on `output_plausible`
+ * instead of taking the confirming wake this fixture is about.
+ */
+export function writeTargetOutput(
+  root: string,
+  target: MultiplexedTarget,
+  sinceLaunchMs = 1,
+): void {
+  assert.ok(
+    sinceLaunchMs < CADENCE_SECONDS * 1000,
+    'a held output must stay younger than one cadence',
+  )
+
+  const invocation = read(
+    target.layout.invocation(target.invocationId, '.json').absolute,
+  ) as Invocation
+  const state = read(target.layout.state.absolute) as RunState
+  const workflow = loadWorkflowFile(
+    root,
+    path.join(root, state.workflow_snapshot.path),
+  )
+
+  writeFileSync(
+    path.join(root, invocation.output.path),
+    `${JSON.stringify(
+      makeOutput(
+        root,
+        invocation,
+        stageBySlug(workflow, invocation.stage.slug),
+        'success',
+        state,
+      ),
+      null,
+      2,
+    )}\n`,
+  )
+
+  const launch = readLaunchRecord(root, target.runId, target.invocationId)
+
+  assert.ok(launch, 'the watch records the launch when it arms')
+
+  const pinned = new Date(Date.parse(launch.launched_at) + sinceLaunchMs)
+
+  utimesSync(path.join(root, invocation.output.path), pinned, pinned)
 }
 
 /** The invocation record the run currently stands at. */

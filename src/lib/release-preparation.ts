@@ -2,6 +2,10 @@ import path from 'node:path'
 
 import { invariant } from './errors.js'
 import {
+  releaseAllocationForVersion,
+  releaseVersionCollision,
+} from './release-allocation.js'
+import {
   gitBranchExists,
   gitCommit,
   gitCommitChangedPaths,
@@ -766,6 +770,24 @@ export function finalizeLocalRelease(
   )
   const version = readText(path.join(resolved.absolute, 'VERSION')).trim()
   const indexPath = path.join(resolved.absolute, 'release', 'index.json')
+  const collision = releaseVersionCollision(root, version)
+
+  invariant(
+    collision === null,
+    collision
+      ? `Release version ${version} already exists on branch ` +
+          `'${collision.branch}' at commit ${collision.commit}.`
+      : '',
+    { code: 'RELEASE_VERSION_COLLISION' },
+  )
+  invariant(
+    releaseAllocationForVersion(root, resolved.absolute, version),
+    `Release version ${version} has no recorded allocation for worktree ` +
+      `'${worktreeName}'. Run './bin/pan release allocate --worktree ` +
+      `${worktreeName} --bump <major|minor|patch>' before creating a ` +
+      `release commit.`,
+    { code: 'RELEASE_ALLOCATION_REQUIRED' },
+  )
 
   // A path the operator recorded as a read-only input is never committable,
   // so finalization must neither stage it nor refuse the release over it.

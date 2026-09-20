@@ -5,18 +5,38 @@ import { resolveRunLayout } from './run-layout.js'
 /**
  * The one statement a card makes about agent-side profile execution.
  *
- * The card used to carry two: the citable branch permitted an evidence worker
- * one `fast` run, and the superseded branch forbade running the profile at
- * all. A worker that met both had no rule it could follow, so both branches
- * now render this sentence and the branches differ only in what they say
- * about citing the evidence beside it.
+ * Every surface of an evidence worker's brief asks this function rather than
+ * writing its own sentence: the brief's own rule line, each gate-evidence
+ * reference, and the stage scope. Three surfaces each stating the rule in
+ * their own words is how a return-visit brief kept offering a `fast` run
+ * after the rule that forbids it was already on the same page.
+ *
+ * On a return visit after remediation the offer is not narrowed, it is
+ * withdrawn: `VERIFY-001` forbids a cost-bearing or mutating profile there,
+ * and the harness has already refreshed the interior evidence.
  */
-export const AGENT_PROFILE_EXECUTION_ALLOWANCE =
-  'An evidence worker iterates on the impacted profile plus the tests the ' +
-  'change added, may run the fast profile once as the final validation of ' +
-  'its own evidence, and never runs the full profile. The harness runs the ' +
-  'interior gate profiles at submission and the full profile only as the ' +
-  'ship release gate.'
+export function agentProfileExecutionAllowance(
+  remediationReturn: boolean,
+): string {
+  if (remediationReturn) {
+    return (
+      'This is a return visit after remediation. An evidence worker ' +
+      'iterates on the impacted profile plus the tests the change added, ' +
+      'MUST NOT run a cost-bearing or mutating repository-check profile, ' +
+      'and never runs the full profile. A criterion-required read-only ' +
+      'single-command profile remains allowed. The harness refreshed the ' +
+      'interior gate profiles before this delegation, so cite that evidence.'
+    )
+  }
+
+  return (
+    'An evidence worker iterates on the impacted profile plus the tests the ' +
+    'change added, may run the fast profile once as the final validation of ' +
+    'its own evidence, and never runs the full profile. The harness runs the ' +
+    'interior gate profiles at submission and the full profile only as the ' +
+    'ship release gate.'
+  )
+}
 
 /** One profile execution recorded against a run, whoever started it. */
 export interface RecordedProfileRun {
@@ -101,6 +121,8 @@ export function recordedProfileRuns(
 /** A passing profile execution an agent recorded against a run. */
 export interface AgentRecordedProfilePass {
   profile: string
+  invokedBy: string
+  workerRole: string | null
   /** Captured output of that execution, which a reader can cite. */
   evidencePath: string
   fingerprint: string
@@ -133,6 +155,8 @@ export function agentRecordedProfilePasses(
 
     byProfile.set(run.profile, {
       profile: run.profile,
+      invokedBy: run.invokedBy,
+      workerRole: run.workerRole,
       evidencePath: run.evidencePath,
       fingerprint: run.fingerprint,
       invocationId: run.invocationId,

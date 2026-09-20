@@ -8,12 +8,14 @@ import {
   cohortSessionIds,
   cohortStatus,
   maybeStartDelivery,
+  retryDeliveryRoute,
 } from '../../src/lib/cohorts.js'
-import { eventPath, loadState } from '../../src/lib/state.js'
+import { eventPath, loadState, statePath } from '../../src/lib/state.js'
 import { renderStatus } from '../../src/lib/render.js'
 import { createWorktree, readWorktreeIndex } from '../../src/lib/worktrees.js'
 import { createFixture } from '../fixture-template.js'
-import { CLI, ratifiedPlanRun } from './cohort-helpers.js'
+import { writeJson } from '../helpers.js'
+import { CLI, git, ratifiedPlanRun } from './cohort-helpers.js'
 
 test('approving a multi-chunk plan starts cohort 1', () => {
   const root = createFixture()
@@ -364,10 +366,13 @@ test('an explicit worktree is accepted for a single-chunk route and the run occu
   const prepared = createWorktree(root, 'operator-prepared', {
     description: 'Prepared by the operator before the plan was approved.',
   })
+  // The away route is the one that runs unattended, so the explicit value is
+  // proven on that actor; `pan decide` and `pan away apply` both hand the same
+  // parsed option to this function.
   const started = maybeStartDelivery(
     root,
     loadState(root, planRunId),
-    { actor: 'operator', action: 'approve' },
+    { actor: 'away', action: 'approve' },
     { worktreeName: prepared.name },
   )
 
@@ -380,6 +385,126 @@ test('an explicit worktree is accepted for a single-chunk route and the run occu
   assert.equal(state.managed_worktree?.name, prepared.name)
   // No second checkout was created beside the one the operator named.
   assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+})
+
+test('a single-chunk route inherits the planning worktree and carries dirty work in place', () => {
+  const root = createFixture()
+  const worktree = createWorktree(root, 'planning-selected', {
+    description: 'Worktree selected for planning and routed delivery.',
+  })
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+  const plan = loadState(root, planRunId)
+
+  writeJson(statePath(root, planRunId), {
+    ...plan,
+    workspace_root: worktree.path,
+    managed_worktree: {
+      name: worktree.name,
+      path: worktree.path,
+      branch: worktree.branch,
+    },
+  })
+  writeFileSync(
+    path.join(root, worktree.path, 'operator-plan-work.txt'),
+    'keep me\n',
+  )
+
+  const started = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'away',
+    action: 'approve',
+  })
+
+  assert.ok(started?.status === 'started' && started.kind === 'delivery')
+  assert.equal(started.worktree, worktree.path)
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+  assert.equal(
+    readFileSync(
+      path.join(root, worktree.path, 'operator-plan-work.txt'),
+      'utf8',
+    ),
+    'keep me\n',
+  )
+  assert.equal(
+    loadState(root, started.run_id).managed_worktree?.name,
+    worktree.name,
+  )
+})
+
+// AC-018. A cohort branches every chunk worktree from a committed head, so
+// uncommitted work in the planning worktree was left behind silently, and an
+// unattended approval is exactly when nobody compares the two trees.
+test('a multi-chunk route refuses to branch away from a dirty planning worktree and routes once it is committed', () => {
+  const root = createFixture()
+  const worktree = createWorktree(root, 'planning-wide', {
+    description: 'Worktree selected for a plan of two chunks.',
+  })
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const plan = loadState(root, planRunId)
+
+  writeJson(statePath(root, planRunId), {
+    ...plan,
+    workspace_root: worktree.path,
+    managed_worktree: {
+      name: worktree.name,
+      path: worktree.path,
+      branch: worktree.branch,
+    },
+  })
+
+  const worktreePath = path.join(root, worktree.path)
+  const dirtyPath = path.join(worktreePath, 'operator-plan-work.txt')
+
+  writeFileSync(dirtyPath, 'keep me\n')
+
+  const refused = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'away',
+    action: 'approve',
+  })
+
+  assert.equal(refused?.status, 'failed')
+  assert.match(refused?.error ?? '', /planning-wide/u)
+  assert.match(refused?.error ?? '', /operator-plan-work\.txt/u)
+  assert.match(refused?.error ?? '', /[Cc]ommit/u)
+  assert.deepEqual(refused?.manual_commands, [
+    `./bin/pan cohort route --plan-run ${planRunId}`,
+  ])
+  // Nothing branched: the planning worktree is still the only checkout, the
+  // work is still where the operator left it, and the plan run names the
+  // failed route.
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+  assert.equal(readFileSync(dirtyPath, 'utf8'), 'keep me\n')
+  assert.equal(loadState(root, planRunId).delivery_handoff?.kind, 'failed')
+  assert.deepEqual(cohortSessionIds(root), [])
+
+  git(worktreePath, ['add', 'operator-plan-work.txt'])
+  git(worktreePath, ['commit', '-q', '-m', 'chore: plan-time work'])
+
+  const routed = retryDeliveryRoute(root, planRunId)
+
+  assert.equal(routed.status, 'started')
+  assert.equal(routed.kind, 'cohort')
+
+  if (routed.status !== 'started' || routed.kind !== 'cohort') {
+    return
+  }
+
+  assert.deepEqual(
+    routed.chunks.map((chunk) => chunk.chunk),
+    ['alpha', 'beta'],
+  )
+  // The committed work is on the branch every chunk worktree branched from.
+  for (const chunk of routed.chunks) {
+    assert.equal(
+      readFileSync(
+        path.join(root, chunk.worktree, 'operator-plan-work.txt'),
+        'utf8',
+      ),
+      'keep me\n',
+    )
+  }
 })
 
 test('an explicit worktree that does not exist is refused by name', () => {

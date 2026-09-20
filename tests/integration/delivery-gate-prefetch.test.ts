@@ -156,10 +156,10 @@ test('a second run adopts the recorded baseline for an unchanged workspace', () 
   )
 })
 
-test('the ship entry gate accepts a clean profile pass an agent already paid for', () => {
-  // The agent runs the profile from the command line, and minutes later the
-  // gate runs the identical command against the identical tree. Recording the
-  // agent's pass is what collapses the second run into a lookup.
+test('the ship entry gate rejects an agent-recorded full pass and executes', () => {
+  // A worker-run full profile cannot take over the harness-owned ship gate.
+  // The cache keeps the record for audit, but the gate must compute its own
+  // result and record why the worker pass was ineligible.
   const { root, runId, workflow } = checkpoint(
     'delivery@verify-prepared',
     checksVariant('checks=full-marker-adopted', {
@@ -197,10 +197,13 @@ test('the ship entry gate accepts a clean profile pass an agent already paid for
   assert.ok(gate)
   assert.equal(gate.criterion_id, 'ship.full_suite')
   assert.equal(gate.last_result.passed, true)
-  assert.equal(gate.last_result.cached, true)
-  // The gate did not execute the profile: the marker still counts one run.
-  assert.equal(fullRuns(root), 1)
+  assert.equal(gate.last_result.cached, undefined)
+  assert.equal(fullRuns(root), 2)
   assert.ok(existsSync(path.join(root, gate.last_result.evidence_path ?? '')))
+  assert.match(
+    readFileSync(path.join(root, gate.last_result.evidence_path ?? ''), 'utf8'),
+    /cache_rejection=.*agent-run full.*ship release gate.*VERIFY-001/u,
+  )
 })
 
 /** The repository-check profiles every prefetch case runs against. */

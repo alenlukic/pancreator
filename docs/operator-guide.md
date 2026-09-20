@@ -25,7 +25,7 @@ next actions without modifying repository state.
 Run `./bin/pan archive` to migrate recognized legacy workflow names and move
 workflow directories older than seven days into `archive/` under both runtime
 workflow roots. The command updates persisted path references and is idempotent;
-it never overwrites an existing archive target.
+it never overwrites an existing archive target. Runtime scales with the durable files and retained runs; each maintenance pass reports its start, finish, and file count on stderr.
 
 ## Run the agent hypervisor
 
@@ -209,7 +209,7 @@ supervisor not to poll or await it. Run 63311 lost its supervisor to exactly
 that text. The polling therefore no longer depends on model judgment:
 
 ```bash
-./bin/pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--launched-at <iso-8601>] [--handle <platform-handle>] [--agent <name>] [--model <name>] [--agent-state running|completed] [--json]
+./bin/pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-timeout-seconds <n>] [--timeout-seconds <n>] [--mark-background] [--launched-at <iso-8601>] [--handle <platform-handle>] [--agent <name>] [--model <name>] [--agent-state running|completed] [--json]
 ```
 
 The command resolves the run's pending invocation, sleeps one cadence, and
@@ -226,8 +226,9 @@ to run. `--cadence-seconds` overrides it only when the operator directs a
 different cadence. Fractional seconds are accepted.
 
 Exit codes: `0` and `{"state":"completed"}` when the output is present and
-names the invocation. `2` and `stalled` after `--stall-wakes` (default 2)
-consecutive wakes with no change. `3` and `timed_out` at `--timeout-seconds`.
+names the invocation. `2` and `stalled` after `--stall-timeout-seconds` (default 300)
+seconds with no change. The harness converts that duration to wakes at the active
+cadence, so a cadence override does not change the effective stall window. `3` and `timed_out` at `--timeout-seconds`.
 The command is safe to await in the foreground and safe to re-run. It returns
 `completed` at once when the output already exists. Wake lines print to
 stderr only on an interactive terminal.
@@ -252,6 +253,7 @@ return instead:
 
 ```bash
 ./bin/pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
+./bin/pan watch --targets <run-id>:<invocation-id>[,<run-id>:<invocation-id>...] [--cadence-seconds <n>] [--timeout-seconds <n>] [--json]
 ```
 
 The command writes `agent/evidence/<invocation-id>-foreground-return.json`
@@ -429,6 +431,8 @@ Request a brief for only the current stage before its invocation exists:
 ```sh
 ./bin/pan prepare <run-id> --operator-artifacts
 ```
+
+A `pan prepare` that enters a gated stage can run for the gate's configured timeout. It prints the criterion id and timeout on stderr before the gate starts.
 
 Requested invocations declare exact brief JSON and HTML paths. Submission renders and validates the HTML, then deletes a valid transient source.
 
@@ -849,6 +853,14 @@ Useful inspection and post-run controls:
 A prompt task writes its text to the request inbox and resolves the `unbound`
 standalone card with the session's snapshotted contracts. An ordinary unbound
 card outside a session still resolves with no run contract.
+
+A prompt task is granted its workspace and the session runtime directory, and
+nothing else. A task that names neither `workspace` nor `worktree` runs in that
+session runtime directory rather than at the harness root. Name the wider root
+in `grants` when a task genuinely needs it. The result artifact records
+`granted_roots`, the `tool_policy`, and a `scope_check` that observes the
+filesystem outside those roots, so an ignored tree and an installation without
+Git are both covered.
 
 ## Scheduled jobs
 

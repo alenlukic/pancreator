@@ -21,6 +21,7 @@ export const FAST_WALL_SERIES_PATH = 'runtime/fast-wall-series.jsonl'
 export const FAST_WALL_SERIES_ROOT_ENV = 'PAN_FAST_WALL_SERIES_ROOT'
 export const FAST_WALL_RUN_ID_ENV = 'PAN_FAST_WALL_RUN_ID'
 export const FAST_WALL_PHASE_ENV = 'PAN_FAST_WALL_PHASE'
+export const FAST_WALL_CALLER_CLASS_ENV = 'PAN_FAST_WALL_CALLER_CLASS'
 export const FAST_WALL_CRITERION_ID = 'ship.fast_wall_ceiling'
 
 /** Phase of a run's baseline capture, before the implementation stage. */
@@ -32,6 +33,14 @@ export const FAST_WALL_STANDALONE_PHASE = 'standalone'
 /** Phase recorded for a schema-1 entry, which carried no phase. */
 export const FAST_WALL_LEGACY_PHASE = 'legacy'
 
+export type FastWallCallerClass =
+  | 'agent'
+  | 'harness_gate'
+  | 'prefetch'
+  | 'standalone'
+
+const FAST_WALL_QUALIFIED_CALLER: FastWallCallerClass = 'harness_gate'
+
 /** The lane string the reporter writes for the complete `npm test` lane. */
 export const FAST_LANE = 'integration+regression+unit'
 /** The lifecycle event under which `npm test` runs the complete fast lane. */
@@ -40,13 +49,12 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
 
 /**
- * One fast-lane run. Schema 2 records the lane the reporter observed, the
- * phase of the run that produced it, and the summed per-file test time the
- * marginal cost derives from. A schema-1 entry carries none of the three, so
- * `lane` and `summed_file_duration_ms` are null and `phase` is `legacy`.
+ * One fast-lane run. Schema 3 adds the logical CPU count and caller class used
+ * to qualify the advisory population. Earlier schemas retain their observable
+ * lane data but are unqualified because they cannot establish that provenance.
  */
 export interface FastWallSeriesEntry {
-  schema_version: 1 | 2
+  schema_version: 1 | 2 | 3
   recorded_at: string
   wall_clock_ms: number
   wrapper_wall_clock_ms: number
@@ -54,6 +62,10 @@ export interface FastWallSeriesEntry {
   test_count: number
   worker_count: number
   load_average: number
+  /** Logical CPU count used to normalize load; null on legacy rows. */
+  cpu_count: number | null
+  /** Origin of the run; null on legacy rows. */
+  caller_class: FastWallCallerClass | null
   workspace_fingerprint: string
   invoker: string
   run_id: string
@@ -69,17 +81,19 @@ export interface FastWallSeriesRead {
 }
 
 export interface FastWallReport {
-  status: 'passed' | 'failed' | 'not_applicable'
+  status: 'passed' | 'failed' | 'insufficient_samples' | 'not_applicable'
   series_path: string
   /** Qualified complete fast-lane runs inside the 24-hour window. */
   recorded_runs: number
-  /** Rows inside the window that parsed but did not qualify as the fast lane. */
+  /** Rows inside the window that did not qualify for the governed population. */
   unqualified_runs: number
   malformed_lines: number
   window_started_at: string
   evaluated_at: string
   rolling_average_ms: number | null
   permitted_ceiling_ms: number | null
+  max_load_average_per_cpu: number | null
+  minimum_qualified_samples: number | null
   /** Mean of the per-run marginal cost over the qualified runs that carry one. */
   marginal_wall_ms_per_test: number | null
   /** Qualified runs inside the window that recorded a marginal-cost sample. */
@@ -97,7 +111,9 @@ function nonNegativeInteger(value: unknown): value is number {
 function parseSeriesEntry(value: unknown): FastWallSeriesEntry | null {
   if (
     !isRecord(value) ||
-    (value.schema_version !== 1 && value.schema_version !== 2) ||
+    (value.schema_version !== 1 &&
+      value.schema_version !== 2 &&
+      value.schema_version !== 3) ||
     typeof value.recorded_at !== 'string' ||
     !finiteNumber(value.wall_clock_ms) ||
     !finiteNumber(value.wrapper_wall_clock_ms) ||
@@ -131,13 +147,42 @@ function parseSeriesEntry(value: unknown): FastWallSeriesEntry | null {
     return {
       schema_version: 1,
       ...common,
+      cpu_count: null,
+      caller_class: null,
       lane: null,
       phase: FAST_WALL_LEGACY_PHASE,
       summed_file_duration_ms: null,
     }
   }
 
+  if (value.schema_version === 2) {
+    if (
+      typeof value.lane !== 'string' ||
+      typeof value.phase !== 'string' ||
+      value.phase.length === 0 ||
+      (value.summed_file_duration_ms !== null &&
+        !finiteNumber(value.summed_file_duration_ms))
+    ) {
+      return null
+    }
+
+    return {
+      schema_version: 2,
+      ...common,
+      cpu_count: null,
+      caller_class: null,
+      lane: value.lane,
+      phase: value.phase,
+      summed_file_duration_ms: value.summed_file_duration_ms as number | null,
+    }
+  }
+
   if (
+    !nonNegativeInteger(value.cpu_count) ||
+    value.cpu_count === 0 ||
+    !['agent', 'harness_gate', 'prefetch', 'standalone'].includes(
+      String(value.caller_class),
+    ) ||
     typeof value.lane !== 'string' ||
     typeof value.phase !== 'string' ||
     value.phase.length === 0 ||
@@ -148,8 +193,10 @@ function parseSeriesEntry(value: unknown): FastWallSeriesEntry | null {
   }
 
   return {
-    schema_version: 2,
+    schema_version: 3,
     ...common,
+    cpu_count: value.cpu_count,
+    caller_class: value.caller_class as FastWallCallerClass,
     lane: value.lane,
     phase: value.phase,
     summed_file_duration_ms: value.summed_file_duration_ms as number | null,
@@ -224,12 +271,27 @@ export function qualifiesAsFastLane(entry: FastWallSeriesEntry): boolean {
   return entry.schema_version === 1 || entry.lane === FAST_LANE
 }
 
+/** Whether a complete-lane row belongs to the governed advisory population. */
+export function qualifiesForFastWall(
+  entry: FastWallSeriesEntry,
+  config: FastWallConfig,
+): boolean {
+  return (
+    qualifiesAsFastLane(entry) &&
+    entry.caller_class === FAST_WALL_QUALIFIED_CALLER &&
+    entry.cpu_count !== null &&
+    entry.load_average / entry.cpu_count <= config.max_load_average_per_cpu
+  )
+}
+
 export interface AppendFastWallInput {
   series_root: string
   workspace_fingerprint: string
   duration_record_path: string
   worker_count: number
   load_average: number
+  cpu_count: number
+  caller_class: FastWallCallerClass
   wrapper_wall_clock_ms: number
   invoker: string
   run_id: string
@@ -264,6 +326,11 @@ export function appendFastWallRun(
     !Number.isInteger(input.worker_count) ||
     input.worker_count <= 0 ||
     !finiteNumber(input.load_average) ||
+    !Number.isInteger(input.cpu_count) ||
+    input.cpu_count <= 0 ||
+    !['agent', 'harness_gate', 'prefetch', 'standalone'].includes(
+      input.caller_class,
+    ) ||
     !finiteNumber(input.wrapper_wall_clock_ms) ||
     input.wrapper_wall_clock_ms < 0 ||
     !Number.isInteger(input.exit_code) ||
@@ -282,7 +349,7 @@ export function appendFastWallRun(
       (entry.recorded_at ?? duration.recorded_at) === duration.recorded_at,
   )
   const entry: FastWallSeriesEntry = {
-    schema_version: 2,
+    schema_version: 3,
     recorded_at: new Date().toISOString(),
     wall_clock_ms: duration.wall_clock_ms,
     wrapper_wall_clock_ms: input.wrapper_wall_clock_ms,
@@ -293,6 +360,8 @@ export function appendFastWallRun(
     test_count: duration.test_count,
     worker_count: input.worker_count,
     load_average: input.load_average,
+    cpu_count: input.cpu_count,
+    caller_class: input.caller_class,
     workspace_fingerprint: input.workspace_fingerprint,
     invoker: input.invoker,
     run_id: input.run_id,
@@ -437,6 +506,8 @@ export function buildFastWallReport(
       evaluated_at: at.toISOString(),
       rolling_average_ms: null,
       permitted_ceiling_ms: null,
+      max_load_average_per_cpu: null,
+      minimum_qualified_samples: null,
       marginal_wall_ms_per_test: null,
       marginal_samples: 0,
     }
@@ -446,14 +517,21 @@ export function buildFastWallReport(
   const series = readFastWallSeries(root)
 
   const recent = insideWindow(series.records, at)
-  const qualified = recent.filter(qualifiesAsFastLane)
+  const qualified = recent.filter((entry) =>
+    qualifiesForFastWall(entry, config),
+  )
 
   const average = rollingFastWallAverage(qualified, at)
   const permitted = permittedFastWallCeiling(config, at)
   const marginal = rollingMarginalFastWallCost(qualified, at)
 
   return {
-    status: average === null || average <= permitted ? 'passed' : 'failed',
+    status:
+      qualified.length < config.minimum_qualified_samples
+        ? 'insufficient_samples'
+        : average !== null && average > permitted
+          ? 'failed'
+          : 'passed',
     series_path: FAST_WALL_SERIES_PATH,
     recorded_runs: qualified.length,
     unqualified_runs: recent.length - qualified.length,
@@ -462,6 +540,8 @@ export function buildFastWallReport(
     evaluated_at: at.toISOString(),
     rolling_average_ms: average,
     permitted_ceiling_ms: permitted,
+    max_load_average_per_cpu: config.max_load_average_per_cpu,
+    minimum_qualified_samples: config.minimum_qualified_samples,
     marginal_wall_ms_per_test: marginal.value,
     marginal_samples: marginal.samples,
   }
@@ -491,10 +571,16 @@ export function formatFastWallReport(report: FastWallReport): string {
       ? 'unavailable'
       : `${report.marginal_wall_ms_per_test.toFixed(3)}ms/test across ` +
         `${report.marginal_samples} runs`
+  const verdict =
+    report.status === 'insufficient_samples'
+      ? `INSUFFICIENT SAMPLES (${report.recorded_runs}/${report.minimum_qualified_samples}); ADVISORY.`
+      : report.status === 'passed'
+        ? 'PASS.'
+        : 'FAIL; advisory only. Operator action: run /pan-tune-harness to review the suite and ceiling.'
 
   return (
     `Fast wall: ${average}${ignored}; permitted ${permitted}; ` +
-    `marginal ${marginal}; ${report.status === 'passed' ? 'PASS' : 'FAIL'}.`
+    `marginal ${marginal}; ${verdict}`
   )
 }
 

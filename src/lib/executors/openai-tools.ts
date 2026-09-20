@@ -47,6 +47,8 @@ export interface OpenAiToolPolicy {
   readRoots: string[]
   /** Absolute directories the model may write. A subset of `readRoots`. */
   writeRoots: string[]
+  /** Tools this stage may invoke after its write boundary is considered. */
+  allowedTools: string[]
   /** Byte cap for one tool result before it is truncated and labeled. */
   maxResultBytes: number
   /** Wall-clock bound for one `run_shell` invocation. */
@@ -200,6 +202,14 @@ export const OPENAI_TOOL_DEFINITIONS: readonly OpenAiToolDefinition[] = [
 export const OPENAI_TOOL_NAMES: readonly string[] = OPENAI_TOOL_DEFINITIONS.map(
   (tool) => tool.name,
 )
+
+export function openAiToolDefinitions(
+  policy: OpenAiToolPolicy,
+): OpenAiToolDefinition[] {
+  const allowed = new Set(policy.allowedTools)
+
+  return OPENAI_TOOL_DEFINITIONS.filter((tool) => allowed.has(tool.name))
+}
 
 function containedIn(target: string, root: string): boolean {
   const relative = path.relative(root, target)
@@ -700,6 +710,12 @@ export function executeOpenAiTool(
   if (!implementation) {
     return failure(
       `Unknown tool '${name}'. Available tools: ${OPENAI_TOOL_NAMES.join(', ')}.`,
+    )
+  }
+
+  if (!policy.allowedTools.includes(name)) {
+    return failure(
+      `Tool '${name}' is not granted to this stage. Available tools: ${policy.allowedTools.join(', ')}.`,
     )
   }
 

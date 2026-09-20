@@ -4,15 +4,19 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  claudeCodeToolPolicy,
   delegateInvocation,
   getRunState,
+  openAiToolPolicy,
   prepareInvocation,
 } from '../../src/lib/engine.js'
+import { OPENAI_TOOL_NAMES } from '../../src/lib/executors/openai-tools.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { ExternalDelegationRecord } from '../../src/lib/types.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import { createFixture } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   CLAUDE_CODE_SPEC,
   checkpoint,
@@ -36,6 +40,29 @@ function readExecutionRecord(
     ),
   ) as ExternalDelegationRecord
 }
+
+test('external executors withhold shell from read-only stages', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'delivery')
+  const source = stageBySlug(workflow, 'implement')
+  const readOnly = stageBySlug(workflow, 'verify')
+  const bounds = { maxResultBytes: 4096, shellTimeoutMs: 5000 }
+
+  assert.ok(
+    claudeCodeToolPolicy(root, root, source).allowedTools.includes('Bash'),
+  )
+  assert.ok(
+    !claudeCodeToolPolicy(root, root, readOnly).allowedTools.includes('Bash'),
+  )
+  assert.deepEqual(openAiToolPolicy(root, root, source, bounds).allowedTools, [
+    ...OPENAI_TOOL_NAMES,
+  ])
+  assert.ok(
+    !openAiToolPolicy(root, root, readOnly, bounds).allowedTools.includes(
+      'run_shell',
+    ),
+  )
+})
 
 test('run creation fails closed when the executor binary is missing', () => {
   const root = createFixture()

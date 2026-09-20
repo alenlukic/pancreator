@@ -11,6 +11,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { PanError } from '../../src/lib/errors.js'
+import { validateProjectionDrift } from '../../src/lib/projection.js'
 import {
   localConfigName,
   readProjectConfig,
@@ -563,6 +564,79 @@ test('target worktrees keep harness config at installation root', () => {
     rmSync(targetRoot, { recursive: true, force: true })
   }
 })
+test('worktree creation and branch restoration refresh disposable Cursor projections', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'projection-fresh')
+  const worktreePath = path.join(root, record.path)
+  const projectionPath = path.join(
+    worktreePath,
+    '.cursor',
+    'agents',
+    'pan-coder.md',
+  )
+
+  assert.deepEqual(validateProjectionDrift(worktreePath).errors, [])
+
+  execFileSync('git', ['switch', '-c', 'projection-stale'], {
+    cwd: worktreePath,
+  })
+  writeFileSync(projectionPath, '# stale projection\n')
+  assert.ok(
+    validateProjectionDrift(worktreePath).errors.some((error) =>
+      error.includes('projection drift'),
+    ),
+  )
+
+  assert.equal(resolveWorktreeWorkspace(root, record.name), record.path)
+  assert.deepEqual(validateProjectionDrift(worktreePath).errors, [])
+})
+
+// AC-016. HR-008's incident fast-forwarded a worktree on its recorded branch:
+// the head moved, the branch name did not, and a refresh keyed to a branch
+// switch never ran. The resolve-time refresh must follow the head.
+test('worktree resolution refreshes the projection after a same-branch head move', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'projection-head-move')
+  const worktreePath = path.join(root, record.path)
+  const canonicalPath = path.join(
+    worktreePath,
+    'library',
+    'cursor',
+    'agents',
+    'coder.md',
+  )
+
+  assert.deepEqual(validateProjectionDrift(worktreePath).errors, [])
+
+  // Land a canonical-source change as a new commit on the recorded branch.
+  // The checked-out projection now predates the head it should render.
+  writeFileSync(
+    canonicalPath,
+    `${readFileSync(canonicalPath, 'utf8')}\nMoved with the head.\n`,
+  )
+  execFileSync('git', ['add', 'library/cursor/agents/coder.md'], {
+    cwd: worktreePath,
+  })
+  execFileSync('git', ['commit', '-q', '-m', 'chore: move the head'], {
+    cwd: worktreePath,
+  })
+  assert.ok(
+    validateProjectionDrift(worktreePath).errors.some((error) =>
+      error.includes('projection drift'),
+    ),
+  )
+
+  assert.equal(resolveWorktreeWorkspace(root, record.name), record.path)
+  assert.equal(
+    execFileSync('git', ['branch', '--show-current'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim(),
+    record.branch,
+  )
+  assert.deepEqual(validateProjectionDrift(worktreePath).errors, [])
+})
+
 test('worktree resolution restores the recorded branch only when clean', () => {
   const root = createFixture()
   const record = createWorktree(root, 'release-one')

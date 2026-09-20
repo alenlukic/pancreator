@@ -27,7 +27,7 @@ function entry(
   overrides: Partial<FastWallSeriesEntry> = {},
 ): FastWallSeriesEntry {
   return {
-    schema_version: 2,
+    schema_version: 3,
     recorded_at: recordedAt,
     wall_clock_ms: wallClockMs,
     wrapper_wall_clock_ms: wallClockMs + 10,
@@ -35,6 +35,8 @@ function entry(
     test_count: testCount,
     worker_count: 13,
     load_average: 4,
+    cpu_count: 16,
+    caller_class: 'harness_gate',
     workspace_fingerprint: 'fingerprint',
     invoker: 'test',
     run_id: 'run-one',
@@ -57,6 +59,8 @@ function legacyRow(
     lane: _lane,
     phase: _phase,
     summed_file_duration_ms: _summed,
+    cpu_count: _cpuCount,
+    caller_class: _callerClass,
     ...rest
   } = entry(recordedAt, wallClockMs, testCount, { invoker })
 
@@ -88,6 +92,8 @@ function selfDevelopmentRoot(): string {
         ceiling_ms: 120_000,
         anchor_date: '2026-09-14',
         weekly_allowance_ms: 1000,
+        max_load_average_per_cpu: 1,
+        minimum_qualified_samples: 2,
       },
     }),
   )
@@ -100,6 +106,8 @@ test('fast-wall dates govern the rolling mean and weekly allowance', () => {
     ceiling_ms: 120_000,
     anchor_date: '2026-09-14',
     weekly_allowance_ms: 1000,
+    max_load_average_per_cpu: 1,
+    minimum_qualified_samples: 2,
   }
 
   assert.equal(
@@ -164,7 +172,7 @@ test('fast-wall series reads both schemas and ignores malformed lines', () => {
     ]),
     [
       [1, null, 'legacy', null],
-      [2, FAST_LANE, 'implement.unit_tests', 1300 * 13],
+      [3, FAST_LANE, 'implement.unit_tests', 1300 * 13],
     ],
   )
 })
@@ -196,9 +204,9 @@ test('marginal cost is the summed file time per worker per test, within one run'
         load_average: 27,
       }),
       entry('2026-09-15T10:00:00.000Z', 140_000, 1300, {
-        schema_version: 1,
-        lane: null,
-        phase: 'legacy',
+        schema_version: 2,
+        cpu_count: null,
+        caller_class: null,
         summed_file_duration_ms: null,
       }),
     ],
@@ -216,8 +224,8 @@ test('the report counts only complete fast-lane rows in one window population', 
     // The contaminant the first series carried: a 244-test partial run that
     // an earlier build appended under a manual invoker.
     legacyRow('2026-09-15T06:58:59.819Z', 36_789, 244, 'manual'),
-    // A complete legacy run that the schema-1 writer verified before append.
-    legacyRow('2026-09-15T07:00:00.000Z', 139_000, 1305, 'test'),
+    // A quiet harness-gate run in the qualified population.
+    entry('2026-09-15T07:00:00.000Z', 139_000, 1305),
     // A schema-2 row from a lane subset, and one from a failed complete run.
     entry('2026-09-15T08:00:00.000Z', 20_000, 200, {
       lane: 'unit',
@@ -238,14 +246,48 @@ test('the report counts only complete fast-lane rows in one window population', 
   assert.equal(report.unqualified_runs, 2)
   assert.equal(report.rolling_average_ms, 137_000)
   assert.equal(report.permitted_ceiling_ms, 120_000)
-  assert.equal(report.marginal_wall_ms_per_test, 100)
-  assert.equal(report.marginal_samples, 1)
+  assert.equal(report.marginal_wall_ms_per_test, (139_000 / 1305 + 100) / 2)
+  assert.equal(report.marginal_samples, 2)
   assert.equal(
     qualifiesAsFastLane(
       entry('2026-09-15T09:00:00.000Z', 1, 1, { invoker: 'manual' }),
     ),
     false,
   )
+})
+
+test('the report excludes contended and non-gate samples and requires a minimum population', () => {
+  const root = selfDevelopmentRoot()
+  const at = new Date('2026-09-15T12:00:00.000Z')
+
+  writeSeries(root, [
+    entry('2026-09-15T08:00:00.000Z', 100_000, 1000, {
+      load_average: 8,
+      cpu_count: 16,
+    }),
+    entry('2026-09-15T09:00:00.000Z', 300_000, 1000, {
+      load_average: 20,
+      cpu_count: 16,
+    }),
+    entry('2026-09-15T10:00:00.000Z', 300_000, 1000, {
+      caller_class: 'agent',
+    }),
+  ])
+
+  const insufficient = buildFastWallReport(root, at)
+
+  assert.equal(insufficient.status, 'insufficient_samples')
+  assert.equal(insufficient.recorded_runs, 1)
+  assert.equal(insufficient.unqualified_runs, 2)
+  assert.equal(insufficient.rolling_average_ms, 100_000)
+  assert.equal(insufficient.max_load_average_per_cpu, 1)
+  assert.equal(insufficient.minimum_qualified_samples, 2)
+
+  writeSeries(root, [
+    entry('2026-09-15T08:00:00.000Z', 100_000, 1000),
+    entry('2026-09-15T09:00:00.000Z', 130_000, 1000),
+  ])
+  assert.equal(buildFastWallReport(root, at).status, 'passed')
 })
 
 test('the stage summary selects the baseline and later phases by provenance', () => {
@@ -336,6 +378,8 @@ test('a completed fast lane appends one runner measurement with its context', ()
     duration_record_path: durationRecord,
     worker_count: 13,
     load_average: 8.25,
+    cpu_count: 16,
+    caller_class: 'harness_gate' as const,
     wrapper_wall_clock_ms: 120_450,
     invoker: 'test',
     run_id: 'run-one',
@@ -372,12 +416,14 @@ test('a completed fast lane appends one runner measurement with its context', ()
 
   assert.ok(appended)
   assert.match(appended.recorded_at, /^\d{4}-\d{2}-\d{2}T/u)
-  assert.equal(appended.schema_version, 2)
+  assert.equal(appended.schema_version, 3)
   assert.equal(appended.wall_clock_ms, 120_000)
   assert.equal(appended.wrapper_overhead_ms, 450)
   assert.equal(appended.test_count, 1305)
   assert.equal(appended.worker_count, 13)
   assert.equal(appended.load_average, 8.25)
+  assert.equal(appended.cpu_count, 16)
+  assert.equal(appended.caller_class, 'harness_gate')
   assert.equal(appended.workspace_fingerprint, 'fingerprint-one')
   assert.equal(appended.invoker, 'test')
   assert.equal(appended.lane, FAST_LANE)

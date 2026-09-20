@@ -563,6 +563,19 @@ function assertFastWallBlock(value: unknown): void {
     `${PROJECT_CONFIG_PATH}.fast_wall.weekly_allowance_ms MUST be a non-negative integer.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
+  invariant(
+    typeof value.max_load_average_per_cpu === 'number' &&
+      Number.isFinite(value.max_load_average_per_cpu) &&
+      value.max_load_average_per_cpu > 0,
+    `${PROJECT_CONFIG_PATH}.fast_wall.max_load_average_per_cpu MUST be a positive number.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    Number.isInteger(value.minimum_qualified_samples) &&
+      (value.minimum_qualified_samples as number) > 0,
+    `${PROJECT_CONFIG_PATH}.fast_wall.minimum_qualified_samples MUST be a positive integer.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
 }
 
 function resolveConfigPath(root: string): string | null {

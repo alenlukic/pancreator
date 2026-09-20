@@ -1,5 +1,132 @@
 # Changelog
 
+## [6.26.0] - 2026-09-20
+
+This release consolidates the five harness-repair releases 6.21.0 through 6.25.0 into one installable tree and adds the supervisor's harness-path delegation.
+
+### Changed
+
+- `pan delegate --headless` dispatches a cursor-executor stage through the harness cursor-agent path with the persona's mapped model, and `--evidence-only [--role]` runs one evidence worker, so a supervisor whose platform exposes no projected agent still launches every stage at the mapped model ([4f0f7a2b](https://github.com/alenlukic/pancreator/commit/4f0f7a2b1a7d150a2319f77d5df97c106e0aa1b4)).
+- The long-horizon retry rung follows a stage's declared failure transition (verify to remediate) instead of re-running the failed stage against an unchanged workspace ([cbac1a60](https://github.com/alenlukic/pancreator/commit/cbac1a60ba63dba4c07e6080748a6bba909453c2)).
+- A spawned worker no longer inherits `PANCREATOR_EXEC_ROOT` or the `PANCREATOR_ROOT` that `bin/pan` pins beside it, and `bin/pan` unsets the request before it execs the selected build ([b54a61d0](https://github.com/alenlukic/pancreator/commit/b54a61d001ab3cbe86035df052920abe5ffe8146)).
+
+### Fixed
+
+- The regression guard for the versioned-landing rule accepts the scoped commit prohibition in `AGENTS.md` ([f335bb90](https://github.com/alenlukic/pancreator/commit/f335bb90dd7fe3f9f2bcc1e56fc97700efc7b052)).
+- The multiplexed watch measures its stall window as a duration, as the focused watch does, so the 6.21.0 liveness rule and the 6.24.0 multiplexed watch agree ([fb517a2b](https://github.com/alenlukic/pancreator/commit/fb517a2bbd6aebbb9f45864036574521314cdcf6)).
+
+## [6.25.0] - 2026-09-20
+
+This release closes six compliance findings. A validator now blocks only on a field the worker contract declares. An evidence worker cannot satisfy the ship full-profile gate.
+
+### Changed
+
+- Refuse `pan repository-check full` from a verify-stage evidence worker. Name VERIFY-001 and the ship gate that owns the profile ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Reject a cached full-profile pass when the recorder was not permitted to run that profile. The ship gate then executes ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Return a submission advisory when an output claims a profile pass that the ledger does not hold at the current fingerprint ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Record `OUTPUT_SCAFFOLD_MISSING_BEFORE_WORKSPACE_CHANGE` when a wake sees a changed workspace with no output file. Do not count that wake as unchanged ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- State the output-last rule in CONTRACT-001 and in `library/skills/write-stage-output.md` ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- State that worker model evidence is best-effort in DELEGATE-001. Keep a probed-versus-snapshot mismatch as a hard failure ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Direct a supervisor to resume a worker that wrote a refused output. Do not edit the worker output ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Name `./bin/pan repository-check <profile> --run <run-id>` in the remediate prompt ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Accept a plan `maps_to` id in the `C-*` or `OOS-*` family when the same output defines it ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Fail `pan validate` when a stage validator blocks on a field that `enforced_fields` does not declare ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+
+### Added
+
+- Add `src/lib/validators/refusals.ts` as the canonical refusal declaration for every live stage-output validator, and the prototype intake handler ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Declare verify finding `id` and `evidence[]` in the shared field contract. Emit a scaffold exemplar that shows that shape ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+
+### Fixed
+
+- Close the prototype intake exemption so AC-010 covers that handler ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+
+## [6.24.0] - 2026-09-19
+
+This release makes the suite-cost gate advisory. It also adds a multiplexed cohort wait, a bounded runtime rewrite, and progress output on long commands.
+
+### Changed
+
+- Make `ship.fast_wall_ceiling` advisory. A breach records a run advisory and a performance intake, and it does not route the run ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Restore `fast_wall.ceiling_ms` to 120000. Keep that value until a tuning pass revisits it ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Exclude a fast-wall sample above the host-load threshold or from a non-gate caller, and count it in `unqualified_runs` ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Report `insufficient_samples` when the qualified window holds fewer than five samples ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Read only the runtime directories that can hold a durable name reference. Exclude `runtime/tmp/` and unknown siblings ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Print each `pan archive` maintenance pass on stderr. Print the entry-gate id and timeout before a gated `pan prepare` ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+
+### Added
+
+- Add `pan watch --cohort` and a multi-target wait that returns on the first change ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Add `fast_wall.max_load_average_per_cpu` and `fast_wall.minimum_qualified_samples` beside the existing ceiling ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Record host load and caller class on each new fast-wall series entry ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+
+### Fixed
+
+- Wake a cohort supervisor on the first finished sibling, not on a single blocked wait ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+- Stop a default scan of scratch space during a runtime-name rewrite ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
+
+## [6.23.0] - 2026-09-19
+
+This release repairs nine mechanical-friction defects. Worktree-bound stages keep file tools. Prepare, watch, waiver, and plan-approval recovery name the next command.
+
+### Changed
+
+- Default `pan prepare` to the projected agent of the stage persona so a bare prepare writes the labeled delegation artifact ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- End a background watch that exhausts its wake budget with a distinct exit and the re-arm command ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Name the verification root in an evidence brief for a managed self-development worktree ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Name the status found and the command that applies on a refusal ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- State `/pan-start` dispositions for prose, an existing queue file, and an augment note ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Narrow `.cursorignore` to instruction files so worktree source stays readable ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Return a criterion waiver to the blocked point and keep finished stage output ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Refresh the disposable Cursor projection on worktree create and branch restore ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+- Inherit the planning worktree on a single-chunk route, and refuse to branch away from uncommitted work ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
+
+## [6.22.0] - 2026-09-19
+
+This release repairs eight internal-consistency defects. A late worker-record call no longer rewrites a launched contract. Primer freshness, verify return visits, ship scope, and release allocation now match the stated rules.
+
+### Changed
+
+- Derive the primer version from `VERSION` at the stamped `source-head`. `pan doctor` and `pan validate` report primer drift ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Permit the read-only `configuration` profile on a verify return visit. Refresh stale interior evidence at prepare, and remove the `fast` offer from the return-visit brief ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Compare ship scope by content when the recorded base is not an ancestor of HEAD. Compare the harness root against its current HEAD rather than the prepare-time commit ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Name the release version sequence, `pan-dev`, and `release/index.json` as shared resources on the operating card ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Refuse a proposed version that already exists on `pan-dev` or the local default branch. Refuse release finalization without a recorded allocation ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- State the launch record as the watch clock. Keep that clock on a `--mark-background` re-arm ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Cite the configured `fast_wall` ceiling and `ship.fast_wall_ceiling` in review guidance ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- Render a harness prefetch from the ledger `invoked_by` field, and name the recording role for an agent pass ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+
+### Added
+
+- `pan prepare --agent` for an evidence role, so the attempt is allocated before launch ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+- A `configuration` gate on the `delivery-chunk` remediate stage ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+
+### Fixed
+
+- A late `pan worker record` no longer allocates a phantom attempt or rewrites the contract a launched worker holds ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
+
+## [6.21.0] - 2026-09-19
+
+This release bounds executor write grants, records prompt-task tool policy, and measures worker liveness as a duration.
+
+### Changed
+
+- Measure the watch stall window as five minutes so a cadence change does not alter the liveness rule ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Stop the away evaluator when a stage output carries an unanswered operator question ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Withhold the shell tool from a stage whose write roots exclude the workspace, on OpenAI and Claude Code ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Grant a prompt task the workspace plus the run runtime directory, and record `granted_roots` and `tool_policy` ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Deny prompt-task writes outside those roots with `sandbox-exec` on macOS. Observe the whole root when the host cannot enforce that bound ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Record a platform-initiated detach as its own redline category. Measure watch lateness from the launch record ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+
+### Added
+
+- Add a structured `operator_question` field on the stage output contract ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+- Add write-sandbox profile generation for prompt-task launches ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+
+### Fixed
+
+- Mark a rollback plan incomplete when a generated pan command is not in the CLI grammar ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
+
 ## [6.20.0] - 2026-09-19
 
 This release makes the operator's chat session the supervisor of a long-horizon session end to end, adds a session arbiter so no harness verdict can end a task, closes the four hard blocks that may stop long-horizon work, and refuses any landing on `pan-dev` that carries no release.

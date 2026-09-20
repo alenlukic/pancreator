@@ -72,7 +72,38 @@ function readStdin(): string {
   }
 }
 
-function parseRequest(raw: string): OpenAiAgentRequest {
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+/**
+ * Hold the tool policy to its declared shape at the process boundary.
+ *
+ * `allowedTools` is the grant that withholds the shell from a stage whose
+ * write roots exclude the workspace (`DELEGATE-001`). The type says it is
+ * required, but the type is erased here: the request arrives as JSON from
+ * another process, and a request that omitted the list would otherwise reach
+ * the session as an undefined grant rather than as a rejected request.
+ */
+function assertToolPolicy(value: Partial<OpenAiToolPolicy>): void {
+  if (
+    typeof value.workspaceDir !== 'string' ||
+    !isStringArray(value.readRoots) ||
+    !isStringArray(value.writeRoots)
+  ) {
+    throw new Error(
+      'tool_policy MUST declare workspaceDir, readRoots, and writeRoots.',
+    )
+  }
+
+  if (!isStringArray(value.allowedTools) || value.allowedTools.length === 0) {
+    throw new Error(
+      'tool_policy.allowedTools MUST be a non-empty array of tool names.',
+    )
+  }
+}
+
+export function parseRequest(raw: string): OpenAiAgentRequest {
   const parsed: unknown = JSON.parse(raw)
 
   if (typeof parsed !== 'object' || parsed === null) {
@@ -93,6 +124,8 @@ function parseRequest(raw: string): OpenAiAgentRequest {
       'The agent request is missing a required field (model, prompt, session_id, transcript_path, tool_policy).',
     )
   }
+
+  assertToolPolicy(candidate.tool_policy)
 
   return candidate as OpenAiAgentRequest
 }

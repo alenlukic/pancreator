@@ -10,6 +10,7 @@ import {
   scaffoldStageOutput,
 } from '../../src/lib/requirements/scaffold.js'
 import { PanError } from '../../src/lib/errors.js'
+import { VALIDATOR_BLOCKING_FIELDS } from '../../src/lib/validators/stage-validators.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -30,6 +31,69 @@ test('scaffold builds nested data from dotted required_data paths', () => {
       maintenance_assessment: '',
     },
   })
+})
+
+test('verify scaffold shows record shapes and remains untouched', () => {
+  const data = scaffoldDataFromRequiredData({
+    verify: 'object',
+    'verify.verdict': 'string',
+    'verify.findings': 'array',
+    'verify.qa_cases': 'array',
+    'verify.acceptance_results': 'array',
+  })
+  const verify = data.verify as Record<string, unknown>
+
+  // The exemplar has to show every field the verify handler can refuse a
+  // finding for. A worker that fills what the scaffold shows must not then
+  // be refused for a field the scaffold never mentioned, which is the defect
+  // HR-006 of the 2026-09-19 compliance intake recorded eleven times.
+  const findingFields = new Set(
+    VALIDATOR_BLOCKING_FIELDS.filter(
+      (entry) => entry.registry_id === 'VERIFY-VALIDATE-001',
+    )
+      .flatMap((entry) => entry.fields)
+      .filter((field) => field.startsWith('data.verify.findings[].'))
+      .map((field) =>
+        field.slice('data.verify.findings[].'.length).replace(/\[\]$/u, ''),
+      ),
+  )
+  const findings = verify.findings as Record<string, unknown>[]
+
+  assert.equal(findings.length, 1)
+  assert.deepEqual([...findingFields].sort(), Object.keys(findings[0]).sort())
+
+  for (const value of Object.values(findings[0])) {
+    const text = Array.isArray(value) ? value[0] : value
+
+    assert.match(String(text), /^<.+>$/u)
+  }
+
+  assert.equal(Array.isArray(verify.qa_cases), true)
+  assert.equal(Array.isArray(verify.acceptance_results), true)
+
+  // The discriminating case for the untouched rule. A `pending` attestation
+  // short-circuits the check, so asserting against one proves nothing about
+  // the exemplars. This document is past that branch: the worker declared
+  // its read and wrote nothing else, and the exemplars must still not make
+  // the scaffold look like work.
+  assert.equal(
+    isUntouchedScaffold({
+      summary: '',
+      invocation_attestation: { status: 'read' },
+      criteria: [{ id: 'verify.acceptance_met', result: 'unevaluated' }],
+      data,
+    }),
+    true,
+  )
+  assert.equal(
+    isUntouchedScaffold({
+      summary: 'The verification is complete.',
+      invocation_attestation: { status: 'read' },
+      criteria: [{ id: 'verify.acceptance_met', result: 'unevaluated' }],
+      data,
+    }),
+    false,
+  )
 })
 
 test('scaffold refuses to overwrite a non-empty output without force', () => {

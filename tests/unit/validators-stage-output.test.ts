@@ -456,6 +456,38 @@ test('a blocked ship output declares its precondition instead of a release packe
   assert.deepEqual(declared.errors, [], declared.errors.join('\n'))
 })
 
+test('a structured unanswered operator question validates', () => {
+  const root = sharedFixture()
+  const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-question')
+  const validation = validateStageOutput(
+    root,
+    stage,
+    invocation,
+    {
+      ...baseOutput(invocation, stage),
+      result: 'blocked',
+      artifacts: briefArtifacts(invocation),
+      operator_question: {
+        question: 'Which credential may this run use?',
+        reason: 'cursor/ask_question was unavailable.',
+        evidence: [
+          'The required credential is absent from the repository .env.',
+        ],
+      },
+      data: {
+        blocked: {
+          missing_precondition: 'An authorized credential is unavailable.',
+          supplying_command:
+            'Provide the credential through the approved secret store.',
+        },
+      },
+    },
+    pendingBriefPaths(invocation),
+  )
+
+  assert.deepEqual(validation.errors, [], validation.errors.join('\n'))
+})
+
 test('a successful ship output still owes every release field', () => {
   const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-2-test')

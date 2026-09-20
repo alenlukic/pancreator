@@ -13,7 +13,7 @@ import {
 } from './openai-client.js'
 import {
   executeOpenAiTool,
-  OPENAI_TOOL_DEFINITIONS,
+  openAiToolDefinitions,
   type OpenAiToolPolicy,
 } from './openai-tools.js'
 
@@ -268,7 +268,7 @@ export async function runOpenAiSession(
       apiKey: request.apiKey,
       model: request.model,
       input: items,
-      tools: [...OPENAI_TOOL_DEFINITIONS],
+      tools: openAiToolDefinitions(request.toolPolicy),
       // Never let one request outlive the session budget: a slow endpoint
       // must fail as a timeout rather than hang past the operator's bound.
       timeoutMs: Math.max(

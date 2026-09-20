@@ -10,6 +10,7 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
+import { allocateReleaseVersion } from '../../src/lib/release-allocation.js'
 import {
   SECRET_PATH_PATTERN,
   continueLocalRelease,
@@ -132,7 +133,10 @@ function writeReleaseMetadata(root: string): string {
   return version
 }
 
-function prepareReleaseCandidate(name: string): {
+function prepareReleaseCandidate(
+  name: string,
+  options: { allocate?: boolean } = {},
+): {
   root: string
   remote: string
   record: ReturnType<typeof createWorktree>
@@ -161,7 +165,15 @@ function prepareReleaseCandidate(name: string): {
     record.name,
     'feat: checkpoint release candidate',
   )
+  const allocation =
+    options.allocate === false
+      ? null
+      : allocateReleaseVersion(root, record.name, 'patch')
   const version = writeReleaseMetadata(worktreePath)
+
+  if (allocation) {
+    assert.equal(version, allocation.allocation.version)
+  }
 
   return {
     root,
@@ -255,7 +267,10 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
       '',
     )
 
+    const allocation = allocateReleaseVersion(root, record.name, 'patch')
     const version = writeReleaseMetadata(worktreePath)
+
+    assert.equal(version, allocation.allocation.version)
     const finalized = finalizeLocalRelease(
       root,
       record.name,
@@ -1981,4 +1996,44 @@ test('waiver-based plan adoption moves the claim and releases the workspace', ()
   } finally {
     rmSync(remote, { recursive: true, force: true })
   }
+})
+
+test('release finalization requires an allocation before creating a commit', () => {
+  const candidate = prepareReleaseCandidate('release-no-allocation', {
+    allocate: false,
+  })
+  const before = git(candidate.worktreePath, ['rev-parse', 'HEAD'])
+
+  assert.throws(
+    () =>
+      finalizeLocalRelease(
+        candidate.root,
+        candidate.record.name,
+        candidate.fetchedMain,
+      ),
+    /pan release allocate --worktree release-no-allocation/u,
+  )
+  assert.equal(git(candidate.worktreePath, ['rev-parse', 'HEAD']), before)
+})
+
+test('release finalization names a version collision on pan-dev', () => {
+  const candidate = prepareReleaseCandidate('release-collision')
+  const original = git(candidate.root, ['branch', '--show-current'])
+
+  git(candidate.root, ['checkout', '-q', '-b', 'pan-dev'])
+  writeFileSync(path.join(candidate.root, 'VERSION'), `${candidate.version}\n`)
+  git(candidate.root, ['add', 'VERSION'])
+  git(candidate.root, ['commit', '-qm', `publish ${candidate.version}`])
+  const collisionCommit = git(candidate.root, ['rev-parse', 'HEAD'])
+  git(candidate.root, ['checkout', '-q', original])
+
+  assert.throws(
+    () =>
+      finalizeLocalRelease(
+        candidate.root,
+        candidate.record.name,
+        candidate.fetchedMain,
+      ),
+    new RegExp(`pan-dev.*${collisionCommit}`, 'u'),
+  )
 })

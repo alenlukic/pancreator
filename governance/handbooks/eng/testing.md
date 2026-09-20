@@ -2,7 +2,7 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC 2119 meanings.
 
-This handbook defines how Pancreator self-development tests earn their place in the suite. It applies to coders, remediators, reviewers, QA testers, and verifiers. Automated checks do not judge a test's contract value, and no count budget decides a tune verdict. The harness may enforce the policy-authorized duration ceiling on the fast lane's rolling daily average and mechanical structural checks on test placement and fixture construction. Duration supports a MERGE or DEMOTE verdict only after signal and contract analysis support that verdict.
+This handbook defines how Pancreator self-development tests earn their place in the suite. It applies to coders, remediators, reviewers, QA testers, and verifiers. Automated checks do not judge a test's contract value, and no count budget decides a tune verdict. The harness reports the policy-authorized duration ceiling on the fast lane's qualified rolling daily average as a non-blocking release advisory and may enforce mechanical structural checks on test placement and fixture construction. Duration supports a MERGE or DEMOTE verdict only after signal and contract analysis support that verdict.
 
 ## Principles
 

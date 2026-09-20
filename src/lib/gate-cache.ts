@@ -28,6 +28,8 @@ export interface GateCacheEntry {
   run_id: string
   cached_at: string
   evidence_path: string
+  /** Who produced the cached execution; absent on records from older releases. */
+  recorded_by?: 'agent' | 'harness'
   /** A later run compares this result against its own baseline. */
   repository_result?: RepositoryCheckResult
   /** Suite profile the reporter wrote during the original execution. */
@@ -69,6 +71,7 @@ export function buildGateCacheEntry(
     run_id: input.run_id,
     cached_at: input.cached_at ?? new Date().toISOString(),
     evidence_path: input.evidence_path,
+    ...(input.recorded_by ? { recorded_by: input.recorded_by } : {}),
     ...(input.repository_result
       ? { repository_result: input.repository_result }
       : {}),
@@ -216,6 +219,86 @@ export function gateCacheLookup(
   }
 
   return entry
+}
+
+export interface GateCacheAcceptance {
+  entry: GateCacheEntry | null
+  rejected_entry: GateCacheEntry | null
+  rejection: string | null
+}
+
+/**
+ * A cache lookup filtered by the authority of the recorder.
+ *
+ * The `full` profile belongs to the harness-owned ship release gate. An agent
+ * execution cannot replace it, even when the command and workspace match.
+ * Older cache entries predate `recorded_by`, so their evidence header remains
+ * the compatibility source for this decision.
+ */
+export function gateCacheLookupForGate(
+  root: string,
+  key: string,
+): GateCacheAcceptance {
+  const entry = gateCacheLookup(root, key)
+
+  if (!entry || entry.command !== repositoryCheckGateCommand('full')) {
+    return { entry, rejected_entry: null, rejection: null }
+  }
+
+  let recordedBy = entry.recorded_by ?? null
+
+  if (recordedBy === null) {
+    try {
+      const evidence = readFileSync(
+        path.join(root, entry.evidence_path),
+        'utf8',
+      )
+      recordedBy = /^invoked_by=harness$/mu.test(evidence) ? 'harness' : 'agent'
+    } catch {
+      recordedBy = 'agent'
+    }
+  }
+
+  if (recordedBy === 'agent') {
+    return {
+      entry: null,
+      rejected_entry: entry,
+      rejection:
+        `Rejected cached pass ${entry.evidence_path}: an agent-run full ` +
+        `profile cannot satisfy the harness-owned ship release gate ` +
+        `(VERIFY-001).`,
+    }
+  }
+
+  return { entry, rejected_entry: null, rejection: null }
+}
+
+/**
+ * Whether the cache holds a clean pass of one profile at one workspace
+ * fingerprint, whoever recorded it.
+ *
+ * A submission-time claim check asks whether the run has evidence for the
+ * profile, not whether the claiming invocation produced it. A gate the
+ * harness executed leaves its pass here and no ledger row, so reading the
+ * ledger alone reports a correctly cited pass as unrecorded.
+ */
+export function gateCachePassAtFingerprint(
+  root: string,
+  profileName: string,
+  workspaceFingerprint: string,
+): boolean {
+  if (!gateCacheEnabled()) {
+    return false
+  }
+
+  const command = repositoryCheckGateCommand(profileName)
+
+  return freshEntries(loadEntries(root), Date.now()).some(
+    (entry) =>
+      entry.command === command &&
+      entry.workspace_fingerprint === workspaceFingerprint &&
+      fileExists(path.join(root, entry.evidence_path)),
+  )
 }
 
 export function gateCacheStore(root: string, entry: GateCacheEntry): void {

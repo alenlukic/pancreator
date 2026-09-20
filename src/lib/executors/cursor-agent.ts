@@ -1,4 +1,8 @@
-import { spawnSync } from 'node:child_process'
+import {
+  spawnSync,
+  type SpawnSyncOptionsWithStringEncoding,
+  type SpawnSyncReturns,
+} from 'node:child_process'
 import path from 'node:path'
 
 import { isRecord } from '../io.js'
@@ -7,6 +11,11 @@ import type {
   ExternalModelVerification,
 } from '../types.js'
 import { probeEnvironment } from './cursor-auth.js'
+import {
+  resolveWriteSandbox,
+  type PreparedLaunch,
+  type WriteSandbox,
+} from './write-sandbox.js'
 
 // A failed spawn's ledger record used to say only "exited with status 1". The
 // last stderr line is what names the cause, so it rides along, bounded.
@@ -159,6 +168,12 @@ export interface CursorAgentRequest {
   model?: string
   sessionId?: string
   timeoutMs?: number
+  /**
+   * Directories this spawn may write. When supplied, the write boundary is
+   * enforced by the operating system rather than inspected afterwards, and
+   * the result records which of the two happened.
+   */
+  writeRoots?: string[]
 }
 
 export interface CursorAgentResult {
@@ -174,6 +189,12 @@ export interface CursorAgentResult {
   reported_model?: string
   value?: unknown
   error?: string
+  /** How the granted write roots were bound, when the caller declared any. */
+  write_enforcement?: {
+    mode: WriteSandbox['mode']
+    reason: string
+    write_roots: string[]
+  }
 }
 
 interface CursorAgentExecutionOptions {
@@ -327,6 +348,21 @@ export function cursorAgentSessionArguments(
   )
 }
 
+/**
+ * Run one prepared launch and release its sandbox profile afterwards. The
+ * profile is read at exec, so the file is needed only for the spawn.
+ */
+function spawnUnderSandbox(
+  launch: PreparedLaunch,
+  options: SpawnSyncOptionsWithStringEncoding,
+): SpawnSyncReturns<string> {
+  try {
+    return spawnSync(launch.binary, launch.argv, options)
+  } finally {
+    launch.cleanup()
+  }
+}
+
 function runCursorAgent(
   request: CursorAgentRequest,
   options: CursorAgentExecutionOptions,
@@ -341,14 +377,28 @@ function runCursorAgent(
       ? cursorAgentSessionArguments(request)
       : cursorAgentArguments(request, withSupportedFlags([['--trust']]))
 
+  // The agent's own binary and argv stay the recorded launch. The sandbox
+  // wrapper is transport, and its profile is too large to belong in an
+  // evidence record that a reader scans for the agent's arguments.
+  const sandbox = resolveWriteSandbox(request.writeRoots ?? [])
+  const launch = sandbox.wrap(binary, argv)
+  const enforcement = request.writeRoots
+    ? {
+        write_enforcement: {
+          mode: sandbox.mode,
+          reason: sandbox.reason,
+          write_roots: sandbox.writeRoots,
+        },
+      }
+    : {}
   const startedAt = Date.now()
-  const spawned = spawnSync(binary, argv, {
+  const spawned = spawnUnderSandbox(launch, {
     cwd: request.cwd,
     // ASK-001: a CURSOR_API_KEY in the process environment wins, otherwise the
     // installation or workspace .env supplies it. Every cursor-agent spawn
     // authenticates the same way the model probe does, so an away evaluator
     // or an external-executor stage never fails auth that the probe passed.
-    env: probeEnvironment(request.installationRoot),
+    env: workerEnvironment(request.installationRoot),
     encoding: 'utf8',
     // The prompt travels over stdin, never as an argv element. Endpoint
     // security on an operator machine was observed to SIGKILL the cursor-agent
@@ -379,6 +429,7 @@ function runCursorAgent(
       duration_ms: durationMs,
       stdout,
       stderr,
+      ...enforcement,
       error: `Failed to spawn '${binary}': ${spawned.error.message}`,
     }
   }
@@ -393,6 +444,7 @@ function runCursorAgent(
       duration_ms: durationMs,
       stdout,
       stderr,
+      ...enforcement,
       error: timedOut
         ? `Cursor agent timed out after ${effectiveTimeoutMs(request)}ms.`
         : spawned.signal
@@ -415,6 +467,7 @@ function runCursorAgent(
       stderr,
       ...(parsed.sessionId ? { session_id: parsed.sessionId } : {}),
       ...(parsed.reportedModel ? { reported_model: parsed.reportedModel } : {}),
+      ...enforcement,
       error: 'Cursor agent returned no parseable JSON value.',
     }
   }
@@ -431,6 +484,7 @@ function runCursorAgent(
     ...(parsed.sessionId ? { session_id: parsed.sessionId } : {}),
     ...(parsed.reportedModel ? { reported_model: parsed.reportedModel } : {}),
     ...(parsed.value !== undefined ? { value: parsed.value } : {}),
+    ...enforcement,
   }
 }
 
@@ -438,6 +492,28 @@ function runCursorAgent(
  * Run one tool-free Cursor evaluation. Ask mode prevents filesystem or shell
  * mutation while the evaluator ranks bounded options.
  */
+/**
+ * The environment a spawned worker inherits. `PANCREATOR_EXEC_ROOT` selects
+ * the build that executes the parent's own `pan` command (a release lane or a
+ * supervisor running a newer build), and it resolves against the checkout that
+ * supplies `bin/pan`, so inside a worker's worktree it names a directory that
+ * does not exist and every `./bin/pan` the worker runs fails with
+ * EXEC_ROOT_INVALID. The worker runs the installation's own build.
+ */
+function workerEnvironment(installationRoot: string): NodeJS.ProcessEnv {
+  const env = { ...(probeEnvironment(installationRoot) ?? process.env) }
+
+  if (env.PANCREATOR_EXEC_ROOT !== undefined) {
+    // bin/pan pins PANCREATOR_ROOT alongside the exec root so the executing
+    // build keeps run state on the installation. Both are the parent's
+    // choice; the worker's own bin/pan resolves the installation itself.
+    delete env.PANCREATOR_EXEC_ROOT
+    delete env.PANCREATOR_ROOT
+  }
+
+  return env
+}
+
 export function runCursorAgentJson(
   request: CursorAgentRequest,
 ): CursorAgentResult {

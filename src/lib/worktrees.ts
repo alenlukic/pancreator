@@ -48,6 +48,7 @@ import {
   localConfigName,
   worktreesConfig,
 } from './project-config.js'
+import { syncCursorProjection } from './projection.js'
 import { runSetupCommands } from './setup-commands.js'
 import { now } from './state.js'
 import type { ManagedWorktreeReference } from './types.js'
@@ -60,6 +61,17 @@ import {
 
 const WORKTREE_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const TEST_SCRATCH_RELATIVE_PATH = path.join('runtime', 'tmp', 'tests.noindex')
+
+/** Refresh disposable Cursor state after a self-development worktree moves. */
+function syncSelfDevelopmentWorktreeProjection(worktreePath: string): void {
+  if (
+    fileExists(path.join(worktreePath, 'config.json')) &&
+    isSelfDevelopmentInstallation(worktreePath)
+  ) {
+    syncCursorProjection(worktreePath, { write: true })
+  }
+}
+
 /** A scratch tree `sweepWorktreeTestScratch` renamed out of its worktree. */
 const DISCARDED_SCRATCH_NAME = /^\..+-tests-\d+-\d+\.noindex$/u
 
@@ -813,6 +825,7 @@ function addWorktree(
     label: `worktree '${name}'`,
     code: 'WORKTREE_SETUP_FAILED',
   })
+  syncSelfDevelopmentWorktreeProjection(worktreePath)
 
   return { ...record, carried_paths: carriedPaths }
 }
@@ -930,6 +943,13 @@ export function resolveWorktreeWorkspace(root: string, name: string): string {
     `Indexed worktree '${name}' could not switch to its recorded branch '${record.branch}'.`,
     { code: 'WORKTREE_BRANCH_MISMATCH' },
   )
+
+  // The projection derives from the canonical sources at the checked-out
+  // head, and a fast-forward moves that head without changing the branch
+  // name. The refresh therefore follows every resolution rather than only a
+  // branch switch: it is a render and a compare that writes nothing when the
+  // projection already matches.
+  syncSelfDevelopmentWorktreeProjection(worktreePath)
 
   return record.path
 }

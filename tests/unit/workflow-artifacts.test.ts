@@ -9,8 +9,11 @@ import {
   archiveWorkflowDirectories,
   finalizeWorkflowArtifacts,
   migrateRunSuffixes,
+  maintainWorkflowRuntime,
   migrateWorkflowNames,
   migratedRunId,
+  mutableRuntimeFiles,
+  mutableRuntimeTraversalCount,
   repairWorkflowInboxReferences,
   resolveRunCitation,
   rewriteWorkflowArtifacts,
@@ -1291,11 +1294,9 @@ test('the runtime name standardizer holds one traversal helper', () => {
   // in the directory they walked, so a repair applied to one left the other
   // behind.
   assert.equal(standardizer.match(/readdirSync\(/gu)?.length, 1, standardizer)
-  assert.ok(
-    standardizer.includes(
-      'standardizeTemporalFileNamesIn(root, parentRelative, mappings)',
-    ),
+  assert.match(
     standardizer,
+    /standardizeTemporalFileNamesIn\(\s*root,\s*parentRelative,\s*mappings,\s*mutableFileSet,/u,
   )
 })
 
@@ -1320,4 +1321,86 @@ test('name standardization is unchanged across the directories it already scanne
     ),
     true,
   )
+})
+
+test('mutable runtime rewrites include durable records and exclude scratch and unknown directories', () => {
+  const root = createTestTempDirectory('pancreator-mutable-runtime-')
+  const runtimeRoot = path.join(root, 'runtime')
+  const durable = path.join(
+    runtimeRoot,
+    'logs',
+    'workflows',
+    'run',
+    'state.json',
+  )
+  // Two durable series the first allowlist missed: a run id lives in both, and
+  // neither is reachable through a `runtime/logs` entry.
+  const allocations = path.join(runtimeRoot, 'release', 'allocations.jsonl')
+  const series = path.join(runtimeRoot, 'fast-wall-series.jsonl')
+  const scratch = path.join(runtimeRoot, 'tmp', 'scratch.txt')
+  const unknown = path.join(runtimeRoot, 'future-area', 'record.json')
+
+  write(durable, '{}\n')
+  write(allocations, '{}\n')
+  write(series, '{}\n')
+  write(scratch, 'scratch\n')
+  write(unknown, '{}\n')
+
+  assert.deepEqual(
+    mutableRuntimeFiles(runtimeRoot).sort(),
+    [series, allocations, durable].sort(),
+  )
+})
+
+// AC-010. The rewrite population was narrowed to an allowlist, and a durable
+// run id outside `runtime/logs` is the reference that narrowing can silently
+// drop: an append-only audit row that kept a retired id outlives the run.
+test('a run-id migration rewrites durable records outside the workflow logs', () => {
+  const root = createTestTempDirectory('pancreator-durable-rewrite-')
+  const runId = '63379_Jun-22-0158_5f354f23'
+  const allocations = path.join(root, 'runtime/release/allocations.jsonl')
+  const series = path.join(root, 'runtime/fast-wall-series.jsonl')
+
+  writeState(root, runId, 'succeeded')
+  write(
+    allocations,
+    `${JSON.stringify({ schema_version: 1, version: '6.22.0', run_id: runId })}\n`,
+  )
+  write(
+    series,
+    `${JSON.stringify({ schema_version: 3, run_id: runId, wall_clock_ms: 1 })}\n`,
+  )
+
+  const summary = migrateRunSuffixes(root)
+  const migrated = '63379_Jun-22-0158_fixture'
+
+  assert.equal(summary.run_directories, 1)
+  assert.match(readFileSync(allocations, 'utf8'), /63379_Jun-22-0158_fixture/u)
+  assert.match(readFileSync(series, 'utf8'), /63379_Jun-22-0158_fixture/u)
+  assert.equal(readFileSync(allocations, 'utf8').includes(runId), false)
+  assert.equal(readFileSync(series, 'utf8').includes(runId), false)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/workflows', migrated)),
+    true,
+  )
+})
+
+// AC-011. The guard has to fail when a pass walks the runtime tree again, so
+// it counts the walks themselves and the fixture gives two passes real
+// mappings: a counter read after a no-op maintenance proves nothing.
+test('runtime maintenance walks the mutable population once across all passes', () => {
+  const root = createTestTempDirectory('pancreator-runtime-scan-')
+
+  write(
+    path.join(root, 'runtime/inbox/queue/2026-08-14-first.md'),
+    'First fixture.\n',
+  )
+  writeState(root, '63379_Jun-22-0158_5f354f23', 'succeeded')
+
+  const before = mutableRuntimeTraversalCount()
+  const summary = maintainWorkflowRuntime(root, { retentionDays: 36500 })
+
+  assert.equal(summary.names.renamed_files, 1)
+  assert.equal(summary.suffixes.run_directories, 1)
+  assert.equal(mutableRuntimeTraversalCount() - before, 1)
 })

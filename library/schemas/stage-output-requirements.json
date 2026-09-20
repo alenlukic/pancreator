@@ -60,7 +60,7 @@
         {
           "path": "data.acceptance_criteria[].maps_to",
           "type": "array",
-          "format": "string array of user-story ids (US-*) or related registry ids"
+          "format": "string array of user-story ids (US-*), constraint ids (C-*), out-of-scope ids (OOS-*), or related registry ids; C-* and OOS-* ids must be defined by the same product specification"
         },
         {
           "path": "data.acceptance_criteria[].verification",
@@ -140,17 +140,43 @@
           "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
           "enforcement": "blocks",
           "enforced_fields": [
+            "data.acceptance_results[].evidence[]",
+            "data.implementation.changed_files[]",
             "data.implementation.tests_added[]",
             "data.implementation.tests_added[].path",
             "data.implementation.tests_added[].contract",
             "data.implementation.remediation[]",
             "data.implementation.remediation[].cause",
             "data.implementation.remediation[].action",
-            "data.implementation.remediation[].evidence[]"
+            "data.implementation.remediation[].evidence[]",
+            "data.acceptance_results[]",
+            "data.acceptance_results[].id",
+            "data.acceptance_results[].result",
+            "data.implementation",
+            "data.blocked",
+            "data.blocked.missing_precondition",
+            "data.blocked.supplying_command",
+            "data.blocked.evidence[]"
           ]
         }
       ],
       "fields": [
+        {
+          "path": "data.acceptance_results[]",
+          "type": "object",
+          "required": ["id", "result", "evidence"],
+          "format": "one result per ratified acceptance criterion; id names the criterion, result uses the shared criterion-result vocabulary, and evidence is non-empty"
+        },
+        {
+          "path": "data.acceptance_results[].id",
+          "type": "string",
+          "format": "acceptance criterion id the ratified plan declares"
+        },
+        {
+          "path": "data.acceptance_results[].result",
+          "type": "string",
+          "format": "non-empty; the criterion outcome this stage observed"
+        },
         {
           "path": "data.acceptance_results[].evidence[]",
           "type": "string",
@@ -160,6 +186,16 @@
             "prose_observation",
             "pytest_node_id"
           ]
+        },
+        {
+          "path": "data.implementation",
+          "type": "object",
+          "format": "required unless the top-level result is blocked; the stage's required data names the complete child set"
+        },
+        {
+          "path": "data.implementation.changed_files[]",
+          "type": "string",
+          "format": "workspace-relative path of a file the stage changed; every entry MUST be a string, MUST exist, and MUST appear in the workspace diff"
         },
         {
           "path": "data.implementation.tests_added[]",
@@ -199,6 +235,12 @@
           "format": "non-empty string array of paths, commands, or observations proving the remediation"
         },
         {
+          "path": "data.blocked",
+          "type": "object",
+          "required": ["missing_precondition", "supplying_command", "evidence"],
+          "format": "required when the top-level result is blocked, and forbidden otherwise"
+        },
+        {
           "path": "data.blocked.missing_precondition",
           "type": "string",
           "format": "required when top-level result is blocked; states the precondition implementation could not obtain"
@@ -222,8 +264,12 @@
           "enforcement": "blocks",
           "enforced_fields": [
             "data.verify.verdict",
+            "data.verify.findings[].id",
             "data.verify.findings[].severity",
             "data.verify.findings[].source",
+            "data.verify.findings[].statement",
+            "data.verify.findings[].evidence[]",
+            "data.verify.qa_cases[].id",
             "data.verify.qa_cases[].steps",
             "data.verify.qa_cases[].expected",
             "data.verify.qa_cases[].actual",
@@ -231,6 +277,8 @@
             "data.verify.qa_cases[].carried_from",
             "data.verify.qa_cases[].carried_from.invocation_id",
             "data.verify.qa_cases[].carried_from.workspace_fingerprint",
+            "data.verify.acceptance_results[].id",
+            "data.verify.acceptance_results[].result",
             "data.verify.gate_evidence_citations[]",
             "data.verify.gate_evidence_citations[].profile",
             "data.verify.gate_evidence_citations[].fingerprint",
@@ -249,6 +297,11 @@
           "enum": ["pass", "pass_with_warnings", "fail_remedial", "fail_severe"]
         },
         {
+          "path": "data.verify.findings[].id",
+          "type": "string",
+          "format": "non-empty stable finding identifier"
+        },
+        {
           "path": "data.verify.findings[].severity",
           "type": "string",
           "enum": ["blocker", "high", "medium", "low"]
@@ -258,6 +311,21 @@
           "type": "string",
           "enum": ["review", "qa", "design-review", "design-qa"],
           "format": "names the evidence worker the finding came from; 'design-review' and 'design-qa' are available only on a design-composed verify stage that runs those workers"
+        },
+        {
+          "path": "data.verify.findings[].statement",
+          "type": "string",
+          "format": "one non-empty sentence stating the finding"
+        },
+        {
+          "path": "data.verify.findings[].evidence[]",
+          "type": "string",
+          "format": "non-empty string array of paths, commands, or observations proving the finding"
+        },
+        {
+          "path": "data.verify.qa_cases[].id",
+          "type": "string",
+          "format": "non-empty stable QA case identifier"
         },
         {
           "path": "data.verify.qa_cases[].expected",
@@ -292,6 +360,16 @@
           "path": "data.verify.qa_cases[].carried_from.workspace_fingerprint",
           "type": "string",
           "format": "workspace fingerprint the carried result was observed at"
+        },
+        {
+          "path": "data.verify.acceptance_results[].id",
+          "type": "string",
+          "format": "acceptance criterion id the ratified plan defines"
+        },
+        {
+          "path": "data.verify.acceptance_results[].result",
+          "type": "string",
+          "format": "non-empty result for the criterion, such as pass or fail"
         },
         {
           "path": "data.verify.gate_evidence_citations[]",
@@ -342,17 +420,43 @@
           "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
           "enforcement": "blocks",
           "enforced_fields": [
+            "data.acceptance_results[].evidence[]",
+            "data.implementation.changed_files[]",
             "data.implementation.tests_added[]",
             "data.implementation.tests_added[].path",
             "data.implementation.tests_added[].contract",
             "data.implementation.remediation[]",
             "data.implementation.remediation[].cause",
             "data.implementation.remediation[].action",
-            "data.implementation.remediation[].evidence[]"
+            "data.implementation.remediation[].evidence[]",
+            "data.acceptance_results[]",
+            "data.acceptance_results[].id",
+            "data.acceptance_results[].result",
+            "data.implementation",
+            "data.blocked",
+            "data.blocked.missing_precondition",
+            "data.blocked.supplying_command",
+            "data.blocked.evidence[]"
           ]
         }
       ],
       "fields": [
+        {
+          "path": "data.acceptance_results[]",
+          "type": "object",
+          "required": ["id", "result", "evidence"],
+          "format": "one result per ratified acceptance criterion; id names the criterion, result uses the shared criterion-result vocabulary, and evidence is non-empty"
+        },
+        {
+          "path": "data.acceptance_results[].id",
+          "type": "string",
+          "format": "acceptance criterion id the ratified plan declares"
+        },
+        {
+          "path": "data.acceptance_results[].result",
+          "type": "string",
+          "format": "non-empty; the criterion outcome this stage observed"
+        },
         {
           "path": "data.acceptance_results[].evidence[]",
           "type": "string",
@@ -362,6 +466,16 @@
             "prose_observation",
             "pytest_node_id"
           ]
+        },
+        {
+          "path": "data.implementation",
+          "type": "object",
+          "format": "required unless the top-level result is blocked; the stage's required data names the complete child set"
+        },
+        {
+          "path": "data.implementation.changed_files[]",
+          "type": "string",
+          "format": "workspace-relative path of a file the stage changed; every entry MUST be a string, MUST exist, and MUST appear in the workspace diff"
         },
         {
           "path": "data.implementation.tests_added[]",
@@ -399,6 +513,27 @@
           "path": "data.implementation.remediation[].evidence[]",
           "type": "string",
           "format": "non-empty string array of paths, commands, or observations proving the remediation"
+        },
+        {
+          "path": "data.blocked",
+          "type": "object",
+          "required": ["missing_precondition", "supplying_command", "evidence"],
+          "format": "required when the top-level result is blocked, and forbidden otherwise"
+        },
+        {
+          "path": "data.blocked.missing_precondition",
+          "type": "string",
+          "format": "required when top-level result is blocked; states the precondition the stage could not obtain"
+        },
+        {
+          "path": "data.blocked.supplying_command",
+          "type": "string",
+          "format": "required when top-level result is blocked; the command or action that would supply the precondition"
+        },
+        {
+          "path": "data.blocked.evidence[]",
+          "type": "string",
+          "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
         }
       ]
     },
@@ -408,10 +543,39 @@
           "registry_id": "RELEASE-VALIDATE-001",
           "enforcement": "blocks",
           "enforced_fields": [
+            "data.release.local_release",
+            "data.release.local_release.release_commit",
+            "data.release.local_release.index_commit",
+            "data.release.local_release.fetched_main",
+            "data.release.local_release.branch",
+            "data.release.local_release.pr_description_path",
+            "data.release.versioning",
+            "data.release.versioning.current_version",
+            "data.release.versioning.proposed_version",
+            "data.release.versioning.recommendation",
+            "data.release.versioning.baseline_commit",
+            "data.release.versioning.rationale",
+            "data.release.versioning.compatibility",
+            "data.release.versioning.release_index_action",
+            "data.release.versioning.updated_files[]",
             "data.release.change_list[]",
             "data.release.change_list[].path",
             "data.release.change_list[].kind",
-            "data.release.change_list[].description"
+            "data.release.change_list[].description",
+            "data.release.rollback_plan",
+            "data.release.governance_artifact_review",
+            "data.release.governance_artifact_review.summary",
+            "data.release.governance_artifact_review.issues_reviewed[]",
+            "data.release.validation[]",
+            "data.release.validation[].workspace_fingerprint",
+            "data.release.validation[].evidence_path",
+            "data.release.deferred_acceptance_criteria[]",
+            "data.release.follow_up_cases[]",
+            "data.release.follow_up_cases[].id",
+            "data.release.follow_up_cases[].evidence[]",
+            "data.release.disclosed_waivers[]",
+            "data.release.disclosed_waivers[].waiver_id",
+            "data.release.disclosed_waivers[].workspace_fingerprint"
           ]
         },
         {
@@ -421,9 +585,102 @@
       ],
       "fields": [
         {
+          "path": "data.release.local_release",
+          "type": "object",
+          "required": [
+            "release_commit",
+            "index_commit",
+            "fetched_main",
+            "branch",
+            "pr_description_path"
+          ],
+          "format": "required in self-development when the invocation names a managed worktree; carries the completed local release commits, ancestry, branch, and PR evidence"
+        },
+        {
+          "path": "data.release.local_release.release_commit",
+          "type": "string",
+          "format": "full 40-character lowercase hash of the immutable release commit"
+        },
+        {
+          "path": "data.release.local_release.index_commit",
+          "type": "string",
+          "format": "full 40-character lowercase hash of the release/index.json commit, which MUST be HEAD with the release commit as its parent"
+        },
+        {
+          "path": "data.release.local_release.fetched_main",
+          "type": "string",
+          "format": "full 40-character lowercase hash of the fetched main the release commit descends from"
+        },
+        {
+          "path": "data.release.local_release.branch",
+          "type": "string",
+          "format": "name of the finalized worktree branch"
+        },
+        {
+          "path": "data.release.local_release.pr_description_path",
+          "type": "string",
+          "format": "harness-relative path of the final PR description, which MUST resolve inside the installation and name the release commit range"
+        },
+        {
+          "path": "data.release.versioning",
+          "type": "object",
+          "required": [
+            "current_version",
+            "proposed_version",
+            "recommendation",
+            "baseline_commit",
+            "rationale",
+            "compatibility",
+            "release_index_action",
+            "updated_files"
+          ],
+          "format": "required in self-development; carries the version decision and the metadata files it changed"
+        },
+        {
+          "path": "data.release.versioning.current_version",
+          "type": "string",
+          "format": "complete Semantic Versioning value equal to the committed VERSION before the bump"
+        },
+        {
+          "path": "data.release.versioning.proposed_version",
+          "type": "string",
+          "format": "complete Semantic Versioning value for the selected bump, or a higher version pan release allocate handed this worktree for the same bump"
+        },
+        {
+          "path": "data.release.versioning.recommendation",
+          "type": "string",
+          "enum": ["major", "minor", "patch"]
+        },
+        {
+          "path": "data.release.versioning.baseline_commit",
+          "type": "string",
+          "format": "full 40-character lowercase hash of the commit that introduced current_version, which MUST be an ancestor of HEAD"
+        },
+        {
+          "path": "data.release.versioning.rationale",
+          "type": "string",
+          "format": "non-empty explanation of the selected bump"
+        },
+        {
+          "path": "data.release.versioning.compatibility",
+          "type": "string",
+          "format": "non-empty description of the compatibility impact"
+        },
+        {
+          "path": "data.release.versioning.release_index_action",
+          "type": "string",
+          "format": "non-empty description of the completed separate release/index.json commit"
+        },
+        {
+          "path": "data.release.versioning.updated_files[]",
+          "type": "string",
+          "format": "release metadata path the bump changed; the array MUST contain only path strings and MUST include CHANGELOG.md, VERSION, docs/embedded-installation.md, package-lock.json, and package.json"
+        },
+        {
           "path": "data.release.change_list[]",
           "type": "object",
-          "required": ["path", "kind", "description"]
+          "required": ["path", "kind", "description"],
+          "format": "one entry per file in the workspace diff; the diff and the change list MUST agree"
         },
         {
           "path": "data.release.change_list[].path",
@@ -441,8 +698,108 @@
           "format": "non-empty description of what changed and why"
         },
         {
+          "path": "data.release.rollback_plan",
+          "type": "string",
+          "format": "non-empty rollback plan; the legacy key 'rollback' is still accepted, and any `pan …` command the prose names MUST be a real invocation"
+        },
+        {
+          "path": "data.release.governance_artifact_review",
+          "type": "object",
+          "required": ["summary", "issues_reviewed"],
+          "format": "required when the run recorded governance or artifact issues; dispositions every recorded issue"
+        },
+        {
+          "path": "data.release.governance_artifact_review.summary",
+          "type": "string",
+          "format": "non-empty summary of the governance and artifact review"
+        },
+        {
+          "path": "data.release.governance_artifact_review.issues_reviewed[]",
+          "type": "string",
+          "format": "issue id the review dispositioned; every recorded run issue id MUST appear"
+        },
+        {
+          "path": "data.release.validation[]",
+          "type": "object",
+          "required": ["workspace_fingerprint"],
+          "format": "one entry per validation run cited by the release"
+        },
+        {
           "path": "data.release.validation[].workspace_fingerprint",
-          "type": "string"
+          "type": "string",
+          "format": "workspace fingerprint the validation ran at; it MUST be one the run stage history or a recorded waiver carries"
+        },
+        {
+          "path": "data.release.validation[].evidence_path",
+          "type": "string",
+          "format": "optional; harness-relative path of the validation evidence artifact, which MUST exist when present"
+        },
+        {
+          "path": "data.release.deferred_acceptance_criteria[]",
+          "type": "string",
+          "format": "acceptance criterion id deferred by the run; every criterion the run state defers MUST appear"
+        },
+        {
+          "path": "data.release.follow_up_cases[]",
+          "type": "object",
+          "required": ["id", "evidence"],
+          "format": "one entry per follow-up the release hands forward"
+        },
+        {
+          "path": "data.release.follow_up_cases[].id",
+          "type": "string",
+          "format": "non-empty stable follow-up identifier"
+        },
+        {
+          "path": "data.release.follow_up_cases[].evidence[]",
+          "type": "string",
+          "format": "non-empty string array of evidence paths, which MUST exist when they name a harness path"
+        },
+        {
+          "path": "data.release.disclosed_waivers[]",
+          "type": "object",
+          "required": ["waiver_id", "workspace_fingerprint"],
+          "format": "one entry per active operator gate waiver; the legacy key 'waivers' is still accepted"
+        },
+        {
+          "path": "data.release.disclosed_waivers[].waiver_id",
+          "type": "string",
+          "format": "waiver id exactly as the run state records it; a disclosure under another key does not count"
+        },
+        {
+          "path": "data.release.disclosed_waivers[].workspace_fingerprint",
+          "type": "string",
+          "format": "workspace fingerprint the run state recorded for that waiver"
+        }
+      ]
+    },
+    "prototype:intake": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.prototype_brief.technical_questions[].id",
+            "data.prototype_brief.technical_questions[].question"
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.prototype_brief.technical_questions[]",
+          "type": "object",
+          "required": ["id", "question"],
+          "format": "one entry per technical question the spike must answer"
+        },
+        {
+          "path": "data.prototype_brief.technical_questions[].id",
+          "type": "string",
+          "format": "non-empty and unique within the brief; every later prototype stage reports its results against this id"
+        },
+        {
+          "path": "data.prototype_brief.technical_questions[].question",
+          "type": "string",
+          "format": "non-empty; the question the spike result MUST answer"
         }
       ]
     },
@@ -454,11 +811,57 @@
           "enforced_fields": [
             "data.technical_approach.preconditions[].exclusions[]",
             "data.technical_approach.preconditions[].exclusions[].excluded_questions[]",
-            "data.technical_approach.preconditions[].exclusions[].operator_decision_path"
+            "data.technical_approach.preconditions[].exclusions[].operator_decision_path",
+            "data.technical_approach",
+            "data.technical_approach.preconditions[]",
+            "data.technical_approach.preconditions[].id",
+            "data.technical_approach.preconditions[].affected_questions[]",
+            "data.technical_approach.preconditions[].check",
+            "data.technical_approach.preconditions[].status",
+            "data.technical_approach.preconditions[].evidence[]",
+            "data.technical_approach.preconditions[].volatile"
           ]
         }
       ],
       "fields": [
+        {
+          "path": "data.technical_approach",
+          "type": "object",
+          "format": "required; the technical approach the spike will build against"
+        },
+        {
+          "path": "data.technical_approach.preconditions[]",
+          "type": "object",
+          "required": [
+            "id",
+            "affected_questions",
+            "check",
+            "status",
+            "evidence",
+            "volatile"
+          ],
+          "format": "one entry per precondition the approach depends on"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].id",
+          "type": "string",
+          "format": "non-empty; the id a build precondition check cites"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].affected_questions[]",
+          "type": "string",
+          "format": "non-empty array of declared technical question ids the precondition affects"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].check",
+          "type": "string",
+          "format": "non-empty; how the precondition was checked"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].evidence[]",
+          "type": "string",
+          "format": "non-empty array of paths, commands, or observations for the check"
+        },
         {
           "path": "data.technical_approach.preconditions[].status",
           "type": "string",
@@ -491,10 +894,38 @@
       "validators": [
         {
           "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.spike",
+            "data.spike.precondition_checks[]",
+            "data.spike.precondition_checks[].precondition_id",
+            "data.spike.precondition_checks[].status",
+            "data.spike.precondition_checks[].evidence[]"
+          ]
         }
       ],
       "fields": [
+        {
+          "path": "data.spike",
+          "type": "object",
+          "format": "required; the spike this stage built"
+        },
+        {
+          "path": "data.spike.precondition_checks[]",
+          "type": "object",
+          "required": ["precondition_id", "status", "evidence"],
+          "format": "one entry per volatile precondition the approach declared, rechecked immediately before source edits"
+        },
+        {
+          "path": "data.spike.precondition_checks[].precondition_id",
+          "type": "string",
+          "format": "non-empty; the approach precondition id this check answers"
+        },
+        {
+          "path": "data.spike.precondition_checks[].evidence[]",
+          "type": "string",
+          "format": "non-empty array of paths, commands, or observations for the recheck"
+        },
         {
           "path": "data.spike.precondition_checks[].status",
           "type": "string",
@@ -506,10 +937,30 @@
       "validators": [
         {
           "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.evaluation",
+            "data.evaluation.verdict",
+            "data.evaluation.question_results[]",
+            "data.evaluation.question_results[].question_id",
+            "data.evaluation.question_results[].result",
+            "data.evaluation.question_results[].cause",
+            "data.evaluation.question_results[].discard_condition_met",
+            "data.evaluation.question_results[].evidence[]",
+            "data.evaluation.question_results[].readiness_question",
+            "data.evaluation.environment_blockers[]",
+            "data.evaluation.environment_blockers[].description",
+            "data.evaluation.environment_blockers[].evidence[]",
+            "data.evaluation.environment_blockers[].affected_questions[]"
+          ]
         }
       ],
       "fields": [
+        {
+          "path": "data.evaluation",
+          "type": "object",
+          "format": "required; the evaluation of the spike against the declared questions"
+        },
         {
           "path": "data.evaluation.verdict",
           "type": "string",
@@ -521,6 +972,28 @@
           ]
         },
         {
+          "path": "data.evaluation.question_results[]",
+          "type": "object",
+          "required": [
+            "question_id",
+            "result",
+            "cause",
+            "discard_condition_met",
+            "evidence"
+          ],
+          "format": "one result per declared technical question"
+        },
+        {
+          "path": "data.evaluation.question_results[].question_id",
+          "type": "string",
+          "format": "non-empty; a technical question id the intake brief declared"
+        },
+        {
+          "path": "data.evaluation.question_results[].result",
+          "type": "string",
+          "format": "non-empty; what the spike showed for the question"
+        },
+        {
           "path": "data.evaluation.question_results[].cause",
           "type": "string",
           "enum": ["product", "environment", "mixed", "none"]
@@ -529,6 +1002,22 @@
           "path": "data.evaluation.question_results[].readiness_question",
           "type": "boolean",
           "format": "optional; true claims the explicit-readiness exemption so a readiness result may carry a product cause while an environment blocker names the same question"
+        },
+        {
+          "path": "data.evaluation.question_results[].discard_condition_met",
+          "type": "boolean",
+          "format": "required; true when the question met the discard condition the brief declared"
+        },
+        {
+          "path": "data.evaluation.question_results[].evidence[]",
+          "type": "string",
+          "format": "non-empty array of paths, commands, or observations for the result"
+        },
+        {
+          "path": "data.evaluation.environment_blockers[]",
+          "type": "object",
+          "required": ["description", "evidence", "affected_questions"],
+          "format": "one entry per environment gap that prevented a decision"
         },
         {
           "path": "data.evaluation.environment_blockers[].description",

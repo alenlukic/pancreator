@@ -469,6 +469,21 @@ export function cursorAgentTarget(
   )
 }
 
+/**
+ * The agent name a projected Cursor agent path launches under: the file's
+ * basename without its extension. Every surface that labels a delegation
+ * derives it this way, so the label and the launch always agree.
+ */
+export function cursorAgentName(
+  cursorAgentPath: string | null | undefined,
+): string | null {
+  if (typeof cursorAgentPath !== 'string' || cursorAgentPath.length === 0) {
+    return null
+  }
+
+  return path.basename(cursorAgentPath, path.extname(cursorAgentPath))
+}
+
 export function assertVariantSuffix(suffix: string): void {
   invariant(
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(suffix),
@@ -672,6 +687,54 @@ export function validateProjectionDrift(root: string): ProjectionDriftResult {
     )
 
     if (installationMode(root) === 'self_development') {
+      const cursorignorePath = path.join(root, '.cursorignore')
+      const configuredWorktreeRoot =
+        loadProjectConfig(root).worktrees?.root ?? 'worktrees/operator'
+      const managedWorkspaceRoots = [
+        configuredWorktreeRoot,
+        'runtime/worktrees',
+        '.claude/worktrees',
+      ].map((entry) => entry.replace(/^\.\//u, '').replace(/\/$/u, ''))
+
+      if (!fileExists(cursorignorePath)) {
+        errors.push('missing required file: .cursorignore')
+      } else {
+        const rules = readText(cursorignorePath)
+          .split(/\r?\n/u)
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0 && !line.startsWith('#'))
+
+        for (const rule of rules) {
+          if (rule.startsWith('!')) {
+            continue
+          }
+
+          // A rule reduces to the directory it excludes: an anchoring slash
+          // or a leading `**/` adds nothing at the repository root, and a
+          // trailing `/`, `/*`, or `/**` (in any run) excludes the tree just
+          // as the bare name does. A wildcard inside a path segment is not
+          // evaluated here, so such a rule is judged by review, not by this
+          // check.
+          let directory = rule.replace(/^\//u, '').replace(/^\*\*\//u, '')
+
+          while (/\/(?:\*\*|\*)?$/u.test(directory)) {
+            directory = directory.replace(/\/(?:\*\*|\*)?$/u, '')
+          }
+
+          const excluded = managedWorkspaceRoots.find(
+            (workspace) =>
+              workspace === directory || workspace.startsWith(`${directory}/`),
+          )
+
+          if (excluded) {
+            errors.push(
+              `.cursorignore rule '${rule}' excludes managed workspace root ` +
+                `'${excluded}'; ignore nested instruction files instead`,
+            )
+          }
+        }
+      }
+
       const gitignorePath = path.join(root, '.gitignore')
 
       if (!fileExists(gitignorePath)) {

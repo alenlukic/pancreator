@@ -1,3 +1,4 @@
+import { agentProfileExecutionAllowance } from './agent-ledger-evidence.js'
 import { gateEvidenceLabel, passedGateEvidence } from './context.js'
 import { GATE_CACHE_ACCEPTANCE_RULE } from './gate-cache.js'
 import {
@@ -5,6 +6,7 @@ import {
   renderSuiteProfileStatusLine,
 } from './suite-profile.js'
 import { sha256 } from './io.js'
+import { cursorAgentName } from './projection.js'
 import {
   renderContextReferenceBlock,
   renderPolicyBlocks,
@@ -256,12 +258,9 @@ export function orderedWorkerActions(
 
   const { delegation } = invocation
   const stageAgent =
-    typeof delegation?.cursor_agent_path === 'string'
-      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
-          /\.md$/u,
-          '',
-        )
-      : (delegation?.persona ?? invocation.stage.persona)
+    cursorAgentName(delegation?.cursor_agent_path) ??
+    delegation?.persona ??
+    invocation.stage.persona
 
   return [
     ...evidenceWorkers.map((worker, index) => ({
@@ -427,12 +426,7 @@ function renderSupervisorProcedureBody(
   // The launch must bind to this named definition: it alone carries the
   // persona's model mapping, and an ad-hoc spawn runs the executor default.
   const namedAgent =
-    typeof delegation.cursor_agent_path === 'string'
-      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
-          /\.md$/u,
-          '',
-        )
-      : delegation.persona
+    cursorAgentName(delegation.cursor_agent_path) ?? delegation.persona
 
   // `pan watch` and `pan worker record` share one command prefix built in
   // `prepare`, and that prefix — `./bin/pan` in the harness checkout, an
@@ -696,23 +690,37 @@ export function renderSupervisorProcedureMarkdown(
  * (`VERIFY-001`).
  *
  * A first visit renders nothing: every case is new work. On a return after a
- * remediation the brief bounds the re-execution by the paths that changed,
- * so the worker spends its cases on the code that moved.
+ * remediation with a bounded blast radius the brief caps re-execution by the
+ * paths that changed. A return whose remediation declared no changed path
+ * bounds nothing, so the worker re-executes its scope in full and carries no
+ * case forward.
  */
-function renderCarriedCaseScope(invocation: Invocation): string[] {
-  const scope = invocation.inputs.carried_case_scope
+function renderRemediationReturn(invocation: Invocation): string[] {
+  const returnVisit = invocation.inputs.remediation_return
 
-  if (!scope) {
+  if (!returnVisit) {
     return []
+  }
+
+  const opening =
+    'This is a return visit after remediation ' +
+    `\`${returnVisit.remediation_invocation_id}\`.`
+
+  if (returnVisit.blast_radius.length === 0) {
+    return [
+      '',
+      `${opening} That remediation declared no changed path, so nothing ` +
+        'bounds the radius: execute your scope in full and carry no case ' +
+        'forward.',
+    ]
   }
 
   return [
     '',
-    'This is a return visit after remediation ' +
-      `\`${scope.remediation_invocation_id}\`. Execute the cases your scope ` +
-      "reaches that touch the remediation's blast radius:",
+    `${opening} Execute the cases your scope reaches that touch the ` +
+      "remediation's blast radius:",
     '',
-    ...scope.blast_radius.map((changedPath) => `- \`${changedPath}\``),
+    ...returnVisit.blast_radius.map((changedPath) => `- \`${changedPath}\``),
     '',
     'Carry every other case forward with its earlier result rather than ' +
       'executing it again, and record `carried_from` on that case with the ' +
@@ -769,8 +777,19 @@ export function renderEvidenceWorkerBrief(
     ...(harnessRoot
       ? [
           '',
-          `**Harness root** \`${harnessRoot}\` — every \`./bin/pan\` command ` +
-            'in this brief runs from this directory, not the workspace.',
+          `**Harness root** \`${harnessRoot}\` — lifecycle and evidence ` +
+            'commands run from this installation directory.',
+          ...(invocation.installation_mode === 'self_development' &&
+          invocation.managed_worktree
+            ? [
+                '',
+                `**Verification root** Commands that exercise changed harness ` +
+                  `source run from \`${harnessRoot}\` as ` +
+                  `\`PANCREATOR_EXEC_ROOT=${harnessRoot}/${invocation.workspace_root} ./bin/pan …\`. ` +
+                  'Bare `./bin/pan` remains the installation-root form for ' +
+                  'lifecycle and evidence commands.',
+              ]
+            : []),
         ]
       : []),
     '',
@@ -779,22 +798,24 @@ export function renderEvidenceWorkerBrief(
     // or the gate evidence that makes running it unnecessary. The role is
     // part of that command because every evidence worker of this stage
     // shares its invocation id and owes its own recorded pass.
-    fastEvidenceCurrent
-      ? 'The implement gate already ran `fast` at this workspace ' +
-        'fingerprint. Cite that gate evidence reference from your card ' +
-        'instead of running the profile.'
-      : 'When your scope allows one validation run of the fast profile, run ' +
-        `exactly \`./bin/pan repository-check fast --run ${invocation.run_id} ` +
-        `--role ${worker.role}\` ` +
-        (harnessRoot
-          ? `from the harness root \`${harnessRoot}\` `
-          : 'from this checkout ') +
-        'so the run records the execution.',
+    invocation.inputs.remediation_return
+      ? agentProfileExecutionAllowance(true)
+      : fastEvidenceCurrent
+        ? 'The implement gate already ran `fast` at this workspace ' +
+          'fingerprint. Cite that gate evidence reference from your card ' +
+          'instead of running the profile.'
+        : `${agentProfileExecutionAllowance(false)} Run that one validation ` +
+          `as exactly \`./bin/pan repository-check fast --run ${invocation.run_id} ` +
+          `--role ${worker.role}\` ` +
+          (harnessRoot
+            ? `from the harness root \`${harnessRoot}\` `
+            : 'from this checkout ') +
+          'so the run records the execution.',
     '',
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
       'verdict; you own one evidence dimension and no verdict.',
-    ...renderCarriedCaseScope(invocation),
+    ...renderRemediationReturn(invocation),
     '',
     '## Scope',
     '',

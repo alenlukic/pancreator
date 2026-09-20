@@ -18,7 +18,7 @@ import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
-import { gitWorkspaceActivityFingerprint } from './git.js'
+import { gitWorkspaceActivityFingerprint, gitWorkspaceSnapshot } from './git.js'
 import {
   appendJsonLine,
   fileExists,
@@ -80,8 +80,8 @@ export type CompletionEvidence =
  * `--cadence-seconds` still overrides it for an operator-directed exception.
  */
 export const DEFAULT_WATCH_CADENCE_SECONDS = 60
-/** Consecutive unchanged wakes that `DELEGATE-001` calls a stall. */
-export const DEFAULT_STALL_WAKES = 2
+/** Unchanged duration before `DELEGATE-001` permits a stall verdict. */
+export const DEFAULT_STALL_TIMEOUT_SECONDS = 5 * 60
 /** Bound so a watch never outlives an abandoned session silently. */
 export const DEFAULT_WATCH_TIMEOUT_SECONDS = 4 * 60 * 60
 /** Floor that keeps a fractional test cadence from becoming a busy loop. */
@@ -134,6 +134,8 @@ export interface WatchObservation {
    * that worker stalled.
    */
   workspace_fingerprint?: string
+  /** The Git-visible workspace differs from the invocation's pre-work state. */
+  workspace_changed_from_invocation?: boolean
   /** Stable digest of the watched paths; equal digests mean no change. */
   fingerprint: string
 }
@@ -168,6 +170,8 @@ export interface WatchRecordEntry {
    * held wake, never on the wake that settles it.
    */
   completion_hold?: WeakCompletionReason
+  /** Named non-blocking diagnostics observed on this wake. */
+  advisories?: string[]
   changed?: boolean
   unchanged_wakes?: number
   terminal_state?: WatchTerminalState
@@ -180,6 +184,8 @@ export interface WatchResult {
   output_path: string
   record_path: string
   cadence_seconds: number
+  stall_timeout_seconds: number
+  /** Compatibility count derived from the duration and active cadence. */
   stall_wakes: number
   timeout_seconds: number
   armings: number
@@ -188,11 +194,15 @@ export interface WatchResult {
   ended_at: string
   elapsed_seconds: number
   background_marker_path: string | null
+  /** Exact command that starts another bounded observation after timeout. */
+  rearm_command?: string
 }
 
 export interface WatchOptions {
   invocationId?: string
   cadenceSeconds?: number
+  stallTimeoutSeconds?: number
+  /** Test and compatibility override; ordinary callers configure a duration. */
   stallWakes?: number
   timeoutSeconds?: number
   markBackground?: boolean
@@ -582,6 +592,37 @@ function workspaceFingerprint(
 }
 
 /** Inspect the invocation's output and evidence paths once. */
+export const OUTPUT_SCAFFOLD_ORDER_ADVISORY =
+  'OUTPUT_SCAFFOLD_MISSING_BEFORE_WORKSPACE_CHANGE'
+
+function workspaceChangedFromInvocation(
+  root: string,
+  invocation: Invocation,
+): boolean | null {
+  const declared = invocation.workspace_root
+
+  if (typeof declared !== 'string' || declared.length === 0) {
+    return null
+  }
+
+  const workspace = path.isAbsolute(declared)
+    ? declared
+    : path.resolve(root, declared)
+
+  if (!fileExists(workspace)) {
+    return null
+  }
+
+  try {
+    return (
+      gitWorkspaceSnapshot(workspace).fingerprint !==
+      invocation.workspace_before.fingerprint
+    )
+  } catch {
+    return null
+  }
+}
+
 export function observeInvocation(
   root: string,
   invocation: Invocation,
@@ -651,6 +692,9 @@ export function observeInvocation(
     )
   })
   const workspace = workspaceFingerprint(root, invocation)
+  const workspaceChanged = outputPresent
+    ? null
+    : workspaceChangedFromInvocation(root, invocation)
   const fingerprint = [
     ...watched.map(
       (item) => `${item.path}:${item.exists}:${item.size}:${item.mtime_ms}`,
@@ -670,6 +714,9 @@ export function observeInvocation(
     watched_paths: watched,
     run_tree_fingerprint: runTree,
     ...(workspace ? { workspace_fingerprint: workspace } : {}),
+    ...(workspaceChanged !== null
+      ? { workspace_changed_from_invocation: workspaceChanged }
+      : {}),
     fingerprint,
   }
 }
@@ -930,6 +977,7 @@ export function markDelegationBackground(
     run_id: runId,
     invocation_id: invocationId,
     launch_mode: 'background',
+    redline_category: PLATFORM_ACTION_CATEGORY.id,
     launched_at: launchedAt,
     launched_at_source: launch?.launched_at_source ?? null,
     first_marked_at: firstMarkedAt,
@@ -1441,7 +1489,11 @@ export async function watchInvocation(
   const invocationId = invocation.invocation_id
 
   const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
-  const stallWakes = options.stallWakes ?? DEFAULT_STALL_WAKES
+  const stallTimeoutSeconds =
+    options.stallTimeoutSeconds ?? DEFAULT_STALL_TIMEOUT_SECONDS
+  const stallWakes =
+    options.stallWakes ??
+    Math.max(1, Math.ceil(stallTimeoutSeconds / cadenceSeconds))
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
 
   const sleep = options.sleep ?? defaultSleep
@@ -1498,6 +1550,7 @@ export async function watchInvocation(
       output_path: invocation.output.path,
       record_path: recordRelative,
       cadence_seconds: cadenceSeconds,
+      stall_timeout_seconds: stallTimeoutSeconds,
       stall_wakes: stallWakes,
       timeout_seconds: timeoutSeconds,
       armings,
@@ -1506,6 +1559,18 @@ export async function watchInvocation(
       ended_at: new Date(endedMs).toISOString(),
       elapsed_seconds: (endedMs - startedMs) / 1000,
       background_marker_path: backgroundMarker,
+      ...(state === 'timed_out'
+        ? {
+            rearm_command:
+              `./bin/pan watch ${runId} --invocation ${invocationId} ` +
+              `--cadence-seconds ${cadenceSeconds} ` +
+              `--stall-timeout-seconds ${stallTimeoutSeconds} ` +
+              `--timeout-seconds ${timeoutSeconds}` +
+              (options.agentState
+                ? ` --agent-state ${options.agentState}`
+                : ''),
+          }
+        : {}),
     }
   }
   // An already-present output needs no timer. The wake record still proves
@@ -1562,6 +1627,7 @@ export async function watchInvocation(
 
   let previousFingerprint = initial.fingerprint
   let unchangedWakes = 0
+  let scaffoldOrderAdvised = false
   let armings = 0
   let wakes = 0
 
@@ -1599,9 +1665,19 @@ export async function watchInvocation(
     wakes += 1
     const observation = observe()
     const changed = observation.fingerprint !== previousFingerprint
+    const scaffoldOrderAdvisory =
+      !scaffoldOrderAdvised &&
+      !observation.output_present &&
+      observation.workspace_changed_from_invocation === true
+        ? OUTPUT_SCAFFOLD_ORDER_ADVISORY
+        : null
+
+    if (scaffoldOrderAdvisory) {
+      scaffoldOrderAdvised = true
+    }
 
     previousFingerprint = observation.fingerprint
-    unchangedWakes = changed ? 0 : unchangedWakes + 1
+    unchangedWakes = changed || scaffoldOrderAdvisory ? 0 : unchangedWakes + 1
 
     let terminal: WatchTerminalState | undefined
     let terminalBasis: WatchRecordEntry['terminal_basis']
@@ -1631,7 +1707,7 @@ export async function watchInvocation(
     } else {
       heldOutput = null
 
-      if (unchangedWakes >= stallWakes) {
+      if (unchangedWakes >= stallWakes && options.agentState !== 'running') {
         // A worker that scaffolded its output and then died leaves the same
         // still files as one that is thinking. The harness cannot tell those
         // apart, so it reports what it knows and sends the supervisor to the
@@ -1639,9 +1715,7 @@ export async function watchInvocation(
         // supervisor already looked and said the agent is running, which is
         // the answer the stall check was asking for.
         if (observation.output_is_scaffold) {
-          if (options.agentState !== 'running') {
-            terminal = 'unverified'
-          }
+          terminal = 'unverified'
         } else {
           terminal = 'stalled'
         }
@@ -1667,6 +1741,7 @@ export async function watchInvocation(
       ...(options.agentState ? { agent_state: options.agentState } : {}),
       ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
       ...(hold ? { completion_hold: hold } : {}),
+      ...(scaffoldOrderAdvisory ? { advisories: [scaffoldOrderAdvisory] } : {}),
       changed,
       unchanged_wakes: unchangedWakes,
       ...(terminal ? { terminal_state: terminal } : {}),
@@ -1677,6 +1752,406 @@ export async function watchInvocation(
 
     if (terminal) {
       return finish(terminal, armings, wakes)
+    }
+  }
+}
+
+export interface MultiplexedWatchTarget {
+  runId: string
+  invocationId: string
+}
+
+export function parseMultiplexedWatchTargets(
+  value: string | null,
+): MultiplexedWatchTarget[] | null {
+  if (value === null) {
+    return null
+  }
+
+  const targets = value.split(',').map((item) => {
+    const separator = item.indexOf(':')
+    const runId = separator === -1 ? '' : item.slice(0, separator).trim()
+    const invocationId =
+      separator === -1 ? '' : item.slice(separator + 1).trim()
+
+    invariant(
+      runId.length > 0 && invocationId.length > 0,
+      `Invalid watch target '${item}'. Use <run-id>:<invocation-id>.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+
+    return { runId, invocationId }
+  })
+
+  invariant(targets.length > 0, '--targets requires at least one target.', {
+    code: 'INVALID_ARGUMENT',
+  })
+
+  return targets
+}
+
+export interface MultiplexedWatchOptions {
+  cadenceSeconds?: number
+  /** Mark every target as a platform-backgrounded launch. */
+  markBackground?: boolean
+  stallTimeoutSeconds?: number
+  stallWakes?: number
+  timeoutSeconds?: number
+  /** Injected for tests. Defaults to a real timer. */
+  sleep?: (milliseconds: number) => Promise<void>
+  /** Injected for tests alongside `sleep`. Defaults to `Date.now`. */
+  now?: () => number
+  onWake?: (entry: WatchRecordEntry) => void
+}
+
+export interface MultiplexedWatchMovement {
+  run_id: string
+  invocation_id: string
+  output_path: string
+  record_path: string
+  terminal_state: WatchTerminalState | null
+}
+
+export interface MultiplexedWatchResult {
+  state: 'changed' | 'stalled' | 'unverified' | 'timed_out'
+  targets: number
+  moved: MultiplexedWatchMovement[]
+  /**
+   * Targets whose own inspection ended the wait: one that sat unchanged for
+   * the stall bound, or one holding a scaffold nobody can verify. The
+   * supervisor owes each of these the recovery `DELEGATE-001` names.
+   */
+  stalled: MultiplexedWatchMovement[]
+  cadence_seconds: number
+  stall_wakes: number
+  timeout_seconds: number
+  wakes: number
+  started_at: string
+  ended_at: string
+  elapsed_seconds: number
+}
+
+/**
+ * Watch several independent run invocations on one cadence and return as soon
+ * as any target changes. Each target receives the same schema-1 `armed` and
+ * `wake` entries as the single-invocation watch, so submission readers remain
+ * unaware of which wait form produced their ledger.
+ *
+ * Each target also keeps the two guarantees the focused watch owes its one
+ * worker. A finished-looking output whose evidence is weak buys one confirming
+ * wake rather than a verdict, so a supervisor never advances a run whose worker
+ * is still writing. A target that sits unchanged for `stallWakes` wakes ends
+ * the wait with the stall signal, because a multiplexed wait that could only
+ * report movement would hold a cohort of stalled siblings until the timeout.
+ */
+export async function watchInvocations(
+  root: string,
+  targets: MultiplexedWatchTarget[],
+  options: MultiplexedWatchOptions = {},
+): Promise<MultiplexedWatchResult> {
+  invariant(
+    targets.length > 0,
+    'A multiplexed watch requires at least one target.',
+    {
+      code: 'INVALID_ARGUMENT',
+    },
+  )
+  const unique = new Set(
+    targets.map((target) => `${target.runId}:${target.invocationId}`),
+  )
+
+  invariant(
+    unique.size === targets.length,
+    'A multiplexed watch target MUST be unique.',
+    {
+      code: 'INVALID_ARGUMENT',
+    },
+  )
+
+  const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
+  // The stall window is a duration, as for the focused watch, so a cadence
+  // change does not alter the liveness rule.
+  const stallTimeoutSeconds =
+    options.stallTimeoutSeconds ?? DEFAULT_STALL_TIMEOUT_SECONDS
+  const stallWakes =
+    options.stallWakes ??
+    Math.max(1, Math.ceil(stallTimeoutSeconds / cadenceSeconds))
+  const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
+  const sleep = options.sleep ?? defaultSleep
+  const now = options.now ?? Date.now
+  const startedMs = now()
+  const startedAt = new Date(startedMs).toISOString()
+  const watched = targets.map((target) => {
+    const invocation = resolveWatchedInvocation(
+      root,
+      target.runId,
+      target.invocationId,
+    )
+    const recordRelative = watchRecordPath(
+      root,
+      target.runId,
+      invocation.invocation_id,
+    )
+
+    recordInvocationLaunch(root, target.runId, invocation.invocation_id, {
+      defaultLaunchedAtMs: startedMs,
+      defaultSource: 'watch_arm',
+      ...(options.markBackground ? { launchMode: 'background' as const } : {}),
+    })
+
+    if (options.markBackground) {
+      markDelegationBackground(root, target.runId, invocation.invocation_id)
+    }
+
+    const initial = observeInvocation(root, invocation)
+
+    return {
+      target,
+      invocation,
+      recordRelative,
+      recordAbsolute: resolveInside(root, recordRelative),
+      initial,
+      previousFingerprint: initial.fingerprint,
+      unchangedWakes: 0,
+      scaffoldOrderAdvised: false,
+      // Non-null means a finished-looking output is held for one more
+      // observation, exactly as the focused watch holds one.
+      heldOutput: null as string | null,
+    }
+  })
+  type WatchedTarget = (typeof watched)[number]
+  const finish = (
+    state: MultiplexedWatchResult['state'],
+    moved: MultiplexedWatchMovement[],
+    stalled: MultiplexedWatchMovement[],
+    wakes: number,
+  ): MultiplexedWatchResult => {
+    const endedMs = now()
+
+    return {
+      state,
+      targets: watched.length,
+      moved,
+      stalled,
+      cadence_seconds: cadenceSeconds,
+      stall_wakes: stallWakes,
+      timeout_seconds: timeoutSeconds,
+      wakes,
+      started_at: startedAt,
+      ended_at: new Date(endedMs).toISOString(),
+      elapsed_seconds: (endedMs - startedMs) / 1000,
+    }
+  }
+  const movement = (
+    item: WatchedTarget,
+    terminal: WatchTerminalState | undefined,
+  ): MultiplexedWatchMovement => ({
+    run_id: item.target.runId,
+    invocation_id: item.invocation.invocation_id,
+    output_path: item.invocation.output.path,
+    record_path: item.recordRelative,
+    terminal_state: terminal ?? null,
+  })
+  const evidenceFor = (
+    item: WatchedTarget,
+    observation: WatchObservation,
+  ): CompletionEvidence =>
+    completionEvidenceForObservation(
+      observation,
+      launchToOutputSeconds(
+        root,
+        item.target.runId,
+        item.invocation.invocation_id,
+      ),
+      cadenceSeconds,
+    )
+  const initiallyMoved: MultiplexedWatchMovement[] = []
+
+  for (const item of watched) {
+    const evidence = evidenceFor(item, item.initial)
+
+    if (evidence.strength === 'none') {
+      continue
+    }
+
+    const terminal = evidence.strength === 'strong' ? 'completed' : undefined
+    const terminalBasis =
+      evidence.strength === 'strong' ? evidence.basis : undefined
+    const hold = evidence.strength === 'weak' ? evidence.reason : undefined
+
+    if (hold !== undefined) {
+      item.heldOutput = outputSignature(item.initial)
+    }
+
+    const entry: WatchRecordEntry = {
+      schema_version: 1,
+      event: 'wake',
+      run_id: item.target.runId,
+      invocation_id: item.invocation.invocation_id,
+      recorded_at: item.initial.observed_at,
+      cadence_seconds: cadenceSeconds,
+      wake: 0,
+      observation: item.initial,
+      ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+      ...(hold ? { completion_hold: hold } : {}),
+      changed: true,
+      unchanged_wakes: 0,
+      ...(terminal ? { terminal_state: terminal } : {}),
+    }
+
+    appendJsonLine(item.recordAbsolute, entry)
+    options.onWake?.(entry)
+
+    if (terminal) {
+      initiallyMoved.push(movement(item, terminal))
+    }
+  }
+
+  if (initiallyMoved.length > 0) {
+    return finish('changed', initiallyMoved, [], 0)
+  }
+
+  const cadenceMs = Math.round(cadenceSeconds * 1000)
+  const timeoutMs = Math.round(timeoutSeconds * 1000)
+  let dueMs = startedMs + cadenceMs
+  let wakes = 0
+
+  for (;;) {
+    const armedAt = now()
+
+    if (dueMs < armedAt) {
+      dueMs = armedAt + cadenceMs
+    }
+
+    for (const item of watched) {
+      appendJsonLine(item.recordAbsolute, {
+        schema_version: 1,
+        event: 'armed',
+        run_id: item.target.runId,
+        invocation_id: item.invocation.invocation_id,
+        recorded_at: new Date(armedAt).toISOString(),
+        cadence_seconds: cadenceSeconds,
+        wake: wakes + 1,
+        wake_due_at: new Date(dueMs).toISOString(),
+      } satisfies WatchRecordEntry)
+    }
+
+    await sleep(Math.max(0, dueMs - now()))
+    dueMs += cadenceMs
+    wakes += 1
+    const moved: MultiplexedWatchMovement[] = []
+    const stalled: MultiplexedWatchMovement[] = []
+    const timedOut = now() - startedMs >= timeoutMs
+
+    for (const item of watched) {
+      const observation = observeInvocation(root, item.invocation)
+
+      snapshotBlockedOutput(
+        root,
+        item.target.runId,
+        item.invocation.invocation_id,
+      )
+
+      const changed = observation.fingerprint !== item.previousFingerprint
+      const scaffoldOrderAdvisory =
+        !item.scaffoldOrderAdvised &&
+        !observation.output_present &&
+        observation.workspace_changed_from_invocation === true
+          ? OUTPUT_SCAFFOLD_ORDER_ADVISORY
+          : null
+
+      if (scaffoldOrderAdvisory) {
+        item.scaffoldOrderAdvised = true
+      }
+
+      item.previousFingerprint = observation.fingerprint
+      item.unchangedWakes =
+        changed || scaffoldOrderAdvisory ? 0 : item.unchangedWakes + 1
+
+      const evidence = evidenceFor(item, observation)
+      let terminal: WatchTerminalState | undefined
+      let terminalBasis: WatchRecordEntry['terminal_basis']
+      let hold: WeakCompletionReason | undefined
+
+      if (evidence.strength === 'strong') {
+        terminal = 'completed'
+        terminalBasis = evidence.basis
+      } else if (evidence.strength === 'weak') {
+        const signature = outputSignature(observation)
+
+        if (item.heldOutput === signature) {
+          // The confirming wake the held observation bought, across which the
+          // output did not move.
+          terminal = 'completed'
+          terminalBasis = 'confirming_wake'
+        } else {
+          item.heldOutput = signature
+          hold = evidence.reason
+        }
+      } else {
+        item.heldOutput = null
+
+        if (item.unchangedWakes >= stallWakes) {
+          // A scaffold that stopped moving is the case the focused watch
+          // refuses to call a stall: the supervisor must inspect the agent
+          // itself, which a group wait cannot report for one member.
+          terminal = observation.output_is_scaffold ? 'unverified' : 'stalled'
+        }
+      }
+
+      const movedNow =
+        terminal === 'completed' || (changed && hold === undefined)
+
+      if (!movedNow && terminal === undefined && timedOut) {
+        terminal = hold === undefined ? 'timed_out' : 'unverified'
+      }
+
+      const entry: WatchRecordEntry = {
+        schema_version: 1,
+        event: 'wake',
+        run_id: item.target.runId,
+        invocation_id: item.invocation.invocation_id,
+        recorded_at: observation.observed_at,
+        cadence_seconds: cadenceSeconds,
+        wake: wakes,
+        observation,
+        ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+        ...(hold ? { completion_hold: hold } : {}),
+        ...(scaffoldOrderAdvisory
+          ? { advisories: [scaffoldOrderAdvisory] }
+          : {}),
+        changed,
+        unchanged_wakes: item.unchangedWakes,
+        ...(terminal ? { terminal_state: terminal } : {}),
+      }
+
+      appendJsonLine(item.recordAbsolute, entry)
+      options.onWake?.(entry)
+
+      if (movedNow) {
+        moved.push(movement(item, terminal))
+      } else if (terminal === 'stalled' || terminal === 'unverified') {
+        stalled.push(movement(item, terminal))
+      }
+    }
+
+    if (moved.length > 0) {
+      return finish('changed', moved, stalled, wakes)
+    }
+
+    if (stalled.length > 0) {
+      return finish(
+        stalled.some((item) => item.terminal_state === 'stalled')
+          ? 'stalled'
+          : 'unverified',
+        [],
+        stalled,
+        wakes,
+      )
+    }
+
+    if (timedOut) {
+      return finish('timed_out', [], stalled, wakes)
     }
   }
 }
@@ -1961,6 +2436,14 @@ export interface RedlineCategory {
   harness_authority: string
 }
 
+/** A platform action taken on the session, distinct from guidance it emitted. */
+export const PLATFORM_ACTION_CATEGORY: RedlineCategory = {
+  id: 'platform_initiated_detach',
+  description:
+    'The platform detached a foreground launch from the session without the supervisor choosing a background mode.',
+  harness_authority: 'DELEGATE-001, OPERATOR-001',
+}
+
 /** Categories of platform guidance pre-declared non-authoritative in a run. */
 export const REDLINE_CATEGORIES: RedlineCategory[] = [
   {
@@ -2051,6 +2534,7 @@ export interface RedlineRecord {
   authority_source: string
   policy_basis: string[]
   non_authoritative_guidance: RedlineCategory[]
+  platform_action_categories: RedlineCategory[]
   statement: string
   declarations: RedlineDeclaration[]
 }
@@ -2114,6 +2598,7 @@ export function writeRedlineRecord(
       authority_source: 'AGENTS.md, section "Authority and context"',
       policy_basis: ['OPERATOR-001', 'DELEGATE-001', 'ORCH-001'],
       non_authoritative_guidance: REDLINE_CATEGORIES,
+      platform_action_categories: [PLATFORM_ACTION_CATEGORY],
       statement:
         'The supervisor pre-declares the listed platform guidance categories ' +
         'non-authoritative for this run. Harness governance and the operator ' +

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 
 import { sha256 } from '../../src/lib/io.js'
@@ -151,6 +153,30 @@ test('implementation cards render structured field contracts', () => {
   assert.match(card, /path reference, prose observation, or pytest node id/u)
   assert.match(card, /required keys: path, contract/u)
   assert.match(card, /required keys: cause, action, evidence/u)
+})
+
+test('verify cards render finding id and evidence contracts', () => {
+  const root = sharedFixture()
+  const invocation = baseInvocation(root, 'delivery', 'verify')
+  const shared = JSON.parse(
+    readFileSync(
+      path.join(root, 'library/schemas/stage-output-requirements.json'),
+      'utf8',
+    ),
+  ) as {
+    stages: Record<string, Invocation['output']['field_contract']>
+  }
+
+  invocation.output.field_contract = shared.stages.verify
+
+  const card = renderInvocationMarkdown(invocation)
+
+  assert.match(card, /data\.verify\.findings\[\]\.id/u)
+  assert.match(card, /data\.verify\.findings\[\]\.evidence\[\]/u)
+  assert.match(
+    card,
+    /non-empty string array of paths, commands, or observations/u,
+  )
 })
 
 function delegatedInvocation(root: string): Invocation {
@@ -1131,6 +1157,12 @@ test('the evidence brief names the fast command only when no passed fast gate is
   // the brief names that directory instead of assuming this checkout.
   invocation.workspace_root = 'worktrees/operator/delivery-abc123-alpha'
   invocation.harness_root = '/srv/harness'
+  invocation.installation_mode = 'self_development'
+  invocation.managed_worktree = {
+    name: 'delivery-abc123-alpha',
+    path: invocation.workspace_root,
+    branch: 'delivery-abc123-alpha',
+  }
 
   const fromHarnessRoot = renderEvidenceWorkerBrief(
     invocation,
@@ -1138,6 +1170,14 @@ test('the evidence brief names the fast command only when no passed fast gate is
   )
 
   assert.ok(fromHarnessRoot.includes('/srv/harness'))
+  assert.match(
+    fromHarnessRoot,
+    /PANCREATOR_EXEC_ROOT=\/srv\/harness\/worktrees\/operator\/delivery-abc123-alpha \.\/bin\/pan/u,
+  )
+  assert.match(
+    fromHarnessRoot,
+    /Bare `\.\/bin\/pan` remains the installation-root form for lifecycle and evidence commands/u,
+  )
   assert.doesNotMatch(fromHarnessRoot, /from this checkout/u)
 })
 

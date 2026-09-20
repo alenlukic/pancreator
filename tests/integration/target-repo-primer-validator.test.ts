@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { validateTargetRepoPrimer } from '../../src/lib/validators/target-repo-primer.js'
-import { createFixture } from '../fixture-template.js'
+import { gitHead, gitShowFile } from '../../src/lib/git.js'
+import { validateRepository } from '../../src/lib/validation.js'
+import {
+  PRIMER_BODY_FRESHNESS_LIMIT,
+  targetRepoPrimerFreshness,
+  validateTargetRepoPrimer,
+} from '../../src/lib/validators/target-repo-primer.js'
+import { createFixture, fixtureGit } from '../fixture-template.js'
 
 interface ValidateOptions {
   installationMode?: 'embedded' | 'detached'
@@ -276,4 +282,136 @@ test('target repository primer validator rejects malformed external flow steps',
       (item) => item.code === 'primer.major_flow_steps_missing',
     ),
   )
+})
+
+test('primer version matches VERSION at its stamped source commit', () => {
+  const root = fixtureRoot()
+  const head = gitHead(root)
+
+  assert.ok(head)
+
+  const version = gitShowFile(root, head, 'VERSION')?.trim()
+
+  assert.ok(version)
+
+  const stamped = VALID_PRIMER.replace(
+    'source-head: 0123456789abcdef',
+    `source-head: ${head}`,
+  ).replace(
+    'A small service with a command-line interface.',
+    `A small service at version \`${version}\` with a command-line interface.`,
+  )
+  const passing = validateIn(root, stamped)
+
+  assert.equal(passing.status, 'passed')
+
+  const mismatch = validateIn(
+    root,
+    stamped.replace(`version \`${version}\``, 'version `0.0.0`'),
+  )
+
+  assert.equal(mismatch.status, 'failed')
+  assert.ok(
+    mismatch.issues.some((item) => item.code === 'primer.version_mismatch'),
+  )
+})
+
+function primerPath(root: string): string {
+  return path.join(root, 'docs', 'target-repo-primer.md')
+}
+
+function restamp(root: string, sourceHead: string, generatedAt: string): void {
+  const content = readFileSync(primerPath(root), 'utf8')
+    .replace(
+      /<!-- source-head: [^>]*-->/u,
+      `<!-- source-head: ${sourceHead} -->`,
+    )
+    .replace(
+      /<!-- generated-at: [^>]*-->/u,
+      `<!-- generated-at: ${generatedAt} -->`,
+    )
+
+  writeFileSync(primerPath(root), content)
+}
+
+test('primer drift reaches validation and doctor through the shared report', () => {
+  const root = fixtureRoot()
+  const freshness = targetRepoPrimerFreshness(root)
+
+  assert.equal(freshness.drifted, true)
+  assert.match(freshness.message ?? '', /source-head .* current HEAD/u)
+
+  const validation = validateRepository(root)
+
+  assert.equal(validation.target_repo_primer?.drifted, true)
+  assert.ok(
+    validation.warnings.some((warning) =>
+      warning.includes('target repository primer drift'),
+    ),
+  )
+})
+
+test('primer drift reaches doctor in a target installation', () => {
+  const root = fixtureRoot({ installationMode: 'detached' })
+  const target = path.join(root, 'target')
+
+  mkdirSync(target, { recursive: true })
+  fixtureGit(['init', '-q', '-b', 'main'], { cwd: target, encoding: 'utf8' })
+  writeFileSync(path.join(target, 'README.md'), 'target\n')
+  fixtureGit(['add', '-A'], { cwd: target, encoding: 'utf8' })
+  fixtureGit(['commit', '-qm', 'init'], { cwd: target, encoding: 'utf8' })
+
+  const targetHead = gitHead(target)
+
+  assert.ok(targetHead)
+  restamp(root, '0'.repeat(40), '2026-01-01T00:00:00Z')
+
+  const freshness = targetRepoPrimerFreshness(root)
+
+  // The primer describes the deliverable workspace, so the comparison reads
+  // that repository's head rather than the harness root's.
+  assert.equal(freshness.current_head, targetHead)
+  assert.equal(freshness.drifted, true)
+
+  const validation = validateRepository(root)
+
+  // Doctor reports the drift through this shared object. The warning stays
+  // self-development-only, so an installed harness still validates silently.
+  assert.equal(validation.target_repo_primer?.drifted, true)
+  assert.ok(
+    !validation.warnings.some((warning) =>
+      warning.includes('target repository primer'),
+    ),
+  )
+})
+
+test('an inconsistent primer stamp is reported, and its limit is stated', () => {
+  const root = fixtureRoot()
+  const head = gitHead(root)
+
+  assert.ok(head)
+
+  // The stamp names the current commit, so the drift check is satisfied,
+  // but generated-at precedes that commit, so the two header fields cannot
+  // describe one generation.
+  restamp(root, head, '2020-01-01T00:00:00Z')
+
+  const freshness = targetRepoPrimerFreshness(root)
+
+  assert.equal(freshness.drifted, false)
+  assert.equal(freshness.stamp_predates_source, true)
+  assert.match(freshness.message ?? '', /stamp is inconsistent/u)
+
+  // Moving the timestamp forward over the same body clears the signal, and
+  // that is the boundary of what this check can see: the file carries no
+  // evidence of its own body's age. The result says so rather than
+  // reporting a clean stamp as a fresh body.
+  restamp(root, head, new Date().toISOString())
+
+  const restamped = targetRepoPrimerFreshness(root)
+
+  assert.equal(restamped.stamp_predates_source, false)
+  assert.equal(restamped.message, null)
+  assert.equal(restamped.body_freshness, 'unverified')
+  assert.match(PRIMER_BODY_FRESHNESS_LIMIT, /pan-build-docs/u)
 })

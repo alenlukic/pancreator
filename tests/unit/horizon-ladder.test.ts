@@ -13,14 +13,18 @@ function state(): RunState {
   return {} as RunState
 }
 
-test('two transient signatures spend retries before the strategy switch', () => {
+test('two transient signatures spend retries on the declared repair route before the strategy switch', () => {
   const run = state()
 
+  // The stage names its repair route, so a retry follows it instead of
+  // re-running the failed stage against an unchanged workspace.
   assert.deepEqual(classifyHorizonFailure(run, stage, ['first']), {
-    kind: 'retry',
+    kind: 'route',
+    target: 'remediate',
   })
   assert.deepEqual(classifyHorizonFailure(run, stage, ['second']), {
-    kind: 'retry',
+    kind: 'route',
+    target: 'remediate',
   })
   assert.deepEqual(classifyHorizonFailure(run, stage, ['third']), {
     kind: 'strategy',
@@ -33,7 +37,7 @@ test('two transient signatures spend retries before the strategy switch', () => 
 test('a repeated signature skips retry and the first post-switch failure exhausts', () => {
   const run = state()
 
-  assert.equal(classifyHorizonFailure(run, stage, ['same']).kind, 'retry')
+  assert.equal(classifyHorizonFailure(run, stage, ['same']).kind, 'route')
   assert.deepEqual(classifyHorizonFailure(run, stage, ['same']), {
     kind: 'strategy',
     target: 'remediate',
@@ -50,7 +54,8 @@ test('a stage without a repair route moves directly beyond strategy switch', () 
   } as StageDefinition
   const run = state()
 
-  classifyHorizonFailure(run, selfLoop, ['same'])
+  // A self-looping failure transition keeps the same-stage retry.
+  assert.equal(classifyHorizonFailure(run, selfLoop, ['same']).kind, 'retry')
   const action = classifyHorizonFailure(run, selfLoop, ['same'])
 
   assert.equal(action.kind, 'exhausted')

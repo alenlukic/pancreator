@@ -41,7 +41,7 @@ import type {
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { harnessRepairCategoryErrors } from './governance/harness-repair-categories.js'
-import { HANDLER_IDS } from './requirements/handlers.js'
+import { getHandler, HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
   SUITE_PROFILE_GATE_PROFILE,
@@ -49,6 +49,7 @@ import {
   suiteProfileEvidencePath,
 } from './suite-profile.js'
 import {
+  FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_CRITERION_ID,
   FAST_WALL_PHASE_ENV,
   FAST_WALL_RUN_ID_ENV,
@@ -89,7 +90,7 @@ import { executingSourceRoot } from './build-identity.js'
 import {
   buildGateCacheEntry,
   gateCacheKey,
-  gateCacheLookup,
+  gateCacheLookupForGate,
   gateCacheStore,
   gateCacheableSnapshot,
   repositoryCheckGateCommand,
@@ -105,6 +106,7 @@ import {
 import { liveRunsBoundToWorktree } from './state.js'
 import { validateCommandGovernance } from './governance/command-coverage.js'
 import { validateTargetAuthoring } from './target-authoring.js'
+import { targetRepoPrimerFreshness } from './validators/target-repo-primer.js'
 import {
   listWorkflowSlugs,
   loadWorkflow,
@@ -2809,7 +2811,11 @@ function runShellCheck(
     !baselineLoad?.reason
       ? gateCacheKey(root, workspaceFingerprint, command)
       : null
-  const cached = cacheKey ? gateCacheLookup(root, cacheKey) : null
+  const cacheAcceptance = cacheKey
+    ? gateCacheLookupForGate(root, cacheKey)
+    : { entry: null, rejected_entry: null, rejection: null }
+  const cached = cacheAcceptance.entry
+  const cacheRejection = cacheAcceptance.rejection
   // A profile gate needs the recorded repository result for this run's delta.
   const cachedUsable =
     cached !== null && (!profileName || cached.repository_result !== undefined)
@@ -2908,6 +2914,10 @@ function runShellCheck(
     }
   }
 
+  if (cacheRejection) {
+    onProgress?.(cacheRejection)
+  }
+
   let exitCode: number | null
   let signal: NodeJS.Signals | null = null
   let stdout: string
@@ -2944,6 +2954,7 @@ function runShellCheck(
         [FAST_WALL_SERIES_ROOT_ENV]: root,
         [FAST_WALL_RUN_ID_ENV]: state.run_id,
         [FAST_WALL_PHASE_ENV]: criterion.id,
+        [FAST_WALL_CALLER_CLASS_ENV]: 'harness_gate',
         ...(suiteProfileTarget
           ? { [TEST_PROFILE_ENV]: suiteProfileTarget }
           : {}),
@@ -3096,6 +3107,7 @@ function runShellCheck(
     `finished_at=${new Date().toISOString()}`,
     `workspace_fingerprint=${workspaceFingerprint}`,
     `exit_code=${exitCode ?? 'null'}`,
+    cacheRejection ? `cache_rejection=${cacheRejection}` : null,
     signal ? `signal=${signal}` : null,
   ].filter((line): line is string => line !== null)
   const body = (out: string, err: string, note: string | null) =>
@@ -3161,6 +3173,7 @@ function runShellCheck(
           .relative(root, evidencePath)
           .split(path.sep)
           .join('/'),
+        recorded_by: 'harness',
         ...(repositoryResult ? { repository_result: repositoryResult } : {}),
         suite_profile_path: suiteProfilePath ?? null,
       }),
@@ -3779,7 +3792,10 @@ function harnessRootWrites(
     return []
   }
 
-  const after = gitWorkspaceSnapshot(root, { commitBase: harnessBefore.head })
+  // Compare the working tree to its current HEAD. An independent clean commit
+  // advances the harness branch but is not a write by this stage; an
+  // uncommitted tracked edit remains visible in the snapshot delta.
+  const after = gitWorkspaceSnapshot(root)
 
   return workspaceChangedPathsFromSnapshots(harnessBefore, after)
     .filter((relativePath) => !relativePath.startsWith('runtime/'))
@@ -4847,6 +4863,19 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
   }
 
+  const primerPath = path.join(root, 'docs', 'target-repo-primer.md')
+  // `PRIMER-001` makes this file mandatory reading for every agent in every
+  // installation, so its freshness is computed wherever it exists and rides
+  // the shared validation result that `pan doctor` reports. Only the warning
+  // is self-development-scoped, because a fresh embedded install owes zero.
+  const primerFreshness = fileExists(primerPath)
+    ? targetRepoPrimerFreshness(root)
+    : null
+
+  if (selfDevelopment && primerFreshness?.message) {
+    warnings.push(primerFreshness.message)
+  }
+
   errors.push(...validateQuestionToolAccess(root))
   errors.push(...validateEvalScenarios(root))
   errors.push(...harnessRepairCategoryErrors(root))
@@ -4897,6 +4926,33 @@ export function validateRepository(root: string): RepositoryValidationResult {
       const registry = loadRegistry(root)
       errors.push(...validateRegistry(registry, HANDLER_IDS))
       errors.push(...validatePolicyRequirements(catalog.values(), registry))
+
+      const fieldContractEntry = registry.entries.get(
+        'FIELD-CONTRACT-VALIDATE-001',
+      )
+      const fieldContractHandler = fieldContractEntry
+        ? getHandler(fieldContractEntry.handler)
+        : undefined
+
+      if (fieldContractEntry && fieldContractHandler) {
+        const fieldContract = fieldContractHandler({
+          root,
+          targetPath: 'library/schemas/stage-output-requirements.json',
+          requirement: {
+            policy_id: 'CONTRACT-001',
+            requirement_id: 'stage-field-contract-validate',
+            registry_id: fieldContractEntry.id,
+            arguments: {},
+          },
+          catalog: registry,
+        })
+
+        errors.push(
+          ...fieldContract.issues.map(
+            (item) => `stage output field contract: ${item.message}`,
+          ),
+        )
+      }
 
       for (const row of lookup.rows) {
         try {
@@ -5201,6 +5257,9 @@ export function validateRepository(root: string): RepositoryValidationResult {
     ok: errors.length === 0,
     errors,
     warnings,
+    ...(primerFreshness ? { target_repo_primer: primerFreshness } : {}),
+    // The hash identifies the validation verdict. Primer freshness is an
+    // advisory reading of a generated file and is deliberately outside it.
     report_hash: sha256({ errors, warnings }),
   }
 }

@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import {
-  AGENT_PROFILE_EXECUTION_ALLOWANCE,
+  agentProfileExecutionAllowance,
   agentRecordedProfilePasses,
 } from './agent-ledger-evidence.js'
 import type { AgentRecordedProfilePass } from './agent-ledger-evidence.js'
@@ -23,7 +23,7 @@ import { loadState, statePath } from './state.js'
 import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
-  CarriedCaseScope,
+  RemediationReturn,
   ContextReference,
   ContextReferenceStatus,
   Invocation,
@@ -838,8 +838,12 @@ export function passedGateEvidence(
       evidencePath: pass.evidencePath,
       fingerprint: pass.fingerprint,
       origin:
-        `agent-recorded pass${pass.invocationId ? ` for invocation \`${pass.invocationId}\`` : ''} ` +
-        `(${pass.ledgerPath})`,
+        pass.invokedBy === 'harness'
+          ? `harness prefetch at prepare${pass.invocationId ? ` for invocation \`${pass.invocationId}\`` : ''} ` +
+            `(${pass.ledgerPath})`
+          : `agent-recorded pass by role \`${pass.workerRole ?? 'stage'}\`` +
+            `${pass.invocationId ? ` for invocation \`${pass.invocationId}\`` : ''} ` +
+            `(${pass.ledgerPath})`,
       acceptanceMode: 'clean_pass',
       rawExitCode: 0,
       preexistingFailure: false,
@@ -860,6 +864,12 @@ function selectGateEvidence(
     return
   }
 
+  // Every surface of the card reads the allowance from the same predicate.
+  // A reference that decided for itself is how a return-visit card kept
+  // offering the run its own rule line had already forbidden.
+  const allowance = agentProfileExecutionAllowance(
+    remediationReturn(root, state, stage) !== undefined,
+  )
   const agentPasses = agentRecordedProfilePasses(root, state.run_id)
 
   for (const evidence of passedGateEvidence(
@@ -881,11 +891,11 @@ function selectGateEvidence(
           `profile \`${evidence.profile}\`, fingerprint \`${evidence.fingerprint}\`, ` +
           'and this path. Read the evidence to confirm what the gate ' +
           'covered. The verifier does not run this profile. ' +
-          AGENT_PROFILE_EXECUTION_ALLOWANCE
+          allowance
         : `This evidence predates the current workspace fingerprint ` +
           `\`${workspaceFingerprint}\`. Do not cite it as current. Record ` +
           'the gap in your verify output. ' +
-          AGENT_PROFILE_EXECUTION_ALLOWANCE,
+          allowance,
       gate_evidence: {
         profile: evidence.profile,
         fingerprint: evidence.fingerprint,
@@ -899,20 +909,20 @@ function selectGateEvidence(
 }
 
 /**
- * What a returning verification must execute again, and what it may carry
- * (`VERIFY-001`).
+ * Whether this stage is re-entered after a successful remediation, and how
+ * far that remediation reached (`VERIFY-001`).
  *
- * A second visit to a stage that reads gate evidence follows a remediation
- * that changed a bounded set of paths. Every case outside that set observed
- * the same behavior against the same code, so re-executing it buys nothing.
- * The scope is absent on the first visit, and absent when the remediation
- * declared no changed path, because then nothing bounds the radius.
+ * The return itself is one fact and the blast radius is another. Deriving
+ * the return from a non-empty radius conflated them, so a remediation that
+ * declared no changed path rendered a first-visit brief on a return visit.
+ * The marker is therefore present for every return, and an empty radius
+ * simply bounds no case.
  */
-function carriedCaseScope(
+export function remediationReturn(
   root: string,
   state: RunState,
   stage: StageDefinition,
-): CarriedCaseScope | undefined {
+): RemediationReturn | undefined {
   if (!stage.context.gate_evidence) {
     return undefined
   }
@@ -934,14 +944,10 @@ function carriedCaseScope(
     return undefined
   }
 
-  const blastRadius = outputChangedPaths(root, state, 'remediate')
-
-  return blastRadius.length > 0
-    ? {
-        remediation_invocation_id: remediation.invocation_id,
-        blast_radius: blastRadius,
-      }
-    : undefined
+  return {
+    remediation_invocation_id: remediation.invocation_id,
+    blast_radius: outputChangedPaths(root, state, 'remediate'),
+  }
 }
 
 function outputChangedPaths(
@@ -1384,14 +1390,14 @@ export function buildInvocationInputs(
     addReference(references, manifestReference)
   }
 
-  const caseScope = carriedCaseScope(options.root, state, stage)
+  const returnVisit = remediationReturn(options.root, state, stage)
 
   return {
     references: [...references.values()],
     ...(missingRequired.length > 0
       ? { missing_required: missingRequired }
       : {}),
-    ...(caseScope ? { carried_case_scope: caseScope } : {}),
+    ...(returnVisit ? { remediation_return: returnVisit } : {}),
     ...(targetInstructions ? { target_instructions: targetInstructions } : {}),
     ...(options.prDescription ? { pr_description: options.prDescription } : {}),
     ...(contextReference && contextReferenceInspection

@@ -23,6 +23,7 @@
     "A blocker or pause MUST end the affected task rather than the task collection. The harness MUST count retry bounds per task, because one failure must not consume another task's budget.",
     "The bounded escalation ladder MUST replace the same-signature pause for a task because a repeated failure should change strategy before the task is deferred.",
     "An integrating agent MAY exclude a failing unit only with a recorded reason, a follow-up item, and exclusion of its dependents. Those conditions exist because the remaining independent units must keep valid dependency evidence.",
+    "A prompt task MUST receive only its workspace and its own session runtime directory by default because an unattended launch must not inherit unrelated write reach. Its evidence MUST record those granted roots and its tool policy. The task MUST either be denied every write outside those roots by the host, with that enforcement recorded, or have every path it changed outside them recorded as an unapproved change that fails the task. An observation that excludes a tree from that recording MUST NOT report a clean scope result. A wider harness-root grant MUST be explicit and named, and a declared workspace MUST NOT resolve to the harness root.",
     {
       "text": "A supervisor MUST write run-level waste into the durable run record. That waste is what a relaxed gate surfaces in chat. The record exists because post-run review needs the same evidence without a mid-run interruption.",
       "audience": ["supervisor"]

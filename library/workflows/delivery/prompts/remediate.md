@@ -39,8 +39,10 @@ evidence is your primary input.
    declared, pick the tests in the blast radius yourself. Derive every
    command from `runtime/repository-checks.json` or the target's documented
    entry points. Static checks are cheap; run them freely.
-7. When you believe the repairs are complete, run the configured `fast`
-   profile once, as the final validation. Fix each failure, then re-run only
+7. Run a repository-check profile only through the sanctioned path
+   `./bin/pan repository-check <profile> --run <run-id>` so the execution is
+   recorded in the run ledger. When you believe the repairs are complete, run
+   the configured `fast` profile once, as the final validation. Fix each failure, then re-run only
    the impacted selection, the failing tests, and the tests you added. Do not
    run `fast` earlier and do not run it a second time. Never run the `full`
    profile yourself: the ship release gate runs it when the run enters ship.

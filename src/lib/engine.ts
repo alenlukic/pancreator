@@ -14,10 +14,12 @@ import {
   recordCohortBaselines,
   releaseCohortBaselineClaim,
 } from './cohorts.js'
+import { agentRecordedProfilePasses } from './agent-ledger-evidence.js'
 import {
   buildContextReference,
   buildInvocationInputs,
   operatorStageRepairContext,
+  remediationReturn,
   summarizePriorFailure,
 } from './context.js'
 import {
@@ -88,6 +90,8 @@ import {
 import {
   buildFastWallStageSummary,
   FAST_WALL_BASELINE_PHASE,
+  FAST_WALL_CALLER_CLASS_ENV,
+  FAST_WALL_CRITERION_ID,
   FAST_WALL_PHASE_ENV,
   FAST_WALL_RUN_ID_ENV,
   FAST_WALL_SERIES_ROOT_ENV,
@@ -164,7 +168,10 @@ import {
   openAiExecutorPreflight,
   resolveOpenAiApiKey,
 } from './executors/openai-auth.js'
-import type { OpenAiToolPolicy } from './executors/openai-tools.js'
+import {
+  OPENAI_TOOL_NAMES,
+  type OpenAiToolPolicy,
+} from './executors/openai-tools.js'
 import {
   OPENAI_SESSION_DEFAULTS,
   redactOpenAiKey,
@@ -183,20 +190,27 @@ import {
 } from './verification.js'
 import type { RatifiedAcceptanceCriterion } from './verification.js'
 import {
+  HARNESS_LAUNCH_TOKEN_ENV,
   adoptedBaselineWorkspaceDivergence,
   loadRepositoryChecks,
+  newHarnessLaunchToken,
+  recordAgentRepositoryCheckForRuns,
+  recordProfileGatePass,
+  repositoryCheckProfileName,
   runRepositoryCheck,
   runRepositorySetup,
   summarizeRepositoryCheckResult,
+  unrecordedProfileClaimAdvisories,
 } from './repository-checks.js'
 import {
   gateCacheEnabled,
   gateCacheKey,
-  gateCacheLookup,
+  gateCacheLookupForGate,
   repositoryCheckGateCommand,
   repositoryChecksConfigDigest,
 } from './gate-cache.js'
 import {
+  cursorAgentName,
   cursorAgentTarget,
   projectPersonaVariants,
   syncCursorProjection,
@@ -439,6 +453,8 @@ export interface PrepareInvocationResult {
   advisories: string[]
   /** What `--agent` had the harness write and start, when it was passed. */
   prepared_delegation?: PreparedDelegation
+  /** Evidence-role launch selected and allocated by `--agent`. */
+  prepared_evidence?: PreparedEvidenceDelegation
 }
 
 /** Delivery artifacts `pan prepare --agent <name>` owns for one invocation. */
@@ -450,6 +466,14 @@ export interface PreparedDelegation {
   /** In-flight worker model evidence, or null when no probe started. */
   model_evidence: RunModelEvidence | null
   probe_pid: number | null
+}
+
+export interface PreparedEvidenceDelegation {
+  role: string
+  agent: string
+  prompt_path: string
+  evidence_path: string
+  attempt: number
 }
 
 export interface OperationProgressOptions {
@@ -464,6 +488,8 @@ interface PrepareInvocationOptions extends OperationProgressOptions {
    * supervisor otherwise assembles and runs by hand.
    */
   agent?: string
+  /** CLI prepare owns a complete delegation packet even without --agent. */
+  prepareDelegation?: boolean
 }
 
 export interface SubmitOutputResult {
@@ -949,6 +975,27 @@ function startReleaseProfilePrefetch(
 ): ReleaseProfilePrefetchRecord | null {
   const cliPath = fileURLToPath(new URL('../cli.js', import.meta.url))
   const startedAt = now()
+  // The child proves it is this launch by presenting the token whose digest
+  // the record below carries. The record lands before the spawn so the child
+  // can never look for it too early, and the token itself never reaches disk.
+  const launch = newHarnessLaunchToken()
+  const evidence = prefetchRecordPath(
+    root,
+    state.run_id,
+    profile,
+    nextPrefetchAttempt(root, state.run_id, profile),
+  )
+  const record = {
+    schema_version: 1,
+    run_id: state.run_id,
+    profile,
+    workspace_fingerprint: workspaceFingerprint,
+    started_at: startedAt,
+    launch_digest: launch.digest,
+  }
+
+  writeJsonAtomic(evidence.absolute, record)
+
   const child = spawn(
     process.execPath,
     [
@@ -959,7 +1006,12 @@ function startReleaseProfilePrefetch(
       state.run_id,
       '--harness-initiated',
     ],
-    { cwd: root, detached: true, stdio: 'ignore' },
+    {
+      cwd: root,
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, [HARNESS_LAUNCH_TOKEN_ENV]: launch.token },
+    },
   )
 
   if (child.pid === undefined) {
@@ -977,21 +1029,7 @@ function startReleaseProfilePrefetch(
   // Keyed to the launch: a second qualifying submission for the same run and
   // profile writes its own marker rather than erasing the record of a child
   // that may still be running.
-  const evidence = prefetchRecordPath(
-    root,
-    state.run_id,
-    profile,
-    nextPrefetchAttempt(root, state.run_id, profile),
-  )
-
-  writeJsonAtomic(evidence.absolute, {
-    schema_version: 1,
-    run_id: state.run_id,
-    profile,
-    pid: child.pid,
-    workspace_fingerprint: workspaceFingerprint,
-    started_at: startedAt,
-  })
+  writeJsonAtomic(evidence.absolute, { ...record, pid: child.pid })
 
   return {
     profile,
@@ -1607,6 +1645,7 @@ function captureRepositoryCheckBaselines(
         [FAST_WALL_SERIES_ROOT_ENV]: root,
         [FAST_WALL_RUN_ID_ENV]: state.run_id,
         [FAST_WALL_PHASE_ENV]: FAST_WALL_BASELINE_PHASE,
+        [FAST_WALL_CALLER_CLASS_ENV]: 'harness_gate',
       },
     })
     onProgress?.(
@@ -2101,7 +2140,7 @@ function runStageEntryGate(
   const artifactId = `${stage.slug}-entry-${executions}`
 
   onProgress?.(
-    `running entry gate ${criterion.id} for stage '${stage.slug}' before delegation`,
+    `running entry gate ${criterion.id} for stage '${stage.slug}' before delegation (timeout ${criterion.timeout_ms ?? 'default'}ms)`,
   )
 
   const result = runEntryGateCriterion(
@@ -2367,6 +2406,7 @@ function isSameReasonSignature(current: string[], prior: string[]): boolean {
 
 type HorizonFailureAction =
   | { kind: 'retry' }
+  | { kind: 'route'; target: string }
   | { kind: 'strategy'; target: string }
   | { kind: 'exhausted'; reason: string }
 
@@ -2509,10 +2549,26 @@ export function classifyHorizonFailure(
 
   if (!repeated && ladder.retries_spent < 2) {
     ladder.retries_spent += 1
+
+    // A stage whose failure transition names another live stage already
+    // declares its repair route (verify -> remediate). The retry rung then
+    // spends its attempt on that route rather than on re-running the failed
+    // stage against an unchanged workspace, which can only reproduce the
+    // same verdict: two sessions spent a verifier, a reviewer, and a QA run
+    // per task on exactly that re-run before any remediation began.
+    const route = stage.transitions.failure
+    const repairs =
+      typeof route === 'string' &&
+      route !== stage.slug &&
+      !['succeeded', 'failed', 'canceled', 'paused'].includes(route)
+
     ladder.approaches_tried.push(
-      `retry ${ladder.retries_spent} at stage '${stage.slug}'`,
+      repairs
+        ? `retry ${ladder.retries_spent} via '${route}' from '${stage.slug}'`
+        : `retry ${ladder.retries_spent} at stage '${stage.slug}'`,
     )
-    return { kind: 'retry' }
+
+    return repairs ? { kind: 'route', target: route } : { kind: 'retry' }
   }
 
   if (ladder.strategy_switches_spent === 0) {
@@ -2751,6 +2807,47 @@ function readInvocation(root: string, relativePath: string): Invocation {
  * Append advisories to run state so `pan status` recovers them after a resume.
  * The caller must persist the state.
  */
+function emitSuiteCostInboxItem(
+  root: string,
+  state: RunState,
+  message: string,
+  evidencePath?: string,
+): string {
+  const relative = queueInboxRelativePath(
+    `${state.run_id}-fast-wall-advisory.md`,
+  )
+  const absolute = resolveInside(root, relative)
+
+  if (fileExists(absolute)) {
+    return relative
+  }
+
+  ensureDir(path.dirname(absolute))
+  writeTextAtomic(
+    absolute,
+    [
+      '# Fast-lane suite-cost advisory',
+      '',
+      '**State:** The qualified rolling fast-lane wall average exceeded its configured advisory ceiling.',
+      '**Outcome:** The release remains unblocked. The observation is queued for harness performance tuning.',
+      '**Blockers:** None.',
+      '**Next action:** Run `/pan-tune-harness` to review the suite cost and configured ceiling.',
+      '**Category:** Performance (`perf`)',
+      '',
+      '## Observation',
+      '',
+      message,
+      '',
+      `- Run: \`${state.run_id}\``,
+      `- Criterion: \`${FAST_WALL_CRITERION_ID}\``,
+      ...(evidencePath ? [`- Evidence: \`${evidencePath}\``] : []),
+      '',
+    ].join('\n'),
+  )
+
+  return relative
+}
+
 function recordRunAdvisories(
   state: RunState,
   context: Omit<RunAdvisory, 'message' | 'recorded_at'>,
@@ -2823,6 +2920,23 @@ export interface SupervisorModelEvidenceResult {
   advisories: RunAdvisory[]
 }
 
+/**
+ * How long a model-evidence hold waits for another command to release the
+ * run mutex.
+ *
+ * Every hold on that mutex is a state read and a state write, so a queue of
+ * ordinary commands drains far inside this bound. It exists to refuse a
+ * genuinely wedged holder rather than to pace normal contention. The bound
+ * covers every model-evidence writer: `pan models evidence` is a read-mostly
+ * write that a supervisor runs beside `pan status --redline`, and a detached
+ * probe that refused would lose the answer its live call already paid for.
+ */
+const MODEL_EVIDENCE_MUTEX_WAIT_MS = 10_000
+
+const MODEL_EVIDENCE_MUTEX_OPTIONS = {
+  waitForHolderMs: MODEL_EVIDENCE_MUTEX_WAIT_MS,
+}
+
 /** Record the unpinned supervisor model that Cursor exposes for this session. */
 export function recordSupervisorModelEvidence(
   root: string,
@@ -2830,60 +2944,64 @@ export function recordSupervisorModelEvidence(
   effectiveModel: string,
   source: string,
 ): SupervisorModelEvidenceResult {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    invariant(
-      effectiveModel.trim().length > 0,
-      '--effective-model is required.',
-      {
+  return withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      invariant(
+        effectiveModel.trim().length > 0,
+        '--effective-model is required.',
+        {
+          code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
+        },
+      )
+      invariant(source.trim().length > 0, '--source is required.', {
         code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
-      },
-    )
-    invariant(source.trim().length > 0, '--source is required.', {
-      code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
-    })
+      })
 
-    const state = loadState(root, runId)
-    const existing = state.model_evidence?.find(
-      (item) => item.role === 'supervisor',
-    )
-    let advisories: RunAdvisory[] = []
+      const state = loadState(root, runId)
+      const existing = state.model_evidence?.find(
+        (item) => item.role === 'supervisor',
+      )
+      let advisories: RunAdvisory[] = []
 
-    if (existing) {
-      if (
-        normalizedModelName(existing.effective_model ?? '') ===
-        normalizedModelName(effectiveModel)
-      ) {
-        return { evidence: existing, advisories }
+      if (existing) {
+        if (
+          normalizedModelName(existing.effective_model ?? '') ===
+          normalizedModelName(effectiveModel)
+        ) {
+          return { evidence: existing, advisories }
+        }
+
+        // A mid-run model change is legitimate, so record the new fact and
+        // continue the run.
+        advisories = recordRunAdvisories(
+          state,
+          { kind: 'model_evidence', source: 'supervisor_evidence' },
+          [
+            `The supervisor model changed from ` +
+              `'${existing.effective_model}' to '${effectiveModel.trim()}' ` +
+              `during this run.`,
+          ],
+        )
+        persistRun(root, state, 'model_evidence_advisory', {
+          role: 'supervisor',
+          advisories: advisories.map((advisory) => advisory.message),
+        })
       }
 
-      // A mid-run model change is legitimate, so record the new fact and
-      // continue the run.
-      advisories = recordRunAdvisories(
-        state,
-        { kind: 'model_evidence', source: 'supervisor_evidence' },
-        [
-          `The supervisor model changed from ` +
-            `'${existing.effective_model}' to '${effectiveModel.trim()}' ` +
-            `during this run.`,
-        ],
-      )
-      persistRun(root, state, 'model_evidence_advisory', {
+      const evidence = persistModelEvidence(root, state, {
         role: 'supervisor',
-        advisories: advisories.map((advisory) => advisory.message),
+        persona: 'orchestrator',
+        declared_spec: null,
+        effective_model: effectiveModel.trim(),
+        source: source.trim(),
+        result: 'recorded',
       })
-    }
 
-    const evidence = persistModelEvidence(root, state, {
-      role: 'supervisor',
-      persona: 'orchestrator',
-      declared_spec: null,
-      effective_model: effectiveModel.trim(),
-      source: source.trim(),
-      result: 'recorded',
-    })
-
-    return { evidence, advisories }
-  })
+      return { evidence, advisories }
+    },
+    MODEL_EVIDENCE_MUTEX_OPTIONS,
+  )
 }
 
 function normalizedModelName(value: string): string {
@@ -2937,60 +3055,65 @@ export function recordInvocationModelEvidence(
   source: string,
   launchHandle: string,
 ): RunModelEvidence {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    const values = [
-      ['--invocation', invocationId],
-      ['--role', role],
-      ['--effective-model', effectiveModel],
-      ['--source', source],
-      ['--launch-handle', launchHandle],
-    ] as const
+  return withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      const values = [
+        ['--invocation', invocationId],
+        ['--role', role],
+        ['--effective-model', effectiveModel],
+        ['--source', source],
+        ['--launch-handle', launchHandle],
+      ] as const
 
-    for (const [name, value] of values) {
-      invariant(value.trim().length > 0, `${name} is required.`, {
-        code: 'INVALID_ARGUMENT',
+      for (const [name, value] of values) {
+        invariant(value.trim().length > 0, `${name} is required.`, {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const state = loadState(root, runId)
+      const { invocation } = readInvocationRecord(root, state, invocationId)
+
+      invariant(
+        invocation.run_id === runId &&
+          invocation.invocation_id === invocationId,
+        `Invocation '${invocationId}' does not belong to run '${runId}'.`,
+        { code: 'INVALID_INVOCATION' },
+      )
+
+      const roleName = role.trim()
+      const declaredWorkers = declaredWorkerSpecs(invocation)
+      const declared = declaredWorkers.find((item) =>
+        item.role === 'worker'
+          ? roleName === 'worker'
+          : item.worker_role === roleName,
+      )
+      const declaredRoles = declaredWorkers.map((item) =>
+        item.role === 'worker' ? 'worker' : (item.worker_role as string),
+      )
+
+      invariant(
+        declared,
+        `Role '${roleName}' is not declared by invocation '${invocationId}'. ` +
+          `Declared roles: ${declaredRoles.join(', ')}.`,
+        { code: 'INVALID_ARGUMENT' },
+      )
+
+      return persistModelEvidence(root, state, {
+        role: declared.role,
+        invocation_id: invocationId,
+        ...(declared.worker_role ? { worker_role: declared.worker_role } : {}),
+        persona: declared.persona,
+        declared_spec: declared.spec,
+        effective_model: effectiveModel.trim(),
+        source: source.trim(),
+        launch_handle: launchHandle.trim(),
+        result: 'recorded',
       })
-    }
-
-    const state = loadState(root, runId)
-    const { invocation } = readInvocationRecord(root, state, invocationId)
-
-    invariant(
-      invocation.run_id === runId && invocation.invocation_id === invocationId,
-      `Invocation '${invocationId}' does not belong to run '${runId}'.`,
-      { code: 'INVALID_INVOCATION' },
-    )
-
-    const roleName = role.trim()
-    const declaredWorkers = declaredWorkerSpecs(invocation)
-    const declared = declaredWorkers.find((item) =>
-      item.role === 'worker'
-        ? roleName === 'worker'
-        : item.worker_role === roleName,
-    )
-    const declaredRoles = declaredWorkers.map((item) =>
-      item.role === 'worker' ? 'worker' : (item.worker_role as string),
-    )
-
-    invariant(
-      declared,
-      `Role '${roleName}' is not declared by invocation '${invocationId}'. ` +
-        `Declared roles: ${declaredRoles.join(', ')}.`,
-      { code: 'INVALID_ARGUMENT' },
-    )
-
-    return persistModelEvidence(root, state, {
-      role: declared.role,
-      invocation_id: invocationId,
-      ...(declared.worker_role ? { worker_role: declared.worker_role } : {}),
-      persona: declared.persona,
-      declared_spec: declared.spec,
-      effective_model: effectiveModel.trim(),
-      source: source.trim(),
-      launch_handle: launchHandle.trim(),
-      result: 'recorded',
-    })
-  })
+    },
+    MODEL_EVIDENCE_MUTEX_OPTIONS,
+  )
 }
 
 /** The labeled default evidence for one declared worker spec. */
@@ -3103,15 +3226,6 @@ export function recordPendingWorkerModelProbe(
   })
 }
 
-/**
- * How long a probe waits for another command to release the run mutex.
- *
- * Every hold on that mutex is a state read and a state write, so a queue of
- * ordinary commands drains far inside this bound. It exists to refuse a
- * genuinely wedged holder rather than to pace normal contention.
- */
-const PROBE_MUTEX_WAIT_MS = 10_000
-
 /** What starting one detached worker model probe left behind. */
 export interface StartedWorkerModelProbe {
   evidence: RunModelEvidence
@@ -3177,7 +3291,7 @@ export function probeRunInvocationModel(
   /** One record per parallel evidence worker the invocation declares. */
   evidence_workers: RunModelEvidence[]
 } {
-  const contended = { waitForHolderMs: PROBE_MUTEX_WAIT_MS }
+  const contended = MODEL_EVIDENCE_MUTEX_OPTIONS
   const plan = withOperationMutex(
     operationMutexPath(root, runId),
     () => {
@@ -4219,6 +4333,7 @@ function runHarnessAuthoritativeValidators(
 
 function stageFieldContract(
   root: string,
+  workflowSlug: string,
   stageSlug: string,
   requirements: NonNullable<
     Invocation['requirements']
@@ -4241,7 +4356,14 @@ function stageFieldContract(
     { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
   )
 
-  const stage = source.stages[stageSlug]
+  // The design and prototype workflows both run a stage called `intake`, and
+  // a different validator owns each one. A workflow-qualified key selects the
+  // owning entry; every slug only one workflow uses stays unqualified.
+  const contractKey =
+    source.stages[`${workflowSlug}:${stageSlug}`] === undefined
+      ? stageSlug
+      : `${workflowSlug}:${stageSlug}`
+  const stage = source.stages[contractKey]
 
   if (stage === undefined) {
     return undefined
@@ -4251,7 +4373,7 @@ function stageFieldContract(
     isRecord(stage) &&
       Array.isArray(stage.validators) &&
       Array.isArray(stage.fields),
-    `stage-output-requirements.json stages.${stageSlug} MUST declare validators and fields.`,
+    `stage-output-requirements.json stages.${contractKey} MUST declare validators and fields.`,
     { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
   )
 
@@ -4264,7 +4386,7 @@ function stageFieldContract(
         typeof validator.registry_id === 'string' &&
         (validator.enforcement === 'blocks' ||
           validator.enforcement === 'advises'),
-      `stage-output-requirements.json stages.${stageSlug} contains an invalid validator.`,
+      `stage-output-requirements.json stages.${contractKey} contains an invalid validator.`,
       { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
     )
 
@@ -4368,7 +4490,7 @@ export function assertDelegationAgentName(agent: string): void {
 function writeLabeledDelegationArtifact(
   root: string,
   invocation: Invocation,
-  agent: string,
+  agent: string | null,
 ): { artifact_path: string | null; skipped: string | null } {
   const delegation = invocation.delegation
 
@@ -4388,6 +4510,16 @@ function writeLabeledDelegationArtifact(
         'own delegation evidence at `pan delegate`.',
     }
   }
+
+  // A referenced delegation always names its projected agent, and a label a
+  // supervisor cannot launch (a persona slug, an empty string) is worse than
+  // no artifact, so a missing name fails here rather than being guessed.
+  invariant(
+    agent !== null && agent.trim().length > 0,
+    `Stage '${invocation.stage.slug}' delegation names no projected agent ` +
+      'to label its delegation artifact with.',
+    { code: 'DELEGATION_AGENT_UNRESOLVED' },
+  )
 
   const body = readText(resolveInside(root, delegation.delivery_prompt_path))
 
@@ -4451,6 +4583,221 @@ function resolveStageForAttempt(
     typeof verdict === 'string' ? byVerdict.map[verdict] : undefined
 
   return persona ? { ...stage, persona } : stage
+}
+
+/** Refresh stale interior checks before a post-remediation verification. */
+/**
+ * Refresh every interior profile whose evidence the intervening remediation
+ * superseded, before a returning verify stage delegates (`VERIFY-001`).
+ *
+ * A profile that fails here says the repair is incomplete, which is an
+ * ordinary workflow outcome rather than a programmer error. Throwing left
+ * `pan prepare` with no route and no durable record, so the failure returns
+ * the run along the stage's own failure transition instead, with the
+ * execution recorded in the run's repository-check ledger.
+ */
+function refreshReturningVerifyProfiles(
+  root: string,
+  state: RunState,
+  workflow: WorkflowDefinition,
+  stage: StageDefinition,
+  invocationId: string,
+  onProgress?: (message: string) => void,
+): 'pass' | 'routed' | 'paused' {
+  // The card's return marker and this refresh MUST answer "is this a return
+  // visit" the same way. They used different predicates, so a history of
+  // verify(failure), remediate(success), verify(blocked) rendered a brief
+  // that forbade profile execution while the harness refreshed nothing.
+  const returnVisit = remediationReturn(root, state, stage)
+
+  if (!returnVisit) {
+    return 'pass'
+  }
+
+  const remediation = state.stage_history.find(
+    (item) => item.invocation_id === returnVisit.remediation_invocation_id,
+  )
+
+  if (!remediation) {
+    return 'pass'
+  }
+
+  const workspace = workspaceSnapshotForRun(root, state)
+  const currentProfiles = new Set<string>()
+
+  // Evidence produced before remediation is stale by ordering even when the
+  // fixture or a no-op repair leaves the Git fingerprint unchanged. Only the
+  // remediation submission itself can make a profile current for this return.
+  for (const result of remediation.deterministic) {
+    const profile = result.command
+      ? repositoryCheckProfileName(result.command)
+      : null
+
+    if (
+      profile &&
+      result.passed &&
+      result.workspace_fingerprint === workspace.fingerprint
+    ) {
+      currentProfiles.add(profile)
+    }
+  }
+
+  // A refresh this function already performed is current evidence too. The
+  // return predicate now spans a blocked retry, so without this the same
+  // profiles would execute again at every prepare of the same workspace.
+  for (const pass of agentRecordedProfilePasses(root, state.run_id)) {
+    if (pass.fingerprint === workspace.fingerprint) {
+      currentProfiles.add(pass.profile)
+    }
+  }
+
+  for (const profile of collectStageRepositoryCheckProfiles(
+    workflow.stages,
+    state,
+  )) {
+    if (currentProfiles.has(profile.name)) {
+      continue
+    }
+
+    onProgress?.(
+      `refreshing post-remediation '${profile.name}' evidence before verify`,
+    )
+    const startedAt = now()
+    const result = runRepositoryCheck(root, profile.name, {
+      timeout_ms: profile.timeout_ms,
+      workspace: state.workspace_root || '.',
+    })
+
+    if (result.status !== 'passed') {
+      recordAgentRepositoryCheckForRuns(
+        root,
+        [state.run_id],
+        result,
+        startedAt,
+        'harness',
+        null,
+        false,
+        null,
+        invocationId,
+      )
+
+      return routeFailedVerifyProfileRefresh(
+        root,
+        state,
+        stage,
+        profile.name,
+        result,
+        onProgress,
+      )
+    }
+
+    const pass = recordProfileGatePass(root, profile.name, result, {
+      run_ids: [state.run_id],
+      fingerprint_before: workspace.fingerprint,
+      started_at: startedAt,
+      initiator: 'harness',
+    })
+
+    if (!pass) {
+      // The profile passed but the workspace moved under it, so the pass
+      // proves nothing about the tree verify is about to read. That is the
+      // same unusable outcome as a failure and takes the same durable route.
+      recordAgentRepositoryCheckForRuns(
+        root,
+        [state.run_id],
+        result,
+        startedAt,
+        'harness',
+        null,
+        false,
+        null,
+        invocationId,
+      )
+
+      return routeFailedVerifyProfileRefresh(
+        root,
+        state,
+        stage,
+        profile.name,
+        result,
+        onProgress,
+        'the workspace moved while the refresh ran, so its pass could not be recorded',
+      )
+    }
+
+    recordAgentRepositoryCheckForRuns(
+      root,
+      [state.run_id],
+      result,
+      startedAt,
+      'harness',
+      pass.evidence_path,
+      false,
+      null,
+      invocationId,
+    )
+  }
+
+  return 'pass'
+}
+
+/**
+ * Send a run whose post-remediation profile refresh failed back along the
+ * verify stage's own failure transition, the same route a failing verdict
+ * takes. A workflow limit that intercepts the route pauses the run for the
+ * operator, exactly as it does for a failed entry gate.
+ */
+function routeFailedVerifyProfileRefresh(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  profileName: string,
+  result: ReturnType<typeof runRepositoryCheck>,
+  onProgress?: (message: string) => void,
+  cause = `the profile ended with status '${result.status}'`,
+): 'routed' | 'paused' {
+  const target = stage.transitions.failure
+  const reason =
+    `Post-remediation '${profileName}' refresh did not produce usable ` +
+    `evidence before verify: ${cause}. The repaired workspace does not ` +
+    'satisfy a profile this stage reads, so the run returns for repair ' +
+    'rather than verifying against superseded evidence.'
+
+  onProgress?.(reason)
+  recordRunAdvisories(
+    state,
+    { kind: 'verify_profile_refresh', source: 'prepare', stage: stage.slug },
+    [reason],
+  )
+
+  if (!target) {
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision', operator_only: true }
+    writeDecision(root, state, 'Post-remediation refresh failed', reason, [
+      `Send the run back for repair with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+    ])
+    persistRun(root, state, 'run_paused', { reason, stage: stage.slug })
+
+    return 'paused'
+  }
+
+  applyTransition(root, state, stage, 'failure')
+
+  if (state.status !== 'running') {
+    persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+    return 'paused'
+  }
+
+  persistRun(root, state, 'verify_profile_refresh_failed', {
+    stage: stage.slug,
+    profile: profileName,
+    routed_to: target,
+  })
+
+  return 'routed'
 }
 
 /** Agent-registry bookkeeping a lifecycle call owes once its state is durable. */
@@ -4673,6 +5020,20 @@ export function prepareInvocation(
       stage.slug,
       attempt,
     )
+
+    if (
+      refreshReturningVerifyProfiles(
+        root,
+        state,
+        workflow,
+        stage,
+        invocationId,
+        options.onProgress,
+      ) !== 'pass'
+    ) {
+      return { state, invocation: null, advisories }
+    }
+
     const layout = resolveRunLayout(root, runId)
 
     const outputPath = layout.output(invocationId).relative
@@ -4908,6 +5269,7 @@ export function prepareInvocation(
     const requiredData = { ...(stage.required_data ?? {}) }
     const fieldContract = stageFieldContract(
       root,
+      workflow.slug,
       stage.slug,
       requirements.validation_requirements,
       artifactsRequested,
@@ -4971,6 +5333,11 @@ export function prepareInvocation(
       attempt,
       created_at: now(),
       workspace_root: state.workspace_root || '.',
+      installation_mode: isSelfDevelopmentInstallation(root)
+        ? 'self_development'
+        : isDetachedInstallation(root)
+          ? 'detached'
+          : 'embedded',
       ...(state.managed_worktree
         ? { managed_worktree: state.managed_worktree }
         : {}),
@@ -5262,29 +5629,77 @@ export function prepareInvocation(
   // The delegation artifact and the probe belong to the delivery the
   // supervisor is about to perform, and both need the mutex this block no
   // longer holds: the probe records its marker through its own transaction.
-  if (options.agent !== undefined && result.invocation) {
-    const written = writeLabeledDelegationArtifact(
-      root,
-      result.invocation,
-      options.agent,
-    )
-    const probe =
-      written.artifact_path === null
-        ? null
-        : startDetachedWorkerModelProbe(
-            root,
-            runId,
-            result.invocation.invocation_id,
+  // A Cursor stage already names its projected agent on the invocation, so a
+  // bare prepare can produce the complete delivery packet. `--agent` remains
+  // the explicit label override, and for an evidence-role agent it answers
+  // that role's allocation as well.
+  if (
+    result.invocation &&
+    (options.prepareDelegation === true || options.agent !== undefined)
+  ) {
+    const invocation = result.invocation
+    const evidenceWorker =
+      options.agent === undefined
+        ? undefined
+        : (invocation.evidence_workers ?? []).find(
+            (worker) => worker.agent === options.agent,
           )
+    // One agent name can serve an evidence role and the stage worker at
+    // once, because both names come from the same persona projection.
+    // Answering only the evidence question then dropped the stage's own
+    // delegation artifact, so each question is answered on its own.
+    const stageAgentPath = invocation.delegation?.cursor_agent_path
+    const delegatesStage =
+      options.agent === undefined ||
+      (stageAgentPath !== undefined &&
+        path.basename(stageAgentPath, path.extname(stageAgentPath)) ===
+          options.agent)
+    let prepared: PrepareInvocationResult = result
 
-    return {
-      ...result,
-      prepared_delegation: {
-        ...written,
-        model_evidence: probe?.evidence ?? null,
-        probe_pid: probe?.probe_pid ?? null,
-      },
+    if (evidenceWorker) {
+      const evidenceAttempt = evidenceWorkerAttempts(evidenceWorker).at(-1)
+
+      invariant(evidenceAttempt, 'Prepared evidence worker has no attempt.', {
+        code: 'EVIDENCE_ATTEMPT_MISSING',
+      })
+
+      prepared = {
+        ...prepared,
+        prepared_evidence: {
+          role: evidenceWorker.role,
+          agent: evidenceWorker.agent,
+          prompt_path: evidenceAttempt.brief_path,
+          evidence_path: evidenceAttempt.evidence_path,
+          attempt: evidenceAttempt.attempt,
+        },
+      }
     }
+
+    if (!evidenceWorker || delegatesStage) {
+      // Only a referenced-mode delegation writes an artifact, and every such
+      // delegation names its projected agent, so the label is never derived
+      // from a persona: a persona slug is not an agent a supervisor can launch.
+      const written = writeLabeledDelegationArtifact(
+        root,
+        invocation,
+        options.agent ?? cursorAgentName(stageAgentPath),
+      )
+      const probe =
+        written.artifact_path === null
+          ? null
+          : startDetachedWorkerModelProbe(root, runId, invocation.invocation_id)
+
+      prepared = {
+        ...prepared,
+        prepared_delegation: {
+          ...written,
+          model_evidence: probe?.evidence ?? null,
+          probe_pid: probe?.probe_pid ?? null,
+        },
+      }
+    }
+
+    return prepared
   }
 
   return result
@@ -5486,13 +5901,15 @@ export function claudeCodeToolPolicy(
   workspaceDir: string,
   stage: StageDefinition,
 ): { allowedTools: string[]; addDirs: string[] } {
+  const workspaceWritable = stageWriteRoots(root, workspaceDir, stage).includes(
+    workspaceDir,
+  )
   const allowedTools = [
     'Read',
     'Grep',
     'Glob',
-    'Bash',
-    ...(stageWriteRoots(root, workspaceDir, stage).includes(workspaceDir)
-      ? ['Write', 'Edit']
+    ...(workspaceWritable
+      ? ['Bash', 'Write', 'Edit']
       : claudeCodeWriteRules(root, workspaceDir)),
   ]
   const relative = path.relative(workspaceDir, root)
@@ -5515,6 +5932,11 @@ export function openAiToolPolicy(
     workspaceDir,
     readRoots: [...new Set([workspaceDir, root])],
     writeRoots: stageWriteRoots(root, workspaceDir, stage),
+    allowedTools: stageWriteRoots(root, workspaceDir, stage).includes(
+      workspaceDir,
+    )
+      ? [...OPENAI_TOOL_NAMES]
+      : OPENAI_TOOL_NAMES.filter((name) => name !== 'run_shell'),
     maxResultBytes: bounds.maxResultBytes,
     shellTimeoutMs: bounds.shellTimeoutMs,
   }
@@ -6856,6 +7278,18 @@ export function submitOutput(
       workspaceDirectory(root, state),
       { commitBase: invocation.workspace_before.head },
     )
+    const profileClaimAdvisories = unrecordedProfileClaimAdvisories(
+      root,
+      runId,
+      workspaceAfter.fingerprint,
+      submittedValue,
+    )
+
+    advise(
+      'repository_check_claim',
+      profileClaimAdvisories.map((advisory) => advisory.message),
+    )
+
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
       runId,
@@ -6950,6 +7384,34 @@ export function submitOutput(
     )
 
     advise('gate_bypass', evaluated.advisories)
+
+    const suiteCostFailure = evaluated.results.find(
+      (result) =>
+        result.id === FAST_WALL_CRITERION_ID &&
+        result.passed === false &&
+        result.skipped !== true,
+    )
+
+    if (suiteCostFailure) {
+      const message =
+        suiteCostFailure.explanation ??
+        'The qualified fast-lane wall average exceeded its configured advisory ceiling.'
+      const intakePath = emitSuiteCostInboxItem(
+        root,
+        state,
+        message,
+        suiteCostFailure.evidence_path,
+      )
+
+      advise('suite_cost', [`${message} Intake: ${intakePath}.`])
+      persistRun(root, state, 'suite_cost_advisory', {
+        stage: stage.slug,
+        invocation_id: invocation.invocation_id,
+        criterion: FAST_WALL_CRITERION_ID,
+        intake_path: intakePath,
+        evidence_path: suiteCostFailure.evidence_path ?? null,
+      })
+    }
 
     // A self-development release lane can execute a build compiled from a
     // tree other than the one it releases, so the run records which build
@@ -7164,6 +7626,9 @@ export function submitOutput(
           overrideTarget: stage.slug,
         })
         nextState = state.current_stage
+      } else if (horizonFailure?.kind === 'route') {
+        applyTransition(root, state, stage, 'failure')
+        nextState = state.current_stage
       } else if (horizonFailure?.kind === 'strategy') {
         recordOperatorFeedback(
           root,
@@ -7352,14 +7817,14 @@ export function pendingReleaseProfilePrefetch(
   // A recorded pass at this fingerprint already satisfies the gate, so a
   // second computation of the same answer would be the waste this removes.
   if (
-    gateCacheLookup(
+    gateCacheLookupForGate(
       root,
       gateCacheKey(
         root,
         workspaceFingerprint,
         repositoryCheckGateCommand(profile),
       ),
-    )
+    ).entry
   ) {
     return null
   }
@@ -7578,7 +8043,7 @@ function recoveryRouteFor(
     return (
       `A run awaiting an operator continues with ` +
       `\`${pan} decide ${state.run_id} <approve|reject|revise> --note "<directive>"\`; ` +
-      `route it to another stage with \`${pan} set-stage ${state.run_id} <stage> --note "<directive>"\`.`
+      `route it to another stage with \`${pan} set-stage ${state.run_id} --stage <stage> --note "<directive>"\`.`
     )
   }
 
@@ -8286,12 +8751,21 @@ export interface RecordDelegatedWorkerOptions {
   agent?: string
   model?: string
   launchMode?: DelegatedWorkerRecord['launch_mode']
+  /**
+   * Allocate a fresh evidence attempt instead of attaching to the latest
+   * declared one. The caller knows it relaunched a worker whose first handle
+   * was never recorded; nothing on disk distinguishes that from a late
+   * handle for the launch that wrote the report already there.
+   */
+  newAttempt?: boolean
 }
 
 export interface DelegatedWorkerLaunch {
   record: DelegatedWorkerRecord
   /** Paths this launch owns, when the role is an evidence worker. */
   evidence_attempt?: EvidenceWorkerAttempt
+  /** Non-blocking notice when recording the launch extends a prepared card. */
+  warnings?: string[]
 }
 
 function readInvocationRecord(
@@ -8405,6 +8879,7 @@ export function recordDelegatedWorker(
     let declaredPaths = [invocation.output.path]
     let harnessPaths: string[] = []
     let evidenceAttempt: EvidenceWorkerAttempt | undefined
+    const warnings: string[] = []
 
     if (role !== STAGE_WORKER_ROLE) {
       const worker = (invocation.evidence_workers ?? []).find(
@@ -8422,16 +8897,42 @@ export function recordDelegatedWorker(
         { code: 'EVIDENCE_ROLE_UNKNOWN' },
       )
 
-      // A report already on disk holds its name even when no launch was
-      // recorded for it, so the ordinal is the later of the two answers.
-      attempt = Math.max(
-        attempt,
-        nextAttemptOrdinal(
-          resolveRunLayout(root, runId).evidence('.').absolute,
-          `${invocationId}.${role}-evidence`,
-          '.md',
-        ),
+      const recordedAttempts = new Set(
+        recordedForRole.map((item) => item.attempt),
       )
+      const declaredAttempts = [...(worker.attempts ?? [])].sort(
+        (left, right) => right.attempt - left.attempt,
+      )
+      // Only the latest declared attempt is attachable. An older attempt
+      // left unrecorded stays unrecorded, because a handle that attaches
+      // behind an attempt that already carries one names the wrong launch.
+      const latestDeclared = declaredAttempts[0]
+      const attachable =
+        options.newAttempt === true ||
+        latestDeclared === undefined ||
+        recordedAttempts.has(latestDeclared.attempt)
+          ? undefined
+          : latestDeclared
+
+      // `prepare` allocates the evidence paths before launch. Recording the
+      // handle afterwards attaches it to that allocation, whether or not the
+      // worker already wrote its report. A role whose latest attempt already
+      // carries a handle receives a new attempt, and so does a caller that
+      // asked for one because it relaunched an unrecorded worker.
+      attempt =
+        attachable?.attempt ??
+        Math.max(
+          attempt,
+          // A new attempt sits above every declared one. Without this floor
+          // an unrecorded earlier attempt lowers the count and the fresh
+          // allocation lands back on paths another launch already owns.
+          (latestDeclared?.attempt ?? 0) + 1,
+          nextAttemptOrdinal(
+            resolveRunLayout(root, runId).evidence('.').absolute,
+            `${invocationId}.${role}-evidence`,
+            '.md',
+          ),
+        )
 
       const existing = (worker.attempts ?? []).find(
         (item) => item.attempt === attempt,
@@ -8450,6 +8951,17 @@ export function recordDelegatedWorker(
 
       if (!existing) {
         worker.attempts = [...(worker.attempts ?? []), evidenceAttempt]
+        const cardPath = resolveRunLayout(root, runId).invocation(
+          invocationId,
+          '.md',
+        ).relative
+        const cardDigest =
+          invocation.contract_manifest?.contract_sha256 ?? 'unavailable'
+        warnings.push(
+          `Recording role '${role}' allocated attempt ${attempt} and would ` +
+            `change the paths required by prepared card '${cardPath}' ` +
+            `(sha256:${cardDigest}); continuing.`,
+        )
         writeTextAtomic(
           resolveInside(root, evidenceAttempt.brief_path),
           renderEvidenceWorkerBrief(invocation, {
@@ -8497,6 +9009,7 @@ export function recordDelegatedWorker(
     return {
       record,
       ...(evidenceAttempt ? { evidence_attempt: evidenceAttempt } : {}),
+      ...(warnings.length > 0 ? { warnings } : {}),
     }
   })
 }
@@ -9614,17 +10127,36 @@ export function waiveGate(
       ? transferWorktreeClaim(root, state, options.adoptPlanFromRunId, waiverId)
       : null
 
+    const preservesPreparedInvocation =
+      holdsInvocation &&
+      target === stage.slug &&
+      state.current_invocation !== null
+    const preparedInvocation = preservesPreparedInvocation
+      ? state.current_invocation
+      : null
+    const preparedPendingAction = preservesPreparedInvocation
+      ? state.pending_action
+      : null
+
     clearSameReasonTracker(state, stage.slug)
     state.status = 'running'
     state.pause_reason = null
     state.operator_pause = null
-    state.current_invocation = null
+    state.current_invocation = preparedInvocation
     state.consecutive_failures = 0
 
-    applyTransition(root, state, stage, 'success', {
-      overrideTarget: target,
-      operatorDirected: true,
-    })
+    if (preparedPendingAction) {
+      // A waiver on a stage that still holds its prepared card, whether it
+      // names criteria or the whole stage, changes what submission may
+      // accept; it does not discard the worker output or card that is
+      // already ready to submit.
+      state.pending_action = preparedPendingAction
+    } else {
+      applyTransition(root, state, stage, 'success', {
+        overrideTarget: target,
+        operatorDirected: true,
+      })
+    }
 
     state.last_decision_path = artifactPath
 
@@ -10006,7 +10538,11 @@ export interface EvidenceWorkerDelegation {
 export function delegateEvidenceWorkers(
   root: string,
   runId: string,
-  options: OperationProgressOptions & { headless?: boolean } = {},
+  options: OperationProgressOptions & {
+    headless?: boolean
+    /** Dispatch only these roles, so a caller can run the workers in parallel processes. */
+    roles?: string[]
+  } = {},
 ): EvidenceWorkerDelegation[] {
   const state = loadState(root, runId)
 
@@ -10029,6 +10565,10 @@ export function delegateEvidenceWorkers(
   let cursorPreflighted = false
 
   for (const worker of invocation.evidence_workers ?? []) {
+    if (options.roles && !options.roles.includes(worker.role)) {
+      continue
+    }
+
     const evidenceAbsolute = resolveInside(root, worker.evidence_path)
     const base = {
       role: worker.role,

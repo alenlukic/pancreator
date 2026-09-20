@@ -98,8 +98,14 @@
     },
     "fast_wall": {
       "type": "object",
-      "description": "Optional self-development fast-lane wall ceiling. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date and never changes for machine load.",
-      "required": ["ceiling_ms", "anchor_date", "weekly_allowance_ms"],
+      "description": "Optional self-development fast-lane wall advisory. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date; only qualified harness-gate samples under the configured normalized host-load threshold contribute.",
+      "required": [
+        "ceiling_ms",
+        "anchor_date",
+        "weekly_allowance_ms",
+        "max_load_average_per_cpu",
+        "minimum_qualified_samples"
+      ],
       "additionalProperties": false,
       "properties": {
         "ceiling_ms": {
@@ -116,6 +122,16 @@
           "type": "integer",
           "minimum": 0,
           "description": "Maximum permitted ceiling increase per complete elapsed week, in milliseconds."
+        },
+        "max_load_average_per_cpu": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Maximum qualifying one-minute load average divided by the host's logical CPU count."
+        },
+        "minimum_qualified_samples": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Qualified samples required before the advisory reports a pass or failure verdict."
         }
       }
     },

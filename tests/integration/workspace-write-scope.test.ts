@@ -133,11 +133,9 @@ test('a run with its own workspace passes when it writes only that workspace', (
   assert.equal(result.passed, true)
 })
 
-// HR4-004 ships one mechanism: the release landing moves after submit rather
-// than becoming an exception here. A ship stage that still moves the harness
-// root to its own release commit therefore fails, exactly as any other
-// harness-root delta does, and the failure names where the step belongs.
-test('a ship stage that lands its own release on the harness root still fails', () => {
+// A commit on the independent harness-root branch is not a write by the
+// worktree-bound stage. Only dirty tracked content is attributable to it.
+test('an independent clean harness-root commit does not fail scope', () => {
   const root = createFixture()
   const workspace = separateWorkspace()
   const harnessBefore = gitWorkspaceSnapshot(root)
@@ -151,9 +149,7 @@ test('a ship stage that lands its own release on the harness root still fails', 
   })
 
   assert.ok(result)
-  assert.equal(result.passed, false)
-  assert.match(result.explanation ?? '', /VERSION/u)
-  assert.match(result.explanation ?? '', /operator step after submit/u)
+  assert.equal(result.passed, true)
 })
 
 test('a stage outside the release lane is not told to land after submit', () => {

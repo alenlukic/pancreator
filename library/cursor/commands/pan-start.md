@@ -5,9 +5,13 @@ You are the supervisor for this run. Adopt `{{PANCREATOR_HARNESS_PATH}}library/p
 You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run to any child agent. Cursor honors a projected agent's model mapping only for a top-level launch. A nested supervisor silently downgrades every stage worker it launches, so the supervisor MUST stay in this session.
 
 1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`.
-2. Preserve `$ARGUMENTS` verbatim in a uniquely named Markdown file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`. Keep its harness-relative path (for example `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/request-<id>.md`) for the run record.
+2. Resolve `$ARGUMENTS` into one queue request without wrapping an existing request.
+   - Prose input is preserved verbatim in a uniquely named Markdown file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`.
+   - An argument that names an existing file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` uses that file directly. Do not create a wrapper file.
+   - When the argument names that file and also carries prose that augments it, keep the existing file content verbatim and authoritative, then append the additional prose under `## Operator note`.
+     Keep the resulting harness-relative path (for example `runtime/inbox/queue/request-<id>.md`) for the run record.
 3. Derive init options from the preserved request, following **Start** in the brief.
-   - When the request names a worktree for the run, pass `--worktree <name>` and do not combine it with `--workspace`.
+   - When the request names a worktree for the run, pass `--worktree <name>` and do not combine it with `--workspace`. The named worktree binds the planning run and is inherited by its routed single-chunk delivery run. A wider plan still derives one isolated worktree per cohort chunk, and its route refuses while the planning worktree holds uncommitted work.
    - Do not pass `--workflow` for delivery work that starts from a request. The default is `planning`. Approval of its ratified plan routes the work itself. A single-chunk plan starts one `delivery` run, and a wider plan starts cohort 1.
    - Pass `--workflow prototype`, `--workflow design`, or `--workflow delivery` only when the brief's **Start** rules select them. `delivery` applies only when the operator brings a ratified specification and asks to skip planning.
    - Pass `--with-design` when the preserved request asks for design work inside the development run. The option composes design planning before `plan` and design evidence into routed delivery verification.

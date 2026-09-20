@@ -1607,16 +1607,97 @@ function updateFileCount(
   return updated.size
 }
 
+/** Durable runtime directories whose records can cite temporal names. */
+const MUTABLE_RUNTIME_DIRECTORIES = [
+  'inbox',
+  'logs',
+  'pr-descriptions',
+  'release',
+  'research',
+  'tune-harness',
+  'workflows',
+] as const
+
+/** Traversals of the mutable population since this module was loaded. */
+let mutableRuntimeTraversals = 0
+
+/**
+ * How many times the mutable population has been walked.
+ *
+ * A maintenance invocation owes exactly one walk, and the count lives beside
+ * the walk rather than beside the memo that shares it: a caller that recomputes
+ * the population directly must be as visible as one that misses the memo.
+ * Read it as a delta across the call under test.
+ */
+export function mutableRuntimeTraversalCount(): number {
+  return mutableRuntimeTraversals
+}
+
+/** Runtime files that sit directly under `runtime/`, which no directory names. */
+function runtimeRootFiles(runtimeRoot: string): string[] {
+  if (!existsSync(runtimeRoot)) {
+    return []
+  }
+
+  return readdirSync(runtimeRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(runtimeRoot, entry.name))
+}
+
 /**
  * Every runtime file that may be rewritten when a temporal name changes.
  *
- * Worktree checkouts are excluded: they are entire target source trees that
- * can carry hundreds of thousands of dependency files and never hold runtime
- * name references.
+ * The allowlist keeps scratch, cache, worktree, and future unknown directories
+ * out by default. `release` and the files directly under `runtime/` are in it
+ * because they carry durable run ids: an append-only audit row that kept a
+ * retired id would outlive the run it names. Content-addressed evidence
+ * remains immutable inside an otherwise mutable directory.
  */
-function mutableRuntimeFiles(runtimeRoot: string): string[] {
-  return listFiles(runtimeRoot, path.join(runtimeRoot, 'worktrees')).filter(
-    (filePath) => !isContentAddressedArtifact(filePath),
+export function mutableRuntimeFiles(runtimeRoot: string): string[] {
+  mutableRuntimeTraversals += 1
+
+  return [
+    ...runtimeRootFiles(runtimeRoot),
+    ...MUTABLE_RUNTIME_DIRECTORIES.flatMap((directory) =>
+      listFiles(path.join(runtimeRoot, directory)),
+    ),
+  ].filter((filePath) => !isContentAddressedArtifact(filePath))
+}
+
+export interface RuntimeMutableFileSet {
+  runtime_root: string
+  paths: string[] | null
+}
+
+export function createRuntimeMutableFileSet(
+  runtimeRoot: string,
+): RuntimeMutableFileSet {
+  return { runtime_root: runtimeRoot, paths: null }
+}
+
+function runtimeMutablePaths(index: RuntimeMutableFileSet): string[] {
+  index.paths ??= mutableRuntimeFiles(index.runtime_root)
+
+  return index.paths
+}
+
+function relocateRuntimeMutablePaths(
+  index: RuntimeMutableFileSet | undefined,
+  source: string,
+  target: string,
+): void {
+  if (index?.paths === null || index === undefined) {
+    return
+  }
+
+  const prefix = `${source}${path.sep}`
+
+  index.paths = index.paths.map((filePath) =>
+    filePath === source
+      ? target
+      : filePath.startsWith(prefix)
+        ? path.join(target, path.relative(source, filePath))
+        : filePath,
   )
 }
 
@@ -1637,7 +1718,12 @@ function migratableDirectoryNames(root: string, directory: string): string[] {
     .sort()
 }
 
-function moveDirectory(parent: string, oldName: string, newName: string): void {
+function moveDirectory(
+  parent: string,
+  oldName: string,
+  newName: string,
+  mutableFileSet?: RuntimeMutableFileSet,
+): void {
   if (oldName === newName) {
     return
   }
@@ -1650,6 +1736,7 @@ function moveDirectory(parent: string, oldName: string, newName: string): void {
   })
 
   renameSync(source, target)
+  relocateRuntimeMutablePaths(mutableFileSet, source, target)
 }
 
 /**
@@ -1713,6 +1800,7 @@ function removeEmptyHelpDirectory(logRoot: string): number {
 
 export function migrateWorkflowNames(
   root = findProjectRoot(),
+  mutableFileSet = createRuntimeMutableFileSet(path.join(root, 'runtime')),
 ): WorkflowNameMigrationSummary {
   const runtimeRoot = path.join(root, 'runtime')
   const logRoot = path.join(runtimeRoot, 'logs', 'workflows')
@@ -1742,7 +1830,7 @@ export function migrateWorkflowNames(
   // Content-addressed artifacts are excluded for the same digest-integrity
   // reason documented in rewriteWorkflowArtifacts.
   let updatedFiles = updateFileCount(
-    mutableRuntimeFiles(runtimeRoot),
+    runtimeMutablePaths(mutableFileSet),
     runIdMappings,
   )
   let runDirectories = 0
@@ -1753,7 +1841,12 @@ export function migrateWorkflowNames(
       migration.sourceRunId !== migration.targetRunId &&
       existsSync(path.join(logRoot, migration.sourceRunId))
     ) {
-      moveDirectory(logRoot, migration.sourceRunId, migration.targetRunId)
+      moveDirectory(
+        logRoot,
+        migration.sourceRunId,
+        migration.targetRunId,
+        mutableFileSet,
+      )
       runDirectories += 1
     }
 
@@ -1761,7 +1854,12 @@ export function migrateWorkflowNames(
       migration.sourceRunId !== migration.targetRunId &&
       existsSync(path.join(stateRoot, migration.sourceRunId))
     ) {
-      moveDirectory(stateRoot, migration.sourceRunId, migration.targetRunId)
+      moveDirectory(
+        stateRoot,
+        migration.sourceRunId,
+        migration.targetRunId,
+        mutableFileSet,
+      )
       stateDirectories += 1
     }
   }
@@ -1960,6 +2058,7 @@ function standardizeTemporalFileNamesIn(
   root: string,
   parentRelative: string,
   mappings: Map<string, string>,
+  mutableFileSet?: RuntimeMutableFileSet,
 ): void {
   const parent = path.join(root, parentRelative)
 
@@ -1995,7 +2094,10 @@ function standardizeTemporalFileNamesIn(
     }
 
     taken.add(target)
-    renameSync(absolute, path.join(parent, target))
+    const targetAbsolute = path.join(parent, target)
+
+    renameSync(absolute, targetAbsolute)
+    relocateRuntimeMutablePaths(mutableFileSet, absolute, targetAbsolute)
     mappings.set(
       `${parentRelative}/${entry.name}`,
       `${parentRelative}/${target}`,
@@ -2010,6 +2112,7 @@ function standardizeTemporalFileNamesIn(
  */
 export function standardizeRuntimeFileNames(
   root = findProjectRoot(),
+  mutableFileSet = createRuntimeMutableFileSet(path.join(root, 'runtime')),
 ): RuntimeNameStandardizationSummary {
   const mappings = new Map<string, string>()
   const directories = [
@@ -2021,15 +2124,17 @@ export function standardizeRuntimeFileNames(
   ]
 
   for (const parentRelative of directories) {
-    standardizeTemporalFileNamesIn(root, parentRelative, mappings)
+    standardizeTemporalFileNamesIn(
+      root,
+      parentRelative,
+      mappings,
+      mutableFileSet,
+    )
   }
 
   const updatedFiles =
     mappings.size > 0
-      ? updateFileCount(
-          mutableRuntimeFiles(path.join(root, 'runtime')),
-          mappings,
-        )
+      ? updateFileCount(runtimeMutablePaths(mutableFileSet), mappings)
       : 0
 
   return {
@@ -2179,6 +2284,7 @@ const SUFFIX_MIGRATION_GROUPS: SuffixMigrationGroup[] = [
  */
 export function migrateRunSuffixes(
   root = findProjectRoot(),
+  mutableFileSet = createRuntimeMutableFileSet(path.join(root, 'runtime')),
 ): RunSuffixMigrationSummary {
   const runtimeRoot = path.join(root, 'runtime')
 
@@ -2265,11 +2371,11 @@ export function migrateRunSuffixes(
 
   const updatedFiles =
     mappings.size > 0
-      ? updateFileCount(mutableRuntimeFiles(runtimeRoot), mappings)
+      ? updateFileCount(runtimeMutablePaths(mutableFileSet), mappings)
       : 0
 
   for (const move of moves) {
-    moveDirectory(move.parent, move.source, move.target)
+    moveDirectory(move.parent, move.source, move.target, mutableFileSet)
   }
 
   return {
@@ -2422,7 +2528,11 @@ function bestOfNCreatedAt(directory: string): Date | null {
   return isRecord(state) ? validDate(state.created_at) : null
 }
 
-function archiveDirectory(parent: string, runId: string): void {
+function archiveDirectory(
+  parent: string,
+  runId: string,
+  mutableFileSet?: RuntimeMutableFileSet,
+): void {
   const source = path.join(parent, runId)
 
   if (!existsSync(source)) {
@@ -2437,6 +2547,7 @@ function archiveDirectory(parent: string, runId: string): void {
   })
   mkdirSync(archiveRoot, { recursive: true })
   renameSync(source, target)
+  relocateRuntimeMutablePaths(mutableFileSet, source, target)
 }
 
 /**
@@ -2470,10 +2581,14 @@ export function archiveWorkflowDirectories(
     retentionDays?: number
     now?: Date
     inboxArchive?: InboxArchiveSelection
+    mutableFileSet?: RuntimeMutableFileSet
   } = {},
 ): WorkflowArchiveSummary {
   const retentionDays = options.retentionDays ?? 7
   const now = options.now ?? new Date()
+  const mutableFileSet =
+    options.mutableFileSet ??
+    createRuntimeMutableFileSet(path.join(root, 'runtime'))
   const inboxArchive = options.inboxArchive ?? {
     complete: true,
     canceled: false,
@@ -2537,12 +2652,12 @@ export function archiveWorkflowDirectories(
     )
 
     if (existsSync(logDirectory)) {
-      archiveDirectory(logRoot, runId)
+      archiveDirectory(logRoot, runId, mutableFileSet)
       runDirectories += 1
     }
 
     if (existsSync(stateDirectory)) {
-      archiveDirectory(stateRoot, runId)
+      archiveDirectory(stateRoot, runId, mutableFileSet)
       stateDirectories += 1
     }
   }
@@ -2572,7 +2687,7 @@ export function archiveWorkflowDirectories(
         ],
       ]),
     )
-    archiveDirectory(sessionRoot, sessionId)
+    archiveDirectory(sessionRoot, sessionId, mutableFileSet)
     sessionDirectories += 1
   }
 
@@ -2603,7 +2718,7 @@ export function archiveWorkflowDirectories(
         ],
       ]),
     )
-    archiveDirectory(bonRoot, bonId)
+    archiveDirectory(bonRoot, bonId, mutableFileSet)
     bonDirectories += 1
   }
 
@@ -2656,7 +2771,10 @@ export function archiveWorkflowDirectories(
         { code: 'ARCHIVE_COLLISION' },
       )
       mkdirSync(archiveRoot, { recursive: true })
-      renameSync(path.join(parent, entry.name), target)
+      const source = path.join(parent, entry.name)
+
+      renameSync(source, target)
+      relocateRuntimeMutablePaths(mutableFileSet, source, target)
       fileMappings.set(
         `${parentRelative}/${entry.name}`,
         `runtime/inbox/archive/${entry.name}`,
@@ -2697,7 +2815,10 @@ export function archiveWorkflowDirectories(
         { code: 'ARCHIVE_COLLISION' },
       )
       mkdirSync(archiveRoot, { recursive: true })
-      renameSync(path.join(parent, entry.name), target)
+      const source = path.join(parent, entry.name)
+
+      renameSync(source, target)
+      relocateRuntimeMutablePaths(mutableFileSet, source, target)
       fileMappings.set(
         `${parentRelative}/${entry.name}`,
         `${parentRelative}/archive/${entry.name}`,
@@ -2708,7 +2829,7 @@ export function archiveWorkflowDirectories(
 
   if (fileMappings.size > 0) {
     updatedFiles += updateFileCount(
-      mutableRuntimeFiles(path.join(root, 'runtime')),
+      runtimeMutablePaths(mutableFileSet),
       fileMappings,
     )
   }
@@ -2730,21 +2851,78 @@ export function archiveWorkflowDirectories(
   }
 }
 
+export type WorkflowRuntimeMaintenancePass =
+  | 'inbox_layout'
+  | 'names'
+  | 'migration'
+  | 'suffixes'
+  | 'references'
+  | 'archive'
+
+export interface WorkflowRuntimeMaintenanceProgress {
+  pass: WorkflowRuntimeMaintenancePass
+  phase: 'started' | 'finished'
+  file_count: number
+}
+
 export function maintainWorkflowRuntime(
   root = findProjectRoot(),
   options: {
     retentionDays?: number
     now?: Date
     inboxArchive?: InboxArchiveSelection
+    mutableFileSet?: RuntimeMutableFileSet
+    onProgress?: (progress: WorkflowRuntimeMaintenanceProgress) => void
   } = {},
 ): WorkflowRuntimeMaintenanceSummary {
-  const inboxLayout = migrateLegacyInboxLayout(root)
-  const names = standardizeRuntimeFileNames(root)
-  const migration = migrateWorkflowNames(root)
-  const suffixes = migrateRunSuffixes(root)
+  const mutableFileSet =
+    options.mutableFileSet ??
+    createRuntimeMutableFileSet(path.join(root, 'runtime'))
+  const fileCount = runtimeMutablePaths(mutableFileSet).length
+  const progress = (
+    pass: WorkflowRuntimeMaintenancePass,
+    phase: WorkflowRuntimeMaintenanceProgress['phase'],
+  ): void =>
+    options.onProgress?.({
+      pass,
+      phase,
+      file_count: fileCount,
+    })
 
+  progress('inbox_layout', 'started')
+  const inboxLayout = migrateLegacyInboxLayout(root, (source, target) =>
+    relocateRuntimeMutablePaths(mutableFileSet, source, target),
+  )
+  progress('inbox_layout', 'finished')
+
+  progress('names', 'started')
+  const names = standardizeRuntimeFileNames(root, mutableFileSet)
+  progress('names', 'finished')
+
+  progress('migration', 'started')
+  const migration = migrateWorkflowNames(root, mutableFileSet)
+  progress('migration', 'finished')
+
+  progress('suffixes', 'started')
+  const suffixes = migrateRunSuffixes(root, mutableFileSet)
+  progress('suffixes', 'finished')
+
+  progress('references', 'started')
   const references = repairWorkflowInboxReferences(root)
-  const archive = archiveWorkflowDirectories(root, options)
+  progress('references', 'finished')
+
+  progress('archive', 'started')
+  const archive = archiveWorkflowDirectories(root, {
+    ...(options.retentionDays !== undefined
+      ? { retentionDays: options.retentionDays }
+      : {}),
+    ...(options.now !== undefined ? { now: options.now } : {}),
+    ...(options.inboxArchive !== undefined
+      ? { inboxArchive: options.inboxArchive }
+      : {}),
+    mutableFileSet,
+  })
+  progress('archive', 'finished')
 
   return {
     names,

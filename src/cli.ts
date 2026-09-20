@@ -12,6 +12,7 @@ import {
   DEFAULT_WORKFLOW_SLUG,
   decideRun,
   armWorkerWatch,
+  delegateEvidenceWorkers,
   delegateInvocation,
   getRunStatus,
   getRunState,
@@ -122,6 +123,7 @@ import {
 import {
   AWAY_SUBCOMMAND_OPTIONS,
   awayDecisionLedgerPath,
+  awayEvaluationResponse,
   awayModeTrigger,
   readAwayDecisionLedger,
   recordAwayApplyResult,
@@ -187,6 +189,7 @@ import {
   invocationValidationPath,
   validateRepository,
 } from './lib/validation.js'
+import { PRIMER_BODY_FRESHNESS_LIMIT } from './lib/validators/target-repo-primer.js'
 import { buildValidationMap } from './lib/requirements/map.js'
 import { loadRegistry } from './lib/requirements/registry.js'
 import { resolveRequirements } from './lib/requirements/resolve.js'
@@ -224,6 +227,8 @@ import {
   agentGatePassSuiteProfile,
   nextAgentGatePassAttempt,
   agentRepositoryCheckAdvisories,
+  assertRepositoryCheckProfileAllowed,
+  resolveRepositoryCheckInitiator,
   assertRepositoryChecksValid,
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
@@ -239,6 +244,7 @@ import {
   appendFastWallRun,
   buildFastWallReport,
   FAST_WALL_AGENT_PHASE,
+  FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_PHASE_ENV,
   FAST_WALL_RUN_ID_ENV,
   FAST_WALL_SERIES_ROOT_ENV,
@@ -258,16 +264,18 @@ import {
   resolveRunCitation,
 } from './lib/workflow-artifacts.js'
 import {
-  DEFAULT_STALL_WAKES,
+  DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
   formatWakeLine,
   parseAgentState,
+  parseMultiplexedWatchTargets,
   parseCadenceSeconds,
   parsePositiveInteger,
   parseTimeoutSeconds,
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchInvocations,
   writeRedlineRecord,
 } from './lib/watch.js'
 import {
@@ -548,6 +556,7 @@ function integerOption(args: string[], name: string): number | null {
 export const WORKTREE_CAPABLE_SURFACES = [
   'init',
   'decide',
+  'away apply',
   'cohort route',
   'horizon init',
   'prepare',
@@ -1374,6 +1383,7 @@ async function main(): Promise<void> {
 
       const result = prepareInvocation(root, runId, {
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
+        prepareDelegation: true,
         ...(agent !== null ? { agent } : {}),
         onProgress: (message) =>
           process.stderr.write(`[pan next:${runId}] ${message}\n`),
@@ -1407,6 +1417,9 @@ async function main(): Promise<void> {
         ...(result.prepared_delegation
           ? { prepared_delegation: result.prepared_delegation }
           : {}),
+        ...(result.prepared_evidence
+          ? { prepared_evidence: result.prepared_evidence }
+          : {}),
         advisories: result.advisories,
       })
       return
@@ -1429,8 +1442,46 @@ async function main(): Promise<void> {
         timeoutMs = parsedTimeout
       }
 
+      // --headless lets the operator's own session dispatch a Cursor persona
+      // through the harness path when the platform exposes no projected
+      // agent to launch: the cursor-agent CLI receives the mapped model
+      // explicitly, so the model fidelity INVOCATION-001 protects holds, and
+      // the harness authors the delegation evidence itself. As in the
+      // headless driver, the stage's evidence workers run first; --evidence-only
+      // runs those (optionally one --role) and returns, so a supervisor can
+      // dispatch them in parallel processes before the stage worker.
+      const headless = hasFlag(args, '--headless')
+      const evidenceOnly = hasFlag(args, '--evidence-only')
+      const evidenceRole = option(args, '--role')
+
+      if (headless || evidenceOnly) {
+        const workers = delegateEvidenceWorkers(root, runId, {
+          headless: true,
+          ...(evidenceRole ? { roles: [evidenceRole] } : {}),
+          onProgress: (message) =>
+            process.stderr.write(`[pan delegate:${runId}] ${message}\n`),
+        })
+        const failed = workers.filter((worker) => !worker.ok)
+
+        if (evidenceOnly || failed.length > 0) {
+          print({
+            status:
+              failed.length > 0 ? 'evidence_failed' : 'evidence_delegated',
+            run_id: runId,
+            evidence_workers: workers,
+          })
+
+          if (failed.length > 0) {
+            process.exitCode = 1
+          }
+
+          return
+        }
+      }
+
       const result = delegateInvocation(root, runId, {
         ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        ...(headless ? { headless: true } : {}),
         onProgress: (message) =>
           process.stderr.write(`[pan delegate:${runId}] ${message}\n`),
       })
@@ -1848,7 +1899,7 @@ async function main(): Promise<void> {
       }
 
       const state = getRunState(root, runId)
-      const blocker = awayModeTrigger(state)
+      const blocker = awayModeTrigger(state, undefined, root)
 
       if (subcommand === 'status') {
         const runDecisions = readAwayDecisionLedger(root).filter(
@@ -1891,7 +1942,9 @@ async function main(): Promise<void> {
           )
         }
 
-        print(evaluateAwayState(root, state, blocker), json)
+        const decision = evaluateAwayState(root, state, blocker)
+
+        print(awayEvaluationResponse(pan, decision), json)
         return
       }
 
@@ -1989,10 +2042,15 @@ async function main(): Promise<void> {
         // Same hook as `pan decide`: it runs after the applied decision is
         // durable and outside the try above, so a routing failure neither rolls
         // back the approval nor records a `failed` beside the `applied`.
-        const autostart = maybeStartDelivery(root, next, {
-          actor: 'away',
-          action: decision.selected_action?.action ?? '',
-        })
+        const autostart = maybeStartDelivery(
+          root,
+          next,
+          {
+            actor: 'away',
+            action: decision.selected_action?.action ?? '',
+          },
+          deliveryRouteOptions(args),
+        )
         const advance = maybeAdvanceCohort(root, next)
 
         print(
@@ -2289,12 +2347,33 @@ async function main(): Promise<void> {
 
       // The harness starts this command for itself when it prefetches the
       // release profile, and that execution is not an agent spending its
-      // allowance. It also has no terminal to stream to.
-      const harnessInitiated = hasFlag(args, '--harness-initiated')
+      // allowance. It also has no terminal to stream to. Authority for the
+      // claim comes from the launch token the harness put in this process's
+      // environment rather than from argv, because a caller that grades its
+      // own permission is not one.
+      const initiator = resolveRepositoryCheckInitiator(
+        root,
+        evidenceRun?.run_id ?? null,
+        hasFlag(args, '--harness-initiated'),
+      )
+      const harnessInitiated = initiator === 'harness'
       // Two evidence workers of one stage share an invocation id, so without
       // the role they would share one reuse key and the second worker would
       // be handed the first one's pass instead of producing its own log.
       const workerRole = option(args, '--role')
+
+      const callerStages = evidenceRun
+        ? [evidenceRun.current_stage]
+        : worktreeWorkspace
+          ? liveRunsBoundToWorktree(root, worktreeWorkspace.name).map(
+              (bound) => bound.current_stage,
+            )
+          : [null]
+
+      for (const callerStage of callerStages) {
+        assertRepositoryCheckProfileAllowed(profile, callerStage, initiator)
+      }
+
       const startedAt = new Date().toISOString()
 
       // DEV-001: a clean pass reaches a later gate only when the workspace
@@ -2367,6 +2446,11 @@ async function main(): Promise<void> {
         env: {
           [FAST_WALL_SERIES_ROOT_ENV]: root,
           [FAST_WALL_PHASE_ENV]: FAST_WALL_AGENT_PHASE,
+          [FAST_WALL_CALLER_CLASS_ENV]: harnessInitiated
+            ? 'prefetch'
+            : evidenceRun
+              ? 'agent'
+              : 'standalone',
           ...(evidenceRun
             ? { [FAST_WALL_RUN_ID_ENV]: evidenceRun.run_id }
             : {}),
@@ -2396,7 +2480,6 @@ async function main(): Promise<void> {
       // An explicit run wins over the worktree scan. A bare invocation names
       // no run and records nothing: an operator's own check from the base
       // checkout is not evidence of any run that happens to share it.
-      const initiator = harnessInitiated ? 'harness' : 'agent'
       // Only a clean pass can reach a gate, so the run lookup a store needs
       // is spent only when one is possible.
       const gatePassRunIds =
@@ -2545,6 +2628,18 @@ async function main(): Promise<void> {
               })
             })(),
           load_average: loadAverage,
+          cpu_count:
+            integerOption(args, '--cpu-count') ??
+            (() => {
+              throw new PanError('--cpu-count is required.', {
+                code: 'INVALID_ARGUMENT',
+              })
+            })(),
+          caller_class: requiredArgument(
+            option(args, '--caller-class') ??
+              process.env[FAST_WALL_CALLER_CLASS_ENV],
+            '--caller-class',
+          ) as 'agent' | 'harness_gate' | 'prefetch' | 'standalone',
           wrapper_wall_clock_ms: wrapperWall,
           invoker: requiredArgument(option(args, '--invoker'), '--invoker'),
           run_id:
@@ -2888,6 +2983,10 @@ async function main(): Promise<void> {
             complete: hasComplete || !hasCanceled,
             canceled: hasCanceled,
           },
+          onProgress: ({ pass, phase, file_count: fileCount }) =>
+            process.stderr.write(
+              `[pan archive] ${pass} ${phase} (${fileCount} files)\n`,
+            ),
         }),
         hasFlag(args, '--json'),
       )
@@ -4485,6 +4584,7 @@ async function main(): Promise<void> {
           ...(agent ? { agent } : {}),
           ...(model ? { model } : {}),
           launchMode: parseWorkerLaunchMode(option(args, '--launch-mode')),
+          ...(hasFlag(args, '--new-attempt') ? { newAttempt: true } : {}),
         })
 
         print(
@@ -4496,6 +4596,9 @@ async function main(): Promise<void> {
                 (launch.evidence_attempt
                   ? `, brief ${launch.evidence_attempt.brief_path}, evidence ` +
                     `${launch.evidence_attempt.evidence_path}`
+                  : '') +
+                (launch.warnings?.length
+                  ? `\nWarning: ${launch.warnings.join('\nWarning: ')}`
                   : ''),
           json,
         )
@@ -4537,6 +4640,66 @@ async function main(): Promise<void> {
       })
     }
     case 'watch': {
+      const targets = parseMultiplexedWatchTargets(option(args, '--targets'))
+
+      if (targets) {
+        if (
+          (args[0] !== undefined && !args[0].startsWith('--')) ||
+          hasFlag(args, '--foreground-returned') ||
+          option(args, '--invocation') !== null
+        ) {
+          throw new PanError(
+            '--targets is exclusive with a positional run id, --invocation, and --foreground-returned.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        if (option(args, '--agent-state') !== null) {
+          throw new PanError(
+            '--agent-state reports the one launched agent you inspected, so ' +
+              'it cannot speak for a group. Re-arm `pan watch <run-id> ' +
+              '--agent-state ...` on the target you looked at.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const result = await watchInvocations(root, targets, {
+          cadenceSeconds: parseCadenceSeconds(
+            option(args, '--cadence-seconds'),
+          ),
+          stallTimeoutSeconds: parsePositiveInteger(
+            option(args, '--stall-timeout-seconds'),
+            '--stall-timeout-seconds',
+            DEFAULT_STALL_TIMEOUT_SECONDS,
+          ),
+          timeoutSeconds: parseTimeoutSeconds(
+            option(args, '--timeout-seconds'),
+          ),
+          markBackground: hasFlag(args, '--mark-background'),
+          onWake: process.stderr.isTTY
+            ? (entry) => process.stderr.write(`${formatWakeLine(entry)}\n`)
+            : undefined,
+        })
+        const named = (items: typeof result.moved): string =>
+          items.map((item) => `${item.run_id}:${item.invocation_id}`).join(', ')
+
+        print(
+          json
+            ? result
+            : `watch ${result.state}: ${result.moved.length} of ${result.targets} targets moved after ${result.wakes} wakes; ` +
+                (result.moved.length > 0
+                  ? named(result.moved)
+                  : 'no target moved') +
+                (result.stalled.length > 0
+                  ? `; needs inspection: ${named(result.stalled)}`
+                  : ''),
+          json,
+        )
+        process.exitCode =
+          result.state === 'changed' ? 0 : WATCH_EXIT_CODES[result.state]
+        return
+      }
+
       const runId = requiredArgument(args[0], 'run-id')
       const invocationId = option(args, '--invocation')
 
@@ -4583,10 +4746,10 @@ async function main(): Promise<void> {
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),
         cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
-        stallWakes: parsePositiveInteger(
-          option(args, '--stall-wakes'),
-          '--stall-wakes',
-          DEFAULT_STALL_WAKES,
+        stallTimeoutSeconds: parsePositiveInteger(
+          option(args, '--stall-timeout-seconds'),
+          '--stall-timeout-seconds',
+          DEFAULT_STALL_TIMEOUT_SECONDS,
         ),
         timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
         markBackground: hasFlag(args, '--mark-background'),
@@ -4608,7 +4771,10 @@ async function main(): Promise<void> {
           : `watch ${result.state}: invocation ${result.invocation_id}, ` +
               `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s, ` +
               `record ${result.record_path}, launch ` +
-              `${launchRecordPath(root, runId, result.invocation_id)}`,
+              `${launchRecordPath(root, runId, result.invocation_id)}` +
+              (result.rearm_command
+                ? `; re-arm with: ${result.rearm_command}`
+                : ''),
         json,
       )
       process.exitCode = WATCH_EXIT_CODES[result.state]
@@ -4807,6 +4973,22 @@ async function main(): Promise<void> {
         gate_cache: {
           ...gateCacheStatus(root),
           disable_with: `${GATE_CACHE_ENV}=0`,
+        },
+        // Advisory: `PRIMER-001` makes the primer mandatory reading in every
+        // installation, so doctor states its freshness even where repository
+        // validation stays silent. A drifted primer is a readiness gap the
+        // librarian closes with `/pan-build-docs`, not a doctor failure.
+        target_repo_primer: {
+          ...(validation.target_repo_primer ?? {
+            source_head: null,
+            current_head: null,
+            generated_at: null,
+            drifted: false,
+            stamp_predates_source: false,
+            body_freshness: 'unverified' as const,
+            message: 'no target repository primer is present',
+          }),
+          limit: PRIMER_BODY_FRESHNESS_LIMIT,
         },
         repository_check_environment: {
           profiles_without_probes: Object.entries(repositoryChecks.profiles)

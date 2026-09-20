@@ -109,6 +109,48 @@ test('repository validation does not require a local Cursor projection', () => {
   assert.deepEqual(result.errors, [])
 })
 
+test('repository validation rejects a Cursor ignore rule that hides managed workspaces', () => {
+  const root = createFixture()
+  const ignorePath = path.join(root, '.cursorignore')
+
+  writeFileSync(ignorePath, 'worktrees/\n')
+
+  assert.ok(
+    validateProjectionDrift(root).errors.some((error) =>
+      error.includes(
+        ".cursorignore rule 'worktrees/' excludes managed workspace root",
+      ),
+    ),
+  )
+
+  // The other spellings of the same exclusion must not slip past the guard.
+  for (const spelling of [
+    'worktrees/*',
+    '**/worktrees/',
+    'worktrees/**/*',
+    '/worktrees',
+  ]) {
+    writeFileSync(ignorePath, `${spelling}\n`)
+
+    assert.ok(
+      validateProjectionDrift(root).errors.some((error) =>
+        error.includes(
+          `.cursorignore rule '${spelling}' excludes managed workspace root`,
+        ),
+      ),
+      `expected '${spelling}' to be rejected`,
+    )
+  }
+
+  writeFileSync(ignorePath, 'worktrees/**/AGENTS.md\n')
+
+  assert.ok(
+    validateProjectionDrift(root).errors.every(
+      (error) => !error.includes('excludes managed workspace root'),
+    ),
+  )
+})
+
 test('Cursor sync expands aliases before writing agent frontmatter', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')

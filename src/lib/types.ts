@@ -1,3 +1,4 @@
+import type { TargetRepoPrimerFreshness } from './validators/target-repo-primer.js'
 import type {
   DelegationObservationSource,
   DelegationWatchSummary,
@@ -811,6 +812,8 @@ export type AwayDecisionKind =
   | 'hypervisor_quarantine'
   /** The evaluator could not run or returned no ranking; not a decision. */
   | 'evaluator_failure'
+  /** An unanswered operator question refused the blocker before ranking. */
+  | 'operator_question_refusal'
 
 export type RunActionActor = 'operator' | 'away'
 
@@ -971,6 +974,10 @@ export interface FastWallConfig {
   ceiling_ms: number
   anchor_date: string
   weekly_allowance_ms: number
+  /** Maximum accepted one-minute load average divided by logical CPUs. */
+  max_load_average_per_cpu: number
+  /** Qualified samples required before the rolling average has a verdict. */
+  minimum_qualified_samples: number
 }
 
 export interface ResolvedRoots {
@@ -1031,13 +1038,18 @@ export interface TargetInstructionInput {
 }
 
 /**
- * The bound on a returning verification's re-execution (`VERIFY-001`).
+ * The one marker that a stage is re-entered after a successful remediation
+ * (`VERIFY-001`).
  *
- * A case whose subject sits outside the remediation's changed paths observed
- * the same behavior against the same code, so the worker carries its result
- * with a `carried_from` citation instead of executing it again.
+ * Presence is the return itself, and it decides the profile allowance the
+ * brief states. `blast_radius` is a separate question — how far the repair
+ * reached — and it MAY be empty when the remediation declared no changed
+ * path. A case whose subject sits outside a non-empty radius observed the
+ * same behavior against the same code, so the worker carries its result with
+ * a `carried_from` citation instead of executing it again. An empty radius
+ * bounds nothing and carries nothing.
  */
-export interface CarriedCaseScope {
+export interface RemediationReturn {
   remediation_invocation_id: string
   blast_radius: string[]
 }
@@ -1172,6 +1184,11 @@ export interface StageOutput {
   criteria: CriterionEvaluation[]
   risks: string[]
   unknowns: string[]
+  operator_question?: {
+    question: string
+    reason: string
+    evidence: string[]
+  }
   platform_guidance_conflicts?: PlatformGuidanceConflict[]
   workspace_changes?: WorkspaceChangeAttribution
   target_instruction_evidence?: TargetInstructionEvidence
@@ -1303,6 +1320,8 @@ export interface Invocation {
   attempt: number
   created_at: string
   workspace_root: string
+  /** Installation topology captured so rendered execution roots stay exact. */
+  installation_mode?: 'self_development' | 'embedded' | 'detached'
   /** Managed worktree identity bound to this run, when selected at init. */
   managed_worktree?: ManagedWorktreeReference
   /** Absolute harness root. Present when the workspace is not the harness checkout, so an external worker resolves harness-relative paths. */
@@ -1342,11 +1361,11 @@ export interface Invocation {
     references: InvocationReference[]
     missing_required?: string[]
     /**
-     * Cases a returning verification must execute again, expressed as the
-     * remediation's changed paths. Absent on a first visit and whenever the
-     * remediation declared no changed path.
+     * Present whenever this stage is re-entered after a successful
+     * remediation, whatever that remediation's blast radius was. Absent on a
+     * first visit.
      */
-    carried_case_scope?: CarriedCaseScope
+    remediation_return?: RemediationReturn
     target_instructions?: TargetInstructionInput
     pr_description?: PrDescriptionContext
     /**
@@ -1982,6 +2001,7 @@ export interface OperatorFeedbackItem {
 export interface RunAdvisory {
   kind:
     | 'model_evidence'
+    | 'repository_check_claim'
     | 'pipeline_config'
     | 'platform_guidance'
     | 'delegation_supervision'
@@ -1993,6 +2013,10 @@ export interface RunAdvisory {
     | 'gate_bypass'
     /** A ship stage whose executing build is not the workspace it releases. */
     | 'build_currency'
+    /** A returning verify stage whose interior profile refresh failed. */
+    | 'verify_profile_refresh'
+    /** A non-blocking suite-cost observation recorded at release time. */
+    | 'suite_cost'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string
@@ -2760,5 +2784,13 @@ export interface RepositoryValidationResult {
   ok: boolean
   errors: string[]
   warnings: string[]
+  /**
+   * Freshness of `docs/target-repo-primer.md`, in every installation mode
+   * that carries one. `PRIMER-001` makes the primer mandatory reading for
+   * every agent, so `pan doctor` reports its state wherever the harness runs.
+   * The matching `warnings` entry stays self-development-only, because a
+   * fresh embedded install must validate with no warnings.
+   */
+  target_repo_primer?: TargetRepoPrimerFreshness
   report_hash: string
 }

@@ -27,7 +27,7 @@
     "Under a long-horizon contract the operator is absent by design, and a waiting question is a stopped run. An agent MUST raise a question there only for a hard block the long-horizon policy enumerates. Every other matter is decided, recorded in the stage output, and carried forward.",
     "When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel.",
     "The agent MUST state in that message that `cursor/ask_question` was unavailable.",
-    "A worker inside a run MUST write the question and the unavailability into its stage output.",
+    "A worker inside a run MUST write the question and the unavailability into its stage output under the structured `operator_question` field, with non-empty question, reason, and evidence.",
     {
       "text": "The supervisor MUST surface that question to the operator.",
       "audience": ["supervisor"]

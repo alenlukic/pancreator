@@ -126,35 +126,45 @@ test('a repeated implementation signature skips to the next rung and writes fail
   assert.match(record.reason, /no declared repair route/u)
 })
 
-test('two long-horizon retries stay inside the declared stage attempt ceiling', () => {
+test('a first verify failure spends its retry on the declared remediate route, not on a re-run', () => {
   const { root, runId, workflow } = checkpoint('delivery@verify-prepared', {
     key: 'long-horizon-verify-ladder',
     run: { involvement: 'long-horizon' },
   })
   const verify = stageBySlug(workflow, 'verify')
+  const remediate = stageBySlug(workflow, 'remediate')
 
   const first = submitStageOutput(root, runId, verify, 'failure', [
     'verify.acceptance_met',
   ])
 
-  assert.equal(first.state.current_stage, 'verify')
+  // Re-running verify against an unchanged workspace can only reproduce the
+  // verdict, so the retry rung follows the stage's own failure transition.
+  assert.equal(first.state.status, 'running')
+  assert.equal(first.state.current_stage, 'remediate')
   assert.equal(first.state.horizon_ladder?.retries_spent, 1)
+  assert.deepEqual(first.state.horizon_ladder?.approaches_tried, [
+    "retry 1 via 'remediate' from 'verify'",
+  ])
+
+  submitStageOutput(root, runId, remediate, 'success')
 
   const second = submitStageOutput(root, runId, verify, 'failure', [
     'verify.tests_correct',
   ])
 
-  // The third attempt at the stage is what the configured ceiling allows, so
-  // the second retry must not pause the run for exceeding its attempts.
   assert.equal(second.state.status, 'running')
-  assert.equal(second.state.current_stage, 'verify')
+  assert.equal(second.state.current_stage, 'remediate')
   assert.equal(second.state.horizon_ladder?.retries_spent, 2)
-  assert.equal(second.state.limits.max_stage_attempts, 3)
+
+  submitStageOutput(root, runId, remediate, 'success')
 
   const third = submitStageOutput(root, runId, verify, 'failure', [
     'verify.cases_executed',
   ])
 
+  // The spent retry bound reaches the strategy rung, which carries the
+  // change-strategy directive into the same repair route.
   assert.equal(third.state.horizon_ladder?.strategy_switches_spent, 1)
   assert.equal(third.state.current_stage, 'remediate')
   assert.match(third.state.horizon_ladder?.directive ?? '', /Change strategy/u)

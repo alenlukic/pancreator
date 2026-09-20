@@ -84,6 +84,27 @@ test('help documents the verification confirmation and the route worktree', () =
   assert.match(lineFor('pan inbox restore') ?? '', /<inbox-file>/u)
 })
 
+// AC-019. `pan init --help` is where an operator decides whether to pass
+// --worktree, and its one-chunk routing sentence described the pre-inheritance
+// behavior: a fresh worktree for every single-chunk delivery run.
+test('pan init help states what a named worktree binds and how each plan route uses it', () => {
+  const lines = HELP_BODY.split('\n').map((line) => line.trim())
+  const start = lines.findIndex((line) => line.startsWith('pan init '))
+  const end = lines.findIndex(
+    (line, index) => index > start && line.startsWith('pan '),
+  )
+  const init = lines.slice(start, end).join('\n')
+
+  assert.match(init, /--worktree binds the planning run/u)
+  assert.match(init, /single-chunk delivery run inherits that worktree/u)
+  assert.match(init, /one isolated worktree per cohort chunk/u)
+  assert.match(
+    init,
+    /refuses while the planning worktree holds uncommitted work/u,
+  )
+  assert.doesNotMatch(init, /in its own worktree/u)
+})
+
 // AC-012. A guard that cannot read the filesystem answered "not the
 // entrypoint", so the CLI exited 0 having run no command at all.
 test('the entrypoint guard reports a read it could not perform', () => {

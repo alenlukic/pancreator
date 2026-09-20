@@ -236,6 +236,19 @@ test('writes new inbox items to queue', () => {
   }
 })
 
+test('pan-start distinguishes prose, existing queue files, augmentation, and worktree inheritance', () => {
+  const command = readFileSync(
+    path.join(REPO_ROOT, 'library/cursor/commands/pan-start.md'),
+    'utf8',
+  )
+
+  assert.match(command, /Prose input is preserved verbatim/u)
+  assert.match(command, /existing file under .*runtime\/inbox\/queue/u)
+  assert.match(command, /Do not create a wrapper file/u)
+  assert.match(command, /append the additional prose under `## Operator note`/u)
+  assert.match(command, /inherited by its routed single-chunk delivery run/u)
+})
+
 test('the inbox routing rule fails a producer that writes outside the queue', () => {
   const root = createTestTempDirectory('pan-inbox-producer-')
   const producerPath = path.join(root, 'fixture-producer.md')

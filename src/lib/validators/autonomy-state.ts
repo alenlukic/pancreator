@@ -17,6 +17,7 @@ const AWAY_DECISION_KINDS = new Set([
   'deterministic_ship_approval',
   'hypervisor_quarantine',
   'evaluator_failure',
+  'operator_question_refusal',
 ])
 const RECOVERY_STEPS = new Set([
   'nudge',
@@ -139,16 +140,22 @@ export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
         })
       }
 
+      // `complete` is the command-grammar verdict on the recorded steps. An
+      // accepted option whose plan failed that check carries a rollback
+      // narrative the operator cannot run, which is the state this rule
+      // exists to keep out of the ledger.
       if (
         record.result === 'accepted' &&
         (!record.selected_action ||
           !record.selected_action.feasible ||
           record.selected_action.rollback_plan.steps.length === 0 ||
-          record.selected_action.rollback_plan.verification.trim().length === 0)
+          record.selected_action.rollback_plan.verification.trim().length ===
+            0 ||
+          record.selected_action.rollback_plan.complete === false)
       ) {
         issues.push({
           code: 'away.decision.rollback',
-          message: `Accepted ledger record ${index} lacks a rollback plan.`,
+          message: `Accepted ledger record ${index} lacks a complete rollback plan.`,
         })
       }
 
