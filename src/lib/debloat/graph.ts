@@ -19,6 +19,12 @@ import {
  * deleted. Code is the only class that blocks, because code that names a
  * facility stops compiling when the facility disappears and a human has to
  * decide what replaces it.
+ *
+ * `registry` covers a registration rather than a use. A lookup row, a model
+ * mapping, and a string-keyed dispatch table all name every facility of their
+ * kind by construction, so treating one as a use would immunize the whole
+ * category. A registration proves a facility is wired in, never that anything
+ * still reaches it, so liveness has to come from a resolution edge instead.
  */
 export type ReferrerClass = 'code' | 'doc' | 'facility' | 'registry' | 'test'
 
@@ -48,13 +54,30 @@ const SCAN_FILES = ['AGENTS.md', 'README.md']
 const SCAN_EXTENSIONS = new Set(['.json', '.md', '.mdc', '.sh', '.ts'])
 
 /**
- * Files that enumerate facilities. Counting them as referrers would make every
- * facility look externally referenced, which would stop every cascade.
- * They are repaired instead, through the typed parsers below.
+ * Code that registers facilities in a string-keyed table instead of calling
+ * them. The import is a registration, and the key is resolved at run time from
+ * somewhere else, so the module is a registry rather than a caller.
+ */
+const DISPATCH_TABLE_PATHS = ['src/lib/requirements/handlers.ts']
+
+const VALIDATION_REGISTRY_PATH =
+  'governance/registries/validation_registry.json'
+
+/**
+ * Files that enumerate facilities. Counting one as a referrer would make every
+ * facility of its kind look externally referenced, which would stop every
+ * cascade. They are repaired instead, through the typed parsers below.
+ *
+ * `src/lib/requirements/handlers.ts` belongs here even though it is code. It
+ * imports every validator solely to bind it to a handler id in one dispatch
+ * table, so the import proves registration and nothing else. A validator is
+ * live only when a policy requirement or a direct harness call resolves that
+ * handler id, which `validatorResolutionReferences` below models.
  */
 function isRegistryPath(relative: string): boolean {
   return (
     EDIT_ONLY_PATHS.includes(relative) ||
+    DISPATCH_TABLE_PATHS.includes(relative) ||
     path.basename(relative) === 'index.md' ||
     relative.startsWith('governance/registries/')
   )
@@ -73,11 +96,32 @@ function referrerClass(relative: string, owned: boolean): ReferrerClass {
     return 'test'
   }
 
-  if (relative.startsWith('docs/') || !relative.includes('/')) {
-    return 'doc'
+  // Only executable source blocks a removal. Prose that ships beside the
+  // facilities, such as the projected Cursor rule sources, is repaired like
+  // any other document.
+  if (relative.startsWith('src/') || relative.startsWith('bin/')) {
+    return 'code'
   }
 
-  return 'code'
+  return 'doc'
+}
+
+const LINE_COMMENT = /(^|[^:"'`\\])\/\/[^\n]*/gu
+
+const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//gu
+
+/**
+ * Source with its comments removed.
+ *
+ * A comment that names a facility is documentation, not a dependency. Left in,
+ * one sentence of prose in a live module pins a facility that nothing calls:
+ * a doc comment in the engine kept `ORCH-001` alive, and a comment in the
+ * debloat scanner kept `persona:spotfixer` alive.
+ */
+function withoutComments(content: string): string {
+  return content
+    .replace(BLOCK_COMMENT, ' ')
+    .replace(LINE_COMMENT, (_match, prefix: string) => prefix)
 }
 
 function listTextFiles(root: string): string[] {
@@ -222,6 +266,186 @@ function ownerOf(
   }
 
   return null
+}
+
+const IMPORT_BINDING_PATTERN =
+  /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/gu
+
+const DISPATCH_ENTRY_PATTERN =
+  /['"]([a-z0-9-]+)['"]\s*:\s*([A-Za-z_$][\w$]*)\s*,/gu
+
+const REQUIREMENT_ID_PATTERN = /requirement_id:\s*['"]([a-z0-9-]+)['"]/gu
+
+/**
+ * Handler id to the validator facility its dispatch entry binds.
+ *
+ * Read from the dispatch table itself rather than from a hand-kept list, so a
+ * new handler needs no change here. Two steps: the import bindings say which
+ * module each symbol comes from, and the table says which symbol each handler
+ * id maps to.
+ */
+function dispatchBindings(
+  root: string,
+  byPath: Map<string, Facility>,
+): Map<string, string> {
+  const bindings = new Map<string, string>()
+
+  for (const relative of DISPATCH_TABLE_PATHS) {
+    const absolute = path.join(root, relative)
+
+    if (!isFile(absolute)) {
+      continue
+    }
+
+    let content: string
+
+    try {
+      content = readText(absolute)
+    } catch {
+      continue
+    }
+
+    const directory = path.posix.dirname(relative)
+    const symbolModule = new Map<string, string>()
+
+    for (const match of content.matchAll(IMPORT_BINDING_PATTERN)) {
+      const specifier = match[2] as string
+
+      if (!specifier.startsWith('.')) {
+        continue
+      }
+
+      const resolved = path.posix.normalize(
+        path.posix.join(directory, specifier),
+      )
+      const modulePath = resolved.endsWith('.js')
+        ? `${resolved.slice(0, -'.js'.length)}.ts`
+        : resolved
+      const facility = byPath.get(modulePath)
+
+      if (!facility) {
+        continue
+      }
+
+      for (const binding of (match[1] as string).split(',')) {
+        const symbol = binding
+          .trim()
+          .split(/\s+as\s+/u)
+          .pop()
+          ?.trim()
+
+        if (symbol) {
+          symbolModule.set(symbol, facility.id)
+        }
+      }
+    }
+
+    for (const match of content.matchAll(DISPATCH_ENTRY_PATTERN)) {
+      const facilityId = symbolModule.get(match[2] as string)
+
+      if (facilityId) {
+        bindings.set(match[1] as string, facilityId)
+      }
+    }
+  }
+
+  return bindings
+}
+
+/**
+ * Edges that prove a registered validator is actually reached.
+ *
+ * A validator's import into the dispatch table is a registration, so liveness
+ * has to come from whatever resolves its handler id. Two things do. A policy
+ * requirement names a registry entry whose handler is that id, and harness
+ * code can synthesize the requirement directly. Without these edges every
+ * validator looks permanently live; with them, one whose handler nothing
+ * resolves becomes a removal candidate.
+ */
+function validatorResolutionReferences(
+  root: string,
+  byPath: Map<string, Facility>,
+  ids: ReadonlySet<string>,
+): Reference[] {
+  const bindings = dispatchBindings(root, byPath)
+
+  if (bindings.size === 0) {
+    return []
+  }
+
+  const registryPath = path.join(root, VALIDATION_REGISTRY_PATH)
+  const registry = isFile(registryPath) ? readJson(registryPath) : null
+  const handlerByEntry = new Map<string, string>()
+
+  if (isRecord(registry) && Array.isArray(registry.entries)) {
+    for (const entry of registry.entries) {
+      if (
+        isRecord(entry) &&
+        typeof entry.id === 'string' &&
+        typeof entry.handler === 'string'
+      ) {
+        handlerByEntry.set(entry.id, entry.handler)
+      }
+    }
+  }
+
+  const references: Reference[] = []
+
+  for (const policy of loadPolicyCatalog(root).values()) {
+    for (const requirement of policy.requirements ?? []) {
+      const handler = handlerByEntry.get(requirement.registry_id)
+      const target = handler ? bindings.get(handler) : undefined
+
+      if (!target || !ids.has(target)) {
+        continue
+      }
+
+      references.push({
+        from: `governance/policies/${policy.id}.json`,
+        referrer_class: 'facility',
+        owner_facility: `policy:${policy.id}`,
+        to: target,
+        token: requirement.registry_id,
+      })
+    }
+  }
+
+  // Harness code can name a handler id directly instead of resolving one
+  // through a policy. That call is a real use, so it blocks like other code.
+  // An enumerating module is not skipped here: naming a handler id is a
+  // resolution whatever else the file does, and `src/lib/validation.ts`
+  // synthesizes exactly one requirement this way.
+  for (const relative of listTextFiles(root)) {
+    if (path.extname(relative) !== '.ts' || relative.startsWith('tests/')) {
+      continue
+    }
+
+    let content: string
+
+    try {
+      content = withoutComments(readText(path.join(root, relative)))
+    } catch {
+      continue
+    }
+
+    for (const match of content.matchAll(REQUIREMENT_ID_PATTERN)) {
+      const target = bindings.get(match[1] as string)
+
+      if (!target || !ids.has(target)) {
+        continue
+      }
+
+      references.push({
+        from: relative,
+        referrer_class: 'code',
+        owner_facility: null,
+        to: target,
+        token: match[1] as string,
+      })
+    }
+  }
+
+  return references
 }
 
 function typedReferences(
@@ -448,7 +672,14 @@ export function buildReferenceGraph(
   const tokens = [...tokenOwners.keys()].sort(
     (left, right) => right.length - left.length,
   )
-  const references: Reference[] = [...typedReferences(root, facilities)]
+  const references: Reference[] = [
+    ...typedReferences(root, facilities),
+    ...validatorResolutionReferences(
+      root,
+      byPath,
+      new Set(facilities.map((entry) => entry.id)),
+    ),
+  ]
 
   if (tokens.length > 0) {
     const pattern = new RegExp(
@@ -463,6 +694,10 @@ export function buildReferenceGraph(
         content = readText(path.join(root, relative))
       } catch {
         continue
+      }
+
+      if (path.extname(relative) === '.ts') {
+        content = withoutComments(content)
       }
 
       const owner = ownerOf(byPath, relative)

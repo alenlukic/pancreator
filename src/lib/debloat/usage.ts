@@ -28,6 +28,16 @@ export interface FacilityUsage {
   mention_count: number
   /** Live facilities and code files that still depend on this one. */
   depended_on_by: string[]
+  /**
+   * True when every structural reference to this facility comes from a test
+   * or from a registration, and something references it at all.
+   *
+   * A facility in this state is held up only by the tests written to exercise
+   * it. Nothing in the harness reaches it, so the tests prove that the code
+   * runs rather than that anyone needs it. Removing it takes its tests too,
+   * which is why the operator has to see the state rather than infer it.
+   */
+  test_only_references: boolean
   /** Up to five evidence locations, for the operator to spot-check. */
   samples: string[]
 }
@@ -620,6 +630,14 @@ function summarize(
   return facilities.map((entry) => {
     const bucket = buckets.get(entry.id) ?? { execution: [], mention: [] }
     const references = graph.incoming.get(entry.id) ?? []
+    const testOnly =
+      references.length > 0 &&
+      references.some((reference) => reference.referrer_class === 'test') &&
+      references.every(
+        (reference) =>
+          reference.referrer_class === 'test' ||
+          reference.referrer_class === 'registry',
+      )
     const dependedOnBy = [
       ...new Set(
         references
@@ -651,6 +669,7 @@ function summarize(
       execution_count: bucket.execution.length,
       mention_count: bucket.mention.length,
       depended_on_by: dependedOnBy.slice(0, 5),
+      test_only_references: testOnly,
       samples: [
         ...new Set(
           [...direct]
