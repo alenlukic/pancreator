@@ -1,5 +1,19 @@
 # Changelog
 
+## [6.28.0] - 2026-09-20
+
+This release extends policy COMMS-001. Chat reports now obey a 250-word prose cap and a terminal-state report contract. Embedded installs also receive the always-apply rule `pan-chat-output.mdc`.
+
+### Changed
+
+- Extend policy COMMS-001 with a 250-word prose cap, a terminal-state report contract, direct-statement rules, and a banned-phrase list ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3)).
+- Treat an inline code span as quoted text in the STE validator ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3)).
+- Shape the orchestrator decision packet under policy COMMS-001 ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3)).
+
+### Added
+
+- Project `.cursor/rules/pan-chat-output.mdc` from policy COMMS-001 as an always-apply rule in every embedded install ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3), [docs/embedded-installation.md](docs/embedded-installation.md)).
+
 ## [6.27.0] - 2026-09-20
 
 This release adds `/pan-debloat`. An operator can scan unused harness facilities and remove a selected set as a release.
