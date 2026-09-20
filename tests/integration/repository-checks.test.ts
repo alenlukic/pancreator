@@ -15,7 +15,10 @@ import { setTimeout as delay } from 'node:timers/promises'
 import {
   adoptedBaselineWorkspaceDivergence,
   AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  HARNESS_LAUNCH_TOKEN_ENV,
+  harnessLaunchDigest,
   agentRepositoryCheckAdvisories,
+  assertRepositoryCheckProfileAllowed,
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
   MAX_CAPTURE_BYTES,
@@ -24,12 +27,14 @@ import {
   recordProfileGatePass,
   REPOSITORY_CHECK_FAST_REPEATED,
   repositoryChecksSourcePath,
+  resolveRepositoryCheckInitiator,
   reusableProfileExecution,
   runRepositorySetup,
   runRepositoryCheck,
   runRepositoryCheckStreaming,
   SUMMARY_STREAM_HEAD_BYTES,
   SUMMARY_STREAM_TAIL_BYTES,
+  unrecordedProfileClaimAdvisories,
 } from '../../src/lib/repository-checks.js'
 import type {
   RepositoryCheckResult,
@@ -41,7 +46,10 @@ import {
   repositoryCheckGateCommand,
 } from '../../src/lib/gate-cache.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import {
+  prefetchRecordPath,
+  resolveRunLayout,
+} from '../../src/lib/run-layout.js'
 import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
 import type {
   RepositoryCheckBaselinePointer,
@@ -1643,6 +1651,229 @@ test('the fast-profile allowance follows the evidence workers of the invocation 
   assert.match(
     verify[0].message,
     /allows one run per agent, 2 for this stage \(2 evidence worker\(s\)\)/u,
+  )
+})
+
+test('verify agents cannot run the full profile owned by the ship gate', () => {
+  assert.throws(
+    () => assertRepositoryCheckProfileAllowed('full', 'verify', 'agent'),
+    (error: unknown) => {
+      assert.match(String(error), /VERIFY-001/u)
+      assert.match(String(error), /ship release gate/u)
+      return true
+    },
+  )
+
+  assert.doesNotThrow(() =>
+    assertRepositoryCheckProfileAllowed('fast', 'verify', 'agent'),
+  )
+  assert.doesNotThrow(() =>
+    assertRepositoryCheckProfileAllowed('full', 'ship', 'harness'),
+  )
+})
+
+// R-02 of run 63290: `--harness-initiated` was the whole permission, and a
+// documented flag is something the caller sets for itself. The declaration
+// now needs the launch token the harness recorded a digest of, and the token
+// leaves the environment so the profile's own children cannot inherit it.
+test('harness authority comes from the recorded launch token, not the flag', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const token = 'a'.repeat(64)
+  const record = prefetchRecordPath(root, run.run_id, 'full')
+
+  mkdirSync(path.dirname(record.absolute), { recursive: true })
+  writeFileSync(
+    record.absolute,
+    `${JSON.stringify({
+      schema_version: 1,
+      run_id: run.run_id,
+      profile: 'full',
+      launch_digest: harnessLaunchDigest(token),
+    })}
+`,
+  )
+
+  const previous = process.env[HARNESS_LAUNCH_TOKEN_ENV]
+
+  try {
+    process.env[HARNESS_LAUNCH_TOKEN_ENV] = token
+
+    assert.equal(
+      resolveRepositoryCheckInitiator(root, run.run_id, true),
+      'harness',
+    )
+    // Reading it removes it, so a profile command this process starts does
+    // not inherit the authority of the launch that started this process.
+    assert.equal(process.env[HARNESS_LAUNCH_TOKEN_ENV], undefined)
+
+    // RV-02 of run 63290: a same-user process can read a running child's
+    // environment, so the launch is spent on first use. The record keeps its
+    // other fields, because the supervisor reconciles the child from them.
+    const spent = JSON.parse(readFileSync(record.absolute, 'utf8')) as Record<
+      string,
+      unknown
+    >
+
+    assert.equal(spent.launch_digest, undefined)
+    assert.equal(spent.run_id, run.run_id)
+    assert.ok(typeof spent.launch_consumed_at === 'string')
+
+    process.env[HARNESS_LAUNCH_TOKEN_ENV] = token
+    assert.throws(
+      () => resolveRepositoryCheckInitiator(root, run.run_id, true),
+      /harness launch token/u,
+    )
+
+    assert.equal(
+      resolveRepositoryCheckInitiator(root, run.run_id, false),
+      'agent',
+    )
+
+    process.env[HARNESS_LAUNCH_TOKEN_ENV] = 'b'.repeat(64)
+    assert.throws(
+      () => resolveRepositoryCheckInitiator(root, run.run_id, true),
+      /harness launch token/u,
+    )
+  } finally {
+    if (previous === undefined) {
+      delete process.env[HARNESS_LAUNCH_TOKEN_ENV]
+    } else {
+      process.env[HARNESS_LAUNCH_TOKEN_ENV] = previous
+    }
+  }
+})
+
+// R-03 of run 63290: the lookup was scoped to the submitting invocation, so a
+// verifier that obeyed its brief and cited the implement gate's pass was told
+// its true claim had no evidence, and was pointed at a command its own
+// contract forbade. Any passing execution of this run at this fingerprint is
+// the evidence the claim needs.
+test('a profile pass claim is answered by any current-run evidence', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const output = {
+    summary: 'The fast profile passed at the current workspace.',
+  }
+  const ledger = resolveRunLayout(root, run.run_id).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  mkdirSync(path.dirname(ledger.absolute), { recursive: true })
+  writeFileSync(
+    ledger.absolute,
+    `${JSON.stringify({
+      profile: 'fast',
+      invocation_id: 'implement-1',
+      workspace_fingerprint: fingerprint,
+      status: 'passed',
+    })}
+`,
+  )
+
+  assert.deepEqual(
+    unrecordedProfileClaimAdvisories(root, run.run_id, fingerprint, output),
+    [],
+  )
+
+  // A row at another fingerprint is evidence for another workspace, so the
+  // advisory still fires.
+  assert.equal(
+    unrecordedProfileClaimAdvisories(root, run.run_id, 'other', output).length,
+    1,
+  )
+})
+
+// The same finding's second half: prose matching read every string in the
+// document, so a finding that reported an unrecorded pass was itself read as
+// a claim. Only what the worker asserts in its own voice is a claim.
+test('a profile pass claim is read from the summary and criteria only', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+
+  assert.deepEqual(
+    unrecordedProfileClaimAdvisories(root, run.run_id, fingerprint, {
+      summary: 'Verification is complete.',
+      risks: ['The output under review says the fast profile passed.'],
+      data: {
+        verify: {
+          findings: [
+            {
+              evidence: [
+                'The implement output claims the fast profile passed.',
+              ],
+            },
+          ],
+        },
+      },
+    }),
+    [],
+  )
+
+  assert.equal(
+    unrecordedProfileClaimAdvisories(root, run.run_id, fingerprint, {
+      summary: 'Verification is complete.',
+      criteria: [{ explanation: 'The fast profile passed at this workspace.' }],
+    }).length,
+    1,
+  )
+})
+
+test('a profile pass claim without current ledger evidence names the sanctioned command', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const invocationId = 'implement-1'
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const output = {
+    summary: 'The fast profile passed at the current workspace.',
+  }
+  const missing = unrecordedProfileClaimAdvisories(
+    root,
+    run.run_id,
+    fingerprint,
+    output,
+  )
+
+  assert.equal(missing.length, 1)
+  assert.equal(missing[0].id, 'repository_check_claim_unrecorded')
+  assert.match(
+    missing[0].message,
+    new RegExp(`repository-check fast --run ${run.run_id}`, 'u'),
+  )
+
+  const ledger = resolveRunLayout(root, run.run_id).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  mkdirSync(path.dirname(ledger.absolute), { recursive: true })
+  writeFileSync(
+    ledger.absolute,
+    `${JSON.stringify({
+      profile: 'fast',
+      invocation_id: invocationId,
+      workspace_fingerprint: fingerprint,
+      status: 'passed',
+    })}
+`,
+  )
+
+  assert.deepEqual(
+    unrecordedProfileClaimAdvisories(root, run.run_id, fingerprint, output),
+    [],
   )
 })
 

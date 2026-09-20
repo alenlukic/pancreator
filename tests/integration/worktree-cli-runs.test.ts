@@ -466,3 +466,59 @@ test('repository-check reuses a recorded pass until --force-repeat asks again', 
   assert.equal(ledger[0].forced_repeat, undefined)
   assert.equal(ledger[1].forced_repeat, true)
 })
+
+test('repository-check refuses full for a verify-stage worker before execution', () => {
+  const root = createFixture()
+  const marker = path.join(root, 'runtime', 'forbidden-full-ran.txt')
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      full: {
+        probes: [],
+        commands: [
+          `node -e "require('node:fs').writeFileSync('runtime/forbidden-full-ran.txt','x')"`,
+        ],
+      },
+    },
+  })
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    startStage: 'verify',
+  })
+  const refused = spawnSync(
+    process.execPath,
+    [CLI, 'repository-check', 'full', '--run', run.run_id, '--json'],
+    { cwd: root, encoding: 'utf8', timeout: 120_000 },
+  )
+
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /VERIFY-001/u)
+  assert.match(refused.stderr, /ship release gate/u)
+  assert.equal(existsSync(marker), false)
+
+  // R-02 of run 63290: the refusal read an argv flag as the permission, so
+  // the subject of the check could grant itself the exemption. Authority is
+  // now the launch token the harness hands the child it spawns, and a caller
+  // that declares harness authority without one is refused before the
+  // profile runs.
+  const claimed = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'repository-check',
+      'full',
+      '--run',
+      run.run_id,
+      '--harness-initiated',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8', timeout: 120_000 },
+  )
+
+  assert.notEqual(claimed.status, 0)
+  assert.match(claimed.stderr, /HARNESS_INITIATION_UNVERIFIED/u)
+  assert.equal(existsSync(marker), false)
+})

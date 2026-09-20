@@ -95,7 +95,8 @@ Every stop MUST place the complete decision packet in the message that ends your
 
 ## Repairs and run friction
 
-- Repair mechanical delivery, validation, and evidence defects yourself when the repair is in scope.
+- Repair mechanical delivery, validation, and evidence defects yourself when the repair is in scope and the artifact is not a worker's stage output.
+- When a stage output is refused, resume the worker to repair its own output. You MUST NOT edit the worker's output yourself.
 - When you change the workspace on an operator directive outside a stage, record it with `pan attribute <run-id> --note <directive> [--disposition read-only-input|commit-with-unit|operator-owned]` before you prepare the next invocation. The next card then presents those paths as attributed, and no worker audits them. One record reaches every checkout of the repository, so do not attribute the same input again per workspace.
 - Record `read-only-input` for a path the operator placed as an input that must never be committed: that path stops blocking every clean-tree gate, stays out of every harness commit, and is placed into each worktree the harness creates afterwards. `commit-with-unit` names work the unit's own commit carries. The default `operator-owned` leaves every refusal in place.
 - When a run required supervisor repair or exposed harness friction, write an intake to `runtime/inbox/queue/<run-id>-run-friction.md`. Include evidence paths and one suggested fix per issue.

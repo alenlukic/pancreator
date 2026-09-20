@@ -13,6 +13,7 @@ import {
   orderedWorkerActions,
   renderSupervisorProcedureMarkdown,
 } from '../../src/lib/render.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
 import {
@@ -412,4 +413,146 @@ test('the prepare response carries the ordered worker actions', () => {
     [1, 2, 3],
   )
   assert.equal(response.worker_actions.at(-1)?.role, 'stage')
+})
+
+/**
+ * Placeholder replacements, keyed by the field a scaffold exemplar carries.
+ * Filling by the exemplar's own keys is what binds this case to the scaffold:
+ * a field the exemplar omits is never filled, so the submission is refused and
+ * the omission fails here rather than in a worker's attempt.
+ */
+const EXEMPLAR_FILL: Record<string, unknown> = {
+  id: 'VF-1',
+  severity: 'low',
+  source: 'review',
+  statement: 'The fixture records one non-blocking observation.',
+  steps: 'Run the delivery fixture through the verify stage.',
+  expected: 'The stage submits.',
+  actual: 'The stage submitted.',
+  result: 'pass',
+  evidence: ['tests/integration/delivery-workflow.test.ts'],
+}
+
+function fillExemplars(items: unknown, index: number): void {
+  if (!Array.isArray(items)) {
+    return
+  }
+
+  for (const [position, item] of items.entries()) {
+    if (!item || typeof item !== 'object') {
+      continue
+    }
+
+    const record = item as Record<string, unknown>
+
+    for (const key of Object.keys(record)) {
+      assert.ok(key in EXEMPLAR_FILL, `no fill value for ${key}`)
+
+      const value = EXEMPLAR_FILL[key]
+
+      record[key] =
+        key === 'id'
+          ? `${['VF', 'QA', 'AC'][index]}-${position + 1}`
+          : Array.isArray(value)
+            ? [...value]
+            : value
+    }
+  }
+}
+
+// AC-015 of the 2026-09-19 compliance intake, and R-06 of this run's
+// verification: the criterion names an end-to-end fixture run, and the first
+// attempt proved it by calling the validator against a hand-written
+// `required_data` map. The seam that matters is between what a verify stage
+// really resolves and what the scaffold shows, so the case has to walk the
+// whole chain: the run's own stage contract, `pan output scaffold`, a worker
+// that fills only what the scaffold showed it, and `pan submit`.
+test('a verify output scaffolded from the real stage contract submits unrepaired', () => {
+  const { root, runId } = checkpoint('delivery@verify-prepared')
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'verify')
+
+  const outputPath = invocation.output.path
+
+  rmSync(path.join(root, outputPath), { force: true })
+  execFileSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'dist/src/cli.js'),
+      'output',
+      'scaffold',
+      runId,
+      '--invocation',
+      resolveRunLayout(root, runId).invocation(
+        invocation.invocation_id,
+        '.json',
+      ).relative,
+      '--output',
+      outputPath,
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  const output = JSON.parse(
+    readFileSync(path.join(root, outputPath), 'utf8'),
+  ) as StageOutput
+  const verify = (output.data as Record<string, unknown>).verify as Record<
+    string,
+    unknown
+  >
+
+  assert.ok(verify)
+  fillExemplars(verify.findings, 0)
+  fillExemplars(verify.qa_cases, 1)
+  fillExemplars(verify.acceptance_results, 2)
+
+  verify.verdict = 'pass_with_warnings'
+  // The card names the gate evidence a verification has to cite, and the
+  // scaffold leaves the array empty because a forgotten exemplar would read
+  // as a citation of evidence that does not exist.
+  verify.gate_evidence_citations = (invocation.inputs.references ?? [])
+    .filter((reference) => reference.gate_evidence?.current === true)
+    .map((reference) => ({
+      profile: reference.gate_evidence?.profile,
+      fingerprint: reference.gate_evidence?.fingerprint,
+      evidence_path: reference.path,
+    }))
+
+  assert.ok(Array.isArray(verify.gate_evidence_citations))
+
+  output.summary = 'The fixture verification completed with one warning.'
+  output.result = 'success'
+
+  for (const criterion of output.criteria) {
+    criterion.result = 'pass'
+    criterion.evidence = ['tests/integration/delivery-workflow.test.ts']
+    criterion.explanation = 'The fixture stage passed this criterion.'
+  }
+
+  const attestation = output.invocation_attestation as unknown as {
+    status: string
+    guidance?: { status: string; reason: string; final_line: string }[]
+  }
+
+  attestation.status = 'read'
+
+  for (const guidance of attestation.guidance ?? []) {
+    guidance.status = 'skipped'
+    guidance.reason = 'The fixture stage reads no guidance.'
+    guidance.final_line = ''
+  }
+
+  writeJson(path.join(root, outputPath), output)
+  writeCanonicalDelegation(root, invocation)
+  writeEvidenceReports(root, invocation)
+
+  const submitted = submitAsSupervisor(root, runId, outputPath)
+
+  assert.equal(
+    submitted.record.outcome,
+    'success',
+    JSON.stringify(submitted.record.evaluation, null, 2),
+  )
 })

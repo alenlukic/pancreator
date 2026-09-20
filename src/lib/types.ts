@@ -1992,6 +1992,7 @@ export interface OperatorFeedbackItem {
 export interface RunAdvisory {
   kind:
     | 'model_evidence'
+    | 'repository_check_claim'
     | 'pipeline_config'
     | 'platform_guidance'
     | 'delegation_supervision'

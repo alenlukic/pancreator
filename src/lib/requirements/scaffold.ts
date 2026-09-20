@@ -16,7 +16,56 @@ import type {
   StageOutput,
 } from '../types.js'
 
-function defaultValueForType(type: JsonTypeName): unknown {
+/**
+ * One filled-in item per array of records, so a worker sees the shape it has
+ * to write rather than a bare `[]`.
+ *
+ * `verify.gate_evidence_citations` is deliberately absent. Its validator
+ * requires that every current gate-evidence reference on the card is cited
+ * and accepts any further entry, so an exemplar a worker forgot to clear
+ * would read as a citation of evidence that does not exist. That array
+ * scaffolds empty, and the card's field contract carries its item shape.
+ */
+const ARRAY_RECORD_EXEMPLARS: Readonly<Record<string, readonly unknown[]>> = {
+  acceptance_results: [
+    {
+      id: '<criterion-id>',
+      result: '<pass|fail|not_applicable>',
+      evidence: ['<path, command, or observation>'],
+    },
+  ],
+  'verify.findings': [
+    {
+      id: '<finding-id>',
+      severity: '<blocker|high|medium|low>',
+      source: '<review|qa>',
+      statement: '<one sentence stating the finding>',
+      evidence: ['<path, command, or observation>'],
+    },
+  ],
+  'verify.qa_cases': [
+    {
+      id: '<case-id>',
+      steps: '<focused scenario steps>',
+      expected: '<expected outcome>',
+      actual: '<observed outcome>',
+      result: '<pass|fail|blocked>',
+    },
+  ],
+  'verify.acceptance_results': [
+    {
+      id: '<criterion-id>',
+      result: '<pass|fail|not_applicable>',
+      evidence: ['<path, command, or observation>'],
+    },
+  ],
+}
+
+function defaultValueForType(type: JsonTypeName, dottedPath: string): unknown {
+  if (type === 'array' && ARRAY_RECORD_EXEMPLARS[dottedPath]) {
+    return structuredClone(ARRAY_RECORD_EXEMPLARS[dottedPath])
+  }
+
   switch (type) {
     case 'string':
       return ''
@@ -48,7 +97,7 @@ export function scaffoldDataFromRequiredData(
 
     if (keys.length === 1) {
       if (!(dottedPath in data)) {
-        data[dottedPath] = defaultValueForType(type)
+        data[dottedPath] = defaultValueForType(type, dottedPath)
       } else if (type === 'object' && !isRecord(data[dottedPath])) {
         data[dottedPath] = {}
       }
@@ -69,7 +118,7 @@ export function scaffoldDataFromRequiredData(
     }
 
     const leafKey = keys[keys.length - 1]
-    current[leafKey] = defaultValueForType(type)
+    current[leafKey] = defaultValueForType(type, dottedPath)
   }
 
   return data
