@@ -1902,3 +1902,127 @@ test('mode governance explains every rule and carries the two canonical tables',
     policyIdPattern,
   )
 })
+
+// RV-05 of run 63290: this case reads files and matches sentences, which is
+// the right instrument for a criterion that asks whether a sentence reaches a
+// card or a prompt. The name claimed `validateRepository`, which it never
+// called. Renamed to what it does; the governance-validation binding AC-006
+// and AC-008 ask for is the separate case below.
+test('governance text delivers the repaired output and delegation contracts', () => {
+  const root = sharedFixture()
+  const contractPolicy = readFileSync(
+    path.join(root, 'governance/policies/CONTRACT-001.json'),
+    'utf8',
+  )
+  const delegatePolicy = readFileSync(
+    path.join(root, 'governance/policies/DELEGATE-001.json'),
+    'utf8',
+  )
+  const outputGuide = readFileSync(
+    path.join(root, 'library/skills/write-stage-output.md'),
+    'utf8',
+  )
+  const orchestrator = readFileSync(
+    path.join(root, 'library/personas/orchestrator.md'),
+    'utf8',
+  )
+  const remediatePrompt = readFileSync(
+    path.join(root, 'library/workflows/delivery/prompts/remediate.md'),
+    'utf8',
+  )
+
+  assert.match(
+    contractPolicy,
+    /a claimed path modified after the output fails/u,
+  )
+  assert.match(
+    contractPolicy,
+    /repository validation MUST fail on a missing declaration/u,
+  )
+  // Matched against collapsed whitespace: the contract is that the sentence
+  // is delivered, not where the line happens to wrap.
+  assert.match(
+    outputGuide.replaceAll(/\s+/gu, ' '),
+    /write its stage output after its last edit to every claimed path/u,
+  )
+  assert.match(outputGuide, /`CONTRACT-001`/u)
+  assert.match(delegatePolicy, /Worker model evidence is best-effort/u)
+  assert.match(delegatePolicy, /labeled `default`/u)
+  assert.match(delegatePolicy, /MODEL_EVIDENCE_MISMATCH/u)
+  assert.match(orchestrator, /resume the worker to repair its own output/u)
+  assert.match(orchestrator, /MUST NOT edit the worker's output/u)
+  assert.match(
+    remediatePrompt,
+    /\.\/bin\/pan repository-check <profile> --run <run-id>/u,
+  )
+})
+
+// AC-006 and AC-008 are worded as governance validation binding the rule to
+// its mechanism, and a grep is weaker than that. The directive audit inside
+// `validateRepository` is the binding: it reports a MUST directive that names
+// no owning policy, so removing the policy citation from the sentence has to
+// make the audit notice.
+test('governance validation binds the output-last rule to its owning policy', () => {
+  const root = createFixture()
+  const guidePath = path.join(root, 'library/skills/write-stage-output.md')
+  const guide = readFileSync(guidePath, 'utf8')
+  const owned = (report: { warnings: string[] }): string[] =>
+    report.warnings.filter(
+      (warning) =>
+        warning.includes('unowned') &&
+        warning.includes('write-stage-output.md'),
+    )
+
+  assert.match(guide, /`CONTRACT-001`: a worker MUST write its stage output/u)
+  assert.deepEqual(owned(validateRepository(root)), [])
+
+  writeFileSync(
+    guidePath,
+    guide.replace(
+      '`CONTRACT-001`: a worker MUST write its stage output',
+      'A worker MUST write its stage output',
+    ),
+  )
+
+  const unowned = owned(validateRepository(root))
+
+  assert.equal(unowned.length, 1, JSON.stringify(unowned))
+
+  // The mechanism DELEGATE-001 names for AC-008 is a live error code rather
+  // than prose, so the policy cannot drift from the failure it promises.
+  assert.match(
+    readFileSync(path.join(process.cwd(), 'src/lib/engine.ts'), 'utf8'),
+    /code: 'MODEL_EVIDENCE_MISMATCH'/u,
+  )
+})
+
+test('repository validation rejects a verify field omitted from enforced_fields', () => {
+  const root = createFixture()
+  const contractPath = path.join(
+    root,
+    'library/schemas/stage-output-requirements.json',
+  )
+  const contract = readJson(contractPath) as Record<string, unknown>
+  const stages = contract.stages as Record<string, Record<string, unknown>>
+  const validators = stages.verify.validators as Array<Record<string, unknown>>
+  const verify = validators.find(
+    (entry) => entry.registry_id === 'VERIFY-VALIDATE-001',
+  )
+
+  assert.ok(verify)
+  verify.enforced_fields = (verify.enforced_fields as string[]).filter(
+    (field) => field !== 'data.verify.findings[].evidence[]',
+  )
+  writeJsonFile(contractPath, contract)
+
+  const validation = validateRepository(root)
+
+  assert.ok(
+    validation.errors.some(
+      (error) =>
+        error.includes('stage output field contract') &&
+        error.includes('data.verify.findings[].evidence[]'),
+    ),
+    validation.errors.join('\n'),
+  )
+})

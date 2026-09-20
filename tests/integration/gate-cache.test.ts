@@ -458,6 +458,144 @@ test('both gate-cache writers build one entry shape, and a recorded agent pass c
   assert.equal(existsSync(path.join(root, target.relative)), true)
 })
 
+test('an agent-recorded full pass is rejected and the ship-owned gate executes', () => {
+  const root = createFixture()
+  const marker = path.join(root, 'runtime', 'full-executions.log')
+  const command =
+    `node -e "require('fs').appendFileSync(` +
+    `'runtime/full-executions.log','x')"`
+
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        profiles: { full: { probes: [], commands: [command] } },
+      },
+      null,
+      2,
+    )}
+`,
+  )
+
+  const source = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const agentResult = runRepositoryCheck(root, 'full')
+  const recorded = recordProfileGatePass(root, 'full', agentResult, {
+    run_ids: [source.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-19T12:00:00.000Z',
+    initiator: 'agent',
+  })
+
+  assert.ok(recorded)
+  assert.equal(readFileSync(marker, 'utf8'), 'x')
+
+  const target = fixtureState(root, 'run-ship-gate')
+  const stage = markerStage(true)
+
+  stage.criteria[0].command = 'pan repository-check full'
+  target.state.repository_check_baselines = {}
+  target.state.verification = {
+    level: 'standard',
+    gates: {},
+  } as unknown as RunState['verification']
+
+  const result = evaluateDeterministicCriteria(
+    root,
+    target.runDirectory,
+    target.state,
+    stage,
+    target.workspaceBefore,
+    root,
+  ).results[0]
+
+  assert.ok(result)
+  assert.equal(result.passed, true)
+  assert.equal(result.cached, undefined)
+  assert.equal(readFileSync(marker, 'utf8'), 'xx')
+  assert.match(
+    readFileSync(path.join(root, result.evidence_path ?? ''), 'utf8'),
+    /cache_rejection=.*agent-run full.*ship release gate.*VERIFY-001/u,
+  )
+})
+
+// The `full` rejection above is scoped to the one profile the ship release
+// gate owns. `DEV-001` still lets an agent's clean pass reach a later gate for
+// every profile an agent may run, and the run that carried this change relied
+// on it. Inverting the `full` case removed the only gate-level assertion of
+// that reuse, so this case restores it at the profile the rejection must not
+// reach.
+test('an agent-recorded fast pass still satisfies a later gate', () => {
+  const root = createFixture()
+  const marker = path.join(root, 'runtime', 'fast-executions.log')
+  const command =
+    `node -e "require('fs').appendFileSync(` +
+    `'runtime/fast-executions.log','x')"`
+
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        profiles: { fast: { probes: [], commands: [command] } },
+      },
+      null,
+      2,
+    )}
+`,
+  )
+
+  const source = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const recorded = recordProfileGatePass(
+    root,
+    'fast',
+    runRepositoryCheck(root, 'fast'),
+    {
+      run_ids: [source.run_id],
+      fingerprint_before: fingerprint,
+      started_at: '2026-09-19T12:00:00.000Z',
+      initiator: 'agent',
+    },
+  )
+
+  assert.ok(recorded)
+  assert.equal(readFileSync(marker, 'utf8'), 'x')
+
+  const target = fixtureState(root, 'run-fast-gate')
+  const stage = markerStage(true)
+
+  stage.criteria[0].command = 'pan repository-check fast'
+  target.state.repository_check_baselines = {}
+  target.state.verification = {
+    level: 'standard',
+    gates: {},
+  } as unknown as RunState['verification']
+
+  const result = evaluateDeterministicCriteria(
+    root,
+    target.runDirectory,
+    target.state,
+    stage,
+    target.workspaceBefore,
+    root,
+  ).results[0]
+
+  assert.ok(result)
+  assert.equal(result.passed, true)
+  assert.equal(result.cached, true)
+  // The gate reused the agent's pass rather than paying for the profile a
+  // second time, which is the byte this marker counts.
+  assert.equal(readFileSync(marker, 'utf8'), 'x')
+})
+
 test('a profile gate whose baseline cannot resolve is never served from the cache', () => {
   const root = createFixture()
   const append = `node -e "require('fs').appendFileSync('runtime/gate-marker.log','x')"`
