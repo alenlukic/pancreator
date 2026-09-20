@@ -1,5 +1,23 @@
 # Changelog
 
+## [6.30.1] - 2026-09-20
+
+This release applies the 2026-09-20 tune-harness verdicts to the self-development test suite.
+
+### Changed
+
+- Move selected integration and regression contracts into the unit lane when a cheaper direct form exists ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f), [e88b5b74](https://github.com/alenlukic/pancreator/commit/e88b5b74378992ecdfbd28f324950ed2d1f44be7)).
+- Fold duplicate assertions into their named survivors and delete the source tests ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
+- Correct the primer statement that names the impacted cohort for `docs/target-repo-primer.md` ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
+
+### Added
+
+- Add unit files for away-mode parse, installation-schema agreement, invocation liveness, repository-check baseline and authority, requirement target kind, and the secret-path corpus ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f), [e88b5b74](https://github.com/alenlukic/pancreator/commit/e88b5b74378992ecdfbd28f324950ed2d1f44be7)).
+
+### Removed
+
+- Remove the four DELETE verdicts and the merged source tests from the integration and regression lanes ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
+
 ## [6.30.0] - 2026-09-20
 
 This release removes 15 unused harness facilities. The operator no longer sees `/pan-debug`, the investigation mode, or the preflight workflow.
