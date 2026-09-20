@@ -321,6 +321,7 @@ import {
 } from './lib/test-tuning.js'
 import {
   computeDebloatImpact,
+  recordDebloatAdjudication,
   scanDebloat,
   selectDebloatFacilities,
   verifyDebloat,
@@ -2819,11 +2820,31 @@ async function main(): Promise<void> {
         print(
           {
             status: 'scanned',
-            ...scanDebloat(root, {
+            ...(await scanDebloat(root, {
               ...(days === null ? {} : { windowDays: Number(days) }),
               worktreeName: option(args, '--worktree'),
               ...(transcripts === null ? {} : { transcriptsRoot: transcripts }),
-            }),
+            })),
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'adjudicate') {
+        print(
+          {
+            status: 'adjudicated',
+            ...recordDebloatAdjudication(
+              root,
+              requiredArgument(option(args, '--session'), '--session'),
+              requiredArgument(option(args, '--facility'), '--facility'),
+              requiredArgument(option(args, '--verdict'), '--verdict') as
+                | 'remove'
+                | 'keep',
+              requiredArgument(option(args, '--reason'), '--reason'),
+              options(args, '--evidence'),
+            ),
           },
           asJson,
         )
@@ -2838,6 +2859,8 @@ async function main(): Promise<void> {
               root,
               requiredArgument(option(args, '--session'), '--session'),
               options(args, '--facility'),
+              new Date(),
+              { replace: hasFlag(args, '--replace') },
             ),
           },
           asJson,
@@ -2849,10 +2872,10 @@ async function main(): Promise<void> {
         print(
           {
             status: 'computed',
-            ...computeDebloatImpact(
+            ...(await computeDebloatImpact(
               root,
               requiredArgument(option(args, '--session'), '--session'),
-            ),
+            )),
           },
           asJson,
         )
@@ -2860,7 +2883,7 @@ async function main(): Promise<void> {
       }
 
       if (sub === 'verify') {
-        const result = verifyDebloat(
+        const result = await verifyDebloat(
           root,
           requiredArgument(option(args, '--session'), '--session'),
         )

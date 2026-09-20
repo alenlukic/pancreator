@@ -12,7 +12,8 @@ closure procedure `DEBLOAT-001` references in the delegated prompt.
 You receive the session identifier, the resolved governance card, and the
 closure manifest `pan debloat impact` wrote at
 `runtime/debloat/<session-id>/closure.json`. The manifest carries `remove`,
-`edit`, `retained_because`, and the adjudication categories.
+`edit`, `freed`, `retained_because`, and the adjudication categories. The scan
+also reports independent source orphan candidates.
 
 The operator selection in `selection.json` is the authority for what leaves.
 Everything beyond it in `removed_facilities` arrived through the
@@ -32,6 +33,10 @@ exclusive-reference cascade, which is a computation rather than a decision.
 - You MUST repair each `edit` entry in place: drop the removed facility's
   registry row, index line, dispatch case, grammar line, or model mapping, and
   leave every other entry of that file intact.
+- You MUST remove a selected orphan and its dedicated tests through the same
+  closure. You MUST NOT remove an orphan the operator did not select.
+- You MUST repair or remove each `freed` source path or symbol and record its
+  stranding referrer. You MUST NOT report completion while one survives.
 - You MUST remove a test whose every facility reference is removed, and repair
   rather than remove a test that also covers a survivor.
 - You MUST run `pan models --sync`, the configuration and full repository-check

@@ -176,7 +176,9 @@ type TypeScriptModule = typeof import('typescript')
 let typescriptModule: TypeScriptModule | null | undefined
 
 /** The `typescript` devDependency of the harness root, or null when absent. */
-async function loadTypeScript(root: string): Promise<TypeScriptModule | null> {
+export async function loadTypeScript(
+  root: string,
+): Promise<TypeScriptModule | null> {
   if (typescriptModule !== undefined) {
     return typescriptModule
   }

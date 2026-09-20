@@ -9,7 +9,7 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 ## What the manifest means
 
 `pan debloat impact` writes `runtime/debloat/<session-id>/closure.json`. It has
-four parts and they are not interchangeable.
+five parts and they are not interchangeable.
 
 - `remove` lists paths to delete. Each entry names the facility that owns it
   and whether it is a facility definition or a test dedicated to removed
@@ -22,6 +22,43 @@ four parts and they are not interchangeable.
   facility you expected to go is still present.
 - `cascaded` lists facilities beyond the operator selection that the closure
   added because nothing surviving referenced them.
+- `freed` lists source paths and exported symbols that no survivor references
+  after the removal. Each entry names the removed referrer that stranded it.
+
+The graph models functional artifacts rather than text matches alone.
+Requirement bindings, invocation kinds, criterion ids, operator artifact
+profiles, CLI subcommands, and exclusively owned source symbols are derived
+nodes. They cascade without entering the operator candidate list.
+
+A payload list or an index is registration, not use. A TypeScript dispatch
+entry is also registration when its line carries `// debloat: dispatch`.
+The marker applies only to that reference. An unmarked import in the same file
+remains a blocking code use.
+
+## The two scans behind the manifest
+
+`pan debloat scan` runs a deterministic pass and an agentic pass, and the
+manifest rests on both.
+
+The deterministic pass builds the reference graph and reads the usage window.
+It ends in one verdict per candidate: `unused`, `unclear`, or `retained`. A
+`retained` verdict is final. No agentic verdict clears it, because the graph
+found a reference that still exists.
+
+The agentic pass settles the `unclear` candidates only, and it settles them one
+at a time. Record each with `pan debloat adjudicate --session <id> --facility
+<id> --verdict <remove|keep> --reason <text> --evidence <reference>`. The
+reasoning and the evidence land beside the deterministic result rather than
+replacing it. An unclear candidate with no recorded `remove` verdict cannot
+enter the selection.
+
+## Selection
+
+The operator chooses the removal set. `pan debloat select --session <id>
+--facility <id>` accumulates across calls, so several narrow calls build one
+set. Pass `--replace` to discard the recorded set and start from the ids of
+that call. Selection refuses any id the scan did not report as a candidate, and
+refuses an unclear candidate that no `remove` adjudication covers.
 
 ## Adjudication
 
@@ -57,13 +94,17 @@ delete it on the strength of the manifest.
 3. Delete the `remove` paths you did not except.
 4. Repair each `edit` entry. Drop only the removed facility's own entry and
    leave the rest of the file intact.
-5. Run `pan models --sync` so the projected Cursor agents, commands, and rules
+5. Remove each selected orphan and its dedicated tests through the same
+   closure. Do not remove an orphan candidate the operator did not select.
+6. Repair or remove each `freed` entry. Verification remains incomplete while
+   the path or symbol survives.
+7. Run `pan models --sync` so the projected Cursor agents, commands, and rules
    match the sources that remain.
-6. Run the configuration profile, the type check, and the full profile from
+8. Run the configuration profile, the type check, and the full profile from
    `runtime/repository-checks.json`. Attribute every failure to the removal or
    to a condition that predates it.
-7. Run `pan debloat verify --session <id>`. It fails while a listed path
-   survives or a file still names a removed facility.
+9. Run `pan debloat verify --session <id>`. It fails while a listed path, a
+   freed path or symbol, or a reference to a removed facility survives.
 
 ## Reporting
 

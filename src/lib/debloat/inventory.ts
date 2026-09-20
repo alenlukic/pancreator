@@ -1,8 +1,7 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { STANDALONE_MODES } from '../governance-card.js'
-import { isDirectory } from '../io.js'
+import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
 import { listWorkflowSlugs } from '../workflow.js'
 
@@ -12,15 +11,28 @@ import { listWorkflowSlugs } from '../workflow.js'
  * edges the closure follows, so it is part of the identity rather than a label.
  */
 export type FacilityCategory =
+  | 'artifact-profile'
+  | 'cli-subcommand'
   | 'command'
+  | 'criterion'
   | 'handbook'
+  | 'invocation'
   | 'mode'
+  | 'orphan'
   | 'persona'
   | 'policy'
+  | 'requirement'
   | 'skill'
+  | 'source-symbol'
   | 'template'
   | 'validator'
   | 'workflow'
+
+export type FacilityNodeKind =
+  | 'facility'
+  | 'derived'
+  | 'source_symbol'
+  | 'orphan'
 
 export interface Facility {
   /** `<category>:<name>`, stable across scans and quoted by the operator. */
@@ -35,6 +47,13 @@ export interface Facility {
    * removing the set rather than the single definition file.
    */
   owned_paths: string[]
+  /** Derived graph nodes cascade but never enter the operator candidate list. */
+  selectable: boolean
+  node_kind: FacilityNodeKind
+  source_symbol?: string
+  owner_facility?: string
+  orphan_kind?: 'unused_export' | 'import_chain_only' | 'unused_file'
+  dedicated_tests?: string[]
   protected: boolean
   /** Why the facility refuses removal. Present only when protected. */
   protected_reason?: string
@@ -152,12 +171,18 @@ function facility(
   name: string,
   definitionPath: string | null,
   ownedPaths: string[] = [],
+  options: {
+    selectable?: boolean
+    nodeKind?: FacilityNodeKind
+    includeDefinitionPath?: boolean
+  } = {},
 ): Facility {
   const id = `${category}:${name}`
   const reason = PROTECTED_FACILITY_REASONS.get(id)
-  const owned = definitionPath
-    ? [definitionPath, ...ownedPaths]
-    : [...ownedPaths]
+  const owned =
+    definitionPath && options.includeDefinitionPath !== false
+      ? [definitionPath, ...ownedPaths]
+      : [...ownedPaths]
 
   return {
     id,
@@ -165,9 +190,125 @@ function facility(
     name,
     path: definitionPath,
     owned_paths: [...new Set(owned)].sort(),
+    selectable: options.selectable ?? true,
+    node_kind: options.nodeKind ?? 'facility',
     protected: reason !== undefined,
     ...(reason ? { protected_reason: reason } : {}),
   }
+}
+
+interface StandaloneModeDefinition {
+  name: string
+  kind: string | null
+  persona: string | null
+  workflow: string | null
+}
+
+function sourceBlock(
+  root: string,
+  relative: string,
+  declaration: string,
+): string {
+  const absolute = path.join(root, relative)
+
+  if (!isFile(absolute)) {
+    return ''
+  }
+
+  const source = readText(absolute)
+  const start = source.indexOf(declaration)
+
+  if (start < 0) {
+    return ''
+  }
+
+  const open = source.indexOf('{', start + declaration.length)
+
+  if (open < 0) {
+    return ''
+  }
+
+  let depth = 0
+  let quote: "'" | '"' | '`' | null = null
+  let escaped = false
+
+  for (let index = open; index < source.length; index += 1) {
+    const character = source[index] as string
+
+    if (quote) {
+      if (escaped) {
+        escaped = false
+      } else if (character === '\\') {
+        escaped = true
+      } else if (character === quote) {
+        quote = null
+      }
+
+      continue
+    }
+
+    if (character === "'" || character === '"' || character === '`') {
+      quote = character
+    } else if (character === '{') {
+      depth += 1
+    } else if (character === '}') {
+      depth -= 1
+
+      if (depth === 0) {
+        return source.slice(open + 1, index)
+      }
+    }
+  }
+
+  return ''
+}
+
+function topLevelEntries(block: string): Array<{ name: string; body: string }> {
+  const starts = [
+    ...block.matchAll(/^  (?:'([^']+)'|([A-Za-z][\w-]*)):\s*\{/gmu),
+  ]
+
+  return starts.map((match, index) => ({
+    name: (match[1] ?? match[2]) as string,
+    body: block.slice(
+      (match.index ?? 0) + match[0].length,
+      starts[index + 1]?.index ?? block.length,
+    ),
+  }))
+}
+
+function topLevelPropertyNames(block: string): string[] {
+  return [...block.matchAll(/^  (?:'([^']+)'|([A-Za-z][\w-]*)):\s*/gmu)].map(
+    (match) => (match[1] ?? match[2]) as string,
+  )
+}
+
+/**
+ * Standalone mode definitions from the scanned tree.
+ *
+ * Importing STANDALONE_MODES would inventory the running build when the
+ * operator scans another worktree or historical tree.
+ */
+export function readStandaloneModes(root: string): StandaloneModeDefinition[] {
+  return topLevelEntries(
+    sourceBlock(
+      root,
+      'src/lib/governance-card.ts',
+      'export const STANDALONE_MODES',
+    ),
+  ).map((entry) => {
+    const field = (name: string): string | null =>
+      new RegExp(`\\b${name}:\\s*['"]([^'"]+)['"]`, 'u').exec(
+        entry.body,
+      )?.[1] ?? null
+
+    return {
+      name: entry.name,
+      kind: field('kind'),
+      persona: field('persona'),
+      workflow: field('workflow'),
+    }
+  })
 }
 
 function personaFacilities(root: string): Facility[] {
@@ -230,8 +371,9 @@ function workflowFacilities(root: string): Facility[] {
   )
 }
 
-function modeFacilities(): Facility[] {
-  return Object.keys(STANDALONE_MODES)
+function modeFacilities(root: string): Facility[] {
+  return readStandaloneModes(root)
+    .map((entry) => entry.name)
     .sort()
     .map((mode) => facility('mode', mode, null))
 }
@@ -271,6 +413,132 @@ function templateFacilities(root: string): Facility[] {
     .map((name) => facility('template', name, `library/templates/${name}`))
 }
 
+function derivedFacility(
+  category: FacilityCategory,
+  name: string,
+  definitionPath: string | null = null,
+): Facility {
+  return facility(category, name, definitionPath, [], {
+    selectable: false,
+    nodeKind: 'derived',
+    includeDefinitionPath: false,
+  })
+}
+
+function requirementFacilities(root: string): Facility[] {
+  return [...loadPolicyCatalog(root).values()]
+    .flatMap((policy) =>
+      (policy.requirements ?? []).map((requirement) =>
+        derivedFacility(
+          'requirement',
+          `${policy.id}/${requirement.id}`,
+          `governance/policies/${policy.id}.json`,
+        ),
+      ),
+    )
+    .sort((left, right) => left.id.localeCompare(right.id))
+}
+
+function invocationKindFacilities(root: string): Facility[] {
+  const absolute = path.join(root, 'src/lib/requirements/types.ts')
+
+  if (!isFile(absolute)) {
+    return []
+  }
+
+  const source = readText(absolute)
+  const match =
+    /export type InvocationKind\s*=\s*([\s\S]*?)\n\nexport interface/u.exec(
+      source,
+    )
+
+  if (!match) {
+    return []
+  }
+
+  return [...(match[1] as string).matchAll(/'([^']+)'/gu)]
+    .map((entry) => derivedFacility('invocation', entry[1] as string, null))
+    .sort((left, right) => left.id.localeCompare(right.id))
+}
+
+function criterionFacilities(root: string): Facility[] {
+  const stagesRoot = path.join(root, 'library', 'workflows')
+
+  if (!isDirectory(stagesRoot)) {
+    return []
+  }
+
+  const criteria = new Map<string, string>()
+  const workflows = readdirSync(stagesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+
+  for (const workflow of workflows) {
+    for (const file of listFiles(
+      root,
+      `library/workflows/${workflow}/stages`,
+      '.json',
+    )) {
+      const relative = `library/workflows/${workflow}/stages/${file}`
+      const value = readJson(path.join(root, relative))
+
+      if (!isRecord(value) || !Array.isArray(value.criteria)) {
+        continue
+      }
+
+      for (const criterion of value.criteria) {
+        if (isRecord(criterion) && typeof criterion.id === 'string') {
+          criteria.set(criterion.id, relative)
+        }
+      }
+    }
+  }
+
+  return [...criteria]
+    .map(([id, relative]) => derivedFacility('criterion', id, relative))
+    .sort((left, right) => left.id.localeCompare(right.id))
+}
+
+function artifactProfileFacilities(root: string): Facility[] {
+  return topLevelPropertyNames(
+    sourceBlock(
+      root,
+      'src/lib/operator-artifact-profiles.ts',
+      'export const OPERATOR_ARTIFACT_PROFILE_HEADINGS',
+    ),
+  )
+    .map((name) =>
+      derivedFacility(
+        'artifact-profile',
+        name,
+        'src/lib/operator-artifact-profiles.ts',
+      ),
+    )
+    .sort((left, right) => left.id.localeCompare(right.id))
+}
+
+function cliSubcommandFacilities(root: string): Facility[] {
+  const absolute = path.join(root, 'src/lib/pan-command-grammar.ts')
+
+  if (!isFile(absolute)) {
+    return []
+  }
+
+  const names = new Set<string>()
+
+  for (const match of readText(absolute).matchAll(
+    /^\s*pan ([a-z][a-z0-9-]*)\b/gmu,
+  )) {
+    names.add(match[1] as string)
+  }
+
+  return [...names]
+    .sort()
+    .map((name) =>
+      derivedFacility('cli-subcommand', name, 'src/lib/pan-command-grammar.ts'),
+    )
+}
+
 /**
  * Every removable facility in the workspace, which is the denominator the
  * unused scan divides its usage evidence into.
@@ -280,11 +548,16 @@ function templateFacilities(root: string): Facility[] {
  */
 export function collectFacilities(root: string): Facility[] {
   return [
+    ...artifactProfileFacilities(root),
+    ...cliSubcommandFacilities(root),
     ...commandFacilities(root),
+    ...criterionFacilities(root),
     ...handbookFacilities(root),
-    ...modeFacilities(),
+    ...invocationKindFacilities(root),
+    ...modeFacilities(root),
     ...personaFacilities(root),
     ...policyFacilities(root),
+    ...requirementFacilities(root),
     ...skillFacilities(root),
     ...templateFacilities(root),
     ...validatorFacilities(root),

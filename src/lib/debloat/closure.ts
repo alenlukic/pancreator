@@ -3,6 +3,7 @@ import path from 'node:path'
 import { invariant } from '../errors.js'
 import { PROTECTED_PATHS, type Facility } from './inventory.js'
 import type { Reference, ReferenceGraph, ReferrerClass } from './graph.js'
+import type { SymbolIndex } from './symbols.js'
 
 export interface RemovalEntry {
   path: string
@@ -26,6 +27,22 @@ export interface RetainedEntry {
   reason: string
 }
 
+export interface FreedEntry {
+  kind: 'path' | 'symbol'
+  path: string
+  symbol?: string
+  /** Removed path or facility whose departure stranded this entry. */
+  stranded_by: string
+}
+
+export interface CandidatePreview {
+  facility_id: string
+  cascaded: string[]
+  freed: FreedEntry[]
+  remove_count: number
+  edit_count: number
+}
+
 export interface ClosureRecord {
   schema_version: 1
   session_id: string
@@ -38,6 +55,8 @@ export interface ClosureRecord {
   removed_facilities: string[]
   remove: RemovalEntry[]
   edit: EditEntry[]
+  /** Source paths and symbols no surviving module references. */
+  freed: FreedEntry[]
   retained_because: RetainedEntry[]
   /** Residual false-positive classes a static graph cannot decide. */
   adjudication_required: string[]
@@ -201,6 +220,102 @@ function dedicatedTests(
 export interface ComputeClosureOptions {
   readonly sessionId: string
   readonly now?: Date
+  readonly symbolIndex?: SymbolIndex
+}
+
+function pathOwner(
+  facilities: readonly Facility[],
+  relative: string,
+): string | null {
+  for (const facility of facilities) {
+    if (
+      facility.owned_paths.some(
+        (owned) =>
+          owned === relative ||
+          (!path.posix.extname(owned) && relative.startsWith(`${owned}/`)),
+      )
+    ) {
+      return facility.id
+    }
+  }
+
+  return null
+}
+
+function computeFreed(
+  facilities: readonly Facility[],
+  removed: ReadonlySet<string>,
+  removedPaths: ReadonlySet<string>,
+  index: SymbolIndex | undefined,
+): FreedEntry[] {
+  if (!index) {
+    return []
+  }
+
+  const removedFile = (relative: string): boolean => {
+    if (removedPaths.has(relative)) {
+      return true
+    }
+
+    const owner = pathOwner(facilities, relative)
+
+    return owner !== null && removed.has(owner)
+  }
+  const freed: FreedEntry[] = []
+
+  for (const declaration of index.declarations) {
+    if (removedFile(declaration.file)) {
+      continue
+    }
+
+    const uses = index.uses.filter(
+      (entry) => entry.symbol_id === declaration.id,
+    )
+    const stranded = uses.filter((entry) => removedFile(entry.from))
+    const surviving = uses.filter((entry) => !removedFile(entry.from))
+
+    if (stranded.length > 0 && surviving.length === 0) {
+      freed.push({
+        kind: 'symbol',
+        path: declaration.file,
+        symbol: declaration.name,
+        stranded_by: stranded[0]?.from ?? 'removed facility',
+      })
+    }
+  }
+
+  for (const file of index.graph.files.filter((entry) =>
+    entry.startsWith('src/'),
+  )) {
+    if (removedFile(file)) {
+      continue
+    }
+
+    const importers = [...(index.graph.dependents.get(file) ?? [])]
+    const stranded = importers.filter(removedFile)
+    const surviving = importers.filter((entry) => !removedFile(entry))
+
+    if (stranded.length > 0 && surviving.length === 0) {
+      freed.push({
+        kind: 'path',
+        path: file,
+        stranded_by: stranded[0] ?? 'removed facility',
+      })
+    }
+  }
+
+  return [
+    ...new Map(
+      freed.map((entry) => [
+        `${entry.kind}:${entry.path}:${entry.symbol ?? ''}`,
+        entry,
+      ]),
+    ).values(),
+  ].sort(
+    (left, right) =>
+      left.path.localeCompare(right.path) ||
+      (left.symbol ?? '').localeCompare(right.symbol ?? ''),
+  )
 }
 
 /**
@@ -230,6 +345,13 @@ export function computeClosure(
       `Facility '${id}' is protected and cannot be removed: ` +
         `${facility.protected_reason ?? ''}`.trim(),
       { code: 'DEBLOAT_FACILITY_PROTECTED' },
+    )
+    invariant(
+      facility.selectable,
+      `Facility '${id}' is a derived graph node.`,
+      {
+        code: 'DEBLOAT_SELECTION_INVALID',
+      },
     )
   }
 
@@ -269,6 +391,23 @@ export function computeClosure(
     })
   }
 
+  for (const id of [...removed].sort()) {
+    const facility = byId.get(id)
+
+    if (facility?.node_kind !== 'orphan') {
+      continue
+    }
+
+    for (const test of facility.dedicated_tests ?? []) {
+      remove.push({
+        path: test,
+        kind: 'dedicated_test',
+        facility_id: id,
+        reason: 'This test exercises only the selected orphan.',
+      })
+    }
+  }
+
   const removedPaths = new Set(remove.map((entry) => entry.path))
   // A workflow is removed by its directory, so every file beneath it leaves
   // too and must not also be reported as an edit.
@@ -276,6 +415,25 @@ export function computeClosure(
     .filter((entry) => !path.extname(entry))
     .map((entry) => `${entry}/`)
   const edits = new Map<string, EditEntry>()
+
+  for (const id of [...removed].sort()) {
+    const facility = byId.get(id)
+
+    if (
+      facility?.node_kind !== 'orphan' ||
+      facility.orphan_kind === 'unused_file' ||
+      !facility.path
+    ) {
+      continue
+    }
+
+    edits.set(facility.path, {
+      path: facility.path,
+      referrer_class: 'code',
+      references: [id],
+      reason: `Remove orphaned export ${facility.source_symbol ?? facility.name}.`,
+    })
+  }
 
   for (const reference of graph.references) {
     if (!removed.has(reference.to) || removedPaths.has(reference.from)) {
@@ -319,7 +477,31 @@ export function computeClosure(
     removed_facilities: [...removed].sort(),
     remove: remove.sort((left, right) => left.path.localeCompare(right.path)),
     edit,
+    freed: computeFreed(
+      facilities,
+      removed,
+      new Set(remove.map((entry) => entry.path)),
+      options.symbolIndex,
+    ),
     retained_because: retained,
     adjudication_required: [...ADJUDICATION_CATEGORIES],
+  }
+}
+
+/** Preview one candidate with the same closure implementation used by impact. */
+export function previewCandidate(
+  facilities: readonly Facility[],
+  graph: ReferenceGraph,
+  facilityId: string,
+  options: ComputeClosureOptions,
+): CandidatePreview {
+  const closure = computeClosure(facilities, graph, [facilityId], options)
+
+  return {
+    facility_id: facilityId,
+    cascaded: closure.cascaded,
+    freed: closure.freed,
+    remove_count: closure.remove.length,
+    edit_count: closure.edit.length,
   }
 }

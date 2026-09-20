@@ -1,8 +1,25 @@
 import path from 'node:path'
 
-import { computeClosure, type ClosureRecord } from './debloat/closure.js'
+import {
+  computeClosure,
+  previewCandidate,
+  type CandidatePreview,
+  type ClosureRecord,
+} from './debloat/closure.js'
 import { buildReferenceGraph, findReferences } from './debloat/graph.js'
 import { collectFacilities, type Facility } from './debloat/inventory.js'
+import {
+  adjudicationAllowsSelection,
+  assessCandidate,
+  type AgenticAdjudication,
+  type AgenticVerdict,
+  type CandidateAssessment,
+} from './debloat/adjudication.js'
+import {
+  findOrphans,
+  orphanFacilities,
+  type OrphanFinding,
+} from './debloat/orphans.js'
 import { renderScanReport } from './debloat/report.js'
 import {
   newSessionId,
@@ -15,6 +32,11 @@ import {
   type FacilityUsage,
   type UsageScanSources,
 } from './debloat/usage.js'
+import {
+  buildSymbolIndex,
+  sourceSymbolFacilities,
+  type SymbolIndex,
+} from './debloat/symbols.js'
 import { invariant, PanError } from './errors.js'
 import {
   fileExists,
@@ -29,11 +51,18 @@ import { readWorktreeIndex } from './worktrees.js'
 
 export {
   ADJUDICATION_CATEGORIES,
+  previewCandidate,
   type ClosureRecord,
   type EditEntry,
   type RemovalEntry,
   type RetainedEntry,
 } from './debloat/closure.js'
+export {
+  adjudicationAllowsSelection,
+  assessCandidate,
+  type AgenticAdjudication,
+  type CandidateAssessment,
+} from './debloat/adjudication.js'
 export {
   buildReferenceGraph,
   findReferences,
@@ -56,6 +85,16 @@ export {
   type EvidenceTier,
   type FacilityUsage,
 } from './debloat/usage.js'
+export {
+  buildSymbolIndex,
+  sourceSymbolFacilities,
+  type SymbolIndex,
+} from './debloat/symbols.js'
+export {
+  findOrphans,
+  orphanFacilities,
+  type OrphanFinding,
+} from './debloat/orphans.js'
 
 const DEFAULT_WINDOW_DAYS = 30
 const MAX_WINDOW_DAYS = 365
@@ -80,8 +119,17 @@ export interface DebloatScanRecord {
   usage: FacilityUsage[]
   /** Removable facility ids with no evidence in the window, sorted. */
   candidates: string[]
+  candidate_assessments: CandidateAssessment[]
+  previews: CandidatePreview[]
+  orphan_findings: OrphanFinding[]
   /** Unused ids the protected set withholds from removal, sorted. */
   protected_candidates: string[]
+}
+
+export interface DebloatAdjudicationRecord {
+  schema_version: 1
+  session_id: string
+  adjudications: AgenticAdjudication[]
 }
 
 export interface DebloatSelectionRecord {
@@ -101,6 +149,8 @@ export interface DebloatVerificationRecord {
   surviving_paths: string[]
   /** Files that still name a removed facility, with the reference. */
   dangling_references: Array<{ path: string; references: string[] }>
+  /** Freed paths or symbols that still survive. */
+  surviving_freed: Array<{ path: string; symbol?: string }>
 }
 
 export interface DebloatScanOptions {
@@ -172,6 +222,32 @@ export interface DebloatScanSummary {
   sources: UsageScanSources
 }
 
+interface FunctionalGraph {
+  facilities: Facility[]
+  graph: ReturnType<typeof buildReferenceGraph>
+  symbolIndex: SymbolIndex
+  orphanFindings: OrphanFinding[]
+}
+
+async function buildFunctionalGraph(root: string): Promise<FunctionalGraph> {
+  const base = collectFacilities(root)
+  const symbolIndex = await buildSymbolIndex(root)
+  const symbols = sourceSymbolFacilities(base, symbolIndex)
+  const orphanFindings = findOrphans(symbolIndex)
+  const facilities = [
+    ...base,
+    ...symbols,
+    ...orphanFacilities(orphanFindings),
+  ].sort((left, right) => left.id.localeCompare(right.id))
+
+  return {
+    facilities,
+    graph: buildReferenceGraph(root, facilities),
+    symbolIndex,
+    orphanFindings,
+  }
+}
+
 /**
  * Score every facility in the workspace against the evidence window and write
  * the operator report.
@@ -181,18 +257,18 @@ export interface DebloatScanSummary {
  * reported separately rather than silently filtered out: an operator who
  * expected to see a facility in the list deserves the reason it is absent.
  */
-export function scanDebloat(
+export async function scanDebloat(
   root: string,
   options: DebloatScanOptions = {},
-): DebloatScanSummary {
+): Promise<DebloatScanSummary> {
   const now = options.now ?? new Date()
   const windowDays = resolveWindowDays(options.windowDays)
   const windowStart = new Date(
     now.getTime() - windowDays * MILLISECONDS_PER_DAY,
   )
   const workspace = resolveDebloatWorkspace(root, options.worktreeName)
-  const facilities = collectFacilities(workspace.absolute)
-  const graph = buildReferenceGraph(workspace.absolute, facilities)
+  const functional = await buildFunctionalGraph(workspace.absolute)
+  const { facilities, graph, symbolIndex, orphanFindings } = functional
   const scan = scanUsage(root, facilities, {
     windowStart,
     graph,
@@ -209,7 +285,10 @@ export function scanDebloat(
   const protectedCandidates: string[] = []
 
   for (const entry of facilities) {
-    if (!unused.has(entry.id)) {
+    if (
+      !entry.selectable ||
+      (!unused.has(entry.id) && entry.node_kind !== 'orphan')
+    ) {
       continue
     }
 
@@ -219,6 +298,23 @@ export function scanDebloat(
       candidates.push(entry.id)
     }
   }
+
+  const usageById = new Map(
+    scan.usage.map((entry) => [entry.facility_id, entry]),
+  )
+  const assessments = candidates.map((id) =>
+    assessCandidate(
+      facilities.find((entry) => entry.id === id) as Facility,
+      usageById.get(id),
+    ),
+  )
+  const previews = candidates.map((id) =>
+    previewCandidate(facilities, graph, id, {
+      sessionId: options.sessionId ?? '00000000-000000-000000',
+      now,
+      symbolIndex,
+    }),
+  )
 
   const sessionId = options.sessionId ?? newSessionId(now)
   const paths = sessionPaths(root, sessionId)
@@ -237,6 +333,13 @@ export function scanDebloat(
     facilities,
     usage: scan.usage,
     candidates: candidates.sort(),
+    candidate_assessments: assessments.sort((left, right) =>
+      left.facility_id.localeCompare(right.facility_id),
+    ),
+    previews: previews.sort((left, right) =>
+      left.facility_id.localeCompare(right.facility_id),
+    ),
+    orphan_findings: orphanFindings,
     protected_candidates: protectedCandidates.sort(),
   }
 
@@ -253,6 +356,9 @@ export function scanDebloat(
       facilities,
       usage: scan.usage,
       candidates: record.candidates,
+      assessments: record.candidate_assessments,
+      previews: record.previews,
+      orphanFindings: record.orphan_findings,
       protectedCandidates: record.protected_candidates,
     }),
   )
@@ -282,6 +388,93 @@ export interface DebloatSelectSummary {
   selected: string[]
 }
 
+export interface DebloatAdjudicationSummary {
+  session_id: string
+  adjudication_path: string
+  adjudications: AgenticAdjudication[]
+}
+
+export function readAdjudicationRecord(
+  paths: DebloatSessionPaths,
+): DebloatAdjudicationRecord {
+  if (!fileExists(paths.adjudication)) {
+    return {
+      schema_version: 1,
+      session_id: paths.sessionId,
+      adjudications: [],
+    }
+  }
+
+  return readSessionArtifact<DebloatAdjudicationRecord>(
+    paths.adjudication,
+    `pan debloat adjudicate --session ${paths.sessionId} --facility <id>`,
+  )
+}
+
+export function recordDebloatAdjudication(
+  root: string,
+  sessionId: string,
+  facilityId: string,
+  verdict: AgenticVerdict,
+  reasoning: string,
+  evidence: readonly string[],
+  now = new Date(),
+): DebloatAdjudicationSummary {
+  const paths = sessionPaths(root, sessionId)
+  const scan = readScanRecord(paths)
+  const assessment = scan.candidate_assessments.find(
+    (entry) => entry.facility_id === facilityId,
+  )
+
+  invariant(
+    assessment?.deterministic_verdict === 'unclear',
+    `Only an unclear candidate can be adjudicated: ${facilityId}.`,
+    { code: 'DEBLOAT_ADJUDICATION_INVALID' },
+  )
+  invariant(
+    verdict === 'remove' || verdict === 'keep',
+    `Invalid adjudication verdict: ${verdict}.`,
+    { code: 'DEBLOAT_ADJUDICATION_INVALID' },
+  )
+  invariant(
+    reasoning.trim().length > 0,
+    'Adjudication reasoning is required.',
+    {
+      code: 'INVALID_ARGUMENT',
+    },
+  )
+  invariant(evidence.length > 0, 'At least one --evidence value is required.', {
+    code: 'INVALID_ARGUMENT',
+  })
+
+  const record = readAdjudicationRecord(paths)
+  const adjudication: AgenticAdjudication = {
+    facility_id: facilityId,
+    verdict,
+    reasoning: reasoning.trim(),
+    evidence: [...new Set(evidence)].sort(),
+    recorded_at: now.toISOString(),
+  }
+  const updated: DebloatAdjudicationRecord = {
+    schema_version: 1,
+    session_id: sessionId,
+    adjudications: [
+      ...record.adjudications.filter(
+        (entry) => entry.facility_id !== facilityId,
+      ),
+      adjudication,
+    ].sort((left, right) => left.facility_id.localeCompare(right.facility_id)),
+  }
+
+  writeJsonAtomic(paths.adjudication, updated)
+
+  return {
+    session_id: sessionId,
+    adjudication_path: `${paths.relative}/adjudication.json`,
+    adjudications: updated.adjudications,
+  }
+}
+
 /**
  * Record the operator's chosen subset.
  *
@@ -295,6 +488,7 @@ export function selectDebloatFacilities(
   sessionId: string,
   facilityIds: readonly string[],
   now = new Date(),
+  options: { replace?: boolean } = {},
 ): DebloatSelectSummary {
   const paths = sessionPaths(root, sessionId)
   const record = readScanRecord(paths)
@@ -305,12 +499,34 @@ export function selectDebloatFacilities(
 
   const candidates = new Set(record.candidates)
   const known = new Set(record.facilities.map((entry) => entry.id))
+  const assessments = new Map(
+    record.candidate_assessments.map((entry) => [entry.facility_id, entry]),
+  )
+  const adjudications = new Map(
+    readAdjudicationRecord(paths).adjudications.map((entry) => [
+      entry.facility_id,
+      entry,
+    ]),
+  )
   const rejected = facilityIds
-    .filter((id) => !candidates.has(id))
+    .filter((id) => {
+      if (!candidates.has(id)) {
+        return true
+      }
+
+      const assessment = assessments.get(id)
+
+      return (
+        assessment !== undefined &&
+        !adjudicationAllowsSelection(assessment, adjudications.get(id))
+      )
+    })
     .map((id) =>
-      known.has(id)
-        ? `${id} (not an unused candidate in this scan)`
-        : `${id} (unknown facility)`,
+      !known.has(id)
+        ? `${id} (unknown facility)`
+        : assessments.get(id)?.deterministic_verdict === 'unclear'
+          ? `${id} (unclear candidate needs a remove adjudication)`
+          : `${id} (not an unused candidate in this scan)`,
     )
 
   if (rejected.length > 0) {
@@ -321,11 +537,15 @@ export function selectDebloatFacilities(
     )
   }
 
+  const previous =
+    !options.replace && fileExists(paths.selection)
+      ? readSelectionRecord(paths).selected
+      : []
   const selection: DebloatSelectionRecord = {
     schema_version: 1,
     session_id: sessionId,
     recorded_at: now.toISOString(),
-    selected: [...new Set(facilityIds)].sort(),
+    selected: [...new Set([...previous, ...facilityIds])].sort(),
   }
 
   writeJsonAtomic(paths.selection, selection)
@@ -353,6 +573,7 @@ export interface DebloatImpactSummary {
   cascaded: string[]
   remove_count: number
   edit_count: number
+  freed_count: number
   retained_count: number
 }
 
@@ -363,20 +584,21 @@ export interface DebloatImpactSummary {
  * record, because the operator may have taken time to decide and the tree can
  * have moved underneath the session.
  */
-export function computeDebloatImpact(
+export async function computeDebloatImpact(
   root: string,
   sessionId: string,
   now = new Date(),
-): DebloatImpactSummary {
+): Promise<DebloatImpactSummary> {
   const paths = sessionPaths(root, sessionId)
   const scan = readScanRecord(paths)
   const selection = readSelectionRecord(paths)
   const workspace = resolveDebloatWorkspace(root, scan.workspace.worktree)
-  const facilities = collectFacilities(workspace.absolute)
-  const graph = buildReferenceGraph(workspace.absolute, facilities)
+  const functional = await buildFunctionalGraph(workspace.absolute)
+  const { facilities, graph, symbolIndex } = functional
   const closure = computeClosure(facilities, graph, selection.selected, {
     sessionId,
     now,
+    symbolIndex,
   })
 
   writeJsonAtomic(paths.closure, closure)
@@ -388,6 +610,7 @@ export function computeDebloatImpact(
     cascaded: closure.cascaded,
     remove_count: closure.remove.length,
     edit_count: closure.edit.length,
+    freed_count: closure.freed.length,
     retained_count: closure.retained_because.length,
   }
 }
@@ -404,6 +627,7 @@ export interface DebloatVerifySummary {
   verification_path: string
   status: 'clean' | 'incomplete'
   surviving_path_count: number
+  surviving_freed_count: number
   dangling_reference_count: number
 }
 
@@ -415,11 +639,11 @@ export interface DebloatVerifySummary {
  * can still name a facility that is gone. This reports both against the
  * rebuilt graph rather than trusting the agent's account of what it did.
  */
-export function verifyDebloat(
+export async function verifyDebloat(
   root: string,
   sessionId: string,
   now = new Date(),
-): DebloatVerifySummary {
+): Promise<DebloatVerifySummary> {
   const paths = sessionPaths(root, sessionId)
   const scan = readScanRecord(paths)
   const closure = readClosureRecord(paths)
@@ -449,8 +673,25 @@ export function verifyDebloat(
       references: [...references].sort(),
     }))
     .sort((left, right) => left.path.localeCompare(right.path))
+  const symbolIndex = await buildSymbolIndex(workspace.absolute)
+  const survivingFreed = closure.freed
+    .filter((entry) =>
+      entry.kind === 'path'
+        ? fileExists(path.join(workspace.absolute, entry.path))
+        : symbolIndex.declarations.some(
+            (declaration) =>
+              declaration.file === entry.path &&
+              declaration.name === entry.symbol,
+          ),
+    )
+    .map((entry) => ({
+      path: entry.path,
+      ...(entry.symbol ? { symbol: entry.symbol } : {}),
+    }))
   const status =
-    surviving.length === 0 && danglingReferences.length === 0
+    surviving.length === 0 &&
+    survivingFreed.length === 0 &&
+    danglingReferences.length === 0
       ? 'clean'
       : 'incomplete'
   const record: DebloatVerificationRecord = {
@@ -460,6 +701,7 @@ export function verifyDebloat(
     status,
     surviving_paths: surviving,
     dangling_references: danglingReferences,
+    surviving_freed: survivingFreed,
   }
 
   writeJsonAtomic(paths.verification, record)
@@ -469,6 +711,7 @@ export function verifyDebloat(
     verification_path: `${paths.relative}/verification.json`,
     status,
     surviving_path_count: surviving.length,
+    surviving_freed_count: survivingFreed.length,
     dangling_reference_count: danglingReferences.length,
   }
 }

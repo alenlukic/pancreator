@@ -15,6 +15,7 @@ export interface DebloatSessionPaths {
   directory: string
   candidates: string
   report: string
+  adjudication: string
   selection: string
   closure: string
   verification: string
@@ -56,6 +57,7 @@ export function sessionPaths(
     directory,
     candidates: path.join(directory, 'candidates.json'),
     report: path.join(directory, 'report.md'),
+    adjudication: path.join(directory, 'adjudication.json'),
     selection: path.join(directory, 'selection.json'),
     closure: path.join(directory, 'closure.json'),
     verification: path.join(directory, 'verification.json'),

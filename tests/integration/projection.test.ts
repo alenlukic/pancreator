@@ -310,3 +310,65 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   assert.match(planner, /library\/personas\/planner\.md/u)
   assert.deepEqual(validateProjectionDrift(root).errors, [])
 })
+
+test('Cursor sync prunes a Pancreator projection whose canonical source is gone', () => {
+  const root = createFixture()
+  const source = path.join(
+    root,
+    'library',
+    'cursor',
+    'commands',
+    'pan-status.md',
+  )
+  const projected = path.join(root, '.cursor', 'commands', 'pan-status.md')
+  const variant = path.join(
+    root,
+    '.cursor',
+    'agents',
+    'pan-coder--run-variant.md',
+  )
+
+  assert.equal(existsSync(projected), true)
+  rmSync(source)
+  writeFileSync(variant, 'run-scoped\n')
+
+  assert.ok(
+    validateProjectionDrift(root).errors.some((error) =>
+      error.includes('.cursor/commands/pan-status.md projection drift'),
+    ),
+  )
+
+  const changes = syncCursorProjection(root, { write: true })
+  const removal = changes.find(
+    (entry) => entry.path === '.cursor/commands/pan-status.md',
+  )
+
+  assert.equal(removal?.removed, true)
+  assert.equal(existsSync(projected), false)
+  assert.equal(existsSync(variant), true)
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+})
+
+test('a narrowed sync prunes nothing outside the projection it renders', () => {
+  const root = createFixture()
+  const command = path.join(root, '.cursor', 'commands', 'pan-status.md')
+  const rule = path.join(root, '.cursor', 'rules', 'pancreator.mdc')
+
+  assert.equal(existsSync(command), true)
+  assert.equal(existsSync(rule), true)
+
+  // The drift advisory renders one projection against the live config. Every
+  // other projected file is outside that render and is not an orphan.
+  const changes = syncCursorProjection(root, {
+    only: ['cursor-agents'],
+    write: true,
+  })
+
+  assert.deepEqual(
+    changes.filter((entry) => entry.removed).map((entry) => entry.path),
+    [],
+  )
+  assert.equal(existsSync(command), true)
+  assert.equal(existsSync(rule), true)
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+})
