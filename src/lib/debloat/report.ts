@@ -104,6 +104,13 @@ export function renderScanReport(input: ReportInput): string {
       `${plural(input.sources.operator_request_files, 'operator request')}.`,
   )
   lines.push('')
+  lines.push(
+    `Agent evidence: ${plural(input.sources.agent_invocations, 'agent invocation')} ` +
+      `and ${plural(input.sources.agent_lookups, 'agent lookup')} counted. ` +
+      `${plural(input.sources.incidental_mentions, 'incidental mention')} ignored. ` +
+      `${plural(input.sources.debloat_sessions_excluded, 'debloat session transcript')} excluded.`,
+  )
+  lines.push('')
   lines.push('Coverage by source:')
 
   for (const [source, count] of Object.entries(
@@ -132,8 +139,9 @@ export function renderScanReport(input: ReportInput): string {
   lines.push('')
   lines.push(
     'A facility is a candidate only when no run record names it, no ' +
-      'executed facility still references it, and no operator prose in the ' +
-      'window mentions it.',
+      'executed facility still references it, and no functional direction ' +
+      'in chat or an inbox request names it. A question, a pasted report, ' +
+      'an index entry, and a debloat session never retain a facility.',
   )
   lines.push('')
   lines.push(
@@ -215,7 +223,7 @@ export function renderScanReport(input: ReportInput): string {
   // A facility whose only structural references are its own tests is held up
   // by the tests written to exercise it. When such a facility also stayed off
   // the candidate list on weaker evidence, only the operator can tell whether
-  // that evidence was a real use or a passing mention.
+  // that evidence was a real use or a direction that never ran.
   const testOnlySurvivors = input.usage
     .filter(
       (entry) =>
@@ -243,8 +251,8 @@ export function renderScanReport(input: ReportInput): string {
       lines.push(
         `| \`${escapeCell(entry.facility_id)}\` | ` +
           `${
-            entry.evidence_tier === 'mention'
-              ? 'operator prose named it inside the window'
+            entry.evidence_tier === 'direction'
+              ? 'a direction in chat or an inbox request named it inside the window'
               : `depended on by ${escapeCell(
                   entry.depended_on_by.join(', ') || 'an indirect chain',
                 )}`

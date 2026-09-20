@@ -1,5 +1,31 @@
 # Changelog
 
+## [6.32.0] - 2026-09-20
+
+This release counts only functional usage when `pan debloat` scans chat, inbox, and prose. An incidental mention no longer keeps a facility.
+
+### Changed
+
+- Count a chat, inbox, or prose mention as usage only when the line is a functional direction ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Classify each prose edge by line, and follow only functional edges for reachability ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Count an agent `Read` of a facility file as a direction unless the agent later edits it ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Mark an operator line that repeats an assistant line as incidental ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Exclude every transcript of a `/pan-debloat` session from the usage window ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Keep a non-functional facility edge as an edit that does not block a cascade ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Make a functional direction in `AGENTS.md` an anchor for reachability ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+
+### Added
+
+- Train a logistic-regression intent classifier at scan time from `library/debloat/intent-corpus.jsonl` ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d), [`library/debloat/intent-corpus.jsonl`](library/debloat/intent-corpus.jsonl)).
+- Record execution evidence from `Task` launches, `pan` shell invocations, `--mode` and `--workflow` options, and operator slash lines ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Add source counts for excluded debloat sessions, agent invocations, agent lookups, and incidental mentions ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Add per-facility `direction_count` and `incidental_mention_count` ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Document the functional usage rule in DEBLOAT-001, `/pan-debloat`, and the operator guide ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d), [`docs/operator-guide.md`](docs/operator-guide.md)).
+
+### Removed
+
+- Remove the `mention` usage tier so an incidental mention never retains a facility ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+
 ## [6.31.0] - 2026-09-20
 
 This release rebuilds `pan debloat` over a functional dependency graph. The scanner now reports stranded files, reads the usage window in full, and checks orphans on their own.

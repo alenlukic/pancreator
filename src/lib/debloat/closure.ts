@@ -90,7 +90,10 @@ function isBlocking(
       // cascade may decide on its behalf what replaces the reference.
       return true
     case 'facility':
+      // A surviving facility blocks only when it uses the target. A line that
+      // merely names it is repaired by the closure like any other mention.
       return (
+        reference.functional &&
         reference.owner_facility !== null &&
         !removed.has(reference.owner_facility)
       )

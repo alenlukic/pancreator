@@ -7,6 +7,10 @@ import {
   type ClosureRecord,
 } from './debloat/closure.js'
 import { buildReferenceGraph, findReferences } from './debloat/graph.js'
+import {
+  loadIntentClassifier,
+  type IntentClassifier,
+} from './debloat/intent.js'
 import { collectFacilities, type Facility } from './debloat/inventory.js'
 import {
   adjudicationAllowsSelection,
@@ -64,6 +68,7 @@ export {
   type CandidateAssessment,
 } from './debloat/adjudication.js'
 export {
+  alwaysReadTargets,
   buildReferenceGraph,
   findReferences,
   reachableFrom,
@@ -71,6 +76,18 @@ export {
   type ReferenceGraph,
   type ReferrerClass,
 } from './debloat/graph.js'
+export {
+  INTENT_CORPUS_PATH,
+  intentFeatures,
+  isInformationRequest,
+  loadIntentClassifier,
+  loadIntentCorpus,
+  trainIntentClassifier,
+  type IntentClassifier,
+  type IntentExample,
+  type IntentLabel,
+  type IntentVerdict,
+} from './debloat/intent.js'
 export {
   collectFacilities,
   EDIT_ONLY_PATHS,
@@ -229,9 +246,19 @@ interface FunctionalGraph {
   orphanFindings: OrphanFinding[]
 }
 
-async function buildFunctionalGraph(root: string): Promise<FunctionalGraph> {
-  const base = collectFacilities(root)
-  const symbolIndex = await buildSymbolIndex(root)
+/**
+ * Inventory the workspace and build its graph.
+ *
+ * The intent classifier is trained from the installation root's corpus rather
+ * than the workspace's, because the corpus is harness input and the scanned
+ * tree may be an older worktree that predates it.
+ */
+async function buildFunctionalGraph(
+  workspaceRoot: string,
+  classifier: IntentClassifier,
+): Promise<FunctionalGraph> {
+  const base = collectFacilities(workspaceRoot)
+  const symbolIndex = await buildSymbolIndex(workspaceRoot)
   const symbols = sourceSymbolFacilities(base, symbolIndex)
   const orphanFindings = findOrphans(symbolIndex)
   const facilities = [
@@ -242,7 +269,7 @@ async function buildFunctionalGraph(root: string): Promise<FunctionalGraph> {
 
   return {
     facilities,
-    graph: buildReferenceGraph(root, facilities),
+    graph: buildReferenceGraph(workspaceRoot, facilities, { classifier }),
     symbolIndex,
     orphanFindings,
   }
@@ -267,11 +294,13 @@ export async function scanDebloat(
     now.getTime() - windowDays * MILLISECONDS_PER_DAY,
   )
   const workspace = resolveDebloatWorkspace(root, options.worktreeName)
-  const functional = await buildFunctionalGraph(workspace.absolute)
+  const classifier = loadIntentClassifier(root)
+  const functional = await buildFunctionalGraph(workspace.absolute, classifier)
   const { facilities, graph, symbolIndex, orphanFindings } = functional
   const scan = scanUsage(root, facilities, {
     windowStart,
     graph,
+    classifier,
     ...(options.transcriptsRoot === undefined
       ? {}
       : { transcriptsRoot: options.transcriptsRoot }),
@@ -593,7 +622,10 @@ export async function computeDebloatImpact(
   const scan = readScanRecord(paths)
   const selection = readSelectionRecord(paths)
   const workspace = resolveDebloatWorkspace(root, scan.workspace.worktree)
-  const functional = await buildFunctionalGraph(workspace.absolute)
+  const functional = await buildFunctionalGraph(
+    workspace.absolute,
+    loadIntentClassifier(root),
+  )
   const { facilities, graph, symbolIndex } = functional
   const closure = computeClosure(facilities, graph, selection.selected, {
     sessionId,

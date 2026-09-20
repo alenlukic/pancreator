@@ -1773,6 +1773,25 @@ content do not prove use. A TypeScript dispatch entry can carry
 `// debloat: dispatch`; that marker makes only the marked reference a registry
 entry. An unmarked import in the same file still blocks removal.
 
+Chat and inbox text count only as functional usage. A slash command, a Cursor
+command marker, a subagent launch, and a `pan` invocation an agent ran are
+executions. A direction to run, read, or apply a facility is a direction, and
+so is a file an agent read while doing work. A question, a report the operator
+pasted back, an index or list entry, a scan result, a read before an edit, and
+an edit request are mentions. The report counts mentions per facility and they
+never keep a facility off the candidate list. Every transcript of a
+`/pan-debloat` session is excluded whole, so a debloat run cannot reset the
+window of the facilities it names.
+
+A small logistic classifier separates a direction from a mention. It trains at
+scan time from `library/debloat/intent-corpus.jsonl`, one JSON object per line
+with `text`, `label`, and `source`. The labels were adjudicated by hand from
+operator transcripts, inbox requests, repository instruction files, and their
+Git history. The same classifier reads the prose edges of the dependency
+graph, so a persona that lists a skill in a `Related` section does not keep
+that skill reachable, while a persona that says `Read` it does. Add labeled
+lines to the corpus to correct a verdict; no weights file exists.
+
 The report combines two passes. The deterministic pass marks a candidate
 `unused` or `unclear`. An agent records evidence and a verdict for each unclear
 candidate before selection. That verdict cannot clear deterministic retention.
