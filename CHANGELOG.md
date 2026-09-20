@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.32.3] - 2026-09-20
+
+This release rebuilds the target repository primer against the 6.32.2 source head.
+
+### Changed
+
+- Rebuild `docs/target-repo-primer.md` against source head `3a087b8c` after twelve minor versions of drift ([fe2d650f](https://github.com/alenlukic/pancreator/commit/fe2d650fae567ab64248f7b62f4ba425fafe541d)).
+
+### Added
+
+- Cover `pan debloat`, `pan horizon`, `pan schedule`, `pan worker`, and `pan attribute` in the primer ([fe2d650f](https://github.com/alenlukic/pancreator/commit/fe2d650fae567ab64248f7b62f4ba425fafe541d)).
+- Cover the OpenAI executor, `bin/check-landing` with `.githooks/`, `bin/benchmark`, and the 6.30.0 removals ([fe2d650f](https://github.com/alenlukic/pancreator/commit/fe2d650fae567ab64248f7b62f4ba425fafe541d)).
+
 ## [6.32.2] - 2026-09-20
 
 This release orders the governance card ahead of the orientation list. An unbound agent takes its card before the first substantive response.
