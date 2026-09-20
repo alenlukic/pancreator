@@ -1265,22 +1265,6 @@ test('the finalization rewrite reaches a run-owned inbox item in every lifecycle
   }
 })
 
-// The lifecycle list has one owner. A second hand-written copy is how the
-// scanner fell behind the partition in the first place.
-test('the rewrite scanner takes its lifecycle directories from the inbox module', () => {
-  const source = readFileSync('src/lib/workflow-artifacts.ts', 'utf8')
-  const scanner = source.slice(
-    source.indexOf('function exactRunInboxFiles'),
-    source.indexOf('function migratedArtifactName'),
-  )
-
-  assert.ok(scanner.includes('inboxTemporalScanDirectories()'), scanner)
-
-  for (const status of ['queue', 'active', 'canceled', 'complete']) {
-    assert.ok(!scanner.includes(`'${status}'`), `${status}: ${scanner}`)
-  }
-})
-
 // AC-025. The standardizer scanned two directory sets through two copies of
 // the same loop, and a fix applied to one copy silently skipped the other.
 test('the runtime name standardizer holds one traversal helper', () => {

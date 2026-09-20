@@ -130,6 +130,7 @@ test('a failing hard criterion still renders what it renders today', () => {
   )
   assert.deepEqual(invocation.prior_failure?.declared_criteria_failures, [])
   assert.match(card, /### Hard criteria that did not pass/u)
+  assert.match(card, /implement\.acceptance_claimed/u)
   assert.match(card, /AC-02 has no supporting evidence\./u)
   assert.match(card, /This is the complete recorded reason/u)
   assert.doesNotMatch(card, /### Criteria the attempt reported failing/u)

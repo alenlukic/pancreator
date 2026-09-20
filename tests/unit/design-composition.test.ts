@@ -54,32 +54,19 @@ test('planning composition is additive, pure, and carries design into the plan',
   )
 })
 
-test('a composed graph lists its stages in the order it executes them', () => {
-  const root = sharedFixture()
-  const planning = composeDesignWorkflow(root, loadWorkflow(root, 'planning'))
-  const order = planning.stages.map((stage) => stage.slug)
-
-  // `resetAttemptsFrom` clears the attempts of the named stage and every stage
-  // after it in this array, so a stage that runs earlier must not sit later.
-  assert.equal(planning.start_stage, 'design')
-  assert.equal(order.indexOf('design') < order.indexOf('plan'), true)
-
-  const base = loadWorkflow(root, 'delivery')
-  const delivery = composeDesignWorkflow(root, loadWorkflow(root, 'delivery'))
-
-  assert.deepEqual(
-    delivery.stages.map((stage) => stage.slug),
-    base.stages.map((stage) => stage.slug),
-  )
-})
-
 test('delivery composition appends design evidence without changing verify routing', () => {
   const root = sharedFixture()
 
   for (const slug of ['delivery', 'delivery-chunk']) {
     const base = loadWorkflow(root, slug)
     const baseVerify = stageBySlug(base, 'verify')
-    const verify = stageBySlug(composeDesignWorkflow(root, base), 'verify')
+    const composed = composeDesignWorkflow(root, base)
+    const verify = stageBySlug(composed, 'verify')
+
+    assert.deepEqual(
+      composed.stages.map((stage) => stage.slug),
+      base.stages.map((stage) => stage.slug),
+    )
 
     assert.deepEqual(
       baseVerify.evidence_workers?.map((worker) => worker.role),

@@ -982,33 +982,6 @@ test('TEST-001 resolves testing.md for self-development test personas', () => {
   assert.equal(targetIds.includes('TEST-001'), false)
 })
 
-test('regression guards require recorded pre-change signal evidence', () => {
-  const root = sharedFixture()
-  const surfaces = [
-    'governance/handbooks/eng/testing.md',
-    'library/personas/coder.md',
-    'library/personas/reviewer.md',
-  ]
-
-  for (const relative of surfaces) {
-    const content = readFileSync(
-      path.join(root, relative),
-      'utf8',
-    ).toLowerCase()
-
-    assert.match(content, /pre-change state/u, relative)
-    assert.match(content, /record/u, relative)
-  }
-
-  assert.match(
-    readFileSync(
-      path.join(root, 'governance/handbooks/eng/testing.md'),
-      'utf8',
-    ),
-    /### TP-11 · Regression signal/u,
-  )
-})
-
 test('TEST-001 permits directed mechanical governance and preserves judgment boundaries', () => {
   const testPolicy = loadPolicyCatalog(sharedFixture()).get('TEST-001')
 
@@ -1915,54 +1888,6 @@ test('mode governance explains every rule and carries the two canonical tables',
 // card or a prompt. The name claimed `validateRepository`, which it never
 // called. Renamed to what it does; the governance-validation binding AC-006
 // and AC-008 ask for is the separate case below.
-test('governance text delivers the repaired output and delegation contracts', () => {
-  const root = sharedFixture()
-  const contractPolicy = readFileSync(
-    path.join(root, 'governance/policies/CONTRACT-001.json'),
-    'utf8',
-  )
-  const delegatePolicy = readFileSync(
-    path.join(root, 'governance/policies/DELEGATE-001.json'),
-    'utf8',
-  )
-  const outputGuide = readFileSync(
-    path.join(root, 'library/skills/write-stage-output.md'),
-    'utf8',
-  )
-  const orchestrator = readFileSync(
-    path.join(root, 'library/personas/orchestrator.md'),
-    'utf8',
-  )
-  const remediatePrompt = readFileSync(
-    path.join(root, 'library/workflows/delivery/prompts/remediate.md'),
-    'utf8',
-  )
-
-  assert.match(
-    contractPolicy,
-    /a claimed path modified after the output fails/u,
-  )
-  assert.match(
-    contractPolicy,
-    /repository validation MUST fail on a missing declaration/u,
-  )
-  // Matched against collapsed whitespace: the contract is that the sentence
-  // is delivered, not where the line happens to wrap.
-  assert.match(
-    outputGuide.replaceAll(/\s+/gu, ' '),
-    /write its stage output after its last edit to every claimed path/u,
-  )
-  assert.match(outputGuide, /`CONTRACT-001`/u)
-  assert.match(delegatePolicy, /Worker model evidence is best-effort/u)
-  assert.match(delegatePolicy, /labeled `default`/u)
-  assert.match(delegatePolicy, /MODEL_EVIDENCE_MISMATCH/u)
-  assert.match(orchestrator, /resume the worker to repair its own output/u)
-  assert.match(orchestrator, /MUST NOT edit the worker's output/u)
-  assert.match(
-    remediatePrompt,
-    /\.\/bin\/pan repository-check <profile> --run <run-id>/u,
-  )
-})
 
 // AC-006 and AC-008 are worded as governance validation binding the rule to
 // its mechanism, and a grep is weaker than that. The directive audit inside

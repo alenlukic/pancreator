@@ -106,6 +106,7 @@ test('approving a single-chunk plan starts one delivery run and no fan-out', () 
   assert.equal(state.workspace_root, started.worktree)
   assert.ok(state.managed_worktree, 'the run is bound to a fresh worktree')
   assert.equal(state.managed_worktree?.path, started.worktree)
+  assert.match(started.worktree, /worktrees\/operator\/delivery-/u)
   assert.equal(
     state.request.context_reference?.source_path,
     'runtime/specs/parent-specification.md',
@@ -339,24 +340,6 @@ test('pan cohort route retries a failed plan route from the command line', () =>
 // AC-022. The routed run works somewhere the operator did not choose, so the
 // response has to say where. A pinned field keeps it from being dropped as
 // incidental detail in a later refactor of the handoff shape.
-test('the single-chunk autostart response names the worktree it bound', () => {
-  const root = createFixture()
-  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
-  const started = maybeStartDelivery(root, loadState(root, planRunId), {
-    actor: 'operator',
-    action: 'approve',
-  })
-
-  assert.equal(started?.status, 'started')
-  assert.ok(started?.status === 'started' && started.kind === 'delivery')
-  assert.equal(typeof started.worktree, 'string')
-  assert.match(started.worktree, /worktrees\/operator\/delivery-/u)
-  assert.equal(
-    loadState(root, started.run_id).managed_worktree?.path,
-    started.worktree,
-  )
-})
-
 // AC-023. An operator who already prepared a worktree — a rebased branch, a
 // warmed install — had no way to say so and got a second checkout beside the
 // one they meant the run to use.

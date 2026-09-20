@@ -10,20 +10,14 @@ import {
 } from '../../src/lib/engine.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   validateDelegationMarkdown,
   validateStageOutput,
 } from '../../src/lib/validation.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
-import {
-  createFixture,
-  makeOutput,
-  writeCanonicalDelegation,
-  writeJson,
-} from '../helpers.js'
-import { createRun, submitAsSupervisor } from '../run-helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -278,70 +272,6 @@ test('the inbox routing rule fails a producer that writes outside the queue', ()
     inboxRootWriteTargets(content).map((finding) => finding.reference),
     ['runtime/inbox/'],
   )
-})
-
-test('a retry card inlines the recorded reason the prior attempt failed', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Retry disclosure run',
-  })
-  const runId = state.run_id
-  const stage = stageBySlug(workflow, 'implement')
-
-  setRunStage(
-    root,
-    runId,
-    'implement',
-    'Seed implementation for retry testing.',
-  )
-
-  const first = prepareInvocation(root, runId).invocation
-
-  assert.ok(first)
-
-  const output = makeOutput(root, first, stage, 'failure')
-
-  output.result = 'failure'
-
-  for (const criterion of output.criteria) {
-    criterion.result =
-      criterion.id === 'implement.acceptance_claimed' ? 'fail' : 'pass'
-    criterion.explanation =
-      criterion.id === 'implement.acceptance_claimed'
-        ? 'AC-02 has no supporting evidence.'
-        : 'Fixture evidence'
-  }
-
-  writeJson(path.join(root, first.output.path), output)
-  writeCanonicalDelegation(root, first)
-  submitAsSupervisor(root, runId, first.output.path)
-
-  const retry = prepareInvocation(root, runId).invocation
-
-  assert.ok(retry)
-  assert.equal(retry.attempt, 2)
-  assert.ok(
-    retry.prior_failure,
-    'the retry invocation must carry prior_failure',
-  )
-  assert.deepEqual(
-    retry.prior_failure.failed_hard_criteria.map((item) => item.id),
-    ['implement.acceptance_claimed'],
-  )
-
-  const card = readFileSync(
-    resolveRunLayout(root, runId).invocation(retry.invocation_id, '.md')
-      .absolute,
-    'utf8',
-  )
-
-  // A path pointer is not enough; the reason must be on the card itself.
-  assert.match(card, /implement\.acceptance_claimed/u)
-  assert.match(card, /AC-02 has no supporting evidence\./u)
 })
 
 test('the delegation validator accepts one leading persona label', () => {

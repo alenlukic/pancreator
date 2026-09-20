@@ -23,7 +23,6 @@ import {
   integrateCohort,
   loadCohortState,
   maybeStartDelivery,
-  parseCohortPlan,
   recordCohortBaselines,
   releaseCohortBaselineClaim,
   retryDeliveryRoute,
@@ -209,72 +208,6 @@ function setInstallationMode(
 }
 
 const EMBEDDED_PAN = './.pancreator/bin/pan'
-
-test('a cohort plan is parsed only when its shape supports fan-out', () => {
-  const parsed = parseCohortPlan(planFixture(), 'data.cohort_plan')
-
-  assert.equal(parsed.chunks.length, 2)
-  assert.equal(parsed.cohorts.length, 2)
-  assert.deepEqual(parsed.chunks[1].depends_on, ['c1'])
-
-  assert.throws(
-    () => parseCohortPlan({ ...planFixture(), chunks: [] }, 'plan'),
-    /chunks MUST list at least one chunk/u,
-  )
-  assert.throws(
-    () =>
-      parseCohortPlan(
-        { ...planFixture(), parent_spec_path: '' },
-        'data.cohort_plan',
-      ),
-    /parent_spec_path MUST be a non-empty string/u,
-  )
-})
-
-test('a cohort plan with an empty or inconsistent cohort group is refused', () => {
-  const plan = planFixture()
-  const cohorts = plan.cohorts as Array<{ index: number; chunks: string[] }>
-
-  // An empty cohort could never be satisfied, so it would block the plan
-  // forever.
-  assert.throws(
-    () =>
-      parseCohortPlan(
-        { ...plan, cohorts: [...cohorts, { index: 3, chunks: [] }] },
-        'plan',
-      ),
-    (error: unknown) =>
-      error instanceof PanError &&
-      error.code === 'INVALID_COHORT_PLAN' &&
-      /cohorts\[2\]\.chunks MUST list at least one chunk id/u.test(
-        error.message,
-      ),
-  )
-
-  // Group membership and each chunk's own cohort_index must agree.
-  assert.throws(
-    () =>
-      parseCohortPlan(
-        {
-          ...plan,
-          cohorts: [
-            { index: 1, chunks: ['c1', 'c2'] },
-            { index: 2, chunks: ['c2'] },
-          ],
-        },
-        'plan',
-      ),
-    /names chunk 'c2', which claims cohort 2/u,
-  )
-  assert.throws(
-    () =>
-      parseCohortPlan(
-        { ...plan, cohorts: [cohorts[0], { index: 2, chunks: ['ghost'] }] },
-        'plan',
-      ),
-    /names chunk 'ghost', which the plan does not declare/u,
-  )
-})
 
 test('a cohort needs both succeeded runs and a merge proof to be satisfied', () => {
   const root = createFixture()

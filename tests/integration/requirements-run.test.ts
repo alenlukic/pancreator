@@ -427,69 +427,32 @@ test('requirements run accepts a harness-relative invocation path', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--invocation',
-      invocationPath,
-      '--registry',
-      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as {
-    status: string
-    comparison_base: { invocation_path: string }
+  for (const suppliedPath of [
+    invocationPath,
+    path.join(root, invocationPath),
+  ]) {
+    const stdout = execFileSync(
+      process.execPath,
+      [
+        CLI,
+        'requirements',
+        'run',
+        '--invocation',
+        suppliedPath,
+        '--registry',
+        'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8' },
+    )
+    const result = JSON.parse(stdout) as {
+      status: string
+      comparison_base: { invocation_path: string }
+    }
+
+    assert.equal(result.status, 'passed')
+    assert.equal(result.comparison_base.invocation_path, invocationPath)
   }
-
-  assert.equal(result.status, 'passed')
-  assert.equal(result.comparison_base.invocation_path, invocationPath)
-})
-
-test('requirements run accepts an absolute invocation path inside the harness root', () => {
-  const { root, invocation, workflow } = checkpoint(
-    'delivery@implement-prepared',
-  )
-
-  assert.ok(invocation)
-
-  const output = makeOutput(
-    root,
-    invocation,
-    stageBySlug(workflow, 'implement'),
-  )
-  const invocationPath = resolveRunLayout(root, invocation.run_id).invocation(
-    invocation.invocation_id,
-    '.json',
-  ).relative
-
-  writeJson(path.join(root, invocation.output.path), output)
-
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--invocation',
-      path.join(root, invocationPath),
-      '--registry',
-      'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as {
-    status: string
-    comparison_base: { invocation_path: string }
-  }
-
-  assert.equal(result.status, 'passed')
-  assert.equal(result.comparison_base.invocation_path, invocationPath)
 })
 
 test('requirements run rejects an absolute invocation path outside the harness root', () => {

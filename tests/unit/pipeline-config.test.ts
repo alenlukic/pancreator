@@ -271,6 +271,7 @@ test('pipeline config expands every alias exactly in defaults and named configs'
 
   for (const [index, [, , specification]] of aliases.entries()) {
     assert.equal(resolved[`alias-${index}`], specification)
+    assert.equal(personaExecutorOf(resolved[`alias-${index}`] ?? ''), 'cursor')
   }
 })
 

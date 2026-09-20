@@ -114,6 +114,10 @@ test('a stage return before the launch is not treated as an abandonment', () => 
   })
 
   setRunStage(root, run.run_id, 'verify', 'Verify the current workspace.')
+  assert.deepEqual(
+    inFlightEvidenceWorkers(root, getRunState(root, run.run_id)),
+    [],
+  )
   prepareInvocation(root, run.run_id)
 
   assert.deepEqual(
@@ -124,18 +128,5 @@ test('a stage return before the launch is not treated as an abandonment', () => 
     setRunStage(root, run.run_id, 'implement', 'Back to implement.')
       .current_stage,
     'implement',
-  )
-})
-
-test('a run with no current invocation has nothing in flight', () => {
-  const root = createFixture()
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-
-  assert.deepEqual(
-    inFlightEvidenceWorkers(root, getRunState(root, run.run_id)),
-    [],
   )
 })

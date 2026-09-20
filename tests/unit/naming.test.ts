@@ -19,8 +19,11 @@ test('workflow run IDs use UTC days to the 2200 anchor', () => {
 
   assert.equal(daysToAnchor(date), 63379)
   assert.equal(minutesToEndOfUtcDay(date), 158)
-  assert.equal(daysToAnchor(new Date('2026-07-03T23:00:00.000Z')), 63368)
-  assert.equal(minutesToEndOfUtcDay(new Date('2026-07-03T23:00:00.000Z')), 60)
+
+  const oneHourBeforeUtcMidnight = new Date('2026-07-03T23:00:00.000Z')
+
+  assert.equal(daysToAnchor(oneHourBeforeUtcMidnight), 63368)
+  assert.equal(minutesToEndOfUtcDay(oneHourBeforeUtcMidnight), 60)
 })
 
 test('workflow run IDs pad the minute field to four digits', () => {

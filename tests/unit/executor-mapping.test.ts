@@ -44,11 +44,11 @@ test('a plain model string parses as a cursor mapping', () => {
       options: {},
     },
     {
-      spec: 'openai:gpt-6-astra[effort=high]',
+      spec: 'openai:gpt-6-astra[effort=high,timeout-ms=600000]',
       executor: 'openai',
       model: 'gpt-6-astra',
-      model_spec: 'gpt-6-astra[effort=high]',
-      options: { effort: 'high' },
+      model_spec: 'gpt-6-astra[effort=high,timeout-ms=600000]',
+      options: { effort: 'high', 'timeout-ms': '600000' },
     },
     {
       spec: 'claude-code:claude-opus-5[permission-mode=default,session-resume=true]',
@@ -160,5 +160,11 @@ test('canonical mapping compares specs order-insensitively without renaming keys
   assert.equal(
     canonicalPersonaMapping('claude-code:claude-opus-5[permission-mode=plan]'),
     'claude-code:claude-opus-5[permission-mode=plan]',
+  )
+  assert.equal(
+    canonicalPersonaMapping(
+      'claude-code:claude-opus-5[session-resume=true,permission-mode=plan]',
+    ),
+    'claude-code:claude-opus-5[permission-mode=plan,session-resume=true]',
   )
 })

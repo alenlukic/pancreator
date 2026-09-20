@@ -459,6 +459,9 @@ test('both gate-cache writers build one entry shape, and a recorded agent pass c
 })
 
 test('an agent-recorded full pass is rejected and the ship-owned gate executes', () => {
+  // A worker-run full profile cannot take over the harness-owned ship gate.
+  // The cache keeps the record for audit, but the gate must compute its own
+  // result and record why the worker pass was ineligible.
   const root = createFixture()
   const marker = path.join(root, 'runtime', 'full-executions.log')
   const command =

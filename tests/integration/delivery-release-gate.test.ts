@@ -348,9 +348,8 @@ test('thorough verification runs full at the ship release gate on its own result
 })
 
 test('delivery-chunk remediation gates configuration', () => {
-  const root = checkpoint('delivery@verify-prepared').root
   const remediate = stageBySlug(
-    loadWorkflow(root, 'delivery-chunk'),
+    loadWorkflow(process.cwd(), 'delivery-chunk'),
     'remediate',
   )
   const commands = remediate.criteria

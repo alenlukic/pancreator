@@ -23,14 +23,6 @@ test('required positional arguments reject a flag in their slot', () => {
 
 // Run 63311 F-5: the displayed form omitted --invocation, and the command
 // failed until the supervisor supplied it. The help line is the contract.
-test('pan output validate help names the required --invocation argument', () => {
-  const usage = HELP_BODY.split('\n')
-    .map((line) => line.trim())
-    .find((line) => line.startsWith('pan output validate'))
-
-  assert.ok(usage, HELP_BODY)
-  assert.ok(usage.includes('--invocation'), usage)
-})
 
 // Both flags exist so a caller can opt out of a deferral the harness
 // otherwise performs for it. An undocumented opt-out is not an opt-out, and
@@ -68,6 +60,7 @@ test('pan output validate help names both run-id spellings', () => {
   assert.ok(usage, HELP_BODY)
   assert.ok(usage.includes('--run <run-id>'), usage)
   assert.ok(usage.includes('<run-id>'), usage)
+  assert.ok(usage.includes('--invocation'), usage)
 })
 
 // AC-013 and AC-023 add an operator flag each. A flag the help never shows is

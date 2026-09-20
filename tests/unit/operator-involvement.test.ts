@@ -43,6 +43,7 @@ test('a profile cannot lower a gate a stage declares non-relaxable', () => {
         reckless: {
           summary: 'Try to auto-approve the release.',
           gates: { ship: 'next_stage' },
+          contracts: ['long_horizon'],
         },
       }),
     /gate_relaxable: false/u,
