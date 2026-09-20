@@ -56,6 +56,77 @@ export function writeJson(pathname: string, value: unknown): void {
   writeFileSync(pathname, `${JSON.stringify(value, null, 2)}\n`)
 }
 
+/**
+ * Write a one-stage read-only workflow into a fixture and return its slug.
+ *
+ * A read-only start stage is what a test needs to exercise workspace
+ * attribution and immediate terminal failure, and no shipped workflow starts
+ * that way. The stage declares a judgment criterion only, so submission
+ * evaluates the harness-injected deterministic criteria without running a
+ * shell gate.
+ */
+export function writeInspectionWorkflow(root: string): string {
+  const slug = 'inspection'
+  const directory = path.join(root, 'library', 'workflows', slug)
+
+  writeJson(path.join(directory, 'workflow.json'), {
+    schema_version: 1,
+    slug,
+    title: 'Repository inspection',
+    description: 'A one-stage read-only workflow used to inspect a workspace.',
+    start_stage: 'inspect',
+    limits: {
+      max_total_transitions: 3,
+      max_stage_attempts: 1,
+      max_consecutive_failures: 1,
+    },
+    stages: ['inspect'],
+  })
+  writeJson(path.join(directory, 'stages', 'inspect.json'), {
+    slug: 'inspect',
+    title: 'Inspect repository',
+    persona: 'reviewer',
+    prompt_path: `library/workflows/${slug}/prompts/inspect.md`,
+    workspace_policy: 'read_only',
+    gate: 'stage_verdict',
+    context: { request: 'required' },
+    required_data: {
+      inspection: 'object',
+      'inspection.findings': 'array',
+      'inspection.verdict': 'string',
+    },
+    criteria: [
+      {
+        id: 'inspect.evidence',
+        type: 'judgment',
+        hard: true,
+        statement: 'Every finding names the evidence that establishes it.',
+      },
+    ],
+    transitions: {
+      success: 'succeeded',
+      failure: 'failed',
+      blocked: 'paused',
+    },
+  })
+  mkdirSync(path.join(directory, 'prompts'), { recursive: true })
+  writeFileSync(
+    path.join(directory, 'prompts', 'inspect.md'),
+    [
+      '## Objective',
+      '',
+      'Inspect the workspace and report findings. Change no file.',
+      '',
+      '## Output',
+      '',
+      'Populate `data.inspection` (`findings`, `verdict`).',
+      '',
+    ].join('\n'),
+  )
+
+  return slug
+}
+
 function gitChangedFiles(root: string): string[] {
   if (!existsSync(path.join(root, '.git'))) {
     return []

@@ -201,7 +201,6 @@ test('writes new inbox items to queue', () => {
     'library/cursor/agents/harness-technician.md',
     'library/cursor/agents/meta-orchestrator.md',
     'library/cursor/agents/spotfixer.md',
-    'library/cursor/commands/pan-debug.md',
     'library/cursor/commands/pan-decompose.md',
     'library/cursor/commands/pan-qa-workflow.md',
     'library/cursor/commands/pan-repair.md',

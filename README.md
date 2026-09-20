@@ -19,7 +19,6 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 
 - turn broad requests into scoped, reviewable work;
 - run implementation through explicit validation and QA gates;
-- debug issues with a bounded investigation path;
 - audit suspicious Pancreator runs, including worker transcripts, into root-cause self-development intake;
 - prepare release notes and version metadata with the operator still owning the release action;
 - generate durable repository orientation docs so future agent work starts with better context;
@@ -59,7 +58,6 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 4. Choose the workflow that matches the job:
 
    - Use `/pan-start <request>` for normal delivery work. It starts the `planning` workflow; approving the ratified plan starts the delivery itself, as one `delivery` run or as a cohort of parallel chunk runs followed by one release run.
-   - Use `/pan-debug <problem>` when you need root-cause analysis first.
    - Use `/pan-repair <problem-or-artifact>` when Pancreator itself may have failed or missed governance.
    - Use `/pan-summarize-context` before continuing the work in a fresh agent conversation.
    - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
@@ -95,7 +93,6 @@ For indexed release updates:
 ## Common Entry Points
 
 - `/pan-start`: start a governed planning run for a new request; its ratified plan routes into delivery
-- `/pan-debug`: investigate a problem and recommend the right work mode
 - `/pan-repair`: audit a harness problem or workflow run and write a transcript-aware self-development intake
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work
 - `/pan-build-briefs`: generate or refresh project brief semantics and design tokens

@@ -26,7 +26,6 @@ exist.
   structured brief data and semantic HTML an operator reads.
 - [`evaluate-evidence.md`](evaluate-evidence.md) - judge whether evidence
   supports a criterion.
-- [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.
 - [`prompt-augmentation.md`](prompt-augmentation.md) - augment an operator
   prompt for one-shot execution.
 - [`research.md`](research.md) - research an operator-named subject from
@@ -46,13 +45,10 @@ exist.
 
 ## Stage-aligned
 
-- [`map-acceptance-criteria.md`](map-acceptance-criteria.md) - planning.
-- [`modern-code-review.md`](modern-code-review.md) - independent review.
 - [`review-squad.md`](review-squad.md) - shepherd review by one agent per
   review dimension, coordinated under `SHEPHERD-001`.
 - [`update-release-metadata.md`](update-release-metadata.md) - release metadata
   and version-bearing documentation.
-- [`manual-qa-cases.md`](manual-qa-cases.md) - quality assurance.
 - [`release-packet.md`](release-packet.md) - release preparation.
 - [`write-pr-description.md`](write-pr-description.md) - draft a merge-ready PR
   body from a workflow run or a standalone base-to-worktree comparison.

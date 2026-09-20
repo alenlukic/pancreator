@@ -10,17 +10,19 @@ import {
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
+  writeInspectionWorkflow,
   writeJson,
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 test('read-only stage fails when a source workspace change is unattributed', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'preflight')
+  const workflowSlug = writeInspectionWorkflow(root)
+  const workflow = loadWorkflow(root, workflowSlug)
   const stage = stageBySlug(workflow, 'inspect')
 
   const unattributed = createRun(root, {
-    workflowSlug: 'preflight',
+    workflowSlug,
     requestPath: 'request.md',
   })
   const first = prepareInvocation(root, unattributed.run_id).invocation
@@ -59,7 +61,7 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   assert.equal(failed.state.status, 'failed')
 
   const attributed = createRun(root, {
-    workflowSlug: 'preflight',
+    workflowSlug,
     requestPath: 'request.md',
   })
   const second = prepareInvocation(root, attributed.run_id).invocation

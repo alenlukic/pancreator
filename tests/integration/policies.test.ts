@@ -487,7 +487,6 @@ test('representative contexts exclude policies outside their remit', () => {
     ['decomposer', 'standalone', 'decompose', ['DECOMP-001']],
     ['orchestrator', 'prototype', 'intake', ['PROTO-001']],
     ['harness-technician', 'standalone', 'repair', ['REPAIR-001']],
-    ['investigator', 'standalone', 'debug', ['DIAG-001', 'WORK-001']],
     ['spotfixer', 'standalone', 'spotfix', ['SPOT-001', 'WORK-001']],
     [
       'meta-orchestrator',
@@ -851,7 +850,6 @@ test('the style handbooks reach the batch pass and no delivery persona', () => {
     { persona: 'verifier', workflow: 'delivery', stage: 'verify' },
     { persona: 'remediator', workflow: 'delivery', stage: 'remediate' },
     { persona: 'remediator-severe', workflow: 'delivery', stage: 'remediate' },
-    { persona: 'hypervisor', workflow: 'standalone', stage: 'hypervisor' },
   ]
 
   for (const context of deliveryContexts) {
