@@ -1,5 +1,26 @@
 # Changelog
 
+## [6.32.1] - 2026-09-20
+
+This release corrects two `pan debloat` scan defects. The orphan pass now sees live CLI entrypoints. The exclusive-reference cascade keeps facilities that the same scan already marked as used.
+
+### Changed
+
+- Mark the orphan category as medium confidence, because a path assembled at run time can hide a consumer ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Keep a facility with execution or direction evidence, and record it under `retained_because` ([2493e1a4](https://github.com/alenlukic/pancreator/commit/2493e1a413d40fee3f6dbe18047decdb8ec4b439)).
+
+### Added
+
+- Record a `bin/` script and a `package.json` script that runs a built `dist/**/*.js` path as live consumers ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Record a source string that names a spawned built file as a live consumer ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Follow a barrel chain to a real consumer so a module behind a consumed barrel stays live ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Recognize a subcommand invoked as `npm run <name>` or through a built `cli.js <name>` path ([2493e1a4](https://github.com/alenlukic/pancreator/commit/2493e1a413d40fee3f6dbe18047decdb8ec4b439)).
+
+### Fixed
+
+- Keep a live CLI entrypoint out of the unused-file report ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Keep a used facility out of the exclusive-reference cascade ([2493e1a4](https://github.com/alenlukic/pancreator/commit/2493e1a413d40fee3f6dbe18047decdb8ec4b439)).
+
 ## [6.32.0] - 2026-09-20
 
 This release counts only functional usage when `pan debloat` scans chat, inbox, and prose. An incidental mention no longer keeps a facility.
