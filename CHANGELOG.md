@@ -1,5 +1,20 @@
 # Changelog
 
+## [6.26.0] - 2026-09-20
+
+This release consolidates the five harness-repair releases 6.21.0 through 6.25.0 into one installable tree and adds the supervisor's harness-path delegation.
+
+### Changed
+
+- `pan delegate --headless` dispatches a cursor-executor stage through the harness cursor-agent path with the persona's mapped model, and `--evidence-only [--role]` runs one evidence worker, so a supervisor whose platform exposes no projected agent still launches every stage at the mapped model ([4f0f7a2b](https://github.com/alenlukic/pancreator/commit/4f0f7a2b1a7d150a2319f77d5df97c106e0aa1b4)).
+- The long-horizon retry rung follows a stage's declared failure transition (verify to remediate) instead of re-running the failed stage against an unchanged workspace ([cbac1a60](https://github.com/alenlukic/pancreator/commit/cbac1a60ba63dba4c07e6080748a6bba909453c2)).
+- A spawned worker no longer inherits `PANCREATOR_EXEC_ROOT` or the `PANCREATOR_ROOT` that `bin/pan` pins beside it, and `bin/pan` unsets the request before it execs the selected build ([b54a61d0](https://github.com/alenlukic/pancreator/commit/b54a61d001ab3cbe86035df052920abe5ffe8146)).
+
+### Fixed
+
+- The regression guard for the versioned-landing rule accepts the scoped commit prohibition in `AGENTS.md` ([f335bb90](https://github.com/alenlukic/pancreator/commit/f335bb90dd7fe3f9f2bcc1e56fc97700efc7b052)).
+- The multiplexed watch measures its stall window as a duration, as the focused watch does, so the 6.21.0 liveness rule and the 6.24.0 multiplexed watch agree ([fb517a2b](https://github.com/alenlukic/pancreator/commit/fb517a2bbd6aebbb9f45864036574521314cdcf6)).
+
 ## [6.25.0] - 2026-09-20
 
 This release closes six compliance findings. A validator now blocks only on a field the worker contract declares. An evidence worker cannot satisfy the ship full-profile gate.
