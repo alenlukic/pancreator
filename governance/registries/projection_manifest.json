@@ -60,6 +60,14 @@
       "transforms": ["policy-rule"]
     },
     {
+      "id": "cursor-comms-policy-rule",
+      "source": "governance/policies/COMMS-001.json",
+      "target": ".cursor/rules/pan-chat-output.mdc",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule"]
+    },
+    {
       "id": "cursor-mcp",
       "source": "library/cursor/mcp.json",
       "target": ".cursor/mcp.json",

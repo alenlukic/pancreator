@@ -157,6 +157,14 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.match(browserRule, /BROWSER-001/u)
   assert.match(browserRule, /alwaysApply:\s*true/u)
 
+  const chatRule = readFileSync(
+    path.join(project, '.cursor', 'rules', 'pan-chat-output.mdc'),
+    'utf8',
+  )
+
+  assert.match(chatRule, /COMMS-001/u)
+  assert.match(chatRule, /alwaysApply:\s*true/u)
+
   const primer = readFileSync(
     path.join(project, '.pancreator', 'docs', 'target-repo-primer.md'),
     'utf8',
@@ -505,6 +513,10 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
       existsSync(
         path.join(project, '.cursor', 'rules', 'pan-browser-isolation.mdc'),
       ),
+      true,
+    )
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'rules', 'pan-chat-output.mdc')),
       true,
     )
 

@@ -1560,6 +1560,15 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
     audienceFor('COMMS-001', 'Operator chat reports MUST state the outcome'),
     ['agent'],
   )
+  // The prose cap and the terminal-state report contract reach every
+  // operator-facing agent through the same universal row.
+  assert.deepEqual(audienceFor('COMMS-001', 'MUST hold at most 250 words'), [
+    'agent',
+  ])
+  assert.deepEqual(
+    audienceFor('COMMS-001', 'When a task reaches a terminal state'),
+    ['agent'],
+  )
   assert.deepEqual(
     audiences('COMMS-001').filter(
       (audience) => audience.length !== 1 || audience[0] !== 'agent',
