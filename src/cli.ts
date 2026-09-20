@@ -319,6 +319,12 @@ import {
   runBenchmarkSession,
   validateAudit,
 } from './lib/test-tuning.js'
+import {
+  computeDebloatImpact,
+  scanDebloat,
+  selectDebloatFacilities,
+  verifyDebloat,
+} from './lib/debloat.js'
 
 function helpText(root: string): string {
   const versionPath = path.join(root, 'VERSION')
@@ -2799,6 +2805,78 @@ async function main(): Promise<void> {
       }
 
       throw new PanError(`Unknown tune subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'debloat': {
+      const sub = args[0]
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'scan') {
+        const days = option(args, '--days')
+        const transcripts = option(args, '--transcripts')
+
+        print(
+          {
+            status: 'scanned',
+            ...scanDebloat(root, {
+              ...(days === null ? {} : { windowDays: Number(days) }),
+              worktreeName: option(args, '--worktree'),
+              ...(transcripts === null ? {} : { transcriptsRoot: transcripts }),
+            }),
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'select') {
+        print(
+          {
+            status: 'selected',
+            ...selectDebloatFacilities(
+              root,
+              requiredArgument(option(args, '--session'), '--session'),
+              options(args, '--facility'),
+            ),
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'impact') {
+        print(
+          {
+            status: 'computed',
+            ...computeDebloatImpact(
+              root,
+              requiredArgument(option(args, '--session'), '--session'),
+            ),
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'verify') {
+        const result = verifyDebloat(
+          root,
+          requiredArgument(option(args, '--session'), '--session'),
+        )
+
+        print(result, asJson)
+
+        // A surviving path or a dangling reference means the removal is not
+        // finished, so the exit code has to fail the step that ran it.
+        if (result.status !== 'clean') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown debloat subcommand: ${sub ?? '(missing)'}`, {
         code: 'UNKNOWN_COMMAND',
       })
     }

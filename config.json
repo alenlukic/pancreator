@@ -67,7 +67,8 @@
     "harness-technician": "",
     "repo-technician": "",
     "harness-workflow-qa": "",
-    "hypervisor": ""
+    "hypervisor": "",
+    "debloater": ""
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",

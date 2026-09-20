@@ -671,6 +671,19 @@
       "technology": "typescript"
     },
     {
+      "persona": "debloater",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DEBLOAT-001", "WORK-001", "ENG-001"]
+    },
+    {
+      "persona": "debloater",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["TS-001"],
+      "technology": "typescript"
+    },
+    {
       "persona": "metacritic",
       "workflow": "metacritic",
       "stage": "consolidate",

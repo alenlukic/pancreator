@@ -32,6 +32,8 @@ exist.
 - [`research.md`](research.md) - research an operator-named subject from
   supplied context and web sources, and write one sourced document.
 - [`spotfix.md`](spotfix.md) - make or escalate one operator-selected lightweight change.
+- [`debloat-closure.md`](debloat-closure.md) - remove operator-selected
+  facilities and the content they exclusively own.
 - [`harden.md`](harden.md) - bring a session's ad-hoc changes to a mergeable
   state, stopping at the integration boundary.
 - [`shepherd-pr.md`](shepherd-pr.md) - watch one GitHub PR for review feedback,

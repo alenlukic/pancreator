@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.27.0] - 2026-09-20
+
+This release adds `/pan-debloat`. An operator can scan unused harness facilities and remove a selected set as a release.
+
+### Added
+
+- Add `/pan-debloat` so an operator can scan unused facilities, select a subset, and land the exclusive closure as a minor release ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
+- Add `pan debloat scan|select|impact|verify` so the command can inventory facilities, record the operator choice, compute the exclusive-reference closure, and prove the workspace ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
+- Add policy DEBLOAT-001, the `debloat` standalone mode, the `debloater` persona, and skill `debloat-closure` so removal stays inside the recorded selection ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
+
 ## [6.26.0] - 2026-09-20
 
 This release consolidates the five harness-repair releases 6.21.0 through 6.25.0 into one installable tree and adds the supervisor's harness-path delegation.
