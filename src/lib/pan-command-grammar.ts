@@ -1,7 +1,8 @@
 const STANDALONE_MODE_NAMES =
-  'author|best-of-n|build-briefs|build-docs|conform|decomposition|harden|' +
-  'investigation|pair|polish|qa-workflow|release|repair|research|review|' +
-  'shepherd|spotfix|style|supervisor|target|trace|tune-harness|unbound|write-pr'
+  'author|best-of-n|build-briefs|build-docs|conform|debloat|decomposition|' +
+  'harden|investigation|pair|polish|qa-workflow|release|repair|research|' +
+  'review|shepherd|spotfix|style|supervisor|target|trace|tune-harness|' +
+  'unbound|write-pr'
 
 export const HELP_BODY = `Usage:
   pan help
@@ -81,6 +82,14 @@ export const HELP_BODY = `Usage:
       Load validated session files, assemble the benchmark, then atomically write the tune record, report, and latest pointer.
   pan tune validate-audit --record <path> --baseline <ref> --target <ref> [--json]
       Verify a worked audit covers every net-new test identity in the baseline..target range.
+  pan debloat scan [--days <1..365>] [--worktree <name>] [--transcripts <path>] [--json]
+      Self-development only. Inventory every harness facility, score it against the evidence window, and write the operator report. Run records and Cursor command markers settle the categories they name, the static reference graph settles the rest, and operator prose is the last resort. Removes nothing.
+  pan debloat select --session <id> --facility <id>... [--json]
+      Record the operator's chosen subset. An id the scan did not report as an unused candidate is refused, so a selection can never be widened after the fact.
+  pan debloat impact --session <id> [--json]
+      Compute the exclusive-reference closure of the recorded selection. Writes the paths to delete, the registry rows and references to repair, and every near-miss with the survivor that kept it.
+  pan debloat verify --session <id> [--json]
+      Confirm the workspace matches the closure after removal. Exits 1 while a listed path survives or a file still names a removed facility.
   pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
   pan worktree resolve <name> [--description <text>] [--json]
   pan worktree list [--json]

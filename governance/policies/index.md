@@ -45,6 +45,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `REPAIR-001` — transcript-aware harness repair investigation and self-development intake
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation
+- `DEBLOAT-001` — operator-selected harness facility removal and closure adjudication
 - `PAIR-001` — operator-directed pair programming outside workflow structure
 - `SHEPHERD-001` — bounded PR feedback watching, ledgered bot discipline, and squad-gated pushes
 - `REVIEW-001` — standalone review-squad session over one captured target, findings only

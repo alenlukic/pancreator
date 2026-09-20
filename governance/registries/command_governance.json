@@ -20,6 +20,10 @@
       "card_mode": "conform"
     },
     {
+      "command": "pan-debloat",
+      "card_mode": "debloat"
+    },
+    {
       "command": "pan-harden",
       "card_mode": "harden"
     },
@@ -52,6 +56,13 @@
       "worktree_forwarding": [
         "author apply --input runtime/inbox/target-authoring/<id>.json --worktree <name> --json",
         "author validate --extension <id> --worktree <name> --json"
+      ]
+    },
+    {
+      "command": "pan-debloat",
+      "worktree_forwarding": [
+        "debloat scan --days <window> --worktree <name> --json",
+        "governance card --mode debloat --worktree <name>"
       ]
     },
     {
