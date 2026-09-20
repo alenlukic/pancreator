@@ -164,6 +164,40 @@ test('a facility nothing names or references becomes a candidate', () => {
   )
 })
 
+test('a facility only its own tests reference is a candidate, and says so', () => {
+  const { root, transcripts } = createScannedFixture()
+
+  write(
+    path.join(root, 'library', 'skills', 'orphan-technique.md'),
+    '# Orphan technique\n',
+  )
+  // The test is the only thing left that reaches the skill. That proves the
+  // skill still works, never that anything needs it.
+  write(
+    path.join(root, 'tests', 'unit', 'orphan-technique.test.ts'),
+    "// covers library/skills/orphan-technique.md\nexport const covered = 'library/skills/orphan-technique.md'\n",
+  )
+
+  scanDebloat(root, {
+    sessionId: SESSION,
+    now: NOW,
+    transcriptsRoot: transcripts,
+  })
+
+  const record = scanRecord(root)
+  const usage = record.usage.find(
+    (entry) => entry.facility_id === 'skill:orphan-technique',
+  )
+
+  assert.equal(usage?.evidence_tier, 'none')
+  assert.equal(usage?.test_only_references, true)
+  assert.ok(record.candidates.includes('skill:orphan-technique'))
+  assert.match(
+    readText(sessionPaths(root, SESSION).report),
+    /Only its own tests reference it/u,
+  )
+})
+
 test('the protected set is withheld from candidates and says why', () => {
   const { root, transcripts } = createScannedFixture()
 

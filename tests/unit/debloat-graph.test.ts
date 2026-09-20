@@ -285,6 +285,176 @@ test('a test dedicated to removed facilities leaves, a shared one is repaired', 
   )
 })
 
+/**
+ * A validator reached only through the string-keyed dispatch table.
+ *
+ * `gadget` is resolved by a policy requirement, `widget-check` by nothing at
+ * all, and `caller` by a direct function call. The three cover the whole
+ * question of what an import into a dispatch table is worth.
+ */
+function addValidatorChain(root: string): void {
+  write(root, 'src/lib/validators/gadget.ts', 'export const gadget = 1\n')
+  write(root, 'src/lib/validators/widget-check.ts', 'export const wc = 1\n')
+  write(root, 'src/lib/validators/caller.ts', 'export const caller = 1\n')
+  write(
+    root,
+    'src/lib/requirements/handlers.ts',
+    [
+      "import { gadget } from '../validators/gadget.js'",
+      "import { wc } from '../validators/widget-check.js'",
+      "import { caller } from '../validators/caller.js'",
+      '',
+      'export const HANDLERS = {',
+      "  'gadget-validate': gadget,",
+      "  'widget-check-validate': wc,",
+      "  'caller-validate': caller,",
+      '}',
+      '',
+    ].join('\n'),
+  )
+  write(
+    root,
+    'governance/registries/validation_registry.json',
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        entries: [
+          { id: 'GADGET-VALIDATE-001', handler: 'gadget-validate' },
+          { id: 'WIDGET-CHECK-001', handler: 'widget-check-validate' },
+          { id: 'CALLER-VALIDATE-001', handler: 'caller-validate' },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  write(
+    root,
+    'governance/policies/STAPLE-001.json',
+    `${JSON.stringify(
+      {
+        id: 'STAPLE-001',
+        title: 'STAPLE-001',
+        severity: 'hard',
+        summary: 'STAPLE-001 summary.',
+        instructions: ['Agents MUST follow STAPLE-001.'],
+        requirements: [
+          {
+            id: 'staple-validate',
+            registry_id: 'GADGET-VALIDATE-001',
+            phase: 'pre_submit',
+            executor: 'both',
+            target: 'artifact:0',
+            enforcement: 'required',
+            failure_route: 'stage_failure',
+            evidence_class: 'validation-result',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  // A real call, which is the thing a registration is not.
+  write(
+    root,
+    'src/lib/stapling.ts',
+    "import { caller } from './validators/caller.js'\n\nexport const used = caller\n",
+  )
+}
+
+test('a comment naming a facility does not hold it in the harness', () => {
+  const root = createWorkspace()
+
+  write(
+    root,
+    'src/lib/notes.ts',
+    [
+      '// The widgeteer persona used to own this, see `pan-widgeteer`.',
+      '/* Block comment referencing library/skills/widget-craft.md too. */',
+      'export const value = 1',
+      '',
+    ].join('\n'),
+  )
+
+  const graph = buildReferenceGraph(root, collectFacilities(root))
+  const fromNotes = graph.references.filter(
+    (reference) => reference.from === 'src/lib/notes.ts',
+  )
+
+  assert.deepEqual(
+    fromNotes,
+    [],
+    'documentation about a facility is not a dependency on it',
+  )
+})
+
+test('a dispatch-table import registers a validator without keeping it alive', () => {
+  const root = createWorkspace()
+
+  addValidatorChain(root)
+
+  const facilities = collectFacilities(root)
+  const graph = buildReferenceGraph(root, facilities)
+  const classesFor = (id: string): string[] => [
+    ...new Set(
+      (graph.incoming.get(id) ?? []).map(
+        (reference) => reference.referrer_class,
+      ),
+    ),
+  ]
+
+  // The table imports all three, and that import must never read as a use.
+  assert.deepEqual(classesFor('validator:widget-check'), ['registry'])
+
+  // A policy requirement resolves the handler id, which is a real edge.
+  assert.ok(
+    (graph.incoming.get('validator:gadget') ?? []).some(
+      (reference) =>
+        reference.owner_facility === 'policy:STAPLE-001' &&
+        reference.referrer_class === 'facility',
+    ),
+    'the policy that resolves the handler id owns the edge',
+  )
+
+  // A direct call is code and blocks like any other call.
+  assert.ok(classesFor('validator:caller').includes('code'))
+})
+
+test('a validator nothing resolves is removable, one with a caller is not', () => {
+  const root = createWorkspace()
+
+  addValidatorChain(root)
+
+  const facilities = collectFacilities(root)
+  const graph = buildReferenceGraph(root, facilities)
+
+  // Removing the only policy that resolves it takes the validator with it.
+  assert.deepEqual(
+    computeClosure(facilities, graph, ['policy:STAPLE-001'], {
+      sessionId: '20260920-000000-abcdef',
+    }).cascaded,
+    ['validator:gadget'],
+  )
+
+  // The registration-only validator never gained a blocking referrer, so it
+  // is free to leave on its own.
+  const alone = computeClosure(facilities, graph, ['validator:widget-check'], {
+    sessionId: '20260920-000000-abcdef',
+  })
+
+  assert.deepEqual(
+    alone.remove.map((entry) => entry.path),
+    ['src/lib/validators/widget-check.ts'],
+  )
+  assert.ok(
+    alone.edit.some(
+      (entry) => entry.path === 'src/lib/requirements/handlers.ts',
+    ),
+    'the dispatch entry is repaired rather than left dangling',
+  )
+})
+
 test('the closure refuses a protected facility', () => {
   const root = createWorkspace()
 

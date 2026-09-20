@@ -61,6 +61,9 @@ function plural(count: number, singular: string): string {
  */
 export function renderScanReport(input: ReportInput): string {
   const byId = new Map(input.facilities.map((entry) => [entry.id, entry]))
+  const usageById = new Map(
+    input.usage.map((entry) => [entry.facility_id, entry]),
+  )
   const lines: string[] = []
 
   lines.push(`# Debloat scan ${input.sessionId}`)
@@ -131,13 +134,55 @@ export function renderScanReport(input: ReportInput): string {
       `Confidence for this category is ${CATEGORY_CONFIDENCE[category]}.`,
     )
     lines.push('')
-    lines.push('| Facility | Definition |')
-    lines.push('| --- | --- |')
+    lines.push('| Facility | Definition | Only its own tests reference it |')
+    lines.push('| --- | --- | --- |')
 
     for (const entry of rows) {
       lines.push(
         `| \`${escapeCell(entry.id)}\` | ` +
-          `${entry.path ? `\`${escapeCell(entry.path)}\`` : 'code-resident'} |`,
+          `${entry.path ? `\`${escapeCell(entry.path)}\`` : 'code-resident'} | ` +
+          `${usageById.get(entry.id)?.test_only_references ? 'yes' : 'no'} |`,
+      )
+    }
+  }
+
+  // A facility whose only structural references are its own tests is held up
+  // by the tests written to exercise it. When such a facility also stayed off
+  // the candidate list on weaker evidence, only the operator can tell whether
+  // that evidence was a real use or a passing mention.
+  const testOnlySurvivors = input.usage
+    .filter(
+      (entry) =>
+        entry.test_only_references &&
+        entry.evidence_tier !== 'execution' &&
+        !input.candidates.includes(entry.facility_id),
+    )
+    .sort((left, right) => left.facility_id.localeCompare(right.facility_id))
+
+  if (testOnlySurvivors.length > 0) {
+    lines.push('')
+    lines.push('## Kept off the list, but only their own tests use them')
+    lines.push('')
+    lines.push(
+      'Nothing in the harness reaches these. Their only references are the ' +
+        'tests written to exercise them, so those tests show that the code ' +
+        'runs rather than that anything needs it. Each one stayed off the ' +
+        'candidate list on the weaker evidence named below. Review them.',
+    )
+    lines.push('')
+    lines.push('| Facility | Why it is not a candidate |')
+    lines.push('| --- | --- |')
+
+    for (const entry of testOnlySurvivors) {
+      lines.push(
+        `| \`${escapeCell(entry.facility_id)}\` | ` +
+          `${
+            entry.evidence_tier === 'mention'
+              ? 'operator prose named it inside the window'
+              : `depended on by ${escapeCell(
+                  entry.depended_on_by.join(', ') || 'an indirect chain',
+                )}`
+          } |`,
       )
     }
   }
