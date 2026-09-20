@@ -42,6 +42,10 @@ harness checks.
     current card's values.
     The harness applies the patch and validates the merged document.
     Keep everything you were not asked to change.
+11. `CONTRACT-001`: a worker MUST write its stage output after its last edit to
+    every claimed path. An edit to a claimed path after the output write makes
+    that output stale; coverage:
+    `tests/integration/validators-stage-validators.test.ts::a claimed path modified after the output fails, and an ordered one passes`.
 
 The harness rerenders the declared brief source during submission. A missing or
 invalid source, a non-HTML primary artifact, or artifact paths that differ from

@@ -1,5 +1,31 @@
 # Changelog
 
+## [6.25.0] - 2026-09-20
+
+This release closes six compliance findings. A validator now blocks only on a field the worker contract declares. An evidence worker cannot satisfy the ship full-profile gate.
+
+### Changed
+
+- Refuse `pan repository-check full` from a verify-stage evidence worker. Name VERIFY-001 and the ship gate that owns the profile ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Reject a cached full-profile pass when the recorder was not permitted to run that profile. The ship gate then executes ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Return a submission advisory when an output claims a profile pass that the ledger does not hold at the current fingerprint ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Record `OUTPUT_SCAFFOLD_MISSING_BEFORE_WORKSPACE_CHANGE` when a wake sees a changed workspace with no output file. Do not count that wake as unchanged ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- State the output-last rule in CONTRACT-001 and in `library/skills/write-stage-output.md` ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- State that worker model evidence is best-effort in DELEGATE-001. Keep a probed-versus-snapshot mismatch as a hard failure ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Direct a supervisor to resume a worker that wrote a refused output. Do not edit the worker output ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Name `./bin/pan repository-check <profile> --run <run-id>` in the remediate prompt ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Accept a plan `maps_to` id in the `C-*` or `OOS-*` family when the same output defines it ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Fail `pan validate` when a stage validator blocks on a field that `enforced_fields` does not declare ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+
+### Added
+
+- Add `src/lib/validators/refusals.ts` as the canonical refusal declaration for every live stage-output validator, and the prototype intake handler ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+- Declare verify finding `id` and `evidence[]` in the shared field contract. Emit a scaffold exemplar that shows that shape ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+
+### Fixed
+
+- Close the prototype intake exemption so AC-010 covers that handler ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
+
 ## [6.24.0] - 2026-09-19
 
 This release makes the suite-cost gate advisory. It also adds a multiplexed cohort wait, a bounded runtime rewrite, and progress output on long commands.

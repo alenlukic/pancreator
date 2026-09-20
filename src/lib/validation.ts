@@ -41,7 +41,7 @@ import type {
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { harnessRepairCategoryErrors } from './governance/harness-repair-categories.js'
-import { HANDLER_IDS } from './requirements/handlers.js'
+import { getHandler, HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
   SUITE_PROFILE_GATE_PROFILE,
@@ -90,7 +90,7 @@ import { executingSourceRoot } from './build-identity.js'
 import {
   buildGateCacheEntry,
   gateCacheKey,
-  gateCacheLookup,
+  gateCacheLookupForGate,
   gateCacheStore,
   gateCacheableSnapshot,
   repositoryCheckGateCommand,
@@ -2811,7 +2811,11 @@ function runShellCheck(
     !baselineLoad?.reason
       ? gateCacheKey(root, workspaceFingerprint, command)
       : null
-  const cached = cacheKey ? gateCacheLookup(root, cacheKey) : null
+  const cacheAcceptance = cacheKey
+    ? gateCacheLookupForGate(root, cacheKey)
+    : { entry: null, rejected_entry: null, rejection: null }
+  const cached = cacheAcceptance.entry
+  const cacheRejection = cacheAcceptance.rejection
   // A profile gate needs the recorded repository result for this run's delta.
   const cachedUsable =
     cached !== null && (!profileName || cached.repository_result !== undefined)
@@ -2908,6 +2912,10 @@ function runShellCheck(
         : {}),
       workspace_fingerprint: workspaceFingerprint,
     }
+  }
+
+  if (cacheRejection) {
+    onProgress?.(cacheRejection)
   }
 
   let exitCode: number | null
@@ -3099,6 +3107,7 @@ function runShellCheck(
     `finished_at=${new Date().toISOString()}`,
     `workspace_fingerprint=${workspaceFingerprint}`,
     `exit_code=${exitCode ?? 'null'}`,
+    cacheRejection ? `cache_rejection=${cacheRejection}` : null,
     signal ? `signal=${signal}` : null,
   ].filter((line): line is string => line !== null)
   const body = (out: string, err: string, note: string | null) =>
@@ -3164,6 +3173,7 @@ function runShellCheck(
           .relative(root, evidencePath)
           .split(path.sep)
           .join('/'),
+        recorded_by: 'harness',
         ...(repositoryResult ? { repository_result: repositoryResult } : {}),
         suite_profile_path: suiteProfilePath ?? null,
       }),
@@ -4916,6 +4926,33 @@ export function validateRepository(root: string): RepositoryValidationResult {
       const registry = loadRegistry(root)
       errors.push(...validateRegistry(registry, HANDLER_IDS))
       errors.push(...validatePolicyRequirements(catalog.values(), registry))
+
+      const fieldContractEntry = registry.entries.get(
+        'FIELD-CONTRACT-VALIDATE-001',
+      )
+      const fieldContractHandler = fieldContractEntry
+        ? getHandler(fieldContractEntry.handler)
+        : undefined
+
+      if (fieldContractEntry && fieldContractHandler) {
+        const fieldContract = fieldContractHandler({
+          root,
+          targetPath: 'library/schemas/stage-output-requirements.json',
+          requirement: {
+            policy_id: 'CONTRACT-001',
+            requirement_id: 'stage-field-contract-validate',
+            registry_id: fieldContractEntry.id,
+            arguments: {},
+          },
+          catalog: registry,
+        })
+
+        errors.push(
+          ...fieldContract.issues.map(
+            (item) => `stage output field contract: ${item.message}`,
+          ),
+        )
+      }
 
       for (const row of lookup.rows) {
         try {

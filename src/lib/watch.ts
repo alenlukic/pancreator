@@ -18,7 +18,7 @@ import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
-import { gitWorkspaceActivityFingerprint } from './git.js'
+import { gitWorkspaceActivityFingerprint, gitWorkspaceSnapshot } from './git.js'
 import {
   appendJsonLine,
   fileExists,
@@ -134,6 +134,8 @@ export interface WatchObservation {
    * that worker stalled.
    */
   workspace_fingerprint?: string
+  /** The Git-visible workspace differs from the invocation's pre-work state. */
+  workspace_changed_from_invocation?: boolean
   /** Stable digest of the watched paths; equal digests mean no change. */
   fingerprint: string
 }
@@ -168,6 +170,8 @@ export interface WatchRecordEntry {
    * held wake, never on the wake that settles it.
    */
   completion_hold?: WeakCompletionReason
+  /** Named non-blocking diagnostics observed on this wake. */
+  advisories?: string[]
   changed?: boolean
   unchanged_wakes?: number
   terminal_state?: WatchTerminalState
@@ -588,6 +592,37 @@ function workspaceFingerprint(
 }
 
 /** Inspect the invocation's output and evidence paths once. */
+export const OUTPUT_SCAFFOLD_ORDER_ADVISORY =
+  'OUTPUT_SCAFFOLD_MISSING_BEFORE_WORKSPACE_CHANGE'
+
+function workspaceChangedFromInvocation(
+  root: string,
+  invocation: Invocation,
+): boolean | null {
+  const declared = invocation.workspace_root
+
+  if (typeof declared !== 'string' || declared.length === 0) {
+    return null
+  }
+
+  const workspace = path.isAbsolute(declared)
+    ? declared
+    : path.resolve(root, declared)
+
+  if (!fileExists(workspace)) {
+    return null
+  }
+
+  try {
+    return (
+      gitWorkspaceSnapshot(workspace).fingerprint !==
+      invocation.workspace_before.fingerprint
+    )
+  } catch {
+    return null
+  }
+}
+
 export function observeInvocation(
   root: string,
   invocation: Invocation,
@@ -657,6 +692,9 @@ export function observeInvocation(
     )
   })
   const workspace = workspaceFingerprint(root, invocation)
+  const workspaceChanged = outputPresent
+    ? null
+    : workspaceChangedFromInvocation(root, invocation)
   const fingerprint = [
     ...watched.map(
       (item) => `${item.path}:${item.exists}:${item.size}:${item.mtime_ms}`,
@@ -676,6 +714,9 @@ export function observeInvocation(
     watched_paths: watched,
     run_tree_fingerprint: runTree,
     ...(workspace ? { workspace_fingerprint: workspace } : {}),
+    ...(workspaceChanged !== null
+      ? { workspace_changed_from_invocation: workspaceChanged }
+      : {}),
     fingerprint,
   }
 }
@@ -1586,6 +1627,7 @@ export async function watchInvocation(
 
   let previousFingerprint = initial.fingerprint
   let unchangedWakes = 0
+  let scaffoldOrderAdvised = false
   let armings = 0
   let wakes = 0
 
@@ -1623,9 +1665,19 @@ export async function watchInvocation(
     wakes += 1
     const observation = observe()
     const changed = observation.fingerprint !== previousFingerprint
+    const scaffoldOrderAdvisory =
+      !scaffoldOrderAdvised &&
+      !observation.output_present &&
+      observation.workspace_changed_from_invocation === true
+        ? OUTPUT_SCAFFOLD_ORDER_ADVISORY
+        : null
+
+    if (scaffoldOrderAdvisory) {
+      scaffoldOrderAdvised = true
+    }
 
     previousFingerprint = observation.fingerprint
-    unchangedWakes = changed ? 0 : unchangedWakes + 1
+    unchangedWakes = changed || scaffoldOrderAdvisory ? 0 : unchangedWakes + 1
 
     let terminal: WatchTerminalState | undefined
     let terminalBasis: WatchRecordEntry['terminal_basis']
@@ -1689,6 +1741,7 @@ export async function watchInvocation(
       ...(options.agentState ? { agent_state: options.agentState } : {}),
       ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
       ...(hold ? { completion_hold: hold } : {}),
+      ...(scaffoldOrderAdvisory ? { advisories: [scaffoldOrderAdvisory] } : {}),
       changed,
       unchanged_wakes: unchangedWakes,
       ...(terminal ? { terminal_state: terminal } : {}),
@@ -1853,6 +1906,7 @@ export async function watchInvocations(
       initial,
       previousFingerprint: initial.fingerprint,
       unchangedWakes: 0,
+      scaffoldOrderAdvised: false,
       // Non-null means a finished-looking output is held for one more
       // observation, exactly as the focused watch holds one.
       heldOutput: null as string | null,
@@ -1992,9 +2046,20 @@ export async function watchInvocations(
       )
 
       const changed = observation.fingerprint !== item.previousFingerprint
+      const scaffoldOrderAdvisory =
+        !item.scaffoldOrderAdvised &&
+        !observation.output_present &&
+        observation.workspace_changed_from_invocation === true
+          ? OUTPUT_SCAFFOLD_ORDER_ADVISORY
+          : null
+
+      if (scaffoldOrderAdvisory) {
+        item.scaffoldOrderAdvised = true
+      }
 
       item.previousFingerprint = observation.fingerprint
-      item.unchangedWakes = changed ? 0 : item.unchangedWakes + 1
+      item.unchangedWakes =
+        changed || scaffoldOrderAdvisory ? 0 : item.unchangedWakes + 1
 
       const evidence = evidenceFor(item, observation)
       let terminal: WatchTerminalState | undefined
@@ -2045,6 +2110,9 @@ export async function watchInvocations(
         observation,
         ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
         ...(hold ? { completion_hold: hold } : {}),
+        ...(scaffoldOrderAdvisory
+          ? { advisories: [scaffoldOrderAdvisory] }
+          : {}),
         changed,
         unchanged_wakes: item.unchangedWakes,
         ...(terminal ? { terminal_state: terminal } : {}),

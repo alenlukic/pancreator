@@ -18,6 +18,7 @@ import {
   DEFAULT_WATCH_CADENCE_SECONDS,
   DELEGATION_UNOBSERVED,
   WATCH_EXIT_CODES,
+  OUTPUT_SCAFFOLD_ORDER_ADVISORY,
   backgroundMarkerPath,
   blockedOutputSnapshotPath,
   completionEvidenceForObservation,
@@ -326,6 +327,34 @@ test('a recorded running worker is never stalled by unchanged files', async () =
 
   assert.equal(result.state, 'timed_out')
   assert.equal(result.wakes, 3)
+})
+
+test('a workspace edit before scaffolding records an advisory and not an unchanged wake', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const clock = fakeClock()
+
+  mkdirSync(path.join(root, 'src'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'src', 'feature.ts'),
+    'export const value = 1\n',
+  )
+
+  const result = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    stallWakes: 1,
+    timeoutSeconds: CADENCE_SECONDS * 3,
+    ...clock,
+  })
+  const wakes = readWatchRecord(root, state.run_id, invocationId).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  assert.equal(result.state, 'stalled')
+  assert.deepEqual(wakes[0]?.advisories, [OUTPUT_SCAFFOLD_ORDER_ADVISORY])
+  assert.equal(wakes[0]?.unchanged_wakes, 0)
+  assert.equal(wakes[0]?.observation?.output_present, false)
+  assert.equal(wakes[0]?.observation?.workspace_changed_from_invocation, true)
+  assert.equal(wakes[1]?.unchanged_wakes, 1)
 })
 
 test('a worker that edits only the workspace or nested evidence is not called stalled', async () => {

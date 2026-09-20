@@ -45,7 +45,8 @@
     "verify.verdict": "string",
     "verify.findings": "array",
     "verify.qa_cases": "array",
-    "verify.acceptance_results": "array"
+    "verify.acceptance_results": "array",
+    "verify.gate_evidence_citations": "array"
   },
   "blocked_required_data": {
     "verify": "object"

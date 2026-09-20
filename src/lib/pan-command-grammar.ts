@@ -52,7 +52,7 @@ export const HELP_BODY = `Usage:
       A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
       A --run request that matches a recorded pass for the same invocation, worker role, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
       --role names the evidence-worker role running the profile, which its evidence brief supplies. Two evidence workers of one stage share an invocation id, so the role is what gives each its own recorded pass and log.
-      --harness-initiated marks the execution as harness-started rather than agent-started and suppresses streaming; the release-profile prefetch passes it.
+      --harness-initiated declares a harness-started execution, which suppresses streaming and spends no agent allowance. It is honored only when the process carries the launch token the harness hands the child it spawns, and a caller that passes it without that token is refused; only the release-profile prefetch passes both.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
   pan style scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]

@@ -60,6 +60,7 @@ test('a submission returns every advisory it records', async () => {
 
   const output = read(path.join(root, outputPath)) as Record<string, unknown>
 
+  output.summary = 'The fast profile passed at the current workspace.'
   output.platform_guidance_conflicts = [
     {
       guidance: 'Plan mode forbids file edits',
@@ -98,7 +99,21 @@ test('a submission returns every advisory it records', async () => {
 
   assert.deepEqual(
     new Set(submitted.advisories.map((advisory) => advisory.kind)),
-    new Set(['model_evidence', 'delegation_supervision', 'platform_guidance']),
+    new Set([
+      'model_evidence',
+      'repository_check_claim',
+      'delegation_supervision',
+      'platform_guidance',
+    ]),
+  )
+  assert.ok(
+    submitted.advisories.some(
+      (advisory) =>
+        advisory.kind === 'repository_check_claim' &&
+        advisory.message.includes(
+          `repository-check fast --run ${state.run_id}`,
+        ),
+    ),
   )
   assert.deepEqual(submitted.advisories, recorded)
   assert.match(

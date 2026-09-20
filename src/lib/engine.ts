@@ -190,19 +190,22 @@ import {
 } from './verification.js'
 import type { RatifiedAcceptanceCriterion } from './verification.js'
 import {
+  HARNESS_LAUNCH_TOKEN_ENV,
   adoptedBaselineWorkspaceDivergence,
   loadRepositoryChecks,
+  newHarnessLaunchToken,
   recordAgentRepositoryCheckForRuns,
   recordProfileGatePass,
   repositoryCheckProfileName,
   runRepositoryCheck,
   runRepositorySetup,
   summarizeRepositoryCheckResult,
+  unrecordedProfileClaimAdvisories,
 } from './repository-checks.js'
 import {
   gateCacheEnabled,
   gateCacheKey,
-  gateCacheLookup,
+  gateCacheLookupForGate,
   repositoryCheckGateCommand,
   repositoryChecksConfigDigest,
 } from './gate-cache.js'
@@ -972,6 +975,27 @@ function startReleaseProfilePrefetch(
 ): ReleaseProfilePrefetchRecord | null {
   const cliPath = fileURLToPath(new URL('../cli.js', import.meta.url))
   const startedAt = now()
+  // The child proves it is this launch by presenting the token whose digest
+  // the record below carries. The record lands before the spawn so the child
+  // can never look for it too early, and the token itself never reaches disk.
+  const launch = newHarnessLaunchToken()
+  const evidence = prefetchRecordPath(
+    root,
+    state.run_id,
+    profile,
+    nextPrefetchAttempt(root, state.run_id, profile),
+  )
+  const record = {
+    schema_version: 1,
+    run_id: state.run_id,
+    profile,
+    workspace_fingerprint: workspaceFingerprint,
+    started_at: startedAt,
+    launch_digest: launch.digest,
+  }
+
+  writeJsonAtomic(evidence.absolute, record)
+
   const child = spawn(
     process.execPath,
     [
@@ -982,7 +1006,12 @@ function startReleaseProfilePrefetch(
       state.run_id,
       '--harness-initiated',
     ],
-    { cwd: root, detached: true, stdio: 'ignore' },
+    {
+      cwd: root,
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, [HARNESS_LAUNCH_TOKEN_ENV]: launch.token },
+    },
   )
 
   if (child.pid === undefined) {
@@ -1000,21 +1029,7 @@ function startReleaseProfilePrefetch(
   // Keyed to the launch: a second qualifying submission for the same run and
   // profile writes its own marker rather than erasing the record of a child
   // that may still be running.
-  const evidence = prefetchRecordPath(
-    root,
-    state.run_id,
-    profile,
-    nextPrefetchAttempt(root, state.run_id, profile),
-  )
-
-  writeJsonAtomic(evidence.absolute, {
-    schema_version: 1,
-    run_id: state.run_id,
-    profile,
-    pid: child.pid,
-    workspace_fingerprint: workspaceFingerprint,
-    started_at: startedAt,
-  })
+  writeJsonAtomic(evidence.absolute, { ...record, pid: child.pid })
 
   return {
     profile,
@@ -4301,6 +4316,7 @@ function runHarnessAuthoritativeValidators(
 
 function stageFieldContract(
   root: string,
+  workflowSlug: string,
   stageSlug: string,
   requirements: NonNullable<
     Invocation['requirements']
@@ -4323,7 +4339,14 @@ function stageFieldContract(
     { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
   )
 
-  const stage = source.stages[stageSlug]
+  // The design and prototype workflows both run a stage called `intake`, and
+  // a different validator owns each one. A workflow-qualified key selects the
+  // owning entry; every slug only one workflow uses stays unqualified.
+  const contractKey =
+    source.stages[`${workflowSlug}:${stageSlug}`] === undefined
+      ? stageSlug
+      : `${workflowSlug}:${stageSlug}`
+  const stage = source.stages[contractKey]
 
   if (stage === undefined) {
     return undefined
@@ -4333,7 +4356,7 @@ function stageFieldContract(
     isRecord(stage) &&
       Array.isArray(stage.validators) &&
       Array.isArray(stage.fields),
-    `stage-output-requirements.json stages.${stageSlug} MUST declare validators and fields.`,
+    `stage-output-requirements.json stages.${contractKey} MUST declare validators and fields.`,
     { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
   )
 
@@ -4346,7 +4369,7 @@ function stageFieldContract(
         typeof validator.registry_id === 'string' &&
         (validator.enforcement === 'blocks' ||
           validator.enforcement === 'advises'),
-      `stage-output-requirements.json stages.${stageSlug} contains an invalid validator.`,
+      `stage-output-requirements.json stages.${contractKey} contains an invalid validator.`,
       { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
     )
 
@@ -5229,6 +5252,7 @@ export function prepareInvocation(
     const requiredData = { ...(stage.required_data ?? {}) }
     const fieldContract = stageFieldContract(
       root,
+      workflow.slug,
       stage.slug,
       requirements.validation_requirements,
       artifactsRequested,
@@ -7237,6 +7261,18 @@ export function submitOutput(
       workspaceDirectory(root, state),
       { commitBase: invocation.workspace_before.head },
     )
+    const profileClaimAdvisories = unrecordedProfileClaimAdvisories(
+      root,
+      runId,
+      workspaceAfter.fingerprint,
+      submittedValue,
+    )
+
+    advise(
+      'repository_check_claim',
+      profileClaimAdvisories.map((advisory) => advisory.message),
+    )
+
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
       runId,
@@ -7761,14 +7797,14 @@ export function pendingReleaseProfilePrefetch(
   // A recorded pass at this fingerprint already satisfies the gate, so a
   // second computation of the same answer would be the waste this removes.
   if (
-    gateCacheLookup(
+    gateCacheLookupForGate(
       root,
       gateCacheKey(
         root,
         workspaceFingerprint,
         repositoryCheckGateCommand(profile),
       ),
-    )
+    ).entry
   ) {
     return null
   }

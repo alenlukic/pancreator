@@ -38,6 +38,12 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from '../git.js'
 import type { WorkspaceSnapshot } from '../types.js'
+import {
+  stageValidatorRefusals,
+  type StageRefusal,
+  type StageValidatorRefusals,
+  type ValidatorBlockingFields,
+} from './refusals.js'
 import { releaseAllocationFor } from '../release-allocation.js'
 import {
   compareVersions,
@@ -197,6 +203,454 @@ function validEvidenceShape(
   return pathReference || proseObservation || pytestNodeId
 }
 
+/** Enum sets a verify item rule resolves from the shared field contract. */
+interface VerifyRuleContext {
+  severities: Set<string>
+  sources: Set<string>
+}
+
+/**
+ * One refusal the verify handler can raise against an item of a verify array,
+ * and the declared field paths it blocks on.
+ */
+interface VerifyItemFieldRule {
+  /** Field paths as `stage-output-requirements.json` declares them. */
+  paths: readonly string[]
+  /** Stable issue code the refusal carries. */
+  code: string
+  /** True when the item satisfies the rule. */
+  satisfied: (
+    item: Record<string, unknown>,
+    context: VerifyRuleContext,
+  ) => boolean
+  /** Refusal text for one item, given the label the handler resolved. */
+  message: (label: string) => string
+}
+
+/**
+ * The rules one array of verify records is checked against.
+ *
+ * The identity rule runs first and stops the item when it fails, because an
+ * item without an identity has no label the remaining refusals could name.
+ */
+interface VerifyItemRules {
+  /** The array these rules check, for the declaration and for diagnosis. */
+  collection: string
+  /** Label for an item whose identity rule failed. */
+  positionLabel: (index: number) => string
+  /** Label for an item the identity rule accepted. */
+  itemLabel: (item: Record<string, unknown>) => string
+  identity: VerifyItemFieldRule
+  fields: readonly VerifyItemFieldRule[]
+}
+
+const VERIFY_FINDING_RULES: VerifyItemRules = {
+  collection: 'data.verify.findings[]',
+  positionLabel: (index) => `Finding ${index + 1}`,
+  itemLabel: (finding) => `Finding ${finding.id as string}`,
+  identity: {
+    paths: ['data.verify.findings[].id'],
+    code: 'verify.finding_shape',
+    satisfied: (finding) => typeof finding.id === 'string',
+    message: (label) => `${label} MUST have an id`,
+  },
+  fields: [
+    {
+      paths: ['data.verify.findings[].severity'],
+      code: 'verify.severity',
+      satisfied: (finding, context) =>
+        typeof finding.severity === 'string' &&
+        context.severities.has(finding.severity),
+      message: (label) => `${label} MUST use an allowed severity`,
+    },
+    {
+      paths: ['data.verify.findings[].source'],
+      code: 'verify.finding_source',
+      satisfied: (finding, context) =>
+        typeof finding.source === 'string' &&
+        context.sources.has(finding.source),
+      message: (label) => `${label} MUST declare source as review or qa`,
+    },
+    {
+      paths: ['data.verify.findings[].statement'],
+      code: 'verify.finding_statement',
+      satisfied: (finding) =>
+        typeof finding.statement === 'string' &&
+        finding.statement.trim().length > 0,
+      message: (label) => `${label} MUST include a statement`,
+    },
+    {
+      paths: ['data.verify.findings[].evidence[]'],
+      code: 'verify.finding_evidence',
+      satisfied: (finding) =>
+        Array.isArray(finding.evidence) &&
+        finding.evidence.length > 0 &&
+        finding.evidence.every(
+          (entry) => typeof entry === 'string' && entry.trim().length > 0,
+        ),
+      message: (label) => `${label} MUST include non-empty evidence`,
+    },
+  ],
+}
+
+const VERIFY_QA_CASE_RULES: VerifyItemRules = {
+  collection: 'data.verify.qa_cases[]',
+  positionLabel: (index) => `QA case ${index + 1}`,
+  itemLabel: (qaCase) => `QA case ${qaCase.id as string}`,
+  identity: {
+    paths: ['data.verify.qa_cases[].id'],
+    code: 'verify.case_shape',
+    satisfied: (qaCase) => typeof qaCase.id === 'string',
+    message: (label) => `${label} MUST have an id`,
+  },
+  fields: [
+    {
+      paths: [
+        'data.verify.qa_cases[].carried_from.invocation_id',
+        'data.verify.qa_cases[].carried_from.workspace_fingerprint',
+      ],
+      code: 'verify.case_carried_from_shape',
+      // VERIFY-001: a returning verification executes the cases the
+      // remediation can reach and carries the rest. A carried result has to
+      // name where it came from, or the reader cannot tell a case observed
+      // against another workspace from one observed against this one.
+      satisfied: (qaCase) => {
+        if (qaCase.carried_from === undefined) {
+          return true
+        }
+
+        const carried = qaCase.carried_from
+
+        return ['invocation_id', 'workspace_fingerprint'].every(
+          (field) =>
+            isRecord(carried) &&
+            typeof carried[field] === 'string' &&
+            (carried[field] as string).trim().length > 0,
+        )
+      },
+      message: (label) =>
+        `${label} MUST name carried_from.invocation_id and ` +
+        'carried_from.workspace_fingerprint',
+    },
+  ],
+}
+
+const VERIFY_ACCEPTANCE_RULES: VerifyItemRules = {
+  collection: 'data.verify.acceptance_results[]',
+  positionLabel: (index) => `acceptance_results[${index}]`,
+  itemLabel: (item) => `Acceptance ${item.id as string}`,
+  identity: {
+    paths: ['data.verify.acceptance_results[].id'],
+    code: 'verify.acceptance_shape',
+    satisfied: (item) => typeof item.id === 'string',
+    message: (label) => `${label} MUST have an id`,
+  },
+  fields: [
+    {
+      paths: ['data.verify.acceptance_results[].result'],
+      code: 'verify.acceptance_result',
+      satisfied: (item) =>
+        typeof item.result === 'string' && item.result.trim().length > 0,
+      message: (label) => `${label} MUST declare a result`,
+    },
+  ],
+}
+
+const VERIFY_GATE_CITATION_RULES: VerifyItemRules = {
+  collection: 'data.verify.gate_evidence_citations[]',
+  positionLabel: (index) => `gate_evidence_citations[${index}]`,
+  itemLabel: (_citation) => 'gate_evidence_citations entry',
+  identity: {
+    paths: [
+      'data.verify.gate_evidence_citations[].profile',
+      'data.verify.gate_evidence_citations[].fingerprint',
+      'data.verify.gate_evidence_citations[].evidence_path',
+    ],
+    code: 'verify.gate_citation_shape',
+    satisfied: (citation) =>
+      ['profile', 'fingerprint', 'evidence_path'].every(
+        (field) =>
+          typeof citation[field] === 'string' &&
+          (citation[field] as string).trim().length > 0,
+      ),
+    message: (label) =>
+      `${label} MUST carry profile, fingerprint, and evidence_path`,
+  },
+  fields: [],
+}
+
+const VERIFY_ITEM_RULES: readonly VerifyItemRules[] = [
+  VERIFY_FINDING_RULES,
+  VERIFY_QA_CASE_RULES,
+  VERIFY_ACCEPTANCE_RULES,
+  VERIFY_GATE_CITATION_RULES,
+]
+
+/** Verify refusals that block on a declared field the handler names inline. */
+const VERIFY_FIELD_REFUSALS: readonly StageRefusal[] = [
+  { code: 'verify.verdict', paths: ['data.verify.verdict'] },
+  { code: 'verify.blocking_reason', paths: ['data.verify.blocking_reason'] },
+  {
+    code: 'verify.missing_evidence',
+    paths: ['data.verify.missing_evidence_paths'],
+  },
+  {
+    code: 'verify.remediation_guidance',
+    paths: ['data.verify.remediation_guidance'],
+  },
+  {
+    code: 'verify.severity_rationale',
+    paths: ['data.verify.severity_rationale'],
+  },
+]
+
+/**
+ * Verify refusals no single declared field owns. Each states why, because an
+ * unexplained entry here is how a field-shaped refusal escapes the
+ * declaration the whole mechanism rests on.
+ */
+const VERIFY_UNOWNED_REFUSALS: readonly StageRefusal[] = [
+  {
+    code: 'verify.missing',
+    paths: [],
+    unowned_reason:
+      'The whole `data.verify` object is absent, so no field inside it exists to declare.',
+  },
+  {
+    code: 'verify.blocked_forbidden_field',
+    paths: [],
+    unowned_reason:
+      'A blocked output MUST NOT carry these fields, so the refusal is the inverse of a field requirement.',
+  },
+  {
+    code: 'verify.qa_cases_missing',
+    paths: [],
+    unowned_reason:
+      'The array itself is empty, which is a presence rule over the collection rather than a shape rule over an item.',
+  },
+  {
+    // Resolved from the shared contract at validation time, so the paths are
+    // listed here rather than spelled in the handler: removing one from
+    // `fields[]` still has to fail repository validation rather than
+    // silently shrink what the handler checks.
+    code: 'verify.case_field',
+    paths: [
+      'data.verify.qa_cases[].id',
+      'data.verify.qa_cases[].steps',
+      'data.verify.qa_cases[].expected',
+      'data.verify.qa_cases[].actual',
+      'data.verify.qa_cases[].result',
+    ],
+  },
+  {
+    code: 'verify.case_reruns_profile',
+    paths: [],
+    unowned_reason:
+      'The refusal reads the content of a declared field rather than requiring another field.',
+  },
+  {
+    code: 'verify.gate_citation_missing',
+    paths: [],
+    unowned_reason:
+      "The refusal compares the citations against the card's current gate-evidence references, which is a relation rather than a field.",
+  },
+  {
+    code: 'verify.acceptance_missing',
+    paths: [],
+    unowned_reason:
+      'The refusal covers an empty array and a plan criterion the output never reports, both relations over the collection.',
+  },
+  {
+    code: 'verify.acceptance_duplicate',
+    paths: [],
+    unowned_reason:
+      'Uniqueness is a relation between items rather than a requirement on one item.',
+  },
+  {
+    code: 'verify.acceptance_unknown',
+    paths: [],
+    unowned_reason:
+      'The refusal compares reported ids against the ratified plan, which is a relation to another document.',
+  },
+  {
+    code: 'verify.verdict_inconsistent',
+    paths: [],
+    unowned_reason:
+      'The refusal relates the verdict to the findings, acceptance results, and QA cases together.',
+  },
+  {
+    code: 'verify.result_inconsistent',
+    paths: [],
+    unowned_reason: 'The refusal relates the top-level result to the verdict.',
+  },
+]
+
+/**
+ * Every refusal `validateVerifyOutput` can raise, classified by the declared
+ * field it blocks on.
+ *
+ * This list is the handler's contract with the worker. The item entries are
+ * generated from the rules the handler itself iterates, so a refusal raised
+ * through the rule mechanism cannot be missing from it. The remaining entries
+ * are classified by hand, and
+ * `tests/integration/validators-stage-validators.test.ts::every verify
+ * refusal is classified in the canonical declaration` reads the handler's
+ * source and fails when it raises an issue code this list does not carry.
+ * A new refusal therefore fails a test rather than a worker.
+ */
+export const VERIFY_REFUSALS: readonly StageRefusal[] = [
+  ...VERIFY_ITEM_RULES.flatMap((rules) =>
+    [rules.identity, ...rules.fields].map((rule) => ({
+      code: rule.code,
+      paths: rule.paths,
+    })),
+  ),
+  ...VERIFY_FIELD_REFUSALS,
+  ...VERIFY_UNOWNED_REFUSALS,
+]
+
+/**
+ * Check one verify array against its rules, and return the items that carry
+ * an identity so the caller can apply the relations between them.
+ */
+function checkVerifyItems(
+  items: unknown[],
+  rules: VerifyItemRules,
+  context: VerifyRuleContext,
+  issues: HandlerResult['issues'],
+): { item: Record<string, unknown>; index: number }[] {
+  const valid: { item: Record<string, unknown>; index: number }[] = []
+
+  for (const [index, raw] of items.entries()) {
+    const item = isRecord(raw) ? raw : {}
+
+    if (!rules.identity.satisfied(item, context)) {
+      issues.push(
+        issue(
+          rules.identity.code,
+          rules.identity.message(rules.positionLabel(index)),
+        ),
+      )
+      continue
+    }
+
+    const label = rules.itemLabel(item)
+
+    for (const rule of rules.fields) {
+      if (!rule.satisfied(item, context)) {
+        issues.push(issue(rule.code, rule.message(label)))
+      }
+    }
+
+    valid.push({ item, index })
+  }
+
+  return valid
+}
+
+/**
+ * Every stage-output validator that can refuse a submission, with the source
+ * it raises its refusals from and the field each refusal blocks on.
+ *
+ * The verify entry is composed here because that handler generates its item
+ * refusals from the rule tables above, which live beside the handler. Every
+ * other enumeration lives in `./refusals.ts`.
+ */
+export const STAGE_VALIDATOR_REFUSALS: readonly StageValidatorRefusals[] =
+  stageValidatorRefusals(VERIFY_REFUSALS, [
+    {
+      expression: 'rules.identity.code',
+      codes: VERIFY_ITEM_RULES.map((rules) => rules.identity.code),
+    },
+    {
+      expression: 'rule.code',
+      codes: VERIFY_ITEM_RULES.flatMap((rules) =>
+        rules.fields.map((rule) => rule.code),
+      ),
+    },
+  ])
+
+/**
+ * Every field path a stage validator refuses a submission on, by stage and by
+ * the registry that owns the refusal. `validateSharedFieldContract` asserts
+ * each path appears in the registry's `enforced_fields`, and the
+ * enforced-field rule above then requires a `fields[]` declaration, so a
+ * field a worker can be refused for always reaches the worker's rendered card
+ * and scaffold first.
+ *
+ * Every entry is derived from a refusal enumeration rather than written out,
+ * because a list written beside a handler drifts from it: the first version
+ * of this table was three fields short of the verify handler on the day it
+ * shipped, its ship entry named two of the thirty-three fields the release
+ * handler blocks on, and its implement and remediate entries named two of the
+ * fields the claims handler blocks on. Each of those was repaired for the one
+ * validator a verifier had named, so deriving every entry from one
+ * source-checked enumeration is the repair that does not need a fourth round.
+ */
+export const VALIDATOR_BLOCKING_FIELDS: readonly ValidatorBlockingFields[] =
+  STAGE_VALIDATOR_REFUSALS.filter(
+    (entry): entry is StageValidatorRefusals & { stage: string } =>
+      entry.stage !== null,
+  ).map((entry) => ({
+    stage: entry.stage,
+    registry_id: entry.registry_id,
+    fields: [...new Set(entry.refusals.flatMap((refusal) => refusal.paths))],
+  }))
+
+/**
+ * Blocking fields a registry does not declare in its `enforced_fields`.
+ *
+ * Every refusal a stage validator can raise against a field has to be a field
+ * the worker's card already declared. The enforced-field rule in
+ * `validateSharedFieldContract` carries the second half: an enforced path
+ * MUST also appear in `fields[]`, so one `enforced_fields` entry reaches the
+ * card and the scaffold.
+ *
+ * `blocking` is a parameter so a test can prove the check is general by
+ * passing a declaration it invented, rather than by mutating the exported
+ * one and relying on a restore.
+ */
+export function undeclaredBlockingFieldIssues(
+  source: Record<string, unknown>,
+  blocking: readonly ValidatorBlockingFields[] = VALIDATOR_BLOCKING_FIELDS,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+  const stages = isRecord(source.stages) ? source.stages : {}
+
+  for (const entry of blocking) {
+    const stage = stages[entry.stage]
+    const contract =
+      isRecord(stage) && Array.isArray(stage.validators)
+        ? stage.validators.find(
+            (candidate) =>
+              isRecord(candidate) &&
+              candidate.registry_id === entry.registry_id,
+          )
+        : null
+    const enforced = new Set(
+      isRecord(contract) && Array.isArray(contract.enforced_fields)
+        ? contract.enforced_fields.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : [],
+    )
+
+    for (const fieldPath of entry.fields) {
+      if (!enforced.has(fieldPath)) {
+        issues.push(
+          issue(
+            'field_contract.validator_blocking_field',
+            `Validator ${entry.registry_id} blocks the ${entry.stage} ` +
+              `stage on ${fieldPath}, so its enforced_fields MUST declare it`,
+          ),
+        )
+      }
+    }
+  }
+
+  return issues
+}
+
 export function validateSharedFieldContract(
   input: HandlerInput,
 ): HandlerResult {
@@ -243,6 +697,7 @@ export function validateSharedFieldContract(
     'verify',
     'remediate',
     'ship',
+    'prototype:intake',
     'approach',
     'build',
     'evaluate',
@@ -367,54 +822,7 @@ export function validateSharedFieldContract(
     }
   }
 
-  const requiredFieldPaths: Record<string, string[]> = {
-    plan: [
-      'data.acceptance_criteria[].id',
-      'data.acceptance_criteria[].maps_to',
-      'data.acceptance_criteria[].verification',
-      'data.engineering_plan.files[]',
-      'data.test_plan[]',
-      'data.open_question_dispositions[].id',
-      'data.open_question_dispositions[].answer',
-      'data.open_question_dispositions[].disposition',
-      'data.open_question_dispositions[].evidence',
-      'data.verification_recommendation',
-    ],
-    implement: ['data.acceptance_results[].evidence[]'],
-    verify: [
-      'data.verify.verdict',
-      'data.verify.findings[].severity',
-      'data.verify.findings[].source',
-      'data.verify.qa_cases[].steps',
-      'data.verify.qa_cases[].expected',
-      'data.verify.qa_cases[].actual',
-      'data.verify.remediation_guidance',
-      'data.verify.severity_rationale',
-      'data.verify.blocking_reason',
-      'data.verify.missing_evidence_paths',
-    ],
-    ship: [
-      'data.release.change_list[]',
-      'data.release.validation[].workspace_fingerprint',
-    ],
-  }
-
-  for (const [stageSlug, fieldPaths] of Object.entries(requiredFieldPaths)) {
-    const available = new Set(
-      sharedFieldRequirements(input.root, stageSlug).map((field) => field.path),
-    )
-
-    for (const fieldPath of fieldPaths) {
-      if (!available.has(fieldPath)) {
-        issues.push(
-          issue(
-            'field_contract.required_field',
-            `The ${stageSlug} field contract MUST declare ${fieldPath}`,
-          ),
-        )
-      }
-    }
-  }
+  issues.push(...undeclaredBlockingFieldIssues(source))
 
   const releaseChangeList = sharedFieldRequirements(input.root, 'ship').find(
     (field) => field.path === 'data.release.change_list[]',
@@ -2011,6 +2419,26 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     (isRecord(data.product_spec) ? data.product_spec : null)
   const intakeStories = productSpec ? productSpec.user_stories : null
   const storyIds = new Set<string>()
+  const relatedTraceIds = new Set<string>()
+
+  if (productSpec) {
+    for (const collection of [
+      productSpec.constraints,
+      productSpec.out_of_scope,
+    ]) {
+      if (!Array.isArray(collection)) {
+        continue
+      }
+
+      for (const entry of collection) {
+        if (isRecord(entry) && typeof entry.id === 'string') {
+          relatedTraceIds.add(entry.id)
+        } else if (typeof entry === 'string') {
+          relatedTraceIds.add(entry)
+        }
+      }
+    }
+  }
 
   if (Array.isArray(intakeStories)) {
     for (const story of intakeStories) {
@@ -2075,6 +2503,12 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
             ),
           )
         }
+      } else if (
+        typeof mapped === 'string' &&
+        (mapped.startsWith('C-') || mapped.startsWith('OOS-')) &&
+        relatedTraceIds.has(mapped)
+      ) {
+        continue
       } else if (typeof mapped === 'string' && mapped.includes('-')) {
         const catalog = loadRegistry(input.root)
 
@@ -2737,65 +3171,9 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   )
   const findings = Array.isArray(verify.findings) ? verify.findings : []
 
-  for (const [index, finding] of findings.entries()) {
-    if (!isRecord(finding) || typeof finding.id !== 'string') {
-      issues.push(
-        issue('verify.finding_shape', `Finding ${index + 1} MUST have an id`),
-      )
-      continue
-    }
+  const ruleContext: VerifyRuleContext = { severities, sources }
 
-    const severity =
-      typeof finding.severity === 'string' ? finding.severity : ''
-
-    if (!severities.has(severity)) {
-      issues.push(
-        issue(
-          'verify.severity',
-          `Finding ${finding.id} MUST use an allowed severity`,
-        ),
-      )
-    }
-
-    const source = typeof finding.source === 'string' ? finding.source : ''
-
-    if (!sources.has(source)) {
-      issues.push(
-        issue(
-          'verify.finding_source',
-          `Finding ${finding.id} MUST declare source as review or qa`,
-        ),
-      )
-    }
-
-    if (
-      typeof finding.statement !== 'string' ||
-      finding.statement.trim().length === 0
-    ) {
-      issues.push(
-        issue(
-          'verify.finding_statement',
-          `Finding ${finding.id} MUST include a statement`,
-        ),
-      )
-    }
-
-    const evidence = Array.isArray(finding.evidence) ? finding.evidence : []
-
-    if (
-      evidence.length === 0 ||
-      !evidence.every(
-        (entry) => typeof entry === 'string' && entry.trim().length > 0,
-      )
-    ) {
-      issues.push(
-        issue(
-          'verify.finding_evidence',
-          `Finding ${finding.id} MUST include non-empty evidence`,
-        ),
-      )
-    }
-  }
+  checkVerifyItems(findings, VERIFY_FINDING_RULES, ruleContext, issues)
 
   const caseFields = sharedChildFields(
     input.root,
@@ -2808,14 +3186,12 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     issues.push(issue('verify.qa_cases_missing', 'verify.qa_cases is required'))
   }
 
-  for (const [index, qaCase] of qaCases.entries()) {
-    if (!isRecord(qaCase) || typeof qaCase.id !== 'string') {
-      issues.push(
-        issue('verify.case_shape', `QA case ${index + 1} MUST have an id`),
-      )
-      continue
-    }
-
+  for (const { item: qaCase } of checkVerifyItems(
+    qaCases,
+    VERIFY_QA_CASE_RULES,
+    ruleContext,
+    issues,
+  )) {
     for (const field of caseFields) {
       if (
         typeof qaCase[field] !== 'string' ||
@@ -2824,29 +3200,7 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
         issues.push(
           issue(
             'verify.case_field',
-            `QA case ${qaCase.id} MUST include ${field}`,
-          ),
-        )
-      }
-    }
-
-    // VERIFY-001: a returning verification executes the cases the
-    // remediation can reach and carries the rest. A carried result has to
-    // name where it came from, or the reader cannot tell a case observed
-    // against another workspace from one observed against this one.
-    if (qaCase.carried_from !== undefined) {
-      const carried = qaCase.carried_from
-      const named = (field: string): boolean =>
-        isRecord(carried) &&
-        typeof carried[field] === 'string' &&
-        (carried[field] as string).trim().length > 0
-
-      if (!named('invocation_id') || !named('workspace_fingerprint')) {
-        issues.push(
-          issue(
-            'verify.case_carried_from_shape',
-            `QA case ${qaCase.id} MUST name carried_from.invocation_id and ` +
-              'carried_from.workspace_fingerprint',
+            `QA case ${qaCase.id as string} MUST include ${field}`,
           ),
         )
       }
@@ -2861,8 +3215,9 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
       issues.push(
         issue(
           'verify.case_reruns_profile',
-          `QA case ${qaCase.id} runs \`${rerun.command}\`, the \`${rerun.profile}\` ` +
-            'profile; cite the gate evidence for that profile instead',
+          `QA case ${qaCase.id as string} runs \`${rerun.command}\`, the ` +
+            `\`${rerun.profile}\` profile; cite the gate evidence for that ` +
+            'profile instead',
         ),
       )
     }
@@ -2874,27 +3229,15 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     : []
   const citedKeys = new Set<string>()
 
-  for (const [index, citation] of citations.entries()) {
-    if (
-      !isRecord(citation) ||
-      typeof citation.profile !== 'string' ||
-      citation.profile.trim().length === 0 ||
-      typeof citation.fingerprint !== 'string' ||
-      citation.fingerprint.trim().length === 0 ||
-      typeof citation.evidence_path !== 'string' ||
-      citation.evidence_path.trim().length === 0
-    ) {
-      issues.push(
-        issue(
-          'verify.gate_citation_shape',
-          `gate_evidence_citations[${index}] MUST carry profile, fingerprint, and evidence_path`,
-        ),
-      )
-      continue
-    }
-
+  for (const { item: citation } of checkVerifyItems(
+    citations,
+    VERIFY_GATE_CITATION_RULES,
+    ruleContext,
+    issues,
+  )) {
     citedKeys.add(
-      `${citation.profile}\u0000${citation.fingerprint}\u0000${citation.evidence_path}`,
+      `${citation.profile as string}\u0000${citation.fingerprint as string}` +
+        `\u0000${citation.evidence_path as string}`,
     )
   }
 
@@ -2927,36 +3270,21 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
   const reportedIds = new Set<string>()
 
-  for (const [index, item] of acceptanceResults.entries()) {
-    if (!isRecord(item) || typeof item.id !== 'string') {
-      issues.push(
-        issue(
-          'verify.acceptance_shape',
-          `acceptance_results[${index}] MUST have an id`,
-        ),
-      )
-      continue
-    }
+  for (const { item } of checkVerifyItems(
+    acceptanceResults,
+    VERIFY_ACCEPTANCE_RULES,
+    ruleContext,
+    issues,
+  )) {
+    const id = item.id as string
 
-    if (reportedIds.has(item.id)) {
+    if (reportedIds.has(id)) {
       issues.push(
-        issue(
-          'verify.acceptance_duplicate',
-          `Duplicate acceptance id: ${item.id}`,
-        ),
+        issue('verify.acceptance_duplicate', `Duplicate acceptance id: ${id}`),
       )
     }
 
-    reportedIds.add(item.id)
-
-    if (typeof item.result !== 'string' || item.result.trim().length === 0) {
-      issues.push(
-        issue(
-          'verify.acceptance_result',
-          `Acceptance ${item.id} MUST declare a result`,
-        ),
-      )
-    }
+    reportedIds.add(id)
   }
 
   const expectedIds = planAcceptanceCriterionIds(

@@ -226,6 +226,8 @@ import {
   agentGatePassSuiteProfile,
   nextAgentGatePassAttempt,
   agentRepositoryCheckAdvisories,
+  assertRepositoryCheckProfileAllowed,
+  resolveRepositoryCheckInitiator,
   assertRepositoryChecksValid,
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
@@ -2306,12 +2308,33 @@ async function main(): Promise<void> {
 
       // The harness starts this command for itself when it prefetches the
       // release profile, and that execution is not an agent spending its
-      // allowance. It also has no terminal to stream to.
-      const harnessInitiated = hasFlag(args, '--harness-initiated')
+      // allowance. It also has no terminal to stream to. Authority for the
+      // claim comes from the launch token the harness put in this process's
+      // environment rather than from argv, because a caller that grades its
+      // own permission is not one.
+      const initiator = resolveRepositoryCheckInitiator(
+        root,
+        evidenceRun?.run_id ?? null,
+        hasFlag(args, '--harness-initiated'),
+      )
+      const harnessInitiated = initiator === 'harness'
       // Two evidence workers of one stage share an invocation id, so without
       // the role they would share one reuse key and the second worker would
       // be handed the first one's pass instead of producing its own log.
       const workerRole = option(args, '--role')
+
+      const callerStages = evidenceRun
+        ? [evidenceRun.current_stage]
+        : worktreeWorkspace
+          ? liveRunsBoundToWorktree(root, worktreeWorkspace.name).map(
+              (bound) => bound.current_stage,
+            )
+          : [null]
+
+      for (const callerStage of callerStages) {
+        assertRepositoryCheckProfileAllowed(profile, callerStage, initiator)
+      }
+
       const startedAt = new Date().toISOString()
 
       // DEV-001: a clean pass reaches a later gate only when the workspace
@@ -2418,7 +2441,6 @@ async function main(): Promise<void> {
       // An explicit run wins over the worktree scan. A bare invocation names
       // no run and records nothing: an operator's own check from the base
       // checkout is not evidence of any run that happens to share it.
-      const initiator = harnessInitiated ? 'harness' : 'agent'
       // Only a clean pass can reach a gate, so the run lookup a store needs
       // is spent only when one is possible.
       const gatePassRunIds =
