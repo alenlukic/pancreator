@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from 'node:fs'
+import { closeSync, openSync, readSync, readdirSync, statSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -49,6 +49,10 @@ export interface UsageScanSources {
   transcript_files: number
   operator_request_files: number
   transcripts_root: string | null
+  /** Every evidence source and the number of files read from it. */
+  by_source: Record<string, number>
+  /** Files or directories the exhaustive walk could not read. */
+  unread: string[]
 }
 
 export interface UsageScan {
@@ -67,8 +71,8 @@ export interface UsageScanOptions {
 
 const MAX_SAMPLES = 5
 
-/** A single file large enough to stall the scan is not worth its evidence. */
 const MAX_SCAN_FILE_BYTES = 32 * 1024 * 1024
+const STREAM_CHUNK_BYTES = 1024 * 1024
 
 /**
  * Wrappers the platform injects into an operator turn. Their contents are not
@@ -375,7 +379,13 @@ function escapeRegExp(value: string): string {
  */
 function mentionTokens(entry: Facility): string[] {
   switch (entry.category) {
+    case 'artifact-profile':
+      return [`artifact-profile:${entry.name}`]
+    case 'cli-subcommand':
+      return [`pan ${entry.name}`]
     case 'command':
+      return [entry.name]
+    case 'criterion':
       return [entry.name]
     case 'persona':
       return [`pan-${entry.name}`, `personas/${entry.name}.md`]
@@ -387,6 +397,14 @@ function mentionTokens(entry: Facility): string[] {
       return [`workflows/${entry.name}`]
     case 'mode':
       return [`--mode ${entry.name}`]
+    case 'invocation':
+      return [`invocation_kind: ${entry.name}`]
+    case 'requirement':
+      return [entry.name]
+    case 'source-symbol':
+      return entry.source_symbol ? [entry.source_symbol] : []
+    case 'orphan':
+      return entry.source_symbol ? [entry.source_symbol] : [entry.path ?? '']
     case 'validator':
       return [`validators/${entry.name}`]
     case 'handbook':
@@ -395,12 +413,18 @@ function mentionTokens(entry: Facility): string[] {
   }
 }
 
+interface FileEnumeration {
+  files: string[]
+  unread: string[]
+}
+
 function listFilesInWindow(
   roots: readonly string[],
   windowStartMs: number,
   extensions: ReadonlySet<string>,
-): string[] {
+): FileEnumeration {
   const found: string[] = []
+  const unread: string[] = []
 
   const walk = (absolute: string): void => {
     let entries
@@ -408,6 +432,7 @@ function listFilesInWindow(
     try {
       entries = readdirSync(absolute, { withFileTypes: true })
     } catch {
+      unread.push(absolute)
       return
     }
 
@@ -428,10 +453,11 @@ function listFilesInWindow(
       try {
         stats = statSync(child)
       } catch {
+        unread.push(child)
         continue
       }
 
-      if (stats.mtimeMs < windowStartMs || stats.size > MAX_SCAN_FILE_BYTES) {
+      if (stats.mtimeMs < windowStartMs) {
         continue
       }
 
@@ -445,7 +471,58 @@ function listFilesInWindow(
     }
   }
 
-  return found.sort()
+  return {
+    files: found.sort(),
+    unread: [...new Set(unread)].sort(),
+  }
+}
+
+function readEvidenceText(absolute: string): string | null {
+  let size: number
+
+  try {
+    size = statSync(absolute).size
+  } catch {
+    return null
+  }
+
+  if (size <= MAX_SCAN_FILE_BYTES) {
+    try {
+      return readText(absolute)
+    } catch {
+      return null
+    }
+  }
+
+  let descriptor: number | null = null
+
+  try {
+    descriptor = openSync(absolute, 'r')
+    const chunks: Buffer[] = []
+    let position = 0
+
+    while (position < size) {
+      const chunk = Buffer.allocUnsafe(
+        Math.min(STREAM_CHUNK_BYTES, size - position),
+      )
+      const bytes = readSync(descriptor, chunk, 0, chunk.length, position)
+
+      if (bytes === 0) {
+        break
+      }
+
+      chunks.push(chunk.subarray(0, bytes))
+      position += bytes
+    }
+
+    return Buffer.concat(chunks).toString('utf8')
+  } catch {
+    return null
+  } finally {
+    if (descriptor !== null) {
+      closeSync(descriptor)
+    }
+  }
 }
 
 /**
@@ -512,6 +589,7 @@ interface TranscriptScan {
   commandHits: Hit[]
   files: number
   invocations: number
+  unread: string[]
 }
 
 function scanTranscripts(
@@ -521,19 +599,18 @@ function scanTranscripts(
   tokenOwners: ReadonlyMap<string, string[]>,
   commandNames: ReadonlySet<string>,
 ): TranscriptScan {
-  const files = transcriptsRoot
+  const enumeration = transcriptsRoot
     ? listFilesInWindow([transcriptsRoot], windowStartMs, new Set(['.jsonl']))
-    : []
+    : { files: [], unread: [] }
   const mentionHits: Hit[] = []
   const commandHits: Hit[] = []
   let invocations = 0
 
-  for (const absolute of files) {
-    let content: string
+  for (const absolute of enumeration.files) {
+    const content = readEvidenceText(absolute)
 
-    try {
-      content = readText(absolute)
-    } catch {
+    if (content === null) {
+      enumeration.unread.push(absolute)
       continue
     }
 
@@ -581,7 +658,13 @@ function scanTranscripts(
     }
   }
 
-  return { mentionHits, commandHits, files: files.length, invocations }
+  return {
+    mentionHits,
+    commandHits,
+    files: enumeration.files.length,
+    invocations,
+    unread: [...new Set(enumeration.unread)].sort(),
+  }
 }
 
 function summarize(
@@ -681,6 +764,55 @@ function summarize(
   })
 }
 
+interface EvidenceCoverage {
+  bySource: Record<string, number>
+  unread: string[]
+}
+
+function readEvidenceCoverage(
+  root: string,
+  windowStartMs: number,
+): EvidenceCoverage {
+  const groups: Record<string, string[]> = {
+    workflow_run_records: [
+      path.join(root, 'runtime', 'logs', 'workflows'),
+      path.join(root, 'runtime', 'workflows'),
+    ],
+    cohort_records: [path.join(root, 'runtime', 'logs', 'cohorts')],
+    best_of_n_records: [path.join(root, 'runtime', 'logs', 'best-of-n')],
+    eval_records: [path.join(root, 'runtime', 'logs', 'evals')],
+    horizon_records: [
+      path.join(root, 'runtime', 'logs', 'horizon'),
+      path.join(root, 'runtime', 'horizon'),
+    ],
+    standalone_session_records: [
+      path.join(root, 'runtime', 'logs', 'sessions'),
+    ],
+  }
+  const extensions = new Set(['.json', '.jsonl', '.md', '.txt'])
+  const bySource: Record<string, number> = {}
+  const unread: string[] = []
+
+  for (const [source, roots] of Object.entries(groups)) {
+    const enumeration = listFilesInWindow(roots, windowStartMs, extensions)
+    let read = 0
+
+    unread.push(...enumeration.unread)
+
+    for (const absolute of enumeration.files) {
+      if (readEvidenceText(absolute) === null) {
+        unread.push(absolute)
+      } else {
+        read += 1
+      }
+    }
+
+    bySource[source] = read
+  }
+
+  return { bySource, unread: [...new Set(unread)].sort() }
+}
+
 /**
  * Score every facility against the evidence the window contains.
  *
@@ -751,22 +883,23 @@ export function scanUsage(
   }
 
   const mentionHits = [...transcripts.mentionHits]
-  const requestFiles = listFilesInWindow(
+  const requestEnumeration = listFilesInWindow(
     [path.join(root, 'runtime', 'inbox')],
     windowStartMs,
     new Set(['.json', '.md', '.txt']),
   )
+  let requestFilesRead = 0
 
   if (pattern) {
-    for (const absolute of requestFiles) {
-      let content: string
+    for (const absolute of requestEnumeration.files) {
+      const content = readEvidenceText(absolute)
 
-      try {
-        content = readText(absolute)
-      } catch {
+      if (content === null) {
+        requestEnumeration.unread.push(absolute)
         continue
       }
 
+      requestFilesRead += 1
       const at = safeStatMs(absolute)
 
       if (at === null) {
@@ -789,7 +922,24 @@ export function scanUsage(
         }
       }
     }
+  } else {
+    for (const absolute of requestEnumeration.files) {
+      if (readEvidenceText(absolute) === null) {
+        requestEnumeration.unread.push(absolute)
+      } else {
+        requestFilesRead += 1
+      }
+    }
   }
+
+  const coverage = readEvidenceCoverage(root, windowStartMs)
+  const unread = [
+    ...new Set([
+      ...coverage.unread,
+      ...transcripts.unread,
+      ...requestEnumeration.unread,
+    ]),
+  ].sort()
 
   return {
     usage: summarize(facilities, executionHits, mentionHits, options.graph),
@@ -798,11 +948,17 @@ export function scanUsage(
       sessions: runs.sessions,
       command_invocations: transcripts.invocations,
       transcript_files: transcripts.files,
-      operator_request_files: requestFiles.length,
+      operator_request_files: requestFilesRead,
       transcripts_root:
         transcriptsRoot && isDirectory(transcriptsRoot)
           ? transcriptsRoot
           : null,
+      by_source: {
+        ...coverage.bySource,
+        transcript_files: transcripts.files - transcripts.unread.length,
+        operator_request_files: requestFilesRead,
+      },
+      unread,
     },
   }
 }

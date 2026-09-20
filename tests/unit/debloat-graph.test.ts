@@ -411,7 +411,7 @@ test('a dispatch-table import registers a validator without keeping it alive', (
   assert.ok(
     (graph.incoming.get('validator:gadget') ?? []).some(
       (reference) =>
-        reference.owner_facility === 'policy:STAPLE-001' &&
+        reference.owner_facility === 'requirement:STAPLE-001/staple-validate' &&
         reference.referrer_class === 'facility',
     ),
     'the policy that resolves the handler id owns the edge',
@@ -419,6 +419,128 @@ test('a dispatch-table import registers a validator without keeping it alive', (
 
   // A direct call is code and blocks like any other call.
   assert.ok(classesFor('validator:caller').includes('code'))
+})
+
+/**
+ * A dispatch table beside a real import of the same specifier.
+ *
+ * `solo` is registered and nothing else names it. `marked` is registered on
+ * the marked line and imported for real two lines down, which is the case
+ * C-4 exists to protect: the marker must not travel from the registration to
+ * the live import. `live` is the unmarked control.
+ */
+function addDispatchEngine(root: string): void {
+  write(root, 'src/lib/validators/marked.ts', 'export const marked = 1\n')
+  write(root, 'src/lib/validators/solo.ts', 'export const solo = 1\n')
+  write(root, 'src/lib/validators/live.ts', 'export const live = 1\n')
+  write(
+    root,
+    'src/lib/engine.ts',
+    [
+      "import { marked } from './validators/marked.js' // debloat: dispatch",
+      "import { solo } from './validators/solo.js' // debloat: dispatch",
+      "import { live } from './validators/live.js'",
+      'export const table = { marked, solo }',
+      "export const reload = () => import('./validators/marked.js')",
+      'export const running = live',
+      '',
+    ].join('\n'),
+  )
+}
+
+test('a dispatch marker applies to one reference instead of the whole file', () => {
+  const root = createWorkspace()
+
+  addDispatchEngine(root)
+
+  const graph = buildReferenceGraph(root, collectFacilities(root))
+  const classes = (id: string): string[] =>
+    [
+      ...new Set(
+        (graph.incoming.get(id) ?? [])
+          .filter((entry) => entry.from === 'src/lib/engine.ts')
+          .map((entry) => entry.referrer_class),
+      ),
+    ].sort()
+
+  // The same specifier is registered once and imported once, so the file
+  // carries both edges rather than the weaker one for the whole file.
+  assert.deepEqual(classes('validator:marked'), ['code', 'registry'])
+  assert.deepEqual(classes('validator:solo'), ['registry'])
+  assert.deepEqual(classes('validator:live'), ['code'])
+})
+
+test('an unmarked import of a registered specifier still blocks the cascade', () => {
+  const root = createWorkspace()
+
+  addDispatchEngine(root)
+  write(
+    root,
+    'library/personas/widgeteer.md',
+    [
+      '# Widgeteer',
+      '',
+      'Owns `src/lib/validators/marked.ts` and `src/lib/validators/solo.ts`.',
+      '',
+    ].join('\n'),
+  )
+
+  const facilities = collectFacilities(root)
+  const closure = computeClosure(
+    facilities,
+    buildReferenceGraph(root, facilities),
+    ['persona:widgeteer'],
+    { sessionId: '20260920-000000-abcdef' },
+  )
+
+  // Only the registration referenced `solo`, so it leaves and the dispatch
+  // table becomes an edit.
+  assert.ok(closure.cascaded.includes('validator:solo'))
+  assert.ok(
+    closure.remove.some((entry) => entry.path === 'src/lib/validators/solo.ts'),
+  )
+  assert.ok(closure.edit.some((entry) => entry.path === 'src/lib/engine.ts'))
+
+  // The live import of the same specifier is a code use, so `marked` stays.
+  assert.equal(closure.cascaded.includes('validator:marked'), false)
+  assert.deepEqual(
+    closure.retained_because.find(
+      (entry) => entry.facility_id === 'validator:marked',
+    )?.retained_by,
+    [{ path: 'src/lib/engine.ts', referrer_class: 'code' }],
+  )
+})
+
+test('installer payload inclusion is registry membership instead of use', () => {
+  const root = createWorkspace()
+
+  write(root, 'bin/install', "payload='library/skills/widget-craft.md'\n")
+
+  const facilities = collectFacilities(root)
+  const graph = buildReferenceGraph(root, facilities)
+  const references = (graph.incoming.get('skill:widget-craft') ?? []).filter(
+    (entry) => entry.from === 'bin/install',
+  )
+
+  assert.deepEqual(
+    references.map((entry) => entry.referrer_class),
+    ['registry'],
+  )
+
+  // Membership is not use, so the skill is still removable and the payload
+  // list is repaired rather than left naming a deleted file.
+  const closure = computeClosure(facilities, graph, ['skill:widget-craft'], {
+    sessionId: '20260920-000000-abcdef',
+  })
+
+  assert.deepEqual(
+    closure.remove.map((entry) => entry.path),
+    ['library/skills/widget-craft.md'],
+  )
+  assert.equal(
+    closure.edit.find((entry) => entry.path === 'bin/install')?.referrer_class,
+    'registry',
+  )
 })
 
 test('a validator nothing resolves is removable, one with a caller is not', () => {
@@ -434,7 +556,7 @@ test('a validator nothing resolves is removable, one with a caller is not', () =
     computeClosure(facilities, graph, ['policy:STAPLE-001'], {
       sessionId: '20260920-000000-abcdef',
     }).cascaded,
-    ['validator:gadget'],
+    ['requirement:STAPLE-001/staple-validate', 'validator:gadget'],
   )
 
   // The registration-only validator never gained a blocking referrer, so it

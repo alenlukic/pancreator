@@ -1,13 +1,13 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { STANDALONE_MODES } from '../governance-card.js'
 import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
 import { loadWorkflow, workflowPersonaNames } from '../workflow.js'
 import {
   EDIT_ONLY_PATHS,
   facilitiesByPath,
+  readStandaloneModes,
   type Facility,
 } from './inventory.js'
 
@@ -60,6 +60,14 @@ const SCAN_EXTENSIONS = new Set(['.json', '.md', '.mdc', '.sh', '.ts'])
  */
 const DISPATCH_TABLE_PATHS = ['src/lib/requirements/handlers.ts']
 
+const PAYLOAD_REGISTRY_PATHS = [
+  'bin/install',
+  'bin/install-support',
+  'bin/update',
+]
+
+const DISPATCH_MARKER = '// debloat: dispatch'
+
 const VALIDATION_REGISTRY_PATH =
   'governance/registries/validation_registry.json'
 
@@ -78,9 +86,63 @@ function isRegistryPath(relative: string): boolean {
   return (
     EDIT_ONLY_PATHS.includes(relative) ||
     DISPATCH_TABLE_PATHS.includes(relative) ||
+    PAYLOAD_REGISTRY_PATHS.includes(relative) ||
     path.basename(relative) === 'index.md' ||
     relative.startsWith('governance/registries/')
   )
+}
+
+/**
+ * Column of the dispatch marker on each line that carries one.
+ *
+ * The marker is a trailing comment, so it governs the references written
+ * before it on its own line and nothing else in the file. Recording the column
+ * rather than the line text is what bounds C-4: a file may register one
+ * specifier in a dispatch table and import the same specifier for real a few
+ * lines down, and the second occurrence has to keep blocking.
+ */
+function dispatchMarkerColumns(content: string): Map<number, number> {
+  const columns = new Map<number, number>()
+
+  content.split(/\r?\n/u).forEach((line, index) => {
+    const column = line.indexOf(DISPATCH_MARKER)
+
+    if (column >= 0) {
+      columns.set(index, column)
+    }
+  })
+
+  return columns
+}
+
+/** Offset at which each line of `content` starts. */
+function lineStartOffsets(content: string): number[] {
+  const starts = [0]
+  let index = content.indexOf('\n')
+
+  while (index >= 0) {
+    starts.push(index + 1)
+    index = content.indexOf('\n', index + 1)
+  }
+
+  return starts
+}
+
+function lineIndexOf(starts: readonly number[], offset: number): number {
+  let low = 0
+  let high = starts.length - 1
+
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2)
+
+    if ((starts[middle] as number) <= offset) {
+      low = middle
+    } else {
+      high = middle - 1
+    }
+  }
+
+  return low
 }
 
 function referrerClass(relative: string, owned: boolean): ReferrerClass {
@@ -117,10 +179,14 @@ const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//gu
  * one sentence of prose in a live module pins a facility that nothing calls:
  * a doc comment in the engine kept `ORCH-001` alive, and a comment in the
  * debloat scanner kept `persona:spotfixer` alive.
+ *
+ * A block comment is blanked rather than collapsed so every surviving
+ * character keeps its line. The dispatch classifier reads the line of each
+ * match, and a stripped newline would move a real import onto a marked line.
  */
 function withoutComments(content: string): string {
   return content
-    .replace(BLOCK_COMMENT, ' ')
+    .replace(BLOCK_COMMENT, (match) => match.replace(/[^\n]/gu, ' '))
     .replace(LINE_COMMENT, (_match, prefix: string) => prefix)
 }
 
@@ -239,7 +305,28 @@ function referenceTokens(entry: Facility): string[] {
     case 'validator':
       tokens.push(`validators/${entry.name}.js`, `validators/${entry.name}.ts`)
       break
+    case 'artifact-profile':
+      tokens.push(`'${entry.name}'`, `"${entry.name}"`)
+      break
+    case 'cli-subcommand':
+      tokens.push(`case '${entry.name}'`, `pan ${entry.name}`)
+      break
+    case 'criterion':
+      tokens.push(entry.name)
+      break
+    case 'invocation':
+      tokens.push(`'${entry.name}'`, `"${entry.name}"`)
+      break
+    case 'requirement':
+      tokens.push(entry.name.split('/').at(-1) ?? entry.name)
+      break
+    case 'source-symbol':
+      if (entry.source_symbol) {
+        tokens.push(entry.source_symbol)
+      }
+      break
     case 'handbook':
+    case 'orphan':
     case 'skill':
     case 'template':
       break
@@ -403,7 +490,7 @@ function validatorResolutionReferences(
       references.push({
         from: `governance/policies/${policy.id}.json`,
         referrer_class: 'facility',
-        owner_facility: `policy:${policy.id}`,
+        owner_facility: `requirement:${policy.id}/${requirement.id}`,
         to: target,
         token: requirement.registry_id,
       })
@@ -494,6 +581,21 @@ function typedReferences(
   // that reaches a skill or a handbook.
   for (const policy of loadPolicyCatalog(root).values()) {
     const from = `governance/policies/${policy.id}.json`
+
+    for (const requirement of policy.requirements ?? []) {
+      const requirementId = `requirement:${policy.id}/${requirement.id}`
+
+      add(from, `policy:${policy.id}`, requirementId, requirement.id)
+
+      if (requirement.applicability?.invocation_kind) {
+        add(
+          from,
+          `invocation:${requirement.applicability.invocation_kind}`,
+          requirementId,
+          requirement.applicability.invocation_kind,
+        )
+      }
+    }
 
     for (const guidance of policy.guidance ?? []) {
       const target = facilities.find((entry) =>
@@ -590,20 +692,42 @@ function typedReferences(
   // A standalone mode names the persona and workflow its card binds.
   const modeRegistry = 'src/lib/governance-card.ts'
 
-  for (const [mode, definition] of Object.entries(STANDALONE_MODES)) {
-    back(modeRegistry, `mode:${mode}`, mode)
-    add(
-      modeRegistry,
-      `mode:${mode}`,
-      `persona:${definition.persona}`,
-      definition.persona,
-    )
-    add(
-      modeRegistry,
-      `mode:${mode}`,
-      `workflow:${definition.workflow}`,
-      definition.workflow,
-    )
+  for (const definition of readStandaloneModes(root)) {
+    back(modeRegistry, `mode:${definition.name}`, definition.name)
+
+    if (definition.kind) {
+      add(
+        modeRegistry,
+        `mode:${definition.name}`,
+        `invocation:${definition.kind}`,
+        definition.kind,
+      )
+
+      add(
+        modeRegistry,
+        `invocation:${definition.kind}`,
+        `artifact-profile:${definition.kind}`,
+        definition.kind,
+      )
+    }
+
+    if (definition.persona) {
+      add(
+        modeRegistry,
+        `mode:${definition.name}`,
+        `persona:${definition.persona}`,
+        definition.persona,
+      )
+    }
+
+    if (definition.workflow) {
+      add(
+        modeRegistry,
+        `mode:${definition.name}`,
+        `workflow:${definition.workflow}`,
+        definition.workflow,
+      )
+    }
   }
 
   // Every persona the executor can run carries a model mapping.
@@ -639,6 +763,88 @@ function typedReferences(
     }
   }
 
+  const artifactProfile = (stage: string): string => {
+    switch (stage) {
+      case 'intake':
+      case 'plan':
+      case 'review':
+      case 'design':
+      case 'handoff':
+        return stage
+      case 'test':
+        return 'qa'
+      case 'ship':
+        return 'release'
+      case 'inspect':
+        return 'inspection'
+      default:
+        return 'implementation'
+    }
+  }
+
+  for (const relative of listTextFiles(root).filter(
+    (entry) =>
+      entry.startsWith('library/workflows/') &&
+      entry.includes('/stages/') &&
+      entry.endsWith('.json'),
+  )) {
+    const stage = readJson(path.join(root, relative))
+
+    if (
+      !isRecord(stage) ||
+      typeof stage.slug !== 'string' ||
+      !Array.isArray(stage.criteria)
+    ) {
+      continue
+    }
+
+    const workflow = relative.split('/')[2]
+    const owner = workflow ? `workflow:${workflow}` : null
+
+    if (!owner) {
+      continue
+    }
+
+    add(
+      relative,
+      owner,
+      `artifact-profile:${artifactProfile(stage.slug)}`,
+      artifactProfile(stage.slug),
+    )
+
+    for (const criterion of stage.criteria) {
+      if (isRecord(criterion) && typeof criterion.id === 'string') {
+        add(relative, owner, `criterion:${criterion.id}`, criterion.id)
+      }
+    }
+  }
+
+  for (const entry of facilities) {
+    if (entry.category !== 'command' || !entry.name.startsWith('pan-')) {
+      continue
+    }
+
+    const subcommand = entry.name.slice('pan-'.length)
+
+    add(
+      entry.path ?? 'src/lib/pan-command-grammar.ts',
+      entry.id,
+      `cli-subcommand:${subcommand}`,
+      subcommand,
+    )
+  }
+
+  for (const entry of facilities) {
+    if (entry.category === 'source-symbol' && entry.owner_facility) {
+      add(
+        entry.path ?? 'src',
+        entry.owner_facility,
+        entry.id,
+        entry.source_symbol ?? entry.name,
+      )
+    }
+  }
+
   return references
 }
 
@@ -655,6 +861,7 @@ export function buildReferenceGraph(
   facilities: readonly Facility[],
 ): ReferenceGraph {
   const byPath = facilitiesByPath(facilities)
+  const byId = new Map(facilities.map((entry) => [entry.id, entry]))
   const tokenOwners = new Map<string, string[]>()
 
   for (const entry of facilities) {
@@ -688,13 +895,15 @@ export function buildReferenceGraph(
     )
 
     for (const relative of listTextFiles(root)) {
-      let content: string
+      let rawContent: string
 
       try {
-        content = readText(path.join(root, relative))
+        rawContent = readText(path.join(root, relative))
       } catch {
         continue
       }
+
+      let content = rawContent
 
       if (path.extname(relative) === '.ts') {
         content = withoutComments(content)
@@ -703,42 +912,89 @@ export function buildReferenceGraph(
       const owner = ownerOf(byPath, relative)
       const ownerId = owner?.id ?? null
       const carrierClass = referrerClass(relative, owner !== null)
-      const seen = new Set<string>()
+      const markerColumns = dispatchMarkerColumns(rawContent)
+      const lineStarts = lineStartOffsets(content)
+      const contentLines = content.split(/\r?\n/u)
+      const emitted = new Set<string>()
+      const emit = (
+        to: string,
+        token: string,
+        dispatched: boolean,
+        selectableOverride = false,
+      ): void => {
+        const referenceClass: ReferrerClass =
+          dispatched || selectableOverride ? 'registry' : carrierClass
+        const key = `${token}\u0000${to}\u0000${referenceClass}`
 
-      for (const match of content.matchAll(pattern)) {
-        seen.add(match[0])
+        if (emitted.has(key)) {
+          return
+        }
+
+        emitted.add(key)
+        references.push({
+          from: relative,
+          referrer_class: referenceClass,
+          owner_facility: ownerId,
+          to,
+          token,
+        })
+      }
+      // The marker is compared against the occurrence's own column, so the
+      // same token may produce both a registry edge and a blocking code edge
+      // from one file.
+      const dispatchedAt = (offset: number): boolean => {
+        const line = lineIndexOf(lineStarts, offset)
+        const column = markerColumns.get(line)
+
+        return (
+          column !== undefined && offset - (lineStarts[line] as number) < column
+        )
       }
 
-      for (const token of seen) {
+      for (const match of content.matchAll(pattern)) {
+        const token = match[0]
+        const dispatched = dispatchedAt(match.index ?? 0)
+
         for (const target of tokenOwners.get(token) ?? []) {
           if (target === ownerId) {
             continue
           }
 
-          references.push({
-            from: relative,
-            referrer_class: carrierClass,
-            owner_facility: ownerId,
-            to: target,
+          emit(
+            target,
             token,
-          })
+            dispatched,
+            byId.get(target)?.selectable === false,
+          )
         }
       }
 
-      for (const target of relativeTargets(relative, content)) {
-        const resolved = byPath.get(target)
+      const targetsOfLines = (marked: boolean): string[] =>
+        relativeTargets(
+          relative,
+          contentLines
+            .map((line, index) => {
+              const column = markerColumns.get(index)
 
-        if (!resolved || resolved.id === ownerId) {
-          continue
+              if ((column !== undefined) !== marked) {
+                return ''
+              }
+
+              return column === undefined ? line : line.slice(0, column)
+            })
+            .join('\n'),
+        )
+
+      for (const marked of [true, false]) {
+        for (const target of targetsOfLines(marked)) {
+          const resolved = byPath.get(target)
+
+          if (!resolved || resolved.id === ownerId) {
+            continue
+          }
+
+          emit(resolved.id, target, marked)
         }
-
-        references.push({
-          from: relative,
-          referrer_class: carrierClass,
-          owner_facility: ownerId,
-          to: resolved.id,
-          token: target,
-        })
       }
     }
   }

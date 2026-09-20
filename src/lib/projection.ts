@@ -614,6 +614,49 @@ export function syncCursorProjection(
   options: { write?: boolean } & RenderProjectionsOptions = {},
 ): CursorProjectionChange[] {
   const { rendered, removals } = renderProjections(root, options)
+  const expected = new Set(rendered.map((entry) => entry.target))
+  const explicitRemovals = new Set(removals.map((entry) => entry.target))
+
+  // A narrowed render knows nothing about the projections it skipped, so
+  // every projected file outside `only` would look orphaned. Sweeping there
+  // would delete live agents and rules whenever one projection is synced
+  // alone, which is how the drift advisory reads the tree.
+  const sweepOrphans = options.only === undefined
+
+  for (const directory of sweepOrphans ? ['agents', 'commands', 'rules'] : []) {
+    const relativeDirectory = `.cursor/${directory}`
+    const absoluteDirectory = path.join(root, relativeDirectory)
+
+    if (!fileExists(absoluteDirectory)) {
+      continue
+    }
+
+    for (const entry of readdirSync(absoluteDirectory, {
+      withFileTypes: true,
+    })) {
+      if (
+        !entry.isFile() ||
+        !isPancreatorOwnedCursorBasename(entry.name) ||
+        entry.name.includes(VARIANT_SEPARATOR)
+      ) {
+        continue
+      }
+
+      const target = `${relativeDirectory}/${entry.name}`
+
+      if (expected.has(target) || explicitRemovals.has(target)) {
+        continue
+      }
+
+      removals.push({
+        id: 'orphaned-cursor-projection',
+        source: 'canonical source absent',
+        target,
+      })
+      explicitRemovals.add(target)
+    }
+  }
+
   const changes: CursorProjectionChange[] = rendered.map((entry) => {
     const targetPath = path.join(root, entry.target)
     const previous = fileExists(targetPath) ? readText(targetPath) : null

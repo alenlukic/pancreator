@@ -1759,6 +1759,33 @@ The skill defines five document types: `solution assessment`, `comparison`, `tec
 
 The session writes no other file, starts no run, and never answers from memory when a search tool is available. When the session has no web search tool it stops and reports the gap. The Simplified Technical English check on the finished document is advisory, and the session repairs the countable issues it reports before it finishes. Research documents are part of the `/pan-conform` editable set, so a later conform pass repairs their prose too. `pan archive` never retires them.
 
+## Remove unused harness facilities
+
+Use `/pan-debloat` only in the Pancreator source checkout. The command creates
+its own worktree and scans a 30 day evidence window by default. The scan reads
+every workflow, session, cohort, best of N, evaluation, horizon, inbox, and
+transcript record in that window. Its report gives a count for each source and
+names every file it could not read.
+
+The scan decides from a functional dependency graph. Index membership,
+installer payload inclusion, comments, runtime records, and tests of removed
+content do not prove use. A TypeScript dispatch entry can carry
+`// debloat: dispatch`; that marker makes only the marked reference a registry
+entry. An unmarked import in the same file still blocks removal.
+
+The report combines two passes. The deterministic pass marks a candidate
+`unused` or `unclear`. An agent records evidence and a verdict for each unclear
+candidate before selection. That verdict cannot clear deterministic retention.
+The independent orphan pass reports unused exports, unused source files, and
+symbols that are reachable only through import chains. Orphans still require
+operator selection.
+
+Selection calls accumulate ids. Pass several `--facility` options in one call,
+or make several calls. Use `--replace` only to reset the recorded set. Impact
+then reports the normal cascade and a `freed` section. Each freed path or symbol
+names the removed referrer that stranded it. Verification remains incomplete
+until every selected removal, repair, and freed entry is complete.
+
 ## Prepare release metadata manually
 
 Use `/pan-release` when release metadata must be prepared or regenerated outside a workflow ship stage. The command is self-development-only and refuses to version an embedded target repository. It resolves the commit that introduced the committed `VERSION`, evaluates all committed, staged, unstaged, and relevant untracked changes after that baseline, and asks the release steward to choose exactly `major`, `minor`, or `patch`.
