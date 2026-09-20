@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -22,57 +22,6 @@ function configRoot(config: Record<string, unknown>): string {
 
   return root
 }
-
-test('the config schema declares optional installation entries', () => {
-  const schema = JSON.parse(
-    readFileSync(
-      path.join(process.cwd(), 'library/schemas/config.schema.json'),
-      'utf8',
-    ),
-  ) as {
-    required: string[]
-    properties: {
-      installations: {
-        type: string
-        items: {
-          required: string[]
-          additionalProperties: boolean
-          properties: {
-            id: { pattern: string }
-            path: { minLength: number; pattern: string }
-          }
-        }
-      }
-    }
-  }
-  const tracked = JSON.parse(
-    readFileSync(path.join(process.cwd(), 'config.json'), 'utf8'),
-  ) as Record<string, unknown>
-
-  assert.equal(schema.properties.installations.type, 'array')
-  assert.deepEqual(schema.properties.installations.items.required, [
-    'id',
-    'path',
-  ])
-  assert.equal(
-    schema.properties.installations.items.additionalProperties,
-    false,
-  )
-  assert.equal(
-    schema.properties.installations.items.properties.id.pattern,
-    '^[a-z0-9][a-z0-9-]*$',
-  )
-  assert.equal(
-    schema.properties.installations.items.properties.path.minLength,
-    1,
-  )
-  assert.equal(
-    schema.properties.installations.items.properties.path.pattern,
-    '^/',
-  )
-  assert.deepEqual(schema.required, ['schema_version'])
-  assert.equal('installations' in tracked, false)
-})
 
 test('registered installations preserve declarations without probing paths', () => {
   const missingPath = path.join(

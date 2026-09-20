@@ -170,22 +170,6 @@ test('listInbox reports invalid UTF-8 without mutating any inbox file', () => {
   }
 })
 
-test('listInbox reads every lifecycle status directory', () => {
-  const root = inboxRoot()
-
-  for (const status of ['queue', 'active', 'canceled', 'complete'] as const) {
-    const target = path.join(root, 'runtime/inbox', status, `${status}.md`)
-
-    mkdirSync(path.dirname(target), { recursive: true })
-    writeFileSync(target, `# ${status}\n`, 'utf8')
-  }
-
-  assert.deepEqual(
-    listInbox(root).map((item) => item.status),
-    ['queue', 'active', 'canceled', 'complete'],
-  )
-})
-
 test('listInbox selects the first valid level-one heading and falls back to the file name', () => {
   const root = createTestTempDirectory('pancreator-inbox-unit-')
   const modifiedAt = new Date('2024-03-01T10:00:00.000Z')
@@ -827,21 +811,6 @@ function writeRunWithInboxSource(
 // AC-007. `claimInboxRequest` already accepts a canceled item, so the reverse
 // edge was a supported state with no command: the only route was a manual
 // file move that left the operator's decision unrecorded.
-test('restoreInboxRequest returns a canceled item to the queue', () => {
-  const root = inboxRoot()
-  const canceled = path.join(root, 'runtime/inbox/canceled/reopen.md')
-
-  mkdirSync(path.dirname(canceled), { recursive: true })
-  writeFileSync(canceled, '# Reopen\n', 'utf8')
-
-  const result = restoreInboxRequest(root, 'runtime/inbox/canceled/reopen.md')
-
-  assert.equal(result.to, 'runtime/inbox/queue/reopen.md')
-  assert.equal(result.detached_run_id, null)
-  assert.equal(existsSync(canceled), false)
-  assert.equal(readFileSync(path.join(root, result.to), 'utf8'), '# Reopen\n')
-})
-
 // AC-007. The criterion asks for the move to be recorded as an inbox event,
 // and a run's event stream is the only audit surface an inbox move has. Only
 // the active path wrote one, so the canceled restore — the common case, since

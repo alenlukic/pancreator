@@ -430,12 +430,6 @@ test('the release contract sequences the harness-root landing after submit', () 
 
 // HR4-004 named two repairs and forbade shipping both. The criterion keeps no
 // landing exception, so the registry must describe the resequencing alone.
-test('the criterion registry describes the resequencing and no landing exception', () => {
-  const registry = repositoryText('governance/criteria/index.md')
-
-  assert.match(registry, /carries no exception for a release landing/u)
-  assert.match(registry, /MUST still fail and MUST name the paths/u)
-})
 
 test('a genuinely unattributable pre-existing path still fails', () => {
   const root = createFixture()

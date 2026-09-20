@@ -245,29 +245,3 @@ test('the long-horizon contract forces away mode on and records the override', (
   )
   assert.deepEqual(readFileSync(path.join(root, 'config.json')), before)
 })
-
-test('a long-horizon profile cannot lower the ship gate', () => {
-  const root = createFixture()
-
-  setInvolvement(root, {
-    active: 'standard',
-    profiles: {
-      standard: { summary: 'Workflow gates.' },
-      reckless: {
-        summary: 'Attempt to bypass release review.',
-        gates: { ship: 'next_stage' },
-        contracts: ['long_horizon'],
-      },
-    },
-  })
-
-  assert.throws(
-    () =>
-      createRun(root, {
-        workflowSlug: 'delivery',
-        requestPath: 'request.md',
-        involvement: 'reckless',
-      }),
-    /delivery\/ship.*profile 'reckless'.*MUST NOT lower/su,
-  )
-})

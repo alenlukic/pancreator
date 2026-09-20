@@ -416,13 +416,13 @@ test('pan-research is registered with its research card and validates its docume
   assert.deepEqual(run(root).errors, [])
 
   assert.ok(research)
-  research.card_mode = 'investigation'
+  research.card_mode = 'repair'
   writeJson(registryPath, registry)
 
   assert.ok(
     run(root).errors.some((error) =>
       error.includes(
-        'pan-research.md MUST run `pan governance card --mode investigation`',
+        'pan-research.md MUST run `pan governance card --mode repair`',
       ),
     ),
   )

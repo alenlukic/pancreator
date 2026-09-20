@@ -287,26 +287,6 @@ test('harness repair validator passes a lead and section that both honor the con
   )
 })
 
-test('the shared valid-intake fixture carries a category-neutral lead', () => {
-  const lead = VALID_INTAKE.split('\n').slice(0, 15).join('\n').toLowerCase()
-
-  for (const category of CATEGORIES) {
-    for (const token of category.next_action_contract.forbidden_tokens) {
-      assert.ok(
-        !lead.includes(token.toLowerCase()),
-        `the shared lead MUST NOT name '${token}', forbidden by ${category.slug}`,
-      )
-    }
-  }
-
-  // A category whose contract requires the workflow token still passes when
-  // the derived lead names it.
-  const workflowCategory = intakeForCategory('build')
-
-  assert.ok(workflowCategory.includes(`**Next action:** ${WORKFLOW_ROUTE}`))
-  assert.deepEqual(validate(workflowCategory).issues, [])
-})
-
 test('harness repair validator fails a filename slug that contradicts the declared category', () => {
   const disagreement = validate(
     VALID_INTAKE,

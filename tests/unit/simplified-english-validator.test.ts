@@ -171,6 +171,21 @@ test('banned punctuation, contractions, and Latin abbreviations are reported', (
   )
 })
 
+test('an inline code span is quoted text and is not read for vocabulary', () => {
+  const quoted = codes(
+    "Reports MUST NOT use `it's worth noting`, `leverage`, or `a; b` in chat.",
+  )
+
+  assert.equal(quoted.includes('ste.contraction'), false)
+  assert.equal(quoted.includes('ste.word_substitution'), false)
+  assert.equal(quoted.includes('ste.semicolon'), false)
+  assert.ok(codes("The gate doesn't pass `yet`.").includes('ste.contraction'))
+  assert.deepEqual(
+    splitSentences('Do not write `This is X. It is Y.` in chat. Stop here.'),
+    ['Do not write `This is X. It is Y.` in chat.', 'Stop here.'],
+  )
+})
+
 test('complex verb constructions are reported (STE 3.2)', () => {
   assert.ok(codes('The gate has failed twice.').includes('ste.complex_verb'))
   assert.ok(

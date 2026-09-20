@@ -134,19 +134,22 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT push, publish, deploy, or invoke pan set-stage.',
     ],
   },
-  investigation: {
-    kind: 'investigation',
-    persona: 'investigator',
+  debloat: {
+    kind: 'standalone',
+    persona: 'debloater',
     workflow: 'standalone',
-    stage: 'debug',
-    title: 'Investigation',
+    stage: 'debloat',
+    title: 'Harness facility removal',
     summary:
-      'Non-mutating root-cause analysis that defines acceptance criteria and ' +
-      'recommends exactly one work mode.',
+      'Remove the harness facilities the operator selected from a debloat ' +
+      'scan, plus the content those facilities exclusively own, and prove ' +
+      'the result with the repository checks.',
     boundaries: [
-      'You MUST NOT modify any workspace file.',
+      'You MUST treat the recorded operator selection as complete and MUST NOT widen it.',
+      'You MUST adjudicate the computed closure before you delete any path, and MUST keep a file whose reference the static graph could not see.',
+      'You MUST repair every entry the closure lists as an edit, and MUST NOT delete one of those files.',
       PROTECTED_PATH_RULE,
-      'You MUST recommend exactly one work mode and MUST justify it against the evidence.',
+      'You MUST NOT push, publish, deploy, or invoke pan set-stage.',
     ],
   },
   repair: {

@@ -25,14 +25,6 @@ function git(root: string, args: string[]): string {
   }).trim()
 }
 
-test('status paths include both sides of a rename', () => {
-  const root = createFixture()
-
-  execFileSync('git', ['mv', 'src/base.ts', 'src/renamed.ts'], { cwd: root })
-
-  assert.deepEqual(gitStatusPaths(root), ['src/base.ts', 'src/renamed.ts'])
-})
-
 test('workspace fingerprint detects content changes when status labels stay the same', () => {
   const root = createFixture()
   const file = path.join(root, 'src', 'base.js')

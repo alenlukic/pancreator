@@ -15,9 +15,12 @@ import { createTestTempDirectory } from '../temp.js'
 test('installer and compiled projection renderers stay byte-identical', () => {
   const root = createFixture()
   const targetRoot = createTestTempDirectory('pancreator-installer-projection-')
-  const policy = loadPolicyCatalog(root).get('BROWSER-001')
+  const catalog = loadPolicyCatalog(root)
+  const policy = catalog.get('BROWSER-001')
+  const commsPolicy = catalog.get('COMMS-001')
 
   assert.ok(policy)
+  assert.ok(commsPolicy)
 
   try {
     const result = spawnSync(
@@ -48,6 +51,13 @@ test('installer and compiled projection renderers stay byte-identical', () => {
     )
 
     assert.equal(installerRendered, renderPolicyCursorRule(policy))
+
+    const installerChatRule = readFileSync(
+      path.join(targetRoot, '.cursor', 'rules', 'pan-chat-output.mdc'),
+      'utf8',
+    )
+
+    assert.equal(installerChatRule, renderPolicyCursorRule(commsPolicy))
 
     const commandSource = readFileSync(
       path.join(root, 'library', 'cursor', 'commands', 'pan-status.md'),

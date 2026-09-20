@@ -37,6 +37,7 @@ test('a report truncated part way through keeps every case recorded before it', 
 
   assert.deepEqual(survived.cases, ['QA-001 — pass', 'QA-002 — fail'])
   assert.equal(survived.complete, false)
+  assert.deepEqual(readEvidenceReportState('').cases, [])
 
   // A relaunched worker finishing the dimension closes the same report.
   report += caseBlock('QA-003', 'pass')
@@ -56,17 +57,4 @@ test('a report truncated part way through keeps every case recorded before it', 
   const brief = renderEvidenceWorkerBrief(invocation, worker)
 
   assert.ok(brief.includes(EVIDENCE_REPORT_COMPLETE_MARKER))
-})
-
-test('a report holding no completion marker reads as incomplete however long it is', () => {
-  const body = ['# review evidence', '', caseBlock('R-001', 'high')].join('\n')
-
-  assert.equal(readEvidenceReportState(body).complete, false)
-  assert.deepEqual(readEvidenceReportState(body).cases, ['R-001 — high'])
-  assert.deepEqual(readEvidenceReportState('').cases, [])
-  assert.equal(
-    readEvidenceReportState(`text\n${EVIDENCE_REPORT_COMPLETE_MARKER}\n`)
-      .complete,
-    true,
-  )
 })

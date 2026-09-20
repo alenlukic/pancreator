@@ -156,56 +156,6 @@ test('a second run adopts the recorded baseline for an unchanged workspace', () 
   )
 })
 
-test('the ship entry gate rejects an agent-recorded full pass and executes', () => {
-  // A worker-run full profile cannot take over the harness-owned ship gate.
-  // The cache keeps the record for audit, but the gate must compute its own
-  // result and record why the worker pass was ineligible.
-  const { root, runId, workflow } = checkpoint(
-    'delivery@verify-prepared',
-    checksVariant('checks=full-marker-adopted', {
-      static: { probes: [], commands: [PASS] },
-      fast: { probes: [], commands: [PASS] },
-      full: { probes: [], commands: [FULL_MARKER_COMMAND] },
-      configuration: { probes: [], commands: [PASS] },
-    }),
-  )
-
-  submitStageOutput(root, runId, stageBySlug(workflow, 'verify'), 'success')
-  assert.equal(fullRuns(root), 0)
-
-  // Stand in for the command-line runner: run the profile and record the
-  // clean pass exactly as `pan repository-check full --run <id>` does.
-  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
-  const recorded = recordProfileGatePass(
-    root,
-    'full',
-    runRepositoryCheck(root, 'full'),
-    {
-      run_ids: [runId],
-      fingerprint_before: fingerprint,
-      started_at: new Date().toISOString(),
-    },
-  )
-
-  assert.ok(recorded)
-  assert.equal(fullRuns(root), 1)
-
-  const prepared = prepareInvocation(root, runId)
-  const gate = prepared.state.entry_gates?.ship
-
-  assert.ok(prepared.invocation)
-  assert.ok(gate)
-  assert.equal(gate.criterion_id, 'ship.full_suite')
-  assert.equal(gate.last_result.passed, true)
-  assert.equal(gate.last_result.cached, undefined)
-  assert.equal(fullRuns(root), 2)
-  assert.ok(existsSync(path.join(root, gate.last_result.evidence_path ?? '')))
-  assert.match(
-    readFileSync(path.join(root, gate.last_result.evidence_path ?? ''), 'utf8'),
-    /cache_rejection=.*agent-run full.*ship release gate.*VERIFY-001/u,
-  )
-})
-
 /** The repository-check profiles every prefetch case runs against. */
 const PREFETCH_PROFILES = {
   static: { probes: [], commands: [PASS] },

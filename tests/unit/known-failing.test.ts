@@ -319,25 +319,6 @@ test('the matcher credits the shape this repository’s own reporter prints', ()
   assert.match(credit.undeclared[0], /fresh parser rejects a trailing comma/u)
 })
 
-test('a fully declared reporter transcript leaves nothing undeclared', () => {
-  const credit = creditKnownFailures(
-    result(failingCommand('npm test', REPORTER_TRANSCRIPT)),
-    parseKnownFailingTests(
-      [
-        '## Known-failing tests',
-        '',
-        '- `tests/unit/legacy.test.ts > legacy parser accepts an empty body` — ' +
-          'scheduled for removal.',
-        '- `tests/unit/fresh.test.ts > fresh parser rejects a trailing comma` — ' +
-          'blocked on an upstream fix.',
-      ].join('\n'),
-    ),
-  )
-
-  assert.equal(credit.credited.length, 2)
-  assert.deepEqual(credit.undeclared, [])
-})
-
 test('an isolation transcript names the tests the runner executed', () => {
   assert.deepEqual(
     executedTestNames(

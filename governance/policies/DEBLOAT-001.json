@@ -1,0 +1,26 @@
+{
+  "id": "DEBLOAT-001",
+  "title": "Harness facility removal",
+  "severity": "hard",
+  "summary": "A debloat session MUST remove only the facilities the operator selected and the content those facilities exclusively own, MUST adjudicate the computed closure before deleting anything, and MUST prove the result with the repository's own checks.",
+  "instructions": [
+    "The operator selection recorded by `pan debloat select` is the complete authority for what leaves. The debloater MUST NOT add a facility to it, and MUST NOT remove a facility the operator did not select except through the exclusive-reference cascade `pan debloat impact` computes.",
+    "The debloater MUST read `closure.json` in full before it deletes anything. It MUST treat `remove` as paths to delete, `edit` as references to repair in place, and `retained_because` as the record of what the cascade deliberately spared.",
+    "The closure is computed from a static reference graph, which cannot see three kinds of reference. The debloater MUST inspect every removal against all three before deleting: a path a TypeScript expression builds at run time, a facility named in prose without its path or id, and a test that exercises a facility without naming it. It MUST record what it found for each category in its outcome.",
+    "When adjudication shows a closure entry is wrong, the debloater MUST keep the file, MUST record the reference the graph missed, and MUST NOT delete it on the strength of the manifest alone.",
+    "The debloater MUST NOT delete a file listed in `edit`. A registry, an index, a dispatch surface, and a grammar line enumerate many facilities, so each one loses the removed facility's entry and keeps the rest.",
+    "The debloater MUST NOT remove a protected facility or a protected path. `AGENTS.md`, the projection manifest, the three policies that project the always-on Cursor rules, and the debloat facilities themselves are the bootstrap a later repair would need.",
+    "Removal MUST include the test facilities the removed content owned. A test whose every facility reference is removed leaves with it. A test that also covers a surviving facility is repaired instead, because deleting it would drop live coverage.",
+    "After removing and repairing, the debloater MUST run `pan models --sync`, then the resolved configuration and full repository-check profiles, the type check, and `pan debloat verify`. It MUST NOT report success while `pan debloat verify` reports `incomplete`.",
+    "The debloater MUST attribute every check failure to the removal or to a pre-existing condition. It MUST NOT weaken, skip, or waive a check to make a removal pass.",
+    "A debloat session runs in self-development only, on its own worktree branch created from the default branch. It MUST complete the release flow on that branch before the branch merges into `pan-dev`, because a landing without a version is refused by `bin/check-landing` and by the installer.",
+    "The debloater MUST NOT push, publish, deploy, rewrite history, or invoke `pan set-stage`."
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/debloat-closure.md",
+      "start_heading": "## Adjudication",
+      "read_trigger": "Read this guidance before you delete a path the closure lists."
+    }
+  ]
+}

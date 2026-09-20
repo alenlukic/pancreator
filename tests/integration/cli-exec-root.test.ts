@@ -228,26 +228,22 @@ test('an override that is not a Pancreator checkout is refused and names the pat
   assert.equal(missing.status, 1)
   assert.match(missing.stderr, /EXEC_ROOT_INVALID/u)
   assert.ok(missing.stderr.includes(path.join(parent, 'no-such-checkout')))
-})
 
-// A staged or half-copied tree carries the manifest without the wrapper the
-// dispatch needs, so the name alone must not qualify it.
-test('a tree that carries the manifest but no dispatchable build is refused', () => {
-  const parent = createTestTempDirectory('pan-exec-root-')
-  const installation = stubCheckout(parent, 'installation')
-  const partial = createTestTempDirectory('pan-exec-root-partial-')
+  const partial = path.join(parent, 'partial-checkout')
 
+  mkdirSync(partial, { recursive: true })
   writeFileSync(
     path.join(partial, 'package.json'),
-    `${JSON.stringify({ name: 'pancreator-v2-prototype' }, null, 2)}\n`,
+    `${JSON.stringify({ name: 'pancreator-v2-prototype' })}\n`,
   )
 
-  const result = runPan(
+  const incomplete = runPan(
     installation.pan,
-    panEnvironment(toolPath(parent), partial),
+    panEnvironment(tools, partial),
     parent,
   )
 
-  assert.equal(result.status, 1)
-  assert.match(result.stderr, /EXEC_ROOT_INVALID/u)
+  assert.equal(incomplete.status, 1)
+  assert.match(incomplete.stderr, /EXEC_ROOT_INVALID/u)
+  assert.ok(incomplete.stderr.includes(partial))
 })

@@ -612,23 +612,13 @@ test('verify context distinguishes clean pass from baseline-relative gate eviden
   assert.ok(gate)
   assert.match(gate.description, /baseline-relative acceptance/u)
   assert.match(gate.description, /raw exit code 1/u)
+  assert.match(gate.description, /carried failure/u)
   assert.equal(
     gate.gate_evidence?.acceptance_mode,
     'baseline_relative_acceptance',
   )
   assert.equal(gate.gate_evidence?.raw_exit_code, 1)
   assert.equal(gate.gate_evidence?.preexisting_failure, true)
-})
-
-test('gate evidence labels preserve raw acceptance details', () => {
-  assert.equal(
-    gateEvidenceLabel({
-      acceptanceMode: 'baseline_relative_acceptance',
-      rawExitCode: 1,
-      preexistingFailure: true,
-    }),
-    'baseline-relative acceptance (raw exit code 1, carried failure)',
-  )
   assert.equal(
     gateEvidenceLabel({
       acceptanceMode: 'clean_pass',

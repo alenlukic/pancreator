@@ -51,7 +51,7 @@ test('the coordinator, its policy, and both entry points are machinery', () => {
 
 test('a near-miss path is not treated as machinery', () => {
   const conflicts = reviewMachineryConflicts([
-    'library/skills/modern-code-review.md',
+    'library/skills/evaluate-evidence.md',
     'library/personas/reviewer.md',
     'library/cursor/agents/reviewer.md',
     'docs/review-notes.md',

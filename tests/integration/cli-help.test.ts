@@ -50,7 +50,7 @@ test('CLI artifact options persist run-wide and stage selections', () => {
         CLI,
         'init',
         '--workflow',
-        'preflight',
+        'planning',
         '--request',
         'request.md',
         '--operator-artifacts',
@@ -77,7 +77,7 @@ test('CLI artifact options persist run-wide and stage selections', () => {
         CLI,
         'init',
         '--workflow',
-        'preflight',
+        'planning',
         '--request',
         'request.md',
         '--json',
@@ -107,7 +107,7 @@ test('CLI artifact options persist run-wide and stage selections', () => {
 
   assert.deepEqual(state.operator_artifacts, {
     mode: 'suppressed',
-    requested_stages: ['inspect'],
+    requested_stages: ['plan'],
   })
 })
 

@@ -199,7 +199,10 @@ test('the card render is idempotent and a policy change re-binds the supervisor'
   const again = buildSupervisorCard(root, state.run_id)
 
   assert.equal(again.changed, false)
+  assert.equal(again.attested, false)
   assert.equal(again.sha256, card.sha256)
+  assert.ok(again.policies.includes('DELEGATE-001'))
+  assert.ok(again.attest_command.endsWith(`--sha256 ${again.sha256}`))
   assert.equal(
     getRunState(root, state.run_id).supervisor_card?.rendered_at,
     card.rendered_at,
@@ -407,16 +410,6 @@ test('a run created before the card existed gains it on prepare and is bound aft
     (error: unknown) =>
       error instanceof PanError && error.code === 'SUPERVISOR_CARD_UNATTESTED',
   )
-})
-
-test('the supervisor card build reports what the CLI prints', () => {
-  const { root, state } = unattestedRun()
-  const report = buildSupervisorCard(root, state.run_id)
-
-  assert.equal(report.attested, false)
-  assert.equal(report.sha256, state.supervisor_card?.sha256)
-  assert.ok(report.policies.includes('DELEGATE-001'))
-  assert.ok(report.attest_command.endsWith(`--sha256 ${report.sha256}`))
 })
 
 test('a worktree-bound run names its worktree on the supervisor card', () => {

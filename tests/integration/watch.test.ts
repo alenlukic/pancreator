@@ -531,43 +531,6 @@ test('a mark-background re-arm preserves the existing launch clock', async () =>
 // The recorded symptom was a lateness advisory measured from the re-arming
 // rather than the launch. The clock an arming records itself must survive a
 // later detach for the same reason a supervisor-supplied one does.
-test('a mark-background re-arm preserves a clock the first arming recorded', async () => {
-  const { root, state, invocationId } = preparedRun()
-  const armedMs = Date.now() - 300_000
-
-  recordInvocationLaunch(root, state.run_id, invocationId, {
-    defaultLaunchedAtMs: armedMs,
-    defaultSource: 'watch_arm',
-  })
-
-  const armed = readLaunchRecord(root, state.run_id, invocationId)
-
-  writeStageOutput(root, state)
-  await watchInvocation(root, state.run_id, {
-    markBackground: true,
-    agentState: 'completed',
-  })
-
-  const launch = readLaunchRecord(root, state.run_id, invocationId)
-
-  assert.equal(launch?.launched_at, armed?.launched_at)
-  assert.equal(launch?.launched_at_source, 'watch_arm')
-
-  // The detach is therefore measured from the launch rather than from the
-  // re-arming. This launch is 300 seconds old, so the mark is correctly
-  // late; measured from the re-arming it would have read as immediate,
-  // which is the reading the preserved clock exists to prevent.
-  const marker = JSON.parse(
-    readFileSync(
-      path.join(root, backgroundMarkerPath(root, state.run_id, invocationId)),
-      'utf8',
-    ),
-  ) as { launched_at: string; mark_delay_seconds: number; late: boolean }
-
-  assert.equal(marker.launched_at, armed?.launched_at)
-  assert.ok(marker.mark_delay_seconds >= 300)
-  assert.equal(marker.late, true)
-})
 
 test('watch --mark-background writes the background marker beside the record', async () => {
   const { root, state, invocationId } = preparedRun()
@@ -650,6 +613,32 @@ test('the first watch arming records the launch time and never resets it', async
 
   assert.equal(marker.launched_at, first.launched_at)
   assert.equal(marker.redline_category, 'platform_initiated_detach')
+
+  const old = preparedRun()
+  const armedMs = Date.now() - 300_000
+
+  recordInvocationLaunch(old.root, old.state.run_id, old.invocationId, {
+    defaultLaunchedAtMs: armedMs,
+    defaultSource: 'watch_arm',
+  })
+  writeStageOutput(old.root, old.state)
+  await watchInvocation(old.root, old.state.run_id, {
+    markBackground: true,
+    agentState: 'completed',
+  })
+
+  const lateMarker = JSON.parse(
+    readFileSync(
+      path.join(
+        old.root,
+        backgroundMarkerPath(old.root, old.state.run_id, old.invocationId),
+      ),
+      'utf8',
+    ),
+  ) as { mark_delay_seconds: number; late: boolean }
+
+  assert.ok(lateMarker.mark_delay_seconds >= 300)
+  assert.equal(lateMarker.late, true)
 })
 
 // The supervisor is the only party that knows when it made the call, so its

@@ -8,7 +8,7 @@ spotfix procedure `SPOT-001` references in the delegated prompt.
 
 ## Inputs
 
-You MAY receive an investigator report or detailed operator prose. Preserve the
+You MAY receive a prior analysis or detailed operator prose. Preserve the
 original input for escalation and inspect the repository before accepting its
 assumptions.
 

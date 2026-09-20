@@ -5,7 +5,6 @@ import {
   canonicalPersonaMapping,
   OPENAI_OPTION_KEYS,
   parsePersonaMapping,
-  personaExecutorOf,
 } from '../../src/lib/executors/mapping.js'
 import { PanError } from '../../src/lib/errors.js'
 
@@ -21,18 +20,6 @@ function rejection(spec: string): PanError {
 
   throw new assert.AssertionError({ message: `${spec} was accepted` })
 }
-
-test('an openai mapping parses into executor, model, and options', () => {
-  const mapping = parsePersonaMapping(
-    'openai:gpt-6-astra[effort=high,timeout-ms=600000]',
-  )
-
-  assert.equal(mapping.executor, 'openai')
-  assert.equal(mapping.model, 'gpt-6-astra')
-  assert.equal(mapping.model_spec, 'gpt-6-astra[effort=high,timeout-ms=600000]')
-  assert.deepEqual(mapping.options, { effort: 'high', 'timeout-ms': '600000' })
-  assert.equal(personaExecutorOf('openai:gpt-6-astra'), 'openai')
-})
 
 test('the canonical form round-trips an openai spec with sorted options', () => {
   assert.equal(

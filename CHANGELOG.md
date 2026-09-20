@@ -1,5 +1,85 @@
 # Changelog
 
+## [6.30.1] - 2026-09-20
+
+This release applies the 2026-09-20 tune-harness verdicts to the self-development test suite.
+
+### Changed
+
+- Move selected integration and regression contracts into the unit lane when a cheaper direct form exists ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f), [e88b5b74](https://github.com/alenlukic/pancreator/commit/e88b5b74378992ecdfbd28f324950ed2d1f44be7)).
+- Fold duplicate assertions into their named survivors and delete the source tests ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
+- Correct the primer statement that names the impacted cohort for `docs/target-repo-primer.md` ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
+
+### Added
+
+- Add unit files for away-mode parse, installation-schema agreement, invocation liveness, repository-check baseline and authority, requirement target kind, and the secret-path corpus ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f), [e88b5b74](https://github.com/alenlukic/pancreator/commit/e88b5b74378992ecdfbd28f324950ed2d1f44be7)).
+
+### Removed
+
+- Remove the four DELETE verdicts and the merged source tests from the integration and regression lanes ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
+
+## [6.30.0] - 2026-09-20
+
+This release removes 15 unused harness facilities. The operator no longer sees `/pan-debug`, the investigation mode, or the preflight workflow.
+
+### Changed
+
+- Repair references in config, policy indexes, governance cards, command grammar, WORK-001, SPOT-001, and operator docs after the removal ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Keep `src/lib/hypervisor.ts`, the `pan hypervisor` CLI, and the `hypervisor` persona key so away mode can read health state ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+
+### Removed
+
+- Remove `/pan-debug` and the `investigation` standalone mode ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove the `hypervisor`, `investigator`, and `repo-technician` personas ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove policy DIAG-001 and policy HYPERVISOR-001 ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove skills `hypervisor`, `manual-qa-cases`, `map-acceptance-criteria`, `modern-code-review`, and `scope-control` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove the `preflight` workflow and the example templates `stage-artifact.example.md` and `supervisor-assessment.example.json` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+
+## [6.29.0] - 2026-09-20
+
+This release corrects the `/pan-debloat` reference graph. The scanner now treats a registration as a registry, not a use.
+
+### Changed
+
+- Classify the handler dispatch table in `src/lib/requirements/handlers.ts` as a registry ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Recover validator liveness from the resolve chain of policy requirement, registry entry, handler id, and module binding ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Strip comments from TypeScript before the literal scan ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Narrow the `code` referrer class to `src/` and `bin/` ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+
+### Added
+
+- Record `test_only_references` when every structural reference to a facility is its own tests ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Show that state as a candidate column and as a report section for facilities held off the list ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+
+### Fixed
+
+- Allow unused validators to become removal candidates. A registration in the dispatch table is no longer a use ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+- Do not treat a comment that names a facility as a live edge ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
+
+## [6.28.0] - 2026-09-20
+
+This release extends policy COMMS-001. Chat reports now obey a 250-word prose cap and a terminal-state report contract. Embedded installs also receive the always-apply rule `pan-chat-output.mdc`.
+
+### Changed
+
+- Extend policy COMMS-001 with a 250-word prose cap, a terminal-state report contract, direct-statement rules, and a banned-phrase list ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3)).
+- Treat an inline code span as quoted text in the STE validator ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3)).
+- Shape the orchestrator decision packet under policy COMMS-001 ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3)).
+
+### Added
+
+- Project `.cursor/rules/pan-chat-output.mdc` from policy COMMS-001 as an always-apply rule in every embedded install ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3), [docs/embedded-installation.md](docs/embedded-installation.md)).
+
+## [6.27.0] - 2026-09-20
+
+This release adds `/pan-debloat`. An operator can scan unused harness facilities and remove a selected set as a release.
+
+### Added
+
+- Add `/pan-debloat` so an operator can scan unused facilities, select a subset, and land the exclusive closure as a minor release ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
+- Add `pan debloat scan|select|impact|verify` so the command can inventory facilities, record the operator choice, compute the exclusive-reference closure, and prove the workspace ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
+- Add policy DEBLOAT-001, the `debloat` standalone mode, the `debloater` persona, and skill `debloat-closure` so removal stays inside the recorded selection ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
+
 ## [6.26.0] - 2026-09-20
 
 This release consolidates the five harness-repair releases 6.21.0 through 6.25.0 into one installable tree and adds the supervisor's harness-path delegation.

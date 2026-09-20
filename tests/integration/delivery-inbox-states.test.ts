@@ -23,6 +23,7 @@ import {
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
+  writeInspectionWorkflow,
   writeJson,
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
@@ -315,10 +316,11 @@ test('moves aborted request to canceled and permits restart', () => {
 test('keeps failed inbox request active', () => {
   const root = createFixture()
   const queued = writeInboxRequest(root, 'queue', 'failed.md', '# Failure\n')
-  const workflow = loadWorkflow(root, 'preflight')
+  const workflowSlug = writeInspectionWorkflow(root)
+  const workflow = loadWorkflow(root, workflowSlug)
 
   const state = createRun(root, {
-    workflowSlug: 'preflight',
+    workflowSlug,
     requestPath: queued,
     title: 'Failed fixture',
   })

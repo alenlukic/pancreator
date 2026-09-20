@@ -155,6 +155,13 @@ test('pan inbox restore returns a canceled item and refuses a completed one', ()
     existsSync(path.join(root, 'runtime/inbox/queue/canceled-intake.md')),
     true,
   )
+  assert.equal(
+    readFileSync(
+      path.join(root, 'runtime/inbox/queue/canceled-intake.md'),
+      'utf8',
+    ),
+    '# Canceled intake\n',
+  )
   assert.equal(existsSync(path.join(root, canceled)), false)
 
   const refused = run(root, ['inbox', 'restore', complete])

@@ -4796,7 +4796,6 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/schemas/stage.schema.json',
     'library/cursor/commands/pan-start.md',
     'library/cursor/commands/pan-resume.md',
-    'library/cursor/commands/pan-debug.md',
     'library/cursor/commands/pan-repair.md',
     'library/cursor/commands/pan-decompose.md',
     'library/cursor/commands/pan-build-docs.md',
@@ -4806,15 +4805,11 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/commands/pan-write-pr.md',
     'library/cursor/agents/decomposer.md',
     'library/cursor/agents/librarian.md',
-    'library/cursor/agents/investigator.md',
     'library/cursor/agents/harness-technician.md',
-    'library/cursor/agents/repo-technician.md',
     'library/cursor/agents/spotfixer.md',
     'library/personas/decomposer.md',
     'library/personas/librarian.md',
-    'library/personas/investigator.md',
     'library/personas/harness-technician.md',
-    'library/personas/repo-technician.md',
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
     'library/skills/write-pr-description.md',
@@ -5243,14 +5238,6 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   if (hasTargetExtensions) {
     errors.push(...validateTargetAuthoring(root).errors)
-  }
-
-  if (
-    fileExists(path.join(root, 'library', 'cursor', 'commands', 'pan-repo.md'))
-  ) {
-    errors.push(
-      'repo-technician MUST remain directly invocable without a dedicated pan-repo command',
-    )
   }
 
   return {
