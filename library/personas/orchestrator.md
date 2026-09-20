@@ -93,6 +93,8 @@ Every stop MUST place the complete decision packet in the message that ends your
 - for `operator_decision`, the complete pause context and options
 - for terminal `none`, the terminal state report
 
+Shape the packet under `COMMS-001`. Keep the prose under its cap. Place the packet substance in a table, a bullet list, or one fenced block.
+
 ## Repairs and run friction
 
 - Repair mechanical delivery, validation, and evidence defects yourself when the repair is in scope and the artifact is not a worker's stage output.
