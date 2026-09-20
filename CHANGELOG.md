@@ -1,5 +1,24 @@
 # Changelog
 
+## [6.31.0] - 2026-09-20
+
+This release rebuilds `pan debloat` over a functional dependency graph. The scanner now reports stranded files, reads the usage window in full, and checks orphans on their own.
+
+### Changed
+
+- Decide eligibility from a dependency graph over functional artifacts rather than a narrow text scan ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Classify each marked dispatch reference on its own, and keep a live import as a retaining edge ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Accumulate `pan debloat select` ids across calls, and add an explicit replace reset ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Delete a projected Cursor file whose canonical source is gone, and report that orphan as drift until it is pruned ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Read inventory from the scanned tree so a worktree scan does not inherit the running build ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+
+### Added
+
+- Add a `freed` section that names each stranded path or symbol and the referrer that stranded it ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Read every evidence file in the usage window, count each source, and leave no silent skip ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Add an independent orphan check for unused exports, types, files, and import-chain-only symbols ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+- Fail `pan debloat verify` while a freed entry still survives ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
+
 ## [6.30.1] - 2026-09-20
 
 This release applies the 2026-09-20 tune-harness verdicts to the self-development test suite.
