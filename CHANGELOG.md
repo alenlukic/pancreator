@@ -1,5 +1,22 @@
 # Changelog
 
+## [6.30.0] - 2026-09-20
+
+This release removes 15 unused harness facilities. The operator no longer sees `/pan-debug`, the investigation mode, or the preflight workflow.
+
+### Changed
+
+- Repair references in config, policy indexes, governance cards, command grammar, WORK-001, SPOT-001, and operator docs after the removal ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Keep `src/lib/hypervisor.ts`, the `pan hypervisor` CLI, and the `hypervisor` persona key so away mode can read health state ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+
+### Removed
+
+- Remove `/pan-debug` and the `investigation` standalone mode ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove the `hypervisor`, `investigator`, and `repo-technician` personas ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove policy DIAG-001 and policy HYPERVISOR-001 ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove skills `hypervisor`, `manual-qa-cases`, `map-acceptance-criteria`, `modern-code-review`, and `scope-control` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+- Remove the `preflight` workflow and the example templates `stage-artifact.example.md` and `supervisor-assessment.example.json` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
+
 ## [6.29.0] - 2026-09-20
 
 This release corrects the `/pan-debloat` reference graph. The scanner now treats a registration as a registry, not a use.
