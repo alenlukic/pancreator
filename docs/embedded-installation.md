@@ -134,6 +134,7 @@ without mutating target-owned files or creating a copied target-policy snapshot.
     commands/pan-*.md       # /pan-* commands projected for Cursor
     rules/pancreator.mdc    # embedded operating rule
     rules/pan-browser-isolation.mdc    # always-apply rule generated from BROWSER-001
+    rules/pan-chat-output.mdc          # always-apply rule generated from COMMS-001
   .pancreator/
     AGENTS.md               # installed-harness operating card
     VERSION
@@ -233,7 +234,9 @@ source of the browser-inspection contract. Workflow agents receive its rules inl
 on their invocation card, with the procedure delivered as an audited guidance
 reference; for work that runs outside a card, embedded installs generate
 it into `.cursor/rules/pan-browser-isolation.mdc` as an always-apply rule. That file
-is generated output — change the policy, not the rule.
+is generated output — change the policy, not the rule. `COMMS-001`, the
+operator-facing chat output policy, is generated the same way into
+`.cursor/rules/pan-chat-output.mdc`.
 
 Pancreator never overwrites target-owned `.cursor/mcp.json`. The policy requires a
 Chrome for Testing bundle, which operators configure locally:
