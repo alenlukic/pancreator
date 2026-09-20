@@ -4,6 +4,7 @@ import path from 'node:path'
 import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
 import { loadWorkflow, workflowPersonaNames } from '../workflow.js'
+import type { IntentClassifier } from './intent.js'
 import {
   EDIT_ONLY_PATHS,
   facilitiesByPath,
@@ -37,15 +38,41 @@ export interface Reference {
   to: string
   /** Literal text that produced the edge, for the operator to spot-check. */
   token: string
+  /**
+   * Whether the referring text uses the facility rather than mentioning it.
+   *
+   * A typed edge and a code edge are always functional. A prose edge is
+   * functional only when the intent classifier reads its line as a direction
+   * to run, read, apply, or follow the facility. An index entry, a description,
+   * and a passing mention stay in the graph so the closure can repair them,
+   * but they neither keep a facility reachable nor block a cascade.
+   */
+  functional: boolean
 }
 
 export interface ReferenceGraph {
   references: Reference[]
-  /** Facility id to the facilities it references. */
+  /** Facility id to the facilities it functionally references. */
   outgoing: Map<string, Set<string>>
   /** Facility id to every reference that reaches it. */
   incoming: Map<string, Reference[]>
 }
+
+export interface ReferenceGraphOptions {
+  /**
+   * Classifier for prose edges. Without one every prose edge counts as
+   * functional, which is the older and more conservative reading.
+   */
+  readonly classifier?: IntentClassifier
+}
+
+/**
+ * Files every agent reads in full before any card exists.
+ *
+ * A functional direction in one of these files keeps its target live even
+ * though the file owns no facility node of its own.
+ */
+export const ALWAYS_READ_PATHS: readonly string[] = ['AGENTS.md']
 
 const SCAN_ROOTS = ['bin', 'docs', 'governance', 'library', 'src', 'tests']
 
@@ -246,14 +273,24 @@ const MARKDOWN_LINK_PATTERN = /\]\(([^)\s#]+)(?:\s[^)]*)?\)/gu
  * `[spotfix.md](spotfix.md)`, so every skill index entry looks unreferenced
  * and a removal would leave the index listing a file that no longer exists.
  */
-function relativeTargets(relative: string, content: string): string[] {
+interface RelativeTarget {
+  target: string
+  /** Zero-based line of `content` that carried the specifier. */
+  line: number
+}
+
+function relativeTargets(relative: string, content: string): RelativeTarget[] {
   const directory = path.posix.dirname(relative)
   const extension = path.posix.extname(relative)
-  const specifiers: string[] = []
+  const starts = lineStartOffsets(content)
+  const specifiers: Array<{ specifier: string; offset: number }> = []
 
   if (extension === '.ts') {
     for (const match of content.matchAll(RELATIVE_IMPORT_PATTERN)) {
-      specifiers.push(match[1] as string)
+      specifiers.push({
+        specifier: match[1] as string,
+        offset: match.index ?? 0,
+      })
     }
   }
 
@@ -262,17 +299,20 @@ function relativeTargets(relative: string, content: string): string[] {
       const target = match[1] as string
 
       if (!/^[a-z][a-z0-9+.-]*:/iu.test(target)) {
-        specifiers.push(target)
+        specifiers.push({ specifier: target, offset: match.index ?? 0 })
       }
     }
   }
 
-  return specifiers.map((specifier) => {
+  return specifiers.map(({ specifier, offset }) => {
     const resolved = path.posix.normalize(path.posix.join(directory, specifier))
 
-    return resolved.endsWith('.js')
-      ? `${resolved.slice(0, -'.js'.length)}.ts`
-      : resolved
+    return {
+      target: resolved.endsWith('.js')
+        ? `${resolved.slice(0, -'.js'.length)}.ts`
+        : resolved,
+      line: lineIndexOf(starts, offset),
+    }
   })
 }
 
@@ -493,6 +533,7 @@ function validatorResolutionReferences(
         owner_facility: `requirement:${policy.id}/${requirement.id}`,
         to: target,
         token: requirement.registry_id,
+        functional: true,
       })
     }
   }
@@ -528,6 +569,7 @@ function validatorResolutionReferences(
         owner_facility: null,
         to: target,
         token: match[1] as string,
+        functional: true,
       })
     }
   }
@@ -558,6 +600,7 @@ function typedReferences(
       owner_facility: ownerFacility,
       to,
       token,
+      functional: true,
     })
   }
 
@@ -573,6 +616,7 @@ function typedReferences(
         owner_facility: null,
         to,
         token,
+        functional: false,
       })
     }
   }
@@ -859,7 +903,9 @@ function typedReferences(
 export function buildReferenceGraph(
   root: string,
   facilities: readonly Facility[],
+  options: ReferenceGraphOptions = {},
 ): ReferenceGraph {
+  const classifier = options.classifier
   const byPath = facilitiesByPath(facilities)
   const byId = new Map(facilities.map((entry) => [entry.id, entry]))
   const tokenOwners = new Map<string, string[]>()
@@ -916,15 +962,38 @@ export function buildReferenceGraph(
       const lineStarts = lineStartOffsets(content)
       const contentLines = content.split(/\r?\n/u)
       const emitted = new Set<string>()
+      // Code uses what it names, and a registration or a test never does. A
+      // prose line is read by the classifier: a direction to run, read, or
+      // apply the facility is functional, and anything else is a mention the
+      // closure repairs without treating it as a dependency.
+      const isFunctional = (
+        referenceClass: ReferrerClass,
+        line: number,
+      ): boolean => {
+        switch (referenceClass) {
+          case 'code':
+            return true
+          case 'registry':
+          case 'test':
+            return false
+          case 'doc':
+          case 'facility':
+            return classifier
+              ? classifier.classify(contentLines[line] ?? '').functional
+              : true
+        }
+      }
       const emit = (
         to: string,
         token: string,
         dispatched: boolean,
+        line: number,
         selectableOverride = false,
       ): void => {
         const referenceClass: ReferrerClass =
           dispatched || selectableOverride ? 'registry' : carrierClass
-        const key = `${token}\u0000${to}\u0000${referenceClass}`
+        const functional = isFunctional(referenceClass, line)
+        const key = `${token}\u0000${to}\u0000${referenceClass}\u0000${functional}`
 
         if (emitted.has(key)) {
           return
@@ -937,6 +1006,7 @@ export function buildReferenceGraph(
           owner_facility: ownerId,
           to,
           token,
+          functional,
         })
       }
       // The marker is compared against the occurrence's own column, so the
@@ -953,7 +1023,9 @@ export function buildReferenceGraph(
 
       for (const match of content.matchAll(pattern)) {
         const token = match[0]
-        const dispatched = dispatchedAt(match.index ?? 0)
+        const offset = match.index ?? 0
+        const dispatched = dispatchedAt(offset)
+        const line = lineIndexOf(lineStarts, offset)
 
         for (const target of tokenOwners.get(token) ?? []) {
           if (target === ownerId) {
@@ -964,12 +1036,13 @@ export function buildReferenceGraph(
             target,
             token,
             dispatched,
+            line,
             byId.get(target)?.selectable === false,
           )
         }
       }
 
-      const targetsOfLines = (marked: boolean): string[] =>
+      const targetsOfLines = (marked: boolean): RelativeTarget[] =>
         relativeTargets(
           relative,
           contentLines
@@ -986,14 +1059,14 @@ export function buildReferenceGraph(
         )
 
       for (const marked of [true, false]) {
-        for (const target of targetsOfLines(marked)) {
+        for (const { target, line } of targetsOfLines(marked)) {
           const resolved = byPath.get(target)
 
           if (!resolved || resolved.id === ownerId) {
             continue
           }
 
-          emit(resolved.id, target, marked)
+          emit(resolved.id, target, marked, line)
         }
       }
     }
@@ -1010,12 +1083,30 @@ export function buildReferenceGraph(
   for (const reference of references) {
     incoming.get(reference.to)?.push(reference)
 
-    if (reference.owner_facility) {
+    if (reference.owner_facility && reference.functional) {
       outgoing.get(reference.owner_facility)?.add(reference.to)
     }
   }
 
   return { references, outgoing, incoming }
+}
+
+/**
+ * Facilities a functional direction in an always-read file names.
+ *
+ * `AGENTS.md` owns no facility, so its edges never enter `outgoing`. Every
+ * agent reads it in full, though, so a direction it carries is a live use.
+ */
+export function alwaysReadTargets(graph: ReferenceGraph): Set<string> {
+  const targets = new Set<string>()
+
+  for (const reference of graph.references) {
+    if (reference.functional && ALWAYS_READ_PATHS.includes(reference.from)) {
+      targets.add(reference.to)
+    }
+  }
+
+  return targets
 }
 
 /**
@@ -1081,7 +1172,7 @@ export function findReferences(
       }
     }
 
-    for (const target of relativeTargets(relative, content)) {
+    for (const { target } of relativeTargets(relative, content)) {
       const owner = pathOwners.get(target)
 
       if (owner) {

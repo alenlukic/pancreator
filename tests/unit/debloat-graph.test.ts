@@ -601,3 +601,85 @@ test('the closure refuses a protected facility', () => {
       error instanceof PanError && error.code === 'DEBLOAT_FACILITY_PROTECTED',
   )
 })
+
+test('a prose edge the classifier reads as a mention neither anchors reachability nor blocks a cascade', () => {
+  const root = createWorkspace()
+  // The stapler survives and names the widget skill as a direction and the
+  // shared skill as a list entry. Only the direction is a dependency.
+  write(
+    root,
+    'library/personas/stapler.md',
+    [
+      '# Stapler',
+      '',
+      'Read `library/skills/widget-craft.md` before stapling.',
+      '',
+      '## Related',
+      '',
+      '- `library/skills/shared.md`',
+      '',
+    ].join('\n'),
+  )
+  const classifier = {
+    exampleCount: 0,
+    classify(text: string): { functional: boolean; margin: number } {
+      const functional = /^Read\b/u.test(text.trim())
+
+      return { functional, margin: functional ? 1 : -1 }
+    },
+  }
+  const facilities = collectFacilities(root)
+  const graph = buildReferenceGraph(root, facilities, { classifier })
+  const edges = graph.references.filter(
+    (reference) => reference.from === 'library/personas/stapler.md',
+  )
+
+  assert.equal(
+    edges.find((edge) => edge.to === 'skill:widget-craft')?.functional,
+    true,
+    'a direction is functional',
+  )
+  assert.equal(
+    edges.find((edge) => edge.to === 'skill:shared')?.functional,
+    false,
+    'a list entry is a mention',
+  )
+  assert.ok(graph.outgoing.get('persona:stapler')?.has('skill:widget-craft'))
+  assert.equal(
+    graph.outgoing.get('persona:stapler')?.has('skill:shared'),
+    false,
+  )
+
+  // The stapler's direction keeps widget-craft when the widget command goes.
+  const closure = computeClosure(facilities, graph, ['command:pan-widget'], {
+    sessionId: '20260920-000000-abcdef',
+  })
+
+  assert.equal(closure.cascaded.includes('skill:widget-craft'), false)
+  assert.ok(
+    closure.retained_because.some(
+      (entry) => entry.facility_id === 'skill:widget-craft',
+    ),
+  )
+
+  // A mention-only survivor does not block. Give the shared skill one removed
+  // referrer, and it cascades while the stapler's list entry is repaired.
+  write(
+    root,
+    'library/cursor/commands/pan-widget.md',
+    'Run `pan-widgeteer` and read `library/skills/shared.md`.\n',
+  )
+  const refreshed = collectFacilities(root)
+  const regraph = buildReferenceGraph(root, refreshed, { classifier })
+  const reclosure = computeClosure(refreshed, regraph, ['command:pan-widget'], {
+    sessionId: '20260920-000000-abcdef',
+  })
+
+  assert.ok(reclosure.cascaded.includes('skill:shared'))
+  assert.ok(
+    reclosure.edit.some(
+      (entry) => entry.path === 'library/personas/stapler.md',
+    ),
+    'the surviving mention is repaired rather than deleted',
+  )
+})
