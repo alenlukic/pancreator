@@ -349,7 +349,18 @@ function referenceTokens(entry: Facility): string[] {
       tokens.push(`'${entry.name}'`, `"${entry.name}"`)
       break
     case 'cli-subcommand':
-      tokens.push(`case '${entry.name}'`, `pan ${entry.name}`)
+      // A subcommand is also run without the `pan` wrapper. A package script
+      // and a direct call on the built CLI are both callers, and neither
+      // shares text with the two tokens above. The quoted form is its own
+      // token because a shell script writes the interpolated path in quotes,
+      // which puts a `"` between the file and the subcommand.
+      tokens.push(
+        `case '${entry.name}'`,
+        `pan ${entry.name}`,
+        `npm run ${entry.name}`,
+        `cli.js ${entry.name}`,
+        `cli.js" ${entry.name}`,
+      )
       break
     case 'criterion':
       tokens.push(entry.name)

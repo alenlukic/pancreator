@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
+import { isDirectory, isFile, readText } from '../io.js'
 import {
   buildModuleGraph,
   loadTypeScript,
@@ -36,10 +37,212 @@ export interface SymbolIndex {
   graph: ModuleGraph
   declarations: ExportedSymbol[]
   uses: CrossModuleSymbolUse[]
+  /** Source files a consumer outside the TypeScript module graph names. */
+  entrypoints: Set<string>
 }
 
 function symbolId(file: string, name: string): string {
   return `${file}#${name}`
+}
+
+/**
+ * Trees that run a built module instead of importing its source.
+ *
+ * The module graph holds only `src/` and `tests/` TypeScript, so a shell
+ * script, an extensionless JavaScript file, and a `package.json` script are
+ * all invisible to it. Every CLI entrypoint is reached exactly this way, so
+ * without this scan each one reports itself as an unused file.
+ */
+const EXTERNAL_SCAN_ROOTS = ['bin']
+
+const EXTERNAL_SCAN_FILES = ['package.json']
+
+/** A path or a bare filename that names a JavaScript or TypeScript module. */
+const MODULE_PATH_PATTERN = /[\w@.-]+(?:\/[\w@.-]+)*\.(?:js|ts)(?![\w-])/gu
+
+/** Files under the external scan roots, repository-relative. */
+function externalConsumerFiles(root: string): string[] {
+  const found: string[] = []
+
+  const walk = (relative: string): void => {
+    const absolute = path.join(root, relative)
+
+    if (!isDirectory(absolute)) {
+      return
+    }
+
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      const child = `${relative}/${entry.name}`
+
+      if (entry.isDirectory()) {
+        walk(child)
+      } else if (entry.isFile()) {
+        found.push(child)
+      }
+    }
+  }
+
+  for (const base of EXTERNAL_SCAN_ROOTS) {
+    walk(base)
+  }
+
+  for (const file of EXTERNAL_SCAN_FILES) {
+    if (isFile(path.join(root, file))) {
+      found.push(file)
+    }
+  }
+
+  return found.sort()
+}
+
+/**
+ * Source file each unambiguous basename belongs to.
+ *
+ * A bare filename is the only shape a run-time path expression leaves behind:
+ * `src/lib/engine.ts` holds `'openai-agent-cli.js'` and joins it to a
+ * directory computed elsewhere. A basename two sources share proves nothing
+ * about either, so only a unique one resolves.
+ */
+function sourceByBasename(files: readonly string[]): Map<string, string> {
+  const owners = new Map<string, string | null>()
+
+  for (const file of files) {
+    if (!file.startsWith('src/')) {
+      continue
+    }
+
+    const base = path.posix.basename(file)
+
+    owners.set(base, owners.has(base) ? null : file)
+  }
+
+  return new Map(
+    [...owners].filter((entry): entry is [string, string] => entry[1] !== null),
+  )
+}
+
+/**
+ * Source file a referenced module path names, or `null`.
+ *
+ * A built path drops its `dist/` prefix and regains its `.ts` extension. The
+ * token itself often carries a prefix the repository does not own, because a
+ * script writes `"$ROOT/dist/src/cli.js"`, so each suffix is tried in turn
+ * and only an exact source path resolves. That exactness is what keeps a
+ * sibling specifier such as `./errors.js` out: it names a module relative to
+ * its own file rather than to the repository root.
+ */
+function sourceForModulePath(
+  token: string,
+  files: ReadonlySet<string>,
+  byBasename: ReadonlyMap<string, string>,
+): string | null {
+  const segments = token.split('/')
+
+  if (segments.length === 1) {
+    const base = token.endsWith('.js')
+      ? `${token.slice(0, -'.js'.length)}.ts`
+      : token
+
+    return byBasename.get(base) ?? null
+  }
+
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const suffix = segments.slice(index).join('/')
+    const relative = suffix.startsWith('dist/')
+      ? suffix.slice('dist/'.length)
+      : suffix
+    const candidate = relative.endsWith('.js')
+      ? `${relative.slice(0, -'.js'.length)}.ts`
+      : relative
+
+    if (files.has(candidate)) {
+      return candidate
+    }
+  }
+
+  return null
+}
+
+/** Whether a string literal is the module specifier of an import or export. */
+function isModuleSpecifier(
+  ts: NonNullable<Awaited<ReturnType<typeof loadTypeScript>>>,
+  node: import('typescript').Node,
+): boolean {
+  const parent = node.parent
+
+  if (!parent) {
+    return false
+  }
+
+  return (
+    ts.isImportDeclaration(parent) ||
+    ts.isExportDeclaration(parent) ||
+    ts.isImportTypeNode(parent) ||
+    ts.isExternalModuleReference(parent) ||
+    (ts.isCallExpression(parent) &&
+      parent.expression.kind === ts.SyntaxKind.ImportKeyword)
+  )
+}
+
+/**
+ * Source files something outside the TypeScript module graph reaches.
+ *
+ * Two shapes exist and neither is an import. A tracked script or a
+ * `package.json` entry runs a built `dist/**\/*.js` path, and a source string
+ * literal names a built file the harness spawns at run time. A module
+ * specifier is skipped because the graph already carries that edge, and
+ * counting it here would keep a dead module alive through the dead barrel
+ * that re-exports it.
+ */
+function collectEntrypoints(
+  root: string,
+  ts: NonNullable<Awaited<ReturnType<typeof loadTypeScript>>>,
+  files: ReadonlySet<string>,
+  sourceFiles: ReadonlyMap<string, import('typescript').SourceFile>,
+): Set<string> {
+  const byBasename = sourceByBasename([...files])
+  const entrypoints = new Set<string>()
+  const addNamed = (content: string, self: string | null): void => {
+    for (const match of content.matchAll(MODULE_PATH_PATTERN)) {
+      const target = sourceForModulePath(match[0], files, byBasename)
+
+      if (target && target !== self) {
+        entrypoints.add(target)
+      }
+    }
+  }
+
+  for (const relative of externalConsumerFiles(root)) {
+    try {
+      addNamed(readText(path.join(root, relative)), null)
+    } catch {
+      // A file the scan cannot read names nothing. A binary under `bin/`
+      // reaches here, and so does one a concurrent edit removed.
+      continue
+    }
+  }
+
+  for (const [file, sourceFile] of sourceFiles) {
+    if (!file.startsWith('src/')) {
+      continue
+    }
+
+    const visit = (node: import('typescript').Node): void => {
+      if (
+        (ts.isStringLiteral(node) ||
+          ts.isNoSubstitutionTemplateLiteral(node)) &&
+        !isModuleSpecifier(ts, node)
+      ) {
+        addNamed(node.text, file)
+      }
+
+      node.forEachChild(visit)
+    }
+
+    visit(sourceFile)
+  }
+
+  return entrypoints
 }
 
 /**
@@ -131,6 +334,7 @@ export async function buildSymbolIndex(root: string): Promise<SymbolIndex> {
 
   const declarationIds = new Set(declarations.map((entry) => entry.id))
   const fileSet = new Set(graph.files)
+  const entrypoints = collectEntrypoints(root, ts, fileSet, sourceFiles)
   const uses: CrossModuleSymbolUse[] = []
   const record = (
     target: string,
@@ -211,6 +415,7 @@ export async function buildSymbolIndex(root: string): Promise<SymbolIndex> {
 
   return {
     graph,
+    entrypoints,
     declarations: declarations.sort((left, right) =>
       left.id.localeCompare(right.id),
     ),

@@ -47,7 +47,9 @@ const CATEGORY_CONFIDENCE: Record<FacilityCategory, string> = {
   handbook: 'medium: recorded only when a policy binds it as guidance',
   invocation: 'structural: derived graph node',
   mode: 'strong: every standalone session writes its mode card',
-  orphan: 'strong: the independent symbol pass found no functional consumer',
+  orphan:
+    'medium: no module, barrel consumer, tracked script, or string literal ' +
+    'names it, and a path assembled at run time can still hide a consumer',
   persona: 'strong: every invocation records its stage persona',
   policy: 'strong: every invocation records its resolved policies',
   requirement: 'structural: derived graph node',

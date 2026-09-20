@@ -5,7 +5,10 @@ import test from 'node:test'
 
 import { computeClosure } from '../../src/lib/debloat/closure.js'
 import { buildReferenceGraph } from '../../src/lib/debloat/graph.js'
-import { collectFacilities } from '../../src/lib/debloat/inventory.js'
+import {
+  collectFacilities,
+  type Facility,
+} from '../../src/lib/debloat/inventory.js'
 import { PanError } from '../../src/lib/errors.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -681,5 +684,47 @@ test('a prose edge the classifier reads as a mention neither anchors reachabilit
       (entry) => entry.path === 'library/personas/stapler.md',
     ),
     'the surviving mention is repaired rather than deleted',
+  )
+})
+
+test('a subcommand run without the pan wrapper is still referenced', () => {
+  const root = createTestTempDirectory('debloat-subcommand-callers')
+
+  mkdirSync(path.join(root, 'governance', 'policies'), { recursive: true })
+  write(
+    root,
+    'src/lib/checks.ts',
+    "export const CONFIGURATION = ['npm run widget']\n",
+  )
+  write(
+    root,
+    'bin/run-widget',
+    '#!/usr/bin/env bash\n' +
+      'node "$ROOT/dist/src/cli.js" widget "$@"\n' +
+      'node dist/src/cli.js widget --check\n',
+  )
+
+  const subcommand: Facility = {
+    id: 'cli-subcommand:widget',
+    category: 'cli-subcommand',
+    name: 'widget',
+    path: 'src/lib/pan-command-grammar.ts',
+    owned_paths: [],
+    selectable: false,
+    node_kind: 'derived',
+    protected: false,
+  }
+  const graph = buildReferenceGraph(root, [subcommand])
+
+  assert.deepEqual(
+    graph.references
+      .filter((entry) => entry.to === subcommand.id)
+      .map((entry) => `${entry.from} :: ${entry.token}`)
+      .sort(),
+    [
+      'bin/run-widget :: cli.js widget',
+      'bin/run-widget :: cli.js" widget',
+      'src/lib/checks.ts :: npm run widget',
+    ],
   )
 })
