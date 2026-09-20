@@ -342,6 +342,7 @@ export async function scanDebloat(
       sessionId: options.sessionId ?? '00000000-000000-000000',
       now,
       symbolIndex,
+      usage: scan.usage,
     }),
   )
 
@@ -627,10 +628,14 @@ export async function computeDebloatImpact(
     loadIntentClassifier(root),
   )
   const { facilities, graph, symbolIndex } = functional
+  // The scan's usage records travel with the session. The graph is rebuilt
+  // from the workspace, but nothing re-measures use here, so the closure reads
+  // the same evidence the candidate list was decided on.
   const closure = computeClosure(facilities, graph, selection.selected, {
     sessionId,
     now,
     symbolIndex,
+    usage: scan.usage,
   })
 
   writeJsonAtomic(paths.closure, closure)

@@ -4,6 +4,7 @@ import { invariant } from '../errors.js'
 import { PROTECTED_PATHS, type Facility } from './inventory.js'
 import type { Reference, ReferenceGraph, ReferrerClass } from './graph.js'
 import type { SymbolIndex } from './symbols.js'
+import type { FacilityUsage } from './usage.js'
 
 export interface RemovalEntry {
   path: string
@@ -105,16 +106,56 @@ function isBlocking(
 }
 
 /**
+ * Facilities the scan observed in direct use, keyed by facility id.
+ *
+ * Only execution and direction evidence counts. A `reachable` tier is derived
+ * from the same graph the cascade walks, so the removal that strands a
+ * facility is often exactly what ended its reachability, and reading it as
+ * use would freeze the cascade on everything a removed facility touches.
+ */
+function directlyUsed(
+  usage: readonly FacilityUsage[] | undefined,
+): Map<string, FacilityUsage> {
+  const used = new Map<string, FacilityUsage>()
+
+  for (const entry of usage ?? []) {
+    if (entry.execution_count > 0 || entry.direction_count > 0) {
+      used.set(entry.facility_id, entry)
+    }
+  }
+
+  return used
+}
+
+function usageReason(usage: FacilityUsage): string {
+  const last = usage.last_used_at ? `, last at ${usage.last_used_at}` : ''
+
+  return (
+    `The scan recorded ${usage.evidence_tier} usage in the window: ` +
+    `${usage.execution_count} executions and ${usage.direction_count} ` +
+    `directions${last}. A facility in active use is never collateral of ` +
+    'another facility.'
+  )
+}
+
+/**
  * Grow the operator selection to everything it exclusively owns.
  *
- * A facility joins the removal set only when a removed facility references it
- * and nothing that survives does. The loop repeats because removing a facility
- * can strand the next one: a command's skill, then that skill's handbook.
+ * A facility joins the removal set only when a removed facility references it,
+ * nothing that survives does, and the scan found no use of its own. The loop
+ * repeats because removing a facility can strand the next one: a command's
+ * skill, then that skill's handbook.
+ *
+ * The usage check is what keeps the two passes of one scan consistent. A
+ * reference edge says who names a facility, never whether anyone needs it, so
+ * without the usage record a name-derived edge can carry away a subcommand the
+ * same scan measured at hundreds of executions.
  */
 function cascade(
   facilities: readonly Facility[],
   graph: ReferenceGraph,
   selected: readonly string[],
+  used: ReadonlyMap<string, FacilityUsage>,
 ): { removed: Set<string>; retained: RetainedEntry[] } {
   const removed = new Set(selected)
   const retained = new Map<string, RetainedEntry>()
@@ -143,8 +184,9 @@ function cascade(
       const blocking = references.filter((reference) =>
         isBlocking(reference, removed),
       )
+      const usage = used.get(facility.id)
 
-      if (blocking.length === 0) {
+      if (blocking.length === 0 && !usage) {
         removed.add(facility.id)
         changed = true
         continue
@@ -163,9 +205,10 @@ function cascade(
             ]),
           ).values(),
         ].sort((left, right) => left.path.localeCompare(right.path)),
-        reason:
-          'A removed facility references it, but so does something that ' +
-          'survives, so it stays.',
+        reason: usage
+          ? usageReason(usage)
+          : 'A removed facility references it, but so does something that ' +
+            'survives, so it stays.',
       })
     }
   }
@@ -224,6 +267,13 @@ export interface ComputeClosureOptions {
   readonly sessionId: string
   readonly now?: Date
   readonly symbolIndex?: SymbolIndex
+  /**
+   * Usage records from the scan that produced this graph.
+   *
+   * Without them the cascade decides on reference exclusivity alone, which is
+   * the older and more destructive reading.
+   */
+  readonly usage?: readonly FacilityUsage[]
 }
 
 function pathOwner(
@@ -358,7 +408,12 @@ export function computeClosure(
     )
   }
 
-  const { removed, retained } = cascade(facilities, graph, selected)
+  const { removed, retained } = cascade(
+    facilities,
+    graph,
+    selected,
+    directlyUsed(options.usage),
+  )
   const protectedPaths = new Set(PROTECTED_PATHS)
   const remove: RemovalEntry[] = []
 
