@@ -186,111 +186,111 @@
       "commit": "736308ab0e91359c4c8d2e07e982d7b32f7603b1"
     },
     {
-      "version": "6.11.0",
+      "version": "7.0.0",
       "commit": "fd21dd348369560b9b4cb9160c037168140efad7"
     },
     {
-      "version": "6.12.0",
+      "version": "7.1.0",
       "commit": "6b72da9792b8fb4ff463693fbe5cfb6246efb2b4"
     },
     {
-      "version": "6.13.0",
+      "version": "7.2.0",
       "commit": "be4a495b905f52c4789e781aa7615a6e43826c99"
     },
     {
-      "version": "6.14.0",
+      "version": "7.3.0",
       "commit": "333ef69f3812c9e1773206e46d8d5ac18171f4b5"
     },
     {
-      "version": "6.15.0",
+      "version": "7.4.0",
       "commit": "8595acd24b0ad8b72ccc3664c5fa3de4c71af680"
     },
     {
-      "version": "6.16.0",
+      "version": "7.5.0",
       "commit": "a782243ac70f56efd9443c02f33f659bffb3d5ea"
     },
     {
-      "version": "6.16.1",
+      "version": "7.5.1",
       "commit": "792c6238b1a1980a5a1a523be090d2923e45ee4c"
     },
     {
-      "version": "6.17.0",
+      "version": "7.6.0",
       "commit": "bf6f591de457b54e8bf6aace7c0f79aadc28006f"
     },
     {
-      "version": "6.18.0",
+      "version": "7.7.0",
       "commit": "cc6611a34c476b33922d142c82b3708fc12c9683"
     },
     {
-      "version": "6.19.0",
+      "version": "7.8.0",
       "commit": "3805ec3d43cc97a7034b6990b5dc091a202afb6d"
     },
     {
-      "version": "6.20.0",
+      "version": "7.9.0",
       "commit": "1c84a6ed29c0c1a4a2e34e783903b2a315bff5a1"
     },
     {
-      "version": "6.21.0",
+      "version": "7.10.0",
       "commit": "55b63c89bdfb5fdb9c64c814b81ba874db6aaf5c"
     },
     {
-      "version": "6.22.0",
+      "version": "7.11.0",
       "commit": "dc1ea9a08aacad60eb9d2c7f506d6a3c99dd75ef"
     },
     {
-      "version": "6.23.0",
+      "version": "7.12.0",
       "commit": "0491092a70503f71ecc39165be76ef02da8d988a"
     },
     {
-      "version": "6.24.0",
+      "version": "7.13.0",
       "commit": "b901f0f682d4851050ff5228ec69682eb7b1ee2b"
     },
     {
-      "version": "6.25.0",
+      "version": "7.14.0",
       "commit": "75f4b7d5ae97f6010c49f1831b296fb7cd5bfda0"
     },
     {
-      "version": "6.26.0",
+      "version": "7.15.0",
       "commit": "52f42c5eac4ff647d822f108c8ad6c7cbc565f31"
     },
     {
-      "version": "6.27.0",
+      "version": "7.16.0",
       "commit": "32e56480fcddf07d136084d69f9b6c7618b1f0bf"
     },
     {
-      "version": "6.28.0",
+      "version": "7.17.0",
       "commit": "adf25a8d6a45ef22f813090473a6df44284048d8"
     },
     {
-      "version": "6.29.0",
+      "version": "7.18.0",
       "commit": "1918d37f053fda9e668eee370bc9e5c26f749211"
     },
     {
-      "version": "6.30.0",
+      "version": "7.19.0",
       "commit": "693b00a044cd5746ef68435e8a0ace7303cc0e7a"
     },
     {
-      "version": "6.30.1",
+      "version": "7.19.1",
       "commit": "430ebe176bd2630f416344222802588b38a65714"
     },
     {
-      "version": "6.31.0",
+      "version": "7.20.0",
       "commit": "5ae1e61d5296b746733973ea952ee7403edeb470"
     },
     {
-      "version": "6.32.0",
+      "version": "7.21.0",
       "commit": "5b9779a5c2d06410fb57d2c4c03f5ef6f4fc0dbf"
     },
     {
-      "version": "6.32.1",
+      "version": "7.21.1",
       "commit": "248305105ee2fbb8fed0db887b23d1f83c72e6d9"
     },
     {
-      "version": "6.32.2",
+      "version": "7.21.2",
       "commit": "3fb12e27240b792dbcc67478d921f3e3f3e833f5"
     },
     {
-      "version": "6.32.3",
+      "version": "7.21.3",
       "commit": "f94c16bf53ec28f2cb55a8ea84aae2fb8f2b048c"
     }
   ]
