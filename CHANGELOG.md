@@ -1,5 +1,26 @@
 # Changelog
 
+## [7.22.0] - 2026-09-22
+
+This release adds a 30-day retention policy, a report-first cleanup command, and a quality-pass gate on self-development finalize.
+
+### Changed
+
+- Set the default retention window to 30 days in `config.json` and RUNTIME-001 ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Resolve tracked conform surfaces against the selected self-development workspace ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Refuse `pan release finalize` when the conform pass or the style pass is unclean ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Repair instruction prose and TypeScript style on the release candidate ([ff88a3e0](https://github.com/alenlukic/pancreator/commit/ff88a3e0004366f1bfbc21850cc623bc8e4b8b08)).
+
+### Added
+
+- Add `pan cleanup` and `/pan-cleanup` with a report-first plan and an apply flag ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Add configurable retention classes in `config.json` and `library/schemas/config.schema.json` ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Report the Git branch of every worktree the cleanup removes ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+
+### Fixed
+
+- Read a missing `config.json` as the built-in 30-day window during install ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+
 ## [7.21.3] - 2026-09-20
 
 This release rebuilds the target repository primer against the 7.21.2 source head.
