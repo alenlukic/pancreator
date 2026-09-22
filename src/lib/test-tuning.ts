@@ -1439,6 +1439,7 @@ function captureBenchmarkSample(
 ): BenchmarkCapture {
   const absoluteWorkspace = resolveInside(root, workspace)
   const fingerprint = gitWorkspaceSnapshot(absoluteWorkspace).fingerprint
+
   const populations: string[][] = []
   const wallClock: number[] = []
   const results: BenchmarkSample['results'] = []
@@ -1527,6 +1528,7 @@ export function runBenchmarkSession(options: {
 }): { record: BenchmarkSessionRecord; output_path: string } {
   const sessionId = `benchmark-${Date.now()}`
   const profile = options.profile ?? 'fast'
+
   const baseline = captureBenchmarkSample(
     options.root,
     sessionId,
@@ -1541,6 +1543,7 @@ export function runBenchmarkSession(options: {
     options.candidate_workspace,
     profile,
   )
+
   const record = buildBenchmarkSessionRecord({
     session_id: sessionId,
     population_tolerance: options.population_tolerance,

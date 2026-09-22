@@ -985,6 +985,7 @@ function startReleaseProfilePrefetch(
     profile,
     nextPrefetchAttempt(root, state.run_id, profile),
   )
+
   const record = {
     schema_version: 1,
     run_id: state.run_id,
@@ -5654,6 +5655,7 @@ export function prepareInvocation(
       (stageAgentPath !== undefined &&
         path.basename(stageAgentPath, path.extname(stageAgentPath)) ===
           options.agent)
+
     let prepared: PrepareInvocationResult = result
 
     if (evidenceWorker) {
@@ -6018,12 +6020,14 @@ function createOpenAiAdapter(
     OPENAI_SESSION_DEFAULTS.maxToolRounds
   const maxOutputTokens = positiveIntegerOption(options, 'max-output-tokens')
   const effort = options.effort
+
   // Validated against their enums by parsePersonaMapping, so the adapter
   // forwards them as-is rather than re-deriving the accepted sets here.
   const mode = options.mode
   const reasoningContext = options.context
   const summary = options.summary
   const verbosity = options.verbosity
+
   const responseParameters = {
     ...(effort ? { reasoning_effort: effort } : {}),
     ...(mode ? { reasoning_mode: mode } : {}),
@@ -8879,6 +8883,7 @@ export function recordDelegatedWorker(
     let declaredPaths = [invocation.output.path]
     let harnessPaths: string[] = []
     let evidenceAttempt: EvidenceWorkerAttempt | undefined
+
     const warnings: string[] = []
 
     if (role !== STAGE_WORKER_ROLE) {

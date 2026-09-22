@@ -320,6 +320,7 @@ test('harness repair validator resolves every sibling intake it names', () => {
   const archived = 'harness-repair-20260910T000000Z-perf-slow-gate.md'
   const queued = 'harness-repair-20260910T000000Z-oob-policy-owner.md'
   const missing = 'harness-repair-20260910T000000Z-fric-dropped-candidate.md'
+
   const placeSiblings = (root: string) => {
     for (const [status, name] of [
       ['archive', archived],

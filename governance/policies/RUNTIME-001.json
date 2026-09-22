@@ -49,11 +49,11 @@
       "audience": ["harness"]
     },
     {
-      "text": "A class-filtered cleanup apply MUST perform every relocate and rename action its plan reports and no other (`tests/integration/cleanup-cli.test.ts::class-filtered cleanup performs only the renames it reports`).",
+      "text": "A class-filtered cleanup apply MUST run every relocate and rename action its plan reports and no other (`tests/integration/cleanup-cli.test.ts::class-filtered cleanup performs only the renames it reports`).",
       "audience": ["harness"]
     },
     {
-      "text": "Cleanup MUST reconcile inbox lifecycle directories, retire only aged clean worktrees that no non-terminal run names, report every retained branch and its merged status, and MUST NOT delete a Git branch (`tests/integration/cleanup-cli.test.ts::cleanup reconciles inbox and keeps branches`).",
+      "text": "Cleanup MUST reconcile inbox lifecycle directories and retire only aged clean worktrees that no non-terminal run names. It MUST report every retained branch and its merged status, and MUST NOT delete a Git branch (`tests/integration/cleanup-cli.test.ts::cleanup reconciles inbox and keeps branches`).",
       "audience": ["harness"]
     },
     "A worker-authored helper script under runtime/logs/workflows/<run-id>/scripts/ belongs to its own run. Agents MUST NOT delete one when a run closes and MUST NOT rely on one outliving the retention window.",

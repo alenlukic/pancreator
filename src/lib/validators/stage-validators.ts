@@ -1849,6 +1849,7 @@ export function validateImplementationClaims(
         : null
     const owedBlockedDisclosure =
       blockedAttemptFiles ?? (blockedDiff?.ok ? blockedDiff.files : [])
+
     const blockedAttribution = isRecord(value.workspace_changes)
       ? value.workspace_changes
       : null

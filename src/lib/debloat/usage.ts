@@ -433,6 +433,7 @@ function escapeRegExp(value: string): string {
  * uses the facility is a separate question the intent classifier answers.
  */
 function mentionTokens(entry: Facility): string[] {
+  // style: allow style.switch_default Every facility category returns, so a default would hide the compiler error that a new category must produce here.
   switch (entry.category) {
     case 'artifact-profile':
       return [`artifact-profile:${entry.name}`]
@@ -1067,6 +1068,7 @@ function scanTranscripts(
   const executionHits: Hit[] = []
   const directionHits: Hit[] = []
   const incidental = new Map<string, number>()
+
   let invocations = 0
   let agentInvocations = 0
   let agentLookups = 0
@@ -1242,6 +1244,7 @@ function summarize(
   return facilities.map((entry) => {
     const bucket = buckets.get(entry.id) ?? { execution: [], direction: [] }
     const references = graph.incoming.get(entry.id) ?? []
+
     const testOnly =
       references.length > 0 &&
       references.some((reference) => reference.referrer_class === 'test') &&
@@ -1273,6 +1276,7 @@ function summarize(
           : bucket.direction.length > 0
             ? 'direction'
             : 'none'
+
     const direct =
       bucket.execution.length > 0 ? bucket.execution : bucket.direction
     const latest = direct.reduce((newest, hit) => Math.max(newest, hit.at), 0)
@@ -1363,13 +1367,16 @@ export function scanUsage(
 ): UsageScan {
   const windowStartMs = options.windowStart.getTime()
   const lookup = facilityLookup(facilities)
+
   const executionHits: Hit[] = []
   const record = (facilityId: string, at: number, source: string): void => {
     if (lookup.ids.has(facilityId)) {
       executionHits.push({ facilityId, at, source })
     }
   }
+
   const runs = collectRunHits(root, facilities, windowStartMs, record)
+
   const tokenOwners = new Map<string, string[]>()
 
   for (const entry of facilities) {
@@ -1402,6 +1409,7 @@ export function scanUsage(
     tokenOwners,
     classifier: options.classifier,
   }
+
   const transcriptsRoot =
     options.transcriptsRoot === undefined
       ? defaultTranscriptsRoot(root)

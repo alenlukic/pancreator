@@ -1,4 +1,4 @@
-Report harness cleanup actions, obtain approval, and apply the reported plan.
+Report harness cleanup actions, get approval, and apply the reported plan.
 
 1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Then run `{{PANCREATOR_PAN_COMMAND}} governance card --mode cleanup` and read the card in full. Do not generate a second card for the same session.
 2. Treat `$ARGUMENTS` as optional `--days <positive-integer>` and repeatable `--class <name>` selections. Reject `--apply`, shell syntax, and every other option.

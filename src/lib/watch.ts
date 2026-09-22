@@ -1628,6 +1628,7 @@ export async function watchInvocation(
   let previousFingerprint = initial.fingerprint
   let unchangedWakes = 0
   let scaffoldOrderAdvised = false
+
   let armings = 0
   let wakes = 0
 
@@ -1877,10 +1878,13 @@ export async function watchInvocations(
     options.stallWakes ??
     Math.max(1, Math.ceil(stallTimeoutSeconds / cadenceSeconds))
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
+
   const sleep = options.sleep ?? defaultSleep
   const now = options.now ?? Date.now
+
   const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
+
   const watched = targets.map((target) => {
     const invocation = resolveWatchedInvocation(
       root,

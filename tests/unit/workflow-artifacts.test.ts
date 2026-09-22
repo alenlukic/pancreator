@@ -1336,6 +1336,7 @@ test('name standardization is unchanged across the directories it already scanne
 test('mutable runtime rewrites include durable records and exclude scratch and unknown directories', () => {
   const root = createTestTempDirectory('pancreator-mutable-runtime-')
   const runtimeRoot = path.join(root, 'runtime')
+
   const durable = path.join(
     runtimeRoot,
     'logs',
@@ -1347,6 +1348,7 @@ test('mutable runtime rewrites include durable records and exclude scratch and u
   // neither is reachable through a `runtime/logs` entry.
   const allocations = path.join(runtimeRoot, 'release', 'allocations.jsonl')
   const series = path.join(runtimeRoot, 'fast-wall-series.jsonl')
+
   const scratch = path.join(runtimeRoot, 'tmp', 'scratch.txt')
   const unknown = path.join(runtimeRoot, 'future-area', 'record.json')
 

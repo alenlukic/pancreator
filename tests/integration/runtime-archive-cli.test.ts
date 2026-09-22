@@ -156,6 +156,7 @@ test('selects complete canceled or both inbox archives', () => {
   ]
 
   assert.equal(progressLines.length, passes.length * 2)
+
   for (const pass of passes) {
     assert.ok(
       progressLines.some((line) =>

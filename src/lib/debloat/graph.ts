@@ -326,6 +326,7 @@ function relativeTargets(relative: string, content: string): RelativeTarget[] {
 function referenceTokens(entry: Facility): string[] {
   const tokens = [...entry.owned_paths]
 
+  // style: allow style.switch_default Every facility category is listed, so a default would hide the compiler error that a new category must produce here.
   switch (entry.category) {
     case 'policy':
       tokens.push(entry.name)
@@ -969,9 +970,11 @@ export function buildReferenceGraph(
       const owner = ownerOf(byPath, relative)
       const ownerId = owner?.id ?? null
       const carrierClass = referrerClass(relative, owner !== null)
+
       const markerColumns = dispatchMarkerColumns(rawContent)
       const lineStarts = lineStartOffsets(content)
       const contentLines = content.split(/\r?\n/u)
+
       const emitted = new Set<string>()
       // Code uses what it names, and a registration or a test never does. A
       // prose line is read by the classifier: a direction to run, read, or
@@ -981,6 +984,7 @@ export function buildReferenceGraph(
         referenceClass: ReferrerClass,
         line: number,
       ): boolean => {
+        // style: allow style.switch_default Every referrer class returns, so a default would hide the compiler error that a new class must produce here.
         switch (referenceClass) {
           case 'code':
             return true

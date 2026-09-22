@@ -688,8 +688,10 @@ test('release continuation preserves unresolved conflicts and completes staged r
     const record = createWorktree(root, 'release-conflict')
     const worktreePath = path.join(root, record.path)
     const sourcePath = path.join('src', 'base.ts')
+
     const initial = readFileSync(path.join(root, sourcePath), 'utf8')
     const headBeforeContinue = git(worktreePath, ['rev-parse', 'HEAD'])
+
     const notNeeded = runCli<{ status: string; conflicted_paths: string[] }>(
       root,
       ['release', 'continue', '--worktree', record.name],

@@ -63,16 +63,20 @@ export function targetRepoPrimerFreshness(
   const content = readText(path.join(root, targetPath))
   const sourceHead = metadataValue(content, 'source-head')
   const generatedAt = metadataValue(content, 'generated-at')
+
   const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
   const currentHead = gitHead(workspaceRoot)
+
   const stamped = sourceHead !== null && sourceHead !== 'unavailable'
   const drifted = stamped && currentHead !== null && sourceHead !== currentHead
+
   // A revision reaches Git only after it looks like one. `source-head` is
   // file-sourced, so the shape check runs before the value is passed on.
   const stampedAt =
     stamped && /^[0-9a-f]{7,40}$/iu.test(sourceHead)
       ? gitCommitDate(workspaceRoot, sourceHead)
       : null
+
   const generatedMs = generatedAt === null ? NaN : Date.parse(generatedAt)
   const stampPredatesSource =
     stampedAt !== null &&

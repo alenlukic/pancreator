@@ -335,6 +335,7 @@ export async function buildSymbolIndex(root: string): Promise<SymbolIndex> {
   const declarationIds = new Set(declarations.map((entry) => entry.id))
   const fileSet = new Set(graph.files)
   const entrypoints = collectEntrypoints(root, ts, fileSet, sourceFiles)
+
   const uses: CrossModuleSymbolUse[] = []
   const record = (
     target: string,

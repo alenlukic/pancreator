@@ -261,6 +261,7 @@ async function buildFunctionalGraph(
   const symbolIndex = await buildSymbolIndex(workspaceRoot)
   const symbols = sourceSymbolFacilities(base, symbolIndex)
   const orphanFindings = findOrphans(symbolIndex)
+
   const facilities = [
     ...base,
     ...symbols,
@@ -293,10 +294,13 @@ export async function scanDebloat(
   const windowStart = new Date(
     now.getTime() - windowDays * MILLISECONDS_PER_DAY,
   )
+
   const workspace = resolveDebloatWorkspace(root, options.worktreeName)
   const classifier = loadIntentClassifier(root)
+
   const functional = await buildFunctionalGraph(workspace.absolute, classifier)
   const { facilities, graph, symbolIndex, orphanFindings } = functional
+
   const scan = scanUsage(root, facilities, {
     windowStart,
     graph,
@@ -538,6 +542,7 @@ export function selectDebloatFacilities(
       entry,
     ]),
   )
+
   const rejected = facilityIds
     .filter((id) => {
       if (!candidates.has(id)) {
@@ -622,12 +627,14 @@ export async function computeDebloatImpact(
   const paths = sessionPaths(root, sessionId)
   const scan = readScanRecord(paths)
   const selection = readSelectionRecord(paths)
+
   const workspace = resolveDebloatWorkspace(root, scan.workspace.worktree)
   const functional = await buildFunctionalGraph(
     workspace.absolute,
     loadIntentClassifier(root),
   )
   const { facilities, graph, symbolIndex } = functional
+
   // The scan's usage records travel with the session. The graph is rebuilt
   // from the workspace, but nothing re-measures use here, so the closure reads
   // the same evidence the candidate list was decided on.
@@ -684,6 +691,7 @@ export async function verifyDebloat(
   const paths = sessionPaths(root, sessionId)
   const scan = readScanRecord(paths)
   const closure = readClosureRecord(paths)
+
   const workspace = resolveDebloatWorkspace(root, scan.workspace.worktree)
   const removed = new Set(closure.removed_facilities)
   const surviving = closure.remove
@@ -725,6 +733,7 @@ export async function verifyDebloat(
       path: entry.path,
       ...(entry.symbol ? { symbol: entry.symbol } : {}),
     }))
+
   const status =
     surviving.length === 0 &&
     survivingFreed.length === 0 &&

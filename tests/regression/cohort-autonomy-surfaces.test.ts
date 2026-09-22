@@ -157,7 +157,7 @@ test('AWAY-001 prohibits only the actions the operator kept, and bars no commit 
     prohibition,
     'Away mode MUST NOT run push, publication, deployment, or ' +
       'branch-deletion actions. It MAY run a gate-waiver action when the ' +
-      'guardrails allow it and the blocker is a criterion backed only by ' +
+      'guardrails allow it. The blocker MUST be a criterion backed only by ' +
       'cost, speed, wall time, or administration, or a failure with a ' +
       'mechanical root cause. It SHOULD NOT waive a criterion that protects ' +
       'correctness or security.',
@@ -238,6 +238,7 @@ test('the freed commit and merge did not loosen push, publication, deployment, o
     card,
     /MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization/u,
   )
+
   // `MUST NOT commit`, or a MUST NOT list that opens with commit, is the
   // retired stance. A rule that merely mentions a release commit is not, and
   // neither is the versioned-landing rule, which forbids only a direct commit

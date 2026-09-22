@@ -191,6 +191,7 @@ test('cleanup reconciles inbox and keeps branches', () => {
   const unmerged = createWorktree(root, 'cleanup-unmerged')
   const dirty = createWorktree(root, 'cleanup-dirty')
   const bound = createWorktree(root, 'cleanup-bound')
+
   const unmergedPath = path.join(root, unmerged.path)
 
   writeFileSync(path.join(unmergedPath, 'ahead.md'), 'ahead\n')
@@ -315,8 +316,10 @@ test('cleanup report-only plan changes nothing and apply removes only expired ar
   const root = createFixture()
   const old = daysAgo(40)
   const recent = daysAgo(5)
+
   const oldPrefix = temporalNamePrefix(old)
   const recentPrefix = temporalNamePrefix(recent)
+
   const expired: string[] = []
   const kept: string[] = []
 
@@ -363,12 +366,14 @@ test('cleanup report-only plan changes nothing and apply removes only expired ar
               parentRelative.startsWith('runtime/tmp')
             ? '.json'
             : ''
+
       const oldName = temporal
         ? `${oldPrefix}_expired${extension}`
         : `expired${extension}`
       const recentName = temporal
         ? `${recentPrefix}_fresh${extension}`
         : `fresh${extension}`
+
       const tiers =
         artifactClass.disposal === 'archive_then_delete' &&
         !parentRelative.startsWith('runtime/inbox')
@@ -549,6 +554,7 @@ test('cleanup skips live owned artifacts', () => {
     },
     old,
   )
+
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const scratch = path.join(root, 'runtime/tmp/owned.json')
   const capture = path.join(root, 'runtime/tmp/quiet.LIVE')

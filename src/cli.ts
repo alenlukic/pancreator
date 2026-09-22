@@ -4228,6 +4228,7 @@ async function main(): Promise<void> {
         const invocation = invocationPath
           ? requirementsRunInvocation(root, invocationPath)
           : null
+
         const contextualArgument = (
           name: string,
           invocationValue: string | undefined,
@@ -4253,6 +4254,7 @@ async function main(): Promise<void> {
           invocation?.workflow.slug,
         )
         const stage = contextualArgument('--stage', invocation?.stage.slug)
+
         const explicitKind = invocationKindOption(args, invocation === null)
         const invocationKind = explicitKind ?? 'workflow'
 

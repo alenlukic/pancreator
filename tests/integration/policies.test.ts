@@ -1934,6 +1934,7 @@ test('repository validation rejects a verify field omitted from enforced_fields'
     root,
     'library/schemas/stage-output-requirements.json',
   )
+
   const contract = readJson(contractPath) as Record<string, unknown>
   const stages = contract.stages as Record<string, Record<string, unknown>>
   const validators = stages.verify.validators as Array<Record<string, unknown>>

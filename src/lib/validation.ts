@@ -2687,9 +2687,11 @@ export function classifyGateTestFailures(options: {
       maxBuffer: 10 * 1024 * 1024,
       env: isolationEnvironment(),
     })
+
     const timedOut =
       isNodeError(rerun.error) && rerun.error.code === 'ETIMEDOUT'
     const cleanExit = rerun.status === 0 && !rerun.error
+
     // An exit code answers "did the command succeed", and the question here is
     // "did the failing test run and pass". Those differ whenever the selector
     // matches nothing, which is the normal outcome for a name carrying
@@ -2727,6 +2729,7 @@ export function classifyGateTestFailures(options: {
   const substantive = options.comparison.delta.new.filter(
     (entry) => !entry.diagnostic.startsWith('<status>'),
   )
+
   const allFailingCommandsIdentified = options.current.results
     .filter((entry) => !entry.passed)
     .every(
@@ -2741,6 +2744,7 @@ export function classifyGateTestFailures(options: {
     allFailingCommandsIdentified &&
     substantive.length > 0 &&
     substantive.every((entry) => reclassifiedDiagnostics.has(entry.diagnostic))
+
   const reclassified = classifications.filter(
     (entry) => entry.disposition === 'environment_or_flake',
   )
@@ -2816,6 +2820,7 @@ function runShellCheck(
     : { entry: null, rejected_entry: null, rejection: null }
   const cached = cacheAcceptance.entry
   const cacheRejection = cacheAcceptance.rejection
+
   // A profile gate needs the recorded repository result for this run's delta.
   const cachedUsable =
     cached !== null && (!profileName || cached.repository_result !== undefined)

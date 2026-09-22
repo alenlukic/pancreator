@@ -192,9 +192,11 @@ test('closure records paths and symbols stranded by a removal', async () => {
     node_kind: 'facility',
     protected: false,
   }
+
   const facilities = [owner]
   const graph = buildReferenceGraph(root, facilities)
   const symbolIndex = await buildSymbolIndex(root)
+
   const closure = computeClosure(facilities, graph, [owner.id], {
     sessionId: '20260920-000000-abcdef',
     symbolIndex,
@@ -257,6 +259,7 @@ test('verification stays incomplete while a freed symbol survives', async () => 
     protected: false,
   }
   const symbolIndex = await buildSymbolIndex(root)
+
   const closure = computeClosure(
     [owner],
     buildReferenceGraph(root, [owner]),
@@ -266,6 +269,7 @@ test('verification stays incomplete while a freed symbol survives', async () => 
       symbolIndex,
     },
   )
+
   const paths = sessionPaths(root, '20260920-000000-abcdef')
   const scan: DebloatScanRecord = {
     schema_version: 1,
