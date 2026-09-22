@@ -74,6 +74,14 @@
       "installation_modes": ["self_development"],
       "generated_fields": [],
       "transforms": []
+    },
+    {
+      "id": "cursor-hooks",
+      "source": "library/cursor/hooks.json",
+      "target": ".cursor/hooks.json",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["installation-paths", "hooks-merge"]
     }
   ]
 }

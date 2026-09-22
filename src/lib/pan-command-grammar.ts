@@ -134,6 +134,7 @@ export const HELP_BODY = `Usage:
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate (<run-id> | --run <run-id>) --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
+  pan governance prompt-context
   pan governance audit-directives [--json]
   pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--horizon <session-id>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
