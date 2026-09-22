@@ -2,7 +2,7 @@
   "id": "RUNTIME-001",
   "title": "Workflow runtime naming and retention",
   "severity": "hard",
-  "summary": "Pancreator workflow runtime directories MUST use sortable UTC names and harness-owned archival after seven days; agents MUST NOT rename or relocate generated run state manually.",
+  "summary": "Pancreator workflow runtime directories MUST use sortable UTC names and configured harness-owned retention with a 30-day default; agents MUST NOT rename or relocate generated run state manually.",
   "instructions": [
     {
       "text": "Workflow directories under runtime/logs/workflows/ and the legacy mirrored runtime/workflows/ location MUST use <days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<eight-character-UUID>. The harness MUST zero-pad the minute field to four digits (`tests/unit/naming.test.ts::workflow run IDs pad the minute field to four digits`).",
@@ -21,7 +21,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names and update persisted path references. It MUST move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/integration/inbox.test.ts::runtime maintenance migrates and archives old workflow directories`, and the command surface is pinned by `tests/integration/runtime-archive-cli.test.ts::selects complete canceled or both inbox archives`).",
+      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names and update persisted path references. It MUST move active-root workflow directories older than the configured workflow-runs retention window into an archive/ child of the same parent directory. The configured default MUST be 30 days (`tests/integration/inbox.test.ts::runtime maintenance migrates and archives old workflow directories`, and the command surface is pinned by `tests/integration/runtime-archive-cli.test.ts::selects complete canceled or both inbox archives`).",
       "audience": ["harness"]
     },
     {
@@ -29,7 +29,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before it replaces the owned harness payload. The refresh MUST preserve workflow contents (`tests/secondary/embedded-installation-refresh.test.ts::embedded installer refresh reconciles persona mappings and agent ownership while preserving target state`).",
+      "text": "Embedded installation refresh with install --yes MUST run the same naming migration and configured archival before it replaces the owned harness payload. The refresh MUST preserve workflow contents (`tests/secondary/embedded-installation-refresh.test.ts::embedded installer refresh reconciles persona mappings and agent ownership while preserving target state`).",
       "audience": ["harness"]
     },
     {
@@ -40,7 +40,24 @@
       "text": "Terminal renumbering of invocation prefixes MUST leave a resolvable alias under the run directory, from each superseded invocation id to the current one. A citation written while the run was live then still resolves after it closes (`tests/unit/workflow-artifacts.test.ts::finalization leaves an alias from every in-flight invocation prefix to its final one`).",
       "audience": ["harness"]
     },
+    {
+      "text": "The harness-owned pan cleanup command MUST classify every ephemeral runtime class and each durable retained class in one table (`tests/unit/cleanup.test.ts::cleanup artifact table covers ephemeral and retained classes`). It MUST report its complete plan by default, MUST mutate only with --apply, and MUST delete exactly the expired paths the plan names (`tests/integration/cleanup-cli.test.ts::cleanup report-only plan changes nothing and apply removes only expired artifacts`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Cleanup MUST preserve state owned by a non-terminal run or a live process and record each skip reason (`tests/integration/cleanup-cli.test.ts::cleanup skips live owned artifacts`). It MUST preserve queue and active inbox items from retention deletion whatever their age (`tests/integration/cleanup-cli.test.ts::cleanup never deletes open inbox items`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A class-filtered cleanup apply MUST run every relocate and rename action its plan reports and no other (`tests/integration/cleanup-cli.test.ts::class-filtered cleanup performs only the renames it reports`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Cleanup MUST reconcile inbox lifecycle directories and retire only aged clean worktrees that no non-terminal run names. It MUST report every retained branch and its merged status, and MUST NOT delete a Git branch (`tests/integration/cleanup-cli.test.ts::cleanup reconciles inbox and keeps branches`).",
+      "audience": ["harness"]
+    },
     "A worker-authored helper script under runtime/logs/workflows/<run-id>/scripts/ belongs to its own run. Agents MUST NOT delete one when a run closes and MUST NOT rely on one outliving the retention window.",
+    "Agents MUST NOT delete a Git branch during cleanup. They MUST report each retained branch to the operator.",
     "Agents MUST NOT hand-rename, hand-move, or manually rewrite generated workflow directories or records. They MUST use pan archive or the installer-owned migration path for these deterministic operations."
   ]
 }

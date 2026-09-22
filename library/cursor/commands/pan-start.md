@@ -8,7 +8,7 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
 2. Resolve `$ARGUMENTS` into one queue request without wrapping an existing request.
    - Prose input is preserved verbatim in a uniquely named Markdown file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`.
    - An argument that names an existing file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` uses that file directly. Do not create a wrapper file.
-   - When the argument names that file and also carries prose that augments it, keep the existing file content verbatim and authoritative, then append the additional prose under `## Operator note`.
+   - When the argument names that file and also carries prose that augments it, keep the existing file content verbatim and authoritative. Then append the extra prose under `## Operator note`.
      Keep the resulting harness-relative path (for example `runtime/inbox/queue/request-<id>.md`) for the run record.
 3. Derive init options from the preserved request, following **Start** in the brief.
    - When the request names a worktree for the run, pass `--worktree <name>` and do not combine it with `--workspace`. The named worktree binds the planning run and is inherited by its routed single-chunk delivery run. A wider plan still derives one isolated worktree per cohort chunk, and its route refuses while the planning worktree holds uncommitted work.

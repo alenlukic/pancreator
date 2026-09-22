@@ -96,6 +96,28 @@
         }
       }
     },
+    "retention": {
+      "type": "object",
+      "description": "Retention windows in days for harness-owned ephemeral artifact classes.",
+      "additionalProperties": false,
+      "properties": {
+        "default_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        },
+        "classes": {
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
     "fast_wall": {
       "type": "object",
       "description": "Optional self-development fast-lane wall advisory. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date; only qualified harness-gate samples under the configured normalized host-load threshold contribute.",

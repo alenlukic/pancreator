@@ -1,5 +1,5 @@
 const STANDALONE_MODE_NAMES =
-  'author|best-of-n|build-briefs|build-docs|conform|debloat|decomposition|' +
+  'author|best-of-n|build-briefs|build-docs|cleanup|conform|debloat|decomposition|' +
   'harden|pair|polish|qa-workflow|release|repair|research|' +
   'review|shepherd|spotfix|style|supervisor|target|trace|tune-harness|' +
   'unbound|write-pr'
@@ -71,7 +71,7 @@ export const HELP_BODY = `Usage:
       Returns already_current without rebasing when the selected target is already an ancestor of the branch head. Otherwise sync rebases in Git's merge-preserving mode and refuses success with RELEASE_REBASE_TOPOLOGY_LOST when the result drops a merge commit the branch carried or no longer descends from the target; replayed commit hashes are expected to change. --onto <ref> rebases onto a ref the operator names; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result. Sync and finalize return RELEASE_LOCAL_DEFAULT_AHEAD in advisories when the local default branch is ahead of fetched main.
   pan release continue --worktree <name> [--run <run-id>] [--json]
       Returns not_needed with exit 0 when no rebase is active.
-  pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
+  pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--allow-unclean <conform|style>]... [--json]
   pan release allocate --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--json]
       Hand the worktree the next release version above every version published on its head, on pan-dev, on the local default branch, or already allocated, and record the allocation in runtime/release/allocations.jsonl before any release commit exists. Two worktrees allocating against the same base receive different versions, and a repeated request from a worktree whose allocation has not landed returns the same version. The ship validator accepts the allocated version in place of the exact next version for the same bump.
   pan author apply --input <draft-json> [--worktree <name>] [--json]
@@ -111,6 +111,8 @@ export const HELP_BODY = `Usage:
       Archive only installation inbox items whose file names the source checkout's validated consolidated intake cites.
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
       Runtime maintenance can take time proportional to the durable runtime files and retained runs; each pass reports start and finish progress on stderr.
+  pan cleanup [--days <positive-integer>] [--class <name>]... [--apply] [--json]
+      Report the complete retention and housekeeping plan without changing state. --apply performs that plan, preserves live state and dirty worktrees, keeps every branch, and reports each removed worktree branch with its merged status.
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models evidence --run <run-id> --invocation <invocation-id> --role <worker|evidence-role> --effective-model <model> --source <source> --launch-handle <handle> [--json]

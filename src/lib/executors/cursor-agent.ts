@@ -391,6 +391,7 @@ function runCursorAgent(
         },
       }
     : {}
+
   const startedAt = Date.now()
   const spawned = spawnUnderSandbox(launch, {
     cwd: request.cwd,

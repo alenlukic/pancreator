@@ -15,6 +15,7 @@ import { createTestTempDirectory } from '../temp.js'
 test('installer and compiled projection renderers stay byte-identical', () => {
   const root = createFixture()
   const targetRoot = createTestTempDirectory('pancreator-installer-projection-')
+
   const catalog = loadPolicyCatalog(root)
   const policy = catalog.get('BROWSER-001')
   const commsPolicy = catalog.get('COMMS-001')

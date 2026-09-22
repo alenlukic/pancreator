@@ -19,6 +19,10 @@
     "setup": ["npm ci --no-audit --no-fund --loglevel=error", "npm run build"],
     "readiness_paths": ["node_modules", "dist"]
   },
+  "retention": {
+    "default_days": 30,
+    "classes": {}
+  },
   "fast_wall": {
     "ceiling_ms": 120000,
     "anchor_date": "2026-09-14",

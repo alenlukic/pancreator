@@ -85,6 +85,7 @@ function isBlocking(
   reference: Reference,
   removed: ReadonlySet<string>,
 ): boolean {
+  // style: allow style.switch_default Every referrer class returns, so a default would hide the compiler error that a new class must produce here.
   switch (reference.referrer_class) {
     case 'code':
       // Code that names a facility stops compiling without it, and no

@@ -11,6 +11,7 @@ import {
   CONFORM_CACHE_RELATIVE_PATH,
   scanConformArtifacts,
 } from '../../src/lib/conform.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function git(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
@@ -43,6 +44,9 @@ function clearInstructionSurfaces(root: string): void {
   for (const relative of INSTRUCTION_SURFACES) {
     rmSync(path.join(root, relative), { force: true, recursive: true })
   }
+
+  git(root, ['add', '-A'])
+  git(root, ['commit', '-qm', 'remove inherited instruction surfaces'])
 }
 
 function policy(instructions: unknown[]): string {
@@ -140,6 +144,67 @@ test('the first scan selects the committed eligible set, not only the dirty tree
   assert.equal(issue.editable, true)
   assert.equal(bare.status, 'failed')
   assert.equal(bare.summary.editable_issue_files, 1)
+})
+
+test('conform resolves tracked surfaces from selected worktree', () => {
+  const root = createFixture()
+
+  clearInstructionSurfaces(root)
+  write(root, 'library/personas/coder.md', '# Coder\n\nRun the command.\n')
+  git(root, ['add', '-A'])
+  git(root, ['commit', '-qm', 'pin conform surfaces'])
+
+  const parent = createTestTempDirectory('conform-worktree-')
+  const worktree = path.join(parent, 'candidate')
+
+  git(root, ['worktree', 'add', '-q', '-b', 'conform-candidate', worktree])
+
+  try {
+    write(
+      worktree,
+      'library/personas/coder.md',
+      "# Coder\n\nDon't use a contraction.\n",
+    )
+    write(
+      root,
+      'runtime/research/60000_Jan-01-1200_runtime.md',
+      "# Runtime\n\nDon't use a contraction.\n",
+    )
+
+    const selected = scanConformArtifacts(root, {
+      workspace_root: worktree,
+      all: true,
+    })
+    const coder = selected.files.find(
+      (entry) => entry.relative_path === 'library/personas/coder.md',
+    )
+    const runtime = selected.files.find((entry) =>
+      entry.relative_path.startsWith('runtime/research/'),
+    )
+
+    assert.equal(coder?.root, 'workspace')
+    assert.equal(
+      coder?.absolute_path,
+      path.join(worktree, 'library/personas/coder.md'),
+    )
+    assert.ok((coder?.issues.length ?? 0) > 0)
+    assert.equal(runtime?.root, 'runtime')
+    assert.ok(runtime?.absolute_path.startsWith(path.join(root, 'runtime')))
+
+    const main = scanConformArtifacts(root, {
+      workspace_root: root,
+      all: true,
+    })
+    assert.equal(
+      main.files.find(
+        (entry) => entry.relative_path === 'library/personas/coder.md',
+      )?.issues.length,
+      0,
+    )
+  } finally {
+    git(root, ['worktree', 'remove', '--force', worktree])
+    git(root, ['branch', '-D', 'conform-candidate'])
+  }
 })
 
 test('an embedded install scans harness intake and never target-tracked prose', () => {
@@ -343,14 +408,12 @@ test('scan selects dirty, untracked, and deleted files and --all adds unchanged 
     all: true,
   })
 
-  // Harness-owned intake sorts ahead of the governed workspace, because the
-  // checkpoint key carries the root.
   assert.deepEqual(
     all.files.map((file) => [file.relative_path, file.status]),
     [
+      ['CHANGELOG.md', 'unchanged'],
       ['docs/issues/dirty.md', 'changed'],
       ['docs/issues/untracked.md', 'changed'],
-      ['CHANGELOG.md', 'unchanged'],
     ],
   )
 })
@@ -444,7 +507,7 @@ test('scan selects the harness instruction surfaces as editable files', () => {
       continue
     }
 
-    assert.equal(file.root, 'runtime', file.relative_path)
+    assert.equal(file.root, 'workspace', file.relative_path)
     assert.equal(file.editable, true, file.relative_path)
     assert.deepEqual(file.issues, [], file.relative_path)
   }

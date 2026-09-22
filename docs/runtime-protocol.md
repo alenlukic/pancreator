@@ -33,9 +33,10 @@ suffix falls back to the legacy 8-hex UUID fragment, which remains valid.
 Best-of-N session and standalone session directories use the same convention.
 
 Every non-durable file under `runtime/inbox/<status>/` (for `queue`, `active`,
-`canceled`, `complete`, and `archive`) and `runtime/pr-descriptions/` uses the
-same temporal prefix: `<prefix>_<slug>.<ext>`. Operator-chosen keyword slugs are
-kept verbatim; only missing or opaque hex slugs are re-derived from file content.
+`canceled`, `complete`, and `archive`), `runtime/pr-descriptions/`,
+`runtime/research/`, and `runtime/benchmarks/` uses the same temporal prefix:
+`<prefix>_<slug>.<ext>`. Operator-chosen keyword slugs are kept verbatim; only
+missing or opaque hex slugs are re-derived from file content.
 
 Inbox-backed workflow requests start in `runtime/inbox/queue/` or may restart from
 `runtime/inbox/canceled/`. A started run moves the item to `active`. A succeeded
@@ -98,13 +99,39 @@ prefix: `<invocation-id>.assessment-request.json` and
    standalone session directories, best-of-N session directories, expired inbox
    items from selected terminal statuses (`complete` by default; `--complete`
    and/or `--canceled` override the selection), and temporal files in
-   `runtime/pr-descriptions/` (their prefix is the age authority). Archived items
-   are excluded from active discovery.
+   `runtime/pr-descriptions/`, `runtime/research/`, and `runtime/benchmarks/`
+   (their prefix is the age authority). Archived items are excluded from active
+   discovery.
 
-The default retention window is seven days. Use `--days <positive-integer>`
-only when deliberately overriding it. Use `--complete` and/or `--canceled` to
-select which inbox terminal statuses `./bin/pan archive` moves into
-`runtime/inbox/archive/`. With no inbox flags, only `complete` is selected.
+The default retention window is 30 days. `config.json` sets it at
+`retention.default_days`; `retention.classes` overrides one artifact class.
+Use `--days <positive-integer>` only for one deliberate command override. Use
+`--complete` and/or `--canceled` to select which inbox terminal statuses
+`./bin/pan archive` moves into `runtime/inbox/archive/`. With no inbox flags,
+only `complete` is selected.
+
+`./bin/pan cleanup` adds the deletion tier. It reports its plan by default and
+requires `--apply` to mutate state. The class table covers workflow and
+standalone runs, best-of-N and cohort sessions, traces, evaluations, horizon,
+hypervisor, away mode, event logs, terminal inbox history, PR descriptions,
+research, benchmarks, scratch, and managed worktrees. Cache checkpoints,
+`runtime/release/allocations.jsonl`, and `runtime/repository-checks.json` are
+durable retained classes.
+
+The plan lists every action the apply performs, and the apply performs no
+action the plan omitted. Deletion runs first and removes exactly the expired
+paths the plan names, from both the active root and the `archive/` child of an
+archived class; a class whose name carries a temporal prefix is aged by that
+name, so the archive tier and the deletion tier agree on what is old. Cleanup
+then reconciles inbox lifecycle directories, relocates legacy loose inbox
+files, renames the surviving files of the selected classes onto the temporal
+convention, and retires aged clean worktrees that no nonterminal run names. A
+live run, live process, queue or active inbox item, dirty worktree, or
+unresolved checkout is preserved with a recorded skip reason. An unclaimed item
+in `active/` returns to the queue; an unclaimed item in `complete/` or
+`canceled/` keeps its directory and is reported, because its run record ages
+out long before the request it finished. Worktree removal always keeps the
+branch and reports whether that branch is an ancestor of the default branch.
 
 ## Invocation and delegation validation
 

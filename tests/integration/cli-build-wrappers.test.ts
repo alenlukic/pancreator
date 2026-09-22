@@ -284,6 +284,38 @@ test('run-tests scopes the suite to a scratch directory it discards afterwards',
   }
 })
 
+// A release lane runs the suite through `PANCREATOR_EXEC_ROOT=<worktree>
+// ./bin/pan tests impacted`, and bin/pan pins PANCREATOR_ROOT on the
+// installation for that dispatch. A fixture child CLI that inherited the pin
+// would resolve the installation's worktree index instead of its fixture.
+test('run-tests does not hand the installation root pin to the suite', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+
+  try {
+    const result = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        '/bin/bash',
+        '-c',
+        `printf '%s' "\${PANCREATOR_ROOT:-unset}" > "${observed}"`,
+      ],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: { ...fixture.env, PANCREATOR_ROOT: '/srv/installation' },
+      },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(readFileSync(observed, 'utf8'), 'unset')
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 test('run-tests orders recorded files slowest first and preserves a fresh order', () => {
   const fixture = createBuildScriptFixture()
   const testDirectory = path.join(fixture.root, 'dist', 'tests', 'unit')

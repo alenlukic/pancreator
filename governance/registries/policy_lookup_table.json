@@ -737,6 +737,12 @@
     {
       "persona": "librarian",
       "workflow": "standalone",
+      "stage": "cleanup",
+      "policies": ["RUNTIME-001", "ACTION-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
       "stage": "conform",
       "policies": ["STE-001"]
     },
