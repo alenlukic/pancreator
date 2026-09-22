@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.23.1] - 2026-09-22
+
+This release makes `pan spend` work for personal Cursor accounts and labels the available cost basis.
+
+### Changed
+
+- Label personal reports with aggregate model cost and team reports with charged cost ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- State that personal daily and attributed views exclude cache-read tokens and cost ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- Refresh the target repository primer for personal spend reporting ([8488675a](https://github.com/alenlukic/pancreator/commit/8488675abc27c5b862d9809e3ecc2454194a50dc)).
+
+### Fixed
+
+- Authenticate personal usage requests with `CURSOR_SESSION_TOKEN` when team Admin API access is unavailable ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- Use dashboard aggregates for exact token categories and normalize omitted zero-value event fields ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+
 ## [7.23.0] - 2026-09-22
 
 This release adds `pan spend` and `/pan-spend`. The command aggregates Cursor Admin API usage and attributes local workflow spend.
