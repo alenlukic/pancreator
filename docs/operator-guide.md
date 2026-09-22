@@ -1756,25 +1756,35 @@ status.
 
 ## Report Cursor token spend
 
-Use `/pan-spend [--days <1..365>]` to fetch team usage events from Cursor's
-Admin API and open a compact Canvas report. The default window is 14 days.
-Set `CURSOR_ADMIN_API_KEY` in the process environment or in the installation
-or workspace `.env`; the key needs `admin:*` scope. Pancreator sends it only
-to `POST /teams/filtered-usage-events` with Basic authentication.
+Use `/pan-spend [--days <1..365>]` to fetch personal or team usage and open a
+compact Canvas report. The default window is 14 days. For personal usage, copy
+the `WorkosCursorSessionToken` cookie from your authenticated Cursor dashboard
+session into `CURSOR_SESSION_TOKEN` in the process environment or the
+installation or workspace `.env`. Pancreator sends it only to Cursor's
+dashboard usage endpoints. The session expires and must then be refreshed.
 
-The report includes total tokens, charged cents, daily time series, token
-categories, and ranked command, persona and model, tool, stage, governance,
-workflow-role, and remediation views. A self-development checkout also scans
-every registered embedded installation. Each installation contributes its
-workflow records and the target workspace's Cursor transcripts, so worker
-conversation ids can resolve to the correct persona and stage.
+Teams with Admin API access may instead set `CURSOR_ADMIN_API_KEY`; the key
+needs `admin:*` scope. Pancreator sends it only to
+`POST /teams/filtered-usage-events` with Basic authentication. A dashboard
+session takes precedence when both credentials exist.
+
+The report includes total tokens, cost, daily time series, token categories,
+and ranked command, persona and model, tool, stage, governance, workflow-role,
+and remediation views. Team reports use charged cost from Admin API events.
+Personal reports use model cost from Cursor's aggregate dashboard response;
+the dashboard does not expose authoritative billed charges. A self-development
+checkout also scans every registered embedded installation. Each installation
+contributes its workflow records and the target workspace's Cursor transcripts,
+so worker conversation ids can resolve to the correct persona and stage.
 
 Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
 uses an exact `fast=true` or `fast=false` model declaration when one is
 available and reports `unknown` otherwise. The tool view reports token spend
 for conversations that used each tool, so those totals overlap. Each inferred
-view shows its attribution coverage. Unmatched team events remain
-`unattributed`.
+view shows its attribution coverage. Personal usage events omit cache-read
+tokens, so exact overall totals and token categories come from Cursor's
+aggregate endpoint. Personal daily and attributed views exclude cache-read
+tokens and cost and state that limit. Unmatched events remain `unattributed`.
 
 `pan spend --days <n> --json` returns the aggregate data without raw events.
 The output excludes API keys, email addresses, conversation ids, cloud agent

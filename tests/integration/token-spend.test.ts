@@ -153,7 +153,7 @@ test('token spend attributes embedded-installation conversations to workflow ide
     embedded_installations_scanned: 1,
   })
   assert.equal(report.totals.total_tokens, 200)
-  assert.equal(report.totals.charged_cents, 2.25)
+  assert.equal(report.totals.cost_cents, 2.25)
   assert.equal(report.slices.commands[0]?.key, 'pan-start')
   assert.equal(report.slices.persona_models[0]?.key, 'coder · gpt-5.6-sol')
   assert.equal(report.slices.fast_mode[0]?.key, 'fast')
@@ -265,4 +265,89 @@ test('token spend keeps tool totals non-additive and unmatched usage visible', a
   assert.equal(report.coverage.command.known_tokens, 20)
   assert.equal(report.coverage.command.total_tokens, 30)
   assert.ok(report.slices.commands.some((row) => row.key === 'Unattributed'))
+})
+
+test('personal spend uses exact aggregate totals and excludes cache reads from attribution', async () => {
+  const root = createFixture()
+  const transcripts = path.join(root, 'transcripts')
+  const now = new Date('2026-09-22T16:00:00.000Z')
+
+  mkdirSync(transcripts, { recursive: true })
+  writeFileSync(
+    path.join(transcripts, 'known-conversation.jsonl'),
+    [
+      JSON.stringify({
+        role: 'user',
+        message: {
+          content: [
+            {
+              type: 'text',
+              text: '--- Cursor Command: pan-spend ---',
+            },
+          ],
+        },
+      }),
+    ].join('\n'),
+  )
+
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input)
+
+    if (url.endsWith('aggregated')) {
+      return new Response(
+        JSON.stringify({
+          totalInputTokens: '10',
+          totalOutputTokens: '5',
+          totalCacheWriteTokens: '3',
+          totalCacheReadTokens: '12',
+          totalCostCents: 1,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    return new Response(
+      JSON.stringify({
+        totalUsageEventsCount: 1,
+        usageEventsDisplay: [
+          {
+            timestamp: String(now.getTime() - 1_000),
+            conversationId: 'known-conversation',
+            model: 'composer',
+            kind: 'Usage-based',
+            tokenUsage: {
+              inputTokens: 10,
+              outputTokens: 5,
+              cacheWriteTokens: 3,
+              totalCents: 1,
+            },
+            chargedCents: 1,
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+  const report = await generateTokenSpendReport(root, {
+    sessionToken: 'session-secret',
+    now,
+    fetchImpl,
+    endpoint: 'https://example.test/events',
+    aggregatesEndpoint: 'https://example.test/aggregated',
+    transcriptsRoot: transcripts,
+  })
+
+  assert.equal(report.period.source, 'Cursor dashboard personal usage')
+  assert.equal(report.totals.total_tokens, 30)
+  assert.equal(report.totals.cache_read_tokens, 12)
+  assert.equal(report.totals.cost_cents, 1)
+  assert.equal(report.period.cost_basis, 'model-cost')
+  assert.equal(report.slices.commands[0]?.metrics.total_tokens, 18)
+  assert.equal(report.slices.commands[0]?.metrics.cost_cents, 0)
+  assert.equal(report.coverage.command.total_tokens, 18)
+  assert.ok(
+    report.warnings.some((warning) =>
+      warning.includes('attributed views exclude cache-read tokens and cost'),
+    ),
+  )
 })

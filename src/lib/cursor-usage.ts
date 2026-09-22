@@ -7,6 +7,10 @@ import { configuredWorkspaceRoot } from './project-config.js'
 
 const CURSOR_USAGE_EVENTS_URL =
   'https://api.cursor.com/teams/filtered-usage-events'
+const CURSOR_DASHBOARD_USAGE_EVENTS_URL =
+  'https://cursor.com/api/dashboard/get-filtered-usage-events'
+const CURSOR_DASHBOARD_AGGREGATES_URL =
+  'https://cursor.com/api/dashboard/get-aggregated-usage-events'
 const CURSOR_USAGE_PAGE_SIZE = 1_000
 const CURSOR_USAGE_TIMEOUT_MS = 60_000
 const MAX_USAGE_PAGES = 10_000
@@ -45,6 +49,32 @@ export interface CursorUsageEventsResult {
   events: CursorUsageEvent[]
   period: CursorUsagePeriod
   pages_fetched: number
+  source:
+    | 'Cursor Admin API /teams/filtered-usage-events'
+    | 'Cursor dashboard personal usage'
+  aggregate_tokens: CursorTokenTotals | null
+}
+
+export interface CursorTokenTotals {
+  input_tokens: number
+  output_tokens: number
+  cache_write_tokens: number
+  cache_read_tokens: number
+  cost_cents: number
+}
+
+export type CursorUsageCredential =
+  | { kind: 'dashboard-session'; value: string }
+  | { kind: 'admin-api-key'; value: string }
+
+export interface FetchCursorDashboardUsageOptions {
+  sessionToken: string
+  startDateMs: number
+  endDateMs: number
+  fetchImpl?: typeof fetch
+  eventsEndpoint?: string
+  aggregatesEndpoint?: string
+  timeoutMs?: number
 }
 
 export interface FetchCursorUsageEventsOptions {
@@ -72,6 +102,13 @@ function nonNegativeNumber(
   )
 
   return value
+}
+
+function nonNegativeNumericString(value: unknown, field: string): number {
+  const parsed =
+    typeof value === 'string' && value.trim().length > 0 ? Number(value) : value
+
+  return nonNegativeNumber(parsed, field)
 }
 
 function optionalString(value: unknown): string | null {
@@ -110,18 +147,22 @@ function parseTokenUsage(value: unknown): CursorTokenUsage | null {
     input_tokens: nonNegativeNumber(
       value.inputTokens,
       'tokenUsage.inputTokens',
+      0,
     ),
     output_tokens: nonNegativeNumber(
       value.outputTokens,
       'tokenUsage.outputTokens',
+      0,
     ),
     cache_write_tokens: nonNegativeNumber(
       value.cacheWriteTokens,
       'tokenUsage.cacheWriteTokens',
+      0,
     ),
     cache_read_tokens: nonNegativeNumber(
       value.cacheReadTokens,
       'tokenUsage.cacheReadTokens',
+      0,
     ),
     model_cost_cents: nonNegativeNumber(
       value.totalCents,
@@ -181,6 +222,56 @@ function parseUsagePage(value: unknown): {
   }
 }
 
+function parseDashboardUsagePage(value: unknown): {
+  events: CursorUsageEvent[]
+  total: number
+} {
+  invariant(
+    isRecord(value) && Array.isArray(value.usageEventsDisplay),
+    "Cursor dashboard usage response MUST contain a 'usageEventsDisplay' array.",
+    { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
+  )
+
+  return {
+    events: value.usageEventsDisplay.map((event) => ({
+      ...parseUsageEvent(event),
+      charged_cents: 0,
+    })),
+    total: nonNegativeNumber(
+      value.totalUsageEventsCount,
+      'totalUsageEventsCount',
+    ),
+  }
+}
+
+function parseDashboardAggregates(value: unknown): CursorTokenTotals {
+  invariant(
+    isRecord(value),
+    'Cursor dashboard aggregate usage response MUST be an object.',
+    { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
+  )
+
+  return {
+    input_tokens: nonNegativeNumericString(
+      value.totalInputTokens,
+      'totalInputTokens',
+    ),
+    output_tokens: nonNegativeNumericString(
+      value.totalOutputTokens,
+      'totalOutputTokens',
+    ),
+    cache_write_tokens: nonNegativeNumericString(
+      value.totalCacheWriteTokens,
+      'totalCacheWriteTokens',
+    ),
+    cache_read_tokens: nonNegativeNumericString(
+      value.totalCacheReadTokens,
+      'totalCacheReadTokens',
+    ),
+    cost_cents: nonNegativeNumber(value.totalCostCents, 'totalCostCents'),
+  }
+}
+
 function credentialRoots(root: string): string[] {
   const installationRoot = path.resolve(root)
   const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
@@ -190,12 +281,30 @@ function credentialRoots(root: string): string[] {
     : [installationRoot, workspaceRoot]
 }
 
-/** Resolve the admin-scoped key without returning its source or metadata. */
-export function resolveCursorAdminApiKey(root: string): string {
-  const processKey = process.env.CURSOR_ADMIN_API_KEY
+function resolveCredentialFromEnvironment(
+  environment: Record<string, string | undefined>,
+): CursorUsageCredential | null {
+  const sessionToken = environment.CURSOR_SESSION_TOKEN
 
-  if (typeof processKey === 'string' && processKey.length > 0) {
-    return processKey
+  if (typeof sessionToken === 'string' && sessionToken.length > 0) {
+    return { kind: 'dashboard-session', value: sessionToken }
+  }
+
+  const adminKey = environment.CURSOR_ADMIN_API_KEY
+
+  return typeof adminKey === 'string' && adminKey.length > 0
+    ? { kind: 'admin-api-key', value: adminKey }
+    : null
+}
+
+/** Resolve a personal dashboard session first, then a team Admin API key. */
+export function resolveCursorUsageCredential(
+  root: string,
+): CursorUsageCredential {
+  const processCredential = resolveCredentialFromEnvironment(process.env)
+
+  if (processCredential !== null) {
+    return processCredential
   }
 
   for (const candidateRoot of credentialRoots(root)) {
@@ -213,17 +322,18 @@ export function resolveCursorAdminApiKey(root: string): string {
       continue
     }
 
-    const key = parsed.CURSOR_ADMIN_API_KEY
+    const credential = resolveCredentialFromEnvironment(parsed)
 
-    if (typeof key === 'string' && key.length > 0) {
-      return key
+    if (credential !== null) {
+      return credential
     }
   }
 
   throw new PanError(
-    'Cursor usage reporting needs CURSOR_ADMIN_API_KEY in the process ' +
-      'environment or the installation/workspace .env file.',
-    { code: 'CURSOR_ADMIN_API_KEY_MISSING' },
+    'Cursor usage reporting needs CURSOR_SESSION_TOKEN or ' +
+      'CURSOR_ADMIN_API_KEY in the process environment or the ' +
+      'installation/workspace .env file.',
+    { code: 'CURSOR_USAGE_CREDENTIAL_MISSING' },
   )
 }
 
@@ -325,9 +435,160 @@ export async function fetchCursorUsageEvents(
           end_date_ms: options.endDateMs,
         },
         pages_fetched: page,
+        source: 'Cursor Admin API /teams/filtered-usage-events',
+        aggregate_tokens: null,
       }
     }
 
+    page += 1
+  }
+
+  throw new PanError(
+    `Cursor usage pagination exceeded ${MAX_USAGE_PAGES} pages.`,
+    { code: 'CURSOR_USAGE_PAGINATION_LIMIT' },
+  )
+}
+
+async function fetchDashboardJson(
+  endpoint: string,
+  sessionToken: string,
+  body: Record<string, unknown>,
+  fetchImpl: typeof fetch,
+  timeoutMs: number,
+): Promise<unknown> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  let response: Response
+
+  try {
+    response = await fetchImpl(endpoint, {
+      method: 'POST',
+      headers: {
+        Cookie: `WorkosCursorSessionToken=${sessionToken}`,
+        'Content-Type': 'application/json',
+        Origin: 'https://cursor.com',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (error) {
+    clearTimeout(timer)
+    const timedOut = error instanceof Error && error.name === 'AbortError'
+
+    throw new PanError(
+      timedOut
+        ? `Cursor usage request timed out after ${timeoutMs}ms.`
+        : `Cursor usage request failed: ${errorMessage(error)}.`,
+      {
+        code: timedOut ? 'CURSOR_USAGE_TIMEOUT' : 'CURSOR_USAGE_REQUEST_FAILED',
+      },
+    )
+  }
+
+  try {
+    const result: unknown = await response.json()
+
+    if (!response.ok) {
+      throw new PanError(
+        `Cursor dashboard usage request failed with status ${response.status}.`,
+        {
+          code:
+            response.status === 401 || response.status === 403
+              ? 'CURSOR_USAGE_UNAUTHORIZED'
+              : 'CURSOR_USAGE_REQUEST_FAILED',
+        },
+      )
+    }
+
+    return result
+  } catch (error) {
+    if (error instanceof PanError) {
+      throw error
+    }
+
+    throw new PanError(
+      `Cursor dashboard usage API returned invalid JSON (status ${response.status}).`,
+      { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
+    )
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** Fetch personal usage events and exact aggregate token totals. */
+export async function fetchCursorDashboardUsageEvents(
+  options: FetchCursorDashboardUsageOptions,
+): Promise<CursorUsageEventsResult> {
+  invariant(
+    options.sessionToken.length > 0,
+    'Cursor usage reporting requires a non-empty dashboard session token.',
+    { code: 'CURSOR_USAGE_CREDENTIAL_MISSING' },
+  )
+  invariant(
+    Number.isFinite(options.startDateMs) &&
+      Number.isFinite(options.endDateMs) &&
+      options.startDateMs <= options.endDateMs,
+    'Cursor usage reporting requires a valid inclusive date range.',
+    { code: 'INVALID_ARGUMENT' },
+  )
+
+  const fetchImpl = options.fetchImpl ?? fetch
+  const eventsEndpoint =
+    options.eventsEndpoint ?? CURSOR_DASHBOARD_USAGE_EVENTS_URL
+  const aggregatesEndpoint =
+    options.aggregatesEndpoint ?? CURSOR_DASHBOARD_AGGREGATES_URL
+  const timeoutMs = options.timeoutMs ?? CURSOR_USAGE_TIMEOUT_MS
+
+  const commonBody = {
+    startDate: String(options.startDateMs),
+    endDate: String(options.endDateMs),
+  }
+
+  const events: CursorUsageEvent[] = []
+  let page = 1
+
+  while (page <= MAX_USAGE_PAGES) {
+    const body = await fetchDashboardJson(
+      eventsEndpoint,
+      options.sessionToken,
+      {
+        ...commonBody,
+        page,
+        pageSize: CURSOR_USAGE_PAGE_SIZE,
+      },
+      fetchImpl,
+      timeoutMs,
+    )
+    const parsed = parseDashboardUsagePage(body)
+
+    events.push(...parsed.events)
+
+    if (events.length >= parsed.total) {
+      const aggregateBody = await fetchDashboardJson(
+        aggregatesEndpoint,
+        options.sessionToken,
+        commonBody,
+        fetchImpl,
+        timeoutMs,
+      )
+
+      return {
+        events,
+        period: {
+          start_date_ms: options.startDateMs,
+          end_date_ms: options.endDateMs,
+        },
+        pages_fetched: page,
+        source: 'Cursor dashboard personal usage',
+        aggregate_tokens: parseDashboardAggregates(aggregateBody),
+      }
+    }
+
+    invariant(
+      parsed.events.length > 0,
+      'Cursor dashboard usage pagination ended before the reported total.',
+      { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
+    )
     page += 1
   }
 

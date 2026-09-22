@@ -18,6 +18,7 @@ test('pan spend validates the reporting window before credential lookup', () => 
       env: {
         ...process.env,
         CURSOR_ADMIN_API_KEY: '',
+        CURSOR_SESSION_TOKEN: '',
       },
     },
   )
@@ -28,7 +29,7 @@ test('pan spend validates the reporting window before credential lookup', () => 
   assert.doesNotMatch(result.stderr, /CURSOR_ADMIN_API_KEY_MISSING/u)
 })
 
-test('pan spend reports a missing admin credential without starting a request', () => {
+test('pan spend reports a missing usage credential without starting a request', () => {
   const root = createFixture()
   const result = spawnSync(
     process.execPath,
@@ -39,11 +40,12 @@ test('pan spend reports a missing admin credential without starting a request', 
       env: {
         ...process.env,
         CURSOR_ADMIN_API_KEY: '',
+        CURSOR_SESSION_TOKEN: '',
       },
     },
   )
 
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /CURSOR_ADMIN_API_KEY_MISSING/u)
+  assert.match(result.stderr, /CURSOR_USAGE_CREDENTIAL_MISSING/u)
   assert.doesNotMatch(result.stderr, /Authorization|Basic/u)
 })

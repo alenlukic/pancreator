@@ -22,7 +22,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 - audit suspicious Pancreator runs, including worker transcripts, into root-cause self-development intake;
 - prepare release notes and version metadata with the operator still owning the release action;
 - generate durable repository orientation docs so future agent work starts with better context;
-- analyze Cursor token volume and charged spend in a compact Canvas report;
+- analyze Cursor token volume and cost in a compact Canvas report;
 - render structured, project-themed operator briefs as portable semantic HTML when requested.
 
 ## Requirements
@@ -34,8 +34,9 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 - Optional external stage executors, each needed only when the active persona
   mapping routes a persona to one: the Claude Code CLI for `claude-code:`, and
   an `OPENAI_API_KEY` for `openai:`
-- Optional `CURSOR_ADMIN_API_KEY` for `/pan-spend`; the key needs Cursor
-  `admin:*` scope and may live in the process environment or repository `.env`
+- Optional `CURSOR_SESSION_TOKEN` for personal `/pan-spend` reports, or
+  `CURSOR_ADMIN_API_KEY` with `admin:*` scope for team reports; either
+  credential may live in the process environment or repository `.env`
 
 ## Quick Start In Cursor
 
@@ -101,7 +102,7 @@ For indexed release updates:
 - `/pan-build-briefs`: generate or refresh project brief semantics and design tokens
 - `/pan-summarize-context`: emit a copyable Markdown handoff for a fresh agent conversation
 - `/pan-cleanup`: report and apply configured retention to harness runtime state and finished worktrees
-- `/pan-spend [--days <1..365>]`: render Cursor token volume, charged spend, and Pancreator attribution in Canvas
+- `/pan-spend [--days <1..365>]`: render Cursor token volume, cost, and Pancreator attribution in Canvas
 - `/pan-release`: checkpoint, rebase, finalize local release commits, and write PR copy
 - `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 

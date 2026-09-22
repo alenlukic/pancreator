@@ -3,9 +3,11 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
+  fetchCursorDashboardUsageEvents,
   fetchCursorUsageEvents,
-  resolveCursorAdminApiKey,
+  resolveCursorUsageCredential,
   type CursorUsageEvent,
+  type CursorUsageEventsResult,
 } from './cursor-usage.js'
 import { invariant } from './errors.js'
 import { fileExists, isDirectory, isRecord, readJson } from './io.js'
@@ -28,7 +30,7 @@ export interface SpendMetrics {
   cache_write_tokens: number
   cache_read_tokens: number
   total_tokens: number
-  charged_cents: number
+  cost_cents: number
 }
 
 export interface SpendSliceRow {
@@ -53,14 +55,15 @@ export interface DailySpendPoint extends SpendMetrics {
 }
 
 export interface TokenSpendReport {
-  schema_version: 1
+  schema_version: 2
   generated_at: string
   period: {
     days: number
     start: string
     end: string
     timezone: 'UTC'
-    source: 'Cursor Admin API /teams/filtered-usage-events'
+    source: CursorUsageEventsResult['source']
+    cost_basis: 'charged' | 'model-cost'
     pages_fetched: number
   }
   attribution_sources: {
@@ -102,9 +105,11 @@ export interface TokenSpendReport {
 export interface GenerateTokenSpendReportOptions {
   days?: number
   apiKey?: string
+  sessionToken?: string
   now?: Date
   fetchImpl?: typeof fetch
   endpoint?: string
+  aggregatesEndpoint?: string
   transcriptsRoot?: string | null
   cursorProjectsRoot?: string
 }
@@ -167,7 +172,7 @@ function emptyMetrics(): SpendMetrics {
     cache_write_tokens: 0,
     cache_read_tokens: 0,
     total_tokens: 0,
-    charged_cents: 0,
+    cost_cents: 0,
   }
 }
 
@@ -187,7 +192,7 @@ function eventMetrics(event: CursorUsageEvent): SpendMetrics {
     cache_write_tokens: cacheWrite,
     cache_read_tokens: cacheRead,
     total_tokens: input + output + cacheWrite + cacheRead,
-    charged_cents: event.charged_cents,
+    cost_cents: event.charged_cents,
   }
 }
 
@@ -199,7 +204,7 @@ function addMetrics(target: SpendMetrics, addition: SpendMetrics): void {
   target.cache_write_tokens += addition.cache_write_tokens
   target.cache_read_tokens += addition.cache_read_tokens
   target.total_tokens += addition.total_tokens
-  target.charged_cents += addition.charged_cents
+  target.cost_cents += addition.cost_cents
 }
 
 function metricsMapRow(
@@ -219,7 +224,7 @@ function sortedRows(groups: Map<string, SpendMetrics>): SpendSliceRow[] {
     .sort(
       (left, right) =>
         right.metrics.total_tokens - left.metrics.total_tokens ||
-        right.metrics.charged_cents - left.metrics.charged_cents ||
+        right.metrics.cost_cents - left.metrics.cost_cents ||
         left.key.localeCompare(right.key),
     )
 }
@@ -849,7 +854,7 @@ function roundedMetrics(metrics: SpendMetrics): SpendMetrics {
   return {
     ...metrics,
     request_units: Number(metrics.request_units.toFixed(4)),
-    charged_cents: Number(metrics.charged_cents.toFixed(6)),
+    cost_cents: Number(metrics.cost_cents.toFixed(6)),
   }
 }
 
@@ -870,13 +875,42 @@ export async function generateTokenSpendReport(
   const endDateMs = now.getTime()
   const startDateMs = endDateMs - days * DAY_MS
 
-  const usage = await fetchCursorUsageEvents({
-    apiKey: options.apiKey ?? resolveCursorAdminApiKey(root),
+  const requestOptions = {
     startDateMs,
     endDateMs,
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-    ...(options.endpoint ? { endpoint: options.endpoint } : {}),
-  })
+  }
+  let usage: CursorUsageEventsResult
+
+  if (options.sessionToken !== undefined) {
+    usage = await fetchCursorDashboardUsageEvents({
+      ...requestOptions,
+      sessionToken: options.sessionToken,
+      ...(options.endpoint ? { eventsEndpoint: options.endpoint } : {}),
+      ...(options.aggregatesEndpoint
+        ? { aggregatesEndpoint: options.aggregatesEndpoint }
+        : {}),
+    })
+  } else if (options.apiKey !== undefined) {
+    usage = await fetchCursorUsageEvents({
+      ...requestOptions,
+      apiKey: options.apiKey,
+      ...(options.endpoint ? { endpoint: options.endpoint } : {}),
+    })
+  } else {
+    const credential = resolveCursorUsageCredential(root)
+
+    usage =
+      credential.kind === 'dashboard-session'
+        ? await fetchCursorDashboardUsageEvents({
+            ...requestOptions,
+            sessionToken: credential.value,
+          })
+        : await fetchCursorUsageEvents({
+            ...requestOptions,
+            apiKey: credential.value,
+          })
+  }
 
   const roots = attributionRoots(root)
   const transcripts = readTranscripts(
@@ -956,6 +990,19 @@ export async function generateTokenSpendReport(
     }
   })
 
+  if (usage.aggregate_tokens !== null) {
+    totals.input_tokens = usage.aggregate_tokens.input_tokens
+    totals.output_tokens = usage.aggregate_tokens.output_tokens
+    totals.cache_write_tokens = usage.aggregate_tokens.cache_write_tokens
+    totals.cache_read_tokens = usage.aggregate_tokens.cache_read_tokens
+    totals.cost_cents = usage.aggregate_tokens.cost_cents
+    totals.total_tokens =
+      totals.input_tokens +
+      totals.output_tokens +
+      totals.cache_write_tokens +
+      totals.cache_read_tokens
+  }
+
   const toolCalls = new Map<string, number>()
 
   for (const transcriptId of matchedTranscriptIds) {
@@ -1003,14 +1050,15 @@ export async function generateTokenSpendReport(
   const totalMetrics = roundedMetrics(totals)
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     generated_at: now.toISOString(),
     period: {
       days,
       start: new Date(startDateMs).toISOString(),
       end: now.toISOString(),
       timezone: 'UTC',
-      source: 'Cursor Admin API /teams/filtered-usage-events',
+      source: usage.source,
+      cost_basis: usage.aggregate_tokens === null ? 'charged' : 'model-cost',
       pages_fetched: usage.pages_fetched,
     },
     attribution_sources: {
@@ -1082,7 +1130,12 @@ export async function generateTokenSpendReport(
     warnings: [
       'Cursor does not meter tokens per tool. Tool token totals overlap when a conversation used more than one tool.',
       'Cursor usage events do not expose Fast mode. Fast attribution uses exact fast=true or fast=false model declarations and leaves all other events unknown.',
-      'Unmatched team usage remains unattributed; no email, conversation identifier, or raw event is included in this report.',
+      ...(usage.aggregate_tokens === null
+        ? []
+        : [
+            'Personal usage events omit cache-read tokens and authoritative billed charges. Overall token totals, token categories, and model cost use the aggregate response; daily and attributed views exclude cache-read tokens and cost.',
+          ]),
+      'Unmatched usage remains unattributed; no email, conversation identifier, or raw event is included in this report.',
     ],
   }
 }

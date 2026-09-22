@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  fetchCursorDashboardUsageEvents,
   fetchCursorUsageEvents,
   type FetchCursorUsageEventsOptions,
 } from '../../src/lib/cursor-usage.js'
@@ -115,5 +116,87 @@ test('Cursor usage client reports authorization failures without the key', async
       error instanceof PanError &&
       error.code === 'CURSOR_USAGE_UNAUTHORIZED' &&
       !error.message.includes('secret-key'),
+  )
+})
+
+test('Cursor dashboard client paginates events and fetches exact aggregates', async () => {
+  const requests: Array<{
+    url: string
+    headers: Headers
+    body: Record<string, unknown>
+  }> = []
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input)
+
+    requests.push({
+      url,
+      headers: new Headers(init?.headers),
+      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+    })
+
+    if (url.endsWith('aggregates')) {
+      return response({
+        totalInputTokens: '15',
+        totalOutputTokens: '7',
+        totalCacheWriteTokens: '3',
+        totalCacheReadTokens: '11',
+        totalCostCents: 2.5,
+      })
+    }
+
+    const page = requests.at(-1)?.body.page
+
+    return response({
+      totalUsageEventsCount: 2,
+      usageEventsDisplay: [
+        {
+          timestamp: page === 1 ? '1780000000000' : '1780003600000',
+          model: 'composer-2',
+          kind: 'Usage-based',
+          conversationId: `conversation-${String(page)}`,
+          tokenUsage: {
+            inputTokens: page === 1 ? 10 : 5,
+            outputTokens: page === 1 ? 5 : 2,
+            cacheWriteTokens: page === 1 ? 3 : 0,
+            totalCents: page === 1 ? 2 : 0.5,
+          },
+          chargedCents: page === 1 ? 2 : 0.5,
+        },
+      ],
+    })
+  }
+
+  const result = await fetchCursorDashboardUsageEvents({
+    sessionToken: 'session-secret',
+    startDateMs: 1779990000000,
+    endDateMs: 1780010000000,
+    fetchImpl,
+    eventsEndpoint: 'https://example.test/events',
+    aggregatesEndpoint: 'https://example.test/aggregates',
+  })
+
+  assert.equal(result.pages_fetched, 2)
+  assert.equal(result.events.length, 2)
+  assert.equal(result.events[0]?.token_usage?.cache_read_tokens, 0)
+  assert.deepEqual(result.aggregate_tokens, {
+    input_tokens: 15,
+    output_tokens: 7,
+    cache_write_tokens: 3,
+    cache_read_tokens: 11,
+    cost_cents: 2.5,
+  })
+  assert.equal(result.source, 'Cursor dashboard personal usage')
+  assert.ok(
+    requests.every(
+      (item) =>
+        item.headers.get('Cookie') ===
+        'WorkosCursorSessionToken=session-secret',
+    ),
+  )
+  assert.deepEqual(
+    requests
+      .filter((item) => item.url.endsWith('events'))
+      .map((item) => item.body.page),
+    [1, 2],
   )
 })
