@@ -20,10 +20,13 @@ test('token spend attributes embedded-installation conversations to workflow ide
   const target = path.join(root, 'embedded-target')
   const embedded = path.join(target, '.pancreator')
   const projectsRoot = path.join(root, 'cursor-projects')
+
   const runId = '63287_Sep-22-0251_embedded'
   const conversationId = 'conversation-embedded'
+
   const now = new Date('2026-09-22T16:00:00.000Z')
   const eventTime = now.getTime() - 60_000
+
   const sourceConfig = JSON.parse(
     readFileSync(path.join(root, 'config.json'), 'utf8'),
   ) as Record<string, unknown>

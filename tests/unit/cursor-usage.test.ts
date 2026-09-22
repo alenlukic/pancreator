@@ -75,6 +75,7 @@ test('Cursor usage client paginates and normalizes token and cost fields', async
     endDateMs: 1780010000000,
     fetchImpl,
   }
+
   const result = await fetchCursorUsageEvents(options)
 
   assert.equal(result.pages_fetched, 2)

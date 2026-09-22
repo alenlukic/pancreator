@@ -173,6 +173,7 @@ function emptyMetrics(): SpendMetrics {
 
 function eventMetrics(event: CursorUsageEvent): SpendMetrics {
   const usage = event.token_usage
+
   const input = usage?.input_tokens ?? 0
   const output = usage?.output_tokens ?? 0
   const cacheWrite = usage?.cache_write_tokens ?? 0
@@ -658,6 +659,7 @@ function readWorkflowEvidence(root: string): {
           typeof worker.role === 'string' &&
           item.role === worker.role,
       )
+
       const persona =
         isRecord(evidenceWorker) && typeof evidenceWorker.persona === 'string'
           ? evidenceWorker.persona
@@ -670,6 +672,7 @@ function readWorkflowEvidence(root: string): {
           : typeof stage.model === 'string'
             ? stage.model
             : null
+
       const inputs = isRecord(invocation.inputs) ? invocation.inputs : null
       const stageSlug = typeof stage.slug === 'string' ? stage.slug : 'unknown'
 
@@ -770,6 +773,7 @@ function attributionForEvent(
     (transcript === undefined
       ? null
       : supervisorIdentity(transcript, runs, event.timestamp_ms))
+
   const command = transcript?.command ?? 'Unattributed'
   const persona = identity?.persona ?? 'Unattributed'
 
@@ -865,6 +869,7 @@ export async function generateTokenSpendReport(
   const now = options.now ?? new Date()
   const endDateMs = now.getTime()
   const startDateMs = endDateMs - days * DAY_MS
+
   const usage = await fetchCursorUsageEvents({
     apiKey: options.apiKey ?? resolveCursorAdminApiKey(root),
     startDateMs,
@@ -872,6 +877,7 @@ export async function generateTokenSpendReport(
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     ...(options.endpoint ? { endpoint: options.endpoint } : {}),
   })
+
   const roots = attributionRoots(root)
   const transcripts = readTranscripts(
     roots,
@@ -903,16 +909,20 @@ export async function generateTokenSpendReport(
   const attributions = usage.events.map((event) =>
     attributionForEvent(event, transcripts, workflow.runs, workflow.workers),
   )
+
   const totals = emptyMetrics()
   const daily = new Map<string, SpendMetrics>()
+
   const commands = new Map<string, SpendMetrics>()
   const personaModels = new Map<string, SpendMetrics>()
   const toolMetrics = new Map<string, SpendMetrics>()
   const fastModes = new Map<string, SpendMetrics>()
+
   const governance = new Map<string, SpendMetrics>()
   const roles = new Map<string, SpendMetrics>()
   const stages = new Map<string, SpendMetrics>()
   const remediation = new Map<string, SpendMetrics>()
+
   const matchedTranscriptIds = new Set<string>()
 
   usage.events.forEach((event, index) => {
@@ -968,6 +978,7 @@ export async function generateTokenSpendReport(
               .slice(MAX_SLICE_ROWS - 1)
               .reduce((metrics, row) => {
                 addMetrics(metrics, row.metrics)
+
                 return metrics
               }, emptyMetrics()),
           },
@@ -985,6 +996,7 @@ export async function generateTokenSpendReport(
             .reduce((total, [, count]) => total + count, 0)
         : (toolCalls.get(row.key) ?? 0),
   }))
+
   const dailyPoints = [...daily.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, metrics]) => ({ date, ...roundedMetrics(metrics) }))

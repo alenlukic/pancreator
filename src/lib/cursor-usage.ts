@@ -247,6 +247,7 @@ export async function fetchCursorUsageEvents(
   const fetchImpl = options.fetchImpl ?? fetch
   const endpoint = options.endpoint ?? CURSOR_USAGE_EVENTS_URL
   const timeoutMs = options.timeoutMs ?? CURSOR_USAGE_TIMEOUT_MS
+
   const events: CursorUsageEvent[] = []
   let page = 1
 
