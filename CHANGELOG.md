@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.23.0] - 2026-09-22
+
+This release adds `pan spend` and `/pan-spend`. The command aggregates Cursor Admin API usage and attributes local workflow spend.
+
+### Changed
+
+- Refresh `docs/target-repo-primer.md` for the spend command and its attribution sources ([5292b9a2](https://github.com/alenlukic/pancreator/commit/5292b9a23248101c4955ef00c7157707e6a8016b)).
+- Repair `/pan-spend` list punctuation and TypeScript blank-line style ([136cdab5](https://github.com/alenlukic/pancreator/commit/136cdab5bafa3aa88b4e6d556e79dae280662d2d)).
+
+### Added
+
+- Add `pan spend` and `/pan-spend` with Cursor Admin API aggregation ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+- Render a Canvas report of token volume, charged spend, and attribution ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+- Attribute usage to local workflow records and registered embedded installations ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+
 ## [7.22.0] - 2026-09-22
 
 This release adds a 30-day retention policy, a report-first cleanup command, and a quality-pass gate on self-development finalize.
