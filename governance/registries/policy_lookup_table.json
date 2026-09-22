@@ -743,6 +743,12 @@
     {
       "persona": "librarian",
       "workflow": "standalone",
+      "stage": "spend",
+      "policies": ["ASK-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
       "stage": "conform",
       "policies": ["STE-001"]
     },

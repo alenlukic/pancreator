@@ -1754,6 +1754,33 @@ without writing while an editable file still has issues, and writes the
 checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
 status.
 
+## Report Cursor token spend
+
+Use `/pan-spend [--days <1..365>]` to fetch team usage events from Cursor's
+Admin API and open a compact Canvas report. The default window is 14 days.
+Set `CURSOR_ADMIN_API_KEY` in the process environment or in the installation
+or workspace `.env`; the key needs `admin:*` scope. Pancreator sends it only
+to `POST /teams/filtered-usage-events` with Basic authentication.
+
+The report includes total tokens, charged cents, daily time series, token
+categories, and ranked command, persona and model, tool, stage, governance,
+workflow-role, and remediation views. A self-development checkout also scans
+every registered embedded installation. Each installation contributes its
+workflow records and the target workspace's Cursor transcripts, so worker
+conversation ids can resolve to the correct persona and stage.
+
+Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
+uses an exact `fast=true` or `fast=false` model declaration when one is
+available and reports `unknown` otherwise. The tool view reports token spend
+for conversations that used each tool, so those totals overlap. Each inferred
+view shows its attribution coverage. Unmatched team events remain
+`unattributed`.
+
+`pan spend --days <n> --json` returns the aggregate data without raw events.
+The output excludes API keys, email addresses, conversation ids, cloud agent
+ids, and unprocessed API metadata. Pass `--json` to `/pan-spend` when the
+aggregate JSON is the desired surface instead of Canvas.
+
 ## Write a standalone PR description
 
 Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
