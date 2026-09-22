@@ -795,6 +795,7 @@ export interface LocalReleaseFinalizeResult {
   release_commit: string
   index_commit: string
   advisories: LocalReleaseAdvisory[]
+  overridden_quality_passes: Array<'conform' | 'style'>
   clean: boolean
 }
 
@@ -894,6 +895,11 @@ export interface RegisteredInstallation {
   path: string
 }
 
+export interface RetentionConfig {
+  default_days?: number
+  classes?: Record<string, number>
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
@@ -908,6 +914,8 @@ export interface ProjectConfig {
   tracking?: TrackingConfig
   /** Defaults for operator worktrees managed by `pan worktree`. */
   worktrees?: WorktreesConfig
+  /** Retention windows for harness-owned ephemeral state. */
+  retention?: RetentionConfig
   /**
    * `embedded` installs the harness at `<target>/.pancreator`; `detached`
    * places it outside the target tree entirely, with `workspace_root` holding

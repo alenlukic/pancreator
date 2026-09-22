@@ -51,6 +51,12 @@ export interface InboxLegacyMigrationSummary {
   updated_runs: number
 }
 
+export interface InboxReconciliationMove {
+  from: string
+  to: string
+  run_id: string | null
+}
+
 const INBOX_ROOT_SEGMENTS = ['runtime', 'inbox'] as const
 
 function inboxRootRelative(): string {
@@ -573,6 +579,130 @@ function findLatestMatchingRun(
   matches.sort((left, right) => right.updated_at.localeCompare(left.updated_at))
 
   return matches[0] ?? null
+}
+
+function findLatestRunClaimingFile(
+  runs: RunState[],
+  inboxRelativePath: string,
+): RunState | null {
+  const exact = findLatestMatchingRun(runs, inboxRelativePath)
+
+  if (exact) {
+    return exact
+  }
+
+  const fileName = path.basename(inboxRelativePath)
+  const matches = runs.filter(
+    (run) => path.basename(run.request.source_path) === fileName,
+  )
+
+  matches.sort((left, right) => right.updated_at.localeCompare(left.updated_at))
+
+  return matches[0] ?? null
+}
+
+export interface InboxReconciliationMovePlan {
+  /** Harness-relative path of the item in its current lifecycle directory. */
+  from: string
+  /** Lifecycle directory the claiming run's status implies. */
+  to_status: InboxWorkStatus
+  run_id: string | null
+  run_status: RunState['status'] | null
+}
+
+export interface InboxReconciliationPlan {
+  moves: InboxReconciliationMovePlan[]
+  /**
+   * Items in a terminal directory that no run record claims. Their directory
+   * is the outcome the harness recorded, so they stay and are reported.
+   */
+  unclaimed: string[]
+}
+
+/**
+ * The moves `reconcileInboxItems` would perform, without performing them. A
+ * report-only cleanup lists these so the operator approves the complete plan.
+ *
+ * An unclaimed item returns to the queue only from `active/`: it is open work
+ * whose claim vanished. An unclaimed item in `complete/` or `canceled/` keeps
+ * its directory, because a run record ages out through archival and retention
+ * long before the request it finished, and requeuing that request would
+ * reopen finished work.
+ */
+export function planInboxReconciliation(root: string): InboxReconciliationPlan {
+  const runs = listRunsWithInboxSource(root)
+  const moves: InboxReconciliationMovePlan[] = []
+  const unclaimed: string[] = []
+
+  for (const status of INBOX_WORK_STATUSES) {
+    const directory = resolveInside(root, statusDirectoryRelative(status))
+
+    if (!fileExists(directory)) {
+      continue
+    }
+
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isFile() || entry.name.startsWith('.')) {
+        continue
+      }
+
+      const source = normalizeRepoPath(
+        path.join(statusDirectoryRelative(status), entry.name),
+      )
+      const run = findLatestRunClaimingFile(runs, source)
+
+      if (!run && TERMINAL_INBOX_STATUSES.has(status)) {
+        unclaimed.push(source)
+        continue
+      }
+
+      const targetStatus = run ? targetStatusForRun(run.status) : 'queue'
+
+      if (targetStatus === status) {
+        continue
+      }
+
+      moves.push({
+        from: source,
+        to_status: targetStatus,
+        run_id: run?.run_id ?? null,
+        run_status: run?.status ?? null,
+      })
+    }
+  }
+
+  return { moves, unclaimed }
+}
+
+/**
+ * Move each inbox item to the lifecycle directory implied by its claiming run.
+ * An unclaimed active item is pending work and returns to the queue.
+ */
+export function reconcileInboxItems(root: string): InboxReconciliationMove[] {
+  ensureInboxStatusDirectories(root)
+
+  const runs = listRunsWithInboxSource(root)
+  const moves: InboxReconciliationMove[] = []
+
+  for (const planned of planInboxReconciliation(root).moves) {
+    const run =
+      planned.run_id === null
+        ? null
+        : (runs.find((entry) => entry.run_id === planned.run_id) ?? null)
+    const target = moveInboxFile(root, planned.from, planned.to_status)
+
+    if (run) {
+      run.request.source_path = target
+      persist(root, run, 'inbox_status_reconciled', {
+        from: planned.from,
+        to: target,
+      })
+    }
+
+    moves.push({ from: planned.from, to: target, run_id: run?.run_id ?? null })
+  }
+
+  return moves
 }
 
 /**

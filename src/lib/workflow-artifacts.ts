@@ -32,6 +32,7 @@ import {
   makeWorkflowRunId,
   temporalNamePrefix,
 } from './naming.js'
+import { resolveRetentionDays } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadState } from './state.js'
 import type { RunState, RunStatus } from './types.js'
@@ -1524,6 +1525,19 @@ function temporalFileDate(name: string): Date | null {
     : null
 }
 
+/**
+ * The creation time a run, session, file, or policy-mandated name carries.
+ * Retention reads age from here for every class whose name is its age
+ * authority, so the archive tier and the deletion tier agree on what is old.
+ */
+export function temporalNameDate(name: string): Date | null {
+  return (
+    currentRunDate(name) ??
+    temporalFileDate(name) ??
+    policyMandatedFileDate(name)
+  )
+}
+
 function validDate(value: unknown): Date | null {
   if (typeof value !== 'string') {
     return null
@@ -1900,7 +1914,11 @@ export function migrateWorkflowNames(
 
 // Runtime directories whose loose files are non-durable: their names MUST use
 // the temporal prefix scheme so age is legible and archiving can rely on it.
-const TEMPORAL_FILE_DIRECTORIES = ['runtime/pr-descriptions']
+const TEMPORAL_FILE_DIRECTORIES = [
+  'runtime/pr-descriptions',
+  'runtime/research',
+  'runtime/benchmarks',
+]
 const INBOX_TEMPORAL_SCAN_DIRECTORIES = inboxTemporalScanDirectories()
 
 const EMBEDDED_TIMESTAMP_NAME_PATTERN =
@@ -2047,6 +2065,35 @@ function isCompliantTemporalFileName(name: string): boolean {
 }
 
 /**
+ * Whether standardization would rename a loose file of this name. The cleanup
+ * planner asks the same question, so its plan names exactly the renames the
+ * standardizer performs.
+ */
+export function needsTemporalFileName(name: string): boolean {
+  return (
+    !name.startsWith('.') &&
+    !isCompliantTemporalFileName(name) &&
+    !isPolicyMandatedFileName(name)
+  )
+}
+
+/**
+ * Directories the standardizer scans, keyed by the runtime area they belong
+ * to. Each temporal directory contributes itself and its `archive/` child.
+ */
+export function temporalFileDirectories(): Record<string, string[]> {
+  return {
+    inbox: [...INBOX_TEMPORAL_SCAN_DIRECTORIES],
+    ...Object.fromEntries(
+      TEMPORAL_FILE_DIRECTORIES.map((directoryRelative) => [
+        directoryRelative,
+        [directoryRelative, `${directoryRelative}/archive`],
+      ]),
+    ),
+  }
+}
+
+/**
  * Rename the non-compliant loose files of one directory into the temporal
  * scheme, recording each move as a harness-relative mapping.
  *
@@ -2070,12 +2117,7 @@ function standardizeTemporalFileNamesIn(
   const taken = new Set(entries.map((entry) => entry.name))
 
   for (const entry of entries) {
-    if (
-      !entry.isFile() ||
-      entry.name.startsWith('.') ||
-      isCompliantTemporalFileName(entry.name) ||
-      isPolicyMandatedFileName(entry.name)
-    ) {
+    if (!entry.isFile() || !needsTemporalFileName(entry.name)) {
       continue
     }
 
@@ -2109,19 +2151,17 @@ function standardizeTemporalFileNamesIn(
  * Rename every non-durable file under the temporal runtime directories to the
  * `<days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<slug>` scheme used by
  * `runtime/logs/workflows`, then rewrite persisted references to the old names.
+ * `directories` narrows the pass to a subset of `temporalFileDirectories()`,
+ * which is how a class-filtered cleanup renames only what it planned.
  */
 export function standardizeRuntimeFileNames(
   root = findProjectRoot(),
   mutableFileSet = createRuntimeMutableFileSet(path.join(root, 'runtime')),
+  directories: readonly string[] = Object.values(
+    temporalFileDirectories(),
+  ).flat(),
 ): RuntimeNameStandardizationSummary {
   const mappings = new Map<string, string>()
-  const directories = [
-    ...INBOX_TEMPORAL_SCAN_DIRECTORIES,
-    ...TEMPORAL_FILE_DIRECTORIES.flatMap((directoryRelative) => [
-      directoryRelative,
-      `${directoryRelative}/archive`,
-    ]),
-  ]
 
   for (const parentRelative of directories) {
     standardizeTemporalFileNamesIn(
@@ -2584,7 +2624,8 @@ export function archiveWorkflowDirectories(
     mutableFileSet?: RuntimeMutableFileSet
   } = {},
 ): WorkflowArchiveSummary {
-  const retentionDays = options.retentionDays ?? 7
+  const retentionDays =
+    options.retentionDays ?? resolveRetentionDays(root, 'workflow-runs')
   const now = options.now ?? new Date()
   const mutableFileSet =
     options.mutableFileSet ??
@@ -2612,6 +2653,16 @@ export function archiveWorkflowDirectories(
       ...activeWorkflowDirectoryNames(stateRoot),
     ]),
   ].filter((runId) => {
+    const runDirectory = path.join(logRoot, runId)
+
+    if (existsSync(runDirectory)) {
+      const runStatus = tryReadRunStatus(runDirectory)
+
+      if (runStatus.status && !isClosedRunStatus(runStatus.status)) {
+        return false
+      }
+    }
+
     const createdAt = runCreatedAt(root, runId) ?? currentRunDate(runId)
 
     invariant(

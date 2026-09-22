@@ -1,5 +1,7 @@
 import path from 'node:path'
 
+import { scanStyleArtifacts } from './code-style.js'
+import { scanConformArtifacts } from './conform.js'
 import { invariant } from './errors.js'
 import {
   releaseAllocationForVersion,
@@ -51,6 +53,7 @@ import {
   isProtectedWorkspacePath,
   normalizeProtectedPath,
 } from './workspace/protected-paths.js'
+import { isSelfDevelopmentInstallation } from './project-config.js'
 import {
   readWorktreeIndex,
   resolveOrCreateWorktree,
@@ -744,6 +747,7 @@ export function finalizeLocalRelease(
   worktreeName: string,
   fetchedMain: string,
   ownerRunId?: string,
+  allowUnclean: readonly string[] = [],
 ): LocalReleaseFinalizeResult {
   invariant(
     COMMIT_HASH_PATTERN.test(fetchedMain),
@@ -752,6 +756,21 @@ export function finalizeLocalRelease(
   )
 
   const resolved = worktree(root, worktreeName, ownerRunId)
+  const invalidOverrides = allowUnclean.filter(
+    (entry) => entry !== 'conform' && entry !== 'style',
+  )
+
+  invariant(
+    invalidOverrides.length === 0,
+    `Unknown release quality override: ${invalidOverrides.join(', ')}.`,
+    {
+      code: 'RELEASE_UNCLEAN_OVERRIDE_INVALID',
+      details: { allowed: ['conform', 'style'], received: invalidOverrides },
+    },
+  )
+  const overriddenQualityPasses = [
+    ...new Set(allowUnclean as Array<'conform' | 'style'>),
+  ].sort()
 
   invariant(
     !gitRebaseInProgress(resolved.absolute),
@@ -768,6 +787,55 @@ export function finalizeLocalRelease(
     resolved.absolute,
     fetchedMain,
   )
+
+  if (isSelfDevelopmentInstallation(root)) {
+    const conform = scanConformArtifacts(root, {
+      workspace_root: resolved.absolute,
+      all: true,
+    })
+
+    if (
+      conform.status !== 'passed' &&
+      !overriddenQualityPasses.includes('conform')
+    ) {
+      const files = conform.files
+        .filter((entry) => entry.editable && entry.issues.length > 0)
+        .map((entry) => entry.relative_path)
+
+      invariant(
+        false,
+        `Release candidate has Simplified Technical English issues in: ${files.join(', ')}. Run /pan-conform --worktree ${worktreeName}, then finalize again.`,
+        {
+          code: 'RELEASE_CONFORM_UNCLEAN',
+          details: { files, repairing_command: '/pan-conform' },
+        },
+      )
+    }
+
+    const style = scanStyleArtifacts(root, {
+      workspace_root: resolved.absolute,
+      all: true,
+    })
+
+    if (
+      style.status !== 'passed' &&
+      !overriddenQualityPasses.includes('style')
+    ) {
+      const files = style.files
+        .filter((entry) => entry.editable && entry.issues.length > 0)
+        .map((entry) => entry.relative_path)
+
+      invariant(
+        false,
+        `Release candidate has code style issues in: ${files.join(', ')}. Run /pan-style --worktree ${worktreeName}, then finalize again.`,
+        {
+          code: 'RELEASE_STYLE_UNCLEAN',
+          details: { files, repairing_command: '/pan-style' },
+        },
+      )
+    }
+  }
+
   const version = readText(path.join(resolved.absolute, 'VERSION')).trim()
   const indexPath = path.join(resolved.absolute, 'release', 'index.json')
   const collision = releaseVersionCollision(root, version)
@@ -878,6 +946,7 @@ export function finalizeLocalRelease(
       release_commit: completePair.releaseCommit,
       index_commit: completePair.indexCommit,
       advisories,
+      overridden_quality_passes: overriddenQualityPasses,
       clean: true,
     }
   }
@@ -983,6 +1052,7 @@ export function finalizeLocalRelease(
     release_commit: releaseCommit,
     index_commit: indexCommit,
     advisories,
+    overridden_quality_passes: overriddenQualityPasses,
     clean: true,
   }
 }

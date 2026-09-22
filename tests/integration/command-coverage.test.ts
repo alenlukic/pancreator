@@ -89,10 +89,8 @@ test('pan-conform is explicitly registered with its conform card', () => {
 
   assert.match(validationStep ?? '', /requirements run/u)
 
-  // Conform is installation-scoped, so no step may prescribe a command line
-  // the CLI refuses. Reading the steps back through the CLI's own option gate
-  // observes that; counting steps and matching `--worktree` observed prose and
-  // stayed green while `requirements run --worktree` exited non-zero.
+  // Every prescribed command line must remain accepted after conform gains
+  // candidate-worktree targeting.
   const invocations = panInvocations(command)
 
   assert.ok(invocations.length >= 4, command)
@@ -108,13 +106,9 @@ test('pan-conform is explicitly registered with its conform card', () => {
     )
   }
 
-  // The gate accepts `--worktree` for every step this command prints.
-  // Installation scope is the decision, so no step may carry the option and
-  // no `|` alternative may hide one from `panInvocations`. This negative
-  // asserts a forbidden option is absent, unlike the pin it replaced, which
-  // asserted a required option was absent and so held a defect in place.
-  assert.doesNotMatch(command, /--worktree/u)
-  assert.match(command, /installation-root harness artifacts/u)
+  assert.match(command, /conform scan --worktree <name> --json/u)
+  assert.match(command, /conform checkpoint --worktree <name> --json/u)
+  assert.match(command, /selected workspace owns tracked instruction surfaces/u)
 
   const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
   const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {

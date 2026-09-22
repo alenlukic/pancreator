@@ -112,7 +112,17 @@ function isEligibleWorkspacePath(
   relativePath: string,
   selfDevelopment: boolean,
 ): boolean {
-  return selfDevelopment && toPosix(relativePath) === 'CHANGELOG.md'
+  if (!selfDevelopment) {
+    return false
+  }
+
+  const relative = toPosix(relativePath)
+
+  return (
+    relative === 'CHANGELOG.md' ||
+    isEligibleHarnessIssuesPath(relative) ||
+    isEligibleInstructionPath(relative)
+  )
 }
 
 /** Harness-owned intake records, which live beside the harness, not the target. */
@@ -179,14 +189,6 @@ function isEligibleInstructionPath(relativePath: string): boolean {
   )
 }
 
-/** Every harness-owned path conform may edit, whatever the installation mode. */
-function isEditableHarnessPath(relativePath: string): boolean {
-  return (
-    isEligibleRuntimeMarkdownPath(relativePath) ||
-    isEligibleInstructionPath(relativePath)
-  )
-}
-
 function isEligibleRuntimeHtmlPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
 
@@ -200,9 +202,13 @@ function isEligibleRuntimeHtmlPath(relativePath: string): boolean {
   )
 }
 
-function isEligibleRuntimePath(relativePath: string): boolean {
+function isEligibleRuntimePath(
+  relativePath: string,
+  selfDevelopment: boolean,
+): boolean {
   return (
-    isEditableHarnessPath(relativePath) ||
+    isEligibleRuntimeMarkdownPath(relativePath) ||
+    (!selfDevelopment && isEligibleInstructionPath(relativePath)) ||
     isEligibleRuntimeHtmlPath(relativePath)
   )
 }
@@ -438,8 +444,23 @@ function validateFile(root: string, relativePath: string): HandlerResult {
  * persona reserve it for a ship stage and `/pan-release`, so conform reports
  * its issues and never edits it. Every editable artifact is harness-owned.
  */
-function isEditable(root: ConformRoot, relativePath: string): boolean {
-  return root === 'runtime' && isEditableHarnessPath(relativePath)
+function isEditable(
+  root: ConformRoot,
+  relativePath: string,
+  selfDevelopment: boolean,
+): boolean {
+  if (root === 'workspace') {
+    return (
+      selfDevelopment &&
+      (isEligibleHarnessIssuesPath(relativePath) ||
+        isEligibleInstructionPath(relativePath))
+    )
+  }
+
+  return (
+    isEligibleRuntimeMarkdownPath(relativePath) ||
+    (!selfDevelopment && isEligibleInstructionPath(relativePath))
+  )
 }
 
 function absolutePathOf(
@@ -460,11 +481,12 @@ function scanFile(
   checkpoint: ConformCheckpointFile | null,
   root: ConformRoot,
   relativePath: string,
+  selfDevelopment: boolean,
 ): ConformScanFile {
   const posixPath = toPosix(relativePath)
   const key = checkpointKey(root, posixPath)
   const prior = checkpoint?.files[key]?.sha256 ?? null
-  const editable = isEditable(root, posixPath)
+  const editable = isEditable(root, posixPath, selfDevelopment)
 
   const absolute = absolutePathOf(root, workspaceRoot, harnessRoot, posixPath)
   const exists = fileExists(absolute)
@@ -538,6 +560,11 @@ function listEligibleWorkspacePaths(
     paths.push('CHANGELOG.md')
   }
 
+  if (selfDevelopment) {
+    paths.push(...listHarnessMarkdownIssuesFiles(workspaceRoot))
+    paths.push(...listEditableInstructionSurfaces(workspaceRoot))
+  }
+
   return paths
     .filter((relativePath) =>
       isEligibleWorkspacePath(relativePath, selfDevelopment),
@@ -545,16 +572,24 @@ function listEligibleWorkspacePaths(
     .sort()
 }
 
-function listEligibleRuntimePaths(harnessRoot: string): string[] {
+function listEligibleRuntimePaths(
+  harnessRoot: string,
+  selfDevelopment: boolean,
+): string[] {
   const paths: string[] = []
 
-  paths.push(...listHarnessMarkdownIssuesFiles(harnessRoot))
   paths.push(...listEditableRuntimeMarkdown(harnessRoot))
-  paths.push(...listEditableInstructionSurfaces(harnessRoot))
   paths.push(...listRuntimeWorkflowOperatorHtml(harnessRoot))
 
+  if (!selfDevelopment) {
+    paths.push(...listHarnessMarkdownIssuesFiles(harnessRoot))
+    paths.push(...listEditableInstructionSurfaces(harnessRoot))
+  }
+
   return paths
-    .filter((relativePath) => isEligibleRuntimePath(relativePath))
+    .filter((relativePath) =>
+      isEligibleRuntimePath(relativePath, selfDevelopment),
+    )
     .sort()
 }
 
@@ -603,7 +638,9 @@ export function scanConformArtifacts(
           ),
         )
 
-  const runtimeCandidates = new Set(listEligibleRuntimePaths(harnessRoot))
+  const runtimeCandidates = new Set(
+    listEligibleRuntimePaths(harnessRoot, selfDevelopment),
+  )
 
   const candidates: Array<{ root: ConformRoot; relative_path: string }> = [
     ...[...workspaceCandidates].sort().map((relative_path) => ({
@@ -625,6 +662,7 @@ export function scanConformArtifacts(
       checkpoint,
       candidate.root,
       candidate.relative_path,
+      selfDevelopment,
     )
 
     if (options.all) {
@@ -654,7 +692,7 @@ export function scanConformArtifacts(
 
       if (
         parsed.root === 'runtime' &&
-        !isEligibleRuntimePath(parsed.relative_path)
+        !isEligibleRuntimePath(parsed.relative_path, selfDevelopment)
       ) {
         continue
       }
@@ -676,6 +714,7 @@ export function scanConformArtifacts(
             checkpoint,
             parsed.root,
             parsed.relative_path,
+            selfDevelopment,
           ),
         )
       }

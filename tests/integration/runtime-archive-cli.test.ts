@@ -312,3 +312,90 @@ test('selects complete canceled or both inbox archives', () => {
     '63379_Jun-22-0158_both-complete.md',
   ])
 })
+
+test('archive takes its retention window from the configuration', () => {
+  const day = 24 * 60 * 60 * 1_000
+  const seedRuns = (root: string): { twenty: string; forty: string } => {
+    const runs = { twenty: '', forty: '' }
+
+    for (const [key, age] of [
+      ['twenty', 20],
+      ['forty', 40],
+    ] as const) {
+      const createdAt = new Date(Date.now() - age * day)
+      const runId = makeWorkflowRunId(createdAt, key)
+      const agent = path.join(root, 'runtime/logs/workflows', runId, 'agent')
+
+      write(
+        path.join(agent, 'workflow.snapshot.json'),
+        '{"stages":[{"slug":"plan"}]}\n',
+      )
+      write(path.join(agent, 'events.jsonl'), '')
+      write(
+        path.join(agent, 'state.json'),
+        `${JSON.stringify({
+          schema_version: 1,
+          run_id: runId,
+          workflow_slug: 'delivery',
+          title: key,
+          status: 'succeeded',
+          pending_action: { type: 'none' },
+          stage_history: [],
+          attempts: {},
+          created_at: createdAt.toISOString(),
+        })}\n`,
+      )
+      runs[key] = runId
+    }
+
+    return runs
+  }
+  const archive = (
+    root: string,
+  ): { archive: { retention_days: number; run_ids: string[] } } =>
+    JSON.parse(
+      execFileSync(process.execPath, [CLI, 'archive', '--json'], {
+        cwd: root,
+        encoding: 'utf8',
+      }) as string,
+    ) as { archive: { retention_days: number; run_ids: string[] } }
+
+  const writeRetention = (root: string, retention: unknown): void => {
+    const configPath = path.join(root, 'config.json')
+    const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+      string,
+      unknown
+    >
+
+    if (retention === undefined) {
+      delete config.retention
+    } else {
+      config.retention = retention
+    }
+
+    write(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  }
+
+  const defaultRoot = createFixture()
+  const defaultRuns = seedRuns(defaultRoot)
+
+  writeRetention(defaultRoot, undefined)
+
+  const defaulted = archive(defaultRoot)
+
+  assert.equal(defaulted.archive.retention_days, 30)
+  assert.deepEqual(defaulted.archive.run_ids, [defaultRuns.forty])
+
+  const configuredRoot = createFixture()
+  const configuredRuns = seedRuns(configuredRoot)
+
+  writeRetention(configuredRoot, { default_days: 14 })
+
+  const shortened = archive(configuredRoot)
+
+  assert.equal(shortened.archive.retention_days, 14)
+  assert.deepEqual(
+    shortened.archive.run_ids.sort(),
+    [configuredRuns.twenty, configuredRuns.forty].sort(),
+  )
+})

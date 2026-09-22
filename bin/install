@@ -1120,7 +1120,7 @@ install_payload() {
 
   if [[ -f "$staging/dist/src/runtime-maintenance-cli.js" ]]; then
     node "$staging/dist/src/runtime-maintenance-cli.js" \
-      --root "$PANCREATOR_DIR" --days 7 >/dev/null
+      --root "$PANCREATOR_DIR" >/dev/null
   elif [[ "$SKIP_DEPENDENCIES" -eq 0 ]]; then
     echo "Error: runtime maintenance executable is missing from staged payload." >&2
     exit 1

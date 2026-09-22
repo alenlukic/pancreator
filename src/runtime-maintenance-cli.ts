@@ -2,6 +2,7 @@
 import path from 'node:path'
 
 import { PanError } from './lib/errors.js'
+import { resolveRetentionDays } from './lib/project-config.js'
 import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 
 function option(name: string): string | null {
@@ -25,7 +26,10 @@ function option(name: string): string | null {
 function main(): void {
   const root = path.resolve(option('--root') ?? process.cwd())
   const retentionValue = option('--days')
-  const retentionDays = retentionValue === null ? 7 : Number(retentionValue)
+  const retentionDays =
+    retentionValue === null
+      ? resolveRetentionDays(root, 'workflow-runs')
+      : Number(retentionValue)
 
   const summary = maintainWorkflowRuntime(root, {
     retentionDays,

@@ -47,6 +47,27 @@ function errorCode(action: () => unknown): string | null {
   }
 }
 
+/**
+ * Existing release tests isolate their original contracts from the quality
+ * gate by finalizing with both operator overrides. The dedicated quality-pass
+ * test below calls `finalizeLocalRelease` directly with the production default.
+ */
+function finalizeWithQualityOverrides(
+  root: string,
+  worktreeName: string,
+  fetchedMain: string,
+  ownerRunId?: string,
+  allowUnclean: readonly string[] = ['conform', 'style'],
+) {
+  return finalizeLocalRelease(
+    root,
+    worktreeName,
+    fetchedMain,
+    ownerRunId,
+    allowUnclean,
+  )
+}
+
 function startProcessAudit(): {
   logPath: string
   restore: () => void
@@ -217,6 +238,81 @@ function commitReleaseMetadata(worktreePath: string, version: string): string {
   return git(worktreePath, ['rev-parse', 'HEAD'])
 }
 
+test('release finalize enforces quality passes and records overrides', () => {
+  const candidate = prepareReleaseCandidate('release-quality-passes')
+
+  try {
+    writeFileSync(
+      path.join(candidate.worktreePath, 'AGENTS.md'),
+      `${readFileSync(path.join(candidate.worktreePath, 'AGENTS.md'), 'utf8')}\nDon't ship this sentence.\n`,
+    )
+    git(candidate.worktreePath, ['add', 'AGENTS.md'])
+    git(candidate.worktreePath, ['commit', '-qm', 'test: add conform issue'])
+
+    const beforeConformRefusal = git(candidate.worktreePath, [
+      'rev-parse',
+      'HEAD',
+    ])
+
+    assert.equal(
+      errorCode(() =>
+        finalizeLocalRelease(
+          candidate.root,
+          candidate.record.name,
+          candidate.fetchedMain,
+        ),
+      ),
+      'RELEASE_CONFORM_UNCLEAN',
+    )
+    // A refusal creates no release commit.
+    assert.equal(
+      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
+      beforeConformRefusal,
+    )
+
+    writeFileSync(
+      path.join(candidate.worktreePath, 'src', 'quality-issue.ts'),
+      'export function qualityIssue(ready: boolean): void {\n  if (ready) return\n}\n',
+    )
+    git(candidate.worktreePath, ['add', 'src/quality-issue.ts'])
+    git(candidate.worktreePath, ['commit', '-qm', 'test: add style issue'])
+
+    const beforeStyleRefusal = git(candidate.worktreePath, [
+      'rev-parse',
+      'HEAD',
+    ])
+
+    assert.equal(
+      errorCode(() =>
+        finalizeLocalRelease(
+          candidate.root,
+          candidate.record.name,
+          candidate.fetchedMain,
+          undefined,
+          ['conform'],
+        ),
+      ),
+      'RELEASE_STYLE_UNCLEAN',
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
+      beforeStyleRefusal,
+    )
+
+    const finalized = finalizeLocalRelease(
+      candidate.root,
+      candidate.record.name,
+      candidate.fetchedMain,
+      undefined,
+      ['conform', 'style'],
+    )
+
+    assert.deepEqual(finalized.overridden_quality_passes, ['conform', 'style'])
+  } finally {
+    rmSync(candidate.remote, { recursive: true, force: true })
+  }
+})
+
 test('local release sync checkpoints changes and finalizes two commits', () => {
   const root = createFixture()
   const remote = createTestTempDirectory('pan-release-remote-')
@@ -270,7 +366,7 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
     const version = writeReleaseMetadata(worktreePath)
 
     assert.equal(version, allocation.allocation.version)
-    const finalized = finalizeLocalRelease(
+    const finalized = finalizeWithQualityOverrides(
       root,
       record.name,
       synchronized.fetched_main,
@@ -312,7 +408,7 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
       '--count',
       'HEAD',
     ])
-    const replayed = finalizeLocalRelease(
+    const replayed = finalizeWithQualityOverrides(
       root,
       record.name,
       synchronized.fetched_main,
@@ -895,7 +991,7 @@ fi
     let refusal: unknown = null
 
     try {
-      finalizeLocalRelease(
+      finalizeWithQualityOverrides(
         candidate.root,
         candidate.record.name,
         candidate.fetchedMain,
@@ -931,7 +1027,7 @@ fi
 
     assert.equal(
       errorCode(() =>
-        finalizeLocalRelease(
+        finalizeWithQualityOverrides(
           candidate.root,
           candidate.record.name,
           candidate.fetchedMain,
@@ -979,7 +1075,7 @@ test('release finalization refuses an unclassifiable tracked edit before any com
     let refusal: unknown = null
 
     try {
-      finalizeLocalRelease(
+      finalizeWithQualityOverrides(
         candidate.root,
         candidate.record.name,
         candidate.fetchedMain,
@@ -1033,7 +1129,7 @@ test('release finalization neither commits nor refuses over a recorded read-only
     git(candidate.root, ['commit', '-qm', 'feat: advance local main only'])
 
     const localMain = git(candidate.root, ['rev-parse', 'HEAD'])
-    const finalized = finalizeLocalRelease(
+    const finalized = finalizeWithQualityOverrides(
       candidate.root,
       candidate.record.name,
       candidate.fetchedMain,
@@ -1084,7 +1180,7 @@ test('release finalization recovers release-only and index-only partial states',
       releaseOnly.worktreePath,
       releaseOnly.version,
     )
-    const finalized = finalizeLocalRelease(
+    const finalized = finalizeWithQualityOverrides(
       releaseOnly.root,
       releaseOnly.record.name,
       releaseOnly.fetchedMain,
@@ -1118,7 +1214,7 @@ test('release finalization recovers release-only and index-only partial states',
     })
     writeJson(indexPath, index)
 
-    const finalized = finalizeLocalRelease(
+    const finalized = finalizeWithQualityOverrides(
       indexOnly.root,
       indexOnly.record.name,
       indexOnly.fetchedMain,
@@ -1139,7 +1235,7 @@ test('release finalization refuses dirty metadata on a completed same-version pa
   const candidate = prepareReleaseCandidate('release-finalized-dirty')
 
   try {
-    const finalized = finalizeLocalRelease(
+    const finalized = finalizeWithQualityOverrides(
       candidate.root,
       candidate.record.name,
       candidate.fetchedMain,
@@ -1164,7 +1260,7 @@ test('release finalization refuses dirty metadata on a completed same-version pa
     let refusal: unknown = null
 
     try {
-      finalizeLocalRelease(
+      finalizeWithQualityOverrides(
         candidate.root,
         candidate.record.name,
         candidate.fetchedMain,
@@ -1226,7 +1322,7 @@ test('release finalization blocks before committing an invalid worktree', () => 
 
     assert.equal(
       errorCode(() =>
-        finalizeLocalRelease(
+        finalizeWithQualityOverrides(
           candidate.root,
           candidate.record.name,
           candidate.fetchedMain,
@@ -1857,7 +1953,9 @@ test('standalone release refuses an active workflow in the same worktree', () =>
   // The commit-hash invariant is the first statement of finalizeLocalRelease,
   // so it refuses before any Git inspection reaches the worktree.
   assert.equal(
-    errorCode(() => finalizeLocalRelease(root, record.name, '-bad-ref')),
+    errorCode(() =>
+      finalizeWithQualityOverrides(root, record.name, '-bad-ref'),
+    ),
     'RELEASE_FETCHED_MAIN_INVALID',
   )
 
@@ -1960,7 +2058,7 @@ test('release finalization requires an allocation before creating a commit', () 
 
   assert.throws(
     () =>
-      finalizeLocalRelease(
+      finalizeWithQualityOverrides(
         candidate.root,
         candidate.record.name,
         candidate.fetchedMain,
@@ -1983,7 +2081,7 @@ test('release finalization names a version collision on pan-dev', () => {
 
   assert.throws(
     () =>
-      finalizeLocalRelease(
+      finalizeWithQualityOverrides(
         candidate.root,
         candidate.record.name,
         candidate.fetchedMain,

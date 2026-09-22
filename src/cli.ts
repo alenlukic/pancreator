@@ -109,6 +109,7 @@ import {
   localConfigName,
   mergeConfigValues,
   panCommand,
+  resolveRetentionDays,
 } from './lib/project-config.js'
 import { resolvePolicies } from './lib/policies.js'
 import { renderRunInvocationCard } from './lib/context-card.js'
@@ -263,6 +264,7 @@ import {
   maintainWorkflowRuntime,
   resolveRunCitation,
 } from './lib/workflow-artifacts.js'
+import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -2734,6 +2736,7 @@ async function main(): Promise<void> {
             worktreeName,
             requiredArgument(option(args, '--fetched-main'), '--fetched-main'),
             option(args, '--run') ?? undefined,
+            options(args, '--allow-unclean'),
           ),
           hasFlag(args, '--json'),
         )
@@ -3073,7 +3076,10 @@ async function main(): Promise<void> {
     }
     case 'archive': {
       const daysValue = option(args, '--days')
-      const retentionDays = daysValue === null ? 7 : Number(daysValue)
+      const retentionDays =
+        daysValue === null
+          ? resolveRetentionDays(root, 'workflow-runs')
+          : Number(daysValue)
       const hasComplete = hasFlag(args, '--complete')
       const hasCanceled = hasFlag(args, '--canceled')
 
@@ -3089,6 +3095,22 @@ async function main(): Promise<void> {
               `[pan archive] ${pass} ${phase} (${fileCount} files)\n`,
             ),
         }),
+        hasFlag(args, '--json'),
+      )
+      return
+    }
+    case 'cleanup': {
+      const daysValue = option(args, '--days')
+      const selectedClasses = options(args, '--class')
+      const cleanupOptions = {
+        ...(daysValue === null ? {} : { days: Number(daysValue) }),
+        ...(selectedClasses.length > 0 ? { classes: selectedClasses } : {}),
+      }
+
+      print(
+        hasFlag(args, '--apply')
+          ? applyCleanup(root, cleanupOptions)
+          : planCleanup(root, cleanupOptions),
         hasFlag(args, '--json'),
       )
       return

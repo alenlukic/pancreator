@@ -23,9 +23,18 @@ conversation history, decisions, completed work, validation, open issues, and
 next actions without modifying repository state.
 
 Run `./bin/pan archive` to migrate recognized legacy workflow names and move
-workflow directories older than seven days into `archive/` under both runtime
-workflow roots. The command updates persisted path references and is idempotent;
-it never overwrites an existing archive target. Runtime scales with the durable files and retained runs; each maintenance pass reports its start, finish, and file count on stderr.
+workflow directories older than the configured window into `archive/` under
+both runtime workflow roots. The default window is 30 days. The command updates
+persisted path references and is idempotent; it never overwrites an existing
+archive target. Runtime scales with the durable files and retained runs; each
+maintenance pass reports its start, finish, and file count on stderr.
+
+Use `/pan-cleanup` to enforce the deletion tier. The command first reports every
+delete, relocation, rename, worktree removal, retained branch, and safety skip.
+It applies that exact selection only after operator approval. Configure the
+default with `retention.default_days` and per-class overrides with
+`retention.classes` in `config.json`. Cleanup preserves active runs, live
+process state, open inbox items, dirty worktrees, and every Git branch.
 
 ## Run the agent hypervisor
 
@@ -642,7 +651,8 @@ Start a new conversation and you start a new session, so invoke it again there.
 If a long session gets summarized and the agent appears to drift, the card is a
 durable file under `runtime/logs/sessions/<id>/`; telling the agent to re-read it
 restores the full contract without regenerating anything. Session directories
-follow the same seven-day `RUNTIME-001` retention as workflow runs.
+follow the configured `RUNTIME-001` retention window as workflow runs, with the
+same 30-day default.
 
 Every non-workflow mode takes its governance from a generated card rather than
 hand-assembled policy text:
@@ -1713,6 +1723,11 @@ HTML and `CHANGELOG.md` without editing them. Its
 issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
 `runtime/cache/conform.json`.
 
+In self-development, `--worktree <name>` resolves tracked instruction surfaces
+from that release candidate. Runtime artifacts remain rooted at the installation
+checkout. Target installations keep harness instruction surfaces at the harness
+root and never edit target-tracked prose.
+
 `/pan-style` repairs code style. It scans the workspace source whose extension a
 detected language owns: TypeScript, JavaScript, and Python. In a self-development
 checkout the workspace is this repository. In an embedded installation the
@@ -1732,8 +1747,8 @@ does not repeat a rule the formatter owns. A construct the handbook lets a
 documented exception satisfy carries `// style: allow <code> <reason>` on the
 line above it; the reason is mandatory.
 
-Both commands accept `--since <ref>` or `--all`, and `/pan-style` also accepts
-`--worktree <name>`. Without a checkpoint the bare scan inspects the complete
+Both commands accept `--since <ref>`, `--all`, and `--worktree <name>`.
+Without a checkpoint the bare scan inspects the complete
 eligible set. `checkpoint` always inspects the complete set, returns `blocked`
 without writing while an editable file still has issues, and writes the
 checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
@@ -1757,7 +1772,7 @@ The session runs the `research` governance card, reads `library/personas/researc
 
 The skill defines five document types: `solution assessment`, `comparison`, `technical brief`, `feasibility study`, and `research memo`. A request that names none gets a research memo. A request that names no dimensions gets the default dimension set of its type.
 
-The session writes no other file, starts no run, and never answers from memory when a search tool is available. When the session has no web search tool it stops and reports the gap. The Simplified Technical English check on the finished document is advisory, and the session repairs the countable issues it reports before it finishes. Research documents are part of the `/pan-conform` editable set, so a later conform pass repairs their prose too. `pan archive` never retires them.
+The session writes no other file, starts no run, and never answers from memory when a search tool is available. When the session has no web search tool it stops and reports the gap. The Simplified Technical English check on the finished document is advisory, and the session repairs the countable issues it reports before it finishes. Research documents are part of the `/pan-conform` editable set, so a later conform pass repairs their prose too. Retention archives and later deletes them under the configured research window.
 
 ## Remove unused harness facilities
 
@@ -1809,9 +1824,18 @@ until every selected removal, repair, and freed entry is complete.
 
 Use `/pan-release` when release metadata must be prepared or regenerated outside a workflow ship stage. The command is self-development-only and refuses to version an embedded target repository. It resolves the commit that introduced the committed `VERSION`, evaluates all committed, staged, unstaged, and relevant untracked changes after that baseline, and asks the release steward to choose exactly `major`, `minor`, or `patch`.
 
+Before release preparation, `/pan-release` runs the code style and conform scans
+against the selected candidate. The librarian repairs and checkpoints an
+unclean pass before the release steward begins. `pan release finalize` enforces
+the same precondition with `RELEASE_STYLE_UNCLEAN` and
+`RELEASE_CONFORM_UNCLEAN`. An explicit `--allow-unclean <conform|style>`
+override is repeatable and appears in the finalization result.
+
 The release steward then authors or regenerates the latest Common Changelog entry and synchronizes `VERSION`, `package.json`, `package-lock.json`, the README current-version references, and the current-version statement in `docs/embedded-installation.md`. If a dirty release candidate already exists, the command updates it in place rather than bumping again. If there is no post-bump delta and no candidate, it makes no changes.
 
-`/pan-release` validates formatting, types, and repository contracts but does not edit `release/index.json`, commit, push, publish, or deploy.
+`/pan-release` validates formatting, types, and repository contracts. The shared
+finalize command creates the local release commit and separate release index
+commit. The command does not push, publish, or deploy.
 
 `release sync` and `release continue` stage only committable paths: a path a `read-only-input` attribution covers is left out of the checkpoint and the continuation, and both results name it under `withheld_paths`. `release finalize` neither stages such a path nor refuses the release over it, so a recorded input in the release worktree is not a non-metadata change. A tracked modification still blocks finalization whatever a record says.
 
