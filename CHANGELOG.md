@@ -1,5 +1,19 @@
 # Changelog
 
+## [7.23.2] - 2026-09-22
+
+This release reconciles personal event allocations with Cursor's aggregate token and model-cost totals.
+
+### Changed
+
+- Label personal daily and attributed values as inferred allocations ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+
+### Fixed
+
+- Normalize personal event metrics by model, then reconcile them to exact overall totals ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+- Make daily token and cost totals equal Cursor's aggregate response ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+- Refresh the target repository primer for inferred event allocations ([c0089893](https://github.com/alenlukic/pancreator/commit/c0089893a61aa25a8d14e75c6ad0044ed60793e1)).
+
 ## [7.23.1] - 2026-09-22
 
 This release makes `pan spend` work for personal Cursor accounts and labels the available cost basis.
