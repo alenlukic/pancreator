@@ -1781,10 +1781,11 @@ Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
 uses an exact `fast=true` or `fast=false` model declaration when one is
 available and reports `unknown` otherwise. The tool view reports token spend
 for conversations that used each tool, so those totals overlap. Each inferred
-view shows its attribution coverage. Personal usage events omit cache-read
-tokens, so exact overall totals and token categories come from Cursor's
-aggregate endpoint. Personal daily and attributed views exclude cache-read
-tokens and cost and state that limit. Unmatched events remain `unattributed`.
+view shows its attribution coverage. Pancreator uses Cursor's personal model
+aggregates, then reconciles event allocations to exact overall totals.
+Personal daily and attributed allocations are inferred and state that limit.
+Cursor's personal endpoint does not expose authoritative billed charges.
+Unmatched events remain `unattributed`.
 
 `pan spend --days <n> --json` returns the aggregate data without raw events.
 The output excludes API keys, email addresses, conversation ids, cloud agent

@@ -1133,7 +1133,7 @@ export async function generateTokenSpendReport(
       ...(usage.aggregate_tokens === null
         ? []
         : [
-            'Personal usage events omit cache-read tokens and authoritative billed charges. Overall token totals, token categories, and model cost use the aggregate response; daily and attributed views exclude cache-read tokens and cost.',
+            'Personal event tokens and model cost use model aggregates, then reconcile to exact overall totals before time and attribution slices. These event allocations are inferred, and authoritative billed charges remain unavailable.',
           ]),
       'Unmatched usage remains unattributed; no email, conversation identifier, or raw event is included in this report.',
     ],

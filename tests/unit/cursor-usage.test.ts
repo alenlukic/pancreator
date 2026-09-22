@@ -136,6 +136,16 @@ test('Cursor dashboard client paginates events and fetches exact aggregates', as
 
     if (url.endsWith('aggregates')) {
       return response({
+        aggregations: [
+          {
+            modelIntent: 'composer-2',
+            inputTokens: '15',
+            outputTokens: '7',
+            cacheWriteTokens: '3',
+            cacheReadTokens: '11',
+            totalCents: 2.5,
+          },
+        ],
         totalInputTokens: '15',
         totalOutputTokens: '7',
         totalCacheWriteTokens: '3',
@@ -177,7 +187,7 @@ test('Cursor dashboard client paginates events and fetches exact aggregates', as
 
   assert.equal(result.pages_fetched, 2)
   assert.equal(result.events.length, 2)
-  assert.equal(result.events[0]?.token_usage?.cache_read_tokens, 0)
+  assert.equal(result.events[0]?.token_usage?.cache_read_tokens, 5.5)
   assert.deepEqual(result.aggregate_tokens, {
     input_tokens: 15,
     output_tokens: 7,
