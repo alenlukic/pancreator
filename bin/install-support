@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import {
   cpSync,
   copyFileSync,
@@ -107,6 +108,94 @@ function projectCursorContent(
   }
 
   return projected
+}
+
+const PANCREATOR_HOOK_COMMAND_MARKER = 'pan-hook-'
+
+function cursorHooksDocument(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail(`${label} MUST contain a JSON object.`)
+  }
+
+  const hooks = value.hooks ?? {}
+
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) {
+    fail(`${label}.hooks MUST contain a JSON object.`)
+  }
+
+  const normalizedHooks = {}
+
+  for (const [event, entries] of Object.entries(hooks)) {
+    if (!Array.isArray(entries)) {
+      fail(`${label}.hooks.${event} MUST contain an array.`)
+    }
+
+    normalizedHooks[event] = entries
+  }
+
+  return { ...value, hooks: normalizedHooks }
+}
+
+function isPancreatorHookEntry(value) {
+  return (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    typeof value.command === 'string' &&
+    value.command.includes(PANCREATOR_HOOK_COMMAND_MARKER)
+  )
+}
+
+function parseCursorHooksText(text, label) {
+  try {
+    return JSON.parse(text)
+  } catch (error) {
+    fail(`${label} is not valid JSON: ${error.message}`)
+  }
+}
+
+// Installer-time mirror of src/lib/cursor-hooks-merge.ts.
+function mergeCursorHooksText(
+  existingText,
+  pancreatorText,
+  existingLabel = 'Existing hooks file',
+) {
+  const existing = cursorHooksDocument(
+    existingText === null || existingText.trim().length === 0
+      ? {}
+      : parseCursorHooksText(existingText, existingLabel),
+    existingLabel,
+  )
+  const pancreator = cursorHooksDocument(
+    parseCursorHooksText(pancreatorText, 'Pancreator hooks source'),
+    'Pancreator hooks source',
+  )
+  const hooks = Object.fromEntries(
+    Object.entries(existing.hooks).map(([event, entries]) => [
+      event,
+      entries.filter((entry) => !isPancreatorHookEntry(entry)),
+    ]),
+  )
+
+  for (const [event, entries] of Object.entries(pancreator.hooks)) {
+    hooks[event] = [
+      ...(hooks[event] ?? []),
+      ...entries.filter((entry) => !isPancreatorHookEntry(entry)),
+      ...entries.filter(isPancreatorHookEntry),
+    ]
+  }
+
+  return `${JSON.stringify({ ...pancreator, ...existing, hooks }, null, 2)}\n`
+}
+
+function targetTracksCursorHooks(targetRoot) {
+  return (
+    spawnSync(
+      'git',
+      ['-C', targetRoot, 'ls-files', '--error-unmatch', '.cursor/hooks.json'],
+      { encoding: 'utf8', timeout: 5000 },
+    ).status === 0
+  )
 }
 
 // Kept in sync with renderGuidanceBlock in src/lib/policy-guidance.ts.
@@ -302,7 +391,10 @@ function cursorSourceFiles(sourceRoot) {
   // target repository's .cursor/ MUST be pan-namespaced so it can never collide
   // with a target-authored agent, command, or rule.
   for (const entry of expanded) {
-    if (!/^pan(-|creator\.)/u.test(path.basename(entry.relative))) {
+    if (
+      !/^pan(-|creator\.)/u.test(path.basename(entry.relative)) &&
+      !entry.transforms.includes('hooks-merge')
+    ) {
       fail(
         `Embedded projection targets MUST use a pan-namespaced filename: ${entry.relative}`,
       )
@@ -1320,6 +1412,18 @@ function projectCursor() {
   )
 
   for (const entry of cursorSourceFiles(sourceRoot)) {
+    const destination = path.join(targetRoot, entry.relative)
+    const mergesHooks = entry.transforms.includes('hooks-merge')
+
+    if (mergesHooks && targetTracksCursorHooks(targetRoot)) {
+      currentPaths.add(entry.relative)
+      process.stdout.write(
+        'Readiness gap: target tracks .cursor/hooks.json; ' +
+          'skipped Pancreator hook projection.\n',
+      )
+      continue
+    }
+
     let content = entry.transforms.includes('policy-rule')
       ? renderPolicyCursorRule(policyRuleSource(sourceRoot, entry.source))
       : readFileSync(entry.source, 'utf8')
@@ -1355,7 +1459,15 @@ function projectCursor() {
     if (entry.transforms.includes('installation-paths')) {
       content = projectCursorContent(content, entry.relative, harnessPrefix)
     }
-    const destination = path.join(targetRoot, entry.relative)
+
+    if (mergesHooks) {
+      content = mergeCursorHooksText(
+        existsSync(destination) ? readFileSync(destination, 'utf8') : null,
+        content,
+        entry.relative,
+      )
+    }
+
     const digest = sha256(content)
 
     currentPaths.add(entry.relative)
@@ -1371,6 +1483,7 @@ function projectCursor() {
       if (
         existingDigest !== digest &&
         (isOperatorFile || wasModifiedAfterInstall) &&
+        !mergesHooks &&
         backupRoot
       ) {
         const backupPath = path.join(path.resolve(backupRoot), entry.relative)
@@ -1683,6 +1796,7 @@ function detectExistingHarness() {
   // it happens the operator MUST be told which file is being taken over.
   const previous = previousCursorFiles(previousMarker)
   const collisions = cursorSourceFiles(sourceRoot)
+    .filter((entry) => !entry.transforms.includes('hooks-merge'))
     .map((entry) => entry.relative)
     .filter(
       (relative) =>

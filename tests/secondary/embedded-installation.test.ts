@@ -459,6 +459,99 @@ test('embedded installer stays out of target git state', () => {
   }
 })
 
+test('embedded installer merges project hooks and keeps the result byte stable', () => {
+  const project = makeSkeletonProject()
+  const hooksPath = path.join(project, '.cursor', 'hooks.json')
+
+  try {
+    gitInit(project)
+    mkdirSync(path.dirname(hooksPath), { recursive: true })
+    writeFileSync(
+      hooksPath,
+      `${JSON.stringify(
+        {
+          version: 4,
+          hooks: {
+            beforeSubmitPrompt: [{ command: './target-before-submit' }],
+            afterFileEdit: [{ command: './target-after-edit' }],
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    git(project, ['add', 'README.md'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    const first = runInstaller(project)
+
+    assert.equal(first.status, 0, first.stderr)
+
+    const firstContent = readFileSync(hooksPath, 'utf8')
+    const hooks = JSON.parse(firstContent) as {
+      version: number
+      hooks: Record<string, Array<{ command: string }>>
+    }
+
+    assert.equal(hooks.version, 4)
+    assert.deepEqual(hooks.hooks.afterFileEdit, [
+      { command: './target-after-edit' },
+    ])
+    assert.deepEqual(
+      hooks.hooks.beforeSubmitPrompt?.map((entry) => entry.command),
+      [
+        './target-before-submit',
+        '.pancreator/bin/pan-hook-governance-reminder',
+      ],
+    )
+
+    const second = runInstaller(project, ['--yes'])
+
+    assert.equal(second.status, 0, second.stderr)
+    assert.equal(readFileSync(hooksPath, 'utf8'), firstContent)
+
+    const exclude = readFileSync(
+      path.join(project, '.git', 'info', 'exclude'),
+      'utf8',
+    )
+
+    assert.match(exclude, /^\/\.cursor\/hooks\.json$/mu)
+    assert.match(exclude, /^\/\.cursor\/hooks\/state\/$/mu)
+    assert.equal(git(project, ['status', '--porcelain']), '')
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer reports and preserves a tracked project hooks file', () => {
+  const project = makeSkeletonProject()
+  const hooksPath = path.join(project, '.cursor', 'hooks.json')
+
+  try {
+    gitInit(project)
+    mkdirSync(path.dirname(hooksPath), { recursive: true })
+    writeFileSync(
+      hooksPath,
+      '{"version":1,"hooks":{"beforeSubmitPrompt":[{"command":"./target"}]}}\n',
+    )
+    git(project, ['add', 'README.md', '.cursor/hooks.json'])
+    git(project, ['commit', '-qm', 'tracked hooks'])
+    const before = readFileSync(hooksPath, 'utf8')
+
+    const result = runInstaller(project)
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(
+      result.stdout,
+      /Readiness gap: target tracks \.cursor\/hooks\.json/u,
+    )
+    assert.equal(readFileSync(hooksPath, 'utf8'), before)
+    assert.equal(git(project, ['status', '--porcelain']), '')
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
 // Pre-seeded Cursor state is the condition under test, so this test needs its
 // own install.
 test('embedded installer warns on existing Cursor state, preserves custom files, and backs up conflicts', () => {
@@ -553,7 +646,11 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     )
 
     for (const entry of marker.cursor_files) {
-      assert.match(path.basename(entry.path), /^pan(-|creator\.)/u)
+      assert.ok(
+        /^pan(-|creator\.)/u.test(path.basename(entry.path)) ||
+          entry.path === '.cursor/hooks.json',
+        entry.path,
+      )
     }
   } finally {
     rmSync(project, { recursive: true, force: true })

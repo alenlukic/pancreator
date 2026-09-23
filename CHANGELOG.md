@@ -1,5 +1,26 @@
 # Changelog
 
+## [7.24.0] - 2026-09-23
+
+This release adds a Cursor project hook that injects a compact, role-specific governance reminder on each operator turn.
+
+### Changed
+
+- Point repository-check commands at workspace registries when the workspace is a Pancreator checkout ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+- Replace the probe body of `pan governance prompt-context` with the reminder resolver ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+
+### Added
+
+- Project and merge one `beforeSubmitPrompt` hook that fails open ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Add `bin/pan-hook-governance-reminder` with direct compiled-CLI dispatch ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Record the Cursor Desktop 3.21.16 probe verdict that honors flat `additional_context` ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Generate role-specific reminders from canonical policy and card selectors ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+- Add the turn-reminder registry, schema, and repository validation check ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+
+### Fixed
+
+- Keep a self-development profile command on workspace files when `PANCREATOR_EXEC_ROOT` points at that workspace ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+
 ## [7.22.0] - 2026-09-22
 
 This release adds a 30-day retention policy, a report-first cleanup command, and a quality-pass gate on self-development finalize.

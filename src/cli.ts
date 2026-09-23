@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, realpathSync, rmSync } from 'node:fs'
+import { readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -223,6 +223,7 @@ import {
   attestSupervisorCard,
   buildSupervisorCard,
 } from './lib/governance/supervisor-card.js'
+import { resolvePromptContext } from './lib/governance/prompt-context.js'
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   agentGatePassSuiteProfile,
@@ -3429,6 +3430,11 @@ async function main(): Promise<void> {
     }
     case 'governance': {
       const sub = args[0]
+
+      if (sub === 'prompt-context') {
+        print(resolvePromptContext(root, readFileSync(0, 'utf8')))
+        return
+      }
 
       if (sub === 'audit-directives') {
         print(auditDirectives(root), hasFlag(args, '--json'))
