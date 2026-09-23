@@ -1,5 +1,29 @@
 # Changelog
 
+## [7.25.0] - 2026-09-23
+
+This release makes `pan watch` the exclusive agent timer. Agents record cadence authority, gaps, and completion evidence on every wait.
+
+### Changed
+
+- Require `--cadence-directed-by-operator` for every cadence other than 60 seconds ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Loop each focused and process watch to a terminal verdict with a four-hour default bound ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Measure first-background lateness from platform return rather than launch ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Raise `fast_wall.ceiling_ms` to 240000 for the longer fast suite ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Strip volatile scratch paths from repository-check diagnostic identities ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+### Added
+
+- Add `pan watch --process` and `pan watch --timer` for waits outside a run ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Add `--until-terminal` for multiplexed waits that return only on an actionable target ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Add `pan watch audit` for a read-only historical observation report ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Record signal closure, orphan gaps, coverage advisories, and completion bases on schema-1 ledgers ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+### Fixed
+
+- Refuse a timeout below the cadence and `--stall-wakes 1` before observation ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Refuse a held or interrupted wake as final observation at submit ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
 ## [7.24.0] - 2026-09-23
 
 This release adds a Cursor project hook that injects a compact, role-specific governance reminder on each operator turn.

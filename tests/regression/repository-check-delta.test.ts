@@ -119,3 +119,45 @@ test('preserved xdist output yields an empty delta across two orders', () => {
   assert.ok(failureDiagnostics.every((line) => !line.includes('Statsig')))
   assert.match(withFailure.explanation, /AssertionError: mismatch/u)
 })
+
+// Run 63286_Sep-23-0956 watch-repair: the pre-implementation fast baseline
+// carried 139 environment failures whose diagnostic lines embed the per-run
+// scratch path (`runtime/tmp/tests.noindex/run-<id>/<fixture>-<id>`) and
+// per-session run ids. Unnormalized, every rerun reported each carried
+// failure as new, and the baseline comparison could never pass.
+test('scratch paths and session ids do not manufacture new diagnostics', () => {
+  const before =
+    '\nnot ok - a citation resolves through pan status (<workspace>/dist/tests/integration/artifact-finalization.test.js:<line>)\n' +
+    "    PanError: Executor preflight failed for 'openai': No .env file exists at " +
+    '<workspace>/runtime/tmp/tests.noindex/run-Gl4itHlU/v2-tDTgdX/.env. No OPENAI_API_KEY is available.\n' +
+    '    PanError: Best-of-N initialization failed for session 63286_Sep-23-0955_build-depend: Executor preflight failed.\n'
+  const after =
+    '\nnot ok - a citation resolves through pan status (<workspace>/dist/tests/integration/artifact-finalization.test.js:<line>)\n' +
+    "    PanError: Executor preflight failed for 'openai': No .env file exists at " +
+    '<workspace>/runtime/tmp/tests.noindex/run-9xQ2mABc/v2-ZzYwVu/.env. No OPENAI_API_KEY is available.\n' +
+    '    PanError: Best-of-N initialization failed for session 63286_Sep-23-0855_build-depend: Executor preflight failed.\n'
+
+  const comparison = compareRepositoryCheckToBaseline(
+    checkResult(before, 'failed'),
+    checkResult(after, 'failed'),
+  )
+
+  assert.equal(comparison.passed, true)
+  assert.deepEqual(newDiagnostics(comparison), [])
+
+  // A genuinely new failure line still surfaces through the same transcript.
+  const genuine = compareRepositoryCheckToBaseline(
+    checkResult(before, 'failed'),
+    checkResult(
+      `${after}\nnot ok - a brand-new regression (dist/tests/integration/x.test.js:1)\n`,
+      'failed',
+    ),
+  )
+
+  assert.equal(genuine.passed, false)
+  assert.ok(
+    newDiagnostics(genuine).some((line) =>
+      line.includes('a brand-new regression'),
+    ),
+  )
+})

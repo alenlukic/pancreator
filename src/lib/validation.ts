@@ -4678,7 +4678,13 @@ function referencedPolicyIds(policy: Policy): Set<string> {
     ...policy.instructions.map((instruction) => instruction.text),
     ...(policy.guidance ?? []).map((guidance) => guidance.content),
   ].join('\n')
-  return new Set(text.match(POLICY_REFERENCE_PATTERN) ?? [])
+  // A test coverage citation (`tests/<path>::<test name>`) names a test, not
+  // a policy; a test name may carry a token shaped like a policy id.
+  const withoutTestCitations = text.replaceAll(
+    /`tests\/[A-Za-z0-9._/-]+::[^`]+`/gu,
+    '',
+  )
+  return new Set(withoutTestCitations.match(POLICY_REFERENCE_PATTERN) ?? [])
 }
 
 function validatePolicyLookupDependencies(

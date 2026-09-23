@@ -25,6 +25,7 @@ import { recordFixtureEvent } from './reporters/fixture-profile.js'
 import { sharedTemplate } from './shared-template.js'
 import { createTestTempDirectory } from './temp.js'
 
+import { personaExecutorOf } from '../src/lib/executors/mapping.js'
 import { readHarnessConfig } from '../src/lib/project-config.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
 
@@ -156,6 +157,54 @@ function pinFixtureInvolvement(root: string): void {
   config.operator_involvement.active = FIXTURE_INVOLVEMENT_PROFILE
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+}
+
+/**
+ * Route every persona the operator maps to an external executor back to Cursor.
+ *
+ * A fixture copies this checkout's effective configuration, so an operator's
+ * `openai:` or `claude-code:` persona in the untracked `config_overrides.json`
+ * would make every fixture run preflight that executor's credentials. The
+ * persona takes the first Cursor spec in `defaults` instead; a test that
+ * exercises an external executor maps it on its own fixture.
+ */
+export function pinFixtureCursorExecutors(
+  config: Record<string, unknown>,
+): void {
+  const defaults = config.defaults as Record<string, unknown> | undefined
+  const cursorSpec = Object.values(defaults ?? {}).find(
+    (value): value is string =>
+      typeof value === 'string' &&
+      value.length > 0 &&
+      personaExecutorOf(value) === 'cursor',
+  )
+
+  if (!defaults || !cursorSpec) {
+    return
+  }
+
+  const pin = (mapping: unknown): void => {
+    if (!mapping || typeof mapping !== 'object') {
+      return
+    }
+
+    const entries = mapping as Record<string, unknown>
+
+    for (const [persona, value] of Object.entries(entries)) {
+      if (typeof value === 'string' && personaExecutorOf(value) !== 'cursor') {
+        entries[persona] = cursorSpec
+      }
+    }
+  }
+
+  pin(defaults)
+
+  for (const entry of Object.values(
+    (config.configs as Record<string, unknown> | undefined) ?? {},
+  )) {
+    pin(entry)
+    pin((entry as { personas?: unknown } | null)?.personas)
+  }
 }
 
 /**
@@ -305,6 +354,7 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   ) as Record<string, unknown>
 
   fixtureConfig.away_mode = { enabled: false }
+  pinFixtureCursorExecutors(fixtureConfig)
   // Worktree provisioning on this checkout is a real dependency install and
   // build. A fixture's stub package scripts need neither, so the block is
   // dropped; a test that wants setup commands declares its own.
