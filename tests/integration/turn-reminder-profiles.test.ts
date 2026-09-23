@@ -148,6 +148,7 @@ test('every role resolves its declared canonical selectors within budget', () =>
   const root = process.cwd()
   const registry = loadTurnReminderRegistry(root)
   const catalog = loadPolicyCatalog(root)
+
   const agents = readFileSync(path.join(root, 'AGENTS.md'), 'utf8')
   const card = { path: 'AGENTS.md', sha256: sha256(agents) }
 
