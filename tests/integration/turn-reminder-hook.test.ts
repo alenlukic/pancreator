@@ -120,6 +120,33 @@ test('excluded sessions and other hook events receive a permissive response', ()
   })
 })
 
+test('hook entry reaches the CLI from a working directory outside the harness', () => {
+  const entry = path.join(process.cwd(), 'bin', 'pan-hook-governance-reminder')
+  const environment = { ...process.env }
+
+  // Cursor runs the hook from the operator's workspace, so an inherited root
+  // would hide the entry's own root resolution.
+  delete environment.PANCREATOR_ROOT
+
+  const result = spawnSync(entry, {
+    cwd: path.parse(process.cwd()).root,
+    encoding: 'utf8',
+    env: environment,
+    input: JSON.stringify({
+      hook_event_name: 'beforeSubmitPrompt',
+      prompt: 'ordinary operator request',
+    }),
+    timeout: 30_000,
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+
+  const response = JSON.parse(result.stdout) as HookResponse
+
+  assert.equal(response.continue, true)
+  assert.match(response.additional_context ?? '', /^Role: unbound$/mu)
+})
+
 test('hook entry uses the built CLI and degrades permissively when it is missing', () => {
   const root = createTestTempDirectory('prompt-context-hook')
   const bin = path.join(root, 'bin')

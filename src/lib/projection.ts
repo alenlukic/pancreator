@@ -438,7 +438,7 @@ function renderProjections(
         const targetPath = path.join(root, entry.target)
         const existing = fileExists(targetPath) ? readText(targetPath) : null
 
-        content = mergeCursorHooksText(existing, content)
+        content = mergeCursorHooksText(existing, content, entry.target)
       }
 
       rendered.push({

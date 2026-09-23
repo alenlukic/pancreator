@@ -146,14 +146,28 @@ function isPancreatorHookEntry(value) {
   )
 }
 
+function parseCursorHooksText(text, label) {
+  try {
+    return JSON.parse(text)
+  } catch (error) {
+    fail(`${label} is not valid JSON: ${error.message}`)
+  }
+}
+
 // Installer-time mirror of src/lib/cursor-hooks-merge.ts.
-function mergeCursorHooksText(existingText, pancreatorText) {
+function mergeCursorHooksText(
+  existingText,
+  pancreatorText,
+  existingLabel = 'Existing hooks file',
+) {
   const existing = cursorHooksDocument(
-    existingText === null ? {} : JSON.parse(existingText),
-    'Existing hooks file',
+    existingText === null || existingText.trim().length === 0
+      ? {}
+      : parseCursorHooksText(existingText, existingLabel),
+    existingLabel,
   )
   const pancreator = cursorHooksDocument(
-    JSON.parse(pancreatorText),
+    parseCursorHooksText(pancreatorText, 'Pancreator hooks source'),
     'Pancreator hooks source',
   )
   const hooks = Object.fromEntries(
@@ -1450,6 +1464,7 @@ function projectCursor() {
       content = mergeCursorHooksText(
         existsSync(destination) ? readFileSync(destination, 'utf8') : null,
         content,
+        entry.relative,
       )
     }
 

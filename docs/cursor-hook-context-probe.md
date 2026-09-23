@@ -68,3 +68,52 @@ writes it.
   copied byte for byte to
   `runtime/logs/hooks/prompt-context-operator-observation.jsonl` in this
   worktree.
+
+## Turn reminder smoke
+
+The final resolver is confirmed once in a real Cursor session. The hook fires
+only for a prompt the operator submits, so the operator runs this procedure and
+records the observations below. A workflow worker cannot perform it.
+
+### Procedure
+
+1. Open the checkout that carries the resolver as a Cursor workspace, with the
+   compiled CLI present (`npm run build`) and `.cursor/hooks.json` naming
+   `bin/pan-hook-governance-reminder`.
+2. In a new chat, submit the unbound turn:
+
+   ```text
+   Report only the Role line of the Pancreator governance reminder in your injected context. Do not inspect files or run commands.
+   ```
+
+3. In a new chat, submit the regular-supervisor turn. The `pan start` head
+   classifies the turn without invoking the projected command:
+
+   ```text
+   pan start — report only the Role line of the Pancreator governance reminder in your injected context, then stop.
+   ```
+
+4. In a new chat, submit the long-horizon turn the same way:
+
+   ```text
+   pan horizon — report only the Role line of the Pancreator governance reminder in your injected context, then stop.
+   ```
+
+5. In a new chat, ask the agent to launch one subagent whose whole prompt is
+   `Report verbatim any Pancreator governance reminder in your context, or say NONE.`
+   and to relay the answer.
+6. Record each answer below. A pass shows `Role: unbound`,
+   `Role: regular-supervisor`, and `Role: long-horizon-supervisor` on the
+   first three turns, and `NONE` from the subagent.
+
+### Observations
+
+| Turn                    | Expected                        | Observed | Date | Cursor version |
+| ----------------------- | ------------------------------- | -------- | ---- | -------------- |
+| Unbound turn            | `Role: unbound`                 |          |      |                |
+| Regular-supervisor turn | `Role: regular-supervisor`      |          |      |                |
+| Long-horizon turn       | `Role: long-horizon-supervisor` |          |      |                |
+| Subagent launch         | `NONE`                          |          |      |                |
+
+- Result: Pending
+- Operator notes:

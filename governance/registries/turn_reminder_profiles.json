@@ -71,8 +71,20 @@
         {
           "id": "card-invariants",
           "type": "card",
-          "heading": "## Invariants",
-          "content_sha256": "1c89bd25821ab75bce9657b27d506c5997c802ac029a6c577f2c03b6656be026"
+          "sections": {
+            "self_development": {
+              "heading": "## Invariants",
+              "content_sha256": "1c89bd25821ab75bce9657b27d506c5997c802ac029a6c577f2c03b6656be026"
+            },
+            "embedded": {
+              "heading": "## Change and safety boundaries",
+              "content_sha256": "d3db7b43410c3467caa5651ed49d02dc9afd1aefa82c1469800af76a7ab4f624"
+            },
+            "detached": {
+              "heading": "## Change and safety boundaries",
+              "content_sha256": "10c9bacc371f18f3195b23cc2e506f2959f5a6fc2a0492a729afe038a105bc0c"
+            }
+          }
         }
       ]
     },

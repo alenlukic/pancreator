@@ -28,9 +28,24 @@
         }
       }
     },
+    "cardSection": {
+      "type": "object",
+      "required": ["heading", "content_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "heading": {
+          "type": "string",
+          "pattern": "^#{1,6} "
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
     "cardSelector": {
       "type": "object",
-      "required": ["id", "type", "heading", "content_sha256"],
+      "required": ["id", "type", "sections"],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -40,13 +55,21 @@
         "type": {
           "const": "card"
         },
-        "heading": {
-          "type": "string",
-          "pattern": "^#{1,6} "
-        },
-        "content_sha256": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+        "sections": {
+          "type": "object",
+          "required": ["self_development", "embedded", "detached"],
+          "additionalProperties": false,
+          "properties": {
+            "self_development": {
+              "$ref": "#/$defs/cardSection"
+            },
+            "embedded": {
+              "$ref": "#/$defs/cardSection"
+            },
+            "detached": {
+              "$ref": "#/$defs/cardSection"
+            }
+          }
         }
       }
     },

@@ -1,5 +1,5 @@
 import { isRecord } from './io.js'
-import { invariant } from './errors.js'
+import { errorMessage, invariant, PanError } from './errors.js'
 
 export const PANCREATOR_HOOK_COMMAND_MARKER = 'pan-hook-'
 
@@ -52,8 +52,9 @@ function isPancreatorHookEntry(value: unknown): boolean {
 export function mergeCursorHooks(
   existingValue: unknown,
   pancreatorValue: unknown,
+  existingLabel = 'Existing hooks file',
 ): CursorHooksDocument {
-  const existing = cursorHooksDocument(existingValue, 'Existing hooks file')
+  const existing = cursorHooksDocument(existingValue, existingLabel)
   const pancreator = cursorHooksDocument(
     pancreatorValue,
     'Pancreator hooks source',
@@ -80,17 +81,37 @@ export function mergeCursorHooks(
   }
 }
 
-/** Parse, merge, and serialize a Cursor hooks file deterministically. */
+function parseCursorHooksText(text: string, label: string): unknown {
+  try {
+    return JSON.parse(text) as unknown
+  } catch (error) {
+    throw new PanError(`${label} is not valid JSON: ${errorMessage(error)}`, {
+      code: 'INVALID_CURSOR_HOOKS',
+    })
+  }
+}
+
+/**
+ * Parse, merge, and serialize a Cursor hooks file deterministically. An
+ * existing file that is absent or holds only whitespace carries no target
+ * state, so it merges as an empty document.
+ */
 export function mergeCursorHooksText(
   existingText: string | null,
   pancreatorText: string,
+  existingLabel = 'Existing hooks file',
 ): string {
   const existingValue: unknown =
-    existingText === null ? {} : JSON.parse(existingText)
-  const pancreatorValue: unknown = JSON.parse(pancreatorText)
+    existingText === null || existingText.trim().length === 0
+      ? {}
+      : parseCursorHooksText(existingText, existingLabel)
+  const pancreatorValue: unknown = parseCursorHooksText(
+    pancreatorText,
+    'Pancreator hooks source',
+  )
 
   return `${JSON.stringify(
-    mergeCursorHooks(existingValue, pancreatorValue),
+    mergeCursorHooks(existingValue, pancreatorValue, existingLabel),
     null,
     2,
   )}\n`

@@ -11,6 +11,11 @@ import {
   writeJsonAtomic,
 } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
+import {
+  harnessPathPrefix,
+  isTargetInstallation,
+  loadProjectConfig,
+} from '../project-config.js'
 import { listRunStates, runIsLive } from '../state.js'
 import type { Policy, RunState } from '../types.js'
 
@@ -42,11 +47,27 @@ interface PolicySelector {
   instruction_sha256: string
 }
 
+/**
+ * Each installation mode ships a different operating card, so one card
+ * selector pins a heading and digest per mode.
+ */
+export const TURN_REMINDER_CARD_MODES = [
+  'self_development',
+  'embedded',
+  'detached',
+] as const
+
+export type TurnReminderCardMode = (typeof TURN_REMINDER_CARD_MODES)[number]
+
+interface CardSection {
+  heading: string
+  content_sha256: string
+}
+
 interface CardSelector {
   id: string
   type: 'card'
-  heading: string
-  content_sha256: string
+  sections: Record<TurnReminderCardMode, CardSection>
 }
 
 export type TurnReminderSelector = PolicySelector | CardSelector
@@ -123,6 +144,17 @@ const CARD_HEADING_PATTERN = /^#{1,6} /u
 const HOOK_EVENTS = new Set(['beforeSubmitPrompt', 'UserPromptSubmit'])
 const HORIZON_SESSION_ROOT = 'runtime/logs/horizon'
 const STANDALONE_SESSION_ROOT = 'runtime/logs/sessions'
+const CARD_PATH = 'AGENTS.md'
+
+/**
+ * The card template an installer writes for each target mode. Validating them
+ * alongside the live card proves an install before it can fail on a selector
+ * the installed card does not carry.
+ */
+const CARD_MODE_TEMPLATES: Partial<Record<TurnReminderCardMode, string>> = {
+  embedded: 'library/templates/embedded-AGENTS.md',
+  detached: 'library/templates/detached-AGENTS.md',
+}
 
 const SUPERVISOR_COMMAND_ROLES: Record<string, TurnReminderRole> = {
   'pan-start': 'regular-supervisor',
@@ -220,27 +252,56 @@ function parseSelector(value: unknown, source: string): TurnReminderSelector {
   }
 
   if (value.type === 'card') {
-    assertOnlyKeys(value, ['id', 'type', 'heading', 'content_sha256'], source)
-    const heading = nonEmptyString(value.heading, `${source}.heading`)
-    const digest = nonEmptyString(
-      value.content_sha256,
-      `${source}.content_sha256`,
+    assertOnlyKeys(value, ['id', 'type', 'sections'], source)
+
+    if (!isRecord(value.sections)) {
+      invalid(`${source}.sections MUST be an object.`)
+    }
+
+    assertOnlyKeys(
+      value.sections,
+      TURN_REMINDER_CARD_MODES,
+      `${source}.sections`,
     )
+    const sections = {} as Record<TurnReminderCardMode, CardSection>
 
-    if (!CARD_HEADING_PATTERN.test(heading)) {
-      invalid(`${source}.heading MUST be a Markdown heading.`)
+    for (const mode of TURN_REMINDER_CARD_MODES) {
+      const section = value.sections[mode]
+
+      if (!isRecord(section)) {
+        invalid(`${source}.sections.${mode} MUST be an object.`)
+      }
+
+      assertOnlyKeys(
+        section,
+        ['heading', 'content_sha256'],
+        `${source}.sections.${mode}`,
+      )
+      const heading = nonEmptyString(
+        section.heading,
+        `${source}.sections.${mode}.heading`,
+      )
+      const digest = nonEmptyString(
+        section.content_sha256,
+        `${source}.sections.${mode}.content_sha256`,
+      )
+
+      if (!CARD_HEADING_PATTERN.test(heading)) {
+        invalid(
+          `${source}.sections.${mode}.heading MUST be a Markdown heading.`,
+        )
+      }
+
+      if (!SHA256_PATTERN.test(digest)) {
+        invalid(
+          `${source}.sections.${mode}.content_sha256 MUST be a SHA-256 digest.`,
+        )
+      }
+
+      sections[mode] = { heading, content_sha256: digest }
     }
 
-    if (!SHA256_PATTERN.test(digest)) {
-      invalid(`${source}.content_sha256 MUST be a SHA-256 digest.`)
-    }
-
-    return {
-      id,
-      type: 'card',
-      heading,
-      content_sha256: digest,
-    }
+    return { id, type: 'card', sections }
   }
 
   invalid(`${source}.type MUST be 'policy' or 'card'.`)
@@ -422,12 +483,12 @@ export function resolveProfileSelectors(
   return selectors
 }
 
-function cardSection(root: string, heading: string): string {
-  const lines = readText(path.join(root, 'AGENTS.md')).trim().split('\n')
+function cardSection(root: string, cardPath: string, heading: string): string {
+  const lines = readText(path.join(root, cardPath)).trim().split('\n')
   const start = lines.findIndex((line) => line.trimEnd() === heading)
 
   if (start < 0) {
-    invalid(`card selector heading '${heading}' was not found in AGENTS.md.`)
+    invalid(`card selector heading '${heading}' was not found in ${cardPath}.`)
   }
 
   const depth = heading.match(/^#+/u)?.[0].length ?? 0
@@ -445,27 +506,39 @@ function cardSection(root: string, heading: string): string {
   return lines.slice(start, end).join('\n').trim()
 }
 
+function resolveCardSelector(
+  root: string,
+  cardPath: string,
+  selector: CardSelector,
+  cardMode: TurnReminderCardMode,
+): ResolvedReminderLine {
+  const section = selector.sections[cardMode]
+  const content = cardSection(root, cardPath, section.heading)
+  const digest = sha256(content)
+
+  if (digest !== section.content_sha256) {
+    invalid(
+      `card selector '${selector.id}' for '${section.heading}' in ` +
+        `${cardPath} is stale: expected ${section.content_sha256}, ` +
+        `received ${digest}.`,
+    )
+  }
+
+  return {
+    selector_id: selector.id,
+    source: `${cardPath} · ${section.heading}`,
+    content,
+  }
+}
+
 function resolveSelector(
   root: string,
   catalog: Map<string, Policy>,
   selector: TurnReminderSelector,
+  cardMode: TurnReminderCardMode,
 ): ResolvedReminderLine {
   if (selector.type === 'card') {
-    const content = cardSection(root, selector.heading)
-    const digest = sha256(content)
-
-    if (digest !== selector.content_sha256) {
-      invalid(
-        `card selector '${selector.id}' for '${selector.heading}' is stale: ` +
-          `expected ${selector.content_sha256}, received ${digest}.`,
-      )
-    }
-
-    return {
-      selector_id: selector.id,
-      source: `AGENTS.md · ${selector.heading}`,
-      content,
-    }
+    return resolveCardSelector(root, CARD_PATH, selector, cardMode)
   }
 
   const policy = catalog.get(selector.policy_id)
@@ -495,15 +568,22 @@ function resolveSelector(
   }
 }
 
+export function installationCardMode(root: string): TurnReminderCardMode {
+  const mode = loadProjectConfig(root).installation_mode
+
+  return mode === 'embedded' || mode === 'detached' ? mode : 'self_development'
+}
+
 export function resolveTurnReminderLines(
   root: string,
   profileId: string,
   registry = loadTurnReminderRegistry(root),
+  cardMode = installationCardMode(root),
 ): ResolvedReminderLine[] {
   const catalog = loadPolicyCatalog(root)
 
   return resolveProfileSelectors(registry, profileId).map((selector) =>
-    resolveSelector(root, catalog, selector),
+    resolveSelector(root, catalog, selector, cardMode),
   )
 }
 
@@ -924,10 +1004,9 @@ function resolveRole(
 }
 
 function fallbackCard(root: string): ActiveCard {
-  const relative = 'AGENTS.md'
   return {
-    path: relative,
-    sha256: sha256(readText(path.join(root, relative))),
+    path: CARD_PATH,
+    sha256: sha256(readText(path.join(root, CARD_PATH))),
   }
 }
 
@@ -983,21 +1062,37 @@ function latestStandaloneCard(root: string, mode: string): ActiveCard | null {
   }
 }
 
+/**
+ * Cursor runs the hook from the target workspace, so an installed harness
+ * cites its card by the path an agent there can open: under `.pancreator/`
+ * for an embedded harness, and under the absolute harness root for a
+ * detached one. Self-development already runs at the harness root.
+ */
+function workspaceCard(root: string, card: ActiveCard): ActiveCard {
+  if (!isTargetInstallation(root)) {
+    return card
+  }
+
+  return {
+    path: path.join(harnessPathPrefix(root), card.path),
+    sha256: card.sha256,
+  }
+}
+
 function activeCard(
   root: string,
   role: Exclude<TurnReminderRole, 'none'>,
   mode: string | null,
   runs: RunState[],
 ): ActiveCard {
-  if (
+  const card =
     role === 'regular-supervisor' ||
     role === 'cohort-supervisor' ||
     role === 'long-horizon-supervisor'
-  ) {
-    return supervisorCard(runs) ?? fallbackCard(root)
-  }
+      ? (supervisorCard(runs) ?? fallbackCard(root))
+      : ((mode ? latestStandaloneCard(root, mode) : null) ?? fallbackCard(root))
 
-  return (mode ? latestStandaloneCard(root, mode) : null) ?? fallbackCard(root)
+  return workspaceCard(root, card)
 }
 
 export function resolvePromptContext(
@@ -1048,6 +1143,40 @@ export function resolvePromptContext(
   }
 }
 
+function validateCardModeTemplates(
+  root: string,
+  registry: TurnReminderRegistry,
+): string[] {
+  const errors: string[] = []
+  const selectors = new Map<string, CardSelector>()
+
+  for (const profile of Object.values(registry.profiles)) {
+    for (const selector of profile.selectors) {
+      if (selector.type === 'card') {
+        selectors.set(selector.id, selector)
+      }
+    }
+  }
+
+  for (const selector of selectors.values()) {
+    for (const [mode, cardPath] of Object.entries(CARD_MODE_TEMPLATES) as Array<
+      [TurnReminderCardMode, string]
+    >) {
+      if (!fileExists(path.join(root, cardPath))) {
+        continue
+      }
+
+      try {
+        resolveCardSelector(root, cardPath, selector, mode)
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error))
+      }
+    }
+  }
+
+  return errors
+}
+
 export function validateTurnReminderProfiles(root: string): string[] {
   try {
     const registry = loadTurnReminderRegistry(root)
@@ -1069,6 +1198,8 @@ export function validateTurnReminderProfiles(root: string): string[] {
         errors.push(error instanceof Error ? error.message : String(error))
       }
     }
+
+    errors.push(...validateCardModeTemplates(root, registry))
 
     return [...new Set(errors)]
   } catch (error) {
