@@ -223,8 +223,8 @@ import {
   attestSupervisorCard,
   buildSupervisorCard,
 } from './lib/governance/supervisor-card.js'
+import { resolvePromptContext } from './lib/governance/prompt-context.js'
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
-import { recordPromptContextProbe } from './lib/prompt-context-probe.js'
 import {
   agentGatePassSuiteProfile,
   nextAgentGatePassAttempt,
@@ -3432,7 +3432,7 @@ async function main(): Promise<void> {
       const sub = args[0]
 
       if (sub === 'prompt-context') {
-        print(recordPromptContextProbe(root, readFileSync(0, 'utf8')))
+        print(resolvePromptContext(root, readFileSync(0, 'utf8')))
         return
       }
 

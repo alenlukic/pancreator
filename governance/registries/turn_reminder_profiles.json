@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "byte_budget": 16384,
+  "state": {
+    "max_age_days": 30,
+    "max_entries": 256
+  },
+  "profiles": {
+    "common": {
+      "selectors": [
+        {
+          "id": "comms-outcome",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "d1a25f69f28071479402e977f1bb5e99e9087bd275ba82eeb3248328806fada8"
+        },
+        {
+          "id": "comms-cap",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "9b80059903acf662e4329a674d6b643752d8267f13ce0302911adc6423766814"
+        },
+        {
+          "id": "comms-terminal",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "0574a864e9e4472d729f81595311418c1aa3a286ff2c55f29f5e66073d8284a4"
+        },
+        {
+          "id": "comms-incidents",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "7fc690d6c031413c5cd70a51b27981a64826eff799b1883744fac2aa5f9c80aa"
+        },
+        {
+          "id": "comms-next",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "629e172441e51f1ed84d84310515282654dad4d40a47816c825a63f68d6278a4"
+        },
+        {
+          "id": "principles-objective",
+          "type": "policy",
+          "policy_id": "PRINCIPLES-001",
+          "instruction_sha256": "a12b97f0f896dbb48124eabf4017bfcd1e46b903f28d0fca0c94dc176d589bee"
+        },
+        {
+          "id": "principles-priority",
+          "type": "policy",
+          "policy_id": "PRINCIPLES-001",
+          "instruction_sha256": "74f89e6cbf9af4798f905846aa56a5058e4cdf9b7d87926d0a27a1ff611a9b47"
+        },
+        {
+          "id": "principles-judgment",
+          "type": "policy",
+          "policy_id": "PRINCIPLES-001",
+          "instruction_sha256": "9c593365139ce3be111790d006d5ee2f2d68de1acab8e49efdc43be0229014f5"
+        },
+        {
+          "id": "principles-escalation",
+          "type": "policy",
+          "policy_id": "PRINCIPLES-001",
+          "instruction_sha256": "517014b1e0bf9e05f9c892bfe16b904829da4c5ce9e0b900c86fb5cbd2705915"
+        },
+        {
+          "id": "principles-verdict",
+          "type": "policy",
+          "policy_id": "PRINCIPLES-001",
+          "instruction_sha256": "9fea9eafd0c629c29999e982624e212205d98d2ef39ae772cf450abb169fc1d9"
+        },
+        {
+          "id": "card-invariants",
+          "type": "card",
+          "heading": "## Invariants",
+          "content_sha256": "1c89bd25821ab75bce9657b27d506c5997c802ac029a6c577f2c03b6656be026"
+        }
+      ]
+    },
+    "delegating": {
+      "extends": "common",
+      "selectors": [
+        {
+          "id": "delegate-cadence",
+          "type": "policy",
+          "policy_id": "DELEGATE-001",
+          "instruction_sha256": "4c2aece0b1ca9ef3445c8a405dcec129eb8881d9345a7d76ca8cdfa5c5927fe0"
+        },
+        {
+          "id": "delegate-turn",
+          "type": "policy",
+          "policy_id": "DELEGATE-001",
+          "instruction_sha256": "d94f5c65d393b10d1ac3f3fbd36992bb21bd8c14d4dcaa5b28fb10a56b7b27c5"
+        },
+        {
+          "id": "delegate-outcome",
+          "type": "policy",
+          "policy_id": "DELEGATE-001",
+          "instruction_sha256": "c7625e32a51556ab38a069b4e9ff032615cb7efd3a89e9c92f0209eabbcd3fea"
+        }
+      ]
+    },
+    "regular-supervisor": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "orch-pending",
+          "type": "policy",
+          "policy_id": "ORCH-001",
+          "instruction_sha256": "d3cbffe065f7fdfc2d5a9109233bcae52a951b808abe434951a20f8c6351ff39"
+        },
+        {
+          "id": "orch-continuation",
+          "type": "policy",
+          "policy_id": "ORCH-001",
+          "instruction_sha256": "205952ea93d6049fe6e0f8fc0c34d4eeb3115ed1c8cdb1c82a951b2a55b66dbb"
+        },
+        {
+          "id": "orch-watch",
+          "type": "policy",
+          "policy_id": "ORCH-001",
+          "instruction_sha256": "faff19616c45339f2a2167fd81fb4b9c2973edd198d35480b7d487f52a6f53c7"
+        },
+        {
+          "id": "orch-redline",
+          "type": "policy",
+          "policy_id": "ORCH-001",
+          "instruction_sha256": "ab70c81ce6c6332ddb96eadbdb51ba4d162a5776f8cc41140aa1ca6b5fd4ae4f"
+        },
+        {
+          "id": "orch-delivery-proof",
+          "type": "policy",
+          "policy_id": "ORCH-001",
+          "instruction_sha256": "5cbbeeb60069ae47ae0a81f24a11ad1d1f925c9b278f09e411792f383439c485"
+        },
+        {
+          "id": "orch-reconcile",
+          "type": "policy",
+          "policy_id": "ORCH-001",
+          "instruction_sha256": "77d0515717c08121a341f4fa79d9783cf2b6c35d61b6d6a35e13ee1f4bf0298c"
+        },
+        {
+          "id": "single-run-recovery",
+          "type": "policy",
+          "policy_id": "SINGLERUN-001",
+          "instruction_sha256": "527f28b367e41ff79921868db9d9a72cb78a3596ac757dc292f2104f94f2cb13"
+        }
+      ]
+    },
+    "cohort-supervisor": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "cohort-integration",
+          "type": "policy",
+          "policy_id": "COHORT-001",
+          "instruction_sha256": "84d63ce2b99e2d910314332042d52ae1e7b2b55f1f42bdeb0d99f795697973bb"
+        },
+        {
+          "id": "cohort-limit",
+          "type": "policy",
+          "policy_id": "COHORT-001",
+          "instruction_sha256": "f1c30bcbbfa65a3758bd4b30786b3b2580a5fd0053ada01998ce4e1e39b74ec7"
+        },
+        {
+          "id": "cohort-parallel",
+          "type": "policy",
+          "policy_id": "COHORT-001",
+          "instruction_sha256": "aec5d7a33cc7fcd59ae45ee4085d30b0a47808e52944508a01f4df7af972948f"
+        },
+        {
+          "id": "cohort-one-worker",
+          "type": "policy",
+          "policy_id": "COHORT-001",
+          "instruction_sha256": "bff23d7eaab6c31fa1baa3a03a1203d725d9eeb51615ed444dd2aa566af9e53b"
+        },
+        {
+          "id": "cohort-retry",
+          "type": "policy",
+          "policy_id": "COHORT-001",
+          "instruction_sha256": "66e1511d6a5b3f0ca689b4e5fb46fb70ce1473837281fd501b424403852e7624"
+        }
+      ]
+    },
+    "long-horizon-supervisor": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "horizon-progress",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "36ce8f6e69b2a547fce7460367b9d14b8c6139d683dab27d46eeac68c4a31b2c"
+        },
+        {
+          "id": "horizon-hard-blocks",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "44c368a0bb7a33cf6cb273525443d5b138ecbd04e77cb0696894bde4a01b2a33"
+        },
+        {
+          "id": "horizon-cost",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "2569b6d14101f15c67ea6bbb8a827d63ffe575502d3d409016b17360bd25dc19"
+        },
+        {
+          "id": "horizon-self-caused",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "aeb17166d76960b50882274a4ec0309c0ea0c70899e05cb3c84229030542b37c"
+        },
+        {
+          "id": "horizon-lifecycle",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "a993a5c7133f5ae8bf924759ac84e0d08caf3c19e4838af1cb80e0befe16536c"
+        },
+        {
+          "id": "horizon-rebuild",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "5af5b49fa04881ee47fd47dd87dcbe789af56e9bf0c0996ea6c19c3609835742"
+        },
+        {
+          "id": "horizon-verification",
+          "type": "policy",
+          "policy_id": "HORIZON-001",
+          "instruction_sha256": "d1bf914118547ff10c696053d0e5c1ff29039fea9b4e46036e09e33ada9be193"
+        }
+      ]
+    },
+    "unbound": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "operator-authority",
+          "type": "policy",
+          "policy_id": "OPERATOR-001",
+          "instruction_sha256": "a2cd13db0413e8a4347bd1c69934692e3ca8bd501b6b3e198c0b6dc8b56c636a"
+        },
+        {
+          "id": "operator-no-inference",
+          "type": "policy",
+          "policy_id": "OPERATOR-001",
+          "instruction_sha256": "75b289fe0e9292596f19e9fafdf35a448b13d9bc1d8c3b800af0c5532dcb7feb"
+        },
+        {
+          "id": "action-approval",
+          "type": "policy",
+          "policy_id": "ACTION-001",
+          "instruction_sha256": "f0fac1e70f866d5090df44f182784c6f2376df26ecb71fdee4cd74f1d6405c9c"
+        },
+        {
+          "id": "action-evidence",
+          "type": "policy",
+          "policy_id": "ACTION-001",
+          "instruction_sha256": "f2cc47ad494966d106278538e1416d6a8868d753e558bf76273ef3231d762454"
+        }
+      ]
+    },
+    "pair": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "pair-scope",
+          "type": "policy",
+          "policy_id": "PAIR-001",
+          "instruction_sha256": "a22e71d032a3c8fbd272dcda2a654f2775aef006a10b0479fc490eac8627701f"
+        },
+        {
+          "id": "pair-no-workflow",
+          "type": "policy",
+          "policy_id": "PAIR-001",
+          "instruction_sha256": "c24b91c3a34a921c3c03b60dc20a7a2443dfa70de04ef5cd102e102544352567"
+        },
+        {
+          "id": "pair-report",
+          "type": "policy",
+          "policy_id": "PAIR-001",
+          "instruction_sha256": "da126675021b3e18788a6951b89d37ab1e42658d7f1fcb5fa4754f962f814e66"
+        },
+        {
+          "id": "pair-check",
+          "type": "policy",
+          "policy_id": "PAIR-001",
+          "instruction_sha256": "dbe29b9532a2daa9b49b757e2be7bc84d52cad93c7970c7981f0ddfdf6567339"
+        },
+        {
+          "id": "pair-irreversible",
+          "type": "policy",
+          "policy_id": "PAIR-001",
+          "instruction_sha256": "32cb0b8107899e7c704efb737f3a430319f132b1695bb271905358d798b57735"
+        }
+      ]
+    },
+    "shepherd": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "shepherd-window",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "67f98182aff5a6579e3744db025dc40677a075712cf350bcb7983ca831e823e0"
+        },
+        {
+          "id": "shepherd-ledger",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "cff29890612559c041261df6f9e8b0d3906b38a8468cb3081763fb78fd3f2ad2"
+        },
+        {
+          "id": "shepherd-verify",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "4f9db1608efa9e696da9930fa7596dfcf62bf19ea77dd5c0b61929741c385393"
+        },
+        {
+          "id": "shepherd-review",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "e208d57279021a7ce1c1d413b1ee52998955dbd0a32210b572ee0e0a2882969d"
+        },
+        {
+          "id": "shepherd-branch",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "1638682d08bc37c3bfce14556fe5a2cd492bc94f10f2621ba2eab69b2e6109e6"
+        }
+      ]
+    },
+    "debloat": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "debloat-selection",
+          "type": "policy",
+          "policy_id": "DEBLOAT-001",
+          "instruction_sha256": "bbf302a98df827ffbce170061e7ea652d0155a6f5b7c8c3af51e637f2b7cd37c"
+        },
+        {
+          "id": "debloat-closure",
+          "type": "policy",
+          "policy_id": "DEBLOAT-001",
+          "instruction_sha256": "f8404b94d037e0fbc4fdf4408d817e2afaff418b1ca4b98262b660fd2186c135"
+        },
+        {
+          "id": "debloat-static-gaps",
+          "type": "policy",
+          "policy_id": "DEBLOAT-001",
+          "instruction_sha256": "59cb74ec5ca582ccff3cd16682af3a9ad19ae6e2c6422a1e2fb89b3c2b9ad864"
+        },
+        {
+          "id": "debloat-edits",
+          "type": "policy",
+          "policy_id": "DEBLOAT-001",
+          "instruction_sha256": "655ac8c565da1fd3ed289e1a229befd83b49a99b1cd1ed84f0117b916b0cf2bb"
+        },
+        {
+          "id": "debloat-verify",
+          "type": "policy",
+          "policy_id": "DEBLOAT-001",
+          "instruction_sha256": "dbd1db708910fa272127d4b0c00707c0d3ac2ca3a31d37ed2932a0b74ee08c83"
+        },
+        {
+          "id": "debloat-irreversible",
+          "type": "policy",
+          "policy_id": "DEBLOAT-001",
+          "instruction_sha256": "d2e00470c5d1e522929a8c678673fbbafbd3846f576344e033c613e1c924fd49"
+        }
+      ]
+    },
+    "cleanup": {
+      "extends": "common",
+      "selectors": [
+        {
+          "id": "cleanup-approval",
+          "type": "policy",
+          "policy_id": "ACTION-001",
+          "instruction_sha256": "f0fac1e70f866d5090df44f182784c6f2376df26ecb71fdee4cd74f1d6405c9c"
+        },
+        {
+          "id": "cleanup-no-inference",
+          "type": "policy",
+          "policy_id": "OPERATOR-001",
+          "instruction_sha256": "75b289fe0e9292596f19e9fafdf35a448b13d9bc1d8c3b800af0c5532dcb7feb"
+        }
+      ]
+    },
+    "standalone-other": {
+      "extends": "delegating",
+      "selectors": [
+        {
+          "id": "standalone-approval",
+          "type": "policy",
+          "policy_id": "ACTION-001",
+          "instruction_sha256": "f0fac1e70f866d5090df44f182784c6f2376df26ecb71fdee4cd74f1d6405c9c"
+        },
+        {
+          "id": "standalone-evidence",
+          "type": "policy",
+          "policy_id": "ACTION-001",
+          "instruction_sha256": "f2cc47ad494966d106278538e1416d6a8868d753e558bf76273ef3231d762454"
+        }
+      ]
+    }
+  },
+  "roles": {
+    "regular-supervisor": "regular-supervisor",
+    "cohort-supervisor": "cohort-supervisor",
+    "long-horizon-supervisor": "long-horizon-supervisor",
+    "unbound": "unbound",
+    "pair": "pair",
+    "shepherd": "shepherd",
+    "debloat": "debloat",
+    "cleanup": "cleanup",
+    "standalone-other": "standalone-other",
+    "none": null
+  }
+}
