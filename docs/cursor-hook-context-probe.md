@@ -1,12 +1,28 @@
 # Cursor prompt context probe
 
+## Status
+
+Retired. The verdict below answered the question, and
+`pan governance prompt-context` now resolves the governance turn reminder
+instead of recording a payload. The procedure is kept as the record of how the
+verdict was taken; it is no longer runnable.
+
+The payload logger went with the probe, so no current build writes
+`runtime/logs/hooks/prompt-context.jsonl`. Both that log and the copy the
+operator notes name sit under the ignored `runtime/` tree, so neither reached
+the integrated branch. The verdict below is the durable record.
+
 ## Purpose
 
 This probe determines whether Cursor injects context returned by a
 `beforeSubmitPrompt` project hook. It also records the complete payload that
 Cursor sends to the hook.
 
-## Procedure
+## Procedure as run
+
+These steps ran once, on the probe build, and they record how the verdict was
+taken. Steps 4 to 6 name the payload log that build wrote; no current build
+writes it.
 
 1. From the Pancreator checkout, project the canonical hook:
 

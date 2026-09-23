@@ -41,6 +41,7 @@ import type {
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { harnessRepairCategoryErrors } from './governance/harness-repair-categories.js'
+import { validateTurnReminderProfiles } from './governance/prompt-context.js'
 import { getHandler, HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
@@ -4792,11 +4793,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/registries/directive_exemptions.json',
     'governance/registries/harness_repair_categories.json',
     'governance/registries/projection_manifest.json',
+    'governance/registries/turn_reminder_profiles.json',
     'docs/validation-framework.md',
     'config.json',
     'library/schemas/config.schema.json',
     'library/schemas/stage-output.schema.json',
     'library/schemas/target-authoring.schema.json',
+    'library/schemas/turn-reminder-profiles.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
     'library/cursor/commands/pan-start.md',
@@ -4985,6 +4988,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
     const projection = validateProjectionDrift(root)
     errors.push(...projection.errors)
+    errors.push(...validateTurnReminderProfiles(root))
 
     handbookPolicies = validateGovernance(root, catalog, errors)
 

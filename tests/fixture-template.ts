@@ -45,6 +45,31 @@ const FIXTURE_PASS_COMMAND = 'node -e "process.exit(0)"'
 /** Cache key of the template every `createFixture` call clones. */
 const MAIN_TEMPLATE_KEY = 'fixture:main'
 
+function agentsSection(heading: string): string {
+  const lines = readFileSync(path.join(REPO_ROOT, 'AGENTS.md'), 'utf8')
+    .trim()
+    .split('\n')
+  const start = lines.findIndex((line) => line.trimEnd() === heading)
+
+  if (start < 0) {
+    throw new Error(`AGENTS.md no longer holds the section '${heading}'.`)
+  }
+
+  const depth = heading.match(/^#+/u)?.[0].length ?? 0
+  let end = lines.length
+
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const match = /^(#{1,6}) /u.exec(lines[index] ?? '')
+
+    if (match && match[1].length <= depth) {
+      end = index
+      break
+    }
+  }
+
+  return lines.slice(start, end).join('\n')
+}
+
 export const MAX_FIXTURE_TEMPLATE_BYTES = 30 * 1024 * 1024
 
 export interface FixtureTemplateMeasurement {
@@ -315,6 +340,8 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
       '',
       'Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model.',
       'Named personas retain their projected model routing through projected frontmatter and `config.json`.',
+      '',
+      agentsSection('## Invariants'),
       '',
     ].join('\n'),
   )
