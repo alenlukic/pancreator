@@ -33,7 +33,7 @@
   "active_config": "balanced",
   "anthropic": {
     "balanced": "claude-sonnet-5",
-    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+    "advanced": "claude-opus-5-5[context=1m,effort=high,fast=false]",
     "ultra": "claude-fable-5-1[thinking=true,context=300k,effort=high]"
   },
   "oai": {
@@ -77,6 +77,7 @@
     "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config_overrides.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
+    "default": {},
     "balanced": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "coder": "",
