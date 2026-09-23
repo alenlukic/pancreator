@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.25.1] - 2026-09-23
+
+This release updates the tracked Anthropic advanced model and adds an empty default pipeline config.
+
+### Changed
+
+- Set `anthropic.advanced` to `claude-opus-5-5` with 1m context ([01372a9a](https://github.com/alenlukic/pancreator/commit/01372a9adafabc29a8bc8cd4b6684c3a50e84da3)).
+
+### Added
+
+- Add an empty `configs.default` so a local `active_config` of `default` can resolve ([01372a9a](https://github.com/alenlukic/pancreator/commit/01372a9adafabc29a8bc8cd4b6684c3a50e84da3)).
+
 ## [7.25.0] - 2026-09-23
 
 This release makes `pan watch` the exclusive agent timer. Agents record cadence authority, gaps, and completion evidence on every wait.
