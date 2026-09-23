@@ -300,6 +300,10 @@
     {
       "version": "7.24.0",
       "commit": "33494b485e4ddf1e20d3a1689b287a2ca7b01293"
+    },
+    {
+      "version": "7.25.0",
+      "commit": "38c6ddbbc7ce4b677dbedd8d8f82be4d2e4955e3"
     }
   ]
 }
