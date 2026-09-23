@@ -565,12 +565,14 @@ export function formatFastWallReport(report: FastWallReport): string {
     report.unqualified_runs > 0
       ? ` (${report.unqualified_runs} unqualified rows ignored)`
       : ''
+
   const permitted = seconds(report.permitted_ceiling_ms ?? 0)
   const marginal =
     report.marginal_wall_ms_per_test === null
       ? 'unavailable'
       : `${report.marginal_wall_ms_per_test.toFixed(3)}ms/test across ` +
         `${report.marginal_samples} runs`
+
   const verdict =
     report.status === 'insufficient_samples'
       ? `INSUFFICIENT SAMPLES (${report.recorded_runs}/${report.minimum_qualified_samples}); ADVISORY.`

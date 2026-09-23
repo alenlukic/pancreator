@@ -46,6 +46,7 @@ import {
   multiplexedTargets,
   preparedRun,
   stillWritingClock,
+  writeAgentStateEvidence,
   writeStageOutput,
   writeTargetOutput,
 } from './watch-helpers.js'
@@ -154,15 +155,26 @@ test('multiplexed watch returns the first changed invocation and keeps ordinary 
   for (const { runId, invocationId } of targets) {
     const entries = readWatchRecord(root, runId, invocationId)
 
+    // The session opens before its first arming, and the wait's return
+    // closes every target that reached no verdict with a sibling handoff.
     assert.deepEqual(
       entries.map((entry) => [entry.schema_version, entry.event, entry.wake]),
       [
+        [1, 'session_started', 0],
         [1, 'armed', 1],
         [1, 'wake', 1],
+        [1, 'session_ended', 1],
       ],
     )
-    assert.equal(entries.at(-1)?.run_id, runId)
-    assert.equal(entries.at(-1)?.invocation_id, invocationId)
+    assert.equal(entries.at(-1)?.session_end_reason, 'sibling_handoff')
+    assert.ok(
+      entries.every(
+        (entry) => entry.watch_session_id === entries[0]?.watch_session_id,
+      ),
+      'one session owns the whole wait',
+    )
+    assert.equal(entries[1]?.run_id, runId)
+    assert.equal(entries[1]?.invocation_id, invocationId)
   }
 })
 
@@ -446,6 +458,7 @@ test('watch reports timed_out at the timeout when the paths keep changing', asyn
 
   const result = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
+    cadenceAuthority: "operator's fixture",
     stallWakes: 2,
     timeoutSeconds: CADENCE_SECONDS * 3,
     ...clock,
@@ -462,6 +475,12 @@ test('watch reports timed_out at the timeout when the paths keep changing', asyn
       `^\\./bin/pan watch ${state.run_id} --invocation ` +
         `${result.invocation_id} .*--timeout-seconds ${CADENCE_SECONDS * 3}$`,
       'u',
+    ),
+  )
+  // The free-text authority travels as one shell word.
+  assert.ok(
+    (result.rearm_command ?? '').includes(
+      `--cadence-directed-by-operator 'operator'"'"'s fixture' `,
     ),
   )
   // Whole milliseconds on the fake clock: 300 ms, not 0.1 * 3 in floating point.
@@ -490,6 +509,7 @@ test('watch completes an already-present output after one confirming wake and st
   assert.equal(second.state, 'completed')
 
   const entries = readWatchRecord(root, state.run_id, invocationId)
+  const wakes = entries.filter((entry) => entry.event === 'wake')
   const terminal = entries.filter((entry) => entry.terminal_state !== undefined)
 
   assert.equal(terminal.length, 2, 'each watch records one terminal verdict')
@@ -498,7 +518,7 @@ test('watch completes an already-present output after one confirming wake and st
     terminal.every((entry) => entry.terminal_basis === 'confirming_wake'),
   )
   assert.equal(
-    entries[0]?.completion_hold,
+    wakes[0]?.completion_hold,
     'output_younger_than_cadence',
     'the held observation names why it was held',
   )
@@ -519,6 +539,7 @@ test('a mark-background re-arm preserves the existing launch clock', async () =>
   const watched = await watchInvocation(root, state.run_id, {
     markBackground: true,
     agentState: 'completed',
+    agentStateEvidence: writeAgentStateEvidence(root, state, invocationId),
   })
   const launch = readLaunchRecord(root, state.run_id, invocationId)
 
@@ -569,10 +590,11 @@ test('the first watch arming records the launch time and never resets it', async
   fillPreparedOutput(root, state)
 
   const armedAtLeast = Date.now()
+  const evidence = writeAgentStateEvidence(root, state, invocationId)
 
   await watchInvocation(root, state.run_id, {
-    cadenceSeconds: CADENCE_SECONDS,
     agentState: 'completed',
+    agentStateEvidence: evidence,
   })
 
   const first = readLaunchRecord(root, state.run_id, invocationId)
@@ -596,6 +618,7 @@ test('the first watch arming records the launch time and never resets it', async
     cadenceSeconds: CADENCE_SECONDS,
     markBackground: true,
     agentState: 'completed',
+    agentStateEvidence: evidence,
   })
 
   const second = readLaunchRecord(root, state.run_id, invocationId)
@@ -625,6 +648,11 @@ test('the first watch arming records the launch time and never resets it', async
   await watchInvocation(old.root, old.state.run_id, {
     markBackground: true,
     agentState: 'completed',
+    agentStateEvidence: writeAgentStateEvidence(
+      old.root,
+      old.state,
+      old.invocationId,
+    ),
   })
 
   const lateMarker = JSON.parse(
@@ -635,10 +663,18 @@ test('the first watch arming records the launch time and never resets it', async
       ),
       'utf8',
     ),
-  ) as { mark_delay_seconds: number; late: boolean }
+  ) as {
+    mark_delay_seconds: number
+    mark_delay_basis: string
+    late: boolean
+  }
 
+  // Without an evidenced platform return the delay stays a labeled numerical
+  // fallback: launch latency and supervisor delay cannot be separated, so the
+  // number is recorded and no lateness is attributed.
   assert.ok(lateMarker.mark_delay_seconds >= 300)
-  assert.equal(lateMarker.late, true)
+  assert.equal(lateMarker.mark_delay_basis, 'launch_unattributed')
+  assert.equal(lateMarker.late, false)
 })
 
 // The supervisor is the only party that knows when it made the call, so its
@@ -656,6 +692,7 @@ test('a supervisor-supplied launch time overrides the arming default on the back
     markBackground: true,
     launchedAt,
     agentState: 'completed',
+    agentStateEvidence: writeAgentStateEvidence(root, state, invocationId),
   })
 
   const record = readLaunchRecord(root, state.run_id, invocationId)
@@ -666,7 +703,11 @@ test('a supervisor-supplied launch time overrides the arming default on the back
 
   const summary = summarizeDelegationWatch(root, state.run_id, invocationId)
 
-  assert.equal(summary.background_watch_late, true)
+  // The launch-relative delay is still recorded, but with no evidenced
+  // platform return it cannot be attributed: the platform's own launch
+  // latency is not the supervisor's delay.
+  assert.equal(summary.background_watch_late, false)
+  assert.equal(summary.background_mark_delay_basis, 'launch_unattributed')
   assert.ok((summary.background_mark_delay_seconds ?? 0) > 60)
 })
 
@@ -894,11 +935,13 @@ test('a contended event write leaves the watch running and lands on a later wake
 })
 
 test('cadence accepts fractional seconds and rejects a busy loop', () => {
-  assert.equal(parseCadenceSeconds('0.1'), 0.1)
-  assert.equal(parseCadenceSeconds('90'), 90)
+  const authority = 'operator directed a fast cadence for this repair'
+
+  assert.equal(parseCadenceSeconds('0.1', authority), 0.1)
+  assert.equal(parseCadenceSeconds('90', authority), 90)
   assert.equal(parseCadenceSeconds(null), DEFAULT_WATCH_CADENCE_SECONDS)
-  assert.throws(() => parseCadenceSeconds('0'), /at least/u)
-  assert.throws(() => parseCadenceSeconds('abc'), /at least/u)
+  assert.throws(() => parseCadenceSeconds('0', authority), /at least/u)
+  assert.throws(() => parseCadenceSeconds('abc', authority), /number/u)
 })
 
 // DELEGATE-001 now names one cadence for every worker, so an unspecified
@@ -914,6 +957,7 @@ test('an unspecified cadence watches at the one universal 60-second cadence', as
 
   const result = await watchInvocation(root, state.run_id, {
     agentState: 'completed',
+    agentStateEvidence: writeAgentStateEvidence(root, state, invocationId),
   })
 
   assert.equal(result.state, 'completed')
@@ -944,9 +988,10 @@ test('a background launch whose output lands too soon is held for one confirming
   assert.equal(watched.armings, 1, 'the held observation armed a real timer')
 
   const entries = readWatchRecord(root, state.run_id, invocationId)
+  const heldWakes = entries.filter((entry) => entry.event === 'wake')
 
-  assert.equal(entries[0]?.terminal_state, undefined)
-  assert.equal(entries[0]?.completion_hold, 'output_younger_than_cadence')
+  assert.equal(heldWakes[0]?.terminal_state, undefined)
+  assert.equal(heldWakes[0]?.completion_hold, 'output_younger_than_cadence')
   assert.equal(entries.at(-1)?.terminal_state, 'completed')
   assert.equal(entries.at(-1)?.terminal_basis, 'confirming_wake')
   // The confirming wake is an observation, so the submission it permits is
@@ -1004,10 +1049,11 @@ test('an agent the supervisor saw still running keeps the watch on its cadence',
   assert.ok(watched.armings >= 1, 'running MUST suppress the short-circuit')
 
   const entries = readWatchRecord(root, state.run_id, invocationId)
+  const runningWakes = entries.filter((entry) => entry.event === 'wake')
 
   assert.ok(entries.some((entry) => entry.event === 'armed'))
-  assert.notEqual(entries[0]?.terminal_state, 'completed')
-  assert.equal(entries[0]?.completion_hold, 'agent_reported_running')
+  assert.notEqual(runningWakes[0]?.terminal_state, 'completed')
+  assert.equal(runningWakes[0]?.completion_hold, 'agent_reported_running')
 })
 
 // A supervisor's `running` report and a complete-looking output disagree.
@@ -1215,7 +1261,7 @@ test('a watch over a scaffold completes once the worker writes its output', asyn
 // supervisor that complied and one that had to be told left identical
 // evidence. DELEGATE-001 says "immediately"; this is the number that makes
 // the word auditable.
-test('the background marker records how late supervision was armed', async () => {
+test('the background marker records the supervision delay with its basis', async () => {
   const { root, state, invocationId, outputPath } = preparedRun()
 
   fillPreparedOutput(root, state)
@@ -1232,6 +1278,7 @@ test('the background marker records how late supervision was armed', async () =>
     launched_at: string | null
     launched_at_source: string | null
     mark_delay_seconds: number | null
+    mark_delay_basis: string
     late: boolean
   }
 
@@ -1240,10 +1287,9 @@ test('the background marker records how late supervision was armed', async () =>
   assert.equal(typeof record.mark_delay_seconds, 'number')
   assert.equal(record.late, false, 'a mark taken at once is not late')
 
-  // The supervisor names a launch ten minutes back, so the same mark reads
-  // as a minute-plus late arming. Only the supervisor can supply that time:
-  // the harness never witnessed the launch, which is exactly why it stopped
-  // reading a prepare-time artifact's mtime and calling that lateness.
+  // The supervisor names a launch ten minutes back. Without an evidenced
+  // platform return the delay stays a labeled fallback: the number is kept,
+  // and no lateness is attributed to anyone.
   recordInvocationLaunch(root, state.run_id, invocationId, {
     launchedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     defaultLaunchedAtMs: Date.now(),
@@ -1257,22 +1303,27 @@ test('the background marker records how late supervision was armed', async () =>
     invocationId,
   )
 
-  assert.equal(summary.watch.background_watch_late, true)
+  assert.equal(summary.watch.background_watch_late, false)
+  assert.equal(summary.watch.background_mark_delay_basis, 'launch_unattributed')
   assert.ok((summary.watch.background_mark_delay_seconds ?? 0) > 60)
 
-  // Late supervision still submits — the work was observed — but the run says so.
+  // Unattributed delay still submits — the work was observed — and no
+  // lateness advisory fires without the platform's return clock.
   await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
     agentState: 'completed',
+    agentStateEvidence: writeAgentStateEvidence(root, state, invocationId),
   })
 
   const submitted = submitOutput(root, state.run_id, outputPath)
-  const advisory = submitted.advisories.find((item) =>
-    item.message.includes('DELEGATION_WATCH_LATE'),
-  )
 
-  assert.ok(advisory, 'a late arming MUST be recorded as an advisory')
-  assert.equal(advisory.kind, 'delegation_supervision')
+  assert.equal(
+    submitted.advisories.some((item) =>
+      item.message.includes('DELEGATION_WATCH_LATE'),
+    ),
+    false,
+    'a launch-only delay is never attributed as late supervision',
+  )
   assert.equal(submitted.record.outcome, 'success')
 })
 
@@ -1328,7 +1379,17 @@ test('a completed verdict records whether an agent or a file produced it', async
   const agentVerdict = await watchInvocation(
     attested.root,
     attested.state.run_id,
-    { cadenceSeconds: CADENCE_SECONDS, agentState: 'completed' },
+    {
+      cadenceSeconds: CADENCE_SECONDS,
+      agentState: 'completed',
+      // The attested basis rests on the recorded inspection the supervisor
+      // supplies; without it the same report buys a confirming wake.
+      agentStateEvidence: writeAgentStateEvidence(
+        attested.root,
+        attested.state,
+        attested.invocationId,
+      ),
+    },
   )
 
   assert.equal(agentVerdict.state, 'completed')

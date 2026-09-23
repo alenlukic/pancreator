@@ -19,8 +19,12 @@
     "setup": ["npm ci --no-audit --no-fund --loglevel=error", "npm run build"],
     "readiness_paths": ["node_modules", "dist"]
   },
+  "retention": {
+    "default_days": 30,
+    "classes": {}
+  },
   "fast_wall": {
-    "ceiling_ms": 120000,
+    "ceiling_ms": 240000,
     "anchor_date": "2026-09-14",
     "weekly_allowance_ms": 1000,
     "max_load_average_per_cpu": 1,
@@ -29,7 +33,7 @@
   "active_config": "balanced",
   "anthropic": {
     "balanced": "claude-sonnet-5",
-    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+    "advanced": "claude-opus-5-5[context=1m,effort=high,fast=false]",
     "ultra": "claude-fable-5-1[thinking=true,context=300k,effort=high]"
   },
   "oai": {
@@ -73,6 +77,7 @@
     "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config_overrides.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
+    "default": {},
     "balanced": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "coder": "",

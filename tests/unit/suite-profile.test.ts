@@ -472,6 +472,7 @@ test('a usable current-run index entry stays byte-for-byte unchanged', () => {
   succeededRun(root, 'run-prior', '2026-08-29T03:04:05.000Z')
 
   const written = recordSuiteProfileIndexEntry(root, current)
+
   const indexPath = path.join(root, SUITE_PROFILE_INDEX_PATH)
   const before = readFileSync(indexPath)
   const lookup = lookupPreviousSucceededRunProfile(root, current)
@@ -494,6 +495,7 @@ test('missing and unreadable indexed profiles rebuild with artifact time', () =>
       'run-indexed',
       '2026-08-29T05:00:00.000Z',
     )
+
     const priorUpdatedAt = '2026-08-29T03:04:05.000Z'
     const priorProfileRecordedAt = '2026-08-29T02:03:04.000Z'
 

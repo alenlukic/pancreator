@@ -507,9 +507,11 @@ function assembleModuleGraph(
 
   const imports = new Map<string, Set<string>>()
   const dependents = new Map<string, Set<string>>()
+
   const binReferences = new Map<string, Set<string>>()
   const fixtureReferences = new Map<string, Set<string>>()
   const dataReferences = new Map<string, Set<string>>()
+
   const typeOnlyTargets = new Set<string>()
   const specialReferences = new Map<string, SpecialReferences>()
   const cliSource = fileSet.has('src/cli.ts') ? 'src/cli.ts' : null

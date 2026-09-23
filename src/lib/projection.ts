@@ -28,6 +28,7 @@ import {
   loadProjectConfig,
   panCommand,
 } from './project-config.js'
+import { mergeCursorHooksText } from './cursor-hooks-merge.js'
 
 /** Filenames Pancreator may own inside a target repository's `.cursor/`. */
 const PANCREATOR_OWNED_BASENAME = /^pan(-|creator\.)/u
@@ -182,7 +183,9 @@ function readProjectionManifest(root: string): ProjectionManifest {
     invariant(
       transforms.every(
         (transform) =>
-          transform === 'installation-paths' || transform === 'policy-rule',
+          transform === 'installation-paths' ||
+          transform === 'policy-rule' ||
+          transform === 'hooks-merge',
       ),
       `projection ${entry.id}.transforms contains an unsupported transform`,
       { code: 'INVALID_PROJECTION_MANIFEST' },
@@ -312,6 +315,8 @@ export interface RenderProjectionsOptions {
   pipeline?: LoadedPipelineConfig
   /** Project configured specs without the local Cursor model catalog. */
   skipCatalog?: boolean
+  /** Merge canonical hooks against the local target. */
+  mergeHooks?: boolean
 }
 
 function renderProjections(
@@ -365,7 +370,8 @@ function renderProjections(
       // Cursor fixes some filenames (`mcp.json`) that cannot be namespaced.
       invariant(
         !projection.installation_modes.includes('embedded') ||
-          PANCREATOR_OWNED_BASENAME.test(path.basename(entry.target)),
+          PANCREATOR_OWNED_BASENAME.test(path.basename(entry.target)) ||
+          projection.transforms.includes('hooks-merge'),
         `projection ${projection.id} target MUST use a pan-namespaced filename: ${entry.target}`,
         { code: 'INVALID_PROJECTION_MANIFEST' },
       )
@@ -423,6 +429,16 @@ function renderProjections(
           mode,
           harnessPrefix,
         )
+      }
+
+      if (
+        projection.transforms.includes('hooks-merge') &&
+        options.mergeHooks !== false
+      ) {
+        const targetPath = path.join(root, entry.target)
+        const existing = fileExists(targetPath) ? readText(targetPath) : null
+
+        content = mergeCursorHooksText(existing, content, entry.target)
       }
 
       rendered.push({
@@ -709,12 +725,14 @@ export function syncCursorProjection(
 export function renderCursorProjectionSources(
   root: string,
 ): CursorProjectionSource[] {
-  return renderProjections(root).rendered.map((entry) => ({
-    id: entry.id,
-    source: entry.source,
-    path: entry.target,
-    content: entry.content,
-  }))
+  return renderProjections(root, { mergeHooks: false }).rendered.map(
+    (entry) => ({
+      id: entry.id,
+      source: entry.source,
+      path: entry.target,
+      content: entry.content,
+    }),
+  )
 }
 
 /** Validate canonical projection ownership and optional local projection drift. */

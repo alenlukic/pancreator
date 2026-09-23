@@ -41,37 +41,44 @@ remains a blocking code use.
 manifest rests on both.
 
 The deterministic pass builds the reference graph and reads the usage window.
-It ends in one verdict per candidate: `unused`, `unclear`, or `retained`. A
-`retained` verdict is final. No agentic verdict clears it, because the graph
+It ends in one verdict per candidate: `unused`, `unclear`, or `retained`.
+
+A `retained` verdict is final. No agentic verdict clears it, because the graph
 found a reference that still exists.
 
 The agentic pass settles the `unclear` candidates only, and it settles them one
 at a time. Record each with `pan debloat adjudicate --session <id> --facility
-<id> --verdict <remove|keep> --reason <text> --evidence <reference>`. The
-reasoning and the evidence land beside the deterministic result rather than
-replacing it. An unclear candidate with no recorded `remove` verdict cannot
-enter the selection.
+<id> --verdict <remove|keep> --reason <text> --evidence <reference>`.
+
+The reasoning and the evidence land beside the deterministic result rather
+than replacing it. An unclear candidate with no recorded `remove` verdict
+cannot enter the selection.
 
 ## Selection
 
 The operator chooses the removal set. `pan debloat select --session <id>
 --facility <id>` accumulates across calls, so several narrow calls build one
 set. Pass `--replace` to discard the recorded set and start from the ids of
-that call. Selection refuses any id the scan did not report as a candidate, and
-refuses an unclear candidate that no `remove` adjudication covers.
+that call.
+
+Selection refuses any id the scan did not report as a candidate, and refuses
+an unclear candidate that no `remove` adjudication covers.
 
 ## Adjudication
 
 The closure comes from a static reference graph. The graph reads paths and
 identifiers, so three kinds of reference are invisible to it. Each one produces
-a removal that looks safe and is not. Check all three before deleting anything,
-and record what you found for each.
+a removal that looks safe and is not.
+
+Check all three before deleting anything, and record what you found for each.
 
 **Run-time paths.** A TypeScript expression such as
 `path.join(directory, `${persona}.md`)` or a template literal that builds a
-policy identifier produces no literal edge. Search the source for template
-literals and variable interpolation that could reach a removed path. Grep the
-removed facility's bare name across `src/` and `bin/` and read each hit.
+policy identifier produces no literal edge.
+
+Search the source for template literals and variable interpolation that could
+reach a removed path. Grep the removed facility's bare name across `src/` and
+`bin/` and read each hit.
 
 **Prose references.** A file can name a facility in words without writing its
 path or its identifier: "the hypervisor brief", "the investigation card". Read
@@ -109,6 +116,7 @@ delete it on the strength of the manifest.
 ## Reporting
 
 Return Markdown with four sections: what you deleted, what you repaired, what
-you spared and the reference that saved it, and the result of each check. Name
-every exception you took to the manifest. A removal that left a check failing
-is reported as incomplete, never as success.
+you spared and the reference that saved it, and the result of each check.
+
+Name every exception you took to the manifest. A removal that left a check
+failing is reported as incomplete, never as success.

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-governance-reminder",
+        "matcher": "UserPromptSubmit",
+        "timeout": 5,
+        "failClosed": false
+      }
+    ]
+  }
+}

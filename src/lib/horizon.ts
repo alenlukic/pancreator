@@ -979,6 +979,7 @@ function executePromptTask(
   const beforeHarness = enforced
     ? new Map<string, string>()
     : promptTaskScopeSnapshot(root, grantedRoots)
+
   const result = runCursorAgentSession({
     prompt: `${card.markdown}\n\n## Task\n\n${task.prompt ?? ''}`,
     cwd: workspace,
@@ -989,17 +990,20 @@ function executePromptTask(
     model: mapping.model_spec,
     writeRoots: grantedRoots,
   })
+
   const afterHarness = enforced
     ? new Map<string, string>()
     : promptTaskScopeSnapshot(root, grantedRoots)
   // The snapshot already excludes every granted root, so each observed change
   // is outside the grant by construction.
   const unapprovedChanges = promptTaskChangedPaths(beforeHarness, afterHarness)
+
   const effectiveError =
     unapprovedChanges.length > 0
       ? `Prompt task changed paths outside its granted roots: ${unapprovedChanges.join(', ')}`
       : result.error
   const effectiveOk = result.ok && unapprovedChanges.length === 0
+
   const artifactPath = path.posix.join(
     HORIZON_ROOT,
     state.session_id,

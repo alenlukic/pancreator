@@ -1514,6 +1514,7 @@ test('a profile pass claim is answered by any current-run evidence', () => {
   const output = {
     summary: 'The fast profile passed at the current workspace.',
   }
+
   const ledger = resolveRunLayout(root, run.run_id).evidence(
     AGENT_REPOSITORY_CHECK_RUNS_FILE,
   )
@@ -1590,6 +1591,7 @@ test('a profile pass claim without current ledger evidence names the sanctioned 
   })
   const invocationId = 'implement-1'
   const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+
   const output = {
     summary: 'The fast profile passed at the current workspace.',
   }

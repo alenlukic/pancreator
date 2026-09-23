@@ -238,7 +238,7 @@ test('pan-start distinguishes prose, existing queue files, augmentation, and wor
   assert.match(command, /Prose input is preserved verbatim/u)
   assert.match(command, /existing file under .*runtime\/inbox\/queue/u)
   assert.match(command, /Do not create a wrapper file/u)
-  assert.match(command, /append the additional prose under `## Operator note`/u)
+  assert.match(command, /append the extra prose under `## Operator note`/u)
   assert.match(command, /inherited by its routed single-chunk delivery run/u)
 })
 

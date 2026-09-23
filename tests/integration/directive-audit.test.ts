@@ -195,6 +195,7 @@ test('tolerated directive collisions raise no disposition demand', () => {
 test('the RFC 2119 keyword definition is not an unowned directive', () => {
   const root = createFixture()
   const directory = path.join(root, 'governance', 'handbooks', 'unowned')
+
   const definition =
     'The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.\n'
   const shortDefinition =

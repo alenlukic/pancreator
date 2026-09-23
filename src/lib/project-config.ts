@@ -79,6 +79,7 @@ export const AWAY_MODE_ACTIONS = [
 const DEFAULT_AWAY_MODE_ACTIONS = [...AWAY_MODE_ACTIONS]
 const DEFAULT_MAX_AWAY_DECISIONS_PER_RUN = 3
 const DEFAULT_MAX_REMEDIATION_ATTEMPTS_PER_AGENT = 2
+export const DEFAULT_RETENTION_DAYS = 30
 
 /**
  * Untracked operator-local overrides, merged over the checked-in harness
@@ -240,6 +241,44 @@ function assertPositiveInteger(value: unknown, source: string): void {
     `${source} MUST be a positive integer when present.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
+}
+
+function assertRetentionBlock(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(value),
+    `${PROJECT_CONFIG_PATH}.retention MUST be an object when present.`,
+    { code: 'INVALID_RETENTION_DAYS' },
+  )
+  invariant(
+    value.default_days === undefined ||
+      (Number.isInteger(value.default_days) &&
+        (value.default_days as number) > 0),
+    `${PROJECT_CONFIG_PATH}.retention.default_days MUST be a positive integer when present.`,
+    { code: 'INVALID_RETENTION_DAYS' },
+  )
+  invariant(
+    value.classes === undefined || isRecord(value.classes),
+    `${PROJECT_CONFIG_PATH}.retention.classes MUST be an object when present.`,
+    { code: 'INVALID_RETENTION_DAYS' },
+  )
+
+  if (!isRecord(value.classes)) {
+    return
+  }
+
+  for (const [className, days] of Object.entries(value.classes)) {
+    invariant(
+      className.trim().length > 0 &&
+        Number.isInteger(days) &&
+        (days as number) > 0,
+      `${PROJECT_CONFIG_PATH}.retention.classes.${className || '(empty)'} MUST be a positive integer.`,
+      { code: 'INVALID_RETENTION_DAYS' },
+    )
+  }
 }
 
 function assertAwayModeBlock(value: unknown): void {
@@ -641,6 +680,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   )
 
   assertWorktreesBlock(value.worktrees)
+  assertRetentionBlock(value.retention)
   assertAwayModeBlock(value.away_mode)
   assertInstallationsBlock(value.installations)
   assertScheduleBlock(value.schedule)
@@ -713,6 +753,27 @@ export function worktreesConfig(root: string): ResolvedWorktreesConfig {
     setup: configured?.setup ?? [],
     readiness_paths: configured?.readiness_paths ?? [],
   }
+}
+
+/** Apply the configured class, default, and built-in retention precedence. */
+export function retentionDaysFromConfig(
+  config: Pick<ProjectConfig, 'retention'> | null | undefined,
+  className: string,
+): number {
+  return (
+    config?.retention?.classes?.[className] ??
+    config?.retention?.default_days ??
+    DEFAULT_RETENTION_DAYS
+  )
+}
+
+/**
+ * Retention window for one harness-owned ephemeral artifact class. A root
+ * without `config.json` takes the built-in default: the installer runs runtime
+ * maintenance over the new harness directory before it writes that file.
+ */
+export function resolveRetentionDays(root: string, className: string): number {
+  return retentionDaysFromConfig(readProjectConfig(root), className)
 }
 
 /** Away-mode settings for a new run, with safe defaults and a source digest. */

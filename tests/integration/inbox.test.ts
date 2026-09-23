@@ -427,6 +427,7 @@ test('a finished request takes a suffixed name when history holds its name', () 
 
 test('migrates legacy inbox layout into status directories', () => {
   const root = createFixture()
+
   const legacyPath = path.join(root, 'runtime/inbox/legacy-unlinked.md')
   const legacyTextPath = path.join(root, 'runtime/inbox/legacy-notes.txt')
   const finderArtifactPath = path.join(root, 'runtime/inbox/.DS_Store')

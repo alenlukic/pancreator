@@ -1,6 +1,158 @@
 # Changelog
 
-## [6.31.0] - 2026-09-20
+## [7.25.1] - 2026-09-23
+
+This release updates the tracked Anthropic advanced model and adds an empty default pipeline config.
+
+### Changed
+
+- Set `anthropic.advanced` to `claude-opus-5-5` with 1m context ([01372a9a](https://github.com/alenlukic/pancreator/commit/01372a9adafabc29a8bc8cd4b6684c3a50e84da3)).
+
+### Added
+
+- Add an empty `configs.default` so a local `active_config` of `default` can resolve ([01372a9a](https://github.com/alenlukic/pancreator/commit/01372a9adafabc29a8bc8cd4b6684c3a50e84da3)).
+
+## [7.25.0] - 2026-09-23
+
+This release makes `pan watch` the exclusive agent timer. Agents record cadence authority, gaps, and completion evidence on every wait.
+
+### Changed
+
+- Require `--cadence-directed-by-operator` for every cadence other than 60 seconds ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Loop each focused and process watch to a terminal verdict with a four-hour default bound ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Measure first-background lateness from platform return rather than launch ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Raise `fast_wall.ceiling_ms` to 240000 for the longer fast suite ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Strip volatile scratch paths from repository-check diagnostic identities ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+### Added
+
+- Add `pan watch --process` and `pan watch --timer` for waits outside a run ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Add `--until-terminal` for multiplexed waits that return only on an actionable target ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Add `pan watch audit` for a read-only historical observation report ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Record signal closure, orphan gaps, coverage advisories, and completion bases on schema-1 ledgers ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+### Fixed
+
+- Refuse a timeout below the cadence and `--stall-wakes 1` before observation ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Refuse a held or interrupted wake as final observation at submit ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+## [7.24.0] - 2026-09-23
+
+This release adds a Cursor project hook that injects a compact, role-specific governance reminder on each operator turn.
+
+### Changed
+
+- Point repository-check commands at workspace registries when the workspace is a Pancreator checkout ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+- Replace the probe body of `pan governance prompt-context` with the reminder resolver ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+
+### Added
+
+- Project and merge one `beforeSubmitPrompt` hook that fails open ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Add `bin/pan-hook-governance-reminder` with direct compiled-CLI dispatch ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Record the Cursor Desktop 3.21.16 probe verdict that honors flat `additional_context` ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Generate role-specific reminders from canonical policy and card selectors ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+- Add the turn-reminder registry, schema, and repository validation check ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+
+### Fixed
+
+- Keep a self-development profile command on workspace files when `PANCREATOR_EXEC_ROOT` points at that workspace ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+
+## [7.22.0] - 2026-09-22
+
+This release adds a 30-day retention policy, a report-first cleanup command, and a quality-pass gate on self-development finalize.
+
+### Changed
+
+- Set the default retention window to 30 days in `config.json` and RUNTIME-001 ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Resolve tracked conform surfaces against the selected self-development workspace ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Refuse `pan release finalize` when the conform pass or the style pass is unclean ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Repair instruction prose and TypeScript style on the release candidate ([ff88a3e0](https://github.com/alenlukic/pancreator/commit/ff88a3e0004366f1bfbc21850cc623bc8e4b8b08)).
+
+### Added
+
+- Add `pan cleanup` and `/pan-cleanup` with a report-first plan and an apply flag ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Add configurable retention classes in `config.json` and `library/schemas/config.schema.json` ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+- Report the Git branch of every worktree the cleanup removes ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+
+### Fixed
+
+- Read a missing `config.json` as the built-in 30-day window during install ([1b857178](https://github.com/alenlukic/pancreator/commit/1b85717889c19de55f3d9e07ad42aaadf1c48456)).
+
+## [7.21.3] - 2026-09-20
+
+This release rebuilds the target repository primer against the 7.21.2 source head.
+
+### Changed
+
+- Rebuild `docs/target-repo-primer.md` against source head `3a087b8c` after twelve minor versions of drift ([fe2d650f](https://github.com/alenlukic/pancreator/commit/fe2d650fae567ab64248f7b62f4ba425fafe541d)).
+
+### Added
+
+- Cover `pan debloat`, `pan horizon`, `pan schedule`, `pan worker`, and `pan attribute` in the primer ([fe2d650f](https://github.com/alenlukic/pancreator/commit/fe2d650fae567ab64248f7b62f4ba425fafe541d)).
+- Cover the OpenAI executor, `bin/check-landing` with `.githooks/`, `bin/benchmark`, and the 7.19.0 removals ([fe2d650f](https://github.com/alenlukic/pancreator/commit/fe2d650fae567ab64248f7b62f4ba425fafe541d)).
+
+## [7.21.2] - 2026-09-20
+
+This release orders the governance card ahead of the orientation list. An unbound agent takes its card before the first substantive response.
+
+### Changed
+
+- Order the governance-card requirement ahead of the orientation list on `AGENTS.md` and both Cursor rule surfaces ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+- Bind `COMMS-001` on the first chat report, before any card is resolved ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+- Move the unbound trigger to the first substantive response ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+
+### Added
+
+- Add four regression tests for card order, the denial clause, the `COMMS-001` chat rule, and live resolution through `STANDALONE_MODES.unbound` ([885155a3](https://github.com/alenlukic/pancreator/commit/885155a340d59ea04d22cb95552596dfcea547cd)).
+
+## [7.21.1] - 2026-09-20
+
+This release corrects two `pan debloat` scan defects. The orphan pass now sees live CLI entrypoints. The exclusive-reference cascade keeps facilities that the same scan already marked as used.
+
+### Changed
+
+- Mark the orphan category as medium confidence, because a path assembled at run time can hide a consumer ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Keep a facility with execution or direction evidence, and record it under `retained_because` ([2493e1a4](https://github.com/alenlukic/pancreator/commit/2493e1a413d40fee3f6dbe18047decdb8ec4b439)).
+
+### Added
+
+- Record a `bin/` script and a `package.json` script that runs a built `dist/**/*.js` path as live consumers ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Record a source string that names a spawned built file as a live consumer ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Follow a barrel chain to a real consumer so a module behind a consumed barrel stays live ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Recognize a subcommand invoked as `npm run <name>` or through a built `cli.js <name>` path ([2493e1a4](https://github.com/alenlukic/pancreator/commit/2493e1a413d40fee3f6dbe18047decdb8ec4b439)).
+
+### Fixed
+
+- Keep a live CLI entrypoint out of the unused-file report ([01697814](https://github.com/alenlukic/pancreator/commit/016978146d581bd7a8ae7b14848ae9c584882e6d)).
+- Keep a used facility out of the exclusive-reference cascade ([2493e1a4](https://github.com/alenlukic/pancreator/commit/2493e1a413d40fee3f6dbe18047decdb8ec4b439)).
+
+## [7.21.0] - 2026-09-20
+
+This release counts only functional usage when `pan debloat` scans chat, inbox, and prose. An incidental mention no longer keeps a facility.
+
+### Changed
+
+- Count a chat, inbox, or prose mention as usage only when the line is a functional direction ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Classify each prose edge by line, and follow only functional edges for reachability ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Count an agent `Read` of a facility file as a direction unless the agent later edits it ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Mark an operator line that repeats an assistant line as incidental ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Exclude every transcript of a `/pan-debloat` session from the usage window ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Keep a non-functional facility edge as an edit that does not block a cascade ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Make a functional direction in `AGENTS.md` an anchor for reachability ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+
+### Added
+
+- Train a logistic-regression intent classifier at scan time from `library/debloat/intent-corpus.jsonl` ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d), [`library/debloat/intent-corpus.jsonl`](library/debloat/intent-corpus.jsonl)).
+- Record execution evidence from `Task` launches, `pan` shell invocations, `--mode` and `--workflow` options, and operator slash lines ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Add source counts for excluded debloat sessions, agent invocations, agent lookups, and incidental mentions ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Add per-facility `direction_count` and `incidental_mention_count` ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+- Document the functional usage rule in DEBLOAT-001, `/pan-debloat`, and the operator guide ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d), [`docs/operator-guide.md`](docs/operator-guide.md)).
+
+### Removed
+
+- Remove the `mention` usage tier so an incidental mention never retains a facility ([89049eaa](https://github.com/alenlukic/pancreator/commit/89049eaaf187f76e37c019acabe356331f55665d)).
+
+## [7.20.0] - 2026-09-20
 
 This release rebuilds `pan debloat` over a functional dependency graph. The scanner now reports stranded files, reads the usage window in full, and checks orphans on their own.
 
@@ -19,7 +171,7 @@ This release rebuilds `pan debloat` over a functional dependency graph. The scan
 - Add an independent orphan check for unused exports, types, files, and import-chain-only symbols ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
 - Fail `pan debloat verify` while a freed entry still survives ([7ecea924](https://github.com/alenlukic/pancreator/commit/7ecea924b097b69868b5389c37964951c9d20a67)).
 
-## [6.30.1] - 2026-09-20
+## [7.19.1] - 2026-09-20
 
 This release applies the 2026-09-20 tune-harness verdicts to the self-development test suite.
 
@@ -37,7 +189,7 @@ This release applies the 2026-09-20 tune-harness verdicts to the self-developmen
 
 - Remove the four DELETE verdicts and the merged source tests from the integration and regression lanes ([f5f8e678](https://github.com/alenlukic/pancreator/commit/f5f8e6784fe038b909b4dc9f478b559076460d3f)).
 
-## [6.30.0] - 2026-09-20
+## [7.19.0] - 2026-09-20
 
 This release removes 15 unused harness facilities. The operator no longer sees `/pan-debug`, the investigation mode, or the preflight workflow.
 
@@ -54,7 +206,7 @@ This release removes 15 unused harness facilities. The operator no longer sees `
 - Remove skills `hypervisor`, `manual-qa-cases`, `map-acceptance-criteria`, `modern-code-review`, and `scope-control` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
 - Remove the `preflight` workflow and the example templates `stage-artifact.example.md` and `supervisor-assessment.example.json` ([12f2f996](https://github.com/alenlukic/pancreator/commit/12f2f996c5bd4163dc59a68c62a2544556abe152)).
 
-## [6.29.0] - 2026-09-20
+## [7.18.0] - 2026-09-20
 
 This release corrects the `/pan-debloat` reference graph. The scanner now treats a registration as a registry, not a use.
 
@@ -75,7 +227,7 @@ This release corrects the `/pan-debloat` reference graph. The scanner now treats
 - Allow unused validators to become removal candidates. A registration in the dispatch table is no longer a use ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
 - Do not treat a comment that names a facility as a live edge ([c60b913e](https://github.com/alenlukic/pancreator/commit/c60b913e7e8a78ed5c343416d5d5d7b2eaf44179)).
 
-## [6.28.0] - 2026-09-20
+## [7.17.0] - 2026-09-20
 
 This release extends policy COMMS-001. Chat reports now obey a 250-word prose cap and a terminal-state report contract. Embedded installs also receive the always-apply rule `pan-chat-output.mdc`.
 
@@ -89,7 +241,7 @@ This release extends policy COMMS-001. Chat reports now obey a 250-word prose ca
 
 - Project `.cursor/rules/pan-chat-output.mdc` from policy COMMS-001 as an always-apply rule in every embedded install ([a0c6f49a](https://github.com/alenlukic/pancreator/commit/a0c6f49af4380f3cf5b4d53890aeda399eeedad3), [docs/embedded-installation.md](docs/embedded-installation.md)).
 
-## [6.27.0] - 2026-09-20
+## [7.16.0] - 2026-09-20
 
 This release adds `/pan-debloat`. An operator can scan unused harness facilities and remove a selected set as a release.
 
@@ -99,9 +251,9 @@ This release adds `/pan-debloat`. An operator can scan unused harness facilities
 - Add `pan debloat scan|select|impact|verify` so the command can inventory facilities, record the operator choice, compute the exclusive-reference closure, and prove the workspace ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
 - Add policy DEBLOAT-001, the `debloat` standalone mode, the `debloater` persona, and skill `debloat-closure` so removal stays inside the recorded selection ([e3ec36db](https://github.com/alenlukic/pancreator/commit/e3ec36dba6070922f77424f3d43aafde31fd6403)).
 
-## [6.26.0] - 2026-09-20
+## [7.15.0] - 2026-09-20
 
-This release consolidates the five harness-repair releases 6.21.0 through 6.25.0 into one installable tree and adds the supervisor's harness-path delegation.
+This release consolidates the five harness-repair releases 7.10.0 through 7.14.0 into one installable tree and adds the supervisor's harness-path delegation.
 
 ### Changed
 
@@ -112,9 +264,9 @@ This release consolidates the five harness-repair releases 6.21.0 through 6.25.0
 ### Fixed
 
 - The regression guard for the versioned-landing rule accepts the scoped commit prohibition in `AGENTS.md` ([f335bb90](https://github.com/alenlukic/pancreator/commit/f335bb90dd7fe3f9f2bcc1e56fc97700efc7b052)).
-- The multiplexed watch measures its stall window as a duration, as the focused watch does, so the 6.21.0 liveness rule and the 6.24.0 multiplexed watch agree ([fb517a2b](https://github.com/alenlukic/pancreator/commit/fb517a2bbd6aebbb9f45864036574521314cdcf6)).
+- The multiplexed watch measures its stall window as a duration, as the focused watch does, so the 7.10.0 liveness rule and the 7.13.0 multiplexed watch agree ([fb517a2b](https://github.com/alenlukic/pancreator/commit/fb517a2bbd6aebbb9f45864036574521314cdcf6)).
 
-## [6.25.0] - 2026-09-20
+## [7.14.0] - 2026-09-20
 
 This release closes six compliance findings. A validator now blocks only on a field the worker contract declares. An evidence worker cannot satisfy the ship full-profile gate.
 
@@ -140,7 +292,7 @@ This release closes six compliance findings. A validator now blocks only on a fi
 
 - Close the prototype intake exemption so AC-010 covers that handler ([9c406af3](https://github.com/alenlukic/pancreator/commit/9c406af37a0fd510aad89c807d974de8eff3759b)).
 
-## [6.24.0] - 2026-09-19
+## [7.13.0] - 2026-09-19
 
 This release makes the suite-cost gate advisory. It also adds a multiplexed cohort wait, a bounded runtime rewrite, and progress output on long commands.
 
@@ -164,7 +316,7 @@ This release makes the suite-cost gate advisory. It also adds a multiplexed coho
 - Wake a cohort supervisor on the first finished sibling, not on a single blocked wait ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
 - Stop a default scan of scratch space during a runtime-name rewrite ([3bcc43b8](https://github.com/alenlukic/pancreator/commit/3bcc43b8efbda2b75247fb44c5775e0d4692f258)).
 
-## [6.23.0] - 2026-09-19
+## [7.12.0] - 2026-09-19
 
 This release repairs nine mechanical-friction defects. Worktree-bound stages keep file tools. Prepare, watch, waiver, and plan-approval recovery name the next command.
 
@@ -180,7 +332,7 @@ This release repairs nine mechanical-friction defects. Worktree-bound stages kee
 - Refresh the disposable Cursor projection on worktree create and branch restore ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
 - Inherit the planning worktree on a single-chunk route, and refuse to branch away from uncommitted work ([ff190097](https://github.com/alenlukic/pancreator/commit/ff190097c24b5cc8a95e73b8e4da520a17ce8657)).
 
-## [6.22.0] - 2026-09-19
+## [7.11.0] - 2026-09-19
 
 This release repairs eight internal-consistency defects. A late worker-record call no longer rewrites a launched contract. Primer freshness, verify return visits, ship scope, and release allocation now match the stated rules.
 
@@ -204,7 +356,7 @@ This release repairs eight internal-consistency defects. A late worker-record ca
 
 - A late `pan worker record` no longer allocates a phantom attempt or rewrites the contract a launched worker holds ([183437cc](https://github.com/alenlukic/pancreator/commit/183437cc25403c0a5a7d0968cb3f7d1e388003cd)).
 
-## [6.21.0] - 2026-09-19
+## [7.10.0] - 2026-09-19
 
 This release bounds executor write grants, records prompt-task tool policy, and measures worker liveness as a duration.
 
@@ -226,7 +378,7 @@ This release bounds executor write grants, records prompt-task tool policy, and 
 
 - Mark a rollback plan incomplete when a generated pan command is not in the CLI grammar ([d2334640](https://github.com/alenlukic/pancreator/commit/d2334640a86ae15efe2ff838c9ef289a3c9b03ef)).
 
-## [6.20.0] - 2026-09-19
+## [7.9.0] - 2026-09-19
 
 This release makes the operator's chat session the supervisor of a long-horizon session end to end, adds a session arbiter so no harness verdict can end a task, closes the four hard blocks that may stop long-horizon work, and refuses any landing on `pan-dev` that carries no release.
 
@@ -243,7 +395,7 @@ This release makes the operator's chat session the supervisor of a long-horizon 
 - `horizon reconcile`, `horizon reinstate`, and `horizon start --headless` for the scheduled-job substrate ([6a9425d7](https://github.com/alenlukic/pancreator/commit/6a9425d7eb11d303cd4aaaf9328b97170e3ac0ad), [3ce507b0](https://github.com/alenlukic/pancreator/commit/3ce507b02b9970ca5800e7ac1dd93deda1553acd)).
 - `bin/check-landing` with `pre-commit` and `pre-merge-commit` hooks under `.githooks/`, wired by `npm run prepare`: a direct installable commit on `pan-dev` or `main`, and a merge whose source carries no new indexed release, are refused ([de81dcab](https://github.com/alenlukic/pancreator/commit/de81dcab4007e4fcb180e792de39f11a109e7bab), [b2c536e5](https://github.com/alenlukic/pancreator/commit/b2c536e58ede5ec78f2f627f79a5780db87d3fc2)).
 
-## [6.19.0] - 2026-09-19
+## [7.8.0] - 2026-09-19
 
 This release repairs eleven live command defects on the ship, inbox, and validator paths. It also allocates concurrent release versions from one shared ledger.
 
@@ -283,7 +435,7 @@ This release repairs eleven live command defects on the ship, inbox, and validat
 - Show captured `.txt` requests in `pan inbox` ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
 - Submit a blocked implement output that carries blocked data ([7845b9c4](https://github.com/alenlukic/pancreator/commit/7845b9c4cb3e8ffe675e2763ab575378a5cfcf7b)).
 
-## [6.18.0] - 2026-09-19
+## [7.7.0] - 2026-09-19
 
 This release classifies load-sensitive gate failures, allocates concurrent release versions, and repairs headless workers. Plan validation now rejects a pan option that the CLI does not accept.
 
@@ -308,7 +460,7 @@ This release classifies load-sensitive gate failures, allocates concurrent relea
 - Repair three regression guards so they fail against the pre-change state ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
 - Render the suite-profile advisory in both shapes and drop the doubled blank line ([ebe6baee](https://github.com/alenlukic/pancreator/commit/ebe6baee655927471ce69b073b5e1742ddfccc3c)).
 
-## [6.17.0] - 2026-09-19
+## [7.6.0] - 2026-09-19
 
 This release adds `/pan-trace`. The command runs a cheap end-to-end smoke of a newly merged harness feature.
 
@@ -320,7 +472,7 @@ This release adds `/pan-trace`. The command runs a cheap end-to-end smoke of a n
 - Document the choice among `/pan-trace`, `/pan-qa-workflow`, and `pan eval` ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
 - Add integration tests for command registration and the trace card ([1530e2e5](https://github.com/alenlukic/pancreator/commit/1530e2e561ba9bc030a55caa034a88a01097303e)).
 
-## [6.16.1] - 2026-09-19
+## [7.5.1] - 2026-09-19
 
 This release adds four `openai:` bracket options for the Astra Responses API. A persona can set `mode`, `context`, `summary`, and `verbosity`. The `context` option has no replay effect yet.
 
@@ -328,7 +480,7 @@ This release adds four `openai:` bracket options for the Astra Responses API. A 
 
 - Add `mode`, `context`, `summary`, and `verbosity` as `openai:` bracket options for `reasoning` and `text.verbosity` ([e22825ee](https://github.com/alenlukic/pancreator/commit/e22825ee7d7b3849521d4010b32713c2dbb4114c)).
 
-## [6.16.0] - 2026-09-18
+## [7.5.0] - 2026-09-18
 
 This release extends the style scanner and the `/pan-style` command. The scanner reports the handbook rules it can decide. The command reads every file that changed after the last checkpoint.
 
@@ -353,7 +505,7 @@ This release extends the style scanner and the `/pan-style` command. The scanner
 
 - Follow a `${}` substitution in the template masker so a nested template does not end the outer template early ([3b22f015](https://github.com/alenlukic/pancreator/commit/3b22f01569f6315fefad4fc787b3f2f7e615d8f4)).
 
-## [6.15.0] - 2026-09-18
+## [7.4.0] - 2026-09-18
 
 This release extends `/pan-conform` to the harness instruction surfaces that STE-001 names. The scanner and the validator now cover those files. The first operator conform pass repairs the copy debt.
 
@@ -371,18 +523,18 @@ This release extends `/pan-conform` to the harness instruction surfaces that STE
 
 - Accept a policy file and an `.mdc` rule as validator targets ([76d1e1f5](https://github.com/alenlukic/pancreator/commit/76d1e1f5376c52cbdc537e3b2bde2b6b0b0e4dd6)).
 
-## [6.14.0] - 2026-09-18
+## [7.3.0] - 2026-09-18
 
-This release indexes the merged tree. Versions 6.12.0 and 6.13.0 were cut in parallel on separate branches, so neither indexed commit describes a tree holding both features. This release restores the release identity the installer checks.
+This release indexes the merged tree. Versions 7.1.0 and 7.2.0 were cut in parallel on separate branches, so neither indexed commit describes a tree holding both features. This release restores the release identity the installer checks.
 
 ### Changed
 
-- Index a release commit whose harness payload matches the merge of the design composition of 6.12.0 and the embedded installation registry of 6.13.0 ([ff415dc4](https://github.com/alenlukic/pancreator/commit/ff415dc4)).
+- Index a release commit whose harness payload matches the merge of the design composition of 7.1.0 and the embedded installation registry of 7.2.0 ([ff415dc4](https://github.com/alenlukic/pancreator/commit/ff415dc4)).
 - Drop the stale version from the `AGENTS.md` header ([38bd2d5f](https://github.com/alenlukic/pancreator/commit/38bd2d5f)).
 
-## [6.13.0] - 2026-09-18
+## [7.2.0] - 2026-09-18
 
-This release adds a machine-local registry of embedded installations. Operators can list those installs and archive cited inbox items from the source checkout. The version is 6.13.0 because pan-dev already holds 6.12.0.
+This release adds a machine-local registry of embedded installations. Operators can list those installs and archive cited inbox items from the source checkout. The version is 7.2.0 because pan-dev already holds 7.1.0.
 
 ### Changed
 
@@ -399,7 +551,7 @@ This release adds a machine-local registry of embedded installations. Operators 
 
 - Match a cited inbox file name as a whole path segment ([3363f781](https://github.com/alenlukic/pancreator/commit/3363f7819b91ddd67bae285c56acec1b85b6eb33)).
 
-## [6.12.0] - 2026-09-18
+## [7.1.0] - 2026-09-18
 
 This release adds an optional design composition for planning and delivery runs. The operator selects the option at run creation. A run without the option keeps the current graph.
 
@@ -419,7 +571,7 @@ This release adds an optional design composition for planning and delivery runs.
 
 - Create every inbox lifecycle directory during install layout preparation ([62d19132](https://github.com/alenlukic/pancreator/commit/62d191323c7ac253812f0f6941f5e706fd3cd7d6)).
 
-## [6.11.0] - 2026-09-18
+## [7.0.0] - 2026-09-18
 
 This release adds long-horizon mode, a headless driver, a session ladder, and scheduled jobs. The operator selects the mode at preflight. The harness then advances a queue of workflows and one-off tasks without a mid-run stop.
 

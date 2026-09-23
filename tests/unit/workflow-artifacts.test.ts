@@ -855,6 +855,32 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
   assert.equal(standardizeRuntimeFileNames(root).renamed_files, 0)
 })
 
+test('runtime filename standardization covers research and benchmarks', () => {
+  const root = createTestTempDirectory('pan-runtime-temporal-files-')
+
+  write(path.join(root, 'runtime/research/plain-note.md'), '# Research\n')
+  write(
+    path.join(root, 'runtime/benchmarks/benchmark-1789980890366.json'),
+    '{}\n',
+  )
+  // A run record that cites the research note follows the rename.
+  const record = path.join(root, 'runtime/logs/workflows/some-run/notes.json')
+
+  write(
+    record,
+    `${JSON.stringify({ source: 'runtime/research/plain-note.md' })}\n`,
+  )
+
+  const summary = standardizeRuntimeFileNames(root)
+  const renamedResearch = summary.renames['runtime/research/plain-note.md']
+
+  assert.equal(summary.renamed_files, 2)
+  assert.ok(renamedResearch)
+  assert.ok(summary.renames['runtime/benchmarks/benchmark-1789980890366.json'])
+  assert.equal(summary.updated_files, 1)
+  assert.equal(JSON.parse(readFileSync(record, 'utf8')).source, renamedResearch)
+})
+
 // `pan archive` renamed all 13 queued harness repair intakes out of the shape
 // `REPAIR-001` mandates and left 20 by-name cross-references dangling, because
 // standardization rewrites a bare file name that the reference repair, which
@@ -1310,6 +1336,7 @@ test('name standardization is unchanged across the directories it already scanne
 test('mutable runtime rewrites include durable records and exclude scratch and unknown directories', () => {
   const root = createTestTempDirectory('pancreator-mutable-runtime-')
   const runtimeRoot = path.join(root, 'runtime')
+
   const durable = path.join(
     runtimeRoot,
     'logs',
@@ -1321,6 +1348,7 @@ test('mutable runtime rewrites include durable records and exclude scratch and u
   // neither is reachable through a `runtime/logs` entry.
   const allocations = path.join(runtimeRoot, 'release', 'allocations.jsonl')
   const series = path.join(runtimeRoot, 'fast-wall-series.jsonl')
+
   const scratch = path.join(runtimeRoot, 'tmp', 'scratch.txt')
   const unknown = path.join(runtimeRoot, 'future-area', 'record.json')
 

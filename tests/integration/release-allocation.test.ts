@@ -147,6 +147,7 @@ test('the allocation rejects an unknown bump before touching the ledger', () => 
 test('the ship validator accepts an allocated version above the exact next one for the same bump only', () => {
   const root = createFixture()
   const current = committedVersion(root)
+
   const first = createWorktree(root, 'release-one')
   const second = createWorktree(root, 'release-two')
   const secondPath = path.join(root, second.path)

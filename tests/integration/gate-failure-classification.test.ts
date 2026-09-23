@@ -234,6 +234,7 @@ test('a gate records and accepts an isolated out-of-closure pass', () => {
     fingerprint: 'baseline',
     entries: [],
   }
+
   const evaluated = evaluateDeterministicCriteria(
     setup.root,
     runDirectory,

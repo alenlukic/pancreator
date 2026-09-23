@@ -372,3 +372,44 @@ test('a narrowed sync prunes nothing outside the projection it renders', () => {
   assert.equal(existsSync(rule), true)
   assert.deepEqual(validateProjectionDrift(root).errors, [])
 })
+
+test('Cursor hook projection merges managed entries and detects their drift', () => {
+  const root = createFixture()
+  const hooksPath = path.join(root, '.cursor', 'hooks.json')
+  const hooks = JSON.parse(readFileSync(hooksPath, 'utf8')) as {
+    version: number
+    hooks: Record<string, Array<Record<string, unknown>>>
+  }
+  const targetHook = { command: './target-hook', timeout: 9 }
+
+  hooks.version = 3
+  hooks.hooks.beforeSubmitPrompt?.unshift(targetHook)
+  const managed = hooks.hooks.beforeSubmitPrompt?.find(
+    (entry) =>
+      typeof entry.command === 'string' &&
+      entry.command.includes('pan-hook-governance-reminder'),
+  )
+
+  assert.ok(managed)
+  managed.timeout = 99
+  hooks.hooks.afterFileEdit = [{ command: './target-after-edit' }]
+  writeFileSync(hooksPath, `${JSON.stringify(hooks, null, 2)}\n`)
+
+  assert.ok(
+    validateProjectionDrift(root).errors.some((error) =>
+      error.includes('.cursor/hooks.json projection drift'),
+    ),
+  )
+
+  syncCursorProjection(root, { write: true })
+
+  const merged = JSON.parse(readFileSync(hooksPath, 'utf8')) as typeof hooks
+
+  assert.equal(merged.version, 3)
+  assert.deepEqual(merged.hooks.beforeSubmitPrompt?.[0], targetHook)
+  assert.equal(merged.hooks.beforeSubmitPrompt?.[1]?.timeout, 5)
+  assert.deepEqual(merged.hooks.afterFileEdit, [
+    { command: './target-after-edit' },
+  ])
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+})

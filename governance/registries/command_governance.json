@@ -6,6 +6,10 @@
     "pan-summarize-context",
     "pan-validate",
     {
+      "command": "pan-cleanup",
+      "card_mode": "cleanup"
+    },
+    {
       "command": "pan-tune-harness",
       "card_mode": "tune-harness"
     }
@@ -56,6 +60,14 @@
       "worktree_forwarding": [
         "author apply --input runtime/inbox/target-authoring/<id>.json --worktree <name> --json",
         "author validate --extension <id> --worktree <name> --json"
+      ]
+    },
+    {
+      "command": "pan-conform",
+      "worktree_forwarding": [
+        "conform scan --worktree <name> --json",
+        "conform checkpoint --worktree <name> --json",
+        "governance card --mode conform --worktree <name>"
       ]
     },
     {

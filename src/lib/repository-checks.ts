@@ -25,6 +25,7 @@ import { gitWorkspaceSnapshot } from './git.js'
 import {
   appendJsonLine,
   fileExists,
+  isPancreatorRoot,
   isRecord,
   readJson,
   readText,
@@ -61,8 +62,18 @@ import { loadWorkflowFile } from './workflow.js'
  * is the base. `PAN_TEST_PROFILE` never leaks from an outer test run: a gate
  * that does not set it runs with it removed, so only the profiled full gate
  * writes a suite profile.
+ *
+ * `PANCREATOR_ROOT` is rebound to the workspace whenever the workspace is a
+ * Pancreator checkout of its own. `bin/pan` pins that variable to the
+ * installation so run state, the worktree index, and the gate cache stay there
+ * while `PANCREATOR_EXEC_ROOT` moves the executing build, and a profile command
+ * that inherited the pin read its required files, registries, and projections
+ * from the installation instead of the workspace the gate targets. A target
+ * installation keeps the inherited value, because its workspace is the target
+ * repository and the harness lives elsewhere by design.
  */
 function profileCommandEnv(
+  workspaceRoot: string,
   env: Record<string, string>,
 ): Record<string, string | undefined> {
   const merged: Record<string, string | undefined> = {
@@ -72,6 +83,10 @@ function profileCommandEnv(
 
   if (!(TEST_PROFILE_ENV in env)) {
     delete merged[TEST_PROFILE_ENV]
+  }
+
+  if (!('PANCREATOR_ROOT' in env) && isPancreatorRoot(workspaceRoot)) {
+    merged.PANCREATOR_ROOT = workspaceRoot
   }
 
   return merged
@@ -282,6 +297,19 @@ function normalizeDiagnosticLine(line: string, workspaceRoot: string): string {
     stripAnsi(line)
       .replaceAll('\\', '/')
       .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
+      // Test scratch trees carry per-run random segments (the suite run
+      // directory and the fixture directory), and harness run or session ids
+      // embed a volatile temporal prefix. Neither is ever the failure signal,
+      // and keeping either would report every pre-existing environment
+      // failure as new on every run.
+      .replaceAll(
+        /runtime\/tmp\/tests\.noindex\/(?:[^\s/'"]+\/){2}/gu,
+        'runtime/tmp/tests.noindex/<scratch>/',
+      )
+      .replaceAll(
+        /\b\d+_(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}-\d{4}_[\w-]+/gu,
+        '<run-id>',
+      )
       // pytest-xdist prefixes depend on worker scheduling and collection order.
       // Remove each prefix so two equivalent runs produce the same identity.
       .replaceAll(/^(?:\[(?:gw\d+|\s*\d+%)\]\s*)+/giu, '')
@@ -2010,7 +2038,7 @@ function execute(
       shell: true,
       stdio: ['ignore', stdoutFd, stderrFd],
       timeout: timeoutMs,
-      env: profileCommandEnv(env),
+      env: profileCommandEnv(workspaceRoot, env),
       detached,
     }
     const result = spawnSync(command, [], spawnOptions)
@@ -2082,7 +2110,7 @@ function executeStreaming(
       cwd: workspaceRoot,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: profileCommandEnv(options.env ?? {}),
+      env: profileCommandEnv(workspaceRoot, options.env ?? {}),
       detached: process.platform !== 'win32',
     })
     const killTree = (signal: NodeJS.Signals): void => {

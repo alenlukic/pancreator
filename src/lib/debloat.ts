@@ -7,6 +7,10 @@ import {
   type ClosureRecord,
 } from './debloat/closure.js'
 import { buildReferenceGraph, findReferences } from './debloat/graph.js'
+import {
+  loadIntentClassifier,
+  type IntentClassifier,
+} from './debloat/intent.js'
 import { collectFacilities, type Facility } from './debloat/inventory.js'
 import {
   adjudicationAllowsSelection,
@@ -64,6 +68,7 @@ export {
   type CandidateAssessment,
 } from './debloat/adjudication.js'
 export {
+  alwaysReadTargets,
   buildReferenceGraph,
   findReferences,
   reachableFrom,
@@ -71,6 +76,18 @@ export {
   type ReferenceGraph,
   type ReferrerClass,
 } from './debloat/graph.js'
+export {
+  INTENT_CORPUS_PATH,
+  intentFeatures,
+  isInformationRequest,
+  loadIntentClassifier,
+  loadIntentCorpus,
+  trainIntentClassifier,
+  type IntentClassifier,
+  type IntentExample,
+  type IntentLabel,
+  type IntentVerdict,
+} from './debloat/intent.js'
 export {
   collectFacilities,
   EDIT_ONLY_PATHS,
@@ -229,11 +246,22 @@ interface FunctionalGraph {
   orphanFindings: OrphanFinding[]
 }
 
-async function buildFunctionalGraph(root: string): Promise<FunctionalGraph> {
-  const base = collectFacilities(root)
-  const symbolIndex = await buildSymbolIndex(root)
+/**
+ * Inventory the workspace and build its graph.
+ *
+ * The intent classifier is trained from the installation root's corpus rather
+ * than the workspace's, because the corpus is harness input and the scanned
+ * tree may be an older worktree that predates it.
+ */
+async function buildFunctionalGraph(
+  workspaceRoot: string,
+  classifier: IntentClassifier,
+): Promise<FunctionalGraph> {
+  const base = collectFacilities(workspaceRoot)
+  const symbolIndex = await buildSymbolIndex(workspaceRoot)
   const symbols = sourceSymbolFacilities(base, symbolIndex)
   const orphanFindings = findOrphans(symbolIndex)
+
   const facilities = [
     ...base,
     ...symbols,
@@ -242,7 +270,7 @@ async function buildFunctionalGraph(root: string): Promise<FunctionalGraph> {
 
   return {
     facilities,
-    graph: buildReferenceGraph(root, facilities),
+    graph: buildReferenceGraph(workspaceRoot, facilities, { classifier }),
     symbolIndex,
     orphanFindings,
   }
@@ -266,12 +294,17 @@ export async function scanDebloat(
   const windowStart = new Date(
     now.getTime() - windowDays * MILLISECONDS_PER_DAY,
   )
+
   const workspace = resolveDebloatWorkspace(root, options.worktreeName)
-  const functional = await buildFunctionalGraph(workspace.absolute)
+  const classifier = loadIntentClassifier(root)
+
+  const functional = await buildFunctionalGraph(workspace.absolute, classifier)
   const { facilities, graph, symbolIndex, orphanFindings } = functional
+
   const scan = scanUsage(root, facilities, {
     windowStart,
     graph,
+    classifier,
     ...(options.transcriptsRoot === undefined
       ? {}
       : { transcriptsRoot: options.transcriptsRoot }),
@@ -313,6 +346,7 @@ export async function scanDebloat(
       sessionId: options.sessionId ?? '00000000-000000-000000',
       now,
       symbolIndex,
+      usage: scan.usage,
     }),
   )
 
@@ -508,6 +542,7 @@ export function selectDebloatFacilities(
       entry,
     ]),
   )
+
   const rejected = facilityIds
     .filter((id) => {
       if (!candidates.has(id)) {
@@ -592,13 +627,22 @@ export async function computeDebloatImpact(
   const paths = sessionPaths(root, sessionId)
   const scan = readScanRecord(paths)
   const selection = readSelectionRecord(paths)
+
   const workspace = resolveDebloatWorkspace(root, scan.workspace.worktree)
-  const functional = await buildFunctionalGraph(workspace.absolute)
+  const functional = await buildFunctionalGraph(
+    workspace.absolute,
+    loadIntentClassifier(root),
+  )
   const { facilities, graph, symbolIndex } = functional
+
+  // The scan's usage records travel with the session. The graph is rebuilt
+  // from the workspace, but nothing re-measures use here, so the closure reads
+  // the same evidence the candidate list was decided on.
   const closure = computeClosure(facilities, graph, selection.selected, {
     sessionId,
     now,
     symbolIndex,
+    usage: scan.usage,
   })
 
   writeJsonAtomic(paths.closure, closure)
@@ -647,6 +691,7 @@ export async function verifyDebloat(
   const paths = sessionPaths(root, sessionId)
   const scan = readScanRecord(paths)
   const closure = readClosureRecord(paths)
+
   const workspace = resolveDebloatWorkspace(root, scan.workspace.worktree)
   const removed = new Set(closure.removed_facilities)
   const surviving = closure.remove
@@ -688,6 +733,7 @@ export async function verifyDebloat(
       path: entry.path,
       ...(entry.symbol ? { symbol: entry.symbol } : {}),
     }))
+
   const status =
     surviving.length === 0 &&
     survivingFreed.length === 0 &&

@@ -35,10 +35,10 @@ Do not retry the blocked step without new information. Put that naming in a dura
 These constraints are never traded for the objective, for convenience, or for speed. Every MUST and MUST NOT on a card, in a policy, or in a persona is either one of these or a fragile procedure. Each one holds as written.
 
 - You MUST NOT trade correctness, security, maintainability, or an explicit operator constraint for convenience or short-term speed.
-- You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Commit and merge on your own judgment, on a branch that lands on `pan-dev`. Nothing lands on `pan-dev` without a proper version: a change to an installable harness input reaches `pan-dev` only inside a release (the branch carries the release commit and the `release/index.json` commit for a new `VERSION`), and you MUST NOT land such a change directly on `pan-dev` or `main`. The operator promotes `pan-dev` to `main` and pushes. Approvals, stage changes, pauses, and irreversible decisions are operator-owned, and a waiver is too unless away mode authors one within its own guardrails.
+- You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Commit and merge on your own judgment, on a branch that lands on `pan-dev`. Nothing lands on `pan-dev` without a proper version: a change to an installable harness input reaches `pan-dev` only inside a release (the branch carries the release commit and the `release/index.json` commit for a new `VERSION`). You MUST NOT land such a change directly on `pan-dev` or `main`, and the operator promotes `pan-dev` to `main` and pushes. Approvals, stage changes, pauses, and irreversible decisions are operator-owned, and a waiver is too unless away mode authors one within its own guardrails.
 - You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every workflow lifecycle action.
 - You MUST NOT inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
-- You MUST NOT run concurrent mutating workflows against one workspace. Worktree isolation separates tracked source trees, but it does not separate the release version sequence, the `pan-dev` branch, or `release/index.json`; release preparation MUST serialize those shared resources through the allocation authority.
+- You MUST NOT run concurrent mutating workflows against one workspace. Worktree isolation separates tracked source trees. It does not separate the release version sequence, the `pan-dev` branch, or `release/index.json`. Release preparation MUST serialize those shared resources through the allocation authority.
 - You MUST NOT change Pancreator release metadata outside a self-development ship stage or `/pan-release`, and MUST NOT edit `release/index.json` before the release commit exists.
 - Browser inspection MUST follow `BROWSER-001`: an isolated context, never the operator's personal browser or host settings.
 - You MUST NOT manufacture completion. Report missing evidence and uncertainty instead.
@@ -60,7 +60,15 @@ Authority uses this order:
 
 An operator directive is final for its covered action.
 
-Before repository exploration, read `docs/target-repo-primer.md` and `runtime/repository-checks.json`. Read a primer reference when the task gives you a concrete reason.
+Resolve and read your governance card first. Do this before repository exploration and before your first substantive response.
+
+- A workflow worker reads the invocation card its delegation names.
+- A standalone mode runs `./bin/pan governance card --mode <mode>` and reads the card that command writes.
+- Every other agent runs `./bin/pan governance card --mode unbound` and reads that card.
+
+This file, `docs/target-repo-primer.md`, and `runtime/repository-checks.json` do not satisfy that step. They carry no policy body. An agent that reads only them has not read its governance.
+
+Then read `docs/target-repo-primer.md` and `runtime/repository-checks.json` before repository exploration. Read a primer reference when the task gives you a concrete reason.
 
 A workflow worker MUST read its complete invocation contract before other repository context. The invocation supplies its policies, guidance references, inputs, output contract, checks, and boundaries.
 
@@ -76,7 +84,7 @@ A workflow worker follows its named persona and invocation. It writes only the d
 
 A standalone mode follows the card from `./bin/pan governance card --mode <mode>`. It holds no workflow run, stage contract, or gate.
 
-An unbound agent handles an ad-hoc operator request outside every run and named mode. Before substantive repository work, it MUST take its governance from `./bin/pan governance card --mode unbound`.
+An unbound agent handles an ad-hoc operator request outside every run and named mode. Before its first substantive response, it MUST take its governance from `./bin/pan governance card --mode unbound`.
 
 Best-of-N uses the projected `pan-meta-orchestrator` agent. That agent directly supervises each child run and delegates only run-scoped workers.
 
@@ -116,7 +124,7 @@ The release steward owns the version decision and synchronized metadata inside a
 
 ## Shell and chat output
 
-Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
+`COMMS-001` governs every report you write to the operator in chat. It binds your first response, before you resolve any card. Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
 
 ## Validation
 

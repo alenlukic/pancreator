@@ -66,6 +66,82 @@ test('repository checks run in an explicitly targeted workspace', () => {
   assert.equal(realpathSync(check.workspace_root), realpathSync(workspace))
 })
 
+// `bin/pan` pins PANCREATOR_ROOT on the installation while
+// PANCREATOR_EXEC_ROOT moves the executing build, so a worktree gate inherited
+// a pin that made `npm run validate` read the installation's required files
+// and projections instead of the workspace it was gating.
+test('a profile command resolves the targeted workspace as its own root', () => {
+  const root = createFixture()
+  const workspace = path.join(root, 'candidate-checkout')
+  const observed = path.join(root, 'observed-root')
+
+  mkdirSync(workspace)
+  writeFileSync(
+    path.join(workspace, 'package.json'),
+    `${JSON.stringify({ name: 'pancreator-v2-prototype' }, null, 2)}\n`,
+  )
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      fast: {
+        probes: [],
+        commands: [`printf '%s' "\${PANCREATOR_ROOT:-unset}" > "${observed}"`],
+      },
+    },
+  })
+
+  const previous = process.env.PANCREATOR_ROOT
+
+  process.env.PANCREATOR_ROOT = root
+
+  try {
+    const check = runRepositoryCheck(root, 'fast', { workspace })
+
+    assert.equal(check.status, 'passed')
+    assert.equal(readFileSync(observed, 'utf8'), workspace)
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PANCREATOR_ROOT
+    } else {
+      process.env.PANCREATOR_ROOT = previous
+    }
+  }
+})
+
+test('a profile command in a target workspace keeps the installation root', () => {
+  const root = createFixture()
+  const workspace = path.join(root, 'target-repository')
+  const observed = path.join(root, 'observed-root')
+
+  mkdirSync(workspace)
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      fast: {
+        probes: [],
+        commands: [`printf '%s' "\${PANCREATOR_ROOT:-unset}" > "${observed}"`],
+      },
+    },
+  })
+
+  const previous = process.env.PANCREATOR_ROOT
+
+  process.env.PANCREATOR_ROOT = root
+
+  try {
+    const check = runRepositoryCheck(root, 'fast', { workspace })
+
+    assert.equal(check.status, 'passed')
+    assert.equal(readFileSync(observed, 'utf8'), root)
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PANCREATOR_ROOT
+    } else {
+      process.env.PANCREATOR_ROOT = previous
+    }
+  }
+})
+
 test('pre-implementation baselines use the run workspace', () => {
   const { root, worktrees } = worktreeCheckpoint('single')
   const worktree = worktrees.alpha

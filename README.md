@@ -97,6 +97,7 @@ For indexed release updates:
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work
 - `/pan-build-briefs`: generate or refresh project brief semantics and design tokens
 - `/pan-summarize-context`: emit a copyable Markdown handoff for a fresh agent conversation
+- `/pan-cleanup`: report and apply configured retention to harness runtime state and finished worktrees
 - `/pan-release`: checkpoint, rebase, finalize local release commits, and write PR copy
 - `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 

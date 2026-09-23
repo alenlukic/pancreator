@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://turn-reminder-profiles/v1",
+  "title": "Governance turn reminder profiles",
+  "type": "object",
+  "required": ["schema_version", "byte_budget", "state", "profiles", "roles"],
+  "additionalProperties": false,
+  "$defs": {
+    "policySelector": {
+      "type": "object",
+      "required": ["id", "type", "policy_id", "instruction_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "type": {
+          "const": "policy"
+        },
+        "policy_id": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9-]*$"
+        },
+        "instruction_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "cardSection": {
+      "type": "object",
+      "required": ["heading", "content_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "heading": {
+          "type": "string",
+          "pattern": "^#{1,6} "
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "cardSelector": {
+      "type": "object",
+      "required": ["id", "type", "sections"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "type": {
+          "const": "card"
+        },
+        "sections": {
+          "type": "object",
+          "required": ["self_development", "embedded", "detached"],
+          "additionalProperties": false,
+          "properties": {
+            "self_development": {
+              "$ref": "#/$defs/cardSection"
+            },
+            "embedded": {
+              "$ref": "#/$defs/cardSection"
+            },
+            "detached": {
+              "$ref": "#/$defs/cardSection"
+            }
+          }
+        }
+      }
+    },
+    "selector": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/policySelector"
+        },
+        {
+          "$ref": "#/$defs/cardSelector"
+        }
+      ]
+    },
+    "profile": {
+      "type": "object",
+      "required": ["selectors"],
+      "additionalProperties": false,
+      "properties": {
+        "extends": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "selectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector"
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "byte_budget": {
+      "type": "integer",
+      "minimum": 512
+    },
+    "state": {
+      "type": "object",
+      "required": ["max_age_days", "max_entries"],
+      "additionalProperties": false,
+      "properties": {
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_entries": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/profile"
+      }
+    },
+    "roles": {
+      "type": "object",
+      "required": [
+        "regular-supervisor",
+        "cohort-supervisor",
+        "long-horizon-supervisor",
+        "unbound",
+        "pair",
+        "shepherd",
+        "debloat",
+        "cleanup",
+        "standalone-other",
+        "none"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "regular-supervisor": {
+          "type": "string"
+        },
+        "cohort-supervisor": {
+          "type": "string"
+        },
+        "long-horizon-supervisor": {
+          "type": "string"
+        },
+        "unbound": {
+          "type": "string"
+        },
+        "pair": {
+          "type": "string"
+        },
+        "shepherd": {
+          "type": "string"
+        },
+        "debloat": {
+          "type": "string"
+        },
+        "cleanup": {
+          "type": "string"
+        },
+        "standalone-other": {
+          "type": "string"
+        },
+        "none": {
+          "type": "null"
+        }
+      }
+    }
+  }
+}

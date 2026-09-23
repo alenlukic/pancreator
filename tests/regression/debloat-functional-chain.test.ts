@@ -81,6 +81,7 @@ test('the pre-6.30.0 removal exposes the complete stranded chain', async () => {
   const base = collectFacilities(root)
   const symbols = await buildSymbolIndex(root)
   const orphans = findOrphans(symbols)
+
   const facilities = [
     ...base,
     ...sourceSymbolFacilities(base, symbols),
@@ -91,6 +92,7 @@ test('the pre-6.30.0 removal exposes the complete stranded chain', async () => {
     sessionId: SESSION,
     symbolIndex: symbols,
   })
+
   // `freed` is deliberately excluded. Accepting it here is what let the
   // weakened guard pass while a survivor sat outside the removal manifest.
   const reached = new Set([

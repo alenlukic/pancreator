@@ -97,10 +97,16 @@ import {
   FAST_WALL_SERIES_ROOT_ENV,
 } from './fast-wall-series.js'
 import {
+  DELEGATION_CADENCE_EXTENDED,
+  DELEGATION_TIMER_UNAWAITED,
   DELEGATION_UNOBSERVED,
   DELEGATION_WATCH_LATE,
   DELEGATION_WATCH_LATE_SECONDS,
+  DELEGATION_WATCH_LOW_COVERAGE,
+  DEFAULT_WATCH_CADENCE_SECONDS,
+  WATCH_LOW_COVERAGE_RATIO,
   delegationUnobservedMessage,
+  launchToOutputSeconds,
   redlineRecordPath,
   resolveWatchedInvocation,
   summarizeDelegationObservation,
@@ -985,6 +991,7 @@ function startReleaseProfilePrefetch(
     profile,
     nextPrefetchAttempt(root, state.run_id, profile),
   )
+
   const record = {
     schema_version: 1,
     run_id: state.run_id,
@@ -5654,6 +5661,7 @@ export function prepareInvocation(
       (stageAgentPath !== undefined &&
         path.basename(stageAgentPath, path.extname(stageAgentPath)) ===
           options.agent)
+
     let prepared: PrepareInvocationResult = result
 
     if (evidenceWorker) {
@@ -6018,12 +6026,14 @@ function createOpenAiAdapter(
     OPENAI_SESSION_DEFAULTS.maxToolRounds
   const maxOutputTokens = positiveIntegerOption(options, 'max-output-tokens')
   const effort = options.effort
+
   // Validated against their enums by parsePersonaMapping, so the adapter
   // forwards them as-is rather than re-deriving the accepted sets here.
   const mode = options.mode
   const reasoningContext = options.context
   const summary = options.summary
   const verbosity = options.verbosity
+
   const responseParameters = {
     ...(effort ? { reasoning_effort: effort } : {}),
     ...(mode ? { reasoning_mode: mode } : {}),
@@ -7089,14 +7099,87 @@ export function submitOutput(
       // DELEGATE-001 says a background conversion is watched immediately.
       // A late arming still submits — the work was observed — but the run
       // records how late, so a supervisor that armed at once and one that
-      // armed after an operator reprimand stop looking identical.
+      // armed after an operator reprimand stop looking identical. Lateness
+      // is measured from the platform's evidenced control return; without
+      // that clock the delay is labeled launch-unattributed and never fired.
       if (delegationObservation.watch.background_watch_late) {
         advise('delegation_supervision', [
           `${DELEGATION_WATCH_LATE}: the background watch for ` +
             `${invocation.invocation_id} was armed ` +
             `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
-            `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
-            `DELEGATE-001 allows. Supervision was late, not absent.`,
+            `after the platform returned control, past the ` +
+            `${DELEGATION_WATCH_LATE_SECONDS}s DELEGATE-001 allows. ` +
+            `Supervision was late, not absent.`,
+        ])
+      }
+
+      // Every cadence exception is retained on the summary; a session past
+      // the 60-second default earns the advisory even when it was directed,
+      // so the audit can line authority up against the exception.
+      const extendedCadence =
+        delegationObservation.watch.cadence_exceptions.filter(
+          (exception) =>
+            exception.cadence_seconds > DEFAULT_WATCH_CADENCE_SECONDS,
+        )
+
+      if (extendedCadence.length > 0) {
+        advise('delegation_supervision', [
+          `${DELEGATION_CADENCE_EXTENDED}: run ${runId} invocation ` +
+            `${invocation.invocation_id} watched at ` +
+            `${extendedCadence
+              .map(
+                (exception) =>
+                  `${exception.cadence_seconds}s (authority: ${exception.authority ?? 'none recorded'})`,
+              )
+              .join(', ')}. An operator-directed exception is legitimate and ` +
+            `stays visible here; an undirected one is a DELEGATE-001 finding.`,
+        ])
+      }
+
+      // Coverage below the ratified threshold with a trustworthy launch clock
+      // and a lifetime past one cadence is reported, never hidden: five
+      // seconds over twenty minutes must stay visible.
+      const watchSummary = delegationObservation.watch
+
+      if (
+        watchSummary.coverage_basis === 'launch_record' &&
+        watchSummary.coverage_ratio !== null &&
+        watchSummary.coverage_ratio < WATCH_LOW_COVERAGE_RATIO
+      ) {
+        const lifetimeSeconds = launchToOutputSeconds(
+          root,
+          runId,
+          invocation.invocation_id,
+        )
+
+        if (
+          lifetimeSeconds !== null &&
+          watchSummary.cadence_seconds !== null &&
+          lifetimeSeconds > watchSummary.cadence_seconds
+        ) {
+          advise('delegation_supervision', [
+            `${DELEGATION_WATCH_LOW_COVERAGE}: run ${runId} invocation ` +
+              `${invocation.invocation_id} observed ` +
+              `${watchSummary.covered_seconds?.toFixed(1)}s of a ` +
+              `${lifetimeSeconds.toFixed(1)}s launch-to-output interval ` +
+              `(ratio ${watchSummary.coverage_ratio.toFixed(3)}, raw span ` +
+              `${watchSummary.raw_span_seconds?.toFixed(1)}s, basis ` +
+              `${watchSummary.coverage_basis}). Observation this thin cannot ` +
+              `show the worker was watched; legitimate fast workers remain ` +
+              `distinguishable by their short lifetime.`,
+          ])
+        }
+      }
+
+      // A background mark made with no attached terminal is a suspicion the
+      // run carries, never a proof of abandonment.
+      if (delegationObservation.watch.unawaited_timer_suspected) {
+        advise('delegation_supervision', [
+          `${DELEGATION_TIMER_UNAWAITED}: the background watch for ` +
+            `${invocation.invocation_id} was marked from a process with no ` +
+            `attached terminal, so the harness cannot show the timer was ` +
+            `awaited. Awaitedness stays unknown; platform or harness ` +
+            `transport evidence can refine it later.`,
         ])
       }
     }
@@ -8879,6 +8962,7 @@ export function recordDelegatedWorker(
     let declaredPaths = [invocation.output.path]
     let harnessPaths: string[] = []
     let evidenceAttempt: EvidenceWorkerAttempt | undefined
+
     const warnings: string[] = []
 
     if (role !== STAGE_WORKER_ROLE) {

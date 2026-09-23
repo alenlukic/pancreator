@@ -18,6 +18,37 @@ function isIndexModule(relative: string): boolean {
   return path.posix.basename(relative) === 'index.ts'
 }
 
+/**
+ * Whether a consumer reaches the file through one or more barrel indexes.
+ *
+ * A barrel is not a consumer, so a file only its own `index.ts` imports still
+ * looks orphaned. The barrel is a pass-through, though: when a further module
+ * imports the barrel, the file behind it is live. Following the chain is what
+ * separates that case from a barrel nothing imports either.
+ */
+function reachedThroughBarrel(
+  file: string,
+  index: SymbolIndex,
+  seen: Set<string>,
+): boolean {
+  for (const importer of index.graph.dependents.get(file) ?? []) {
+    if (importer.startsWith('tests/') || seen.has(importer)) {
+      continue
+    }
+
+    seen.add(importer)
+
+    if (
+      !isIndexModule(importer) ||
+      reachedThroughBarrel(importer, index, seen)
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
+
 function findingForSymbol(
   declaration: ExportedSymbol,
   index: SymbolIndex,
@@ -86,7 +117,9 @@ export function findOrphans(index: SymbolIndex): OrphanFinding[] {
     if (
       allExports.length > 0 &&
       declarations.length === allExports.length &&
-      functionalImporters.length === 0
+      functionalImporters.length === 0 &&
+      !index.entrypoints.has(file) &&
+      !reachedThroughBarrel(file, index, new Set([file]))
     ) {
       findings.push({
         id: `orphan-file:${file}`,
@@ -97,7 +130,9 @@ export function findOrphans(index: SymbolIndex): OrphanFinding[] {
           ...new Set(declarations.flatMap((entry) => entry.dedicated_tests)),
         ].sort(),
         reason:
-          'Every export is orphaned and no functional module imports the file.',
+          'Every export is orphaned, no functional module or barrel consumer ' +
+          'imports the file, and no tracked script or string literal names ' +
+          'its built path.',
       })
     }
   }

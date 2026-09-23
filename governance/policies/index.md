@@ -13,7 +13,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `OUTPUT-001` — quiet command output and Cursor-like SDK progress
 - `STE-001` — Simplified Technical English for operator-consumed artifacts
 - `COMMS-001` — operator-facing chat output
-- `RUNTIME-001` — sortable workflow runtime names and seven-day archival
+- `RUNTIME-001` — sortable workflow runtime names and configured retention
 - `BIN-001` — self-development-only durable Pancreator shell automation under `bin/`
 - `REPO-001` — target-owned, technology-agnostic verification commands
 - `AUTO-001` — deterministic automation authority

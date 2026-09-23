@@ -14,6 +14,18 @@ Prepare one complete local release:
 - create the immutable release commit before indexing it
 - create a separate commit that changes only `release/index.json`
 
+## Confirm release quality
+
+Before release metadata changes, run the conform scan and code style scan
+against the selected release workspace. Repair an unclean pass under the
+`librarian` persona and its matching standalone card. The release steward must
+not make those repairs under its metadata mutation boundary.
+
+`pan release finalize` enforces both scans. It reports
+`RELEASE_CONFORM_UNCLEAN` or `RELEASE_STYLE_UNCLEAN` with the matching repair
+command. Use `--allow-unclean <conform|style>` only under an explicit operator
+decision, and record the override returned by finalization.
+
 ## Establish the baseline
 
 1. Read `config.json` and stop without mutation unless `installation_mode` is

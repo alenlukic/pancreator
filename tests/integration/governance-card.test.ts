@@ -23,6 +23,20 @@ import {
 import { createWorktree } from '../../src/lib/worktrees.js'
 import { createFixture, sharedFixture } from '../fixture-template.js'
 
+test('cleanup card resolves librarian runtime governance', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'cleanup',
+    outputPath: 'runtime/inbox/cleanup-card.md',
+  })
+  const ids = card.policies.map((policy) => policy.id)
+
+  assert.equal(STANDALONE_MODES.cleanup?.persona, 'librarian')
+  assert.ok(ids.includes('RUNTIME-001'))
+  assert.ok(ids.includes('ACTION-001'))
+  assert.match(card.markdown, /pan cleanup/u)
+})
+
 test('the pair card resolves coder governance without workflow structure', () => {
   const root = createFixture()
   const card = buildGovernanceCard(root, {
@@ -246,7 +260,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, conform, debloat, decomposition, harden, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, trace, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, cleanup, conform, debloat, decomposition, harden, pair, polish, qa-workflow, release, repair, research, review, shepherd, spotfix, style, supervisor, target, trace, tune-harness, unbound, write-pr/u,
   )
 })
 

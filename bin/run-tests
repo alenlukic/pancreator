@@ -17,6 +17,12 @@ unset PAN_FAST_WALL_PHASE
 unset PAN_FAST_WALL_CALLER_CLASS
 unset npm_lifecycle_event
 
+# bin/pan pins PANCREATOR_ROOT on the installation when PANCREATOR_EXEC_ROOT
+# selects another checkout's build. A test that spawns dist/src/cli.js inside a
+# fixture would then resolve the installation instead of the fixture and read
+# the real worktree index, so the pin must not reach the suite.
+unset PANCREATOR_ROOT
+
 usage() {
   echo "Usage: bin/run-tests -- <command> [args...]" >&2
 }

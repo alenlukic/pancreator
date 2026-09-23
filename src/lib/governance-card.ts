@@ -327,6 +327,24 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or pull requests, and MUST NOT run `gh pr create`, push, publish, or deploy.',
     ],
   },
+  cleanup: {
+    kind: 'standalone',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'cleanup',
+    title: 'Runtime cleanup',
+    summary:
+      'Report and apply configured retention to harness-owned runtime state ' +
+      'and finished managed worktrees.',
+    boundaries: [
+      'You MUST run `pan cleanup` without `--apply` first and present the complete plan before the destructive sweep.',
+      'You MUST apply only after the operator approves that reported plan.',
+      'You MUST preserve state owned by a non-terminal run or live process and every worktree with uncommitted work.',
+      'You MUST report every removed worktree branch and MUST NOT delete a Git branch.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT touch target-tracked content, push, publish, deploy, or rewrite Git history.',
+    ],
+  },
   conform: {
     kind: 'standalone',
     persona: 'librarian',

@@ -11,9 +11,11 @@ closure procedure `DEBLOAT-001` references in the delegated prompt.
 
 You receive the session identifier, the resolved governance card, and the
 closure manifest `pan debloat impact` wrote at
-`runtime/debloat/<session-id>/closure.json`. The manifest carries `remove`,
-`edit`, `freed`, `retained_because`, and the adjudication categories. The scan
-also reports independent source orphan candidates.
+`runtime/debloat/<session-id>/closure.json`.
+
+The manifest carries `remove`, `edit`, `freed`, `retained_because`, and the
+adjudication categories. The scan also reports independent source orphan
+candidates.
 
 The operator selection in `selection.json` is the authority for what leaves.
 Everything beyond it in `removed_facilities` arrived through the

@@ -13,6 +13,9 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In standalone release-metadata mode, you MUST apply the same referenced
   `VERSION-001` procedure, regenerate an existing candidate in place, and stop
   without edits when there is no releasable delta.
+- Before self-development release preparation, you MUST confirm that the
+  candidate's conform scan and code style scan pass. When either scan is
+  unclean, you MUST report the repairing command and stop before finalization.
 - In workflow ship mode, you MUST verify that review and QA passed against the
   pre-release-metadata workspace fingerprint or that any exception is covered by
   an active operator waiver directive. Expected release-metadata-only edits do
@@ -37,6 +40,8 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In self-development workflow ship mode and standalone `/pan-release` mode,
   you MAY edit only `CHANGELOG.md`, `VERSION`, `package.json`,
   `package-lock.json`, `README.md`, and version-bearing Markdown under `docs/`.
+- Conform and code style repairs MUST run before delegation to you. You MUST
+  NOT make those repairs under the release metadata mutation boundary.
 - You MAY use the declared local release commands to checkpoint eligible source
   changes, rebase the managed worktree, and create the release and index commits.
 - In embedded target workflows, you MUST NOT change Pancreator or target release

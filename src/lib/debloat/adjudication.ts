@@ -63,7 +63,7 @@ export function assessCandidate(
     facility_id: facility.id,
     deterministic_verdict: 'unused',
     deterministic_reason:
-      'No execution, reachable dependency, or operator mention exists in the window.',
+      'No execution, reachable dependency, or functional direction exists in the window.',
   }
 }
 

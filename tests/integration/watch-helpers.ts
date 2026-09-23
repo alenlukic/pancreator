@@ -267,6 +267,54 @@ export function writeTargetOutput(
   utimesSync(path.join(root, invocation.output.path), pinned, pinned)
 }
 
+/**
+ * Write one multiplexed target's stage output pinned past one cadence from
+ * the recorded launch, so the completion evidence is strong
+ * (`output_plausible`) rather than held for a confirming wake.
+ */
+export function writeTargetOutputPastCadence(
+  root: string,
+  target: MultiplexedTarget,
+  sinceLaunchMs = 250,
+): void {
+  assert.ok(
+    sinceLaunchMs > CADENCE_SECONDS * 1000,
+    'a strong verdict needs the output past one cadence from the launch',
+  )
+
+  const invocation = read(
+    target.layout.invocation(target.invocationId, '.json').absolute,
+  ) as Invocation
+  const state = read(target.layout.state.absolute) as RunState
+  const workflow = loadWorkflowFile(
+    root,
+    path.join(root, state.workflow_snapshot.path),
+  )
+
+  writeFileSync(
+    path.join(root, invocation.output.path),
+    `${JSON.stringify(
+      makeOutput(
+        root,
+        invocation,
+        stageBySlug(workflow, invocation.stage.slug),
+        'success',
+        state,
+      ),
+      null,
+      2,
+    )}\n`,
+  )
+
+  const launch = readLaunchRecord(root, target.runId, target.invocationId)
+
+  assert.ok(launch, 'the watch records the launch when it arms')
+
+  const pinned = new Date(Date.parse(launch.launched_at) + sinceLaunchMs)
+
+  utimesSync(path.join(root, invocation.output.path), pinned, pinned)
+}
+
 /** The invocation record the run currently stands at. */
 export function currentInvocation(root: string, state: RunState): Invocation {
   const pointer = state.current_invocation
@@ -304,6 +352,46 @@ export function fillPreparedOutput(root: string, state: RunState): string {
   writeCanonicalDelegation(root, invocation)
 
   return invocation.output.path
+}
+
+/**
+ * Write a valid recorded supervisor inspection for an invocation and return
+ * its harness-relative path, for `--agent-state-evidence` callers.
+ */
+export function writeAgentStateEvidence(
+  root: string,
+  state: RunState,
+  invocationId: string,
+  observedState: 'running' | 'completed' = 'completed',
+): string {
+  const relative = path.posix.join(
+    'runtime',
+    'logs',
+    'workflows',
+    state.run_id,
+    'agent',
+    'evidence',
+    `${invocationId}-agent-state.json`,
+  )
+
+  writeFileSync(
+    path.join(root, relative),
+    `${JSON.stringify(
+      {
+        run_id: state.run_id,
+        invocation_id: invocationId,
+        observed_state: observedState,
+        observed_at: new Date().toISOString(),
+        source: 'supervisor inspection',
+        evidence: 'platform agent state at inspection',
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  )
+
+  return relative
 }
 
 /** The run's `blocked_output_snapshotted` event lines, in order. */

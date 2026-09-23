@@ -98,6 +98,7 @@ test('the grammar accepts the surfaces and options the CLI really has', () => {
     ['repository-check', 'fast', '--harness-initiated'],
     ['author', 'validate', '--worktree', 'named'],
     ['author', 'apply', '--input', 'draft.json', '--worktree', 'named'],
+    ['governance', 'prompt-context'],
     ['init', '--request', 'request.md', '--json'],
     ['resume', 'run-1', '--json'],
     ['decide', 'run-1', 'approve', '--json'],

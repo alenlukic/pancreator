@@ -478,6 +478,7 @@ test('a multi-chunk route refuses to branch away from a dirty planning worktree 
     routed.chunks.map((chunk) => chunk.chunk),
     ['alpha', 'beta'],
   )
+
   // The committed work is on the branch every chunk worktree branched from.
   for (const chunk of routed.chunks) {
     assert.equal(

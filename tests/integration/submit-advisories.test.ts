@@ -73,16 +73,18 @@ test('a submission returns every advisory it records', async () => {
     `${JSON.stringify(output, null, 2)}\n`,
   )
 
-  // A supervisor that names a launch ten minutes back has armed its watch
-  // late, which is the delegation-supervision advisory this submission also
-  // carries. The supervisor is the only source for that time: the harness
-  // never witnessed the launch and no longer reads an artifact's mtime as
-  // if it had.
+  // A supervisor that names a launch ten minutes back and the platform's
+  // control return seventy seconds back has armed its watch late: lateness is
+  // measured from the return, which is the delegation-supervision advisory
+  // this submission also carries. The supervisor is the only source for those
+  // times: the harness never witnessed the launch and no longer reads an
+  // artifact's mtime as if it had.
   await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
     agentState: 'completed',
     markBackground: true,
     launchedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    platformReturnedAt: new Date(Date.now() - 70_000).toISOString(),
   })
 
   const marker = read(

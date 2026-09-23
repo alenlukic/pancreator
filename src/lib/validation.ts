@@ -41,6 +41,7 @@ import type {
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { harnessRepairCategoryErrors } from './governance/harness-repair-categories.js'
+import { validateTurnReminderProfiles } from './governance/prompt-context.js'
 import { getHandler, HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
@@ -2687,9 +2688,11 @@ export function classifyGateTestFailures(options: {
       maxBuffer: 10 * 1024 * 1024,
       env: isolationEnvironment(),
     })
+
     const timedOut =
       isNodeError(rerun.error) && rerun.error.code === 'ETIMEDOUT'
     const cleanExit = rerun.status === 0 && !rerun.error
+
     // An exit code answers "did the command succeed", and the question here is
     // "did the failing test run and pass". Those differ whenever the selector
     // matches nothing, which is the normal outcome for a name carrying
@@ -2727,6 +2730,7 @@ export function classifyGateTestFailures(options: {
   const substantive = options.comparison.delta.new.filter(
     (entry) => !entry.diagnostic.startsWith('<status>'),
   )
+
   const allFailingCommandsIdentified = options.current.results
     .filter((entry) => !entry.passed)
     .every(
@@ -2741,6 +2745,7 @@ export function classifyGateTestFailures(options: {
     allFailingCommandsIdentified &&
     substantive.length > 0 &&
     substantive.every((entry) => reclassifiedDiagnostics.has(entry.diagnostic))
+
   const reclassified = classifications.filter(
     (entry) => entry.disposition === 'environment_or_flake',
   )
@@ -2816,6 +2821,7 @@ function runShellCheck(
     : { entry: null, rejected_entry: null, rejection: null }
   const cached = cacheAcceptance.entry
   const cacheRejection = cacheAcceptance.rejection
+
   // A profile gate needs the recorded repository result for this run's delta.
   const cachedUsable =
     cached !== null && (!profileName || cached.repository_result !== undefined)
@@ -4672,7 +4678,13 @@ function referencedPolicyIds(policy: Policy): Set<string> {
     ...policy.instructions.map((instruction) => instruction.text),
     ...(policy.guidance ?? []).map((guidance) => guidance.content),
   ].join('\n')
-  return new Set(text.match(POLICY_REFERENCE_PATTERN) ?? [])
+  // A test coverage citation (`tests/<path>::<test name>`) names a test, not
+  // a policy; a test name may carry a token shaped like a policy id.
+  const withoutTestCitations = text.replaceAll(
+    /`tests\/[A-Za-z0-9._/-]+::[^`]+`/gu,
+    '',
+  )
+  return new Set(withoutTestCitations.match(POLICY_REFERENCE_PATTERN) ?? [])
 }
 
 function validatePolicyLookupDependencies(
@@ -4787,11 +4799,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/registries/directive_exemptions.json',
     'governance/registries/harness_repair_categories.json',
     'governance/registries/projection_manifest.json',
+    'governance/registries/turn_reminder_profiles.json',
     'docs/validation-framework.md',
     'config.json',
     'library/schemas/config.schema.json',
     'library/schemas/stage-output.schema.json',
     'library/schemas/target-authoring.schema.json',
+    'library/schemas/turn-reminder-profiles.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
     'library/cursor/commands/pan-start.md',
@@ -4980,6 +4994,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
     const projection = validateProjectionDrift(root)
     errors.push(...projection.errors)
+    errors.push(...validateTurnReminderProfiles(root))
 
     handbookPolicies = validateGovernance(root, catalog, errors)
 

@@ -46,6 +46,7 @@ test('external executors withhold shell from read-only stages', () => {
   const workflow = loadWorkflow(root, 'delivery')
   const source = stageBySlug(workflow, 'implement')
   const readOnly = stageBySlug(workflow, 'verify')
+
   const bounds = { maxResultBytes: 4096, shellTimeoutMs: 5000 }
 
   assert.ok(

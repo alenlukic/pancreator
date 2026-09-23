@@ -1869,6 +1869,7 @@ const passingQaCase = {
 test('a finding filled from the verify scaffold passes shape validation', () => {
   const root = validatorFixtureRoot('pan-verify-scaffold-')
   const target = 'output.json'
+
   const invocation = {
     invocation_id: 'verify-1',
     rubric: [],
@@ -1883,6 +1884,7 @@ test('a finding filled from the verify scaffold passes shape validation', () => 
       },
     },
   } as unknown as Invocation
+
   const scaffold = scaffoldStageOutput(root, invocation, target).output
   const verify = (scaffold.data as Record<string, unknown>).verify as Record<
     string,
@@ -3137,6 +3139,7 @@ test('field contract validator rejects enforced_fields that lack a declared shap
 test('field contract guard requires every verify blocking field in enforced_fields', () => {
   const root = createFixture()
   const contractPath = 'library/schemas/stage-output-requirements.json'
+
   const source = JSON.parse(
     readFileSync(path.join(root, contractPath), 'utf8'),
   ) as Record<string, unknown>
