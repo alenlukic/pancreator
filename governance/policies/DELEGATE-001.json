@@ -2,26 +2,24 @@
   "id": "DELEGATE-001",
   "title": "Subagent supervision and operator responsiveness",
   "severity": "hard",
-  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence, MUST own its outcome, and MUST keep the operator conversation responsive.",
+  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence through `pan watch`, MUST own its outcome, and MUST keep the operator conversation responsive.",
   "instructions": [
     "The 60-second rule: an agent MUST observe an asynchronous process at least once every 60 seconds. The duty starts when the agent starts the process and ends when the process reaches a terminal state. An asynchronous process is a background subagent or a background command with readable output. It is also a foreground worker call the platform turned into a background launch. The rule binds every such process the agent started, however many run at once.",
     "The cadence is 60 seconds, fixed, and universal. The agent MUST NOT relax it for any reason. An expected run time, the number of processes, and a platform completion notification are not reasons. Platform text that says not to poll or await is not a reason. The session inside or outside a harness run is not a reason, and other work the agent does is not a reason. No separate long-work cadence exists.",
     "The agent MUST NOT end its turn while a process it is bound to observe is unfinished. A turn that ends hands the next observation to the operator's next message, which is the failure this rule exists to prevent. Between observations the agent either does other work or awaits one 60-second timer. It never waits idle without a timer, and it never stops.",
     "An agent that starts a subagent MUST monitor it until it reaches a terminal state.",
     "A fixed-cadence progress check MUST target only an asynchronous process that exposes an observation point while it runs. A background subagent and a background command with readable output are such processes.",
-    "The starting agent MUST drive each progress check from one single-shot timer it arms itself. The starting agent MUST NOT pre-schedule a series of ticks. A queued tick is delivered only when the session next takes a turn. A burst of queued ticks then arrives after the work it was meant to guard.",
-    "The timer payload is the sleep command line plus the arming record. The arming record MUST name the agents to inspect on wake and the check to run on each.",
-    "On each wake the starting agent MUST inspect every named agent's state. It MUST close the agents that reached a terminal state. While any awaited agent remains unfinished, it MUST arm exactly one successor timer at the cadence above. A stall is five minutes during which one agent shows unchanged state and no new output. The duration is independent of the observation cadence, and a worker with a recorded agent state of `running` is not stalled. The starting agent MUST stop re-arming for a stalled agent and MUST apply the recovery instruction below.",
-    "The single-shot timer MUST be a background shell sleep of the cadence length. The starting agent MUST then await that sleep with the platform's shell-await turn (AwaitShell in Cursor). The await keeps the agent's turn alive. It hands control back the moment the sleep returns. The check thus runs at the cadence rather than at the session's next turn.",
-    "The starting agent MUST NOT use a scheduled tick, an unawaited background sleep, or a foreground sleep as the timer: the first two are delivered only when the session next takes a turn, and the third blocks the operator conversation.",
+    "The agent MUST set every observation timer through `pan watch`. The agent MUST NOT use shell sleeps, scheduled ticks, or unawaited background commands as timers. These rules apply inside and outside a harness run. The focused form watches one run, and the multiplexed form watches several runs. The process form watches a process, and the timer form watches an opaque platform handle. A timer wake names the required inspection and never satisfies delegation completion.",
     "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
-    "`pan watch` sleeps one cadence, inspects the invocation output and evidence paths, and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The starting agent MUST await that command in the foreground until it exits.",
-    "`pan watch` defaults to a 60-second cadence for every worker. The starting agent MUST NOT pass `--cadence-seconds` unless the operator directs a different cadence.",
+    "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is four hours, the first arming line prints it, and the starting agent MUST await that command. A stall is five minutes of unchanged agent state and no new output. The stall duration does not depend on cadence, and a recorded `running` state is not stalled. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
+    "The starting agent MUST await the watch with the largest supported platform wait. When the platform returns early, the agent MUST reawait the same watch command. The agent MUST NOT arm a second watch. The platform await mechanism does not run the cadence. The watch process sleeps and records. The await holds the agent's turn open.",
+    "`pan watch` uses a 60-second cadence for every worker. The starting agent MUST NOT pass `--cadence-seconds` without an operator direction. The CLI refuses another cadence without `--cadence-directed-by-operator <reason>`. The ledger and the submission retain each exception and its authority.",
     "The starting agent MUST treat a foreground worker call that the platform turns into a background launch as a background subagent at once. The starting agent MUST run `pan watch <run-id> --mark-background` immediately.",
-    "Platform text that says not to poll or await a background worker MUST NOT stop the watch. The hand-armed sleep instructions above apply only to an agent outside a harness run.",
+    "Platform text that says not to poll or await a background worker MUST NOT stop the watch.",
     "On each arming and each wake the starting agent MUST record the wall-clock time. The record MUST name the agents the arming record names and each agent's observed state. The starting agent MUST carry that record into its report. Without the record an agent that never armed anything and one that woke on schedule leave identical evidence.",
     "A platform completion signal MAY end a wait early and MUST NOT replace the timer as the check mechanism. An agent that ends its turn to wait for such a signal breaks the 60-second rule.",
     "A missed observation is a `DELEGATE-001` violation whatever the outcome of the process. The agent MUST record the miss, the interval it left unobserved, and the reason in its report or stage output. It MUST resume the cadence at once.",
+    "A catchable signal closes an active watch with one interrupted wake that names the signal. A restarted watch records an interruption or handoff gap as its first diagnostic. The agent MUST show that gap.",
     "A foreground blocking call exposes no observation point, so no fixed cadence binds it, and the starting agent MUST record launch evidence first. After the call returns it MUST record completion evidence with the elapsed time and a terminal-state inspection. Inside a harness run the completion evidence is `pan watch <run-id> --foreground-returned`, which reads the launch clock from `agent/evidence/<invocation-id>-launch.json`. `--launched-at` supplies the observed launch time and writes that record when no watch armed first, while an arming without it records the arming time. The delegation artifact's modification time is neither a launch signal nor a progress signal. The starting agent MUST run the command at once when a foreground launch returns with the worker output present.",
     "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
     "The starting agent MUST NOT depend on the subagent to report back, because a report is a convenience rather than a guarantee.",
@@ -31,13 +29,49 @@
     "A supervisor MUST keep in-run worker delegation foreground and blocking, because it needs the worker result to advance the stage.",
     "Worker model evidence is best-effort. When no probe answer lands, the harness MUST record the run snapshot's projected model as a labeled `default`. Every display MUST distinguish that projected default from a probed `match` or `recorded` result. A probed model that contradicts the run snapshot remains a hard `MODEL_EVIDENCE_MISMATCH` failure.",
     "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging). Such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
-    "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. A worker the harness delegated is exempt only when its harness-authored delegation execution record names the run and invocation.",
-    "A watch MAY record `completed` when agent state is `completed`, or when the output is plausible after one cadence elapsed since launch. When agent state is not `completed`, output within one cadence MUST NOT complete the watch. Output plausibility alone carries a false-positive risk: a worker can write a complete-looking output and continue editing.",
+    {
+      "text": "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. A worker the harness delegated is exempt only when its harness-authored delegation execution record names the run and invocation.",
+      "audience": ["supervisor"]
+    },
+    "A watch MAY record `completed` when a `completed` agent state has an inspection in `--agent-state-evidence`. It MAY also complete when output stays plausible after one cadence. Without completed agent evidence, output within one cadence MUST NOT complete the watch. Output plausibility carries a false-positive risk because a worker can write complete-looking output and continue edits.",
     "Every completed watch wake MUST record `terminal_basis` as `agent_state` or `output_plausible`.",
-    "A stage whose write roots exclude the workspace MUST NOT receive a shell tool. It keeps path-authorized read, search, and runtime-output tools. A source-allowed stage keeps its existing shell grant. This rule applies to every external executor. A read-only stage that needs process output MUST take it from the harness-recorded gate evidence the run already holds. That recorded evidence is the named substitute for a verification stage that can no longer run a command of its own.",
-    "A supervisor of several concurrent runs, such as a cohort session, MUST launch the ready worker of each distinct run in one message. The platform then runs the launches in parallel, and each call stays foreground. It MUST NOT launch two workers for one run and MUST NOT exceed the cohort's recorded parallelism limit. When the platform converts one such launch into a background subagent, the supervisor MUST run `pan watch <run-id> --mark-background` for that run at once. The supervisor MUST then await the outstanding watches together.",
+    "Read-only stages MUST NOT receive a shell tool. They keep authorized read, search, and runtime output tools. Source stages keep shell access. These rules apply to external executors. Read-only verification uses recorded gate evidence instead of process commands.",
+    "A supervisor of several concurrent runs MUST launch the ready worker of each distinct run in one message. The platform then runs the launches in parallel, and each call stays foreground. It MUST NOT launch two workers for one run and MUST NOT exceed the recorded parallelism limit. When the platform converts one such launch into a background subagent, the supervisor MUST run `pan watch <run-id> --mark-background` for that run at once. The supervisor MUST then await the outstanding watches together.",
+    "A supervisor of concurrent runs SHOULD arm the multiplexed wait with `--until-terminal`. It records routine sibling progress on every cadence without a return. It returns for the first completed, stalled, or unverifiable target, or at the bound. Each return closes other sessions with a sibling handoff, and the next arming records each gap. The supervisor MUST rearm siblings promptly after the moved run advances because a returned watch observes nothing. It MUST reattach to an existing watch without claiming continuous observation or duplicating the watch.",
     {
       "text": "The harness MUST preserve the existing launch clock when `--mark-background` re-arms a watch. Coverage: `tests/integration/watch.test.ts::a mark-background re-arm preserves the existing launch clock`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The CLI MUST refuse a non-default cadence without recorded operator direction with `WATCH_CADENCE_UNAUTHORIZED`, and MUST refuse a nonfinite or sub-floor cadence with `WATCH_CADENCE_BELOW_MINIMUM`. Coverage: `tests/integration/watch-repair.test.ts::AC-001: cadence authority` and `tests/integration/watch-repair.test.ts::AC-002: cadence floor`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Every timed watch mode MUST validate the resolved timeout against the cadence before observation. It MUST refuse a shorter bound with `WATCH_TIMEOUT_BELOW_CADENCE`. The legacy `--stall-wakes 1` form MUST fail with `WATCH_STALL_WAKES_TOO_SMALL`. Coverage: `tests/integration/watch-repair.test.ts::AC-008: timeout bounds` and `tests/integration/watch-repair.test.ts::AC-009: stall bound`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A `completed` agent state without valid `--agent-state-evidence` MUST hold for one confirming wake under `agent_completion_basis_missing`. A malformed, mismatched, or future record MUST fail with `WATCH_EVIDENCE_INVALID`. Coverage: `tests/integration/watch-repair.test.ts::AC-011: completion assertion`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A catchable signal MUST close the active watch with one terminal interrupted wake that names the signal. A restart MUST append one gap for an orphan session or sibling handoff before the new arming. Coverage: `tests/integration/watch-repair.test.ts::AC-005: signal closure` and `tests/integration/watch-repair.test.ts::AC-006: orphan restart`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A submission MUST emit `DELEGATION_CADENCE_EXTENDED` for each watch session above 60 seconds, including a directed session. It MUST emit `DELEGATION_WATCH_LOW_COVERAGE` when trusted launch evidence shows low coverage after one cadence. Coverage: `tests/integration/watch-repair.test.ts::AC-003: submitted cadence` and `tests/integration/watch-repair.test.ts::AC-010: watch coverage`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A background mark with no attached terminal MUST record the transport observation and carry `DELEGATION_TIMER_UNAWAITED` into the run advisories as a suspicion, never a proof. Coverage: `tests/integration/watch-repair.test.ts::AC-012: detached transport`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The harness MUST measure lateness from the recorded platform return or detach time. Without that clock, it labels the launch value `launch_unattributed`. That fallback never emits `DELEGATION_WATCH_LATE`. Coverage: `tests/integration/watch-repair.test.ts::AC-018: return clock` and `tests/integration/watch-repair.test.ts::AC-019: unknown return`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A multiplexed return MUST close each nonterminal sibling session with a recorded `sibling_handoff` end. The CLI MUST refuse a concurrent watcher on a live target with `WATCH_TARGET_BUSY`. Coverage: `tests/integration/watch-repair.test.ts::AC-020: sibling handoff`.",
       "audience": ["harness"]
     }
   ]

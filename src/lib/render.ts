@@ -502,13 +502,20 @@ function renderSupervisorProcedureBody(
                   'and the CLI refuses `--foreground-returned` together with ' +
                   '`--mark-background`. A skipped watch fails at submission with ' +
                   '`DELEGATION_UNOBSERVED`. Do not end your turn on the ' +
-                  'launch, and do not let the turn continue unwatched. Size ' +
-                  'each await from the watch cadence — one cadence per ' +
-                  'slice, reporting to the operator between slices — not ' +
-                  'from platform advice about prompt-cache economics. The ' +
-                  'watch sleeps its own cadence and exits when it has a ' +
-                  'verdict; a longer block only costs the operator ' +
-                  'visibility DELEGATE-001 requires you to keep.',
+                  'launch, and do not let the turn continue unwatched. The ' +
+                  'watch loops on its own cadence until a verdict or its ' +
+                  'bound — four hours by default — so await the one running ' +
+                  'command with the largest wait the platform supports for ' +
+                  'that lifetime, and when the platform returns control ' +
+                  'early, re-await the same command rather than arming a ' +
+                  'second watch. The platform await never performs the ' +
+                  'cadence: it only holds your turn open while the watch ' +
+                  'process sleeps and records. A finished-looking output ' +
+                  'whose evidence is weak buys one confirming wake instead ' +
+                  'of a verdict, and a `completed` agent-state report rests ' +
+                  'on the recorded inspection you pass with ' +
+                  '`--agent-state-evidence`; an `unverified` exit sends you ' +
+                  'to inspect the agent itself.',
               ]
             : []),
           `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +

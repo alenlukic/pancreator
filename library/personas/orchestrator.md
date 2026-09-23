@@ -37,7 +37,10 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Arm the watch in the launch turn before any other action.
 - Use `--mark-background` when the platform backgrounded the launch.
 - Use `--foreground-returned` when the launch returned and the output exists.
-- When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
+- Await the one running watch until it exits. It loops on its cadence up to the four-hour default bound.
+- When the platform returns control early, reawait the same watch command. Never arm a second watch over the same invocation.
+- When the watch exits `unverified`, inspect the launched agent. Rerun the watch with `--agent-state running` or `--agent-state completed`.
+- Supply the recorded inspection through `--agent-state-evidence` for a `completed` report. Without that record, the watch spends one confirming wake.
 - Ask `./bin/pan worker state <run-id>` for a launched worker's last known state. A transcript's size and modification time are not liveness signals and MUST NOT be read as one.
 
 ## Cohort supervision
@@ -46,7 +49,14 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Take the per-run bootstrap from that result's `bootstrap` array. It names the card, attestation, redline, and model-evidence command of every live chunk run, so you MUST NOT rebuild them by hand.
 - Launch one worker per ready run in one message so the launches run in parallel.
 - Never launch two workers for one run.
-- Arm every ready sibling in one multiplexed wait with `./bin/pan watch --targets <run-id>:<invocation-id>,...`. That command writes each ordinary per-invocation ledger itself. It returns when the first target changes, so advance that run and re-arm across the remainder. It exits `2` and names the targets that need inspection when one sits unchanged for the stall bound: stop re-arming that target and apply recovery. A stall in one run does not stop sibling runs.
+- Arm every ready sibling with `./bin/pan watch --targets <run-id>:<invocation-id>,... --until-terminal`.
+- The command writes each ordinary invocation ledger. It records routine sibling progress on every cadence without a return.
+- It returns when the first target completes, stalls, becomes unverifiable, or reaches the bound. Advance that run and promptly rearm the remainder.
+- Without `--until-terminal`, the command returns when the first target changes.
+- Exit `2` names targets that reached the stall bound. Stop rearming those targets and apply recovery.
+- A stall in one run does not stop sibling runs.
+- Each return closes the other sessions with a recorded sibling handoff. The next arming records the gap.
+- Never claim continuous sibling observation across a handoff. Reattach to an existing watch because a second watch is refused.
 - The harness integrates a finished cohort itself. The lifecycle command that closed the last chunk run carries an `advance` object: `status: "integrated"` names the merge commit and nests the continuation under `autostart`, and `status: "failed"` names the error and the idempotent `cohort integrate` retry to run.
 - When that continuation reports `kind: release`, supervise the release run with `/pan-resume`.
 
@@ -65,6 +75,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Read the `<invocation-id>.supervisor.md` procedure and deliver the body it names.
 - Persist that exact prompt body to the declared `<invocation-id>.delegation.md` path. `./bin/pan prepare <run-id> --agent <name>` writes that file and starts the worker model probe for you.
 - Arm the watch in the launch turn before any other action.
+- Await the one running watch until it exits. On an early platform return, reawait the same command.
 - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
 - Submit with `./bin/pan submit <run-id> <output-json>`.
 

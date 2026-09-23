@@ -269,18 +269,26 @@ import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
+  formatGapLine,
+  formatSessionStartLine,
   formatWakeLine,
   parseAgentState,
   parseMultiplexedWatchTargets,
   parseCadenceSeconds,
   parsePositiveInteger,
+  parseStallWakes,
   parseTimeoutSeconds,
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
   watchInvocations,
+  watchProcess,
+  watchTimer,
   writeRedlineRecord,
+  type GenericWatchRecordEntry,
+  type WatchRecordEntry,
 } from './lib/watch.js'
+import { runWatchAudit } from './lib/watch-audit.js'
 import {
   createWorktree,
   listWorktrees,
@@ -491,6 +499,39 @@ export function requiredPositional(
 
 function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
+}
+
+/**
+ * Resolve the stall bound for a watch invocation: the duration flag, the
+ * legacy wake-count flag converted against the resolved cadence, or the
+ * five-minute default. The two spellings are exclusive so no call has to
+ * choose between them.
+ */
+function resolveStallTimeoutSeconds(
+  args: string[],
+  cadenceSeconds: number,
+): number {
+  const duration = option(args, '--stall-timeout-seconds')
+  const wakes = option(args, '--stall-wakes')
+
+  if (duration !== null && wakes !== null) {
+    throw new PanError(
+      '--stall-wakes and --stall-timeout-seconds name the same bound; pass one.',
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  const converted = parseStallWakes(wakes, cadenceSeconds)
+
+  if (converted !== null) {
+    return converted
+  }
+
+  return parsePositiveInteger(
+    duration,
+    '--stall-timeout-seconds',
+    DEFAULT_STALL_TIMEOUT_SECONDS,
+  )
 }
 
 /**
@@ -4771,6 +4812,159 @@ async function main(): Promise<void> {
       })
     }
     case 'watch': {
+      const interactive = process.stderr.isTTY
+      const watchCallbacks = {
+        // OUTPUT-001: repeated per-wake progress lines only on an interactive
+        // terminal. Stdout carries the result either way.
+        onWake: interactive
+          ? (entry: WatchRecordEntry) =>
+              process.stderr.write(`${formatWakeLine(entry)}\n`)
+          : undefined,
+        // The arming bound and a discovered gap print once per session on
+        // every stderr: agent shells have no terminal, and they are the
+        // supervisors that must see both. The gap line comes first.
+        onSessionStart: (entry: WatchRecordEntry) =>
+          process.stderr.write(`${formatSessionStartLine(entry)}\n`),
+        onGap: (entry: WatchRecordEntry) =>
+          process.stderr.write(`${formatGapLine(entry)}\n`),
+      }
+
+      if (args[0] === 'audit') {
+        const report = runWatchAudit(root, {
+          rootsFile: requiredArgument(
+            option(args, '--roots-file'),
+            '--roots-file',
+          ),
+          from: requiredArgument(option(args, '--from'), '--from'),
+          to: requiredArgument(option(args, '--to'), '--to'),
+          output: requiredArgument(option(args, '--output'), '--output'),
+        })
+
+        print(
+          json
+            ? report
+            : `watch audit: ${report.sessions.length} sessions across ` +
+                `${report.roots.length} roots, ` +
+                `${report.sub_cadence_sessions.length} sub-cadence, ` +
+                `${report.cadence_exceptions.length} cadence exceptions, ` +
+                `${report.errors.length} input errors; report ${report.output_path}` +
+                (report.complete
+                  ? ''
+                  : ' (PARTIAL — named errors must be resolved before this audit is complete)'),
+          json,
+        )
+
+        if (!report.complete) {
+          process.exitCode = 1
+        }
+        return
+      }
+
+      const processPid = option(args, '--process')
+      const timerMode = hasFlag(args, '--timer')
+
+      if (processPid !== null || timerMode) {
+        if (processPid !== null && timerMode) {
+          throw new PanError('--process and --timer are exclusive.', {
+            code: 'INVALID_ARGUMENT',
+          })
+        }
+
+        const genericExclusive = [
+          '--targets',
+          '--invocation',
+          '--foreground-returned',
+          '--mark-background',
+          '--agent-state',
+          '--agent-state-evidence',
+          '--handle',
+          '--launched-at',
+        ]
+
+        if (
+          (args[0] !== undefined && !args[0].startsWith('--')) ||
+          genericExclusive.some(
+            (name) => option(args, name) !== null || hasFlag(args, name),
+          )
+        ) {
+          throw new PanError(
+            '--process/--timer are standalone forms: they take no run id, ' +
+              '--targets, --invocation, or delegation flags.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const genericCadence = parseCadenceSeconds(
+          option(args, '--cadence-seconds'),
+          option(args, '--cadence-directed-by-operator'),
+        )
+        const genericRecord = option(args, '--record') ?? undefined
+        const genericOnWake = interactive
+          ? (entry: GenericWatchRecordEntry) =>
+              process.stderr.write(
+                `[pan watch:${entry.label}] wake ${entry.wake} at ` +
+                  `${entry.recorded_at}` +
+                  `${entry.terminal_state ? ` -> ${entry.terminal_state}` : ''}\n`,
+              )
+          : undefined
+
+        if (timerMode) {
+          const result = await watchTimer(root, {
+            label: requiredArgument(option(args, '--label'), '--label'),
+            ...(genericRecord ? { recordPath: genericRecord } : {}),
+            cadenceSeconds: genericCadence,
+            onWake: genericOnWake,
+          })
+
+          print(
+            json
+              ? result
+              : `timer elapsed for '${result.label}' after ` +
+                  `${result.elapsed_seconds.toFixed(1)}s; inspect the subject ` +
+                  `now — record ${result.record_path}. This wake never ` +
+                  `satisfies delegation completion.`,
+            json,
+          )
+          process.exitCode = 0
+          return
+        }
+
+        const result = await watchProcess(root, {
+          pid: Number(processPid),
+          label: requiredArgument(option(args, '--label'), '--label'),
+          ...(option(args, '--output')
+            ? { outputPath: option(args, '--output') as string }
+            : {}),
+          ...(genericRecord ? { recordPath: genericRecord } : {}),
+          cadenceSeconds: genericCadence,
+          timeoutSeconds: parseTimeoutSeconds(
+            option(args, '--timeout-seconds'),
+          ),
+          onWake: genericOnWake,
+        })
+
+        print(
+          json
+            ? result
+            : `process watch ${result.state}: '${result.label}' (pid ` +
+                `${result.subject}) after ${result.elapsed_seconds.toFixed(1)}s ` +
+                `over ${result.wakes} wakes; record ${result.record_path}` +
+                (result.state === 'exited'
+                  ? '; observed exit only — the exit status is unknown without authoritative completion evidence'
+                  : ''),
+          json,
+        )
+        process.exitCode =
+          result.state === 'exited'
+            ? 0
+            : result.state === 'timed_out'
+              ? 3
+              : result.state === 'unverified'
+                ? 4
+                : 130
+        return
+      }
+
       const targets = parseMultiplexedWatchTargets(option(args, '--targets'))
 
       if (targets) {
@@ -4794,22 +4988,31 @@ async function main(): Promise<void> {
           )
         }
 
+        const multiplexCadence = parseCadenceSeconds(
+          option(args, '--cadence-seconds'),
+          option(args, '--cadence-directed-by-operator'),
+        )
+        const multiplexStallTimeout = resolveStallTimeoutSeconds(
+          args,
+          multiplexCadence,
+        )
         const result = await watchInvocations(root, targets, {
-          cadenceSeconds: parseCadenceSeconds(
-            option(args, '--cadence-seconds'),
-          ),
-          stallTimeoutSeconds: parsePositiveInteger(
-            option(args, '--stall-timeout-seconds'),
-            '--stall-timeout-seconds',
-            DEFAULT_STALL_TIMEOUT_SECONDS,
-          ),
+          cadenceSeconds: multiplexCadence,
+          ...(option(args, '--cadence-directed-by-operator')
+            ? {
+                cadenceAuthority: option(
+                  args,
+                  '--cadence-directed-by-operator',
+                ) as string,
+              }
+            : {}),
+          stallTimeoutSeconds: multiplexStallTimeout,
           timeoutSeconds: parseTimeoutSeconds(
             option(args, '--timeout-seconds'),
           ),
           markBackground: hasFlag(args, '--mark-background'),
-          onWake: process.stderr.isTTY
-            ? (entry) => process.stderr.write(`${formatWakeLine(entry)}\n`)
-            : undefined,
+          untilTerminal: hasFlag(args, '--until-terminal'),
+          ...watchCallbacks,
         })
         const named = (items: typeof result.moved): string =>
           items.map((item) => `${item.run_id}:${item.invocation_id}`).join(', ')
@@ -4873,34 +5076,44 @@ async function main(): Promise<void> {
       const workerHandle = option(args, '--handle')
       const workerAgent = option(args, '--agent')
       const workerModel = option(args, '--model')
+      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
+
+      const cadenceSeconds = parseCadenceSeconds(
+        option(args, '--cadence-seconds'),
+        cadenceAuthority,
+      )
+      const agentStateEvidence = option(args, '--agent-state-evidence')
+      const platformReturnedAt = option(args, '--platform-returned-at')
+      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),
-        cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
-        stallTimeoutSeconds: parsePositiveInteger(
-          option(args, '--stall-timeout-seconds'),
-          '--stall-timeout-seconds',
-          DEFAULT_STALL_TIMEOUT_SECONDS,
-        ),
+        cadenceSeconds,
+        ...(cadenceAuthority ? { cadenceAuthority } : {}),
+        stallTimeoutSeconds: resolveStallTimeoutSeconds(args, cadenceSeconds),
         timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
         markBackground: hasFlag(args, '--mark-background'),
         ...(armLaunchedAt ? { launchedAt: armLaunchedAt } : {}),
+        ...(platformReturnedAt ? { platformReturnedAt } : {}),
+        ...(platformDetachedAt ? { platformDetachedAt } : {}),
         ...(workerHandle ? { workerHandle } : {}),
         ...(workerAgent ? { workerAgent } : {}),
         ...(workerModel ? { workerModel } : {}),
         ...(agentState ? { agentState } : {}),
-        // OUTPUT-001: progress lines only on an interactive terminal, so a
-        // captured watch stays byte-identical to the JSON result.
-        onWake: process.stderr.isTTY
-          ? (entry) => process.stderr.write(`${formatWakeLine(entry)}\n`)
-          : undefined,
+        ...(agentStateEvidence ? { agentStateEvidence } : {}),
+        ...watchCallbacks,
       })
 
       print(
         json
           ? result
           : `watch ${result.state}: invocation ${result.invocation_id}, ` +
-              `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s, ` +
+              `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s ` +
+              `(timeout ${result.timeout_seconds}s), ` +
+              (result.gaps.length > 0
+                ? `${result.gaps.length} observation ` +
+                  `${result.gaps.length === 1 ? 'gap' : 'gaps'} recorded, `
+                : '') +
               `record ${result.record_path}, launch ` +
               `${launchRecordPath(root, runId, result.invocation_id)}` +
               (result.rearm_command

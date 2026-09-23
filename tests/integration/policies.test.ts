@@ -440,6 +440,7 @@ test('representative contexts exclude policies outside their remit', () => {
     'BIN-001',
     'COMMS-001',
     'CONTRACT-001',
+    'DELEGATE-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -454,10 +455,10 @@ test('representative contexts exclude policies outside their remit', () => {
   const verify = ids('verifier', 'delivery', 'verify')
 
   assert.ok(verify.includes('VERIFY-001'))
-  assert.equal(
+  assert.ok(
     verify.includes('DELEGATE-001'),
-    false,
-    'the verifier consolidates parallel evidence and never delegates',
+    'the exclusive-timer rule binds every agent that starts an asynchronous ' +
+      'process, including an evidence worker',
   )
 
   for (const leaked of ['BRIEF-001', 'LANG-001', 'PY-001']) {
@@ -1687,6 +1688,19 @@ test('a technology-scoped provider row does not cover an unscoped consumer', () 
     /loads WAIVER-001 without referenced policy OPERATOR-001/u,
     'the same provider without a technology scope must cover the consumer',
   )
+})
+
+test('test coverage citations are not read as policy references', () => {
+  // DELEGATE-001's harness instructions cite the AC-named watch-repair tests.
+  // A token like `AC-001` inside a `tests/<path>::<name>` citation is a test
+  // name, not a policy reference, and must not fail the dependency check.
+  const root = createFixture()
+
+  prepareValidationFixture(root)
+
+  const errors = validateRepository(root).errors.join('\n')
+
+  assert.doesNotMatch(errors, /references missing policy AC-/u)
 })
 
 test('long-horizon policy rows swap one mode policy without changing the rest', () => {

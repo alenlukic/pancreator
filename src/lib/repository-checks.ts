@@ -297,6 +297,19 @@ function normalizeDiagnosticLine(line: string, workspaceRoot: string): string {
     stripAnsi(line)
       .replaceAll('\\', '/')
       .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
+      // Test scratch trees carry per-run random segments (the suite run
+      // directory and the fixture directory), and harness run or session ids
+      // embed a volatile temporal prefix. Neither is ever the failure signal,
+      // and keeping either would report every pre-existing environment
+      // failure as new on every run.
+      .replaceAll(
+        /runtime\/tmp\/tests\.noindex\/(?:[^\s/'"]+\/){2}/gu,
+        'runtime/tmp/tests.noindex/<scratch>/',
+      )
+      .replaceAll(
+        /\b\d+_(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}-\d{4}_[\w-]+/gu,
+        '<run-id>',
+      )
       // pytest-xdist prefixes depend on worker scheduling and collection order.
       // Remove each prefix so two equivalent runs produce the same identity.
       .replaceAll(/^(?:\[(?:gw\d+|\s*\d+%)\]\s*)+/giu, '')

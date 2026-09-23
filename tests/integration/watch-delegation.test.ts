@@ -441,6 +441,29 @@ test('an attestation that recorded no output present does not satisfy submit', (
   )
 })
 
+/**
+ * The ledger an abandoned watch leaves: its verdict is dropped, and the wake
+ * before it keeps its observation without a completion hold. A record from
+ * before weak-evidence holds existed has that shape. A still-pending hold is
+ * refused instead (`watch-repair.test.ts`, AC-026).
+ */
+function abandonedHoldFreeRecord(ledger: string): string {
+  const kept = ledger
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map(
+      (line) =>
+        JSON.parse(line) as {
+          terminal_state?: string
+          completion_hold?: string
+        },
+    )
+    .filter((entry) => entry.terminal_state === undefined)
+    .map(({ completion_hold: _hold, ...entry }) => JSON.stringify(entry))
+
+  return `${kept.join('\n')}\n`
+}
+
 // HR4-002, second half: `DELEGATION_UNOBSERVED` refused submit twice in one
 // phase because the platform's completion notice arrived between two wakes
 // and the supervisor stopped awaiting the watch. The documented workaround
@@ -453,7 +476,7 @@ test('submit accepts a watch record whose last wake observed the output being su
   fillPreparedOutput(root, state)
 
   // A supervisor that abandons the watch leaves a record with no verdict.
-  // Everything after the held wake is dropped, which is what a killed
+  // Everything after the observing wake is dropped, which is what a killed
   // process leaves behind.
   await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
@@ -464,17 +487,9 @@ test('submit accepts a watch record whose last wake observed the output being su
     root,
     watchRecordPath(root, state.run_id, invocationId),
   )
-  const held = readFileSync(recordAbsolute, 'utf8')
-    .split('\n')
-    .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line) as { terminal_state?: string })
-
   writeFileSync(
     recordAbsolute,
-    `${held
-      .filter((entry) => entry.terminal_state === undefined)
-      .map((entry) => JSON.stringify(entry))
-      .join('\n')}\n`,
+    abandonedHoldFreeRecord(readFileSync(recordAbsolute, 'utf8')),
   )
 
   const observation = summarizeDelegationObservation(
@@ -519,17 +534,9 @@ test('an output that moved after the last wake is not one that wake observed', a
     root,
     watchRecordPath(root, state.run_id, invocationId),
   )
-  const entries = readFileSync(recordAbsolute, 'utf8')
-    .split('\n')
-    .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line) as { terminal_state?: string })
-
   writeFileSync(
     recordAbsolute,
-    `${entries
-      .filter((entry) => entry.terminal_state === undefined)
-      .map((entry) => JSON.stringify(entry))
-      .join('\n')}\n`,
+    abandonedHoldFreeRecord(readFileSync(recordAbsolute, 'utf8')),
   )
 
   const moved = new Date(Date.now() + 60_000)
