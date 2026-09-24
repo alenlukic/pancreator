@@ -24,7 +24,7 @@
     "classes": {}
   },
   "fast_wall": {
-    "ceiling_ms": 120000,
+    "ceiling_ms": 240000,
     "anchor_date": "2026-09-14",
     "weekly_allowance_ms": 1000,
     "max_load_average_per_cpu": 1,
@@ -33,7 +33,7 @@
   "active_config": "balanced",
   "anthropic": {
     "balanced": "claude-sonnet-5",
-    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+    "advanced": "claude-opus-5-5[context=1m,effort=high,fast=false]",
     "ultra": "claude-fable-5-1[thinking=true,context=300k,effort=high]"
   },
   "oai": {
@@ -49,34 +49,37 @@
     "advanced": "grok-4.6[effort=high,fast=false]"
   },
   "defaults": {
-    "orchestrator": "",
-    "meta-orchestrator": "",
-    "planner": "",
-    "coder": "",
-    "metacritic": "",
-    "reviewer": "",
-    "verifier": "",
-    "remediator": "",
-    "remediator-severe": "",
-    "shepherd-reviewer": "",
-    "qa-tester": "",
-    "designer": "",
-    "design-reviewer": "",
-    "design-qa": "",
-    "release-steward": "",
-    "librarian": "",
-    "decomposer": "",
-    "spotfixer": "",
-    "harness-technician": "",
-    "harness-workflow-qa": "",
-    "hypervisor": "",
-    "debloater": ""
+    "orchestrator": "open:advanced",
+    "meta-orchestrator": "anthropic:advanced",
+    "planner": "anthropic:ultra",
+    "coder": "claude-opus-5-5[context=1m,effort=medium,fast=false]",
+    "metacritic": "anthropic:ultra",
+    "reviewer": "anthropic:advanced",
+    "verifier": "anthropic:advanced",
+    "remediator": "anthropic:advanced",
+    "remediator-severe": "anthropic:ultra",
+    "shepherd-reviewer": "anthropic:advanced",
+    "qa-tester": "open:advanced",
+    "designer": "claude-fable-5-1[thinking=true,context=1m,effort=high]",
+    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]",
+    "design-qa": "claude-opus-5-5[context=1m,effort=medium,fast=false]",
+    "release-steward": "cursor:advanced",
+    "librarian": "anthropic:advanced",
+    "decomposer": "anthropic:advanced",
+    "investigator": "anthropic:advanced",
+    "spotfixer": "anthropic:advanced",
+    "harness-technician": "anthropic:advanced",
+    "repo-technician": "anthropic:advanced",
+    "harness-workflow-qa": "anthropic:ultra",
+    "hypervisor": "anthropic:advanced",
+    "debloater": "anthropic:advanced"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
     "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config_overrides.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
+    "default": {},
     "balanced": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "coder": "",

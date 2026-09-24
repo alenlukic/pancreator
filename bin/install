@@ -805,6 +805,8 @@ ensure_target_git_exclude() {
     cat <<'EXCLUDE'
 /.cursor/agents/pan-*.md
 /.cursor/commands/pan-*.md
+/.cursor/hooks.json
+/.cursor/hooks/state/
 /.cursor/rules/pan-*.mdc
 /.cursor/rules/pancreator.mdc
 EXCLUDE

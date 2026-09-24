@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -u
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+CLI="$ROOT/dist/src/cli.js"
+FALLBACK='{"continue":true}'
+
+# Cursor runs the hook from the operator's workspace, which is the target
+# repository in an installed harness. The CLI would resolve no root there.
+export PANCREATOR_ROOT="$ROOT"
+
+if [[ ! -f "$CLI" ]] || ! command -v node >/dev/null 2>&1; then
+  printf '%s\n' "$FALLBACK"
+  exit 0
+fi
+
+if ! response="$(node "$CLI" governance prompt-context 2>/dev/null)" ||
+  [[ -z "$response" ]]; then
+  printf '%s\n' "$FALLBACK"
+  exit 0
+fi
+
+printf '%s\n' "$response"

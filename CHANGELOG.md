@@ -1,5 +1,70 @@
 # Changelog
 
+## [7.25.2] - 2026-09-24
+
+This release restores concrete persona model defaults in `config.json`.
+
+### Changed
+
+- Fill empty `defaults` persona model mappings with concrete aliases and add `investigator` and `repo-technician` ([dcc73dae](https://github.com/alenlukic/pancreator/commit/dcc73daead23f8a6909272716df443134bdb2fcf)).
+
+## [7.25.1] - 2026-09-23
+
+This release updates the tracked Anthropic advanced model and adds an empty default pipeline config.
+
+### Changed
+
+- Set `anthropic.advanced` to `claude-opus-5-5` with 1m context ([01372a9a](https://github.com/alenlukic/pancreator/commit/01372a9adafabc29a8bc8cd4b6684c3a50e84da3)).
+
+### Added
+
+- Add an empty `configs.default` so a local `active_config` of `default` can resolve ([01372a9a](https://github.com/alenlukic/pancreator/commit/01372a9adafabc29a8bc8cd4b6684c3a50e84da3)).
+
+## [7.25.0] - 2026-09-23
+
+This release makes `pan watch` the exclusive agent timer. Agents record cadence authority, gaps, and completion evidence on every wait.
+
+### Changed
+
+- Require `--cadence-directed-by-operator` for every cadence other than 60 seconds ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Loop each focused and process watch to a terminal verdict with a four-hour default bound ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Measure first-background lateness from platform return rather than launch ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Raise `fast_wall.ceiling_ms` to 240000 for the longer fast suite ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Strip volatile scratch paths from repository-check diagnostic identities ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+### Added
+
+- Add `pan watch --process` and `pan watch --timer` for waits outside a run ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Add `--until-terminal` for multiplexed waits that return only on an actionable target ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Add `pan watch audit` for a read-only historical observation report ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Record signal closure, orphan gaps, coverage advisories, and completion bases on schema-1 ledgers ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+### Fixed
+
+- Refuse a timeout below the cadence and `--stall-wakes 1` before observation ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+- Refuse a held or interrupted wake as final observation at submit ([1377f3a8](https://github.com/alenlukic/pancreator/commit/1377f3a88b77af0f1512f59f7397cbff53036408)).
+
+## [7.24.0] - 2026-09-23
+
+This release adds a Cursor project hook that injects a compact, role-specific governance reminder on each operator turn.
+
+### Changed
+
+- Point repository-check commands at workspace registries when the workspace is a Pancreator checkout ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+- Replace the probe body of `pan governance prompt-context` with the reminder resolver ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+
+### Added
+
+- Project and merge one `beforeSubmitPrompt` hook that fails open ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Add `bin/pan-hook-governance-reminder` with direct compiled-CLI dispatch ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Record the Cursor Desktop 3.21.16 probe verdict that honors flat `additional_context` ([f95e8957](https://github.com/alenlukic/pancreator/commit/f95e8957d5eaa92b9b92dc6876ced1c52d768b9c)).
+- Generate role-specific reminders from canonical policy and card selectors ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+- Add the turn-reminder registry, schema, and repository validation check ([552cfa30](https://github.com/alenlukic/pancreator/commit/552cfa30de0d244258f65aeee8adce464a8f43a1)).
+
+### Fixed
+
+- Keep a self-development profile command on workspace files when `PANCREATOR_EXEC_ROOT` points at that workspace ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+
 ## [7.23.2] - 2026-09-22
 
 This release reconciles personal event allocations with Cursor's aggregate token and model-cost totals.
