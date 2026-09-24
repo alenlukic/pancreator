@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.25.2] - 2026-09-24
+
+This release restores concrete persona model defaults in `config.json`.
+
+### Changed
+
+- Fill empty `defaults` persona model mappings with concrete aliases and add `investigator` and `repo-technician` ([dcc73dae](https://github.com/alenlukic/pancreator/commit/dcc73daead23f8a6909272716df443134bdb2fcf)).
+
 ## [7.25.1] - 2026-09-23
 
 This release updates the tracked Anthropic advanced model and adds an empty default pipeline config.
