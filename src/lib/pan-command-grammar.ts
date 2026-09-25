@@ -120,9 +120,11 @@ export const HELP_BODY = `Usage:
   pan cleanup [--days <positive-integer>] [--class <name>]... [--apply] [--json]
       Report the complete retention and housekeeping plan without changing state. --apply performs that plan, preserves live state and dirty worktrees, keeps every branch, and reports each removed worktree branch with its merged status.
   pan spend [--days <1..365>] [--json]
-  pan spend sync [--days <1..365>] [--json]
-  pan spend report [--days <1..365>] [--json]
       Fetch personal usage from Cursor's dashboard session API, or team usage from Cursor's Admin API, and report aggregate token volume, cost, time series, command, persona and model, tool, Fast mode, governance, workflow role, stage, and remediation slices. Personal reports show aggregate model cost; team reports show charged cost. The default window is the last 14 days. CURSOR_SESSION_TOKEN or CURSOR_ADMIN_API_KEY must exist in the process environment or the installation/workspace .env file. The report never includes raw events, emails, or conversation identifiers.
+  pan spend sync [--days <1..365>] [--json]
+      Collect this instance's attributed Cursor usage, merge it into runtime/spend/ledger.json, and upload the ledger as this instance's snapshot to the Vercel service at spend.vercel_host. PAN_SPEND_SYNC_TOKEN must exist in the process environment or the installation/workspace .env file. Snapshots carry only hashed event and conversation keys.
+  pan spend report [--days <1..365>] [--json]
+      Download every instance's latest snapshot from the Vercel service, count each Cursor event once, and report the combined cost computation with a per-instance breakdown. Needs spend.vercel_host and PAN_SPEND_SYNC_TOKEN, and makes no Cursor request.
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models evidence --run <run-id> --invocation <invocation-id> --role <worker|evidence-role> --effective-model <model> --source <source> --launch-handle <handle> [--json]

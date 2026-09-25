@@ -1946,16 +1946,19 @@ Use `--note-file <path>` for a note above that bound. `decide`, `pause`, `resume
 
 ### Deploy the Vercel service
 
-1. Install service dependencies:
+Run every deploy command from `services/spend-sync`, so Vercel links and deploys the service directory rather than the repository root.
+
+1. Install the pinned service dependencies:
 
 ```sh
-npm --prefix services/spend-sync ci
+cd services/spend-sync
+npm ci
 ```
 
 2. Log in and link the project:
 
 ```sh
-npx --prefix services/spend-sync vercel link
+npx vercel link
 ```
 
 3. Create a private Blob store in the Vercel dashboard and connect it to the project.
@@ -1963,18 +1966,18 @@ npx --prefix services/spend-sync vercel link
 4. Set the shared secret in Vercel:
 
 ```sh
-npx --prefix services/spend-sync vercel env add PAN_SPEND_SYNC_TOKEN production
+npx vercel env add PAN_SPEND_SYNC_TOKEN production
 ```
 
 5. Deploy:
 
 ```sh
-npx --prefix services/spend-sync vercel deploy --prod
+npx vercel deploy --prod
 ```
 
 ### Configure each instance
 
-Add `spend.vercel_host` to `config.json` on each machine:
+Add `spend.vercel_host` to `config_overrides.json` on each machine, because the tracked `config.json` is shared by every clone:
 
 ```json
 {

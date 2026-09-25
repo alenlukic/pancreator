@@ -13,7 +13,7 @@
  * email, or credential) leaves this machine. All cross-instance correlation
  * uses SHA-256 hex keys.
  */
-import { createHash } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { createGunzip, createGzip } from 'node:zlib'
 import os from 'node:os'
 import path from 'node:path'
@@ -28,7 +28,11 @@ import {
   withOperationMutex,
   writeJsonAtomic,
 } from './io.js'
-import { readProjectConfig, resolveSpendSyncOrigin } from './project-config.js'
+import {
+  isLoopbackHostname,
+  readProjectConfig,
+  resolveSpendSyncOrigin,
+} from './project-config.js'
 import {
   aggregateSpendRecords,
   collectSpendRecords,
@@ -43,7 +47,27 @@ const DEFAULT_REPORT_DAYS = 14
 const SNAPSHOT_SCHEMA_VERSION = 1
 const SYNC_TIMEOUT_MS = 60_000
 const INSTANCE_ID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+const HEX_KEY_RE = /^[0-9a-f]{64}$/u
+const METRIC_FIELDS = [
+  'events',
+  'request_units',
+  'input_tokens',
+  'output_tokens',
+  'cache_write_tokens',
+  'cache_read_tokens',
+  'total_tokens',
+  'cost_cents',
+] as const
+const ATTRIBUTION_STRING_FIELDS = [
+  'command',
+  'persona_model',
+  'fast_mode',
+  'governance',
+  'workflow_role',
+  'stage',
+  'remediation',
+] as const
 
 export interface SpendLedger {
   schema_version: 1
@@ -135,13 +159,6 @@ function ledgerLockPath(root: string): string {
   return path.join(root, 'runtime', 'spend', 'ledger.lock')
 }
 
-function randomHex(length: number): string {
-  return createHash('sha256')
-    .update(Math.random().toString())
-    .digest('hex')
-    .slice(0, length)
-}
-
 /** Read or create the per-instance identity file. Returns instance_id and label. */
 function resolveInstanceId(root: string): {
   instance_id: string
@@ -169,14 +186,7 @@ function resolveInstanceId(root: string): {
     }
   }
 
-  // Generate a new UUID v4.
-  const instance_id = [
-    randomHex(8),
-    randomHex(4),
-    `4${randomHex(3)}`,
-    `${(8 + Math.floor(Math.random() * 4)).toString(16)}${randomHex(3)}`,
-    randomHex(12),
-  ].join('-')
+  const instance_id = randomUUID()
 
   writeJsonAtomic(filePath, {
     instance_id,
@@ -208,7 +218,19 @@ function readLedger(root: string, instanceId: string): SpendLedger {
       parsed.schema_version === 1 &&
       Array.isArray(parsed.records)
     ) {
-      return parsed as unknown as SpendLedger
+      return {
+        schema_version: 1,
+        instance_id:
+          typeof parsed.instance_id === 'string'
+            ? parsed.instance_id
+            : instanceId,
+        records: parsed.records.filter(isSpendRecord),
+        tool_calls: parseToolCalls(parsed.tool_calls),
+        updated_at:
+          typeof parsed.updated_at === 'string'
+            ? parsed.updated_at
+            : new Date(0).toISOString(),
+      }
     }
   } catch {
     // Corrupt ledger; start fresh.
@@ -279,7 +301,11 @@ interface LedgerRecordMeta {
   synced_at: string
 }
 
-function mergeLedger(
+/**
+ * Merge freshly collected records into the ledger under the selection rule,
+ * drop records older than 365 days, and keep only referenced tool maps.
+ */
+export function mergeLedger(
   ledger: SpendLedger,
   incomingRecords: SpendRecord[],
   incomingToolCalls: Map<string, Map<string, number>>,
@@ -442,11 +468,9 @@ function assertSecureUrl(url: string, context: string): void {
     })
   }
 
-  const loopback = new Set(['localhost', '127.0.0.1', '::1'])
-
   invariant(
     parsed.protocol === 'https:' ||
-      (parsed.protocol === 'http:' && loopback.has(parsed.hostname)),
+      (parsed.protocol === 'http:' && isLoopbackHostname(parsed.hostname)),
     `${context} must use https (or http for a loopback host), got: ${url}`,
     { code: 'SPEND_SYNC_INVALID_RESPONSE' },
   )
@@ -671,6 +695,353 @@ export async function syncSpend(
   }
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isSpendRecord(value: unknown): value is SpendRecord {
+  if (
+    !isRecord(value) ||
+    typeof value.key !== 'string' ||
+    !HEX_KEY_RE.test(value.key) ||
+    (value.source !== 'team' && value.source !== 'personal') ||
+    !isFiniteNumber(value.timestamp_ms) ||
+    typeof value.model !== 'string' ||
+    !(
+      value.conversation_key === null ||
+      (typeof value.conversation_key === 'string' &&
+        HEX_KEY_RE.test(value.conversation_key))
+    )
+  ) {
+    return false
+  }
+
+  const { metrics, attribution } = value
+
+  return (
+    isRecord(metrics) &&
+    METRIC_FIELDS.every((field) => isFiniteNumber(metrics[field])) &&
+    isRecord(attribution) &&
+    ATTRIBUTION_STRING_FIELDS.every(
+      (field) => typeof attribution[field] === 'string',
+    ) &&
+    Array.isArray(attribution.tools) &&
+    attribution.tools.every((tool) => typeof tool === 'string')
+  )
+}
+
+function parseToolCalls(value: unknown): SpendSnapshot['tool_calls'] {
+  const toolCalls: SpendSnapshot['tool_calls'] = {}
+
+  if (!isRecord(value)) {
+    return toolCalls
+  }
+
+  for (const [conversationKey, tools] of Object.entries(value)) {
+    if (!HEX_KEY_RE.test(conversationKey) || !isRecord(tools)) {
+      continue
+    }
+
+    toolCalls[conversationKey] = Object.fromEntries(
+      Object.entries(tools).filter(([, count]) => isFiniteNumber(count)),
+    ) as Record<string, number>
+  }
+
+  return toolCalls
+}
+
+export interface ParsedSpendSnapshot {
+  snapshot: SpendSnapshot
+  /** Records dropped because they do not match the record shape. */
+  skipped_records: number
+}
+
+/**
+ * Validate a decoded snapshot. Returns null when the envelope is invalid;
+ * malformed records are dropped and counted rather than failing the snapshot.
+ */
+export function parseSpendSnapshot(value: unknown): ParsedSpendSnapshot | null {
+  if (
+    !isRecord(value) ||
+    value.schema_version !== SNAPSHOT_SCHEMA_VERSION ||
+    typeof value.instance_id !== 'string' ||
+    typeof value.synced_at !== 'string' ||
+    !Array.isArray(value.records)
+  ) {
+    return null
+  }
+
+  const records = value.records.filter(isSpendRecord)
+  const sources = isRecord(value.attribution_sources)
+    ? value.attribution_sources
+    : {}
+
+  return {
+    snapshot: {
+      schema_version: SNAPSHOT_SCHEMA_VERSION,
+      instance_id: value.instance_id,
+      label: typeof value.label === 'string' ? value.label : value.instance_id,
+      harness_version:
+        typeof value.harness_version === 'string'
+          ? value.harness_version
+          : 'unknown',
+      synced_at: value.synced_at,
+      attribution_sources: {
+        workspaces_scanned: isFiniteNumber(sources.workspaces_scanned)
+          ? sources.workspaces_scanned
+          : 0,
+        embedded_installations_scanned: isFiniteNumber(
+          sources.embedded_installations_scanned,
+        )
+          ? sources.embedded_installations_scanned
+          : 0,
+      },
+      records,
+      tool_calls: parseToolCalls(value.tool_calls),
+    },
+    skipped_records: value.records.length - records.length,
+  }
+}
+
+function emptyMultiInstanceReport(
+  period: MultiInstanceSpendReport['period'],
+  warnings: string[],
+): MultiInstanceSpendReport {
+  return {
+    scope: 'multi-instance',
+    period,
+    attribution_sources: {
+      instances: 0,
+      workspaces_scanned: 0,
+      embedded_installations_scanned: 0,
+    },
+    instances: [],
+    totals: {
+      events: 0,
+      request_units: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_write_tokens: 0,
+      cache_read_tokens: 0,
+      total_tokens: 0,
+      cost_cents: 0,
+    },
+    token_categories: {
+      input: 0,
+      output: 0,
+      cache_write: 0,
+      cache_read: 0,
+      cached: 0,
+    },
+    daily: [],
+    slices: {
+      commands: [],
+      persona_models: [],
+      tools: [],
+      fast_mode: [],
+      governance: [],
+      workflow_role: [],
+      stages: [],
+      remediation: [],
+    },
+    coverage: {
+      command: emptySpendCoverage(),
+      persona: emptySpendCoverage(),
+      tools: emptySpendCoverage(),
+      fast_mode: emptySpendCoverage(),
+      governance: emptySpendCoverage(),
+      workflow_role: emptySpendCoverage(),
+      stage: emptySpendCoverage(),
+      remediation: emptySpendCoverage(),
+    },
+    warnings: [
+      ...warnings,
+      'No snapshots are available. Run `pan spend sync` on each instance first.',
+    ],
+  }
+}
+
+/** Tool maps for the selected records, taken from the instance that supplied each record. */
+function selectedToolCalls(
+  selected: LedgerRecordMeta[],
+  snapshotsById: Map<string, SpendSnapshot>,
+): Map<string, Map<string, number>> {
+  const toolCalls = new Map<string, Map<string, number>>()
+
+  for (const { record, instance_id } of selected) {
+    const conversationKey = record.conversation_key
+
+    if (conversationKey === null || toolCalls.has(conversationKey)) {
+      continue
+    }
+
+    const tools = snapshotsById.get(instance_id)?.tool_calls[conversationKey]
+
+    if (tools !== undefined) {
+      toolCalls.set(conversationKey, new Map(Object.entries(tools)))
+    }
+  }
+
+  return toolCalls
+}
+
+export interface CombineSpendSnapshotsOptions {
+  days: number
+  now: Date
+  /** Warnings gathered while fetching; they lead the report warnings. */
+  warnings?: string[]
+}
+
+/**
+ * Combine validated instance snapshots into one report. Each event key counts
+ * once under the selection rule, and each instance's totals cover only the
+ * records it supplied to the selection, so instance totals sum to the report
+ * totals.
+ */
+export function combineSpendSnapshots(
+  snapshots: SpendSnapshot[],
+  options: CombineSpendSnapshotsOptions,
+): MultiInstanceSpendReport {
+  const endDateMs = options.now.getTime()
+  const startDateMs = endDateMs - options.days * DAY_MS
+  const warnings = [...(options.warnings ?? [])]
+  const basePeriod = {
+    days: options.days,
+    start: new Date(startDateMs).toISOString(),
+    end: options.now.toISOString(),
+    timezone: 'UTC' as const,
+    source: 'Pancreator spend sync' as const,
+  }
+
+  if (snapshots.length === 0) {
+    return emptyMultiInstanceReport(
+      { ...basePeriod, cost_basis: 'charged' },
+      warnings,
+    )
+  }
+
+  const byKey = new Map<string, LedgerRecordMeta>()
+  const inWindowPerInstance = new Map<string, number>()
+  const snapshotsById = new Map<string, SpendSnapshot>()
+
+  for (const snapshot of snapshots) {
+    snapshotsById.set(snapshot.instance_id, snapshot)
+
+    let inWindow = 0
+
+    for (const record of snapshot.records) {
+      if (
+        record.timestamp_ms < startDateMs ||
+        record.timestamp_ms > endDateMs
+      ) {
+        continue
+      }
+
+      inWindow += 1
+
+      const existing = byKey.get(record.key)
+      const selected =
+        existing === undefined
+          ? record
+          : selectSpendRecord(
+              record,
+              existing.record,
+              snapshot.instance_id,
+              existing.instance_id,
+              snapshot.synced_at,
+              existing.synced_at,
+            )
+
+      if (existing === undefined || selected === record) {
+        byKey.set(record.key, {
+          record,
+          instance_id: snapshot.instance_id,
+          synced_at: snapshot.synced_at,
+        })
+      }
+    }
+
+    inWindowPerInstance.set(snapshot.instance_id, inWindow)
+  }
+
+  const selected = [...byKey.values()]
+  const selectedByInstance = new Map<string, LedgerRecordMeta[]>()
+
+  for (const meta of selected) {
+    const group = selectedByInstance.get(meta.instance_id) ?? []
+
+    group.push(meta)
+    selectedByInstance.set(meta.instance_id, group)
+  }
+
+  const instances: InstanceSummary[] = [...snapshotsById.values()].map(
+    (snapshot) => {
+      const supplied = selectedByInstance.get(snapshot.instance_id) ?? []
+
+      return {
+        instance_id: snapshot.instance_id,
+        label: snapshot.label,
+        synced_at: snapshot.synced_at,
+        harness_version: snapshot.harness_version,
+        records_in_window: inWindowPerInstance.get(snapshot.instance_id) ?? 0,
+        records_selected: supplied.length,
+        totals: aggregateSpendRecords(
+          supplied.map((meta) => meta.record),
+          selectedToolCalls(supplied, snapshotsById),
+        ).totals,
+      }
+    },
+  )
+
+  const aggregated = aggregateSpendRecords(
+    selected.map((meta) => meta.record),
+    selectedToolCalls(selected, snapshotsById),
+  )
+  const sources = new Set(selected.map((meta) => meta.record.source))
+  const cost_basis: MultiInstanceSpendReport['period']['cost_basis'] =
+    sources.size === 2
+      ? 'mixed'
+      : sources.has('personal')
+        ? 'model-cost'
+        : 'charged'
+
+  if (sources.has('personal')) {
+    warnings.push(
+      'Personal event tokens are inferred allocations of account-wide aggregates; they are not authoritative billed charges.',
+    )
+  }
+
+  warnings.push(
+    'Duplicate events across instances were counted once, using the better attributed record.',
+    ...aggregated.warnings,
+  )
+
+  return {
+    scope: 'multi-instance',
+    period: { ...basePeriod, cost_basis },
+    attribution_sources: {
+      instances: snapshotsById.size,
+      workspaces_scanned: [...snapshotsById.values()].reduce(
+        (total, snapshot) =>
+          total + snapshot.attribution_sources.workspaces_scanned,
+        0,
+      ),
+      embedded_installations_scanned: [...snapshotsById.values()].reduce(
+        (total, snapshot) =>
+          total + snapshot.attribution_sources.embedded_installations_scanned,
+        0,
+      ),
+    },
+    instances,
+    totals: aggregated.totals,
+    token_categories: aggregated.token_categories,
+    daily: aggregated.daily,
+    slices: aggregated.slices,
+    coverage: aggregated.coverage,
+    warnings,
+  }
+}
+
 /**
  * Download every instance's latest snapshot and aggregate into a combined report.
  *
@@ -681,14 +1052,6 @@ export async function reportMultiInstanceSpend(
   root: string,
   options: ReportMultiInstanceSpendOptions = {},
 ): Promise<MultiInstanceSpendReport> {
-  const config = readProjectConfig(root)
-
-  // Resolve origin and token before any network request (AC-2).
-  const origin = resolveSpendSyncOrigin(config)
-  const token = resolveSpendToken(root)
-
-  const fetchImpl = options.fetchImpl ?? fetch
-  const now = options.now ?? new Date()
   const days = options.days ?? DEFAULT_REPORT_DAYS
 
   invariant(
@@ -697,10 +1060,15 @@ export async function reportMultiInstanceSpend(
     { code: 'INVALID_ARGUMENT' },
   )
 
-  const endDateMs = now.getTime()
-  const startDateMs = endDateMs - days * DAY_MS
+  const config = readProjectConfig(root)
 
-  // GET /api/snapshots.
+  // Resolve origin and token before any network request (AC-2).
+  const origin = resolveSpendSyncOrigin(config)
+  const token = resolveSpendToken(root)
+
+  const fetchImpl = options.fetchImpl ?? fetch
+  const now = options.now ?? new Date()
+
   let listData: unknown
 
   try {
@@ -732,9 +1100,7 @@ export async function reportMultiInstanceSpend(
       typeof entry.instance_id !== 'string' ||
       typeof entry.download_url !== 'string'
     ) {
-      warnings.push(
-        `Skipped a snapshot entry with an invalid shape: ${JSON.stringify(entry)}`,
-      )
+      warnings.push('Skipped a snapshot entry with an invalid shape.')
       continue
     }
 
@@ -762,256 +1128,28 @@ export async function reportMultiInstanceSpend(
 
       const buffer = Buffer.from(await response.arrayBuffer())
       const decompressed = await gunzipBuffer(buffer)
-      const parsed: unknown = JSON.parse(decompressed.toString('utf8'))
+      const parsed = parseSpendSnapshot(
+        JSON.parse(decompressed.toString('utf8')) as unknown,
+      )
 
-      if (
-        !isRecord(parsed) ||
-        parsed.schema_version !== SNAPSHOT_SCHEMA_VERSION ||
-        typeof parsed.instance_id !== 'string' ||
-        !Array.isArray(parsed.records)
-      ) {
+      if (parsed === null) {
         warnings.push(
           `Skipped instance ${instanceId}: snapshot has an invalid schema.`,
         )
         continue
       }
 
-      snapshots.push(parsed as unknown as SpendSnapshot)
+      if (parsed.skipped_records > 0) {
+        warnings.push(
+          `Skipped ${parsed.skipped_records} malformed record(s) in the snapshot of instance ${instanceId}.`,
+        )
+      }
+
+      snapshots.push(parsed.snapshot)
     } catch (err) {
       warnings.push(`Skipped instance ${instanceId}: ${errorMessage(err)}`)
     }
   }
 
-  if (snapshots.length === 0) {
-    const zero = {
-      events: 0,
-      request_units: 0,
-      input_tokens: 0,
-      output_tokens: 0,
-      cache_write_tokens: 0,
-      cache_read_tokens: 0,
-      total_tokens: 0,
-      cost_cents: 0,
-    }
-
-    warnings.push(
-      'No snapshots are available. Run `pan spend sync` on each instance first.',
-    )
-
-    return {
-      scope: 'multi-instance',
-      period: {
-        days,
-        start: new Date(startDateMs).toISOString(),
-        end: now.toISOString(),
-        timezone: 'UTC',
-        source: 'Pancreator spend sync',
-        cost_basis: 'charged',
-      },
-      attribution_sources: {
-        instances: 0,
-        workspaces_scanned: 0,
-        embedded_installations_scanned: 0,
-      },
-      instances: [],
-      totals: zero,
-      token_categories: {
-        input: 0,
-        output: 0,
-        cache_write: 0,
-        cache_read: 0,
-        cached: 0,
-      },
-      daily: [],
-      slices: {
-        commands: [],
-        persona_models: [],
-        tools: [],
-        fast_mode: [],
-        governance: [],
-        workflow_role: [],
-        stages: [],
-        remediation: [],
-      },
-      coverage: {
-        command: emptySpendCoverage(),
-        persona: emptySpendCoverage(),
-        tools: emptySpendCoverage(),
-        fast_mode: emptySpendCoverage(),
-        governance: emptySpendCoverage(),
-        workflow_role: emptySpendCoverage(),
-        stage: emptySpendCoverage(),
-        remediation: emptySpendCoverage(),
-      },
-      warnings,
-    }
-  }
-
-  // Deduplicate across snapshots using the selection rule.
-  interface RecordMeta {
-    record: SpendRecord
-    instance_id: string
-    synced_at: string
-  }
-
-  const byKey = new Map<string, RecordMeta>()
-  const instanceSummaries: InstanceSummary[] = []
-  let workspacesScanned = 0
-  let embeddedInstallationsScanned = 0
-  const allSources = new Set<'team' | 'personal'>()
-
-  for (const snapshot of snapshots) {
-    const instanceRecords: SpendRecord[] = []
-
-    for (const record of snapshot.records) {
-      if (
-        record.timestamp_ms < startDateMs ||
-        record.timestamp_ms > endDateMs
-      ) {
-        continue
-      }
-
-      instanceRecords.push(record)
-
-      if (record.source === 'team' || record.source === 'personal') {
-        allSources.add(record.source)
-      }
-
-      const existing = byKey.get(record.key)
-
-      if (existing === undefined) {
-        byKey.set(record.key, {
-          record,
-          instance_id: snapshot.instance_id,
-          synced_at: snapshot.synced_at,
-        })
-      } else {
-        const selected = selectSpendRecord(
-          record,
-          existing.record,
-          snapshot.instance_id,
-          existing.instance_id,
-          snapshot.synced_at,
-          existing.synced_at,
-        )
-
-        byKey.set(record.key, {
-          record: selected,
-          instance_id:
-            selected === record ? snapshot.instance_id : existing.instance_id,
-          synced_at:
-            selected === record ? snapshot.synced_at : existing.synced_at,
-        })
-      }
-    }
-
-    const attr = snapshot.attribution_sources
-
-    workspacesScanned += attr?.workspaces_scanned ?? 0
-    embeddedInstallationsScanned += attr?.embedded_installations_scanned ?? 0
-
-    const instanceToolCalls = new Map<string, Map<string, number>>()
-
-    for (const [convKey, toolMap] of Object.entries(
-      snapshot.tool_calls ?? {},
-    )) {
-      instanceToolCalls.set(
-        convKey,
-        new Map(Object.entries(toolMap as Record<string, number>)),
-      )
-    }
-
-    const instanceAgg = aggregateSpendRecords(
-      instanceRecords,
-      instanceToolCalls,
-    )
-
-    instanceSummaries.push({
-      instance_id: snapshot.instance_id,
-      label: snapshot.label ?? snapshot.instance_id,
-      synced_at: snapshot.synced_at,
-      harness_version: snapshot.harness_version ?? 'unknown',
-      records_in_window: instanceRecords.length,
-      records_selected: 0,
-      totals: instanceAgg.totals,
-    })
-  }
-
-  const selectedRecords = [...byKey.values()].map((m) => m.record)
-
-  // Tally records_selected per instance.
-  const selectedPerInstance = new Map<string, number>()
-
-  for (const m of byKey.values()) {
-    selectedPerInstance.set(
-      m.instance_id,
-      (selectedPerInstance.get(m.instance_id) ?? 0) + 1,
-    )
-  }
-
-  for (const summary of instanceSummaries) {
-    summary.records_selected = selectedPerInstance.get(summary.instance_id) ?? 0
-  }
-
-  // Build merged tool_calls from all snapshots.
-  const selectedToolCalls = new Map<string, Map<string, number>>()
-
-  for (const snapshot of snapshots) {
-    for (const [convKey, toolMap] of Object.entries(
-      snapshot.tool_calls ?? {},
-    )) {
-      if (!selectedToolCalls.has(convKey)) {
-        selectedToolCalls.set(
-          convKey,
-          new Map(Object.entries(toolMap as Record<string, number>)),
-        )
-      }
-    }
-  }
-
-  const aggregated = aggregateSpendRecords(selectedRecords, selectedToolCalls)
-
-  const cost_basis: 'charged' | 'model-cost' | 'mixed' =
-    allSources.size === 0 || allSources.size === 2
-      ? allSources.size === 0
-        ? 'charged'
-        : 'mixed'
-      : allSources.has('team')
-        ? 'charged'
-        : 'model-cost'
-
-  if (allSources.has('personal')) {
-    warnings.push(
-      'Personal event tokens are inferred allocations of account-wide aggregates; they are not authoritative billed charges.',
-    )
-  }
-
-  warnings.push(
-    'Duplicate events across instances were counted once, using the better attributed record.',
-  )
-  warnings.push(...aggregated.warnings)
-
-  return {
-    scope: 'multi-instance',
-    period: {
-      days,
-      start: new Date(startDateMs).toISOString(),
-      end: now.toISOString(),
-      timezone: 'UTC',
-      source: 'Pancreator spend sync',
-      cost_basis,
-    },
-    attribution_sources: {
-      instances: snapshots.length,
-      workspaces_scanned: workspacesScanned,
-      embedded_installations_scanned: embeddedInstallationsScanned,
-    },
-    instances: instanceSummaries,
-    totals: aggregated.totals,
-    token_categories: aggregated.token_categories,
-    daily: aggregated.daily,
-    slices: aggregated.slices,
-    coverage: aggregated.coverage,
-    warnings,
-  }
+  return combineSpendSnapshots(snapshots, { days, now, warnings })
 }

@@ -578,17 +578,14 @@ function nonEmptyScheduleString(value: unknown): value is string {
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1'])
 
-function isLoopback(hostname: string): boolean {
-  return LOOPBACK_HOSTS.has(hostname)
+/** True for a loopback URL hostname; WHATWG URL keeps IPv6 brackets. */
+export function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTS.has(hostname.replace(/^\[(.*)\]$/u, '$1'))
 }
 
 /**
- * Normalize the `spend.vercel_host` configuration value to an https origin.
- * Accepts:
- *   - a bare host (`pan-spend.vercel.app`) → `https://pan-spend.vercel.app`
- *   - `https://<host>[:port]` (trailing slash stripped)
- *   - `http://<loopback>[:port]` (loopback only, for tests)
- * Everything else fails with `INVALID_PROJECT_CONFIG`.
+ * Resolve the configured `spend.vercel_host` to its normalized origin.
+ * An absent host fails with `SPEND_SYNC_HOST_MISSING`.
  */
 export function resolveSpendSyncOrigin(config: ProjectConfig | null): string {
   const host = config?.spend?.vercel_host
@@ -599,7 +596,18 @@ export function resolveSpendSyncOrigin(config: ProjectConfig | null): string {
     { code: 'SPEND_SYNC_HOST_MISSING' },
   )
 
-  // Already looks like an origin — parse it.
+  return normalizeSpendSyncHost(host)
+}
+
+/**
+ * Normalize a `spend.vercel_host` value to an origin.
+ * Accepts:
+ *   - a bare host (`pan-spend.vercel.app`) → `https://pan-spend.vercel.app`
+ *   - `https://<host>[:port]` (trailing slash stripped)
+ *   - `http://<loopback>[:port]` (loopback only, for tests)
+ * Everything else fails with `INVALID_PROJECT_CONFIG`.
+ */
+function normalizeSpendSyncHost(host: string): string {
   let parsed: URL
 
   if (host.includes('://')) {
@@ -627,7 +635,7 @@ export function resolveSpendSyncOrigin(config: ProjectConfig | null): string {
 
   invariant(
     parsed.protocol === 'https:' ||
-      (parsed.protocol === 'http:' && isLoopback(parsed.hostname)),
+      (parsed.protocol === 'http:' && isLoopbackHostname(parsed.hostname)),
     `${PROJECT_CONFIG_PATH}.spend.vercel_host must use https (or http for a loopback host).`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
@@ -679,6 +687,7 @@ function assertSpendBlock(
       `${PROJECT_CONFIG_PATH}.spend.vercel_host MUST be a non-empty string when present.`,
       { code: 'INVALID_PROJECT_CONFIG' },
     )
+    normalizeSpendSyncHost(value.vercel_host)
   }
 }
 

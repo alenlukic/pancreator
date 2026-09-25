@@ -2,10 +2,16 @@
  * Unit tests for spend.vercel_host validation and normalization (AC-1).
  */
 import assert from 'node:assert/strict'
+import { writeFileSync } from 'node:fs'
+import path from 'node:path'
 import { test } from 'node:test'
 
-import { resolveSpendSyncOrigin } from '../../src/lib/project-config.js'
+import {
+  readProjectConfig,
+  resolveSpendSyncOrigin,
+} from '../../src/lib/project-config.js'
 import type { ProjectConfig } from '../../src/lib/types.js'
+import { createTestTempDirectory } from '../temp.js'
 
 interface CodedError {
   code: string
@@ -66,6 +72,37 @@ test('spend.vercel_host accepts a bare host, an https origin, and a loopback htt
     resolveSpendSyncOrigin(configWith('http://localhost:3001')),
     'http://localhost:3001',
   )
+
+  assert.equal(
+    resolveSpendSyncOrigin(configWith('http://[::1]:3002/')),
+    'http://[::1]:3002',
+  )
+})
+
+test('config load rejects an empty, non-string, or insecure spend.vercel_host and accepts an absent spend block', () => {
+  const root = createTestTempDirectory('spend-config-')
+  const load = (spend: unknown): unknown => {
+    writeFileSync(
+      path.join(root, 'config.json'),
+      `${JSON.stringify(
+        spend === undefined
+          ? { schema_version: 1 }
+          : { schema_version: 1, spend },
+      )}\n`,
+    )
+
+    return readProjectConfig(root)
+  }
+
+  assert.deepEqual(load(undefined), { schema_version: 1 })
+  assert.deepEqual(load({ vercel_host: 'pan-spend.vercel.app' }), {
+    schema_version: 1,
+    spend: { vercel_host: 'pan-spend.vercel.app' },
+  })
+
+  for (const vercel_host of ['', 42, 'http://pan-spend.vercel.app']) {
+    assertThrowsCode(() => load({ vercel_host }), 'INVALID_PROJECT_CONFIG')
+  }
 })
 
 test('spend.vercel_host rejects insecure, pathful, and non-string values', () => {

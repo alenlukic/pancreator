@@ -12,6 +12,7 @@ const HANDLERS_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../../services/spend-sync/lib/handlers.js',
 )
+const BLOB_DEPS_PATH = path.join(path.dirname(HANDLERS_PATH), 'blob-deps.js')
 
 interface HandlersModule {
   handleUpload: (request: Request, deps: unknown) => Promise<Response>
@@ -117,10 +118,80 @@ test('upload returns 405 for a wrong method', async () => {
 
 test('upload returns 400 for a non-UUID instance_id', async () => {
   const { handleUpload } = await loadHandlers()
-  const request = makeRequest('POST', { instance_id: 'not-a-uuid' })
-  const response = await handleUpload(request, validDepsUpload)
+  for (const instanceId of ['not-a-uuid', VALID_UUID.toUpperCase()]) {
+    const request = makeRequest('POST', { instance_id: instanceId })
+    const response = await handleUpload(request, validDepsUpload)
 
-  assert.equal(response.status, 400)
+    assert.equal(response.status, 400, instanceId)
+  }
+})
+
+test('the Blob wiring returns private presigned URLs, bypasses the read cache, and pages through the list', async () => {
+  const { createBlobDeps } = (await import(BLOB_DEPS_PATH)) as {
+    createBlobDeps: (
+      blob: unknown,
+      env: Record<string, string | undefined>,
+    ) => {
+      token: string | undefined
+      presignPut: (pathname: string) => Promise<string>
+      presignGet: (pathname: string) => Promise<string>
+      list: (prefix: string) => Promise<unknown[]>
+    }
+  }
+  const calls: Array<[string, unknown]> = []
+  const blob = {
+    async issueSignedToken(options: unknown) {
+      calls.push(['issueSignedToken', options])
+
+      return { delegationToken: 'd', clientSigningToken: 'c', validUntil: 1 }
+    },
+    async presignUrl(token: unknown, options: { operation: string }) {
+      calls.push(['presignUrl', { token, ...options }])
+
+      return { presignedUrl: `https://store.example/${options.operation}` }
+    },
+    async list(options: { cursor?: string }) {
+      calls.push(['list', options])
+
+      return options.cursor === undefined
+        ? { blobs: [{ pathname: 'a' }], hasMore: true, cursor: 'next' }
+        : { blobs: [{ pathname: 'b' }], hasMore: false }
+    },
+  }
+  const deps = createBlobDeps(blob, { PAN_SPEND_SYNC_TOKEN: 'secret' })
+  const pathname = `spend/instances/${VALID_UUID}.json.gz`
+
+  assert.equal(deps.token, 'secret')
+  assert.equal(await deps.presignPut(pathname), 'https://store.example/put')
+  assert.equal(await deps.presignGet(pathname), 'https://store.example/get')
+  assert.deepEqual(await deps.list('spend/instances/'), [
+    { pathname: 'a' },
+    { pathname: 'b' },
+  ])
+
+  const [putToken, putUrl, getToken, getUrl] = calls.map(
+    ([, options]) => options as Record<string, unknown>,
+  )
+
+  assert.deepEqual(putToken?.operations, ['put'])
+  assert.equal(putToken?.pathname, pathname)
+  assert.equal(putUrl?.operation, 'put')
+  assert.equal(putUrl?.access, 'private')
+  assert.equal(putUrl?.allowOverwrite, true)
+  assert.deepEqual(getToken?.operations, ['get'])
+  assert.equal(getUrl?.access, 'private')
+  assert.equal(getUrl?.useCache, false)
+  assert.ok(
+    (getUrl?.validUntil as number) <= Date.now() + 10 * 60 * 1000,
+    'Signed URLs expire within 10 minutes',
+  )
+  assert.deepEqual(
+    calls.filter(([name]) => name === 'list').map(([, options]) => options),
+    [
+      { prefix: 'spend/instances/' },
+      { prefix: 'spend/instances/', cursor: 'next' },
+    ],
+  )
 })
 
 test('upload returns 500 when the server token is unset', async () => {

@@ -1059,18 +1059,16 @@ export async function collectSpendRecords(
       conversation_key,
     })
 
-    if (rawTranscriptId !== null && conversation_key !== null) {
-      const transcriptTools =
-        transcripts.get(rawTranscriptId)?.tools ?? new Map<string, number>()
-
-      const existing =
-        tool_calls.get(conversation_key) ?? new Map<string, number>()
-
-      for (const [tool, count] of transcriptTools) {
-        existing.set(tool, (existing.get(tool) ?? 0) + count)
-      }
-
-      tool_calls.set(conversation_key, existing)
+    // Tool calls count once per matched conversation, not once per event.
+    if (
+      rawTranscriptId !== null &&
+      conversation_key !== null &&
+      !tool_calls.has(conversation_key)
+    ) {
+      tool_calls.set(
+        conversation_key,
+        new Map(transcripts.get(rawTranscriptId)?.tools ?? []),
+      )
     }
   }
 
@@ -1288,16 +1286,19 @@ export async function generateTokenSpendReport(
   if (collected.usage.aggregate_tokens !== null) {
     const agg = collected.usage.aggregate_tokens
 
-    aggregated.totals.input_tokens = agg.input_tokens
-    aggregated.totals.output_tokens = agg.output_tokens
-    aggregated.totals.cache_write_tokens = agg.cache_write_tokens
-    aggregated.totals.cache_read_tokens = agg.cache_read_tokens
-    aggregated.totals.cost_cents = agg.cost_cents
-    aggregated.totals.total_tokens =
-      agg.input_tokens +
-      agg.output_tokens +
-      agg.cache_write_tokens +
-      agg.cache_read_tokens
+    aggregated.totals = roundedMetrics({
+      ...aggregated.totals,
+      input_tokens: agg.input_tokens,
+      output_tokens: agg.output_tokens,
+      cache_write_tokens: agg.cache_write_tokens,
+      cache_read_tokens: agg.cache_read_tokens,
+      cost_cents: agg.cost_cents,
+      total_tokens:
+        agg.input_tokens +
+        agg.output_tokens +
+        agg.cache_write_tokens +
+        agg.cache_read_tokens,
+    })
     aggregated.token_categories = {
       input: agg.input_tokens,
       output: agg.output_tokens,
