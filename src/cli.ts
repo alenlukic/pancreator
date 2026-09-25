@@ -283,6 +283,7 @@ import {
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchAttach,
   watchInvocations,
   watchProcess,
   watchTimer,
@@ -4913,6 +4914,56 @@ async function main(): Promise<void> {
         return
       }
 
+      const attachLedgers = option(args, '--attach')
+
+      if (attachLedgers !== null) {
+        const ledgerList = attachLedgers
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+
+        invariant(
+          ledgerList.length > 0,
+          '--attach requires at least one ledger path.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const timeoutSec = parseTimeoutSeconds(
+          option(args, '--timeout-seconds'),
+        )
+        const attachAuthority = option(args, '--cadence-directed-by-operator')
+        const result = await watchAttach(root, {
+          ledgers: ledgerList,
+          timeoutSeconds: timeoutSec,
+          cadenceSeconds: parseCadenceSeconds(
+            option(args, '--cadence-seconds'),
+            attachAuthority,
+          ),
+          ...(attachAuthority?.trim()
+            ? { cadenceAuthority: attachAuthority.trim() }
+            : {}),
+        })
+
+        print(
+          json
+            ? result
+            : `attach ${result.state}: ${result.ledgers.length} session(s) ` +
+                `after ${result.elapsed_seconds.toFixed(1)}s\n` +
+                result.ledgers
+                  .map(
+                    (s) =>
+                      `  ${s.ledger}: ${s.state ?? 'pending'}` +
+                      (s.session_terminal_state
+                        ? ` (session: ${s.session_terminal_state})`
+                        : ''),
+                  )
+                  .join('\n'),
+          json,
+        )
+        process.exitCode = result.exit_code
+        return
+      }
+
       const processPid = option(args, '--process')
       const timerMode = hasFlag(args, '--timer')
 
@@ -5004,7 +5055,9 @@ async function main(): Promise<void> {
                 `over ${result.wakes} wakes; record ${result.record_path}` +
                 (result.state === 'exited'
                   ? '; observed exit only — the exit status is unknown without authoritative completion evidence'
-                  : ''),
+                  : result.state === 'timed_out' && result.rearm_command
+                    ? `\nre-arm with: ${result.rearm_command}`
+                    : ''),
           json,
         )
         process.exitCode =

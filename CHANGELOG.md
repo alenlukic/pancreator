@@ -1,5 +1,26 @@
 # Changelog
 
+## [7.29.0] - 2026-09-25
+
+This release bans AwaitShell and makes `pan watch` the only wait for a shell command or a subagent.
+
+### Changed
+
+- Ban AwaitShell from every canonical agent file, the projected hooks, and the always-apply delegation rule ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Set the default `pan watch` timeout to one hour (3600 seconds) ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Point DELEGATE-001, ORCH-001, the supervisor procedure, and the start, resume, and horizon commands at a foreground `pan watch` call plus `--attach` ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+
+### Added
+
+- Add `pan watch --attach` so an agent can rejoin a detached watch ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Print a re-arm command when a watch times out ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Add `bin/pan-hook-deny-await-shell` and validator `AWAIT-SHELL-BAN-VALIDATE-001` ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+
+### Fixed
+
+- Repair the hook-contract tests, the concurrency overlap proof, and the restored watch-repair assertions ([46e88e4e](https://github.com/alenlukic/pancreator/commit/46e88e4e4d54d1c133dafc4636df1ccc0b873169)).
+- Merge `pan-dev` at v7.28.0 so this release follows the spend release ([a4d9ecc7](https://github.com/alenlukic/pancreator/commit/a4d9ecc7)).
+
 ## [7.28.0] - 2026-09-25
 
 This release adds `pan spend sync` and `pan spend report`. It also adds local `pan spend` from the merged spend line.
@@ -2135,7 +2156,7 @@ This release absorbs the unreleased 4.10.0 candidate. It is a major release: sta
 
 ### Fixed
 
-- Consume the whole Unreleased section when a test fixture prepares release metadata. The fixture replaced only the `## [Unreleased]` heading, so the group headings under it merged into the fixture release. A new `### Changed` group in the real changelog then broke five integration tests, and the ship stage paused with no stated cause ([test helpers](tests/helpers.ts)).
+- Consume the whole Unreleased section when a test fixture prepares release metadata. The fixture replaced only the `## [7.29.0] - 2026-09-25` heading, so the group headings under it merged into the fixture release. A new `### Changed` group in the real changelog then broke five integration tests, and the ship stage paused with no stated cause ([test helpers](tests/helpers.ts)).
 - Report an unrecognized `criteria[].result` as an explicit validation error instead of silently coercing it to `fail`, and render a **Why the previous attempt failed** section inlining the recorded hard criteria, deterministic failures, and validation errors on every retry card. A one-token vocabulary mistake previously became an unexplained failure whose reason no retry card disclosed, so the same defect was resubmitted verbatim until the circuit breaker paused the run ([validation](src/lib/validation.ts), [context](src/lib/context.ts), [render](src/lib/render.ts), [friction regressions](tests/regression/run-friction.test.ts)).
 - Accept the minimal leading persona label that `INVOCATION-001` and the supervisor commands explicitly permit, which the byte-equality delegation validator had been rejecting on every delegated stage ([validation](src/lib/validation.ts)).
 - Resolve `engineering_plan.files[].path` against the run's workspace root rather than the installation root, and reject `..` traversal segments. In a detached installation every natural path failed, and escaping the installation root was the workaround that made the validator pass while writing non-portable paths into a ratified plan ([stage validators](src/lib/validators/stage-validators.ts)).

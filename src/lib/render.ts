@@ -504,13 +504,14 @@ function renderSupervisorProcedureBody(
                   '`DELEGATION_UNOBSERVED`. Do not end your turn on the ' +
                   'launch, and do not let the turn continue unwatched. The ' +
                   'watch loops on its own cadence until a verdict or its ' +
-                  'bound — four hours by default — so await the one running ' +
-                  'command with the largest wait the platform supports for ' +
-                  'that lifetime, and when the platform returns control ' +
-                  'early, re-await the same command rather than arming a ' +
-                  'second watch. The platform await never performs the ' +
-                  'cadence: it only holds your turn open while the watch ' +
-                  'process sleeps and records. A finished-looking output ' +
+                  'bound — one hour by default — so run `pan watch` as a ' +
+                  'foreground blocking shell call for that lifetime. When ' +
+                  'the platform detaches the blocking call, run ' +
+                  '`pan watch --attach <ledger>` at once to rejoin the ' +
+                  'session rather than arming a second watch. Never call ' +
+                  '`AwaitShell`. The watch process ' +
+                  'sleeps and records; the foreground block holds your turn ' +
+                  'open. A finished-looking output ' +
                   'whose evidence is weak buys one confirming wake instead ' +
                   'of a verdict, and a `completed` agent-state report rests ' +
                   'on the recorded inspection you pass with ' +

@@ -444,6 +444,18 @@
       "default_timeout_ms": 30000,
       "deterministic": true,
       "side_effect_free": true
+    },
+    {
+      "id": "AWAIT-SHELL-BAN-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "await-shell-ban-validate",
+      "input_contract": "repository",
+      "result_schema": "validation-result-v1",
+      "target_types": ["repository"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
     }
   ]
 }

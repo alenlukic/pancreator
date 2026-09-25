@@ -2,7 +2,8 @@
 description: Repairs fundamental verify failures under a fail_severe verdict with bounded plan-amendment authority.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
-disallowedTools: ['Bash(git push:*)', 'Bash(git reset --hard:*)', 'Bash(rm:*)']
+disallowedTools:
+  [AwaitShell, 'Bash(git push:*)', 'Bash(git reset --hard:*)', 'Bash(rm:*)']
 maxTurns: 48
 ---
 

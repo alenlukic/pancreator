@@ -4,6 +4,7 @@ model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
 disallowedTools:
   [
+    AwaitShell,
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
     'Bash({{PANCREATOR_PAN_COMMAND}} set-stage:*)',

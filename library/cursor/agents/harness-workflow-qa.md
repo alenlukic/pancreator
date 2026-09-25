@@ -16,6 +16,7 @@ tools:
   ]
 disallowedTools:
   [
+    AwaitShell,
     'Bash(rm:*)',
     'Bash(sudo:*)',
     'Bash(chmod:*)',
