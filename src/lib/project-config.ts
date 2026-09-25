@@ -3,6 +3,7 @@ import path from 'node:path'
 import { EMBEDDED_HARNESS_PREFIX } from './cursor-content.js'
 import { invariant } from './errors.js'
 import { fileExists, isRecord, readJson, sha256 } from './io.js'
+import { testScratchDeclarationError } from './test-scratch.js'
 import type {
   AwayModeAction,
   AwayModeConfig,
@@ -585,8 +586,16 @@ function assertFastWallBlock(value: unknown): void {
     { code: 'INVALID_PROJECT_CONFIG' },
   )
   invariant(
-    Number.isInteger(value.ceiling_ms) && (value.ceiling_ms as number) > 0,
-    `${PROJECT_CONFIG_PATH}.fast_wall.ceiling_ms MUST be a positive integer.`,
+    value.ceiling_ms === null ||
+      (Number.isInteger(value.ceiling_ms) && (value.ceiling_ms as number) > 0),
+    `${PROJECT_CONFIG_PATH}.fast_wall.ceiling_ms MUST be a positive integer, or null until a measured baseline sets it.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.calibrated_at === undefined ||
+      (typeof value.calibrated_at === 'string' &&
+        Number.isFinite(Date.parse(value.calibrated_at))),
+    `${PROJECT_CONFIG_PATH}.fast_wall.calibrated_at MUST be an ISO-8601 timestamp when present.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
   invariant(
@@ -685,6 +694,12 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   assertInstallationsBlock(value.installations)
   assertScheduleBlock(value.schedule)
   assertFastWallBlock(value.fast_wall)
+
+  const testScratchError = testScratchDeclarationError(value.test_scratch)
+
+  invariant(testScratchError === null, testScratchError ?? '', {
+    code: 'INVALID_PROJECT_CONFIG',
+  })
 
   // A detached harness cannot reach its target by a relative path that would
   // survive being moved, so the target MUST be recorded absolutely.

@@ -9,6 +9,8 @@
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 
+import { testScratchRoot } from './test-scratch.js'
+
 /** Environment variable the reporters read for their profile target. */
 export const TEST_PROFILE_ENV = 'PAN_TEST_PROFILE'
 
@@ -55,13 +57,7 @@ export function fixtureSidecarDirectory(
     return path.join(scratch, FIXTURE_SIDECAR_DIRECTORY)
   }
 
-  return path.join(
-    process.cwd(),
-    'runtime',
-    'tmp',
-    'tests.noindex',
-    FIXTURE_SIDECAR_DIRECTORY,
-  )
+  return path.join(testScratchRoot(process.cwd()), FIXTURE_SIDECAR_DIRECTORY)
 }
 
 /** Filename prefix every sidecar of one profile target shares. */

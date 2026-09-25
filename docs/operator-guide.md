@@ -1540,9 +1540,11 @@ Evals are bounded toy workflow runs plus deterministic graders over the run's re
 `./bin/pan tests impacted` is the iteration profile. It is never a gate. The
 command builds the runtime import graph of `src/**/*.ts` and `tests/**/*.ts`
 with the TypeScript parser, takes the change set from Git, and runs every test
-in `tests/unit`, `tests/integration`, and `tests/regression` that the change
-reaches. The `fast` profile stays the validation run at the end of an iteration
-loop, and `full` stays the verify gate.
+in `tests/unit` and `tests/regression` that the change reaches. It never
+selects `tests/integration`: that lane runs only before a branch lands on
+`pan-dev`, in the `full` profile and in `/pan-release`. The `fast` profile
+stays the validation run at the end of an iteration loop, and `full` stays the
+release gate.
 
 A test is selected when:
 
@@ -1637,7 +1639,12 @@ alone never earns a pass.
 
 ## Govern the fast-lane wall
 
-Self-development only. Every complete `npm test` run appends one record to
+The fast lane is `npm test`: the unit and regression lanes. The integration
+lane runs only before a branch lands on `pan-dev`, in the `full` profile and in
+`/pan-release`, because it spends most of the suite's process and file-system
+cost and made the host unusable while agents iterated.
+
+In self-development, every complete `npm test` run appends one record to
 `runtime/fast-wall-series.jsonl` under the installation root that started it:
 the UTC timestamp, the wall the runner measured around the suite, the wrapper's
 own wall beside it, the test count, the worker count, the load average before
@@ -1654,25 +1661,36 @@ writes to the installation root's series and tags the run; a developer's own
 
 The report describes one population: the qualified complete fast-lane runs
 recorded inside the trailing 24 hours. A row qualifies when its invoker is
-`test` and its lane is the complete unit, integration, and regression set;
-partial lanes, impacted subsets, and rows another writer appended are counted
-as `unqualified_runs` and ignored. A failing run still executes every test, so
+`test` and its lane is the complete unit and regression set; partial lanes,
+impacted subsets, rows from the earlier lane that still carried integration,
+and rows another writer appended are counted as `unqualified_runs` and ignored.
+A failing run still executes every test, so
 its exit code does not affect qualification. The marginal wall cost per test is
 measured inside each run as the summed per-file test time divided by the worker
 count and the test count, which is the wall one average test adds under the
 runner's concurrency; the report averages that per-run figure over the same
-window and names the sample count. Rows written before the phase and lane were
-recorded qualify on their `test` invoker alone and carry no marginal sample.
+window and names the sample count. Rows written before the lane was recorded
+do not qualify.
 
 The ceiling lives in the optional `fast_wall` block of `config.json`:
 `ceiling_ms`, the base ceiling; `anchor_date`, the UTC date the allowance counts
 from; and `weekly_allowance_ms`, the most the permitted value rises per complete
-elapsed week. The permitted value never changes for machine load. The `ship`
-stage of the `delivery` and `metacritic` workflows runs `pan tests wall` as the
-hard shell criterion `ship.fast_wall_ceiling`, so a rolling average above the
-permitted value blocks the release and the criterion's explanation names both
-numbers. The command exits `1` on that verdict and prints `not applicable` in
-an embedded or detached installation.
+elapsed week. The permitted value never changes for machine load. The ceiling
+is soft. The `ship` stage of the `delivery` and `metacritic` workflows runs
+`pan tests wall` as the non-hard criterion `ship.fast_wall_ceiling`. A rolling
+average above the permitted value reports `over_ceiling`, records a run
+advisory, and queues a performance intake; it never blocks the release, fails
+the command, or blocks a review. `pan tests wall` always exits `0`.
+
+An embedded or detached installation does not inherit Pancreator's ceiling.
+The installer ships `ceiling_ms` as `null`, and the report says
+`not_calibrated`. The harness records the wall of every `fast` profile it runs
+as a gate under the `target:fast` lane, and the first passing `fast` baseline
+of a workflow run sets `ceiling_ms` to 1.5 times that wall, rounded up to a
+whole second, with `calibrated_at` and `anchor_date` set to that moment. A
+refresh keeps a ceiling only when `calibrated_at` shows the target measured it.
+Edit `ceiling_ms` in the harness `config.json` to change it later, or remove
+the `fast_wall` block to turn the advisory off.
 
 The verify card of a `delivery` or `delivery-chunk` run carries the fast wall,
 the test count, and the marginal cost per test before and after the implement
@@ -1683,25 +1701,21 @@ run's latest later-phase record. A run whose series holds neither shows no
 section, and a point from a row with no summed file time reads as
 `marginal cost unavailable` rather than as a zero.
 
-### The suite worker count
+### The suite worker count and priority
 
-`package.json` sets the worker count explicitly at `13`, overridable for one
-run with `PAN_TEST_WORKERS`. Eleven complete fast-lane runs at one workspace
-fingerprint, under everyday load, chose it:
+`bin/run-tests` sets the worker count of every `node --test` run it wraps to
+half the host's logical cores, and at least two. `PAN_TEST_WORKERS` overrides
+it for one run, and an explicit `--test-concurrency` argument always wins. It
+also runs the suite at the `utility` QoS class on macOS and at `nice 10`
+everywhere, so interactive work preempts it. `PAN_TEST_PRIORITY=normal` runs
+the suite at the caller's own priority.
 
-| Workers | Runs | Mean wall | Median wall | Own spread |
-| ------- | ---- | --------- | ----------- | ---------- |
-| 9       | 3    | 147.1 s   | 151.0 s     | 16.3 s     |
-| 13      | 4    | 141.3 s   | 140.7 s     | 8.2 s      |
-| 17      | 4    | 141.1 s   | 139.9 s     | 12.3 s     |
-
-Nine workers is clearly slower. Thirteen and seventeen are not distinguishable
-from this population: seventeen leads by 0.2 percent on the mean and 0.5
-percent on the median, and each group's own spread is more than ten times
-either gap. A failing run counts here for the same reason it counts toward the
-governed average, so all eleven runs are in the table. The operator ruled that
-thirteen stands, as the lower-contention choice between two counts the data
-cannot separate. Do not spend further fast-lane runs on the question.
+Each test file can start git and CLI children, so the worker count multiplies
+into far more processes than cores. On an 18-core host the integration lane at
+the earlier default spent 461 s of kernel time against 275 s of user time in a
+207 s wall, with 11.6 million involuntary context switches and 687,000 file
+events in the scratch tree. The unit and regression lane under the new limits
+takes 17 s of wall and 61 s of CPU.
 
 ## Run a batch repair pass
 

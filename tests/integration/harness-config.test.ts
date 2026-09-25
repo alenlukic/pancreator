@@ -182,10 +182,19 @@ test('PANCREATOR_ROOT locates a harness outside the working directory', () => {
 
   try {
     // Walking up from an unrelated directory can never reach a detached
-    // harness, so the explicit override is the only way to find it. The
-    // scratch directory lives inside this checkout, so the walk finds this
-    // checkout rather than nothing; either way it is not the fixture.
-    assert.notEqual(findProjectRoot(elsewhere), root)
+    // harness, so the explicit override is the only way to find it. When
+    // scratch lives inside this checkout the walk finds the checkout. When
+    // config.json test_scratch.root moves scratch outside, the walk finds
+    // nothing and throws. Either result is not the fixture.
+    let walked: string | null = null
+
+    try {
+      walked = findProjectRoot(elsewhere)
+    } catch {
+      walked = null
+    }
+
+    assert.notEqual(walked, root)
 
     process.env.PANCREATOR_ROOT = root
 

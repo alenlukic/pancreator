@@ -250,14 +250,34 @@ test('the fast-wall gate resolves by criterion id, not by command text', () => {
   assert.equal(borrowed.command, 'pan tests wall')
 })
 
-// C-7: the series, the command, and the gate are self-development scoped. An
-// embedded installation resolves the criterion the same way and the command
-// reports the governed value as not applicable, so the gate passes and adds
-// no warning to a fresh install.
-test('the embedded fast-wall gate resolves and reports not applicable', () => {
+// C-7: an embedded installation resolves the criterion the same way. A fresh
+// install ships no ceiling, so the command reports it as not calibrated, the
+// gate passes, and a fresh install gets no warning. A target that drops the
+// block entirely reports not applicable.
+test('the embedded fast-wall gate resolves and reports an uncalibrated ceiling', () => {
   const root = createFixture()
 
   configureEmbeddedFixture(root)
+
+  const projectPath = path.join(root, 'config.json')
+  const project = JSON.parse(readFileSync(projectPath, 'utf8')) as {
+    fast_wall?: Record<string, unknown>
+  }
+
+  assert.ok(project.fast_wall)
+  writeFileSync(
+    projectPath,
+    `${JSON.stringify({ ...project, fast_wall: { ...project.fast_wall, ceiling_ms: null } }, null, 2)}\n`,
+  )
+
+  const uncalibrated = buildFastWallReport(root)
+
+  assert.equal(uncalibrated.status, 'not_calibrated')
+  assert.equal(uncalibrated.permitted_ceiling_ms, null)
+  assert.match(formatFastWallReport(uncalibrated), /no ceiling yet/u)
+
+  delete project.fast_wall
+  writeFileSync(projectPath, `${JSON.stringify(project, null, 2)}\n`)
 
   const resolved = resolveShellCheck(
     root,

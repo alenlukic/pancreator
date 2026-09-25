@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,6 +8,11 @@ import {
   prepareInvocation,
   setRunStage,
 } from '../../src/lib/engine.js'
+import {
+  readFastWallSeries,
+  TARGET_FAST_LANE,
+} from '../../src/lib/fast-wall-series.js'
+import { syncCursorProjection } from '../../src/lib/projection.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   attachTargetInstructionEvidence,
@@ -59,6 +64,63 @@ test('a failed environment probe pauses before source-stage delegation', () => {
 
   assert.equal(reloaded.status, 'paused')
   assert.equal(reloaded.revision, prepared.state.revision)
+})
+
+test('an embedded target sets its empty fast-wall ceiling from the first passing baseline', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const project = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    fast_wall: Record<string, unknown>
+  } & Record<string, unknown>
+
+  writeJson(configPath, {
+    ...project,
+    installation_mode: 'embedded',
+    workspace_root: '.',
+    fast_wall: { ...project.fast_wall, ceiling_ms: null },
+  })
+  syncCursorProjection(root, { write: true })
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: { probes: [], commands: [PASS] },
+      fast: {
+        probes: [],
+        commands: ['node -e "setTimeout(() => {}, 300) /* fast */"'],
+      },
+      full: { probes: [], commands: ['node -e "process.exit(0) /* full */"'] },
+      configuration: {
+        probes: [],
+        commands: ['node -e "process.exit(0) /* configuration */"'],
+      },
+    },
+  })
+
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Embedded fast-wall calibration',
+  })
+
+  setRunStage(root, state.run_id, 'implement', 'Capture the baseline.')
+  prepareInvocation(root, state.run_id)
+
+  const calibrated = (
+    JSON.parse(readFileSync(configPath, 'utf8')) as {
+      fast_wall: { ceiling_ms: number; calibrated_at: string }
+    }
+  ).fast_wall
+  const [row] = readFastWallSeries(root).records
+
+  assert.ok(row, 'the baseline recorded one target fast-lane row')
+  assert.equal(row.lane, TARGET_FAST_LANE)
+  assert.equal(row.phase, 'baseline')
+  assert.equal(row.run_id, state.run_id)
+  assert.equal(
+    calibrated.ceiling_ms,
+    Math.ceil((row.wall_clock_ms * 1.5) / 1000) * 1000,
+  )
+  assert.ok(Date.parse(calibrated.calibrated_at) > 0)
 })
 
 test('new repository-check diagnostics still block implementation', () => {

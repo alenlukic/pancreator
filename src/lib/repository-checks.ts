@@ -45,6 +45,7 @@ import {
   resolveRunLayout,
 } from './run-layout.js'
 import { liveRunsBoundToWorktree, loadState } from './state.js'
+import { DEFAULT_TEST_SCRATCH_PATH, testScratchRoot } from './test-scratch.js'
 import type {
   RepositoryCheckBaselinePointer,
   RepositoryCheckDelta,
@@ -292,10 +293,40 @@ function isVolatileSummaryLine(line: string): boolean {
   )
 }
 
-function normalizeDiagnosticLine(line: string, workspaceRoot: string): string {
+/**
+ * The workspace's test scratch root when configuration moves it outside the
+ * workspace, or null. Each worktree resolves its own child of a configured
+ * root, so diagnostics fold it back to the in-workspace default.
+ */
+function externalTestScratchRoot(workspaceRoot: string): string | null {
+  let scratch: string
+
+  try {
+    scratch = testScratchRoot(workspaceRoot)
+  } catch {
+    return null
+  }
+
+  return scratch === path.join(workspaceRoot, DEFAULT_TEST_SCRATCH_PATH)
+    ? null
+    : scratch
+}
+
+function normalizeDiagnosticLine(
+  line: string,
+  workspaceRoot: string,
+  externalScratch: string | null,
+): string {
+  const slashed = stripAnsi(line).replaceAll('\\', '/')
+  const unscratched = externalScratch
+    ? slashed.replaceAll(
+        externalScratch.replaceAll('\\', '/'),
+        '<workspace>/runtime/tmp/tests.noindex',
+      )
+    : slashed
+
   return (
-    stripAnsi(line)
-      .replaceAll('\\', '/')
+    unscratched
       .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
       // Test scratch trees carry per-run random segments (the suite run
       // directory and the fixture directory), and harness run or session ids
@@ -416,10 +447,13 @@ function diagnosticCounts(
   result: RepositoryCheckCommandResult,
   workspaceRoot: string,
 ): Map<string, number> {
+  const externalScratch = externalTestScratchRoot(workspaceRoot)
   const normalizedLines =
     `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`
       .split(/\r?\n/u)
-      .map((line) => normalizeDiagnosticLine(line, workspaceRoot))
+      .map((line) =>
+        normalizeDiagnosticLine(line, workspaceRoot, externalScratch),
+      )
   // A recognized failure line is kept unconditionally: pass-echo and noise
   // patterns run first, and a failure record that also mentions PASSED (xdist
   // interleaving) must not be filtered before the failure allowlist sees it.

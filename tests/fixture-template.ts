@@ -362,6 +362,8 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   // The operator's registry names absolute machine-local installation roots,
   // so a fixture that inherited it would reach outside its own tree.
   delete fixtureConfig.installations
+  // A declared scratch root is a machine-local directory outside the fixture.
+  delete fixtureConfig.test_scratch
 
   writeFileSync(
     path.join(root, 'config.json'),

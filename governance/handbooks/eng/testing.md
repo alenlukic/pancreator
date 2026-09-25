@@ -40,7 +40,7 @@ Keep fixture setup proportional to the contract. Share templates across tests in
 
 ### TP-09 · Scratch space
 
-Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests.noindex/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. The `.noindex` suffix and the root's `.metadata_never_index` marker keep fixture files out of Spotlight without changing a host setting. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
+Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives in one directory per root and so per worktree, and `bin/run-tests` removes it when the run ends. `config.json` `test_scratch.root` names where those directories live (this checkout uses `~/Dev/scratch`), and each root takes its own `<name>-<hash>.noindex` child there. Without the key, scratch stays under `runtime/tmp/tests.noindex/`. `src/lib/test-scratch.ts` is the one resolver of that location. The `.noindex` suffix and the root's `.metadata_never_index` marker keep fixture files out of Spotlight without changing a host setting. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
 
 ### TP-10 · Timing-independent proofs
 
@@ -54,10 +54,12 @@ A test cited as the regression guard for an acceptance criterion MUST be demonst
 
 Place each test in the documented lane that matches its cost and boundary:
 
-- **Unit** — isolated logic, no subprocess, no network.
-- **Integration** — cross-module or CLI behavior with bounded fixtures.
-- **Regression** — replay of a prior defect with a minimal reproduction.
-- **Secondary** — slow installer or release paths the mainline lane excludes.
+- **Unit** — isolated logic, no subprocess, no network. Runs in the fast lane.
+- **Regression** — replay of a prior defect with a minimal reproduction. Runs in the fast lane.
+- **Integration** — cross-module or CLI behavior with bounded fixtures. Runs only before a branch lands on `pan-dev`, in the `full` profile and `/pan-release`.
+- **Secondary** — slow installer or release paths. Runs in the `secondary` and `full` profiles.
+
+The fast lane is the one agents and gates run during development, so a contract that the fast lane must catch belongs in a unit or regression test.
 
 A DEMOTE recommendation MUST name a documented lane destination or a cheaper direct form that still proves the contract.
 

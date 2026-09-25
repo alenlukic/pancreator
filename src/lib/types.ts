@@ -907,6 +907,8 @@ export interface ProjectConfig {
   state_root?: string
   /** Self-development fast-lane wall ceiling and its permitted weekly rise. */
   fast_wall?: FastWallConfig
+  /** Where self-development test fixtures live; see `src/lib/test-scratch.ts`. */
+  test_scratch?: { root?: string | null }
   /** Maximum bytes permitted in one materialized workflow state file. */
   state_size_budget_bytes?: number
   /** Worker inactivity bound used by `pan status`. */
@@ -979,7 +981,13 @@ export interface ScheduleConfig {
 }
 
 export interface FastWallConfig {
-  ceiling_ms: number
+  /**
+   * Null in a target installation until the first passing harness `fast`
+   * baseline measures the suite and sets it.
+   */
+  ceiling_ms: number | null
+  /** When a measured baseline set `ceiling_ms` on this installation. */
+  calibrated_at?: string
   anchor_date: string
   weekly_allowance_ms: number
   /** Maximum accepted one-minute load average divided by logical CPUs. */

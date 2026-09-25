@@ -90,10 +90,13 @@ export function createBuildScriptFixture(): BuildScriptFixture {
   const orderHelperDirectory = path.join(root, 'dist', 'src', 'lib')
 
   mkdirSync(orderHelperDirectory, { recursive: true })
-  copyFileSync(
-    path.join(ROOT, 'dist', 'src', 'lib', 'test-file-order.js'),
-    path.join(orderHelperDirectory, 'test-file-order.js'),
-  )
+
+  for (const helper of ['test-file-order.js', 'test-scratch.js']) {
+    copyFileSync(
+      path.join(ROOT, 'dist', 'src', 'lib', helper),
+      path.join(orderHelperDirectory, helper),
+    )
+  }
 
   // The fake compiler appends outside dist/ so builds stay countable across
   // the dist swap in bin/build.

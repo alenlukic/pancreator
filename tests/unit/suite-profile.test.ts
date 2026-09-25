@@ -24,6 +24,7 @@ import {
   fixtureSidecarDirectory,
   TEST_SCRATCH_ENV,
 } from '../../src/lib/suite-profile-env.js'
+import { testScratchRoot } from '../../src/lib/test-scratch.js'
 import { readFixtureCost } from '../reporters/failures-only.js'
 import { fixtureSidecarPath } from '../reporters/fixture-profile.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -699,12 +700,6 @@ test('fixture sidecars live in the runner scratch tree, not the profile target',
   // repository scratch tree rather than falling back to the target.
   assert.equal(
     fixtureSidecarDirectory({}),
-    path.join(
-      process.cwd(),
-      'runtime',
-      'tmp',
-      'tests.noindex',
-      'fixture-profile',
-    ),
+    path.join(testScratchRoot(process.cwd()), 'fixture-profile'),
   )
 })

@@ -47,6 +47,15 @@ function createSyntheticTree(): string {
     `import type { Shape } from './types.js'\nexport const typed = (shape: Shape) => shape.size\n`,
   )
   write('src/lib/lonely.ts', `export const lonely = true\n`)
+  // Operator-facing text that names the CLI is not a spawn.
+  write(
+    'src/lib/message.ts',
+    `export const hint = 'Run ./bin/pan status to inspect the run.'\n`,
+  )
+  write(
+    'tests/unit/message.test.ts',
+    `import { hint } from '../../src/lib/message.js'\ntest(hint)\n`,
+  )
   write(
     'src/cli.ts',
     `import { feature } from './lib/feature.js'\nconsole.log(feature)\n`,
@@ -69,19 +78,19 @@ function createSyntheticTree(): string {
   )
   // A helper that spawns the CLI and reads a fixture on behalf of its tests.
   write(
-    'tests/integration/cli-helpers.ts',
+    'tests/regression/cli-helpers.ts',
     `export const CLI = path.join(root, 'dist', 'src', 'cli.js')\nexport const lint = path.join(root, 'bin', 'lint')\nexport const sample = 'tests/fixtures/sample/case.json'\n`,
   )
   write(
-    'tests/integration/via-helper.test.ts',
+    'tests/regression/via-helper.test.ts',
     `import { CLI, lint, sample } from './cli-helpers.js'\ntest(CLI, lint, sample)\n`,
   )
   write(
-    'tests/integration/cli.test.ts',
+    'tests/regression/cli.test.ts',
     `const CLI = path.join(root, 'dist', 'src', 'cli.js')\nspawn('/bin/bash', [path.join(root, 'bin', 'pan')])\n`,
   )
   write(
-    'tests/integration/lint-script.test.ts',
+    'tests/regression/lint-script.test.ts',
     `spawnSync('bash', ['bin/lint'])\n`,
   )
   write(
@@ -93,6 +102,10 @@ function createSyntheticTree(): string {
     `import type { Shape } from '../../src/lib/types.js'\ntest({} as Shape)\n`,
   )
   write('tests/secondary/installer.test.ts', `import '../../src/lib/core.js'\n`)
+  write(
+    'tests/integration/pre-release.test.ts',
+    `import { core } from '../../src/lib/core.js'\ntest(core)\n`,
+  )
   write('tests/fixtures/sample/case.json', `{}\n`)
   write('bin/pan', `#!/usr/bin/env bash\n`)
   write('bin/lint', `#!/usr/bin/env bash\n`)
@@ -175,6 +188,7 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
         [
           'src/lib/feature.ts',
           'tests/helpers.ts',
+          'tests/integration/pre-release.test.ts',
           'tests/secondary/installer.test.ts',
           'tests/unit/core.test.ts',
         ],
@@ -186,20 +200,20 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
       assert.ok(graph.typeOnlyTargets.has('src/lib/types.ts'))
       // A test that spawns the CLI depends on src/cli.ts.
       assert.ok(
-        graph.dependents
-          .get('src/cli.ts')
-          ?.has('tests/integration/cli.test.ts'),
+        graph.dependents.get('src/cli.ts')?.has('tests/regression/cli.test.ts'),
       )
-      assert.deepEqual(
-        [...(graph.binReferences.get('bin/pan') ?? [])],
-        ['tests/integration/cli.test.ts'],
-      )
+      // A change to the script itself still reaches a module that names it,
+      // because some source modules do spawn bin scripts.
+      assert.deepEqual([...(graph.binReferences.get('bin/pan') ?? [])].sort(), [
+        'tests/regression/cli.test.ts',
+        'tests/unit/message.test.ts',
+      ])
       // References inside an imported helper reach the tests that import it.
       assert.deepEqual(
         [...(graph.binReferences.get('bin/lint') ?? [])].sort(),
         [
-          'tests/integration/lint-script.test.ts',
-          'tests/integration/via-helper.test.ts',
+          'tests/regression/lint-script.test.ts',
+          'tests/regression/via-helper.test.ts',
         ],
       )
       assert.deepEqual(
@@ -207,32 +221,39 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
           ...(graph.fixtureReferences.get('tests/fixtures/sample') ?? []),
         ].sort(),
         [
-          'tests/integration/via-helper.test.ts',
           'tests/regression/fixture-user.test.ts',
+          'tests/regression/via-helper.test.ts',
         ],
       )
       assert.ok(
         graph.dependents
           .get('src/cli.ts')
-          ?.has('tests/integration/via-helper.test.ts'),
+          ?.has('tests/regression/via-helper.test.ts'),
         'a CLI reference in a helper makes its tests depend on src/cli.ts',
       )
       // The helper itself is not a lane test and gets no reference edge.
       assert.ok(
         ![...(graph.binReferences.get('bin/lint') ?? [])].includes(
-          'tests/integration/cli-helpers.ts',
+          'tests/regression/cli-helpers.ts',
         ),
       )
+      // Integration runs before release only, so it is never a lane test.
       assert.deepEqual(laneTests(graph), [
-        'tests/integration/cli.test.ts',
-        'tests/integration/lint-script.test.ts',
-        'tests/integration/via-helper.test.ts',
+        'tests/regression/cli.test.ts',
         'tests/regression/fixture-user.test.ts',
+        'tests/regression/lint-script.test.ts',
+        'tests/regression/via-helper.test.ts',
         'tests/unit/core.test.ts',
         'tests/unit/feature.test.ts',
         'tests/unit/helper-user.test.ts',
+        'tests/unit/message.test.ts',
         'tests/unit/only-types.test.ts',
       ])
+      // A source module that names the CLI in text does not tie its
+      // importers to the CLI closure.
+      assert.ok(
+        !graph.dependents.get('src/cli.ts')?.has('tests/unit/message.test.ts'),
+      )
     }
   } finally {
     rmSync(root, { recursive: true, force: true })
@@ -258,7 +279,7 @@ test('reverseClosure reports the seed and hop depth and honors a depth bound', a
       seed: 'src/lib/core.ts',
       depth: 2,
     })
-    assert.deepEqual(full.get('tests/integration/cli.test.ts'), {
+    assert.deepEqual(full.get('tests/regression/cli.test.ts'), {
       seed: 'src/lib/core.ts',
       depth: 3,
     })
@@ -272,7 +293,7 @@ test('reverseClosure reports the seed and hop depth and honors a depth bound', a
   }
 })
 
-test('selectImpactedTests selects the reverse closure, bin and fixture tests, and never the secondary lane', async () => {
+test('selectImpactedTests selects the reverse closure, bin and fixture tests, and never the integration or secondary lane', async () => {
   const root = createSyntheticTree()
 
   try {
@@ -280,24 +301,25 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
 
     const feature = selectImpactedTests(graph, ['src/lib/feature.ts'])
     assert.deepEqual(feature.selected, [
-      'tests/integration/cli.test.ts',
-      'tests/integration/via-helper.test.ts',
+      'tests/regression/cli.test.ts',
+      'tests/regression/via-helper.test.ts',
       'tests/unit/feature.test.ts',
     ])
-    assert.equal(feature.lane_count, 8)
+    assert.equal(feature.lane_count, 9)
     assert.deepEqual(feature.by_depth, { '1': 1, '2': 2 })
     assert.equal(feature.advisory, null)
     assert.deepEqual(feature.unreached, [])
 
     const core = selectImpactedTests(graph, ['src/lib/core.ts'])
     assert.deepEqual(core.selected, [
-      'tests/integration/cli.test.ts',
-      'tests/integration/via-helper.test.ts',
+      'tests/regression/cli.test.ts',
+      'tests/regression/via-helper.test.ts',
       'tests/unit/core.test.ts',
       'tests/unit/feature.test.ts',
       'tests/unit/helper-user.test.ts',
     ])
     assert.ok(!core.selected.includes('tests/secondary/installer.test.ts'))
+    assert.ok(!core.selected.includes('tests/integration/pre-release.test.ts'))
 
     const direct = selectImpactedTests(graph, ['src/lib/core.ts'], { depth: 1 })
     assert.deepEqual(direct.selected, ['tests/unit/core.test.ts'])
@@ -305,26 +327,23 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
 
     const bin = selectImpactedTests(graph, ['bin/lint'])
     assert.deepEqual(bin.selected, [
-      'tests/integration/lint-script.test.ts',
-      'tests/integration/via-helper.test.ts',
+      'tests/regression/lint-script.test.ts',
+      'tests/regression/via-helper.test.ts',
     ])
     assert.equal(
-      bin.reasons['tests/integration/lint-script.test.ts'],
+      bin.reasons['tests/regression/lint-script.test.ts'],
       'bin/lint',
     )
     // The helper indirection is the reason N3 exists: a bin change reaches a
     // test whose only reference to the script sits in an imported helper.
-    assert.equal(
-      bin.reasons['tests/integration/via-helper.test.ts'],
-      'bin/lint',
-    )
+    assert.equal(bin.reasons['tests/regression/via-helper.test.ts'], 'bin/lint')
 
     const fixture = selectImpactedTests(graph, [
       'tests/fixtures/sample/case.json',
     ])
     assert.deepEqual(fixture.selected, [
-      'tests/integration/via-helper.test.ts',
       'tests/regression/fixture-user.test.ts',
+      'tests/regression/via-helper.test.ts',
     ])
 
     const changedTest = selectImpactedTests(graph, [
@@ -348,7 +367,7 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
     const included = selectImpactedTests(graph, ['src/lib/lonely.ts'], {
       include: ['tests/unit/*.test.ts'],
     })
-    assert.equal(included.selected.length, 4)
+    assert.equal(included.selected.length, 5)
     assert.equal(
       included.reasons['tests/unit/core.test.ts'],
       '--include tests/unit/*.test.ts',
@@ -459,12 +478,12 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
     const parsed = JSON.parse(output) as typeof result
     assert.deepEqual(parsed.changed, ['src/lib/feature.ts'])
     assert.deepEqual(parsed.selected, [
-      'tests/integration/cli.test.ts',
-      'tests/integration/via-helper.test.ts',
+      'tests/regression/cli.test.ts',
+      'tests/regression/via-helper.test.ts',
       'tests/unit/feature.test.ts',
     ])
     assert.equal(parsed.selected_count, 3)
-    assert.equal(parsed.lane_count, 8)
+    assert.equal(parsed.lane_count, 9)
     assert.equal(parsed.advisory, null)
     assert.equal(typeof parsed.duration_ms, 'number')
 
@@ -649,7 +668,12 @@ test('self-test: a change to src/lib/naming.ts selects the naming test and not t
   ])
 
   assert.ok(
-    policy.selected.includes('tests/integration/policies.test.ts'),
+    policy.selected.length > 0 &&
+      policy.selected.every(
+        (file) =>
+          file.startsWith('tests/unit/') ||
+          file.startsWith('tests/regression/'),
+      ),
     `selected ${policy.selected.join(', ')}`,
   )
   assert.deepEqual(policy.unreached, [])
@@ -988,8 +1012,8 @@ test('a selected workspace is where the impact runs, and the default is unchange
     assert.equal(scoped.workspace, '.')
     assert.equal(scoped.status, 'listed')
     assert.deepEqual(JSON.parse(selected).selected, [
-      'tests/integration/cli.test.ts',
-      'tests/integration/via-helper.test.ts',
+      'tests/regression/cli.test.ts',
+      'tests/regression/via-helper.test.ts',
       'tests/unit/feature.test.ts',
       workspaceOnlyTest,
     ])
@@ -1027,8 +1051,8 @@ test('a selected workspace is where the impact runs, and the default is unchange
     assert.equal(defaulted.workspace, '.')
     assert.doesNotMatch(plain, /^Workspace: /mu)
     assert.deepEqual(defaulted.selected, [
-      'tests/integration/cli.test.ts',
-      'tests/integration/via-helper.test.ts',
+      'tests/regression/cli.test.ts',
+      'tests/regression/via-helper.test.ts',
       'tests/unit/feature.test.ts',
     ])
   } finally {

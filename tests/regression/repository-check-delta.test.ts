@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -7,6 +7,8 @@ import {
   compareRepositoryCheckToBaseline,
   type RepositoryCheckResult,
 } from '../../src/lib/repository-checks.js'
+import { testScratchRoot } from '../../src/lib/test-scratch.js'
+import { createTestTempDirectory } from '../temp.js'
 
 // Bounded excerpt of the preserved `be-test-unit` output from audited run
 // 63327_Aug-13-0394_5de7203f: pytest-xdist session header, bare node-id
@@ -160,4 +162,43 @@ test('scratch paths and session ids do not manufacture new diagnostics', () => {
       line.includes('a brand-new regression'),
     ),
   )
+})
+
+// config.json test_scratch.root moves fixtures outside the workspace, into a
+// per-checkout child whose path differs for every worktree. A baseline taken
+// under the default location must still match a rerun under the moved one.
+test('a configured external scratch root folds to the default scratch identity', () => {
+  const baselineWorkspace = createTestTempDirectory('pancreator-delta-base-')
+  const movedWorkspace = createTestTempDirectory('pancreator-delta-moved-')
+  const base = createTestTempDirectory('pancreator-delta-scratch-')
+
+  writeFileSync(
+    path.join(movedWorkspace, 'config.json'),
+    JSON.stringify({ schema_version: 1, test_scratch: { root: base } }),
+  )
+
+  const failure = (scratch: string, run: string): string =>
+    `not ok - preflight reads ${scratch}/${run}/v2-fixture/.env\n`
+  const baseline = {
+    ...checkResult(
+      failure(
+        path.join(baselineWorkspace, 'runtime', 'tmp', 'tests.noindex'),
+        'run-Gl4itHlU',
+      ),
+      'failed',
+    ),
+    workspace_root: baselineWorkspace,
+  }
+  const moved = {
+    ...checkResult(
+      failure(testScratchRoot(movedWorkspace), 'run-9xQ2mABc'),
+      'failed',
+    ),
+    workspace_root: movedWorkspace,
+  }
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, moved)
+
+  assert.equal(comparison.passed, true, comparison.explanation)
+  assert.deepEqual(newDiagnostics(comparison), [])
 })

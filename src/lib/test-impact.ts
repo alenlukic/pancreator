@@ -19,11 +19,11 @@ import { gitChangedPathsBetween, gitHead, isGitRepository } from './git.js'
 import { appendJsonLine, sha256 } from './io.js'
 import { readProjectConfig } from './project-config.js'
 
-export const TEST_LANES = [
-  'tests/unit',
-  'tests/integration',
-  'tests/regression',
-]
+/**
+ * The fast lanes. Integration tests run only before release, in the `full`
+ * profile, so iteration never selects them.
+ */
+export const TEST_LANES = ['tests/unit', 'tests/regression']
 
 /** Repository files whose change invalidates every test in the lane. */
 export const GLOBAL_FILES = [
@@ -573,7 +573,10 @@ function assembleModuleGraph(
         }
       }
 
-      if (refs.cli && cliSource) {
+      // Only test-side code spawns the CLI. A source module that names
+      // `./bin/pan` does so in operator-facing text, and treating that as a
+      // spawn tied every test importing io.ts to the whole CLI closure.
+      if (refs.cli && cliSource && module.startsWith('tests/')) {
         addEdge(imports, test, cliSource)
         addEdge(dependents, cliSource, test)
       }

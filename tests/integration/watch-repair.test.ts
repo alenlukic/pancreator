@@ -1385,7 +1385,10 @@ test('AC-014: policy lifetime', () => {
   const guidance = `${agentText}\n${supervisorText}`
 
   // The full lifetime: the watch loops until a verdict or its bound.
-  assert.match(guidance, /whole lifetime/u)
+  assert.match(
+    guidance,
+    /loops on the fixed cadence until a terminal verdict or its bound/u,
+  )
   assert.match(guidance, /four hours/u)
   // The fixed cadence survives.
   assert.match(guidance, /60 seconds, fixed, and universal/u)
@@ -2016,20 +2019,17 @@ test('AC-021: cohort guidance', () => {
   // The terminal-only option is the documented cohort wait.
   assert.ok(cohortInstruction, 'the policy names the terminal-only option')
   assert.match(cohortInstruction ?? '', /sibling handoff/u)
-  assert.match(cohortInstruction ?? '', /re-arm siblings promptly/u)
+  assert.match(cohortInstruction ?? '', /MUST rearm siblings promptly/u)
   assert.match(
     cohortInstruction ?? '',
-    /MUST NOT claim continuous sibling observation/u,
+    /without claiming continuous observation/u,
   )
   assert.match(persona, /--until-terminal/u)
   // Resume siblings promptly and reattach rather than duplicate.
-  assert.match(persona, /re-arm across the remainder promptly/u)
-  assert.match(
-    persona,
-    /Reattach to an already-live watch rather than duplicating/u,
-  )
+  assert.match(persona, /promptly rearm the remainder/u)
+  assert.match(persona, /Reattach to an existing watch/u)
   // No continuous-observation claim after a return.
-  assert.match(persona, /a returned watch observes nothing/u)
+  assert.match(persona, /Never claim continuous sibling observation/u)
 })
 
 test('AC-024: universal timer guidance', () => {
@@ -2067,15 +2067,14 @@ test('AC-024: universal timer guidance', () => {
     agentText,
     /MUST set every observation timer through `pan watch`/u,
   )
-  assert.match(agentText, /--process <pid> --label <name>/u)
+  assert.match(agentText, /The process form watches a process/u)
   // The old shell-sleep prescription is gone.
   assert.doesNotMatch(agentText, /background shell sleep/u)
   assert.doesNotMatch(agentText, /AwaitShell/u)
   // Platform awaits are reattachments to the same watch.
-  assert.match(agentText, /re-await the same already-running watch command/u)
+  assert.match(agentText, /MUST reawait the same watch command/u)
   // The opaque fallback is documented.
-  assert.match(agentText, /--timer --label <name>/u)
-  assert.match(agentText, /opaque platform handle/u)
+  assert.match(agentText, /timer form watches an opaque platform handle/u)
 
   // The projection carries the same text.
   const projection = renderPolicyCursorRule(policy)

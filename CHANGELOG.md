@@ -1,5 +1,24 @@
 # Changelog
 
+## [7.26.0] - 2026-09-25
+
+This release moves integration tests out of the fast lane and lets a checkout name its test scratch root.
+
+### Changed
+
+- Move integration tests out of the fast lane and lower suite CPU pressure ([0c7db788](https://github.com/alenlukic/pancreator/commit/0c7db788724954dc85c36613d2717a0b69e78379)).
+- Calibrate an empty fast-wall ceiling from the first passing baseline of a target ([c87db430](https://github.com/alenlukic/pancreator/commit/c87db430ed2b23a70a21f347a351c9ccfb777010)).
+- Stop source-module CLI mentions from widening impacted selection ([31633114](https://github.com/alenlukic/pancreator/commit/31633114cae4d455763674148276692aae338019)).
+
+### Added
+
+- Add `config.json` `test_scratch.root` so each checkout places fixtures in one named scratch tree ([998281fb](https://github.com/alenlukic/pancreator/commit/998281fb0098fc399dc307cad04729fae34e00ac)).
+
+### Fixed
+
+- Repair integration prose pins after the DELEGATE-001 rewrite and the TEST-001 lane rule ([c5585fdd](https://github.com/alenlukic/pancreator/commit/c5585fddb938e84fcdb280b8530f2d8e669e0dd4)).
+- Ignore a non-path `argv[1]` when `test-scratch` decides whether it is a script ([5763e11a](https://github.com/alenlukic/pancreator/commit/5763e11a8a829b2fd86eae7627dbb987bd14d62e)).
+
 ## [7.25.2] - 2026-09-24
 
 This release restores concrete persona model defaults in `config.json`.

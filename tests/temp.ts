@@ -7,19 +7,22 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
+import { testScratchRoot } from '../src/lib/test-scratch.js'
+
 // Test fixtures never touch the shared OS temp directory. They live under the
-// repository's own gitignored runtime/tmp/tests.noindex, which is per-root and so
-// per-worktree, and which bin/run-tests wipes for each suite run. The shared
-// temp directory is unbounded, is written by every program on the host, and
-// once accumulated 166,000 leaked fixtures that taxed every create and unlink
-// in it. A directory the runner owns has none of those properties.
+// checkout's scratch root, which is per-root and so per-worktree, and which
+// bin/run-tests wipes for each suite run. That root defaults to the gitignored
+// runtime/tmp/tests.noindex, and config.json test_scratch.root moves it. The
+// shared temp directory is unbounded, is written by every program on the host,
+// and once accumulated 166,000 leaked fixtures that taxed every create and
+// unlink in it. A directory the runner owns has none of those properties.
 //
 // bin/run-tests exports PANCREATOR_TEST_TMP as a per-run directory that it
 // removes when the run ends, and sweeps directories left by runs that died.
 // A test file executed outside that wrapper falls back to a per-process
 // directory in the same place, which this module removes on exit.
 const REPO_ROOT = process.cwd()
-const TESTS_TMP_ROOT = path.join(REPO_ROOT, 'runtime', 'tmp', 'tests.noindex')
+const TESTS_TMP_ROOT = testScratchRoot(REPO_ROOT)
 
 let processParent: string | null = null
 
@@ -52,7 +55,7 @@ function parentDirectory(): string {
 
     const parent = processParent
 
-    // The parent sits inside this checkout, which is a Git repository. Stop
+    // The parent can sit inside this checkout, which is a Git repository. Stop
     // git discovery at the parent so a fixture without its own .git reads as
     // "not a repository" rather than as this checkout. bin/run-tests sets the
     // same ceiling for its run directory; this covers a file run without it.

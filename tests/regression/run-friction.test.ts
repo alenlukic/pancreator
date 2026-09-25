@@ -436,7 +436,8 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   assert.equal(prepared.stage.slug, 'implement')
 
   editPersonaMappings(root, (defaults) => {
-    defaults.coder = 'gpt-5.6-terra'
+    defaults.coder =
+      defaults.coder === 'gpt-5.6-terra' ? 'gpt-5.6-sol' : 'gpt-5.6-terra'
   })
 
   const drifted = prepareInvocation(root, changed.run_id)

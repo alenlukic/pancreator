@@ -1005,8 +1005,17 @@ test('TEST-001 permits directed mechanical governance and preserves judgment bou
   assert.ok(
     hasInstructionWith(
       'duration ceiling',
-      'must not fail or route a stage',
+      'is soft',
+      'must not fail a command, a criterion, or a review',
+      'must not route a stage',
       'release advisory',
+    ),
+  )
+  assert.ok(
+    hasInstructionWith(
+      'fast lane must hold only the unit and regression lanes',
+      'integration lane must run only before a branch lands',
+      'impacted profile must not select integration tests',
     ),
   )
   assert.ok(

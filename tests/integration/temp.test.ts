@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { testScratchRoot } from '../../src/lib/test-scratch.js'
 import { createTestTempDirectory, testTempRoot } from '../temp.js'
 
 const ROOT = process.cwd()
@@ -48,9 +49,8 @@ test('a file run outside the runner falls back to a per-process directory it rem
   const parent = path.dirname(fixture)
 
   assert.equal(path.dirname(parent), testTempRoot())
-  assert.equal(path.basename(testTempRoot()), 'tests.noindex')
+  assert.equal(testTempRoot(), testScratchRoot(ROOT))
   assert.match(path.basename(parent), /^proc-/u)
-  assert.equal(path.relative(ROOT, parent).startsWith('..'), false)
   assert.equal(existsSync(parent), false)
   assert.equal(
     readFileSync(path.join(testTempRoot(), 'package.json'), 'utf8'),
