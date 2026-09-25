@@ -96,6 +96,18 @@
         }
       }
     },
+    "spend": {
+      "type": "object",
+      "description": "Multi-instance spend sync configuration.",
+      "additionalProperties": false,
+      "properties": {
+        "vercel_host": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Vercel service host for spend snapshots, e.g. `pan-spend.vercel.app` or `https://pan-spend.vercel.app`."
+        }
+      }
+    },
     "retention": {
       "type": "object",
       "description": "Retention windows in days for harness-owned ephemeral artifact classes.",

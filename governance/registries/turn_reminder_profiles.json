@@ -130,7 +130,7 @@
           "id": "orch-watch",
           "type": "policy",
           "policy_id": "ORCH-001",
-          "instruction_sha256": "faff19616c45339f2a2167fd81fb4b9c2973edd198d35480b7d487f52a6f53c7"
+          "instruction_sha256": "3684a47fb8dbbc665b21ef43edf7610d216a053c9fec864ad2b933dd46dbe844"
         },
         {
           "id": "orch-redline",

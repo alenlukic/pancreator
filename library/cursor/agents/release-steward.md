@@ -3,7 +3,13 @@ description: Owns release metadata and prepares accurate release packets or PR d
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
 disallowedTools:
-  ['Bash(git push:*)', 'Bash(git reset:*)', 'Bash(gh pr:*)', 'Bash(rm:*)']
+  [
+    AwaitShell,
+    'Bash(git push:*)',
+    'Bash(git reset:*)',
+    'Bash(gh pr:*)',
+    'Bash(rm:*)',
+  ]
 maxTurns: 30
 ---
 

@@ -364,6 +364,8 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   delete fixtureConfig.installations
   // A declared scratch root is a machine-local directory outside the fixture.
   delete fixtureConfig.test_scratch
+  // The spend sync host names this machine's deployed service.
+  delete fixtureConfig.spend
 
   writeFileSync(
     path.join(root, 'config.json'),

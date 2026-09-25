@@ -197,6 +197,12 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     age_source: 'none',
     disposal: 'retain',
   },
+  {
+    name: 'spend-ledger',
+    paths: ['runtime/spend'],
+    age_source: 'none',
+    disposal: 'retain',
+  },
 ]
 
 /** Classes whose loose files the temporal rename pass standardizes. */

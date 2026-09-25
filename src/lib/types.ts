@@ -900,6 +900,12 @@ export interface RetentionConfig {
   classes?: Record<string, number>
 }
 
+/** Configuration for the multi-instance spend sync feature. */
+export interface SpendConfig {
+  /** Vercel service host for spend snapshots, e.g. `pan-spend.vercel.app`. */
+  vercel_host?: string
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
@@ -930,6 +936,8 @@ export interface ProjectConfig {
   schedule?: ScheduleConfig
   /** Operator-declared Pancreator installation roots on this machine. */
   installations?: RegisteredInstallation[]
+  /** Multi-instance spend sync configuration. */
+  spend?: SpendConfig
 }
 
 export type ScheduleWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6

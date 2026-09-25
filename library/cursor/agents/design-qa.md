@@ -2,7 +2,7 @@
 description: Interactively verifies prototypes and records reproducible design QA evidence.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write]
-disallowedTools: [Edit, 'Bash(git push:*)', 'Bash(rm:*)']
+disallowedTools: [AwaitShell, Edit, 'Bash(git push:*)', 'Bash(rm:*)']
 maxTurns: 30
 ---
 

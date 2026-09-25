@@ -1,7 +1,8 @@
 ---
 description: Refusal guard. Operators MUST start and resume workflows with /pan-start or /pan-resume.
 model: __PANCREATOR_MODEL__
-disallowedTools: ['Bash(git push:*)', 'Bash(git reset --hard:*)', 'Bash(rm:*)']
+disallowedTools:
+  [AwaitShell, 'Bash(git push:*)', 'Bash(git reset --hard:*)', 'Bash(rm:*)']
 maxTurns: 120
 ---
 

@@ -422,6 +422,34 @@ test('pan-research is registered with its research card and validates its docume
   )
 })
 
+test('pan-spend is registered with its spend card and keeps raw usage private', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-spend.md'),
+    'utf8',
+  )
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+    target_mutating_commands: Array<{ command: string }>
+  }
+
+  assert.match(command, /governance card --mode spend/u)
+  assert.match(command, /Cursor Canvas skill/u)
+  assert.match(command, /Do not expose or reconstruct raw API events/u)
+  assert.deepEqual(
+    registry.card_commands.find((entry) => entry.command === 'pan-spend'),
+    { command: 'pan-spend', card_mode: 'spend' },
+  )
+  assert.equal(
+    registry.target_mutating_commands.some(
+      (entry) => entry.command === 'pan-spend',
+    ),
+    false,
+  )
+  assert.deepEqual(run(root).errors, [])
+})
+
 test('a new command without a card fails validation with the fix named', () => {
   const root = createFixture()
 

@@ -367,7 +367,6 @@ export function runWatchAudit(
   const gaps: WatchAuditGap[] = []
 
   const cadenceExceptions: WatchAuditReport['cadence_exceptions'] = []
-  const limitations: string[] = []
 
   let ledgersExamined = 0
   let latestCollectedMs = 0
@@ -618,6 +617,8 @@ export function runWatchAudit(
       }
     }
   }
+
+  const limitations: string[] = []
 
   limitations.push(
     'No transcript source was supplied, so per-session await block windows ' +

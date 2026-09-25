@@ -345,6 +345,24 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT touch target-tracked content, push, publish, deploy, or rewrite Git history.',
     ],
   },
+  spend: {
+    kind: 'standalone',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'spend',
+    title: 'Cursor token spend report',
+    summary:
+      'Read aggregate Cursor usage, correlate it with local Pancreator ' +
+      'evidence, and render one concise Canvas report.',
+    boundaries: [
+      'You MUST use only the aggregate output of `pan spend` as report data.',
+      'You MUST NOT print, persist, or expose credentials, raw usage events, email addresses, conversation ids, or cloud agent ids.',
+      'You MUST label inferred and unknown attribution and MUST NOT represent Max mode as Fast mode.',
+      'You MUST write only the Cursor-managed Canvas artifact requested by this mode.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or target-tracked files.',
+    ],
+  },
   conform: {
     kind: 'standalone',
     persona: 'librarian',

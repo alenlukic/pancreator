@@ -101,7 +101,7 @@ import {
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { openAiExecutorPreflight } from './lib/executors/openai-auth.js'
 import { browserReadiness } from './lib/browser-readiness.js'
-import { errorMessage, PanError } from './lib/errors.js'
+import { errorMessage, invariant, PanError } from './lib/errors.js'
 import { assertArgvElementsWithinLimit } from './lib/argv-limits.js'
 import {
   configuredWorkspaceRoot,
@@ -266,6 +266,8 @@ import {
   resolveRunCitation,
 } from './lib/workflow-artifacts.js'
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
+import { generateTokenSpendReport } from './lib/token-spend.js'
+import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -281,6 +283,7 @@ import {
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchAttach,
   watchInvocations,
   watchProcess,
   watchTimer,
@@ -3137,6 +3140,61 @@ async function main(): Promise<void> {
       )
       return
     }
+    case 'spend': {
+      const subcommand = args[0]
+
+      if (subcommand === 'sync') {
+        args.shift()
+        const days = integerOption(args, '--days')
+
+        invariant(
+          days === null || (days >= 1 && days <= 365),
+          '--days MUST be an integer from 1 to 365.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const result = await syncSpend(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand === 'report') {
+        args.shift()
+        const days = integerOption(args, '--days')
+
+        invariant(
+          days === null || (days >= 1 && days <= 365),
+          '--days MUST be an integer from 1 to 365.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const report = await reportMultiInstanceSpend(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print({ status: 'reported', report }, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand !== undefined && !subcommand.startsWith('--')) {
+        invariant(
+          false,
+          `Unknown spend subcommand: ${subcommand}. Use 'sync' or 'report'.`,
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
+      const days = integerOption(args, '--days')
+      const report = await generateTokenSpendReport(root, {
+        ...(days === null ? {} : { days }),
+      })
+
+      print({ status: 'reported', report }, true)
+      return
+    }
     case 'cleanup': {
       const daysValue = option(args, '--days')
       const selectedClasses = options(args, '--class')
@@ -4856,6 +4914,56 @@ async function main(): Promise<void> {
         return
       }
 
+      const attachLedgers = option(args, '--attach')
+
+      if (attachLedgers !== null) {
+        const ledgerList = attachLedgers
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+
+        invariant(
+          ledgerList.length > 0,
+          '--attach requires at least one ledger path.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const timeoutSec = parseTimeoutSeconds(
+          option(args, '--timeout-seconds'),
+        )
+        const attachAuthority = option(args, '--cadence-directed-by-operator')
+        const result = await watchAttach(root, {
+          ledgers: ledgerList,
+          timeoutSeconds: timeoutSec,
+          cadenceSeconds: parseCadenceSeconds(
+            option(args, '--cadence-seconds'),
+            attachAuthority,
+          ),
+          ...(attachAuthority?.trim()
+            ? { cadenceAuthority: attachAuthority.trim() }
+            : {}),
+        })
+
+        print(
+          json
+            ? result
+            : `attach ${result.state}: ${result.ledgers.length} session(s) ` +
+                `after ${result.elapsed_seconds.toFixed(1)}s\n` +
+                result.ledgers
+                  .map(
+                    (s) =>
+                      `  ${s.ledger}: ${s.state ?? 'pending'}` +
+                      (s.session_terminal_state
+                        ? ` (session: ${s.session_terminal_state})`
+                        : ''),
+                  )
+                  .join('\n'),
+          json,
+        )
+        process.exitCode = result.exit_code
+        return
+      }
+
       const processPid = option(args, '--process')
       const timerMode = hasFlag(args, '--timer')
 
@@ -4947,7 +5055,9 @@ async function main(): Promise<void> {
                 `over ${result.wakes} wakes; record ${result.record_path}` +
                 (result.state === 'exited'
                   ? '; observed exit only — the exit status is unknown without authoritative completion evidence'
-                  : ''),
+                  : result.state === 'timed_out' && result.rearm_command
+                    ? `\nre-arm with: ${result.rearm_command}`
+                    : ''),
           json,
         )
         process.exitCode =
@@ -5067,20 +5177,21 @@ async function main(): Promise<void> {
       }
 
       const agentState = parseAgentState(option(args, '--agent-state'))
+      const agentStateEvidence = option(args, '--agent-state-evidence')
+
       const armLaunchedAt = option(args, '--launched-at')
+      const platformReturnedAt = option(args, '--platform-returned-at')
+      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const workerHandle = option(args, '--handle')
       const workerAgent = option(args, '--agent')
       const workerModel = option(args, '--model')
-      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
 
+      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
       const cadenceSeconds = parseCadenceSeconds(
         option(args, '--cadence-seconds'),
         cadenceAuthority,
       )
-      const agentStateEvidence = option(args, '--agent-state-evidence')
-      const platformReturnedAt = option(args, '--platform-returned-at')
-      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),

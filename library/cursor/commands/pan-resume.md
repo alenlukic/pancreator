@@ -18,9 +18,10 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
 9. Run the advance loop in the brief. Preserve the same worktree option on every lifecycle command.
 10. For a bound run, use `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json> --worktree <name>`.
 11. Launch every stage worker yourself, in the foreground, from this session. Arm the watch in the launch turn before any other action.
-    - When the platform converts the launch into a background subagent, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` and await it.
+    - When the platform converts the launch into a background subagent, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` as a foreground blocking call (one-hour default bound).
     - When the launch returns and the declared output exists, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --foreground-returned`.
-    - When the launch returns and that output does not exist, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id>` and await it.
+    - When the launch returns and that output does not exist, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id>` as a foreground blocking call.
+    - When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once to rejoin that session. Never call `AwaitShell`.
     - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
     - `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.
 12. Apply the snapshotted enabled or disabled away-mode branch at each unresolved operator action.

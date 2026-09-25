@@ -14,6 +14,7 @@ tools:
   ]
 disallowedTools:
   [
+    AwaitShell,
     Edit,
     'Bash(git push:*)',
     'Bash(git reset:*)',

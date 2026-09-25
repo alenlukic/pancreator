@@ -2,7 +2,8 @@
 description: Scans the target repository and rebuilds its concise Pancreator primer.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write]
-disallowedTools: [Edit, 'Bash(git push:*)', 'Bash(git reset:*)', 'Bash(rm:*)']
+disallowedTools:
+  [AwaitShell, Edit, 'Bash(git push:*)', 'Bash(git reset:*)', 'Bash(rm:*)']
 maxTurns: 35
 ---
 
