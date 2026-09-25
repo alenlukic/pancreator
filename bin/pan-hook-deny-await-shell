@@ -1,32 +1,29 @@
 #!/usr/bin/env bash
 # Deny the AwaitShell (and Await) tool for every Pancreator agent.
-# Reads a Cursor preToolUse JSON payload from stdin, prints a Cursor hook
-# response to stdout, and exits 0 in every case.
+# Reads a Cursor preToolUse JSON payload from stdin and prints a preToolUse
+# permission response to stdout: {"permission":"deny","agent_message":...}
+# for AwaitShell or Await, {"permission":"allow"} otherwise. Exits 0 always,
+# because Cursor blocks the action on invalid output from a permission hook.
 set -u
-
-DENY_MESSAGE='AwaitShell is banned for Pancreator agents. Use `pan watch` instead to monitor shell commands and subagents on a 60-second cadence.'
 
 input="$(cat 2>/dev/null || true)"
 
-# If input is not parsable or tool_name is absent, allow.
-if ! tool_name="$(printf '%s' "$input" | python3 -c "
+tool_name="$(printf '%s' "$input" | python3 -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
-    print(d.get('tool_name', ''))
+    name = d.get('tool_name', '') if isinstance(d, dict) else ''
+    print(name if isinstance(name, str) else '')
 except Exception:
     pass
-" 2>/dev/null)"; then
-  printf '{"continue":true}\n'
-  exit 0
-fi
+" 2>/dev/null || true)"
 
 case "$tool_name" in
-  AwaitShell|Await)
-    printf '{"continue":false,"agentMessage":"%s"}\n' "$DENY_MESSAGE"
+  AwaitShell | Await)
+    printf '%s\n' '{"permission":"deny","user_message":"AwaitShell is banned for Pancreator agents.","agent_message":"AwaitShell is banned for Pancreator agents. Block on `pan watch` as a foreground shell call instead: it checks on a 60-second cadence and returns at a terminal state or its one-hour default bound. After a platform detach, run `pan watch --attach <ledger>`."}'
     ;;
   *)
-    printf '{"continue":true}\n'
+    printf '%s\n' '{"permission":"allow"}'
     ;;
 esac
 

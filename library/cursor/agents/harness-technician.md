@@ -12,8 +12,9 @@ tools:
     'Bash(git diff:*)',
     'Bash({{PANCREATOR_PAN_COMMAND}}:*)',
   ]
-disallowedTools: [AwaitShell]
+disallowedTools:
   [
+    AwaitShell,
     Edit,
     'Bash(git push:*)',
     'Bash(git reset:*)',

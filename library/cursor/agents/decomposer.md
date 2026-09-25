@@ -11,8 +11,9 @@ tools:
     'Bash(git status:*)',
     'Bash(git diff:*)',
   ]
-disallowedTools: [AwaitShell]
+disallowedTools:
   [
+    AwaitShell,
     Edit,
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',

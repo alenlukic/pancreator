@@ -4247,6 +4247,14 @@ export async function watchProcess(
 
 /** Exit code the CLI returns when an attach session is orphaned. */
 export const WATCH_ATTACH_EXIT_ORPHANED = 5
+export const WATCH_ATTACH_NO_SESSION = 'WATCH_ATTACH_NO_SESSION'
+
+/** Exit codes of every verdict a followed worker or generic session can record. */
+const FOLLOWED_VERDICT_EXIT_CODES: Record<string, number> = {
+  ...WATCH_EXIT_CODES,
+  exited: 0,
+  elapsed: 0,
+}
 
 export type AttachTerminalState =
   | 'attach_completed'
@@ -4264,6 +4272,8 @@ export interface WatchAttachOptions {
   ledgers: string[]
   timeoutSeconds?: number
   cadenceSeconds?: number
+  /** Operator direction behind a non-default cadence, echoed in the result. */
+  cadenceAuthority?: string
   sleep?: (ms: number) => Promise<void>
   now?: () => number
 }
@@ -4275,6 +4285,14 @@ export interface WatchAttachResult {
   ended_at: string
   elapsed_seconds: number
   timeout_seconds: number
+  cadence_seconds: number
+  cadence_authority?: string
+  /**
+   * The CLI exit code: 5 when any session orphaned, 3 when any attach timed
+   * out, and otherwise the highest exit code among the followed verdicts, so
+   * a single followed session exits with its own verdict's code.
+   */
+  exit_code: number
 }
 
 /** Read all entries from an arbitrary JSONL watch ledger. */
@@ -4383,6 +4401,12 @@ export async function watchAttach(
       `--attach ledger must be within runtime/logs: ${ledger}`,
       { code: 'PATH_ESCAPE' },
     )
+    invariant(
+      readLedgerEntries(abs).some((entry) => entry.event === 'session_started'),
+      `--attach ledger ${ledger} records no watch session to follow. Arm a ` +
+        `watch with './bin/pan watch' instead.`,
+      { code: WATCH_ATTACH_NO_SESSION },
+    )
   }
 
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
@@ -4418,7 +4442,7 @@ export async function watchAttach(
       const abs = resolveInside(root, session.ledger)
 
       if (!fileExists(abs)) {
-        // No ledger at all — treat as already orphaned.
+        // The ledger vanished after the attach verified its session.
         session.state = 'orphaned'
         session.session_terminal_state = undefined
         continue
@@ -4485,6 +4509,20 @@ export async function watchAttach(
   }
 
   const endedMs = now()
+  const exitCode =
+    overallState === 'orphaned'
+      ? WATCH_ATTACH_EXIT_ORPHANED
+      : overallState === 'attach_timed_out'
+        ? WATCH_EXIT_CODES.timed_out
+        : Math.max(
+            0,
+            ...sessions.map(
+              (session) =>
+                FOLLOWED_VERDICT_EXIT_CODES[
+                  session.session_terminal_state ?? ''
+                ] ?? 1,
+            ),
+          )
 
   return {
     state: overallState,
@@ -4493,6 +4531,11 @@ export async function watchAttach(
     ended_at: new Date(endedMs).toISOString(),
     elapsed_seconds: (endedMs - startedMs) / 1000,
     timeout_seconds: timeoutSeconds,
+    cadence_seconds: cadenceSeconds,
+    ...(options.cadenceAuthority
+      ? { cadence_authority: options.cadenceAuthority }
+      : {}),
+    exit_code: exitCode,
   }
 }
 

@@ -1,12 +1,8 @@
 ---
-description: Runs one best-of-N session: N candidate runs in worktrees, then one consolidation run.
+description: Runs one best-of-N session of N candidate runs in worktrees, then one consolidation run.
 model: __PANCREATOR_MODEL__
-disallowedTools: [AwaitShell]
-  [
-    'Bash(git push:*)',
-    'Bash(git reset --hard:*)',
-    'Bash(rm:*)',
-  ]
+disallowedTools:
+  [AwaitShell, 'Bash(git push:*)', 'Bash(git reset --hard:*)', 'Bash(rm:*)']
 maxTurns: 200
 ---
 

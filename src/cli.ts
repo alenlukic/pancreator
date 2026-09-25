@@ -285,7 +285,6 @@ import {
   watchInvocations,
   watchProcess,
   watchTimer,
-  WATCH_ATTACH_EXIT_ORPHANED,
   writeRedlineRecord,
   type GenericWatchRecordEntry,
   type WatchRecordEntry,
@@ -4875,9 +4874,17 @@ async function main(): Promise<void> {
         const timeoutSec = parseTimeoutSeconds(
           option(args, '--timeout-seconds'),
         )
+        const attachAuthority = option(args, '--cadence-directed-by-operator')
         const result = await watchAttach(root, {
           ledgers: ledgerList,
           timeoutSeconds: timeoutSec,
+          cadenceSeconds: parseCadenceSeconds(
+            option(args, '--cadence-seconds'),
+            attachAuthority,
+          ),
+          ...(attachAuthority?.trim()
+            ? { cadenceAuthority: attachAuthority.trim() }
+            : {}),
         })
 
         print(
@@ -4896,12 +4903,7 @@ async function main(): Promise<void> {
                   .join('\n'),
           json,
         )
-        process.exitCode =
-          result.state === 'attach_completed'
-            ? 0
-            : result.state === 'attach_timed_out'
-              ? 3
-              : WATCH_ATTACH_EXIT_ORPHANED
+        process.exitCode = result.exit_code
         return
       }
 

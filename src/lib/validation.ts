@@ -123,6 +123,7 @@ import {
   applyOperatorInvolvement,
   loadOperatorInvolvementFile,
 } from './operator-involvement.js'
+import { collectAwaitShellBanIssues } from './validators/await-shell-ban.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import { isReleaseMetadataPath, validateReleaseMetadata } from './versioning.js'
 import type {
@@ -4793,6 +4794,11 @@ export function validateQuestionToolAccess(root: string): string[] {
   return errors
 }
 
+/** Check that every canonical agent and the hooks source carry the AwaitShell ban. */
+export function validateAwaitShellBan(root: string): string[] {
+  return collectAwaitShellBanIssues(root).map((issue) => issue.message)
+}
+
 export function validateRepository(root: string): RepositoryValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
@@ -4900,6 +4906,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   errors.push(...validateQuestionToolAccess(root))
+  errors.push(...validateAwaitShellBan(root))
   errors.push(...validateEvalScenarios(root))
   errors.push(...harnessRepairCategoryErrors(root))
   errors.push(...validateReleaseMetadata(root).errors)

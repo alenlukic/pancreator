@@ -508,7 +508,8 @@ function renderSupervisorProcedureBody(
                   'foreground blocking shell call for that lifetime. When ' +
                   'the platform detaches the blocking call, run ' +
                   '`pan watch --attach <ledger>` at once to rejoin the ' +
-                  'session. Never call `AwaitShell`. The watch process ' +
+                  'session rather than arming a second watch. Never call ' +
+                  '`AwaitShell`. The watch process ' +
                   'sleeps and records; the foreground block holds your turn ' +
                   'open. A finished-looking output ' +
                   'whose evidence is weak buys one confirming wake instead ' +

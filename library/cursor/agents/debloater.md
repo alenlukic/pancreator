@@ -2,8 +2,9 @@
 description: Removes operator-selected harness facilities and the content they exclusively own, then proves the result.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
-disallowedTools: [AwaitShell]
+disallowedTools:
   [
+    AwaitShell,
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
     'Bash({{PANCREATOR_PAN_COMMAND}} set-stage:*)',

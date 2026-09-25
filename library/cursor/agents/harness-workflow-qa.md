@@ -14,8 +14,9 @@ tools:
     'Bash(git log:*)',
     'Bash({{PANCREATOR_PAN_COMMAND}}:*)',
   ]
-disallowedTools: [AwaitShell]
+disallowedTools:
   [
+    AwaitShell,
     'Bash(rm:*)',
     'Bash(sudo:*)',
     'Bash(chmod:*)',

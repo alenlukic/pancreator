@@ -1443,6 +1443,7 @@ test('AC-015: platform await guidance', () => {
   assert.match(procedure, /Never call .AwaitShell/u)
   // No mandate of one model await per cadence, and no duplicate watch.
   assert.doesNotMatch(procedure, /one cadence per slice/u)
+  assert.match(procedure, /rather than arming a\s+second watch/u)
 })
 
 test('AC-016: arming bound', async () => {
