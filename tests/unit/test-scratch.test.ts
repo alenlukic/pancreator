@@ -48,6 +48,7 @@ test('a declared root expands the home directory and names one child per checkou
   const config = { test_scratch: { root: '~/Dev/scratch' } }
   const first = checkout(config)
   const second = checkout(config)
+
   const scratch = testScratchRoot(first, home)
 
   assert.equal(path.dirname(scratch), path.join(home, 'Dev', 'scratch'))

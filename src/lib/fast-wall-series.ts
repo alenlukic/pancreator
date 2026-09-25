@@ -848,6 +848,7 @@ export function buildFastWallStageSummary(
         ),
       )
     : undefined
+
   const after = latest(
     records.filter(
       (entry) =>
