@@ -573,7 +573,10 @@ function assembleModuleGraph(
         }
       }
 
-      if (refs.cli && cliSource) {
+      // Only test-side code spawns the CLI. A source module that names
+      // `./bin/pan` does so in operator-facing text, and treating that as a
+      // spawn tied every test importing io.ts to the whole CLI closure.
+      if (refs.cli && cliSource && module.startsWith('tests/')) {
         addEdge(imports, test, cliSource)
         addEdge(dependents, cliSource, test)
       }

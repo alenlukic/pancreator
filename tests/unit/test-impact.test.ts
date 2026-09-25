@@ -47,6 +47,15 @@ function createSyntheticTree(): string {
     `import type { Shape } from './types.js'\nexport const typed = (shape: Shape) => shape.size\n`,
   )
   write('src/lib/lonely.ts', `export const lonely = true\n`)
+  // Operator-facing text that names the CLI is not a spawn.
+  write(
+    'src/lib/message.ts',
+    `export const hint = 'Run ./bin/pan status to inspect the run.'\n`,
+  )
+  write(
+    'tests/unit/message.test.ts',
+    `import { hint } from '../../src/lib/message.js'\ntest(hint)\n`,
+  )
   write(
     'src/cli.ts',
     `import { feature } from './lib/feature.js'\nconsole.log(feature)\n`,
@@ -193,9 +202,11 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
       assert.ok(
         graph.dependents.get('src/cli.ts')?.has('tests/regression/cli.test.ts'),
       )
+      // A change to the script itself still reaches a module that names it,
+      // because some source modules do spawn bin scripts.
       assert.deepEqual(
-        [...(graph.binReferences.get('bin/pan') ?? [])],
-        ['tests/regression/cli.test.ts'],
+        [...(graph.binReferences.get('bin/pan') ?? [])].sort(),
+        ['tests/regression/cli.test.ts', 'tests/unit/message.test.ts'],
       )
       // References inside an imported helper reach the tests that import it.
       assert.deepEqual(
@@ -235,8 +246,14 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
         'tests/unit/core.test.ts',
         'tests/unit/feature.test.ts',
         'tests/unit/helper-user.test.ts',
+        'tests/unit/message.test.ts',
         'tests/unit/only-types.test.ts',
       ])
+      // A source module that names the CLI in text does not tie its
+      // importers to the CLI closure.
+      assert.ok(
+        !graph.dependents.get('src/cli.ts')?.has('tests/unit/message.test.ts'),
+      )
     }
   } finally {
     rmSync(root, { recursive: true, force: true })
@@ -288,7 +305,7 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
       'tests/regression/via-helper.test.ts',
       'tests/unit/feature.test.ts',
     ])
-    assert.equal(feature.lane_count, 8)
+    assert.equal(feature.lane_count, 9)
     assert.deepEqual(feature.by_depth, { '1': 1, '2': 2 })
     assert.equal(feature.advisory, null)
     assert.deepEqual(feature.unreached, [])
@@ -350,7 +367,7 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
     const included = selectImpactedTests(graph, ['src/lib/lonely.ts'], {
       include: ['tests/unit/*.test.ts'],
     })
-    assert.equal(included.selected.length, 4)
+    assert.equal(included.selected.length, 5)
     assert.equal(
       included.reasons['tests/unit/core.test.ts'],
       '--include tests/unit/*.test.ts',
@@ -466,7 +483,7 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
       'tests/unit/feature.test.ts',
     ])
     assert.equal(parsed.selected_count, 3)
-    assert.equal(parsed.lane_count, 8)
+    assert.equal(parsed.lane_count, 9)
     assert.equal(parsed.advisory, null)
     assert.equal(typeof parsed.duration_ms, 'number')
 
