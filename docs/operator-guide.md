@@ -1768,6 +1768,44 @@ without writing while an editable file still has issues, and writes the
 checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
 status.
 
+## Report Cursor token spend
+
+Use `/pan-spend [--days <1..365>]` to fetch personal or team usage and open a
+compact Canvas report. The default window is 14 days. For personal usage, copy
+the `WorkosCursorSessionToken` cookie from your authenticated Cursor dashboard
+session into `CURSOR_SESSION_TOKEN` in the process environment or the
+installation or workspace `.env`. Pancreator sends it only to Cursor's
+dashboard usage endpoints. The session expires and must then be refreshed.
+
+Teams with Admin API access may instead set `CURSOR_ADMIN_API_KEY`; the key
+needs `admin:*` scope. Pancreator sends it only to
+`POST /teams/filtered-usage-events` with Basic authentication. A dashboard
+session takes precedence when both credentials exist.
+
+The report includes total tokens, cost, daily time series, token categories,
+and ranked command, persona and model, tool, stage, governance, workflow-role,
+and remediation views. Team reports use charged cost from Admin API events.
+Personal reports use model cost from Cursor's aggregate dashboard response;
+the dashboard does not expose authoritative billed charges. A self-development
+checkout also scans every registered embedded installation. Each installation
+contributes its workflow records and the target workspace's Cursor transcripts,
+so worker conversation ids can resolve to the correct persona and stage.
+
+Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
+uses an exact `fast=true` or `fast=false` model declaration when one is
+available and reports `unknown` otherwise. The tool view reports token spend
+for conversations that used each tool, so those totals overlap. Each inferred
+view shows its attribution coverage. Pancreator uses Cursor's personal model
+aggregates, then reconciles event allocations to exact overall totals.
+Personal daily and attributed allocations are inferred and state that limit.
+Cursor's personal endpoint does not expose authoritative billed charges.
+Unmatched events remain `unattributed`.
+
+`pan spend --days <n> --json` returns the aggregate data without raw events.
+The output excludes API keys, email addresses, conversation ids, cloud agent
+ids, and unprocessed API metadata. Pass `--json` to `/pan-spend` when the
+aggregate JSON is the desired surface instead of Canvas.
+
 ## Write a standalone PR description
 
 Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).

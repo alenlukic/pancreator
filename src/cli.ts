@@ -266,6 +266,7 @@ import {
   resolveRunCitation,
 } from './lib/workflow-artifacts.js'
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
+import { generateTokenSpendReport } from './lib/token-spend.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -3135,6 +3136,15 @@ async function main(): Promise<void> {
         }),
         hasFlag(args, '--json'),
       )
+      return
+    }
+    case 'spend': {
+      const days = integerOption(args, '--days')
+      const report = await generateTokenSpendReport(root, {
+        ...(days === null ? {} : { days }),
+      })
+
+      print({ status: 'reported', report }, true)
       return
     }
     case 'cleanup': {
