@@ -1,5 +1,15 @@
 # Changelog
 
+## [7.29.1] - 2026-09-25
+
+This release makes `pan spend` report the real Cursor charge. Personal reports understated cost by about 98 times.
+
+### Fixed
+
+- Sum the charged cost of each dashboard usage event, including the Cursor token fee, in `pan spend`, `pan spend sync`, and `pan spend report` ([764b3950](https://github.com/alenlukic/pancreator/commit/764b3950)).
+- Remove the rescale of per-event usage onto the dashboard aggregate endpoint, which returns about 1/98 of real volume ([764b3950](https://github.com/alenlukic/pancreator/commit/764b3950)).
+- Stop test fixtures from inheriting the spend sync host of the local checkout ([764b3950](https://github.com/alenlukic/pancreator/commit/764b3950)).
+
 ## [7.29.0] - 2026-09-25
 
 This release bans AwaitShell and makes `pan watch` the only wait for a shell command or a subagent.
