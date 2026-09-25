@@ -14,6 +14,7 @@ import { availableParallelism } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
+import { testScratchRoot } from '../../src/lib/test-scratch.js'
 import { createTestTempDirectory } from '../temp.js'
 
 import {
@@ -397,6 +398,53 @@ test('run-tests scopes the suite to a scratch directory it discards afterwards',
       existsSync(path.join(path.dirname(scratch), '.metadata_never_index')),
       true,
     )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// config.json test_scratch.root moves the scratch out of the checkout. The
+// wrapper and tests/temp.ts must agree on the resolved directory, and a
+// malformed declaration must stop the suite instead of scattering fixtures.
+test('run-tests places the run directory under the configured scratch root', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+  const base = path.join(fixture.root, 'elsewhere')
+  const configPath = path.join(fixture.root, 'config.json')
+
+  try {
+    writeFileSync(
+      configPath,
+      JSON.stringify({ schema_version: 1, test_scratch: { root: base } }),
+    )
+
+    const result = runTests(fixture, [
+      '/bin/bash',
+      '-c',
+      `printf '%s' "$PANCREATOR_TEST_TMP" > "${observed}"`,
+    ])
+
+    assert.equal(result.status, 0, result.stderr)
+
+    const scratch = readFileSync(observed, 'utf8')
+
+    assert.equal(path.dirname(scratch), testScratchRoot(fixture.root))
+    assert.equal(path.dirname(path.dirname(scratch)), base)
+    assert.match(path.basename(scratch), /^run-/u)
+    assert.equal(
+      existsSync(path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')),
+      false,
+    )
+
+    writeFileSync(
+      configPath,
+      JSON.stringify({ schema_version: 1, test_scratch: { root: '' } }),
+    )
+
+    const refused = runTests(fixture, ['/bin/bash', '-c', 'exit 0'])
+
+    assert.equal(refused.status, 1)
+    assert.match(refused.stderr, /cannot resolve the test scratch directory/u)
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
   }

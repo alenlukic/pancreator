@@ -162,6 +162,18 @@
         }
       }
     },
+    "test_scratch": {
+      "type": "object",
+      "description": "Self-development test scratch location. bin/run-tests and tests/temp.ts place each checkout's fixtures in its own <checkout-name>-<hash>.noindex child of root, so the main checkout and its worktrees never share one. Absent, fixtures stay under runtime/tmp/tests.noindex.",
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Directory that holds every checkout's scratch. A leading ~/ expands to the home directory, and a relative path resolves against the checkout. null restores the default, so config_overrides.json can undo a checked-in value."
+        }
+      }
+    },
     "active_config": {
       "type": "string",
       "minLength": 1

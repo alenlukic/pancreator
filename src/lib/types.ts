@@ -907,6 +907,8 @@ export interface ProjectConfig {
   state_root?: string
   /** Self-development fast-lane wall ceiling and its permitted weekly rise. */
   fast_wall?: FastWallConfig
+  /** Where self-development test fixtures live; see `src/lib/test-scratch.ts`. */
+  test_scratch?: { root?: string | null }
   /** Maximum bytes permitted in one materialized workflow state file. */
   state_size_budget_bytes?: number
   /** Worker inactivity bound used by `pan status`. */

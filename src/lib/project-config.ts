@@ -3,6 +3,7 @@ import path from 'node:path'
 import { EMBEDDED_HARNESS_PREFIX } from './cursor-content.js'
 import { invariant } from './errors.js'
 import { fileExists, isRecord, readJson, sha256 } from './io.js'
+import { testScratchDeclarationError } from './test-scratch.js'
 import type {
   AwayModeAction,
   AwayModeConfig,
@@ -693,6 +694,12 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   assertInstallationsBlock(value.installations)
   assertScheduleBlock(value.schedule)
   assertFastWallBlock(value.fast_wall)
+
+  const testScratchError = testScratchDeclarationError(value.test_scratch)
+
+  invariant(testScratchError === null, testScratchError ?? '', {
+    code: 'INVALID_PROJECT_CONFIG',
+  })
 
   // A detached harness cannot reach its target by a relative path that would
   // survive being moved, so the target MUST be recorded absolutely.

@@ -183,5 +183,8 @@
   "away_mode": {
     "enabled": false
   },
-  "installation_mode": "self_development"
+  "installation_mode": "self_development",
+  "test_scratch": {
+    "root": "~/Dev/scratch"
+  }
 }

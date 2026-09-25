@@ -27,12 +27,15 @@ usage() {
   echo "Usage: bin/run-tests -- <command> [args...]" >&2
 }
 
-# Every suite run gets one scratch directory under the root, and the run
-# discards it when it ends. Fixtures never touch the shared OS temp directory:
-# that directory is written by every program on the host, nothing bounds it,
-# and once it accumulated 166,000 leaked fixtures every create and unlink in
-# it stalled for seconds. A directory the runner owns is per-root, so cohort
-# worktrees never share one, and it cannot outlive the run that made it.
+# Every suite run gets one scratch directory under this checkout's scratch
+# root, and the run discards it when it ends. Fixtures never touch the shared
+# OS temp directory: that directory is written by every program on the host,
+# nothing bounds it, and once it accumulated 166,000 leaked fixtures every
+# create and unlink in it stalled for seconds. The scratch root is per-root,
+# so cohort worktrees never share one, and it cannot outlive the run that
+# made it. config.json test_scratch.root moves it out of the checkout;
+# dist/src/lib/test-scratch.js owns that resolution for this script and the
+# test helpers alike.
 #
 # Discarding is a rename followed by a detached removal. Deleting the tree in
 # the foreground charged the command 115 seconds of its 287-second wall time,
@@ -43,7 +46,16 @@ usage() {
 # removal. The next run sweeps any run directory whose owner is gone and any
 # discarded tree whose remover is gone. A failed removal stays discarded for
 # another retry and never decides the suite status. runtime/ is gitignored.
+SCRATCH_HELPER="$ROOT/dist/src/lib/test-scratch.js"
 TESTS_TMP_ROOT="$ROOT/runtime/tmp/tests.noindex"
+
+if [[ -f "$SCRATCH_HELPER" ]]; then
+  if ! TESTS_TMP_ROOT="$(node "$SCRATCH_HELPER" "$ROOT")"; then
+    echo '[run-tests] cannot resolve the test scratch directory from config.json' >&2
+    exit 1
+  fi
+fi
+
 FILE_DURATION_RECORD="$TESTS_TMP_ROOT/file-durations.json"
 FILE_ORDER_HELPER="$ROOT/dist/src/lib/test-file-order.js"
 SPOTLIGHT_MARKER="$TESTS_TMP_ROOT/.metadata_never_index"
@@ -487,7 +499,7 @@ export PAN_TEST_FILE_DURATIONS="$FILE_DURATION_RECORD"
 # prefetch turn it on for their own fixture, and an operator can too.
 export PAN_PREFETCH_FULL="${PAN_PREFETCH_FULL:-0}"
 
-# The run directory sits inside this checkout, which is itself a Git
+# The run directory can sit inside this checkout, which is itself a Git
 # repository. Without a ceiling, git discovery from a fixture that has no
 # .git of its own would walk up and find this checkout, and a test that
 # expects "not a repository" would instead read this checkout's dirty files.

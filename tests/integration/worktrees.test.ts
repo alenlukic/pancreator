@@ -34,6 +34,7 @@ import {
   writeWorktreeIndex,
   type WorktreeIndex,
 } from '../../src/lib/worktrees.js'
+import { testScratchRoot } from '../../src/lib/test-scratch.js'
 import { createFixture, writeJson } from '../helpers.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -921,6 +922,33 @@ test('the scratch sweep renames a test tree out of a live checkout', () => {
   assert.equal(existsSync(scratch), false)
   // Nothing left to hand off reports nothing handed off.
   assert.equal(sweepWorktreeTestScratch(worktreePath), null)
+})
+
+// A configured root sits outside every checkout, so Git removal never reaches
+// it. The sweep must find it through the worktree's own configuration and
+// discard it beside itself, where the rename stays on one volume.
+test('the scratch sweep discards a configured external root beside itself', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'scratch-external')
+  const worktreePath = path.join(root, record.path)
+  const base = createTestTempDirectory('pan-scratch-base-')
+
+  writeJson(path.join(worktreePath, 'config_overrides.json'), {
+    test_scratch: { root: base },
+  })
+
+  const scratch = testScratchRoot(worktreePath)
+
+  assert.equal(path.dirname(scratch), base)
+  mkdirSync(scratch, { recursive: true })
+  writeFileSync(path.join(scratch, 'fixture'), 'temporary\n')
+
+  const discarded = sweepWorktreeTestScratch(worktreePath)
+
+  assert.ok(discarded)
+  assert.equal(path.dirname(discarded), base)
+  assert.match(path.basename(discarded), /^\..+-tests-\d+-\d+\.noindex$/u)
+  assert.equal(existsSync(scratch), false)
 })
 
 test('removing a worktree hands its scratch to a detached remover', () => {

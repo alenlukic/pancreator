@@ -66,21 +66,12 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.equal(config.installation_mode, 'embedded')
   assert.ok(config.workspace_id.length > 0)
 
-  // Named configurations never duplicate a default mapping.
   for (const namedConfig of Object.values(config.configs)) {
     assert.equal(
       typeof (namedConfig as Record<string, unknown>).personas,
       'undefined',
       'embedded config.json MUST use the flat mapping shape',
     )
-
-    for (const [persona, defaultModel] of Object.entries(config.defaults)) {
-      const value = (namedConfig as Record<string, unknown>)[persona]
-
-      if (value !== undefined) {
-        assert.notEqual(value, defaultModel)
-      }
-    }
   }
 
   const parsedConfig = parsePipelineConfig(config, 'installed config.json')

@@ -19,6 +19,7 @@ import type { InboxReconciliationMove } from './inbox.js'
 import { isRecord, readJson } from './io.js'
 import { isTargetInstallation, resolveRetentionDays } from './project-config.js'
 import { liveRunsBoundToWorktree, TERMINAL_RUN_STATUSES } from './state.js'
+import { DEFAULT_TEST_SCRATCH_PATH, testScratchRoot } from './test-scratch.js'
 import type { RunStatus } from './types.js'
 import {
   needsTemporalFileName,
@@ -546,6 +547,34 @@ function planExpiredEntries(
   }
 }
 
+/**
+ * A class's paths with the test scratch root resolved from configuration,
+ * which can place it outside the root and so appear as a `..` path.
+ */
+function resolvedClassPaths(
+  root: string,
+  artifactClass: CleanupArtifactClass,
+): string[] {
+  const defaultScratch = toPosix(DEFAULT_TEST_SCRATCH_PATH)
+
+  if (!artifactClass.paths.includes(defaultScratch)) {
+    return artifactClass.paths
+  }
+
+  let scratch = defaultScratch
+
+  try {
+    scratch = toPosix(path.relative(root, testScratchRoot(root)))
+  } catch {
+    // A malformed declaration fails config loading on its own; retention
+    // keeps judging the default location meanwhile.
+  }
+
+  return artifactClass.paths.map((candidate) =>
+    candidate === defaultScratch ? scratch : candidate,
+  )
+}
+
 function planFileClasses(plan: PlanAccumulator): void {
   const { root, now, options, selected, retention } = plan
 
@@ -562,8 +591,10 @@ function planFileClasses(plan: PlanAccumulator): void {
     retention[artifactClass.name] = days
     const cutoff = now.getTime() - days * MILLISECONDS_PER_DAY
 
-    for (const parentRelative of artifactClass.paths) {
-      const parent = path.join(root, parentRelative)
+    const classPaths = resolvedClassPaths(root, artifactClass)
+
+    for (const parentRelative of classPaths) {
+      const parent = path.resolve(root, parentRelative)
 
       if (!existsSync(parent)) {
         continue
@@ -589,7 +620,7 @@ function planFileClasses(plan: PlanAccumulator): void {
       // A nested class path is judged on its own entries, not as one item of
       // its parent; harness markers inside a scratch root are not artifacts.
       const skipNames = new Set(
-        artifactClass.paths
+        classPaths
           .filter((candidate) => candidate.startsWith(`${parentRelative}/`))
           .map((candidate) => path.basename(candidate)),
       )

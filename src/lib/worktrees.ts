@@ -51,6 +51,7 @@ import {
 import { syncCursorProjection } from './projection.js'
 import { runSetupCommands } from './setup-commands.js'
 import { now } from './state.js'
+import { testScratchRoot } from './test-scratch.js'
 import type { ManagedWorktreeReference } from './types.js'
 import {
   cleanTreeRefusal,
@@ -60,7 +61,6 @@ import {
 } from './workspace-attribution.js'
 
 const WORKTREE_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
-const TEST_SCRATCH_RELATIVE_PATH = path.join('runtime', 'tmp', 'tests.noindex')
 
 /** Refresh disposable Cursor state after a self-development worktree moves. */
 function syncSelfDevelopmentWorktreeProjection(worktreePath: string): void {
@@ -997,6 +997,32 @@ export function resolveWorkspacePathOrWorktree(
   return record ? record.path : value
 }
 
+/** A worktree's scratch root, or null when its configuration cannot say. */
+function worktreeScratchRoot(worktreePath: string): string | null {
+  try {
+    return testScratchRoot(worktreePath)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Where a worktree's scratch goes to be removed. Scratch inside the worktree
+ * leaves it for the worktrees root, so Git never removes a tree a detached
+ * remover is still deleting. Scratch under a configured root stays beside
+ * itself, where a rename cannot cross volumes.
+ */
+function scratchDiscardDirectory(
+  worktreePath: string,
+  scratch: string,
+): string {
+  const relative = path.relative(worktreePath, scratch)
+
+  return relative.startsWith('..') || path.isAbsolute(relative)
+    ? path.dirname(scratch)
+    : path.dirname(worktreePath)
+}
+
 function startDetachedScratchRemoval(target: string): void {
   const remover = spawn('/bin/rm', ['-rf', target], {
     detached: process.platform !== 'win32',
@@ -1020,14 +1046,14 @@ function startDetachedScratchRemoval(target: string): void {
  * command.
  */
 export function sweepWorktreeTestScratch(worktreePath: string): string | null {
-  const scratch = path.join(worktreePath, TEST_SCRATCH_RELATIVE_PATH)
+  const scratch = worktreeScratchRoot(worktreePath)
 
-  if (!fileExists(scratch)) {
+  if (!scratch || !fileExists(scratch)) {
     return null
   }
 
   const discarded = path.join(
-    path.dirname(worktreePath),
+    scratchDiscardDirectory(worktreePath, scratch),
     `.${path.basename(worktreePath)}-tests-${process.pid}-${Date.now()}.noindex`,
   )
 
@@ -1128,6 +1154,17 @@ export function removeWorktree(
 
     if (present && repositoryRoot) {
       sweepDiscardedWorktreeScratch(path.dirname(worktreePath))
+
+      const scratch = worktreeScratchRoot(worktreePath)
+
+      if (scratch) {
+        const discardDirectory = scratchDiscardDirectory(worktreePath, scratch)
+
+        if (discardDirectory !== path.dirname(worktreePath)) {
+          sweepDiscardedWorktreeScratch(discardDirectory)
+        }
+      }
+
       discardedScratch = sweepWorktreeTestScratch(worktreePath)
       // Git refuses to remove a worktree that still holds changes, so an
       // exempt read-only input carries the force its exemption granted.
