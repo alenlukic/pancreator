@@ -17,7 +17,7 @@
       "commands": ["npm run lint"]
     },
     "fast": {
-      "description": "Run Pancreator's compiled automated test suite.",
+      "description": "Run Pancreator's compiled unit and regression lanes. The integration lane runs only before release, in the full profile.",
       "probes": ["node --version", "npm --version"],
       "commands": ["npm test"],
       "isolation_command": "./bin/run-tests -- node --test --test-name-pattern={test_pattern} --test-reporter=tap --test-reporter-destination=stdout {file}"

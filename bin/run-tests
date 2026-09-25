@@ -259,6 +259,76 @@ order_test_file_arguments() {
   ORDERED_ARGUMENTS=("${parsed[@]}")
 }
 
+# The runner starts one process per test file, and each file can start git and
+# CLI children of its own, so the worker count multiplies into far more
+# processes than cores. At the Node default of one worker per core, a suite
+# run saturated the host badly enough to stall the operator's editor. Half the
+# logical cores keeps the suite near its best wall while leaving the other half
+# to interactive work. PAN_TEST_WORKERS overrides the default for one run, and
+# an explicit --test-concurrency argument always wins.
+default_worker_count() {
+  local requested="${PAN_TEST_WORKERS:-}"
+  local cpus
+
+  if [[ "$requested" =~ ^[1-9][0-9]*$ ]]; then
+    printf '%s' "$requested"
+    return
+  fi
+
+  cpus="$(
+    node -e 'process.stdout.write(String(require("node:os").availableParallelism()))'
+  )"
+
+  [[ "$cpus" =~ ^[1-9][0-9]*$ ]] || cpus=2
+
+  printf '%s' $(((cpus + 1) / 2 > 2 ? (cpus + 1) / 2 : 2))
+}
+
+with_default_concurrency() {
+  local argument
+  local runs_node_test=0
+
+  CONCURRENT_ARGUMENTS=("$@")
+
+  [[ "${1##*/}" == 'node' ]] || return 0
+
+  for argument in "$@"; do
+    case "$argument" in
+      --test)
+        runs_node_test=1
+        ;;
+      --test-concurrency | --test-concurrency=*)
+        return 0
+        ;;
+    esac
+  done
+
+  [[ "$runs_node_test" -eq 1 ]] || return 0
+
+  CONCURRENT_ARGUMENTS=("$1" "--test-concurrency=$(default_worker_count)" "${@:2}")
+}
+
+# The suite is batch work that competes with the operator's editor, browser,
+# and window server for the same cores, and most of its cost is kernel time
+# spent creating processes and files. Clamping it to the utility QoS class
+# lets interactive threads preempt it and throttles its I/O under contention,
+# so a suite run slows down instead of the desktop. The nice increment does
+# the same on every platform. Children inherit both.
+# PAN_TEST_PRIORITY=normal runs at the caller's own priority.
+low_priority_prefix() {
+  LOW_PRIORITY_PREFIX=()
+
+  [[ "${PAN_TEST_PRIORITY:-low}" == 'normal' ]] && return 0
+
+  if [[ -x /usr/sbin/taskpolicy ]]; then
+    LOW_PRIORITY_PREFIX=(/usr/sbin/taskpolicy -c utility)
+  fi
+
+  if command -v nice >/dev/null 2>&1; then
+    LOW_PRIORITY_PREFIX+=(nice -n 10)
+  fi
+}
+
 test_worker_count() {
   local argument next=0
   local configured=''
@@ -298,15 +368,20 @@ is_complete_fast_lane() {
 
   [[ "$FAST_WALL_INVOKER" == 'test' ]] || return 1
 
+  # The fast lane is unit and regression. Integration runs before release, in
+  # the full profile, so a run that carries any integration file is not the
+  # governed lane.
   for argument in "$@"; do
     candidate="${argument#"$ROOT"/}"
 
     case "$candidate" in
       dist/tests/unit/*.test.js | \
-        dist/tests/integration/*.test.js | \
         dist/tests/regression/*.test.js)
         actual+=("$candidate")
         actual_count=$((actual_count + 1))
+        ;;
+      dist/tests/integration/*.test.js)
+        return 1
         ;;
     esac
   done
@@ -315,7 +390,6 @@ is_complete_fast_lane() {
   expected_files=(
     ''
     "$ROOT"/dist/tests/unit/*.test.js
-    "$ROOT"/dist/tests/integration/*.test.js
     "$ROOT"/dist/tests/regression/*.test.js
   )
   shopt -u nullglob
@@ -385,6 +459,12 @@ order_test_file_arguments "$@"
 
 set -- "${ORDERED_ARGUMENTS[@]}"
 
+with_default_concurrency "$@"
+
+set -- "${CONCURRENT_ARGUMENTS[@]}"
+
+low_priority_prefix
+
 RUN_DIRECTORY="$(mktemp -d "$TESTS_TMP_ROOT/run-XXXXXXXX")"
 SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
 
@@ -436,7 +516,7 @@ if is_complete_fast_lane "$@"; then
   FAST_WALL_QUALIFIES=1
 fi
 
-"$@" || status=$?
+${LOW_PRIORITY_PREFIX[@]+"${LOW_PRIORITY_PREFIX[@]}"} "$@" || status=$?
 
 WRAPPER_FINISHED_MS="$(node -e 'process.stdout.write(String(Date.now()))')"
 WRAPPER_WALL_MS=$((WRAPPER_FINISHED_MS - WRAPPER_STARTED_MS))

@@ -10,6 +10,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
+import { availableParallelism } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -140,15 +141,15 @@ test('run-tests records only the complete configured fast lane', () => {
   const testFiles = [
     'dist/tests/unit/unit.test.js',
     'dist/tests/unit/second-unit.test.js',
-    'dist/tests/integration/integration.test.js',
     'dist/tests/regression/regression.test.js',
   ]
+  const integrationFile = 'dist/tests/integration/integration.test.js'
   const allLanesOneFileShort = testFiles.filter(
     (file) => file !== 'dist/tests/unit/second-unit.test.js',
   )
 
   try {
-    for (const file of testFiles) {
+    for (const file of [...testFiles, integrationFile]) {
       mkdirSync(path.dirname(path.join(fixture.root, file)), {
         recursive: true,
       })
@@ -165,9 +166,9 @@ test('run-tests records only the complete configured fast lane', () => {
       JSON.stringify({
         schema_version: 1,
         recorded_at: '2026-09-15T00:00:00.000Z',
-        lane: 'integration+regression+unit',
+        lane: 'regression+unit',
         wall_clock_ms: 100,
-        test_count: 4,
+        test_count: 3,
         files: testFiles.map((file) => ({ file, duration_ms: 1 })),
       }),
     )
@@ -185,6 +186,23 @@ test('run-tests records only the complete configured fast lane', () => {
     )
 
     assert.equal(partial.status, 0, partial.stderr)
+    assert.equal(existsSync(observed), false)
+
+    // Integration runs before release only, so a run that carries it is not
+    // the governed fast lane even when every fast file is present.
+    const withIntegration = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        '/usr/bin/true',
+        ...testFiles,
+        integrationFile,
+      ],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(withIntegration.status, 0, withIntegration.stderr)
     assert.equal(existsSync(observed), false)
 
     const complete = spawnSync(
@@ -205,6 +223,106 @@ test('run-tests records only the complete configured fast lane', () => {
     assert.match(recordCommand, /--load-average [0-9.]+/u)
     assert.match(recordCommand, /--cpu-count [1-9][0-9]*/u)
     assert.match(recordCommand, /--caller-class standalone/u)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// A stand-in `node` addressed by path, so the wrapper's own `node -e` calls
+// still reach the real interpreter on PATH. It records its arguments and the
+// scheduling priority it was started at.
+function writeRecordingNode(root: string, observed: string): string {
+  const fake = path.join(root, 'fake', 'node')
+
+  mkdirSync(path.dirname(fake), { recursive: true })
+  writeFileSync(
+    fake,
+    [
+      '#!/bin/bash',
+      `printf '%s\\n' "$@" > "${observed}.args"`,
+      `ps -o nice= -p $$ | tr -d ' ' > "${observed}.nice"`,
+      '',
+    ].join('\n'),
+  )
+  chmodSync(fake, 0o755)
+
+  return fake
+}
+
+test('run-tests bounds a node test run to half the cores unless told otherwise', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+  const fake = writeRecordingNode(fixture.root, observed)
+  const concurrency = (env: NodeJS.ProcessEnv, extra: string[] = []) => {
+    const result = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        fake,
+        '--test',
+        ...extra,
+        'a.test.js',
+      ],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+
+    return readFileSync(`${observed}.args`, 'utf8')
+      .trim()
+      .split('\n')
+      .filter((argument) => argument.startsWith('--test-concurrency'))
+  }
+
+  try {
+    const { PAN_TEST_WORKERS: _workers, ...unset } = fixture.env
+
+    assert.deepEqual(concurrency(unset), [
+      `--test-concurrency=${Math.max(2, Math.ceil(availableParallelism() / 2))}`,
+    ])
+    assert.deepEqual(concurrency({ ...unset, PAN_TEST_WORKERS: '3' }), [
+      '--test-concurrency=3',
+    ])
+    // An explicit argument wins, and the wrapper adds no second one.
+    assert.deepEqual(
+      concurrency({ ...unset, PAN_TEST_WORKERS: '3' }, [
+        '--test-concurrency=5',
+      ]),
+      ['--test-concurrency=5'],
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// A suite already runs under the wrapper, so the caller here is lowered too.
+// The nice value still rises by one more increment, which a QoS clamp that
+// is already in force cannot show.
+test('run-tests runs the suite below the caller priority unless told otherwise', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+  const fake = writeRecordingNode(fixture.root, observed)
+  const niceness = (env: NodeJS.ProcessEnv): number => {
+    const result = spawnSync(
+      '/bin/bash',
+      [path.join(fixture.root, 'bin', 'run-tests'), '--', fake, 'a.test.js'],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+
+    return Number.parseInt(readFileSync(`${observed}.nice`, 'utf8'), 10)
+  }
+
+  try {
+    const lowered = niceness(fixture.env)
+    const normal = niceness({ ...fixture.env, PAN_TEST_PRIORITY: 'normal' })
+
+    assert.ok(
+      lowered > normal,
+      `suite nice ${lowered} is not above caller nice ${normal}`,
+    )
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
   }

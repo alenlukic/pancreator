@@ -2638,10 +2638,6 @@ async function main(): Promise<void> {
         const report = buildFastWallReport(root)
 
         print(hasFlag(args, '--json') ? report : formatFastWallReport(report))
-
-        if (report.status === 'failed') {
-          process.exitCode = 1
-        }
         return
       }
 

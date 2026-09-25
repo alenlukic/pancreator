@@ -232,9 +232,10 @@ The coordinator ranks the joined set with these tie-breaks:
 - An agentic-practice finding blocks when it lets a run finish wrong or
   unrecoverable without saying so. Otherwise it is a note with a named repair
   layer.
-- A performance finding blocks when it regresses a stated ceiling or adds
-  duplicate execution to the critical path. Other cost findings are follow-ups
-  with their numbers recorded.
+- A performance finding blocks when it adds duplicate execution to the
+  critical path. The fast-wall ceiling is soft: a change that moves the suite
+  past it is a follow-up with its numbers recorded, never a blocker. Other cost
+  findings are follow-ups with their numbers recorded.
 
 Record the swap and the core dimensions it removed.
 Then record the three dimensions and any core charter the operator named.

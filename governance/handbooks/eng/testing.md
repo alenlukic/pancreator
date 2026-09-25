@@ -54,10 +54,12 @@ A test cited as the regression guard for an acceptance criterion MUST be demonst
 
 Place each test in the documented lane that matches its cost and boundary:
 
-- **Unit** — isolated logic, no subprocess, no network.
-- **Integration** — cross-module or CLI behavior with bounded fixtures.
-- **Regression** — replay of a prior defect with a minimal reproduction.
-- **Secondary** — slow installer or release paths the mainline lane excludes.
+- **Unit** — isolated logic, no subprocess, no network. Runs in the fast lane.
+- **Regression** — replay of a prior defect with a minimal reproduction. Runs in the fast lane.
+- **Integration** — cross-module or CLI behavior with bounded fixtures. Runs only before a branch lands on `pan-dev`, in the `full` profile and `/pan-release`.
+- **Secondary** — slow installer or release paths. Runs in the `secondary` and `full` profiles.
+
+The fast lane is the one agents and gates run during development, so a contract that the fast lane must catch belongs in a unit or regression test.
 
 A DEMOTE recommendation MUST name a documented lane destination or a cheaper direct form that still proves the contract.
 

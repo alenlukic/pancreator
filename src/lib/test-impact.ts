@@ -19,11 +19,11 @@ import { gitChangedPathsBetween, gitHead, isGitRepository } from './git.js'
 import { appendJsonLine, sha256 } from './io.js'
 import { readProjectConfig } from './project-config.js'
 
-export const TEST_LANES = [
-  'tests/unit',
-  'tests/integration',
-  'tests/regression',
-]
+/**
+ * The fast lanes. Integration tests run only before release, in the `full`
+ * profile, so iteration never selects them.
+ */
+export const TEST_LANES = ['tests/unit', 'tests/regression']
 
 /** Repository files whose change invalidates every test in the lane. */
 export const GLOBAL_FILES = [

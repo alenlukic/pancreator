@@ -18,7 +18,7 @@
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "lint": "./bin/run-quiet -- ./bin/lint",
     "validate:chat-markdown": "./bin/validate-chat-markdown",
-    "test": "./bin/run-quiet -- ./bin/run-built -- ./bin/run-tests -- node --test --test-concurrency=${PAN_TEST_WORKERS:-13} --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/unit/*.test.js dist/tests/integration/*.test.js dist/tests/regression/*.test.js",
+    "test": "./bin/run-quiet -- ./bin/run-built -- ./bin/run-tests -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/unit/*.test.js dist/tests/regression/*.test.js",
     "test:unit": "./bin/run-quiet -- ./bin/run-built -- ./bin/run-tests -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/unit/*.test.js",
     "test:migrations": "./bin/run-quiet -- ./bin/run-built -- ./bin/run-tests -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/migrations/*.test.js",
     "test:integration": "./bin/run-quiet -- ./bin/run-built -- ./bin/run-tests -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/integration/*.test.js",

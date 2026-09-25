@@ -7,7 +7,9 @@ import {
   appendFastWallRun,
   buildFastWallReport,
   buildFastWallStageSummary,
+  FAST_LANE,
   fastWallSeriesPath,
+  formatFastWallReport,
   marginalFastWallCost,
   permittedFastWallCeiling,
   qualifiesAsFastLane,
@@ -17,8 +19,6 @@ import {
   type FastWallSeriesEntry,
 } from '../../src/lib/fast-wall-series.js'
 import { createTestTempDirectory } from '../temp.js'
-
-const FAST_LANE = 'integration+regression+unit'
 
 function entry(
   recordedAt: string,
@@ -241,7 +241,12 @@ test('the report counts only complete fast-lane rows in one window population', 
 
   const report = buildFastWallReport(root, at)
 
-  assert.equal(report.status, 'failed')
+  assert.equal(report.status, 'over_ceiling')
+  assert.match(
+    formatFastWallReport(report),
+    /OVER SOFT CEILING; advisory only/u,
+  )
+  assert.doesNotMatch(formatFastWallReport(report), /FAIL/u)
   assert.equal(report.recorded_runs, 2)
   assert.equal(report.unqualified_runs, 2)
   assert.equal(report.rolling_average_ms, 137_000)
@@ -255,6 +260,46 @@ test('the report counts only complete fast-lane rows in one window population', 
     false,
   )
 })
+
+test('the fast lane is unit and regression, and older compositions never qualify', () => {
+  assert.equal(FAST_LANE, 'regression+unit')
+  assert.equal(
+    qualifiesAsFastLane(entry('2026-09-15T09:00:00.000Z', 1, 1)),
+    true,
+  )
+  // The lane before integration moved to the pre-release full profile, and
+  // a schema-1 row, which recorded no lane while that lane was in force.
+  assert.equal(
+    qualifiesAsFastLane(
+      entry('2026-09-15T09:00:00.000Z', 1, 1, {
+        lane: 'integration+regression+unit',
+      }),
+    ),
+    false,
+  )
+  assert.equal(
+    qualifiesAsFastLane(
+      readFastWallSeriesRow(
+        legacyRow('2026-09-15T09:00:00.000Z', 1, 1, 'test'),
+      ),
+    ),
+    false,
+  )
+})
+
+function readFastWallSeriesRow(
+  row: Record<string, unknown>,
+): FastWallSeriesEntry {
+  const root = createTestTempDirectory('pancreator-fast-wall-row-')
+
+  writeSeries(root, [row])
+
+  const [record] = readFastWallSeries(root).records
+
+  assert.ok(record)
+
+  return record
+}
 
 test('the report excludes contended and non-gate samples and requires a minimum population', () => {
   const root = selfDevelopmentRoot()

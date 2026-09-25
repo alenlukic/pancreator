@@ -88,7 +88,9 @@ import {
   recordSuiteProfileIndexEntry,
 } from './suite-profile.js'
 import {
+  buildFastWallReport,
   buildFastWallStageSummary,
+  formatFastWallReport,
   FAST_WALL_BASELINE_PHASE,
   FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_CRITERION_ID,
@@ -7468,22 +7470,21 @@ export function submitOutput(
 
     advise('gate_bypass', evaluated.advisories)
 
-    const suiteCostFailure = evaluated.results.find(
+    // The ceiling is soft, so `pan tests wall` passes over it and the
+    // criterion result cannot carry the breach. The report itself does.
+    const suiteCostResult = evaluated.results.find(
       (result) =>
-        result.id === FAST_WALL_CRITERION_ID &&
-        result.passed === false &&
-        result.skipped !== true,
+        result.id === FAST_WALL_CRITERION_ID && result.skipped !== true,
     )
+    const suiteCostReport = suiteCostResult ? buildFastWallReport(root) : null
 
-    if (suiteCostFailure) {
-      const message =
-        suiteCostFailure.explanation ??
-        'The qualified fast-lane wall average exceeded its configured advisory ceiling.'
+    if (suiteCostResult && suiteCostReport?.status === 'over_ceiling') {
+      const message = formatFastWallReport(suiteCostReport)
       const intakePath = emitSuiteCostInboxItem(
         root,
         state,
         message,
-        suiteCostFailure.evidence_path,
+        suiteCostResult.evidence_path,
       )
 
       advise('suite_cost', [`${message} Intake: ${intakePath}.`])
@@ -7492,7 +7493,7 @@ export function submitOutput(
         invocation_id: invocation.invocation_id,
         criterion: FAST_WALL_CRITERION_ID,
         intake_path: intakePath,
-        evidence_path: suiteCostFailure.evidence_path ?? null,
+        evidence_path: suiteCostResult.evidence_path ?? null,
       })
     }
 

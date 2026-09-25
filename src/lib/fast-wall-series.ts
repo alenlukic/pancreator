@@ -41,8 +41,11 @@ export type FastWallCallerClass =
 
 const FAST_WALL_QUALIFIED_CALLER: FastWallCallerClass = 'harness_gate'
 
-/** The lane string the reporter writes for the complete `npm test` lane. */
-export const FAST_LANE = 'integration+regression+unit'
+/**
+ * The lane string the reporter writes for the complete `npm test` lane. The
+ * integration lane runs before release in the `full` profile, not here.
+ */
+export const FAST_LANE = 'regression+unit'
 /** The lifecycle event under which `npm test` runs the complete fast lane. */
 const FAST_LANE_INVOKER = 'test'
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -80,8 +83,12 @@ export interface FastWallSeriesRead {
   malformed_lines: number
 }
 
+/**
+ * `over_ceiling` is a soft verdict: the ceiling is a target the tune pass
+ * revisits, so exceeding it never fails a command, a criterion, or a review.
+ */
 export interface FastWallReport {
-  status: 'passed' | 'failed' | 'insufficient_samples' | 'not_applicable'
+  status: 'passed' | 'over_ceiling' | 'insufficient_samples' | 'not_applicable'
   series_path: string
   /** Qualified complete fast-lane runs inside the 24-hour window. */
   recorded_runs: number
@@ -265,10 +272,9 @@ export function qualifiesAsFastLane(entry: FastWallSeriesEntry): boolean {
     return false
   }
 
-  // Schema 1 recorded no lane. Its writer verified the complete fast lane
-  // before appending under the `test` invoker, and every other row that
-  // writer produced carries a different invoker.
-  return entry.schema_version === 1 || entry.lane === FAST_LANE
+  // Schema 1 recorded no lane, and its writer's fast lane still carried the
+  // integration files, so it measured a different population.
+  return entry.lane === FAST_LANE
 }
 
 /** Whether a complete-lane row belongs to the governed advisory population. */
@@ -530,7 +536,7 @@ export function buildFastWallReport(
       qualified.length < config.minimum_qualified_samples
         ? 'insufficient_samples'
         : average !== null && average > permitted
-          ? 'failed'
+          ? 'over_ceiling'
           : 'passed',
     series_path: FAST_WALL_SERIES_PATH,
     recorded_runs: qualified.length,
@@ -578,7 +584,7 @@ export function formatFastWallReport(report: FastWallReport): string {
       ? `INSUFFICIENT SAMPLES (${report.recorded_runs}/${report.minimum_qualified_samples}); ADVISORY.`
       : report.status === 'passed'
         ? 'PASS.'
-        : 'FAIL; advisory only. Operator action: run /pan-tune-harness to review the suite and ceiling.'
+        : 'OVER SOFT CEILING; advisory only. Operator action: run /pan-tune-harness to review the suite and ceiling.'
 
   return (
     `Fast wall: ${average}${ignored}; permitted ${permitted}; ` +

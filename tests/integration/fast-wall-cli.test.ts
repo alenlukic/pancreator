@@ -90,23 +90,23 @@ function runWall(root: string) {
   })
 }
 
-test('tests wall reports the average and exits with its verdict', () => {
+test('tests wall reports the average and succeeds over its soft ceiling', () => {
   const root = createFixture()
 
   configureFastWall(root)
   writeSeries(root, [{ wall_clock_ms: 200 }])
 
-  const failed = runWall(root)
-  const failureReport = JSON.parse(failed.stdout) as {
+  const over = runWall(root)
+  const overReport = JSON.parse(over.stdout) as {
     status: string
     rolling_average_ms: number
     permitted_ceiling_ms: number
   }
 
-  assert.equal(failed.status, 1, failed.stderr)
-  assert.equal(failureReport.status, 'failed')
-  assert.equal(failureReport.rolling_average_ms, 200)
-  assert.equal(failureReport.permitted_ceiling_ms, 100)
+  assert.equal(over.status, 0, over.stderr)
+  assert.equal(overReport.status, 'over_ceiling')
+  assert.equal(overReport.rolling_average_ms, 200)
+  assert.equal(overReport.permitted_ceiling_ms, 100)
 
   writeSeries(root, [{ wall_clock_ms: 50 }])
 
@@ -163,15 +163,22 @@ test('the advisory ship criterion exposes an over-ceiling average without blocki
       (item) => item.id === 'ship.fast_wall_ceiling',
     )
 
+    // The ceiling is soft: the criterion passes, and its evidence still
+    // names the average, the ceiling, and the tuning action.
     assert.ok(result, workflow)
     assert.equal(result.hard, false, workflow)
-    assert.equal(result.passed, false, workflow)
-    assert.match(result.explanation ?? '', /0\.2s rolling 24h average/u)
-    assert.match(result.explanation ?? '', /permitted 0\.1s/u)
-    assert.match(
-      result.explanation ?? '',
-      /Operator action: run \/pan-tune-harness/u,
+    assert.equal(result.passed, true, workflow)
+    assert.ok(result.evidence_path, workflow)
+    const evidence = readFileSync(
+      path.isAbsolute(result.evidence_path)
+        ? result.evidence_path
+        : path.join(root, result.evidence_path),
+      'utf8',
     )
+
+    assert.match(evidence, /0\.2s rolling 24h average/u)
+    assert.match(evidence, /permitted 0\.1s/u)
+    assert.match(evidence, /OVER SOFT CEILING; advisory only/u)
   }
 })
 
