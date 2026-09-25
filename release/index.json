@@ -298,6 +298,18 @@
       "commit": "17d7dc15bb1976cbef6676a1c0686f83f973c023"
     },
     {
+      "version": "7.23.0",
+      "commit": "87425b7829df8a2b2f1aba040779aa8cd4251c3d"
+    },
+    {
+      "version": "7.23.1",
+      "commit": "c0cf5402adeb4a8f6e34f5af5b7c682d0a3a542b"
+    },
+    {
+      "version": "7.23.2",
+      "commit": "dec864a932e0223f552fcb8f5a544ac06a39b34c"
+    },
+    {
       "version": "7.24.0",
       "commit": "33494b485e4ddf1e20d3a1689b287a2ca7b01293"
     },
@@ -316,6 +328,10 @@
     {
       "version": "7.26.0",
       "commit": "a4e81658084ab8fe527bb7aca19a52a0b990102f"
+    },
+    {
+      "version": "7.28.0",
+      "commit": "397d6ea52ae178afb2059c0b57b279ecc0bab640"
     }
   ]
 }

@@ -101,7 +101,7 @@ import {
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { openAiExecutorPreflight } from './lib/executors/openai-auth.js'
 import { browserReadiness } from './lib/browser-readiness.js'
-import { errorMessage, PanError } from './lib/errors.js'
+import { errorMessage, invariant, PanError } from './lib/errors.js'
 import { assertArgvElementsWithinLimit } from './lib/argv-limits.js'
 import {
   configuredWorkspaceRoot,
@@ -266,6 +266,8 @@ import {
   resolveRunCitation,
 } from './lib/workflow-artifacts.js'
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
+import { generateTokenSpendReport } from './lib/token-spend.js'
+import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -3137,6 +3139,61 @@ async function main(): Promise<void> {
       )
       return
     }
+    case 'spend': {
+      const subcommand = args[0]
+
+      if (subcommand === 'sync') {
+        args.shift()
+        const days = integerOption(args, '--days')
+
+        invariant(
+          days === null || (days >= 1 && days <= 365),
+          '--days MUST be an integer from 1 to 365.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const result = await syncSpend(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand === 'report') {
+        args.shift()
+        const days = integerOption(args, '--days')
+
+        invariant(
+          days === null || (days >= 1 && days <= 365),
+          '--days MUST be an integer from 1 to 365.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const report = await reportMultiInstanceSpend(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print({ status: 'reported', report }, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand !== undefined && !subcommand.startsWith('--')) {
+        invariant(
+          false,
+          `Unknown spend subcommand: ${subcommand}. Use 'sync' or 'report'.`,
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
+      const days = integerOption(args, '--days')
+      const report = await generateTokenSpendReport(root, {
+        ...(days === null ? {} : { days }),
+      })
+
+      print({ status: 'reported', report }, true)
+      return
+    }
     case 'cleanup': {
       const daysValue = option(args, '--days')
       const selectedClasses = options(args, '--class')
@@ -5067,20 +5124,21 @@ async function main(): Promise<void> {
       }
 
       const agentState = parseAgentState(option(args, '--agent-state'))
+      const agentStateEvidence = option(args, '--agent-state-evidence')
+
       const armLaunchedAt = option(args, '--launched-at')
+      const platformReturnedAt = option(args, '--platform-returned-at')
+      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const workerHandle = option(args, '--handle')
       const workerAgent = option(args, '--agent')
       const workerModel = option(args, '--model')
-      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
 
+      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
       const cadenceSeconds = parseCadenceSeconds(
         option(args, '--cadence-seconds'),
         cadenceAuthority,
       )
-      const agentStateEvidence = option(args, '--agent-state-evidence')
-      const platformReturnedAt = option(args, '--platform-returned-at')
-      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),

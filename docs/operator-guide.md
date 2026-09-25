@@ -1768,6 +1768,44 @@ without writing while an editable file still has issues, and writes the
 checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
 status.
 
+## Report Cursor token spend
+
+Use `/pan-spend [--days <1..365>]` to fetch personal or team usage and open a
+compact Canvas report. The default window is 14 days. For personal usage, copy
+the `WorkosCursorSessionToken` cookie from your authenticated Cursor dashboard
+session into `CURSOR_SESSION_TOKEN` in the process environment or the
+installation or workspace `.env`. Pancreator sends it only to Cursor's
+dashboard usage endpoints. The session expires and must then be refreshed.
+
+Teams with Admin API access may instead set `CURSOR_ADMIN_API_KEY`; the key
+needs `admin:*` scope. Pancreator sends it only to
+`POST /teams/filtered-usage-events` with Basic authentication. A dashboard
+session takes precedence when both credentials exist.
+
+The report includes total tokens, cost, daily time series, token categories,
+and ranked command, persona and model, tool, stage, governance, workflow-role,
+and remediation views. Team reports use charged cost from Admin API events.
+Personal reports use model cost from Cursor's aggregate dashboard response;
+the dashboard does not expose authoritative billed charges. A self-development
+checkout also scans every registered embedded installation. Each installation
+contributes its workflow records and the target workspace's Cursor transcripts,
+so worker conversation ids can resolve to the correct persona and stage.
+
+Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
+uses an exact `fast=true` or `fast=false` model declaration when one is
+available and reports `unknown` otherwise. The tool view reports token spend
+for conversations that used each tool, so those totals overlap. Each inferred
+view shows its attribution coverage. Pancreator uses Cursor's personal model
+aggregates, then reconciles event allocations to exact overall totals.
+Personal daily and attributed allocations are inferred and state that limit.
+Cursor's personal endpoint does not expose authoritative billed charges.
+Unmatched events remain `unattributed`.
+
+`pan spend --days <n> --json` returns the aggregate data without raw events.
+The output excludes API keys, email addresses, conversation ids, cloud agent
+ids, and unprocessed API metadata. Pass `--json` to `/pan-spend` when the
+aggregate JSON is the desired surface instead of Canvas.
+
 ## Write a standalone PR description
 
 Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
@@ -1900,4 +1938,71 @@ Use `--note-file <path>` for a note above that bound. `decide`, `pause`, `resume
 
 ```sh
 ./bin/pan decide <run-id> revise --note-file runtime/inbox/queue/revision-directive.md
+```
+
+## Sync Cursor spend across instances
+
+`pan spend sync` collects this instance's Cursor usage, accumulates it in `runtime/spend/ledger.json`, and uploads a compressed snapshot to a private Vercel Blob store. `pan spend report` downloads every instance's latest snapshot, deduplicates events, and runs the existing cost computation over the combined set.
+
+### Deploy the Vercel service
+
+Run every deploy command from `services/spend-sync`, so Vercel links and deploys the service directory rather than the repository root.
+
+1. Install the pinned service dependencies:
+
+```sh
+cd services/spend-sync
+npm ci
+```
+
+2. Log in and link the project:
+
+```sh
+npx vercel link
+```
+
+3. Create a private Blob store in the Vercel dashboard and connect it to the project.
+
+4. Set the shared secret in Vercel:
+
+```sh
+npx vercel env add PAN_SPEND_SYNC_TOKEN production
+```
+
+5. Deploy:
+
+```sh
+npx vercel deploy --prod
+```
+
+### Configure each instance
+
+Add `spend.vercel_host` to `config_overrides.json` on each machine, because the tracked `config.json` is shared by every clone:
+
+```json
+{
+  "spend": {
+    "vercel_host": "your-project.vercel.app"
+  }
+}
+```
+
+Set `PAN_SPEND_SYNC_TOKEN` in the local `.env` or the process environment:
+
+```sh
+echo 'PAN_SPEND_SYNC_TOKEN=<shared-secret>' >> .env
+```
+
+### Sync and report
+
+Push this instance's spend data:
+
+```sh
+pan spend sync [--days <1..365>] [--json]
+```
+
+Pull all instances and produce a combined report:
+
+```sh
+pan spend report [--days <1..365>] [--json]
 ```
