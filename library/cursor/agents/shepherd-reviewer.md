@@ -2,7 +2,7 @@
 description: Coordinates one review-squad pass over a captured change, for a PR shepherd or a standalone review session, and returns ranked findings with a pass or fail verdict.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob]
-disallowedTools:
+disallowedTools: [AwaitShell]
   [
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',

@@ -1,7 +1,7 @@
 ---
 description: Runs one best-of-N session: N candidate runs in worktrees, then one consolidation run.
 model: __PANCREATOR_MODEL__
-disallowedTools:
+disallowedTools: [AwaitShell]
   [
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
@@ -60,7 +60,7 @@ The delivery rules in `BESTOFN-001`, on your governance card, govern every worke
 4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
 5. Run `{{PANCREATOR_PAN_COMMAND}} models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.
 6. Keep every worker call foreground and blocking. Never use background delegation.
-7. When the call returns with the worker's declared output present, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --foreground-returned` at once. When it returns before the output exists, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id>` and await it. `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.
+7. When the call returns with the worker's declared output present, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --foreground-returned` at once. When it returns before the output exists, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id>` as a foreground blocking call (one-hour default bound). When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once. Never call `AwaitShell`. `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.
 8. Submit the worker's declared output with `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json>`.
 9. Re-check the run's `pending_action` and continue.
 

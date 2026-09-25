@@ -8,6 +8,14 @@
         "timeout": 5,
         "failClosed": false
       }
+    ],
+    "preToolUse": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-deny-await-shell",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": true
+      }
     ]
   }
 }

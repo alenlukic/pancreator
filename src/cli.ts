@@ -101,7 +101,7 @@ import {
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { openAiExecutorPreflight } from './lib/executors/openai-auth.js'
 import { browserReadiness } from './lib/browser-readiness.js'
-import { errorMessage, PanError } from './lib/errors.js'
+import { errorMessage, invariant, PanError } from './lib/errors.js'
 import { assertArgvElementsWithinLimit } from './lib/argv-limits.js'
 import {
   configuredWorkspaceRoot,
@@ -281,9 +281,11 @@ import {
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchAttach,
   watchInvocations,
   watchProcess,
   watchTimer,
+  WATCH_ATTACH_EXIT_ORPHANED,
   writeRedlineRecord,
   type GenericWatchRecordEntry,
   type WatchRecordEntry,
@@ -4856,6 +4858,53 @@ async function main(): Promise<void> {
         return
       }
 
+      const attachLedgers = option(args, '--attach')
+
+      if (attachLedgers !== null) {
+        const ledgerList = attachLedgers
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+
+        invariant(
+          ledgerList.length > 0,
+          '--attach requires at least one ledger path.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const timeoutSec = parseTimeoutSeconds(
+          option(args, '--timeout-seconds'),
+        )
+        const result = await watchAttach(root, {
+          ledgers: ledgerList,
+          timeoutSeconds: timeoutSec,
+        })
+
+        print(
+          json
+            ? result
+            : `attach ${result.state}: ${result.ledgers.length} session(s) ` +
+                `after ${result.elapsed_seconds.toFixed(1)}s\n` +
+                result.ledgers
+                  .map(
+                    (s) =>
+                      `  ${s.ledger}: ${s.state ?? 'pending'}` +
+                      (s.session_terminal_state
+                        ? ` (session: ${s.session_terminal_state})`
+                        : ''),
+                  )
+                  .join('\n'),
+          json,
+        )
+        process.exitCode =
+          result.state === 'attach_completed'
+            ? 0
+            : result.state === 'attach_timed_out'
+              ? 3
+              : WATCH_ATTACH_EXIT_ORPHANED
+        return
+      }
+
       const processPid = option(args, '--process')
       const timerMode = hasFlag(args, '--timer')
 
@@ -4947,7 +4996,9 @@ async function main(): Promise<void> {
                 `over ${result.wakes} wakes; record ${result.record_path}` +
                 (result.state === 'exited'
                   ? '; observed exit only — the exit status is unknown without authoritative completion evidence'
-                  : ''),
+                  : result.state === 'timed_out' && result.rearm_command
+                    ? `\nre-arm with: ${result.rearm_command}`
+                    : ''),
           json,
         )
         process.exitCode =

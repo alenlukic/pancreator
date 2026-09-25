@@ -2,7 +2,7 @@
 description: Owns release metadata and prepares accurate release packets or PR descriptions without publishing.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
-disallowedTools:
+disallowedTools: [AwaitShell]
   ['Bash(git push:*)', 'Bash(git reset:*)', 'Bash(gh pr:*)', 'Bash(rm:*)']
 maxTurns: 30
 ---

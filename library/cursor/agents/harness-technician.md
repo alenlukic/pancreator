@@ -12,7 +12,7 @@ tools:
     'Bash(git diff:*)',
     'Bash({{PANCREATOR_PAN_COMMAND}}:*)',
   ]
-disallowedTools:
+disallowedTools: [AwaitShell]
   [
     Edit,
     'Bash(git push:*)',

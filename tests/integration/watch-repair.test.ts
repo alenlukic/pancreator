@@ -660,9 +660,9 @@ test('AC-007: gap first line', async (t) => {
 
     assert.match(lines[0] ?? '', /observation gap/u)
     assert.match(lines[0] ?? '', /orphan_session/u)
-    assert.match(lines[1] ?? '', /timeout 14400s \(default bound\)/u)
+    assert.match(lines[1] ?? '', /timeout 3600s \(default bound\)/u)
     assert.match(result.stdout, /1 observation gap recorded/u)
-    assert.match(result.stdout, /\(timeout 14400s\)/u)
+    assert.match(result.stdout, /\(timeout 3600s\)/u)
   })
 })
 
@@ -1389,7 +1389,9 @@ test('AC-014: policy lifetime', () => {
     guidance,
     /loops on the fixed cadence until a terminal verdict or its bound/u,
   )
-  assert.match(guidance, /four hours/u)
+  // The default bound is now one hour.
+  assert.match(guidance, /one hour \(3600 seconds\)|one hour|3600/u)
+  assert.doesNotMatch(guidance, /four hours/u)
   // The fixed cadence survives.
   assert.match(guidance, /60 seconds, fixed, and universal/u)
   // The misleading single-cycle prescription is gone; the prohibition that
@@ -1432,15 +1434,15 @@ test('AC-015: platform await guidance', () => {
 
   const procedure = renderSupervisorProcedureMarkdown(invocation)
 
-  // Choose the supported wait for the expected lifetime and re-await the
-  // same command on a forced detach.
-  assert.match(procedure, /largest wait the platform supports/u)
-  assert.match(procedure, /re-await the same command/u)
+  // The procedure prescribes a foreground blocking call and --attach on detach.
+  assert.match(procedure, /foreground blocking/u)
+  assert.match(procedure, /--attach/u)
+  assert.doesNotMatch(procedure, /largest wait the platform supports/u)
+  assert.doesNotMatch(procedure, /re-await the same command/u)
+  // Never call AwaitShell.
+  assert.match(procedure, /Never call .AwaitShell/u)
   // No mandate of one model await per cadence, and no duplicate watch.
   assert.doesNotMatch(procedure, /one cadence per slice/u)
-  assert.match(procedure, /rather than arming a\s+second watch/u)
-  // The platform await is never described as performing the cadence.
-  assert.match(procedure, /never performs the\s+cadence/u)
 })
 
 test('AC-016: arming bound', async () => {
@@ -1464,7 +1466,7 @@ test('AC-016: arming bound', async () => {
 
   assert.equal(lines.length, 1)
   assert.match(lines[0] ?? '', /cadence 60s/u)
-  assert.match(lines[0] ?? '', /timeout 14400s \(default bound\)/u)
+  assert.match(lines[0] ?? '', /timeout 3600s \(default bound\)/u)
 
   // An override names the exact value.
   const custom = preparedRun()
@@ -1574,11 +1576,16 @@ test('AC-017: projected lifetime', () => {
     ['persona', persona],
     ['help', help],
   ] as const) {
-    // Lifetime: the watch loops to a verdict or its bound.
+    // Lifetime: the watch loops to a verdict or its bound — one hour now.
     assert.match(
       text,
+      /one hour|3600/u,
+      `${surface} MUST state the one-hour default bound`,
+    )
+    assert.doesNotMatch(
+      text,
       /four hours|four-hour|14400/u,
-      `${surface} MUST state the default bound`,
+      `${surface} MUST NOT contain the retired four-hour default`,
     )
     // The hold semantics survive on every surface.
     assert.match(
@@ -2070,9 +2077,15 @@ test('AC-024: universal timer guidance', () => {
   assert.match(agentText, /The process form watches a process/u)
   // The old shell-sleep prescription is gone.
   assert.doesNotMatch(agentText, /background shell sleep/u)
-  assert.doesNotMatch(agentText, /AwaitShell/u)
-  // Platform awaits are reattachments to the same watch.
-  assert.match(agentText, /MUST reawait the same watch command/u)
+  // AwaitShell is now explicitly banned in the policy.
+  assert.match(agentText, /AwaitShell/u)
+  assert.match(
+    agentText,
+    /AWAIT-SHELL-BAN-VALIDATE-001|banned|MUST NOT.*AwaitShell|AwaitShell.*banned/u,
+  )
+  // Platform awaits prescribe --attach, not reawait.
+  assert.match(agentText, /--attach/u)
+  assert.doesNotMatch(agentText, /MUST reawait the same watch command/u)
   // The opaque fallback is documented.
   assert.match(agentText, /timer form watches an opaque platform handle/u)
 

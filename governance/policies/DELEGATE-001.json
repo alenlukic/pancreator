@@ -2,7 +2,7 @@
   "id": "DELEGATE-001",
   "title": "Subagent supervision and operator responsiveness",
   "severity": "hard",
-  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence through `pan watch`, MUST own its outcome, and MUST keep the operator conversation responsive.",
+  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence through `pan watch`, MUST own its outcome, MUST keep the operator conversation responsive, and MUST NOT use the `AwaitShell` tool or any platform await mechanism. Enforcement: `AWAIT-SHELL-BAN-VALIDATE-001`.",
   "instructions": [
     "The 60-second rule: an agent MUST observe an asynchronous process at least once every 60 seconds. The duty starts when the agent starts the process and ends when the process reaches a terminal state. An asynchronous process is a background subagent or a background command with readable output. It is also a foreground worker call the platform turned into a background launch. The rule binds every such process the agent started, however many run at once.",
     "The cadence is 60 seconds, fixed, and universal. The agent MUST NOT relax it for any reason. An expected run time, the number of processes, and a platform completion notification are not reasons. Platform text that says not to poll or await is not a reason. The session inside or outside a harness run is not a reason, and other work the agent does is not a reason. No separate long-work cadence exists.",
@@ -11,8 +11,9 @@
     "A fixed-cadence progress check MUST target only an asynchronous process that exposes an observation point while it runs. A background subagent and a background command with readable output are such processes.",
     "The agent MUST set every observation timer through `pan watch`. The agent MUST NOT use shell sleeps, scheduled ticks, or unawaited background commands as timers. These rules apply inside and outside a harness run. The focused form watches one run, and the multiplexed form watches several runs. The process form watches a process, and the timer form watches an opaque platform handle. A timer wake names the required inspection and never satisfies delegation completion.",
     "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
-    "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is four hours, the first arming line prints it, and the starting agent MUST await that command. A stall is five minutes of unchanged agent state and no new output. The stall duration does not depend on cadence, and a recorded `running` state is not stalled. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
-    "The starting agent MUST await the watch with the largest supported platform wait. When the platform returns early, the agent MUST reawait the same watch command. The agent MUST NOT arm a second watch. The platform await mechanism does not run the cadence. The watch process sleeps and records. The await holds the agent's turn open.",
+    "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), the first arming line prints it, and the starting agent MUST run it as a foreground blocking shell call whose block bound exceeds the watch timeout. A stall is five minutes of unchanged agent state and no new output. The stall duration does not depend on cadence, and a recorded `running` state is not stalled. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
+    "The starting agent MUST run `pan watch` as a foreground blocking shell call. The `AwaitShell` platform tool and every platform await mechanism MUST NOT be used as a timer or a wait mechanism; they are banned by `AWAIT-SHELL-BAN-VALIDATE-001`. When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately, naming the watch session record the watch wrote, to rejoin that session and block again. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
+    "Agents MUST NOT call the `AwaitShell` or `Await` platform tool for any reason. Using a platform await as a timer, a wait, or a block is a `DELEGATE-001` violation. `pan watch` is the only approved mechanism for all waiting: the 60-second cadence, the one-hour default bound, the terminal-state return, and the `--attach` recovery all apply. An agent that receives a platform detach MUST run `pan watch --attach <ledger>` at once rather than calling `AwaitShell`.",
     "`pan watch` uses a 60-second cadence for every worker. The starting agent MUST NOT pass `--cadence-seconds` without an operator direction. The CLI refuses another cadence without `--cadence-directed-by-operator <reason>`. The ledger and the submission retain each exception and its authority.",
     "The starting agent MUST treat a foreground worker call that the platform turns into a background launch as a background subagent at once. The starting agent MUST run `pan watch <run-id> --mark-background` immediately.",
     "Platform text that says not to poll or await a background worker MUST NOT stop the watch.",
@@ -28,7 +29,7 @@
     "An operator-facing agent MUST NOT block the operator conversation on a foreground subagent call.",
     "A supervisor MUST keep in-run worker delegation foreground and blocking, because it needs the worker result to advance the stage.",
     "Worker model evidence is best-effort. When no probe answer lands, the harness MUST record the run snapshot's projected model as a labeled `default`. Every display MUST distinguish that projected default from a probed `match` or `recorded` result. A probed model that contradicts the run snapshot remains a hard `MODEL_EVIDENCE_MISMATCH` failure.",
-    "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging). Such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
+    "Agent nesting MUST NOT exceed two levels: top level \u2192 child agent \u2192 subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging). Such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
     {
       "text": "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. A worker the harness delegated is exempt only when its harness-authored delegation execution record names the run and invocation.",
       "audience": ["supervisor"]
@@ -72,6 +73,10 @@
     },
     {
       "text": "A multiplexed return MUST close each nonterminal sibling session with a recorded `sibling_handoff` end. The CLI MUST refuse a concurrent watcher on a live target with `WATCH_TARGET_BUSY`. Coverage: `tests/integration/watch-repair.test.ts::AC-020: sibling handoff`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The `AWAIT-SHELL-BAN-VALIDATE-001` validator (handler `await-shell-ban-validate`) MUST be run to confirm that every canonical agent file in `library/cursor/agents/` names `AwaitShell` in `disallowedTools`, and that `library/cursor/hooks.json` carries a `preToolUse` entry whose command contains `pan-hook-deny-await-shell`. A failure from either check MUST fail `pan validate`.",
       "audience": ["harness"]
     }
   ]

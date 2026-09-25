@@ -2,7 +2,7 @@
 description: Implements and validates one operator-selected lightweight change, escalating after bounded failure.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
-disallowedTools:
+disallowedTools: [AwaitShell]
   [
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
