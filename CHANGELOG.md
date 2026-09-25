@@ -1,5 +1,27 @@
 # Changelog
 
+## [7.28.0] - 2026-09-25
+
+This release adds `pan spend sync` and `pan spend report`. It also adds local `pan spend` from the merged spend line.
+
+### Changed
+
+- Split spend collection from aggregation so a combined report reuses the local cost rules ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+- Include `services` in the Prettier format scripts ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+
+### Added
+
+- Add `pan spend sync` and `pan spend report` with `spend.vercel_host` ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+- Add a Vercel project at `services/spend-sync/` with pinned `@vercel/blob` 2.8.0 and `vercel` 59.26.0 ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+- Add `pan spend` and `/pan-spend` for Cursor usage and local attribution ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+- Add a retain class so `pan cleanup` keeps `runtime/spend/` ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+
+### Fixed
+
+- Compute `ledger_window` in one loop so a large ledger does not throw RangeError ([0ab9369d](https://github.com/alenlukic/pancreator/commit/0ab9369d0e9226e8a1fbb91b70c6196b65fc3f62)).
+- Authenticate personal usage with `CURSOR_SESSION_TOKEN` when team Admin API access is absent ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- Reconcile personal event allocations to Cursor aggregate totals ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+
 ## [7.26.0] - 2026-09-25
 
 This release moves integration tests out of the fast lane and lets a checkout name its test scratch root.
