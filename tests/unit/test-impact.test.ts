@@ -204,10 +204,10 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
       )
       // A change to the script itself still reaches a module that names it,
       // because some source modules do spawn bin scripts.
-      assert.deepEqual(
-        [...(graph.binReferences.get('bin/pan') ?? [])].sort(),
-        ['tests/regression/cli.test.ts', 'tests/unit/message.test.ts'],
-      )
+      assert.deepEqual([...(graph.binReferences.get('bin/pan') ?? [])].sort(), [
+        'tests/regression/cli.test.ts',
+        'tests/unit/message.test.ts',
+      ])
       // References inside an imported helper reach the tests that import it.
       assert.deepEqual(
         [...(graph.binReferences.get('bin/lint') ?? [])].sort(),

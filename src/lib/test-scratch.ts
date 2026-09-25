@@ -145,9 +145,21 @@ function main(): void {
   }
 }
 
-if (
-  process.argv[1] !== undefined &&
-  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+function invokedAsScript(): boolean {
+  const argvPath = process.argv[1]
+
+  if (argvPath === undefined) {
+    return false
+  }
+
+  try {
+    return realpathSync(argvPath) === fileURLToPath(import.meta.url)
+  } catch {
+    // A worker eval sets argv[1] to a non-path token such as `[worker eval]`.
+    return false
+  }
+}
+
+if (invokedAsScript()) {
   main()
 }
