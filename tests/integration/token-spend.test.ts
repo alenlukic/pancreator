@@ -267,7 +267,7 @@ test('token spend keeps tool totals non-additive and unmatched usage visible', a
   assert.ok(report.slices.commands.some((row) => row.key === 'Unattributed'))
 })
 
-test('personal spend normalizes attributed metrics to exact aggregate totals', async () => {
+test('personal spend reports each event charged cost, including the Cursor fee', async () => {
   const root = createFixture()
   const transcripts = path.join(root, 'transcripts')
   const now = new Date('2026-09-22T16:00:00.000Z')
@@ -290,32 +290,7 @@ test('personal spend normalizes attributed metrics to exact aggregate totals', a
     ].join('\n'),
   )
 
-  const fetchImpl: typeof fetch = async (input) => {
-    const url = String(input)
-
-    if (url.endsWith('aggregated')) {
-      return new Response(
-        JSON.stringify({
-          aggregations: [
-            {
-              modelIntent: 'composer',
-              inputTokens: '10',
-              outputTokens: '5',
-              cacheWriteTokens: '3',
-              cacheReadTokens: '12',
-              totalCents: 1,
-            },
-          ],
-          totalInputTokens: '10',
-          totalOutputTokens: '5',
-          totalCacheWriteTokens: '3',
-          totalCacheReadTokens: '12',
-          totalCostCents: 1,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      )
-    }
-
+  const fetchImpl: typeof fetch = async () => {
     return new Response(
       JSON.stringify({
         totalUsageEventsCount: 1,
@@ -329,9 +304,11 @@ test('personal spend normalizes attributed metrics to exact aggregate totals', a
               inputTokens: 10,
               outputTokens: 5,
               cacheWriteTokens: 3,
+              cacheReadTokens: 12,
               totalCents: 1,
             },
-            chargedCents: 1,
+            cursorTokenFee: 0.3,
+            chargedCents: 1.3,
           },
         ],
       }),
@@ -343,21 +320,15 @@ test('personal spend normalizes attributed metrics to exact aggregate totals', a
     now,
     fetchImpl,
     endpoint: 'https://example.test/events',
-    aggregatesEndpoint: 'https://example.test/aggregated',
     transcriptsRoot: transcripts,
   })
 
   assert.equal(report.period.source, 'Cursor dashboard personal usage')
   assert.equal(report.totals.total_tokens, 30)
   assert.equal(report.totals.cache_read_tokens, 12)
-  assert.equal(report.totals.cost_cents, 1)
-  assert.equal(report.period.cost_basis, 'model-cost')
+  assert.equal(report.totals.cost_cents, 1.3)
+  assert.equal(report.period.cost_basis, 'charged')
   assert.equal(report.slices.commands[0]?.metrics.total_tokens, 30)
-  assert.equal(report.slices.commands[0]?.metrics.cost_cents, 1)
+  assert.equal(report.slices.commands[0]?.metrics.cost_cents, 1.3)
   assert.equal(report.coverage.command.total_tokens, 30)
-  assert.ok(
-    report.warnings.some((warning) =>
-      warning.includes('event allocations are inferred'),
-    ),
-  )
 })

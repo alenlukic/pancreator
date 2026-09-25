@@ -125,7 +125,7 @@ export interface MultiInstanceSpendReport {
     end: string
     timezone: 'UTC'
     source: 'Pancreator spend sync'
-    cost_basis: 'charged' | 'model-cost' | 'mixed'
+    cost_basis: 'charged'
   }
   attribution_sources: {
     instances: number
@@ -1044,20 +1044,6 @@ export function combineSpendSnapshots(
     selected.map((meta) => meta.record),
     selectedToolCalls(selected, snapshotsById),
   )
-  const sources = new Set(selected.map((meta) => meta.record.source))
-  const cost_basis: MultiInstanceSpendReport['period']['cost_basis'] =
-    sources.size === 2
-      ? 'mixed'
-      : sources.has('personal')
-        ? 'model-cost'
-        : 'charged'
-
-  if (sources.has('personal')) {
-    warnings.push(
-      'Personal event tokens are inferred allocations of account-wide aggregates; they are not authoritative billed charges.',
-    )
-  }
-
   warnings.push(
     'Duplicate events across instances were counted once, using the better attributed record.',
     ...aggregated.warnings,
@@ -1065,7 +1051,7 @@ export function combineSpendSnapshots(
 
   return {
     scope: 'multi-instance',
-    period: { ...basePeriod, cost_basis },
+    period: { ...basePeriod, cost_basis: 'charged' },
     attribution_sources: {
       instances: snapshotsById.size,
       workspaces_scanned: [...snapshotsById.values()].reduce(

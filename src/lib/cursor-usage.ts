@@ -9,8 +9,6 @@ const CURSOR_USAGE_EVENTS_URL =
   'https://api.cursor.com/teams/filtered-usage-events'
 const CURSOR_DASHBOARD_USAGE_EVENTS_URL =
   'https://cursor.com/api/dashboard/get-filtered-usage-events'
-const CURSOR_DASHBOARD_AGGREGATES_URL =
-  'https://cursor.com/api/dashboard/get-aggregated-usage-events'
 
 const CURSOR_USAGE_PAGE_SIZE = 1_000
 const CURSOR_USAGE_TIMEOUT_MS = 60_000
@@ -53,20 +51,6 @@ export interface CursorUsageEventsResult {
   source:
     | 'Cursor Admin API /teams/filtered-usage-events'
     | 'Cursor dashboard personal usage'
-  aggregate_tokens: CursorTokenTotals | null
-}
-
-export interface CursorTokenTotals {
-  input_tokens: number
-  output_tokens: number
-  cache_write_tokens: number
-  cache_read_tokens: number
-  cost_cents: number
-}
-
-interface CursorDashboardAggregates {
-  totals: CursorTokenTotals
-  models: Map<string, CursorTokenTotals>
 }
 
 export type CursorUsageCredential =
@@ -79,7 +63,6 @@ export interface FetchCursorDashboardUsageOptions {
   endDateMs: number
   fetchImpl?: typeof fetch
   eventsEndpoint?: string
-  aggregatesEndpoint?: string
   timeoutMs?: number
 }
 
@@ -108,13 +91,6 @@ function nonNegativeNumber(
   )
 
   return value
-}
-
-function nonNegativeNumericString(value: unknown, field: string): number {
-  const parsed =
-    typeof value === 'string' && value.trim().length > 0 ? Number(value) : value
-
-  return nonNegativeNumber(parsed, field)
 }
 
 function optionalString(value: unknown): string | null {
@@ -239,244 +215,12 @@ function parseDashboardUsagePage(value: unknown): {
   )
 
   return {
-    events: value.usageEventsDisplay.map((event) => ({
-      ...parseUsageEvent(event),
-      charged_cents: 0,
-    })),
+    events: value.usageEventsDisplay.map(parseUsageEvent),
     total: nonNegativeNumber(
       value.totalUsageEventsCount,
       'totalUsageEventsCount',
     ),
   }
-}
-
-function emptyTokenTotals(): CursorTokenTotals {
-  return {
-    input_tokens: 0,
-    output_tokens: 0,
-    cache_write_tokens: 0,
-    cache_read_tokens: 0,
-    cost_cents: 0,
-  }
-}
-
-function addTokenTotals(
-  target: CursorTokenTotals,
-  addition: CursorTokenTotals,
-): void {
-  target.input_tokens += addition.input_tokens
-  target.output_tokens += addition.output_tokens
-  target.cache_write_tokens += addition.cache_write_tokens
-  target.cache_read_tokens += addition.cache_read_tokens
-  target.cost_cents += addition.cost_cents
-}
-
-function parseDashboardAggregates(value: unknown): CursorDashboardAggregates {
-  invariant(
-    isRecord(value),
-    'Cursor dashboard aggregate usage response MUST be an object.',
-    { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
-  )
-
-  const totals = {
-    input_tokens: nonNegativeNumericString(
-      value.totalInputTokens,
-      'totalInputTokens',
-    ),
-    output_tokens: nonNegativeNumericString(
-      value.totalOutputTokens,
-      'totalOutputTokens',
-    ),
-    cache_write_tokens: nonNegativeNumericString(
-      value.totalCacheWriteTokens,
-      'totalCacheWriteTokens',
-    ),
-    cache_read_tokens: nonNegativeNumericString(
-      value.totalCacheReadTokens,
-      'totalCacheReadTokens',
-    ),
-    cost_cents: nonNegativeNumber(value.totalCostCents, 'totalCostCents'),
-  }
-  const models = new Map<string, CursorTokenTotals>()
-  const aggregations = Array.isArray(value.aggregations)
-    ? value.aggregations
-    : []
-
-  for (const aggregation of aggregations) {
-    invariant(
-      isRecord(aggregation) &&
-        typeof aggregation.modelIntent === 'string' &&
-        aggregation.modelIntent.length > 0,
-      'Cursor dashboard model aggregates MUST name a model.',
-      { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
-    )
-
-    const modelTotals = {
-      input_tokens: nonNegativeNumericString(
-        aggregation.inputTokens ?? '0',
-        'aggregations.inputTokens',
-      ),
-      output_tokens: nonNegativeNumericString(
-        aggregation.outputTokens ?? '0',
-        'aggregations.outputTokens',
-      ),
-      cache_write_tokens: nonNegativeNumericString(
-        aggregation.cacheWriteTokens ?? '0',
-        'aggregations.cacheWriteTokens',
-      ),
-      cache_read_tokens: nonNegativeNumericString(
-        aggregation.cacheReadTokens ?? '0',
-        'aggregations.cacheReadTokens',
-      ),
-      cost_cents: nonNegativeNumber(
-        aggregation.totalCents,
-        'aggregations.totalCents',
-        0,
-      ),
-    }
-    const combined = models.get(aggregation.modelIntent) ?? emptyTokenTotals()
-
-    addTokenTotals(combined, modelTotals)
-    models.set(aggregation.modelIntent, combined)
-  }
-
-  return { totals, models }
-}
-
-function proportionalValue(
-  rawValue: number,
-  rawTotal: number,
-  aggregateTotal: number,
-  eligibleCount: number,
-): number {
-  if (aggregateTotal === 0 || eligibleCount === 0) {
-    return 0
-  }
-
-  return rawTotal > 0
-    ? (rawValue / rawTotal) * aggregateTotal
-    : aggregateTotal / eligibleCount
-}
-
-function rawTokenTotals(tokenEvents: CursorUsageEvent[]): CursorTokenTotals {
-  return tokenEvents.reduce((totals, event) => {
-    const usage = event.token_usage
-
-    if (usage !== null) {
-      addTokenTotals(totals, {
-        input_tokens: usage.input_tokens,
-        output_tokens: usage.output_tokens,
-        cache_write_tokens: usage.cache_write_tokens,
-        cache_read_tokens: usage.cache_read_tokens,
-        cost_cents: usage.model_cost_cents,
-      })
-    }
-
-    return totals
-  }, emptyTokenTotals())
-}
-
-/** Scale one event's usage so the eligible events sum to the aggregate totals. */
-function proportionalUsage(
-  usage: CursorTokenUsage,
-  raw: CursorTokenTotals,
-  aggregate: CursorTokenTotals,
-  eligibleCount: number,
-): CursorTokenUsage {
-  return {
-    input_tokens: proportionalValue(
-      usage.input_tokens,
-      raw.input_tokens,
-      aggregate.input_tokens,
-      eligibleCount,
-    ),
-    output_tokens: proportionalValue(
-      usage.output_tokens,
-      raw.output_tokens,
-      aggregate.output_tokens,
-      eligibleCount,
-    ),
-    cache_write_tokens: proportionalValue(
-      usage.cache_write_tokens,
-      raw.cache_write_tokens,
-      aggregate.cache_write_tokens,
-      eligibleCount,
-    ),
-    cache_read_tokens: proportionalValue(
-      usage.cache_read_tokens,
-      raw.cache_read_tokens,
-      aggregate.cache_read_tokens,
-      eligibleCount,
-    ),
-    model_cost_cents: proportionalValue(
-      usage.model_cost_cents,
-      raw.cost_cents,
-      aggregate.cost_cents,
-      eligibleCount,
-    ),
-  }
-}
-
-function normalizeDashboardEvents(
-  events: CursorUsageEvent[],
-  aggregates: CursorDashboardAggregates,
-): CursorUsageEvent[] {
-  const groups = new Map<string, CursorUsageEvent[]>()
-
-  for (const event of events) {
-    const group = groups.get(event.model) ?? []
-
-    group.push(event)
-    groups.set(event.model, group)
-  }
-
-  const normalized: CursorUsageEvent[] = []
-
-  for (const [model, modelEvents] of groups) {
-    const aggregate = aggregates.models.get(model) ?? emptyTokenTotals()
-    const tokenEvents = modelEvents.filter(
-      (event) => event.token_usage !== null,
-    )
-    const raw = rawTokenTotals(tokenEvents)
-
-    for (const event of modelEvents) {
-      const usage = event.token_usage
-      const tokenUsage =
-        usage === null
-          ? null
-          : proportionalUsage(usage, raw, aggregate, tokenEvents.length)
-
-      normalized.push({
-        ...event,
-        token_usage: tokenUsage,
-        charged_cents: tokenUsage?.model_cost_cents ?? 0,
-      })
-    }
-  }
-
-  const tokenEvents = normalized.filter((event) => event.token_usage !== null)
-  const raw = rawTokenTotals(tokenEvents)
-
-  return normalized.map((event) => {
-    const usage = event.token_usage
-
-    if (usage === null) {
-      return event
-    }
-
-    const tokenUsage = proportionalUsage(
-      usage,
-      raw,
-      aggregates.totals,
-      tokenEvents.length,
-    )
-
-    return {
-      ...event,
-      token_usage: tokenUsage,
-      charged_cents: tokenUsage.model_cost_cents,
-    }
-  })
 }
 
 export function credentialRoots(root: string): string[] {
@@ -643,7 +387,6 @@ export async function fetchCursorUsageEvents(
         },
         pages_fetched: page,
         source: 'Cursor Admin API /teams/filtered-usage-events',
-        aggregate_tokens: null,
       }
     }
 
@@ -722,7 +465,7 @@ async function fetchDashboardJson(
   }
 }
 
-/** Fetch personal usage events and exact aggregate token totals. */
+/** Fetch personal usage events with each event's charged cost. */
 export async function fetchCursorDashboardUsageEvents(
   options: FetchCursorDashboardUsageOptions,
 ): Promise<CursorUsageEventsResult> {
@@ -742,8 +485,6 @@ export async function fetchCursorDashboardUsageEvents(
   const fetchImpl = options.fetchImpl ?? fetch
   const eventsEndpoint =
     options.eventsEndpoint ?? CURSOR_DASHBOARD_USAGE_EVENTS_URL
-  const aggregatesEndpoint =
-    options.aggregatesEndpoint ?? CURSOR_DASHBOARD_AGGREGATES_URL
   const timeoutMs = options.timeoutMs ?? CURSOR_USAGE_TIMEOUT_MS
 
   const commonBody = {
@@ -771,24 +512,14 @@ export async function fetchCursorDashboardUsageEvents(
     events.push(...parsed.events)
 
     if (events.length >= parsed.total) {
-      const aggregateBody = await fetchDashboardJson(
-        aggregatesEndpoint,
-        options.sessionToken,
-        commonBody,
-        fetchImpl,
-        timeoutMs,
-      )
-      const aggregates = parseDashboardAggregates(aggregateBody)
-
       return {
-        events: normalizeDashboardEvents(events, aggregates),
+        events,
         period: {
           start_date_ms: options.startDateMs,
           end_date_ms: options.endDateMs,
         },
         pages_fetched: page,
         source: 'Cursor dashboard personal usage',
-        aggregate_tokens: aggregates.totals,
       }
     }
 

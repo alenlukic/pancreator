@@ -7,14 +7,13 @@ Generate a Cursor token spend report for the period in `$ARGUMENTS`.
 5. Otherwise, read and apply the Cursor Canvas skill. Write one descriptive `.canvas.tsx` file directly in Cursor's managed canvas directory for this workspace. Import only from `cursor/canvas`, embed the aggregate report, and make no network request from the canvas.
 6. Build a concise report with:
    - One title and source caption that name the UTC date range and embedded installations scanned.
-   - A compact KPI row for total tokens, cost, cached-token share, and attribution coverage. Label cost as charged cost or model cost from `period.cost_basis`.
+   - A compact KPI row for total tokens, cost, cached-token share, and attribution coverage. Label cost as charged cost.
    - Labeled daily token and cost time series.
    - A stacked token-category chart for input, output, cache write, and cache read.
    - Top command, persona and model, tool, and workflow-stage views.
    - Compact Fast mode, governance, supervisor/stage, and remediation views.
    - Short attribution notes beside inferred views.
 7. Limit ranked views to the report's folded rows. State that tool token totals overlap because one conversation can use several tools. State that Fast mode is known only when a local model declaration records `fast=true` or `fast=false`. Do not call Max mode Fast mode.
-8. When the report says personal event allocations are inferred, show that note beside the daily and ranked views. State that the report reconciles them to exact overall totals.
-9. Omit a chart, table, or section when it has no real data. Use Canvas charts and tables, theme tokens, clear labels and units, restrained color, and varied visual hierarchy. Do not use gradients, emojis, box shadows, decorative borders, or a wall of identical cards.
-10. Confirm the Canvas TypeScript check reports no errors. If Canvas creation fails, return the concise aggregate summary and the concrete failure.
-11. Link the Canvas with its absolute path and state the total tokens, labeled cost, date range, and lowest attribution coverage. Name the Canvas as the operator's next read.
+8. Omit a chart, table, or section when it has no real data. Use Canvas charts and tables, theme tokens, clear labels and units, restrained color, and varied visual hierarchy. Do not use gradients, emojis, box shadows, decorative borders, or a wall of identical cards.
+9. Confirm the Canvas TypeScript check reports no errors. If Canvas creation fails, return the concise aggregate summary and the concrete failure.
+10. Link the Canvas with its absolute path and state the total tokens, labeled cost, date range, and lowest attribution coverage. Name the Canvas as the operator's next read.

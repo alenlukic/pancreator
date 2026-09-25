@@ -348,7 +348,7 @@ test('aggregates every instance snapshot with the local report keys and tool cal
   )
 })
 
-test('cost basis is charged for all team records, model-cost for all personal records, and mixed otherwise', () => {
+test('cost basis is charged for team and personal records', () => {
   const recent = NOW.getTime() - DAY_MS
   const basis = (records: SpendRecord[]): string =>
     combineSpendSnapshots([snapshotOf(INSTANCE_A, records)], {
@@ -366,16 +366,10 @@ test('cost basis is charged for all team records, model-cost for all personal re
     source: 'personal',
     timestamp_ms: recent,
   })
-  const oldPersonal = makeRecord({
-    key: hex('old-personal'),
-    source: 'personal',
-    timestamp_ms: NOW.getTime() - 30 * DAY_MS,
-  })
 
   assert.equal(basis([team]), 'charged')
-  assert.equal(basis([personal]), 'model-cost')
-  assert.equal(basis([team, personal]), 'mixed')
-  assert.equal(basis([team, oldPersonal]), 'charged')
+  assert.equal(basis([personal]), 'charged')
+  assert.equal(basis([team, personal]), 'charged')
 })
 
 test('an invalid snapshot envelope is rejected and a malformed record is skipped', () => {

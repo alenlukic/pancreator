@@ -65,7 +65,7 @@ export interface TokenSpendReport {
     end: string
     timezone: 'UTC'
     source: CursorUsageEventsResult['source']
-    cost_basis: 'charged' | 'model-cost'
+    cost_basis: 'charged'
     pages_fetched: number
   }
   attribution_sources: {
@@ -111,7 +111,6 @@ export interface GenerateTokenSpendReportOptions {
   now?: Date
   fetchImpl?: typeof fetch
   endpoint?: string
-  aggregatesEndpoint?: string
   transcriptsRoot?: string | null
   cursorProjectsRoot?: string
 }
@@ -140,7 +139,6 @@ export interface CollectSpendRecordsOptions {
   now?: Date
   fetchImpl?: typeof fetch
   endpoint?: string
-  aggregatesEndpoint?: string
   transcriptsRoot?: string | null
   cursorProjectsRoot?: string
 }
@@ -152,7 +150,6 @@ export interface CollectSpendRecordsResult {
   usage: {
     source: CursorUsageEventsResult['source']
     pages_fetched: number
-    aggregate_tokens: CursorUsageEventsResult['aggregate_tokens']
   }
   attribution_sources: {
     workspaces_scanned: number
@@ -970,9 +967,6 @@ export async function collectSpendRecords(
       ...requestOptions,
       sessionToken: options.sessionToken,
       ...(options.endpoint ? { eventsEndpoint: options.endpoint } : {}),
-      ...(options.aggregatesEndpoint
-        ? { aggregatesEndpoint: options.aggregatesEndpoint }
-        : {}),
     })
   } else if (options.apiKey !== undefined) {
     usage = await fetchCursorUsageEvents({
@@ -1080,7 +1074,6 @@ export async function collectSpendRecords(
     usage: {
       source: usage.source,
       pages_fetched: usage.pages_fetched,
-      aggregate_tokens: usage.aggregate_tokens,
     },
     attribution_sources: {
       workspaces_scanned: roots.length,
@@ -1090,11 +1083,7 @@ export async function collectSpendRecords(
   }
 }
 
-/**
- * Aggregate spend records into totals, daily series, slices, and coverage.
- * Does not apply the `aggregate_tokens` override; `generateTokenSpendReport`
- * applies that after collecting records.
- */
+/** Aggregate spend records into totals, daily series, slices, and coverage. */
 export function aggregateSpendRecords(
   records: SpendRecord[],
   tool_calls: Map<string, Map<string, number>>,
@@ -1286,32 +1275,6 @@ export async function generateTokenSpendReport(
     collected.tool_calls,
   )
 
-  // Apply the aggregate_tokens override for personal spend (C-1: keep existing behavior).
-  if (collected.usage.aggregate_tokens !== null) {
-    const agg = collected.usage.aggregate_tokens
-
-    aggregated.totals = roundedMetrics({
-      ...aggregated.totals,
-      input_tokens: agg.input_tokens,
-      output_tokens: agg.output_tokens,
-      cache_write_tokens: agg.cache_write_tokens,
-      cache_read_tokens: agg.cache_read_tokens,
-      cost_cents: agg.cost_cents,
-      total_tokens:
-        agg.input_tokens +
-        agg.output_tokens +
-        agg.cache_write_tokens +
-        agg.cache_read_tokens,
-    })
-    aggregated.token_categories = {
-      input: agg.input_tokens,
-      output: agg.output_tokens,
-      cache_write: agg.cache_write_tokens,
-      cache_read: agg.cache_read_tokens,
-      cached: agg.cache_write_tokens + agg.cache_read_tokens,
-    }
-  }
-
   const endDateMs = now.getTime()
   const startDateMs = endDateMs - days * DAY_MS
 
@@ -1324,8 +1287,7 @@ export async function generateTokenSpendReport(
       end: now.toISOString(),
       timezone: 'UTC',
       source: collected.usage.source,
-      cost_basis:
-        collected.usage.aggregate_tokens === null ? 'charged' : 'model-cost',
+      cost_basis: 'charged',
       pages_fetched: collected.usage.pages_fetched,
     },
     attribution_sources: collected.attribution_sources,
@@ -1336,11 +1298,6 @@ export async function generateTokenSpendReport(
     coverage: aggregated.coverage,
     warnings: [
       ...aggregated.warnings,
-      ...(collected.usage.aggregate_tokens === null
-        ? []
-        : [
-            'Personal event tokens and model cost use model aggregates, then reconcile to exact overall totals before time and attribution slices. These event allocations are inferred, and authoritative billed charges remain unavailable.',
-          ]),
       'Unmatched usage remains unattributed; no email, conversation identifier, or raw event is included in this report.',
     ],
   }

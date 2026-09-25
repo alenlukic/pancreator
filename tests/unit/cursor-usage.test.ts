@@ -119,7 +119,7 @@ test('Cursor usage client reports authorization failures without the key', async
   )
 })
 
-test('Cursor dashboard client paginates events and fetches exact aggregates', async () => {
+test('Cursor dashboard client paginates events and keeps each charged cost', async () => {
   const requests: Array<{
     url: string
     headers: Headers
@@ -133,26 +133,6 @@ test('Cursor dashboard client paginates events and fetches exact aggregates', as
       headers: new Headers(init?.headers),
       body: JSON.parse(String(init?.body)) as Record<string, unknown>,
     })
-
-    if (url.endsWith('aggregates')) {
-      return response({
-        aggregations: [
-          {
-            modelIntent: 'composer-2',
-            inputTokens: '15',
-            outputTokens: '7',
-            cacheWriteTokens: '3',
-            cacheReadTokens: '11',
-            totalCents: 2.5,
-          },
-        ],
-        totalInputTokens: '15',
-        totalOutputTokens: '7',
-        totalCacheWriteTokens: '3',
-        totalCacheReadTokens: '11',
-        totalCostCents: 2.5,
-      })
-    }
 
     const page = requests.at(-1)?.body.page
 
@@ -168,9 +148,11 @@ test('Cursor dashboard client paginates events and fetches exact aggregates', as
             inputTokens: page === 1 ? 10 : 5,
             outputTokens: page === 1 ? 5 : 2,
             cacheWriteTokens: page === 1 ? 3 : 0,
+            cacheReadTokens: page === 1 ? 40 : 0,
             totalCents: page === 1 ? 2 : 0.5,
           },
-          chargedCents: page === 1 ? 2 : 0.5,
+          cursorTokenFee: page === 1 ? 0.4 : 0,
+          chargedCents: page === 1 ? 2.4 : 0.5,
         },
       ],
     })
@@ -182,19 +164,20 @@ test('Cursor dashboard client paginates events and fetches exact aggregates', as
     endDateMs: 1780010000000,
     fetchImpl,
     eventsEndpoint: 'https://example.test/events',
-    aggregatesEndpoint: 'https://example.test/aggregates',
   })
 
   assert.equal(result.pages_fetched, 2)
-  assert.equal(result.events.length, 2)
-  assert.equal(result.events[0]?.token_usage?.cache_read_tokens, 5.5)
-  assert.deepEqual(result.aggregate_tokens, {
-    input_tokens: 15,
-    output_tokens: 7,
-    cache_write_tokens: 3,
-    cache_read_tokens: 11,
-    cost_cents: 2.5,
-  })
+  assert.deepEqual(
+    result.events.map((event) => [
+      event.charged_cents,
+      event.cursor_token_fee_cents,
+      event.token_usage?.cache_read_tokens,
+    ]),
+    [
+      [2.4, 0.4, 40],
+      [0.5, 0, 0],
+    ],
+  )
   assert.equal(result.source, 'Cursor dashboard personal usage')
   assert.ok(
     requests.every(
@@ -204,9 +187,10 @@ test('Cursor dashboard client paginates events and fetches exact aggregates', as
     ),
   )
   assert.deepEqual(
-    requests
-      .filter((item) => item.url.endsWith('events'))
-      .map((item) => item.body.page),
-    [1, 2],
+    requests.map((item) => [item.url, item.body.page]),
+    [
+      ['https://example.test/events', 1],
+      ['https://example.test/events', 2],
+    ],
   )
 })
