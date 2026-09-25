@@ -2,10 +2,13 @@ import { appendFileSync, mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError } from './errors.js'
-import { fileExists, isRecord } from './io.js'
+import { fileExists, isRecord, readJson, writeJsonAtomic } from './io.js'
 import {
+  harnessConfigName,
   isSelfDevelopmentInstallation,
+  isTargetInstallation,
   loadProjectConfig,
+  readProjectConfig,
 } from './project-config.js'
 import { parseFileDurationRecord } from './test-file-order.js'
 import type {
@@ -48,6 +51,45 @@ const FAST_WALL_QUALIFIED_CALLER: FastWallCallerClass = 'harness_gate'
 export const FAST_LANE = 'regression+unit'
 /** The lifecycle event under which `npm test` runs the complete fast lane. */
 const FAST_LANE_INVOKER = 'test'
+
+/**
+ * A target installation has no Pancreator test runner, so the harness records
+ * the wall of its own `fast` profile executions under this lane instead.
+ */
+export const TARGET_FAST_LANE = 'target:fast'
+export const TARGET_FAST_PROFILE = 'fast'
+const TARGET_FAST_INVOKER = 'repository-check'
+
+/**
+ * A calibrated ceiling is the first measured wall times this factor, so an
+ * ordinary slower day does not read as a regression.
+ */
+export const FAST_WALL_CALIBRATION_CUSHION = 1.5
+
+/** The lane and invoker whose rows form an installation's governed population. */
+export interface GovernedFastLane {
+  lane: string
+  invoker: string
+}
+
+export const SELF_DEVELOPMENT_FAST_LANE: GovernedFastLane = {
+  lane: FAST_LANE,
+  invoker: FAST_LANE_INVOKER,
+}
+
+export const TARGET_GOVERNED_FAST_LANE: GovernedFastLane = {
+  lane: TARGET_FAST_LANE,
+  invoker: TARGET_FAST_INVOKER,
+}
+
+export function governedFastLane(root: string): GovernedFastLane {
+  const mode = readProjectConfig(root)?.installation_mode
+
+  return mode === 'embedded' || mode === 'detached'
+    ? TARGET_GOVERNED_FAST_LANE
+    : SELF_DEVELOPMENT_FAST_LANE
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
 
@@ -88,7 +130,14 @@ export interface FastWallSeriesRead {
  * revisits, so exceeding it never fails a command, a criterion, or a review.
  */
 export interface FastWallReport {
-  status: 'passed' | 'over_ceiling' | 'insufficient_samples' | 'not_applicable'
+  status:
+    | 'passed'
+    | 'over_ceiling'
+    | 'insufficient_samples'
+    | 'not_calibrated'
+    | 'not_applicable'
+  /** Which population the report governs, which decides the tuning action. */
+  installation: 'self_development' | 'target'
   series_path: string
   /** Qualified complete fast-lane runs inside the 24-hour window. */
   recorded_runs: number
@@ -267,23 +316,23 @@ export function readFastWallSeries(
  * qualification: a failing suite run still executes every test, so its wall
  * is a measurement of the same lane.
  */
-export function qualifiesAsFastLane(entry: FastWallSeriesEntry): boolean {
-  if (entry.invoker !== FAST_LANE_INVOKER) {
-    return false
-  }
-
+export function qualifiesAsFastLane(
+  entry: FastWallSeriesEntry,
+  governed: GovernedFastLane = SELF_DEVELOPMENT_FAST_LANE,
+): boolean {
   // Schema 1 recorded no lane, and its writer's fast lane still carried the
   // integration files, so it measured a different population.
-  return entry.lane === FAST_LANE
+  return entry.invoker === governed.invoker && entry.lane === governed.lane
 }
 
 /** Whether a complete-lane row belongs to the governed advisory population. */
 export function qualifiesForFastWall(
   entry: FastWallSeriesEntry,
   config: FastWallConfig,
+  governed: GovernedFastLane = SELF_DEVELOPMENT_FAST_LANE,
 ): boolean {
   return (
-    qualifiesAsFastLane(entry) &&
+    qualifiesAsFastLane(entry, governed) &&
     entry.caller_class === FAST_WALL_QUALIFIED_CALLER &&
     entry.cpu_count !== null &&
     entry.load_average / entry.cpu_count <= config.max_load_average_per_cpu
@@ -379,15 +428,139 @@ export function appendFastWallRun(
         ? null
         : measuredFiles.reduce((total, file) => total + file.duration_ms, 0),
   }
-  const target = fastWallSeriesPath(input.series_root)
+
+  appendSeriesEntry(input.series_root, entry)
+
+  return entry
+}
+
+function appendSeriesEntry(root: string, entry: FastWallSeriesEntry): void {
+  const target = fastWallSeriesPath(root)
 
   mkdirSync(path.dirname(target), { recursive: true })
   appendFileSync(target, `${JSON.stringify(entry)}\n`, {
     encoding: 'utf8',
     flag: 'a',
   })
+}
+
+export interface TargetFastWallInput {
+  root: string
+  profile: string
+  status: 'passed' | 'failed' | 'not_configured'
+  wall_clock_ms: number
+  load_average: number
+  cpu_count: number
+  workspace_fingerprint: string
+  run_id: string
+  phase: string
+}
+
+/**
+ * Append one harness execution of a target installation's `fast` profile.
+ * The target owns its test runner, so the profile's own wall is the only
+ * measurement available; test counts and per-file sums stay unknown.
+ */
+export function appendTargetFastWallRun(
+  input: TargetFastWallInput,
+): FastWallSeriesEntry | null {
+  if (
+    input.profile !== TARGET_FAST_PROFILE ||
+    input.status === 'not_configured' ||
+    !isTargetInstallation(input.root)
+  ) {
+    return null
+  }
+
+  const entry: FastWallSeriesEntry = {
+    schema_version: 3,
+    recorded_at: new Date().toISOString(),
+    wall_clock_ms: input.wall_clock_ms,
+    wrapper_wall_clock_ms: input.wall_clock_ms,
+    wrapper_overhead_ms: 0,
+    test_count: 0,
+    worker_count: 0,
+    load_average: input.load_average,
+    cpu_count: input.cpu_count,
+    caller_class: FAST_WALL_QUALIFIED_CALLER,
+    workspace_fingerprint: input.workspace_fingerprint,
+    invoker: TARGET_FAST_INVOKER,
+    run_id: input.run_id,
+    exit_code: input.status === 'passed' ? 0 : 1,
+    lane: TARGET_FAST_LANE,
+    phase: input.phase,
+    summed_file_duration_ms: null,
+  }
+
+  appendSeriesEntry(input.root, entry)
 
   return entry
+}
+
+export interface FastWallCalibration {
+  ceiling_ms: number
+  measured_wall_ms: number
+  calibrated_at: string
+  anchor_date: string
+}
+
+/**
+ * Set a target installation's empty ceiling from one measured `fast` wall.
+ *
+ * A target does not inherit Pancreator's own ceiling, because that number
+ * describes Pancreator's suite on Pancreator's hardware. The first passing
+ * harness baseline of a workflow run is the benchmark instead: the ceiling
+ * becomes that wall times the cushion, rounded up to a whole second, and the
+ * weekly allowance counts from that day. A calibrated ceiling is never
+ * replaced here; an operator edits it directly.
+ */
+export function calibrateFastWallCeiling(
+  root: string,
+  measuredWallMs: number,
+  at = new Date(),
+): FastWallCalibration | null {
+  if (!isTargetInstallation(root) || !(measuredWallMs > 0)) {
+    return null
+  }
+
+  const configured = loadProjectConfig(root).fast_wall
+
+  if (!configured || configured.ceiling_ms !== null) {
+    return null
+  }
+
+  const configName = harnessConfigName(root)
+
+  if (!configName) {
+    return null
+  }
+
+  const configPath = path.join(root, configName)
+  const raw = readJson(configPath)
+
+  if (!isRecord(raw) || !isRecord(raw.fast_wall)) {
+    return null
+  }
+
+  const calibration: FastWallCalibration = {
+    ceiling_ms:
+      Math.ceil((measuredWallMs * FAST_WALL_CALIBRATION_CUSHION) / 1000) * 1000,
+    measured_wall_ms: measuredWallMs,
+    calibrated_at: at.toISOString(),
+    anchor_date: at.toISOString().slice(0, 10),
+  }
+
+  writeJsonAtomic(configPath, {
+    ...raw,
+    fast_wall: {
+      ...raw.fast_wall,
+      ceiling_ms: calibration.ceiling_ms,
+      calibrated_at: calibration.calibrated_at,
+      anchor_date: calibration.anchor_date,
+    },
+  })
+
+  return calibration
 }
 
 function utcDate(value: string): number {
@@ -404,7 +577,7 @@ function utcDate(value: string): number {
 
 /** Ceiling on a date, with no decrease before the configured anchor. */
 export function permittedFastWallCeiling(
-  config: FastWallConfig,
+  config: FastWallConfig & { ceiling_ms: number },
   at: Date,
 ): number {
   const elapsedWeeks = Math.max(
@@ -500,31 +673,50 @@ export function buildFastWallReport(
   at = new Date(),
 ): FastWallReport {
   const windowStart = at.getTime() - DAY_MS
+  const target = isTargetInstallation(root)
+  const installation = target ? 'target' : 'self_development'
+  const inert = (
+    status: 'not_applicable' | 'not_calibrated',
+    config?: FastWallConfig,
+  ): FastWallReport => ({
+    status,
+    installation,
+    series_path: FAST_WALL_SERIES_PATH,
+    recorded_runs: 0,
+    unqualified_runs: 0,
+    malformed_lines: 0,
+    window_started_at: new Date(windowStart).toISOString(),
+    evaluated_at: at.toISOString(),
+    rolling_average_ms: null,
+    permitted_ceiling_ms: null,
+    max_load_average_per_cpu: config?.max_load_average_per_cpu ?? null,
+    minimum_qualified_samples: config?.minimum_qualified_samples ?? null,
+    marginal_wall_ms_per_test: null,
+    marginal_samples: 0,
+  })
 
-  if (!isSelfDevelopmentInstallation(root)) {
-    return {
-      status: 'not_applicable',
-      series_path: FAST_WALL_SERIES_PATH,
-      recorded_runs: 0,
-      unqualified_runs: 0,
-      malformed_lines: 0,
-      window_started_at: new Date(windowStart).toISOString(),
-      evaluated_at: at.toISOString(),
-      rolling_average_ms: null,
-      permitted_ceiling_ms: null,
-      max_load_average_per_cpu: null,
-      minimum_qualified_samples: null,
-      marginal_wall_ms_per_test: null,
-      marginal_samples: 0,
-    }
+  // A target without the block opted out. Self-development requires it.
+  const configured = target
+    ? loadProjectConfig(root).fast_wall
+    : isSelfDevelopmentInstallation(root)
+      ? fastWallConfig(root)
+      : undefined
+
+  if (!configured) {
+    return inert('not_applicable')
   }
 
-  const config = fastWallConfig(root)
+  if (configured.ceiling_ms === null) {
+    return inert('not_calibrated', configured)
+  }
+
+  const config = { ...configured, ceiling_ms: configured.ceiling_ms }
+  const governed = governedFastLane(root)
   const series = readFastWallSeries(root)
 
   const recent = insideWindow(series.records, at)
   const qualified = recent.filter((entry) =>
-    qualifiesForFastWall(entry, config),
+    qualifiesForFastWall(entry, config, governed),
   )
 
   const average = rollingFastWallAverage(qualified, at)
@@ -538,6 +730,7 @@ export function buildFastWallReport(
         : average !== null && average > permitted
           ? 'over_ceiling'
           : 'passed',
+    installation,
     series_path: FAST_WALL_SERIES_PATH,
     recorded_runs: qualified.length,
     unqualified_runs: recent.length - qualified.length,
@@ -559,8 +752,20 @@ function seconds(value: number): string {
 
 export function formatFastWallReport(report: FastWallReport): string {
   if (report.status === 'not_applicable') {
-    return 'Fast wall: not applicable outside self-development; PASS.'
+    return 'Fast wall: not applicable; this installation configures no fast_wall block; PASS.'
   }
+
+  if (report.status === 'not_calibrated') {
+    return (
+      'Fast wall: no ceiling yet. The first passing fast baseline of a ' +
+      `workflow run sets it at ${FAST_WALL_CALIBRATION_CUSHION}x its measured wall; ADVISORY.`
+    )
+  }
+
+  const tuning =
+    report.installation === 'target'
+      ? 'review the fast profile cost and fast_wall.ceiling_ms in the harness config.json.'
+      : 'run /pan-tune-harness to review the suite and ceiling.'
 
   const average =
     report.rolling_average_ms === null
@@ -584,7 +789,7 @@ export function formatFastWallReport(report: FastWallReport): string {
       ? `INSUFFICIENT SAMPLES (${report.recorded_runs}/${report.minimum_qualified_samples}); ADVISORY.`
       : report.status === 'passed'
         ? 'PASS.'
-        : 'OVER SOFT CEILING; advisory only. Operator action: run /pan-tune-harness to review the suite and ceiling.'
+        : `OVER SOFT CEILING; advisory only. Operator action: ${tuning}`
 
   return (
     `Fast wall: ${average}${ignored}; permitted ${permitted}; ` +
@@ -628,7 +833,10 @@ export function buildFastWallStageSummary(
   root: string,
   state: Pick<RunState, 'run_id' | 'repository_check_baselines'>,
 ): FastWallStageSummary | null {
-  const records = readFastWallSeries(root).records.filter(qualifiesAsFastLane)
+  const governed = governedFastLane(root)
+  const records = readFastWallSeries(root).records.filter((entry) =>
+    qualifiesAsFastLane(entry, governed),
+  )
   const baselineFingerprint =
     state.repository_check_baselines?.fast?.workspace_fingerprint ?? null
   const before = baselineFingerprint

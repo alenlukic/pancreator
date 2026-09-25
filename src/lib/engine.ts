@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { setPriority } from 'node:os'
+import { availableParallelism, loadavg, setPriority } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -88,10 +88,13 @@ import {
   recordSuiteProfileIndexEntry,
 } from './suite-profile.js'
 import {
+  appendTargetFastWallRun,
   buildFastWallReport,
   buildFastWallStageSummary,
+  calibrateFastWallCeiling,
   formatFastWallReport,
   FAST_WALL_BASELINE_PHASE,
+  FAST_WALL_CALIBRATION_CUSHION,
   FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_CRITERION_ID,
   FAST_WALL_PHASE_ENV,
@@ -1647,6 +1650,7 @@ function captureRepositoryCheckBaselines(
     // The baseline must observe the workspace the run mutates. A run that
     // targets a worktree would otherwise baseline the main checkout and judge
     // the worktree's gates against unrelated evidence.
+    const loadAverage = loadavg()[0] ?? 0
     const result = runRepositoryCheck(root, profile.name, {
       timeout_ms: profile.timeout_ms,
       workspace: state.workspace_root || '.',
@@ -1661,6 +1665,38 @@ function captureRepositoryCheckBaselines(
       `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
     )
     const workspace = workspaceSnapshotForRun(root, state)
+
+    // A target owns its test runner, so the harness records the profile's
+    // own wall. The first passing baseline is the benchmark an uncalibrated
+    // target sets its ceiling from.
+    if (
+      appendTargetFastWallRun({
+        root,
+        profile: profile.name,
+        status: result.status,
+        wall_clock_ms: result.total_duration_ms,
+        load_average: loadAverage,
+        cpu_count: availableParallelism(),
+        workspace_fingerprint: workspace.fingerprint,
+        run_id: state.run_id,
+        phase: FAST_WALL_BASELINE_PHASE,
+      }) &&
+      result.status === 'passed'
+    ) {
+      const calibration = calibrateFastWallCeiling(
+        root,
+        result.total_duration_ms,
+      )
+
+      if (calibration) {
+        onProgress?.(
+          `set the fast-wall ceiling to ${calibration.ceiling_ms}ms from this ` +
+            `baseline's ${calibration.measured_wall_ms}ms wall ` +
+            `(${FAST_WALL_CALIBRATION_CUSHION}x cushion)`,
+        )
+      }
+    }
+
     const summaryPath = artifactPath(`pre-implementation-${profile.name}.json`)
     const fullPath = artifactPath(
       `pre-implementation-${profile.name}.full.json`,
@@ -2837,10 +2873,12 @@ function emitSuiteCostInboxItem(
     [
       '# Fast-lane suite-cost advisory',
       '',
-      '**State:** The qualified rolling fast-lane wall average exceeded its configured advisory ceiling.',
-      '**Outcome:** The release remains unblocked. The observation is queued for harness performance tuning.',
+      '**State:** The qualified rolling fast-lane wall average exceeded its soft ceiling.',
+      '**Outcome:** The release remains unblocked. The observation is queued for performance tuning.',
       '**Blockers:** None.',
-      '**Next action:** Run `/pan-tune-harness` to review the suite cost and configured ceiling.',
+      isTargetInstallation(root)
+        ? '**Next action:** Review the cost of the `fast` profile and `fast_wall.ceiling_ms` in the harness `config.json`.'
+        : '**Next action:** Run `/pan-tune-harness` to review the suite cost and configured ceiling.',
       '**Category:** Performance (`perf`)',
       '',
       '## Observation',

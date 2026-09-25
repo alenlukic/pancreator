@@ -585,8 +585,16 @@ function assertFastWallBlock(value: unknown): void {
     { code: 'INVALID_PROJECT_CONFIG' },
   )
   invariant(
-    Number.isInteger(value.ceiling_ms) && (value.ceiling_ms as number) > 0,
-    `${PROJECT_CONFIG_PATH}.fast_wall.ceiling_ms MUST be a positive integer.`,
+    value.ceiling_ms === null ||
+      (Number.isInteger(value.ceiling_ms) && (value.ceiling_ms as number) > 0),
+    `${PROJECT_CONFIG_PATH}.fast_wall.ceiling_ms MUST be a positive integer, or null until a measured baseline sets it.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.calibrated_at === undefined ||
+      (typeof value.calibrated_at === 'string' &&
+        Number.isFinite(Date.parse(value.calibrated_at))),
+    `${PROJECT_CONFIG_PATH}.fast_wall.calibrated_at MUST be an ISO-8601 timestamp when present.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
   invariant(

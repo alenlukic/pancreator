@@ -120,7 +120,7 @@
     },
     "fast_wall": {
       "type": "object",
-      "description": "Optional self-development fast-lane wall advisory. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date; only qualified harness-gate samples under the configured normalized host-load threshold contribute.",
+      "description": "Optional soft fast-lane wall advisory. The permitted value rises by weekly_allowance_ms for each complete elapsed week after anchor_date; only qualified harness-gate samples under the configured normalized host-load threshold contribute. A target installation ships ceiling_ms as null, and its first passing harness fast baseline sets it with a cushion.",
       "required": [
         "ceiling_ms",
         "anchor_date",
@@ -131,9 +131,14 @@
       "additionalProperties": false,
       "properties": {
         "ceiling_ms": {
-          "type": "integer",
+          "type": ["integer", "null"],
           "minimum": 1,
-          "description": "Base rolling 24-hour fast-lane wall ceiling in milliseconds."
+          "description": "Base rolling 24-hour fast-lane wall ceiling in milliseconds, or null until a measured baseline sets it."
+        },
+        "calibrated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When a measured harness fast baseline set ceiling_ms on this installation. A refresh keeps only a calibrated ceiling."
         },
         "anchor_date": {
           "type": "string",

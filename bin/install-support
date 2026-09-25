@@ -1617,6 +1617,40 @@ function migrateRepositoryChecks() {
   )
 }
 
+/**
+ * A target's fast-wall ceiling. Pancreator's own ceiling measures Pancreator's
+ * suite on Pancreator's hardware, so a target ships an empty one, and the
+ * harness sets it from the target's first passing fast baseline. A refresh
+ * keeps a ceiling only when that measurement set it, which `calibrated_at`
+ * records; an inherited number from an older install is emptied instead.
+ * Mirrors calibrateFastWallCeiling in src/lib/fast-wall-series.ts.
+ */
+function targetFastWall(shipped, existing) {
+  if (typeof shipped !== 'object' || shipped === null) {
+    return undefined
+  }
+
+  const calibrated =
+    typeof existing === 'object' &&
+    existing !== null &&
+    Number.isInteger(existing.ceiling_ms) &&
+    existing.ceiling_ms > 0 &&
+    typeof existing.calibrated_at === 'string'
+
+  if (calibrated) {
+    return {
+      ...shipped,
+      ceiling_ms: existing.ceiling_ms,
+      calibrated_at: existing.calibrated_at,
+      anchor_date: existing.anchor_date ?? shipped.anchor_date,
+    }
+  }
+
+  const { calibrated_at: _calibratedAt, ...rest } = shipped
+
+  return { ...rest, ceiling_ms: null }
+}
+
 function writeProject() {
   const source = path.resolve(requiredOption('--source'))
   const destination = path.resolve(requiredOption('--destination'))
@@ -1624,13 +1658,16 @@ function writeProject() {
   // An install ships the effective configuration: the source checkout's
   // tracked config.json merged with its untracked operator overrides.
   let config = readConfigWithOverrides(source)
+  const existing = existsSync(destination) ? readJson(destination) : null
 
-  if (existsSync(destination)) {
+  if (existing) {
     config = mergeEmbeddedProjectConfig(
       config,
-      stripInheritedPlaceholders(readJson(destination)),
+      stripInheritedPlaceholders(existing),
     )
   }
+
+  config.fast_wall = targetFastWall(config.fast_wall, existing?.fast_wall)
 
   // A detached harness has no stable relative path to its target, so the target
   // is recorded absolutely and the mode is distinguished from `embedded`.

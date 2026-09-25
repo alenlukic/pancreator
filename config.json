@@ -24,8 +24,8 @@
     "classes": {}
   },
   "fast_wall": {
-    "ceiling_ms": 240000,
-    "anchor_date": "2026-09-14",
+    "ceiling_ms": 30000,
+    "anchor_date": "2026-09-24",
     "weekly_allowance_ms": 1000,
     "max_load_average_per_cpu": 1,
     "minimum_qualified_samples": 5

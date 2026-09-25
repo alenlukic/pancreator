@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, rmSync } from 'node:fs'
+import { availableParallelism, loadavg } from 'node:os'
 import path from 'node:path'
 
 import { errorMessage, isNodeError } from './errors.js'
@@ -50,6 +51,7 @@ import {
   suiteProfileEvidencePath,
 } from './suite-profile.js'
 import {
+  appendTargetFastWallRun,
   FAST_WALL_CALLER_CLASS_ENV,
   FAST_WALL_CRITERION_ID,
   FAST_WALL_PHASE_ENV,
@@ -2953,6 +2955,7 @@ function runShellCheck(
     )
     // Profile gates run where the stage worked, so a worktree-targeted run is
     // judged by its own workspace rather than the main checkout.
+    const loadAverage = loadavg()[0] ?? 0
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
       workspace: workspaceDir,
@@ -2969,6 +2972,17 @@ function runShellCheck(
     onProgress?.(
       `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,
     )
+    appendTargetFastWallRun({
+      root,
+      profile: profileName,
+      status: repositoryResult.status,
+      wall_clock_ms: repositoryResult.total_duration_ms,
+      load_average: loadAverage,
+      cpu_count: availableParallelism(),
+      workspace_fingerprint: workspaceFingerprint,
+      run_id: state.run_id,
+      phase: criterion.id,
+    })
 
     exitCode = repositoryResult.status === 'failed' ? 1 : 0
     stdout = `${JSON.stringify(repositoryResult, null, 2)}\n`

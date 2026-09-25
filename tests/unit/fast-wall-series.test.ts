@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
   appendFastWallRun,
+  appendTargetFastWallRun,
   buildFastWallReport,
   buildFastWallStageSummary,
+  calibrateFastWallCeiling,
   FAST_LANE,
+  FAST_WALL_CALIBRATION_CUSHION,
+  TARGET_FAST_LANE,
   fastWallSeriesPath,
   formatFastWallReport,
   marginalFastWallCost,
@@ -135,7 +139,7 @@ test('fast-wall dates govern the rolling mean and weekly allowance', () => {
   assert.equal(rollingFastWallAverage(records, at), 150)
 })
 
-test('fast-wall governance is inert outside self-development', () => {
+test('fast-wall governance is inert in a target that configures no block', () => {
   const root = createTestTempDirectory('pancreator-fast-wall-target-')
 
   writeFileSync(
@@ -145,8 +149,128 @@ test('fast-wall governance is inert outside self-development', () => {
   const report = buildFastWallReport(root, new Date('2026-09-15T12:00:00.000Z'))
 
   assert.equal(report.status, 'not_applicable')
+  assert.equal(report.installation, 'target')
   assert.equal(report.rolling_average_ms, null)
   assert.equal(report.permitted_ceiling_ms, null)
+})
+
+function targetRoot(ceilingMs: number | null): string {
+  const root = createTestTempDirectory('pancreator-fast-wall-calibrate-')
+
+  writeFileSync(
+    path.join(root, 'config.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        installation_mode: 'embedded',
+        fast_wall: {
+          ceiling_ms: ceilingMs,
+          anchor_date: '2026-09-14',
+          weekly_allowance_ms: 1000,
+          max_load_average_per_cpu: 1,
+          minimum_qualified_samples: 2,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+
+  return root
+}
+
+function targetRun(
+  root: string,
+  overrides: Partial<Parameters<typeof appendTargetFastWallRun>[0]> = {},
+): FastWallSeriesEntry | null {
+  return appendTargetFastWallRun({
+    root,
+    profile: 'fast',
+    status: 'passed',
+    wall_clock_ms: 20_000,
+    load_average: 2,
+    cpu_count: 16,
+    workspace_fingerprint: 'fingerprint',
+    run_id: 'run-one',
+    phase: 'baseline',
+    ...overrides,
+  })
+}
+
+test('a target records its harness fast-profile walls and nothing else', () => {
+  const root = targetRoot(null)
+
+  const recorded = targetRun(root)
+
+  assert.ok(recorded)
+  assert.equal(recorded.lane, TARGET_FAST_LANE)
+  assert.equal(recorded.caller_class, 'harness_gate')
+  assert.equal(recorded.summed_file_duration_ms, null)
+  assert.equal(targetRun(root, { status: 'failed' })?.exit_code, 1)
+  assert.equal(targetRun(root, { profile: 'full' }), null)
+  assert.equal(targetRun(root, { status: 'not_configured' }), null)
+  assert.equal(readFastWallSeries(root).records.length, 2)
+
+  // Self-development measures its lane in bin/run-tests instead.
+  assert.equal(targetRun(selfDevelopmentRoot()), null)
+})
+
+test('the first measured wall sets an empty target ceiling with a cushion, once', () => {
+  const root = targetRoot(null)
+  const at = new Date('2026-09-24T12:00:00.000Z')
+
+  assert.equal(buildFastWallReport(root, at).status, 'not_calibrated')
+  assert.match(
+    formatFastWallReport(buildFastWallReport(root, at)),
+    /no ceiling yet.*1\.5x its measured wall/u,
+  )
+
+  // 21.2 s times the cushion is 31.8 s, rounded up to a whole second.
+  assert.deepEqual(calibrateFastWallCeiling(root, 21_200, at), {
+    ceiling_ms: 32_000,
+    measured_wall_ms: 21_200,
+    calibrated_at: '2026-09-24T12:00:00.000Z',
+    anchor_date: '2026-09-24',
+  })
+  assert.equal(FAST_WALL_CALIBRATION_CUSHION, 1.5)
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'config.json'), 'utf8'),
+  ) as { fast_wall: Record<string, unknown> }
+
+  assert.equal(config.fast_wall.ceiling_ms, 32_000)
+  assert.equal(config.fast_wall.calibrated_at, '2026-09-24T12:00:00.000Z')
+  assert.equal(config.fast_wall.weekly_allowance_ms, 1000)
+
+  // A calibrated ceiling belongs to the operator from here on.
+  assert.equal(calibrateFastWallCeiling(root, 90_000, at), null)
+  assert.equal(calibrateFastWallCeiling(targetRoot(45_000), 1000, at), null)
+  assert.equal(calibrateFastWallCeiling(selfDevelopmentRoot(), 1000, at), null)
+  assert.equal(calibrateFastWallCeiling(targetRoot(null), 0, at), null)
+})
+
+test('a calibrated target is judged on its own lane and names its own tuning action', () => {
+  const root = targetRoot(10_000)
+
+  writeSeries(root, [
+    // Pancreator's own lane rows never count toward a target's population.
+    entry(new Date().toISOString(), 1_000, 100),
+  ])
+  targetRun(root, { wall_clock_ms: 20_000 })
+  targetRun(root, { wall_clock_ms: 30_000 })
+
+  const report = buildFastWallReport(root, new Date(Date.now() + 1000))
+
+  assert.equal(report.installation, 'target')
+  assert.equal(report.recorded_runs, 2)
+  assert.equal(report.unqualified_runs, 1)
+  assert.equal(report.rolling_average_ms, 25_000)
+  assert.equal(report.status, 'over_ceiling')
+  assert.match(
+    formatFastWallReport(report),
+    /fast_wall\.ceiling_ms in the harness config\.json/u,
+  )
+  assert.doesNotMatch(formatFastWallReport(report), /pan-tune-harness/u)
 })
 
 test('fast-wall series reads both schemas and ignores malformed lines', () => {

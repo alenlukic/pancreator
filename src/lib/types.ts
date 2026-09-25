@@ -979,7 +979,13 @@ export interface ScheduleConfig {
 }
 
 export interface FastWallConfig {
-  ceiling_ms: number
+  /**
+   * Null in a target installation until the first passing harness `fast`
+   * baseline measures the suite and sets it.
+   */
+  ceiling_ms: number | null
+  /** When a measured baseline set `ceiling_ms` on this installation. */
+  calibrated_at?: string
   anchor_date: string
   weekly_allowance_ms: number
   /** Maximum accepted one-minute load average divided by logical CPUs. */
