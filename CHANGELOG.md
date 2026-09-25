@@ -1,5 +1,25 @@
 # Changelog
 
+## [7.27.0] - 2026-09-25
+
+This release bans AwaitShell and makes `pan watch` the only wait for a shell command or a subagent.
+
+### Changed
+
+- Ban AwaitShell from every canonical agent file, the projected hooks, and the always-apply delegation rule ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Set the default `pan watch` timeout to one hour (3600 seconds) ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Point DELEGATE-001, ORCH-001, the supervisor procedure, and the start, resume, and horizon commands at a foreground `pan watch` call plus `--attach` ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+
+### Added
+
+- Add `pan watch --attach` so an agent can rejoin a detached watch ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Print a re-arm command when a watch times out ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+- Add `bin/pan-hook-deny-await-shell` and validator `AWAIT-SHELL-BAN-VALIDATE-001` ([19de166f](https://github.com/alenlukic/pancreator/commit/19de166fb1b6c2676eec75ae0ed02a7a8e23d5f0)).
+
+### Fixed
+
+- Repair the hook-contract tests, the concurrency overlap proof, and the restored watch-repair assertions ([46e88e4e](https://github.com/alenlukic/pancreator/commit/46e88e4e4d54d1c133dafc4636df1ccc0b873169)).
+
 ## [7.26.0] - 2026-09-25
 
 This release moves integration tests out of the fast lane and lets a checkout name its test scratch root.
