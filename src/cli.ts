@@ -5124,20 +5124,21 @@ async function main(): Promise<void> {
       }
 
       const agentState = parseAgentState(option(args, '--agent-state'))
+      const agentStateEvidence = option(args, '--agent-state-evidence')
+
       const armLaunchedAt = option(args, '--launched-at')
+      const platformReturnedAt = option(args, '--platform-returned-at')
+      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const workerHandle = option(args, '--handle')
       const workerAgent = option(args, '--agent')
       const workerModel = option(args, '--model')
-      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
 
+      const cadenceAuthority = option(args, '--cadence-directed-by-operator')
       const cadenceSeconds = parseCadenceSeconds(
         option(args, '--cadence-seconds'),
         cadenceAuthority,
       )
-      const agentStateEvidence = option(args, '--agent-state-evidence')
-      const platformReturnedAt = option(args, '--platform-returned-at')
-      const platformDetachedAt = option(args, '--platform-detached-at')
 
       const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),

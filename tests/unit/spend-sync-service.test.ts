@@ -118,6 +118,7 @@ test('upload returns 405 for a wrong method', async () => {
 
 test('upload returns 400 for a non-UUID instance_id', async () => {
   const { handleUpload } = await loadHandlers()
+
   for (const instanceId of ['not-a-uuid', VALID_UUID.toUpperCase()]) {
     const request = makeRequest('POST', { instance_id: instanceId })
     const response = await handleUpload(request, validDepsUpload)

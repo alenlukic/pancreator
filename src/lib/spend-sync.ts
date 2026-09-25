@@ -27,6 +27,7 @@ import {
   readText,
   withOperationMutex,
   writeJsonAtomic,
+  writeTextAtomic,
 } from './io.js'
 import {
   isLoopbackHostname,
@@ -44,11 +45,14 @@ import {
 const DAY_MS = 24 * 60 * 60 * 1_000
 const MAX_LEDGER_DAYS = 365
 const DEFAULT_REPORT_DAYS = 14
+
 const SNAPSHOT_SCHEMA_VERSION = 1
 const SYNC_TIMEOUT_MS = 60_000
+
 const INSTANCE_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
 const HEX_KEY_RE = /^[0-9a-f]{64}$/u
+
 const METRIC_FIELDS = [
   'events',
   'request_units',
@@ -253,14 +257,37 @@ function attributionScore(record: SpendRecord): number {
   const a = record.attribution
   let score = 0
 
-  if (a.command !== 'Unattributed') score += 1
-  if (!a.persona_model.startsWith('Unattributed ·')) score += 1
-  if (a.tools.length > 0) score += 1
-  if (a.fast_mode !== 'unknown') score += 1
-  if (a.governance !== 'unattributed') score += 1
-  if (a.workflow_role !== 'unattributed') score += 1
-  if (a.stage !== 'Unattributed') score += 1
-  if (a.remediation !== 'unattributed') score += 1
+  if (a.command !== 'Unattributed') {
+    score += 1
+  }
+
+  if (!a.persona_model.startsWith('Unattributed ·')) {
+    score += 1
+  }
+
+  if (a.tools.length > 0) {
+    score += 1
+  }
+
+  if (a.fast_mode !== 'unknown') {
+    score += 1
+  }
+
+  if (a.governance !== 'unattributed') {
+    score += 1
+  }
+
+  if (a.workflow_role !== 'unattributed') {
+    score += 1
+  }
+
+  if (a.stage !== 'Unattributed') {
+    score += 1
+  }
+
+  if (a.remediation !== 'unattributed') {
+    score += 1
+  }
 
   return score
 }
@@ -385,9 +412,44 @@ export function mergeLedger(
   return {
     schema_version: 1,
     instance_id: instanceId,
-    records: [...byKey.values()].map((meta) => meta.record),
+    records: Array.from(byKey.values(), (meta) => meta.record),
     tool_calls: mergedToolCalls,
     updated_at: syncedAt,
+  }
+}
+
+/**
+ * Earliest and latest record timestamps, or the full retention window when
+ * the ledger is empty. One pass with constant extra space: spreading a
+ * 365-day ledger into `Math.min` overflows the call stack.
+ */
+export function ledgerWindow(
+  records: readonly Pick<SpendRecord, 'timestamp_ms'>[],
+  now: Date,
+): { start: string; end: string } {
+  if (records.length === 0) {
+    return {
+      start: new Date(now.getTime() - MAX_LEDGER_DAYS * DAY_MS).toISOString(),
+      end: now.toISOString(),
+    }
+  }
+
+  let startMs = Infinity
+  let endMs = -Infinity
+
+  for (const { timestamp_ms } of records) {
+    if (timestamp_ms < startMs) {
+      startMs = timestamp_ms
+    }
+
+    if (timestamp_ms > endMs) {
+      endMs = timestamp_ms
+    }
+  }
+
+  return {
+    start: new Date(startMs).toISOString(),
+    end: new Date(endMs).toISOString(),
   }
 }
 
@@ -564,23 +626,18 @@ export async function syncSpend(
   const lockPath = ledgerLockPath(root)
 
   const mergedLedger = withOperationMutex(lockPath, () => {
-    const existing = readLedger(root, instance_id)
-    const toolCallsMap = new Map<string, Map<string, number>>()
-
-    for (const [convKey, toolMap] of collected.tool_calls) {
-      toolCallsMap.set(convKey, toolMap)
-    }
-
     const merged = mergeLedger(
-      existing,
+      readLedger(root, instance_id),
       collected.records,
-      toolCallsMap,
+      collected.tool_calls,
       instance_id,
       syncedAt,
       now,
     )
 
-    writeJsonAtomic(ledgerPath, merged)
+    // Compact: the ledger holds up to 365 days of records and is machine
+    // state, so indentation would only add size and serialization time.
+    writeTextAtomic(ledgerPath, JSON.stringify(merged))
 
     return merged
   })
@@ -618,7 +675,9 @@ export async function syncSpend(
 
     uploadResponse = await expectJson(response, 'POST /api/snapshots/upload')
   } catch (err) {
-    if (err instanceof PanError) throw err
+    if (err instanceof PanError) {
+      throw err
+    }
 
     invariant(
       false,
@@ -662,26 +721,14 @@ export async function syncSpend(
       )
     }
   } catch (err) {
-    if (err instanceof PanError) throw err
+    if (err instanceof PanError) {
+      throw err
+    }
 
     invariant(false, `PUT snapshot failed: ${errorMessage(err)}`, {
       code: 'SPEND_SYNC_REQUEST_FAILED',
     })
   }
-
-  const ledgerRecords = mergedLedger.records.length
-  const cutoffMs = now.getTime() - MAX_LEDGER_DAYS * DAY_MS
-  const ledgerWindow =
-    ledgerRecords > 0
-      ? {
-          start: new Date(
-            Math.min(...mergedLedger.records.map((r) => r.timestamp_ms)),
-          ).toISOString(),
-          end: new Date(
-            Math.max(...mergedLedger.records.map((r) => r.timestamp_ms)),
-          ).toISOString(),
-        }
-      : { start: new Date(cutoffMs).toISOString(), end: now.toISOString() }
 
   return {
     status: 'synced',
@@ -689,8 +736,8 @@ export async function syncSpend(
     label,
     host: origin,
     records_fetched: collected.records.length,
-    ledger_records: ledgerRecords,
-    ledger_window: ledgerWindow,
+    ledger_records: mergedLedger.records.length,
+    ledger_window: ledgerWindow(mergedLedger.records, now),
     uploaded_bytes: compressed.length,
   }
 }
@@ -1078,7 +1125,9 @@ export async function reportMultiInstanceSpend(
 
     listData = await expectJson(response, 'GET /api/snapshots')
   } catch (err) {
-    if (err instanceof PanError) throw err
+    if (err instanceof PanError) {
+      throw err
+    }
 
     invariant(false, `GET /api/snapshots failed: ${errorMessage(err)}`, {
       code: 'SPEND_SYNC_REQUEST_FAILED',

@@ -78,9 +78,12 @@ export async function handleUpload(request, deps) {
 
   const authError = checkAuth(request, deps)
 
-  if (authError) return authError
+  if (authError) {
+    return authError
+  }
 
   let body
+
   try {
     body = await request.json()
   } catch {
@@ -116,7 +119,9 @@ export async function handleList(request, deps) {
 
   const authError = checkAuth(request, deps)
 
-  if (authError) return authError
+  if (authError) {
+    return authError
+  }
 
   const blobs = await deps.list('spend/instances/')
   const snapshots = await Promise.all(

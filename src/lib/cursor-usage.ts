@@ -11,6 +11,7 @@ const CURSOR_DASHBOARD_USAGE_EVENTS_URL =
   'https://cursor.com/api/dashboard/get-filtered-usage-events'
 const CURSOR_DASHBOARD_AGGREGATES_URL =
   'https://cursor.com/api/dashboard/get-aggregated-usage-events'
+
 const CURSOR_USAGE_PAGE_SIZE = 1_000
 const CURSOR_USAGE_TIMEOUT_MS = 60_000
 const MAX_USAGE_PAGES = 10_000
@@ -357,6 +358,65 @@ function proportionalValue(
     : aggregateTotal / eligibleCount
 }
 
+function rawTokenTotals(tokenEvents: CursorUsageEvent[]): CursorTokenTotals {
+  return tokenEvents.reduce((totals, event) => {
+    const usage = event.token_usage
+
+    if (usage !== null) {
+      addTokenTotals(totals, {
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        cache_write_tokens: usage.cache_write_tokens,
+        cache_read_tokens: usage.cache_read_tokens,
+        cost_cents: usage.model_cost_cents,
+      })
+    }
+
+    return totals
+  }, emptyTokenTotals())
+}
+
+/** Scale one event's usage so the eligible events sum to the aggregate totals. */
+function proportionalUsage(
+  usage: CursorTokenUsage,
+  raw: CursorTokenTotals,
+  aggregate: CursorTokenTotals,
+  eligibleCount: number,
+): CursorTokenUsage {
+  return {
+    input_tokens: proportionalValue(
+      usage.input_tokens,
+      raw.input_tokens,
+      aggregate.input_tokens,
+      eligibleCount,
+    ),
+    output_tokens: proportionalValue(
+      usage.output_tokens,
+      raw.output_tokens,
+      aggregate.output_tokens,
+      eligibleCount,
+    ),
+    cache_write_tokens: proportionalValue(
+      usage.cache_write_tokens,
+      raw.cache_write_tokens,
+      aggregate.cache_write_tokens,
+      eligibleCount,
+    ),
+    cache_read_tokens: proportionalValue(
+      usage.cache_read_tokens,
+      raw.cache_read_tokens,
+      aggregate.cache_read_tokens,
+      eligibleCount,
+    ),
+    model_cost_cents: proportionalValue(
+      usage.model_cost_cents,
+      raw.cost_cents,
+      aggregate.cost_cents,
+      eligibleCount,
+    ),
+  }
+}
+
 function normalizeDashboardEvents(
   events: CursorUsageEvent[],
   aggregates: CursorDashboardAggregates,
@@ -377,59 +437,14 @@ function normalizeDashboardEvents(
     const tokenEvents = modelEvents.filter(
       (event) => event.token_usage !== null,
     )
-    const raw = tokenEvents.reduce((totals, event) => {
-      const usage = event.token_usage
-
-      if (usage !== null) {
-        addTokenTotals(totals, {
-          input_tokens: usage.input_tokens,
-          output_tokens: usage.output_tokens,
-          cache_write_tokens: usage.cache_write_tokens,
-          cache_read_tokens: usage.cache_read_tokens,
-          cost_cents: usage.model_cost_cents,
-        })
-      }
-
-      return totals
-    }, emptyTokenTotals())
+    const raw = rawTokenTotals(tokenEvents)
 
     for (const event of modelEvents) {
       const usage = event.token_usage
       const tokenUsage =
         usage === null
           ? null
-          : {
-              input_tokens: proportionalValue(
-                usage.input_tokens,
-                raw.input_tokens,
-                aggregate.input_tokens,
-                tokenEvents.length,
-              ),
-              output_tokens: proportionalValue(
-                usage.output_tokens,
-                raw.output_tokens,
-                aggregate.output_tokens,
-                tokenEvents.length,
-              ),
-              cache_write_tokens: proportionalValue(
-                usage.cache_write_tokens,
-                raw.cache_write_tokens,
-                aggregate.cache_write_tokens,
-                tokenEvents.length,
-              ),
-              cache_read_tokens: proportionalValue(
-                usage.cache_read_tokens,
-                raw.cache_read_tokens,
-                aggregate.cache_read_tokens,
-                tokenEvents.length,
-              ),
-              model_cost_cents: proportionalValue(
-                usage.model_cost_cents,
-                raw.cost_cents,
-                aggregate.cost_cents,
-                tokenEvents.length,
-              ),
-            }
+          : proportionalUsage(usage, raw, aggregate, tokenEvents.length)
 
       normalized.push({
         ...event,
@@ -440,21 +455,7 @@ function normalizeDashboardEvents(
   }
 
   const tokenEvents = normalized.filter((event) => event.token_usage !== null)
-  const raw = tokenEvents.reduce((totals, event) => {
-    const usage = event.token_usage
-
-    if (usage !== null) {
-      addTokenTotals(totals, {
-        input_tokens: usage.input_tokens,
-        output_tokens: usage.output_tokens,
-        cache_write_tokens: usage.cache_write_tokens,
-        cache_read_tokens: usage.cache_read_tokens,
-        cost_cents: usage.model_cost_cents,
-      })
-    }
-
-    return totals
-  }, emptyTokenTotals())
+  const raw = rawTokenTotals(tokenEvents)
 
   return normalized.map((event) => {
     const usage = event.token_usage
@@ -463,38 +464,12 @@ function normalizeDashboardEvents(
       return event
     }
 
-    const tokenUsage = {
-      input_tokens: proportionalValue(
-        usage.input_tokens,
-        raw.input_tokens,
-        aggregates.totals.input_tokens,
-        tokenEvents.length,
-      ),
-      output_tokens: proportionalValue(
-        usage.output_tokens,
-        raw.output_tokens,
-        aggregates.totals.output_tokens,
-        tokenEvents.length,
-      ),
-      cache_write_tokens: proportionalValue(
-        usage.cache_write_tokens,
-        raw.cache_write_tokens,
-        aggregates.totals.cache_write_tokens,
-        tokenEvents.length,
-      ),
-      cache_read_tokens: proportionalValue(
-        usage.cache_read_tokens,
-        raw.cache_read_tokens,
-        aggregates.totals.cache_read_tokens,
-        tokenEvents.length,
-      ),
-      model_cost_cents: proportionalValue(
-        usage.model_cost_cents,
-        raw.cost_cents,
-        aggregates.totals.cost_cents,
-        tokenEvents.length,
-      ),
-    }
+    const tokenUsage = proportionalUsage(
+      usage,
+      raw,
+      aggregates.totals,
+      tokenEvents.length,
+    )
 
     return {
       ...event,

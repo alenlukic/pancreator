@@ -4698,6 +4698,7 @@ function referencedPolicyIds(policy: Policy): Set<string> {
     /`tests\/[A-Za-z0-9._/-]+::[^`]+`/gu,
     '',
   )
+
   return new Set(withoutTestCitations.match(POLICY_REFERENCE_PATTERN) ?? [])
 }
 

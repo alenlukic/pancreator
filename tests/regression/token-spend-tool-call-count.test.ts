@@ -36,7 +36,6 @@ test('bare pan spend counts a conversation tool call once however many usage eve
   const root = createFixture()
   const projectsRoot = path.join(root, 'cursor-projects')
   const conversationId = 'conversation-many-events'
-  const now = new Date('2026-09-22T16:00:00.000Z')
   const transcriptPath = path.join(
     projectsRoot,
     projectSlug(root),
@@ -55,6 +54,7 @@ test('bare pan spend counts a conversation tool call once however many usage eve
     }),
   )
 
+  const now = new Date('2026-09-22T16:00:00.000Z')
   const fetchImpl: typeof fetch = async () =>
     new Response(
       JSON.stringify({

@@ -26,10 +26,12 @@ const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 const TEST_TOKEN = 'test-spend-token'
 const CURSOR_KEY = 'cursor-admin-key-secret'
 const EMAIL = 'private-person@example.com'
+
 const CONVERSATION_ID = 'conversation-raw-id-123'
 const CLOUD_AGENT_ID = 'bc-cloud-agent-raw-456'
 const AUTOMATION_ID = 'automation-raw-789'
 const TRANSCRIPT_TEXT = 'transcript text that must stay local'
+
 const DAY_MS = 24 * 60 * 60 * 1000
 const HEX_KEY = /^[0-9a-f]{64}$/u
 
@@ -406,6 +408,7 @@ test('two pan spend sync runs accumulate one ledger and keep one instance id', a
   const secondNow = new Date('2026-09-21T12:00:00.000Z')
   const at = (hours: number) => firstNow.getTime() - hours * 60 * 60 * 1000
   let events = [usageEvent(at(2), {}), usageEvent(at(1), {})]
+
   const ctx = await startServer(syncHandler({ events: () => events }))
   const root = createFixture()
 
@@ -428,6 +431,7 @@ test('two pan spend sync runs accumulate one ledger and keep one instance id', a
     events = [usageEvent(at(1), {}), usageEvent(at(0.5), {})]
 
     const second = await syncSpend(root, syncOptions(root, ctx, secondNow))
+
     const ledger = readLedger(root)
     const keys = ledger.records.map((record) => record.key)
     const instance = JSON.parse(
@@ -604,6 +608,7 @@ test('report aggregates every instance snapshot, skips an invalid snapshot, and 
   const instanceB = '00000000-0000-4000-8000-00000000000b'
   const instanceC = '00000000-0000-4000-8000-00000000000c'
   const recent = Date.now() - DAY_MS
+
   const ctx = await startServer(
     reportHandler(
       new Map([

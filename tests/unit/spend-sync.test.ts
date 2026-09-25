@@ -323,6 +323,7 @@ test('aggregates every instance snapshot with the local report keys and tool cal
     ],
     { days: 14, now: NOW },
   )
+
   const local = aggregateSpendRecords([], new Map())
 
   assert.equal(report.scope, 'multi-instance')

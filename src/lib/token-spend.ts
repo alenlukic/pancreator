@@ -19,6 +19,7 @@ const DAY_MS = 24 * 60 * 60 * 1_000
 const DEFAULT_REPORT_DAYS = 14
 const MAX_REPORT_DAYS = 365
 const MAX_SLICE_ROWS = 10
+
 const COMMAND_MARKER_PATTERN = /---\s*Cursor Command:\s*([A-Za-z0-9-]+)\s*---/u
 const SLASH_COMMAND_PATTERN = /^\/(pan-[a-z0-9-]+)\b/mu
 const TIMESTAMP_PATTERN = /<timestamp>([^<]+)<\/timestamp>/u
@@ -603,7 +604,6 @@ function eventTimeline(absolute: string): Array<{
     return []
   }
 
-  const timeline: Array<{ at_ms: number; stage: string | null }> = []
   let content: string
 
   try {
@@ -611,6 +611,8 @@ function eventTimeline(absolute: string): Array<{
   } catch {
     return []
   }
+
+  const timeline: Array<{ at_ms: number; stage: string | null }> = []
 
   for (const line of content.split('\n')) {
     if (line.trim().length === 0) {
@@ -1099,10 +1101,12 @@ export function aggregateSpendRecords(
 ): AggregateSpendRecordsResult {
   const totals = emptyMetrics()
   const daily = new Map<string, SpendMetrics>()
+
   const commands = new Map<string, SpendMetrics>()
   const personaModels = new Map<string, SpendMetrics>()
   const toolMetrics = new Map<string, SpendMetrics>()
   const fastModes = new Map<string, SpendMetrics>()
+
   const governance = new Map<string, SpendMetrics>()
   const roles = new Map<string, SpendMetrics>()
   const stages = new Map<string, SpendMetrics>()
