@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.27.0] - 2026-09-25
+## [Unreleased]
 
 This release bans AwaitShell and makes `pan watch` the only wait for a shell command or a subagent.
 
@@ -19,6 +19,28 @@ This release bans AwaitShell and makes `pan watch` the only wait for a shell com
 ### Fixed
 
 - Repair the hook-contract tests, the concurrency overlap proof, and the restored watch-repair assertions ([46e88e4e](https://github.com/alenlukic/pancreator/commit/46e88e4e4d54d1c133dafc4636df1ccc0b873169)).
+
+## [7.28.0] - 2026-09-25
+
+This release adds `pan spend sync` and `pan spend report`. It also adds local `pan spend` from the merged spend line.
+
+### Changed
+
+- Split spend collection from aggregation so a combined report reuses the local cost rules ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+- Include `services` in the Prettier format scripts ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+
+### Added
+
+- Add `pan spend sync` and `pan spend report` with `spend.vercel_host` ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+- Add a Vercel project at `services/spend-sync/` with pinned `@vercel/blob` 2.8.0 and `vercel` 59.26.0 ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+- Add `pan spend` and `/pan-spend` for Cursor usage and local attribution ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+- Add a retain class so `pan cleanup` keeps `runtime/spend/` ([f79276b7](https://github.com/alenlukic/pancreator/commit/f79276b7)).
+
+### Fixed
+
+- Compute `ledger_window` in one loop so a large ledger does not throw RangeError ([0ab9369d](https://github.com/alenlukic/pancreator/commit/0ab9369d0e9226e8a1fbb91b70c6196b65fc3f62)).
+- Authenticate personal usage with `CURSOR_SESSION_TOKEN` when team Admin API access is absent ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- Reconcile personal event allocations to Cursor aggregate totals ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
 
 ## [7.26.0] - 2026-09-25
 
@@ -103,6 +125,50 @@ This release adds a Cursor project hook that injects a compact, role-specific go
 ### Fixed
 
 - Keep a self-development profile command on workspace files when `PANCREATOR_EXEC_ROOT` points at that workspace ([2e19adaa](https://github.com/alenlukic/pancreator/commit/2e19adaab41f4a24d2f718714fa189fbe7f2880e)).
+
+## [7.23.2] - 2026-09-22
+
+This release reconciles personal event allocations with Cursor's aggregate token and model-cost totals.
+
+### Changed
+
+- Label personal daily and attributed values as inferred allocations ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+
+### Fixed
+
+- Normalize personal event metrics by model, then reconcile them to exact overall totals ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+- Make daily token and cost totals equal Cursor's aggregate response ([fad0b17c](https://github.com/alenlukic/pancreator/commit/fad0b17c41496acc0ae0c2499e56991617b40748)).
+- Refresh the target repository primer for inferred event allocations ([c0089893](https://github.com/alenlukic/pancreator/commit/c0089893a61aa25a8d14e75c6ad0044ed60793e1)).
+
+## [7.23.1] - 2026-09-22
+
+This release makes `pan spend` work for personal Cursor accounts and labels the available cost basis.
+
+### Changed
+
+- Label personal reports with aggregate model cost and team reports with charged cost ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- State that personal daily and attributed views exclude cache-read tokens and cost ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- Refresh the target repository primer for personal spend reporting ([8488675a](https://github.com/alenlukic/pancreator/commit/8488675abc27c5b862d9809e3ecc2454194a50dc)).
+
+### Fixed
+
+- Authenticate personal usage requests with `CURSOR_SESSION_TOKEN` when team Admin API access is unavailable ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+- Use dashboard aggregates for exact token categories and normalize omitted zero-value event fields ([7fb5cdec](https://github.com/alenlukic/pancreator/commit/7fb5cdec3cb7a955c6f411ee60d92c0841cb9a1b)).
+
+## [7.23.0] - 2026-09-22
+
+This release adds `pan spend` and `/pan-spend`. The command aggregates Cursor Admin API usage and attributes local workflow spend.
+
+### Changed
+
+- Refresh `docs/target-repo-primer.md` for the spend command and its attribution sources ([5292b9a2](https://github.com/alenlukic/pancreator/commit/5292b9a23248101c4955ef00c7157707e6a8016b)).
+- Repair `/pan-spend` list punctuation and TypeScript blank-line style ([136cdab5](https://github.com/alenlukic/pancreator/commit/136cdab5bafa3aa88b4e6d556e79dae280662d2d)).
+
+### Added
+
+- Add `pan spend` and `/pan-spend` with Cursor Admin API aggregation ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+- Render a Canvas report of token volume, charged spend, and attribution ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
+- Attribute usage to local workflow records and registered embedded installations ([e0e23aac](https://github.com/alenlukic/pancreator/commit/e0e23aacc3d82108aea612b4ec3ff36565c550bf)).
 
 ## [7.22.0] - 2026-09-22
 

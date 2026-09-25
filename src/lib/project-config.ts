@@ -11,6 +11,7 @@ import type {
   RegisteredInstallation,
   ResolvedAwayModeConfig,
   ResolvedWorktreesConfig,
+  SpendConfig,
 } from './types.js'
 
 /** Top-level managed worktree root for current installations. */
@@ -575,6 +576,121 @@ function nonEmptyScheduleString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1'])
+
+/** True for a loopback URL hostname; WHATWG URL keeps IPv6 brackets. */
+export function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTS.has(hostname.replace(/^\[(.*)\]$/u, '$1'))
+}
+
+/**
+ * Resolve the configured `spend.vercel_host` to its normalized origin.
+ * An absent host fails with `SPEND_SYNC_HOST_MISSING`.
+ */
+export function resolveSpendSyncOrigin(config: ProjectConfig | null): string {
+  const host = config?.spend?.vercel_host
+
+  invariant(
+    typeof host === 'string' && host.length > 0,
+    `${PROJECT_CONFIG_PATH}.spend.vercel_host must be set to use spend sync or report.`,
+    { code: 'SPEND_SYNC_HOST_MISSING' },
+  )
+
+  return normalizeSpendSyncHost(host)
+}
+
+/**
+ * Normalize a `spend.vercel_host` value to an origin.
+ * Accepts:
+ *   - a bare host (`pan-spend.vercel.app`) → `https://pan-spend.vercel.app`
+ *   - `https://<host>[:port]` (trailing slash stripped)
+ *   - `http://<loopback>[:port]` (loopback only, for tests)
+ * Everything else fails with `INVALID_PROJECT_CONFIG`.
+ */
+function normalizeSpendSyncHost(host: string): string {
+  let parsed: URL
+
+  if (host.includes('://')) {
+    try {
+      parsed = new URL(host)
+    } catch {
+      invariant(
+        false,
+        `${PROJECT_CONFIG_PATH}.spend.vercel_host is not a valid URL: ${host}`,
+        { code: 'INVALID_PROJECT_CONFIG' },
+      )
+    }
+  } else {
+    // Bare host — treat as https.
+    try {
+      parsed = new URL(`https://${host}`)
+    } catch {
+      invariant(
+        false,
+        `${PROJECT_CONFIG_PATH}.spend.vercel_host is not a valid host: ${host}`,
+        { code: 'INVALID_PROJECT_CONFIG' },
+      )
+    }
+  }
+
+  invariant(
+    parsed.protocol === 'https:' ||
+      (parsed.protocol === 'http:' && isLoopbackHostname(parsed.hostname)),
+    `${PROJECT_CONFIG_PATH}.spend.vercel_host must use https (or http for a loopback host).`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  invariant(
+    parsed.pathname === '/',
+    `${PROJECT_CONFIG_PATH}.spend.vercel_host must not include a path.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  invariant(
+    parsed.search === '',
+    `${PROJECT_CONFIG_PATH}.spend.vercel_host must not include a query string.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  invariant(
+    parsed.hash === '',
+    `${PROJECT_CONFIG_PATH}.spend.vercel_host must not include a fragment.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  invariant(
+    parsed.username === '' && parsed.password === '',
+    `${PROJECT_CONFIG_PATH}.spend.vercel_host must not include credentials.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  // Remove trailing slash and return.
+  return `${parsed.protocol}//${parsed.host}`
+}
+
+function assertSpendBlock(
+  value: unknown,
+): asserts value is SpendConfig | undefined {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(value),
+    `${PROJECT_CONFIG_PATH}.spend MUST be an object when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  if (value.vercel_host !== undefined) {
+    invariant(
+      typeof value.vercel_host === 'string' && value.vercel_host.length > 0,
+      `${PROJECT_CONFIG_PATH}.spend.vercel_host MUST be a non-empty string when present.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+    normalizeSpendSyncHost(value.vercel_host)
+  }
+}
+
 function assertFastWallBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -694,6 +810,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   assertInstallationsBlock(value.installations)
   assertScheduleBlock(value.schedule)
   assertFastWallBlock(value.fast_wall)
+  assertSpendBlock(value.spend)
 
   const testScratchError = testScratchDeclarationError(value.test_scratch)
 
