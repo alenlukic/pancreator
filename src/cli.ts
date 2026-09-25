@@ -101,7 +101,7 @@ import {
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { openAiExecutorPreflight } from './lib/executors/openai-auth.js'
 import { browserReadiness } from './lib/browser-readiness.js'
-import { errorMessage, PanError } from './lib/errors.js'
+import { errorMessage, invariant, PanError } from './lib/errors.js'
 import { assertArgvElementsWithinLimit } from './lib/argv-limits.js'
 import {
   configuredWorkspaceRoot,
@@ -267,6 +267,7 @@ import {
 } from './lib/workflow-artifacts.js'
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import { generateTokenSpendReport } from './lib/token-spend.js'
+import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -3139,6 +3140,52 @@ async function main(): Promise<void> {
       return
     }
     case 'spend': {
+      const subcommand = args[0]
+
+      if (subcommand === 'sync') {
+        args.shift()
+        const days = integerOption(args, '--days')
+
+        invariant(
+          days === null || (days >= 1 && days <= 365),
+          '--days MUST be an integer from 1 to 365.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const result = await syncSpend(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand === 'report') {
+        args.shift()
+        const days = integerOption(args, '--days')
+
+        invariant(
+          days === null || (days >= 1 && days <= 365),
+          '--days MUST be an integer from 1 to 365.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+
+        const report = await reportMultiInstanceSpend(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print({ status: 'reported', report }, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand !== undefined && !subcommand.startsWith('--')) {
+        invariant(
+          false,
+          `Unknown spend subcommand: ${subcommand}. Use 'sync' or 'report'.`,
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
       const days = integerOption(args, '--days')
       const report = await generateTokenSpendReport(root, {
         ...(days === null ? {} : { days }),

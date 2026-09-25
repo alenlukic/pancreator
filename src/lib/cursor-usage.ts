@@ -504,7 +504,7 @@ function normalizeDashboardEvents(
   })
 }
 
-function credentialRoots(root: string): string[] {
+export function credentialRoots(root: string): string[] {
   const installationRoot = path.resolve(root)
   const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
 

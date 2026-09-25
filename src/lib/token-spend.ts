@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync, type Dirent } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -114,6 +115,83 @@ export interface GenerateTokenSpendReportOptions {
   cursorProjectsRoot?: string
 }
 
+/**
+ * A privacy-safe attributed spend record keyed by a hashed event identity.
+ * No raw Cursor identifier leaves the machine in this form.
+ */
+export interface SpendRecord {
+  /** SHA-256 hex of [source, timestamp_ms, model, kind, max_mode, conv_id, agent_id, auto_id]. */
+  key: string
+  /** Usage source: 'team' for Admin API events, 'personal' for dashboard events. */
+  source: 'team' | 'personal'
+  timestamp_ms: number
+  model: string
+  metrics: SpendMetrics
+  attribution: EventAttribution
+  /** SHA-256 hex of matched transcript id, or null when no transcript matched. */
+  conversation_key: string | null
+}
+
+export interface CollectSpendRecordsOptions {
+  days?: number
+  apiKey?: string
+  sessionToken?: string
+  now?: Date
+  fetchImpl?: typeof fetch
+  endpoint?: string
+  aggregatesEndpoint?: string
+  transcriptsRoot?: string | null
+  cursorProjectsRoot?: string
+}
+
+export interface CollectSpendRecordsResult {
+  records: SpendRecord[]
+  /** Per-conversation_key tool counts for matched transcripts. */
+  tool_calls: Map<string, Map<string, number>>
+  usage: {
+    source: CursorUsageEventsResult['source']
+    pages_fetched: number
+    aggregate_tokens: CursorUsageEventsResult['aggregate_tokens']
+  }
+  attribution_sources: {
+    workspaces_scanned: number
+    embedded_installations_scanned: number
+  }
+}
+
+export interface AggregateSpendRecordsResult {
+  totals: SpendMetrics
+  token_categories: TokenSpendReport['token_categories']
+  daily: DailySpendPoint[]
+  slices: TokenSpendReport['slices']
+  coverage: TokenSpendReport['coverage']
+  warnings: string[]
+}
+
+/** Compute the privacy-safe deduplication key for a Cursor usage event. */
+export function spendEventKey(
+  event: CursorUsageEvent,
+  source: 'team' | 'personal',
+): string {
+  const input = JSON.stringify([
+    source,
+    event.timestamp_ms,
+    event.model,
+    event.kind,
+    event.max_mode,
+    event.conversation_id ?? '',
+    event.cloud_agent_id ?? '',
+    event.automation_id ?? '',
+  ])
+
+  return createHash('sha256').update(input).digest('hex')
+}
+
+/** Compute the SHA-256 hex key for a matched transcript id. */
+export function conversationKeyFromId(id: string): string {
+  return createHash('sha256').update(id).digest('hex')
+}
+
 interface TranscriptEvidence {
   id: string
   parent_id: string | null
@@ -152,7 +230,7 @@ interface RunStorage {
   invocation: (invocationId: string) => string
 }
 
-interface EventAttribution {
+export interface EventAttribution {
   command: string
   persona_model: string
   tools: string[]
@@ -865,11 +943,14 @@ function roundRows(rows: SpendSliceRow[]): SpendSliceRow[] {
   }))
 }
 
-/** Fetch, correlate, and aggregate a compact token spend report. */
-export async function generateTokenSpendReport(
+/**
+ * Fetch, correlate, and return attributed spend records without aggregating.
+ * The records are privacy-safe: all identifiers are replaced with SHA-256 hex keys.
+ */
+export async function collectSpendRecords(
   root: string,
-  options: GenerateTokenSpendReportOptions = {},
-): Promise<TokenSpendReport> {
+  options: CollectSpendRecordsOptions = {},
+): Promise<CollectSpendRecordsResult> {
   const days = reportDays(options.days)
   const now = options.now ?? new Date()
   const endDateMs = now.getTime()
@@ -912,6 +993,11 @@ export async function generateTokenSpendReport(
           })
   }
 
+  const source: 'team' | 'personal' =
+    usage.source === 'Cursor Admin API /teams/filtered-usage-events'
+      ? 'team'
+      : 'personal'
+
   const roots = attributionRoots(root)
   const transcripts = readTranscripts(
     roots,
@@ -940,29 +1026,96 @@ export async function generateTokenSpendReport(
       workers: new Map<string, WorkflowIdentity>(),
     },
   )
-  const attributions = usage.events.map((event) =>
-    attributionForEvent(event, transcripts, workflow.runs, workflow.workers),
-  )
 
+  const records: SpendRecord[] = []
+  const tool_calls = new Map<string, Map<string, number>>()
+
+  for (const event of usage.events) {
+    const attribution = attributionForEvent(
+      event,
+      transcripts,
+      workflow.runs,
+      workflow.workers,
+    )
+    const key = spendEventKey(event, source)
+
+    const rawTranscriptId =
+      event.conversation_id !== null && transcripts.has(event.conversation_id)
+        ? event.conversation_id
+        : event.cloud_agent_id !== null && transcripts.has(event.cloud_agent_id)
+          ? event.cloud_agent_id
+          : null
+
+    const conversation_key =
+      rawTranscriptId === null ? null : conversationKeyFromId(rawTranscriptId)
+
+    records.push({
+      key,
+      source,
+      timestamp_ms: event.timestamp_ms,
+      model: event.model,
+      metrics: eventMetrics(event),
+      attribution,
+      conversation_key,
+    })
+
+    if (rawTranscriptId !== null && conversation_key !== null) {
+      const transcriptTools =
+        transcripts.get(rawTranscriptId)?.tools ?? new Map<string, number>()
+
+      const existing =
+        tool_calls.get(conversation_key) ?? new Map<string, number>()
+
+      for (const [tool, count] of transcriptTools) {
+        existing.set(tool, (existing.get(tool) ?? 0) + count)
+      }
+
+      tool_calls.set(conversation_key, existing)
+    }
+  }
+
+  return {
+    records,
+    tool_calls,
+    usage: {
+      source: usage.source,
+      pages_fetched: usage.pages_fetched,
+      aggregate_tokens: usage.aggregate_tokens,
+    },
+    attribution_sources: {
+      workspaces_scanned: roots.length,
+      embedded_installations_scanned: roots.filter((item) => item.embedded)
+        .length,
+    },
+  }
+}
+
+/**
+ * Aggregate spend records into totals, daily series, slices, and coverage.
+ * Does not apply the `aggregate_tokens` override; `generateTokenSpendReport`
+ * applies that after collecting records.
+ */
+export function aggregateSpendRecords(
+  records: SpendRecord[],
+  tool_calls: Map<string, Map<string, number>>,
+): AggregateSpendRecordsResult {
   const totals = emptyMetrics()
   const daily = new Map<string, SpendMetrics>()
-
   const commands = new Map<string, SpendMetrics>()
   const personaModels = new Map<string, SpendMetrics>()
   const toolMetrics = new Map<string, SpendMetrics>()
   const fastModes = new Map<string, SpendMetrics>()
-
   const governance = new Map<string, SpendMetrics>()
   const roles = new Map<string, SpendMetrics>()
   const stages = new Map<string, SpendMetrics>()
   const remediation = new Map<string, SpendMetrics>()
 
-  const matchedTranscriptIds = new Set<string>()
+  const syntheticEvents: CursorUsageEvent[] = []
+  const syntheticAttributions: EventAttribution[] = []
 
-  usage.events.forEach((event, index) => {
-    const metrics = eventMetrics(event)
-    const attribution = attributions[index] as EventAttribution
-    const date = new Date(event.timestamp_ms).toISOString().slice(0, 10)
+  for (const record of records) {
+    const { metrics, attribution } = record
+    const date = new Date(record.timestamp_ms).toISOString().slice(0, 10)
 
     addMetrics(totals, metrics)
     metricsMapRow(daily, date, metrics)
@@ -978,38 +1131,38 @@ export async function generateTokenSpendReport(
       metricsMapRow(toolMetrics, tool, metrics)
     }
 
-    const transcriptId =
-      event.conversation_id !== null && transcripts.has(event.conversation_id)
-        ? event.conversation_id
-        : event.cloud_agent_id !== null && transcripts.has(event.cloud_agent_id)
-          ? event.cloud_agent_id
-          : null
-
-    if (transcriptId !== null) {
-      matchedTranscriptIds.add(transcriptId)
-    }
-  })
-
-  if (usage.aggregate_tokens !== null) {
-    totals.input_tokens = usage.aggregate_tokens.input_tokens
-    totals.output_tokens = usage.aggregate_tokens.output_tokens
-    totals.cache_write_tokens = usage.aggregate_tokens.cache_write_tokens
-    totals.cache_read_tokens = usage.aggregate_tokens.cache_read_tokens
-    totals.cost_cents = usage.aggregate_tokens.cost_cents
-    totals.total_tokens =
-      totals.input_tokens +
-      totals.output_tokens +
-      totals.cache_write_tokens +
-      totals.cache_read_tokens
+    // Build synthetic event/attribution arrays for coverage computation.
+    syntheticEvents.push({
+      timestamp_ms: record.timestamp_ms,
+      model: record.model,
+      kind: 'unknown',
+      max_mode: false,
+      request_units: metrics.request_units,
+      token_based: true,
+      chargeable: true,
+      headless: false,
+      conversation_id: null,
+      cloud_agent_id: null,
+      automation_id: null,
+      token_usage: {
+        input_tokens: metrics.input_tokens,
+        output_tokens: metrics.output_tokens,
+        cache_write_tokens: metrics.cache_write_tokens,
+        cache_read_tokens: metrics.cache_read_tokens,
+        model_cost_cents: metrics.cost_cents,
+      },
+      charged_cents: metrics.cost_cents,
+      cursor_token_fee_cents: 0,
+    })
+    syntheticAttributions.push(attribution)
   }
 
-  const toolCalls = new Map<string, number>()
+  // Build per-conversation_key tool call counts.
+  const flatToolCalls = new Map<string, number>()
 
-  for (const transcriptId of matchedTranscriptIds) {
-    for (const [tool, count] of (
-      transcripts.get(transcriptId)?.tools ?? new Map<string, number>()
-    ).entries()) {
-      toolCalls.set(tool, (toolCalls.get(tool) ?? 0) + count)
+  for (const [, toolMap] of tool_calls) {
+    for (const [tool, count] of toolMap) {
+      flatToolCalls.set(tool, (flatToolCalls.get(tool) ?? 0) + count)
     }
   }
 
@@ -1023,10 +1176,10 @@ export async function generateTokenSpendReport(
             key: 'Other',
             metrics: sortedToolRows
               .slice(MAX_SLICE_ROWS - 1)
-              .reduce((metrics, row) => {
-                addMetrics(metrics, row.metrics)
+              .reduce((m, row) => {
+                addMetrics(m, row.metrics)
 
-                return metrics
+                return m
               }, emptyMetrics()),
           },
         ]
@@ -1038,35 +1191,18 @@ export async function generateTokenSpendReport(
     metrics: roundedMetrics(row.metrics),
     call_count:
       row.key === 'Other'
-        ? [...toolCalls.entries()]
+        ? [...flatToolCalls.entries()]
             .filter(([tool]) => !retainedTools.has(tool))
             .reduce((total, [, count]) => total + count, 0)
-        : (toolCalls.get(row.key) ?? 0),
+        : (flatToolCalls.get(row.key) ?? 0),
   }))
 
   const dailyPoints = [...daily.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, metrics]) => ({ date, ...roundedMetrics(metrics) }))
-  const totalMetrics = roundedMetrics(totals)
 
   return {
-    schema_version: 2,
-    generated_at: now.toISOString(),
-    period: {
-      days,
-      start: new Date(startDateMs).toISOString(),
-      end: now.toISOString(),
-      timezone: 'UTC',
-      source: usage.source,
-      cost_basis: usage.aggregate_tokens === null ? 'charged' : 'model-cost',
-      pages_fetched: usage.pages_fetched,
-    },
-    attribution_sources: {
-      workspaces_scanned: roots.length,
-      embedded_installations_scanned: roots.filter((item) => item.embedded)
-        .length,
-    },
-    totals: totalMetrics,
+    totals: roundedMetrics(totals),
     token_categories: {
       input: totals.input_tokens,
       output: totals.output_tokens,
@@ -1087,50 +1223,115 @@ export async function generateTokenSpendReport(
     },
     coverage: {
       command: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.command !== 'Unattributed',
-        attributions,
+        syntheticAttributions,
       ),
       persona: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => !item.persona_model.startsWith('Unattributed ·'),
-        attributions,
+        syntheticAttributions,
       ),
       tools: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.tools.length > 0,
-        attributions,
+        syntheticAttributions,
       ),
       fast_mode: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.fast_mode !== 'unknown',
-        attributions,
+        syntheticAttributions,
       ),
       governance: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.governance !== 'unattributed',
-        attributions,
+        syntheticAttributions,
       ),
       workflow_role: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.workflow_role !== 'unattributed',
-        attributions,
+        syntheticAttributions,
       ),
       stage: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.stage !== 'Unattributed',
-        attributions,
+        syntheticAttributions,
       ),
       remediation: coverage(
-        usage.events,
+        syntheticEvents,
         (item) => item.remediation !== 'unattributed',
-        attributions,
+        syntheticAttributions,
       ),
     },
     warnings: [
       'Cursor does not meter tokens per tool. Tool token totals overlap when a conversation used more than one tool.',
       'Cursor usage events do not expose Fast mode. Fast attribution uses exact fast=true or fast=false model declarations and leaves all other events unknown.',
-      ...(usage.aggregate_tokens === null
+    ],
+  }
+}
+
+/** Fetch, correlate, and aggregate a compact token spend report. */
+export async function generateTokenSpendReport(
+  root: string,
+  options: GenerateTokenSpendReportOptions = {},
+): Promise<TokenSpendReport> {
+  const days = reportDays(options.days)
+  const now = options.now ?? new Date()
+
+  const collected = await collectSpendRecords(root, { ...options, days, now })
+  const aggregated = aggregateSpendRecords(
+    collected.records,
+    collected.tool_calls,
+  )
+
+  // Apply the aggregate_tokens override for personal spend (C-1: keep existing behavior).
+  if (collected.usage.aggregate_tokens !== null) {
+    const agg = collected.usage.aggregate_tokens
+
+    aggregated.totals.input_tokens = agg.input_tokens
+    aggregated.totals.output_tokens = agg.output_tokens
+    aggregated.totals.cache_write_tokens = agg.cache_write_tokens
+    aggregated.totals.cache_read_tokens = agg.cache_read_tokens
+    aggregated.totals.cost_cents = agg.cost_cents
+    aggregated.totals.total_tokens =
+      agg.input_tokens +
+      agg.output_tokens +
+      agg.cache_write_tokens +
+      agg.cache_read_tokens
+    aggregated.token_categories = {
+      input: agg.input_tokens,
+      output: agg.output_tokens,
+      cache_write: agg.cache_write_tokens,
+      cache_read: agg.cache_read_tokens,
+      cached: agg.cache_write_tokens + agg.cache_read_tokens,
+    }
+  }
+
+  const endDateMs = now.getTime()
+  const startDateMs = endDateMs - days * DAY_MS
+
+  return {
+    schema_version: 2,
+    generated_at: now.toISOString(),
+    period: {
+      days,
+      start: new Date(startDateMs).toISOString(),
+      end: now.toISOString(),
+      timezone: 'UTC',
+      source: collected.usage.source,
+      cost_basis:
+        collected.usage.aggregate_tokens === null ? 'charged' : 'model-cost',
+      pages_fetched: collected.usage.pages_fetched,
+    },
+    attribution_sources: collected.attribution_sources,
+    totals: aggregated.totals,
+    token_categories: aggregated.token_categories,
+    daily: aggregated.daily,
+    slices: aggregated.slices,
+    coverage: aggregated.coverage,
+    warnings: [
+      ...aggregated.warnings,
+      ...(collected.usage.aggregate_tokens === null
         ? []
         : [
             'Personal event tokens and model cost use model aggregates, then reconcile to exact overall totals before time and attribution slices. These event allocations are inferred, and authoritative billed charges remain unavailable.',

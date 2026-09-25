@@ -1939,3 +1939,67 @@ Use `--note-file <path>` for a note above that bound. `decide`, `pause`, `resume
 ```sh
 ./bin/pan decide <run-id> revise --note-file runtime/inbox/queue/revision-directive.md
 ```
+
+## Sync Cursor spend across instances
+
+`pan spend sync` collects this instance's Cursor usage, accumulates it in `runtime/spend/ledger.json`, and uploads a compressed snapshot to a private Vercel Blob store. `pan spend report` downloads every instance's latest snapshot, deduplicates events, and runs the existing cost computation over the combined set.
+
+### Deploy the Vercel service
+
+1. Install service dependencies:
+
+```sh
+npm --prefix services/spend-sync ci
+```
+
+2. Log in and link the project:
+
+```sh
+npx --prefix services/spend-sync vercel link
+```
+
+3. Create a private Blob store in the Vercel dashboard and connect it to the project.
+
+4. Set the shared secret in Vercel:
+
+```sh
+npx --prefix services/spend-sync vercel env add PAN_SPEND_SYNC_TOKEN production
+```
+
+5. Deploy:
+
+```sh
+npx --prefix services/spend-sync vercel deploy --prod
+```
+
+### Configure each instance
+
+Add `spend.vercel_host` to `config.json` on each machine:
+
+```json
+{
+  "spend": {
+    "vercel_host": "your-project.vercel.app"
+  }
+}
+```
+
+Set `PAN_SPEND_SYNC_TOKEN` in the local `.env` or the process environment:
+
+```sh
+echo 'PAN_SPEND_SYNC_TOKEN=<shared-secret>' >> .env
+```
+
+### Sync and report
+
+Push this instance's spend data:
+
+```sh
+pan spend sync [--days <1..365>] [--json]
+```
+
+Pull all instances and produce a combined report:
+
+```sh
+pan spend report [--days <1..365>] [--json]
+```
