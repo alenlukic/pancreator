@@ -1,5 +1,23 @@
 # Changelog
 
+## [7.29.2] - 2026-09-26
+
+This release reports the Cursor token fee in spend reports and adds `/pan-cost`, which renders and opens the combined cost of every synced instance.
+
+### Added
+
+- Add `/pan-cost`, which runs `pan spend report` with the same arguments, writes the report canvas, and opens it ([5bcea901](https://github.com/alenlukic/pancreator/commit/5bcea901835225e7b21c555818f4406d2237c423)).
+- Add `--canvas <path>` to `pan spend` and `pan spend report` to render the report into the standard spend canvas template ([5bcea901](https://github.com/alenlukic/pancreator/commit/5bcea901835225e7b21c555818f4406d2237c423)).
+- Add the `spend-canvas` skill, which documents the spend canvas layout for `/pan-spend` and `/pan-cost` ([5bcea901](https://github.com/alenlukic/pancreator/commit/5bcea901835225e7b21c555818f4406d2237c423)).
+- Report `cursor_fee_cents` in every spend total, day, slice, and instance ([65e9c45c](https://github.com/alenlukic/pancreator/commit/65e9c45c37a54909eaf4373eae900acfefaddd2e)).
+
+### Fixed
+
+- Derive the Cursor fee at $0.25 per million tokens for events synced before fees were recorded ([65e9c45c](https://github.com/alenlukic/pancreator/commit/65e9c45c37a54909eaf4373eae900acfefaddd2e)).
+- Count only the latest snapshot of each instance in `pan spend report`, so a superseded upload no longer adds stale events ([65e9c45c](https://github.com/alenlukic/pancreator/commit/65e9c45c37a54909eaf4373eae900acfefaddd2e)).
+- Treat a Cursor dashboard page with no event list as an empty window in `pan spend sync` ([97b4907d](https://github.com/alenlukic/pancreator/commit/97b4907db6f1e5ed66b42d52499f9caf0a08f7d7)).
+- Skip URLs in Simplified Technical English vocabulary checks, so a cited link no longer fails `pan conform` ([88d13a12](https://github.com/alenlukic/pancreator/commit/88d13a12ee539f9381ea94e98a78cd3d8df04b8c)).
+
 ## [7.29.1] - 2026-09-25
 
 This release makes `pan spend` report the real Cursor charge. Personal reports understated cost by about 98 times.
