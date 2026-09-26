@@ -268,6 +268,7 @@ import {
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import { generateTokenSpendReport } from './lib/token-spend.js'
 import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
+import { writeSpendCanvas } from './lib/spend-canvas.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -3171,11 +3172,17 @@ async function main(): Promise<void> {
           { code: 'INVALID_ARGUMENT' },
         )
 
+        const canvas = option(args, '--canvas')
         const report = await reportMultiInstanceSpend(root, {
           ...(days === null ? {} : { days }),
         })
 
-        print({ status: 'reported', report }, hasFlag(args, '--json'))
+        print(
+          canvas === null
+            ? { status: 'reported', report }
+            : writeSpendCanvas(root, canvas, report),
+          hasFlag(args, '--json'),
+        )
         return
       }
 
@@ -3188,11 +3195,17 @@ async function main(): Promise<void> {
       }
 
       const days = integerOption(args, '--days')
+      const canvas = option(args, '--canvas')
       const report = await generateTokenSpendReport(root, {
         ...(days === null ? {} : { days }),
       })
 
-      print({ status: 'reported', report }, true)
+      print(
+        canvas === null
+          ? { status: 'reported', report }
+          : writeSpendCanvas(root, canvas, report),
+        true,
+      )
       return
     }
     case 'cleanup': {

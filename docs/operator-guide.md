@@ -2002,5 +2002,16 @@ pan spend sync [--days <1..365>] [--json]
 Pull all instances and produce a combined report:
 
 ```sh
-pan spend report [--days <1..365>] [--json]
+pan spend report [--days <1..365>] [--canvas <absolute-path.canvas.tsx>] [--json]
 ```
+
+Each event's charged cost includes the Cursor token fee, which the report also
+totals as `cursor_fee_cents`. An event synced before fees were recorded gets a
+fee derived at $0.25 per million tokens for models Cursor does not own, from
+2026-08-27 17:10 UTC, and the report notes how many events that covers.
+
+Use `/pan-cost [--days <1..365>]` to render that combined report as a Canvas
+and open it beside the chat. `--canvas` writes the standard spend canvas from
+`library/templates/spend-report.canvas.tsx` to the absolute path you name, and
+`pan spend --canvas` does the same for the local report that `/pan-spend` uses.
+`library/skills/spend-canvas.md` describes the layout.
