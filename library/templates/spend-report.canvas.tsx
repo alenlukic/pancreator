@@ -281,6 +281,7 @@ const cards = [
     ),
 ].filter(Boolean)
 
+// style: allow style.default_export Cursor Canvas renders the default export of a canvas file.
 export default function SpendReportCanvas() {
   return (
     <Stack gap={28} style={{ padding: 24, maxWidth: 1100 }}>
@@ -453,7 +454,7 @@ export default function SpendReportCanvas() {
           {hasFee && (
             <Text tone="tertiary" size="small">
               Fee share differs by model because the fee is charged per token
-              while model prices differ.
+              and model prices differ.
             </Text>
           )}
         </Stack>

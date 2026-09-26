@@ -171,7 +171,7 @@ test('banned punctuation, contractions, and Latin abbreviations are reported', (
   )
 })
 
-test('an inline code span is quoted text and is not read for vocabulary', () => {
+test('an inline code span or a URL is quoted text and is not read for vocabulary', () => {
   const quoted = codes(
     "Reports MUST NOT use `it's worth noting`, `leverage`, or `a; b` in chat.",
   )
@@ -180,6 +180,15 @@ test('an inline code span is quoted text and is not read for vocabulary', () => 
   assert.equal(quoted.includes('ste.word_substitution'), false)
   assert.equal(quoted.includes('ste.semicolon'), false)
   assert.ok(codes("The gate doesn't pass `yet`.").includes('ste.contraction'))
+  assert.equal(
+    codes('Read <https://example.com/cursor-vs-zed> first.').includes(
+      'ste.latin_abbreviation',
+    ),
+    false,
+  )
+  assert.ok(
+    codes('Cursor vs Zed is the question.').includes('ste.latin_abbreviation'),
+  )
   assert.deepEqual(
     splitSentences('Do not write `This is X. It is Y.` in chat. Stop here.'),
     ['Do not write `This is X. It is Y.` in chat.', 'Stop here.'],
