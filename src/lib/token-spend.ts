@@ -33,6 +33,8 @@ export interface SpendMetrics {
   cache_read_tokens: number
   total_tokens: number
   cost_cents: number
+  /** Cursor's token fee, already included in `cost_cents`. */
+  cursor_fee_cents: number
 }
 
 export interface SpendSliceRow {
@@ -130,6 +132,8 @@ export interface SpendRecord {
   attribution: EventAttribution
   /** SHA-256 hex of matched transcript id, or null when no transcript matched. */
   conversation_key: string | null
+  /** True when the fee was derived because the record predates fee syncing. */
+  fee_derived?: true
 }
 
 export interface CollectSpendRecordsOptions {
@@ -249,6 +253,7 @@ function emptyMetrics(): SpendMetrics {
     cache_read_tokens: 0,
     total_tokens: 0,
     cost_cents: 0,
+    cursor_fee_cents: 0,
   }
 }
 
@@ -269,6 +274,7 @@ function eventMetrics(event: CursorUsageEvent): SpendMetrics {
     cache_read_tokens: cacheRead,
     total_tokens: input + output + cacheWrite + cacheRead,
     cost_cents: event.charged_cents,
+    cursor_fee_cents: event.cursor_token_fee_cents,
   }
 }
 
@@ -281,6 +287,7 @@ function addMetrics(target: SpendMetrics, addition: SpendMetrics): void {
   target.cache_read_tokens += addition.cache_read_tokens
   target.total_tokens += addition.total_tokens
   target.cost_cents += addition.cost_cents
+  target.cursor_fee_cents += addition.cursor_fee_cents
 }
 
 function metricsMapRow(
@@ -932,6 +939,7 @@ function roundedMetrics(metrics: SpendMetrics): SpendMetrics {
     ...metrics,
     request_units: Number(metrics.request_units.toFixed(4)),
     cost_cents: Number(metrics.cost_cents.toFixed(6)),
+    cursor_fee_cents: Number(metrics.cursor_fee_cents.toFixed(6)),
   }
 }
 
@@ -1143,7 +1151,7 @@ export function aggregateSpendRecords(
         model_cost_cents: metrics.cost_cents,
       },
       charged_cents: metrics.cost_cents,
-      cursor_token_fee_cents: 0,
+      cursor_token_fee_cents: metrics.cursor_fee_cents,
     })
     syntheticAttributions.push(attribution)
   }
