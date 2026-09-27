@@ -19,7 +19,7 @@
     "After `pan release finalize`, the release steward MUST run `pan release land --worktree <name>` to land on `pan-dev`. The release steward MUST NOT merge into `pan-dev` by any other means, and MUST NOT use `git merge`, `git update-ref`, or `pan worktree reconcile --into-branch pan-dev` as a substitute.",
     "The release steward MUST NOT push, create or merge a pull request, publish, deploy, or invent a commit hash.",
     "When /pan-release finds no committed or worktree changes after the last release bump, and no release candidate needs regeneration, it MUST stop. It MUST NOT change files or increment VERSION.",
-    "Operator directive of 2026-09-26: the daily conform and style job may land commits on pan-dev without a release when every such commit carries the Pancreator-Daily-Quality: trailer and changes only the surface paths listed in governance/registries/daily_quality_surfaces.json. bin/install accepts drift from the indexed release that consists entirely of such commits and records daily_quality_head in the install marker. Every other installable change still requires a full release cycle."
+    "Operator directive of 2026-09-26: the daily conform and style job MAY land commits on pan-dev without a release when every such commit carries the Pancreator-Daily-Quality: trailer and changes only the surface paths listed in governance/registries/daily_quality_surfaces.json. bin/install MUST accept drift from the indexed release that consists entirely of such commits and MUST record daily_quality_head in the install marker. Every other installable change MUST still require a full release cycle."
   ],
   "guidance_sources": [
     {
