@@ -508,6 +508,23 @@
           }
         }
       }
+    },
+    "handoff": {
+      "type": "object",
+      "description": "Default model and effort for `pan handoff`. Values must match Cursor picker labels exactly. Absent fields use the built-in defaults: model `Claude Opus 5.5`, effort `High`. Flag arguments always take precedence.",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Default Cursor model picker label, e.g. `Claude Opus 5.5`."
+        },
+        "effort": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Default Cursor effort picker label, e.g. `High`."
+        }
+      }
     }
   }
 }

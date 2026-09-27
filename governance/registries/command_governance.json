@@ -44,6 +44,10 @@
       "card_mode": "spend"
     },
     {
+      "command": "pan-cost",
+      "card_mode": "spend"
+    },
+    {
       "command": "pan-style",
       "card_mode": "style"
     },

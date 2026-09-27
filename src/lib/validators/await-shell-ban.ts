@@ -79,6 +79,7 @@ function parseFlowSequence(text: string): string[] | null {
 
   const inner = text.slice(1, -1)
   const entries: string[] = []
+
   let token = ''
   let quote: string | null = null
   let quoted = false

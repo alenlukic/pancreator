@@ -42,6 +42,8 @@ exist.
   isolated browser context.
 - [`supervisor-recovery.md`](supervisor-recovery.md) - reconcile state and avoid
   duplicate workers after a supervisor interruption.
+- [`spend-canvas.md`](spend-canvas.md) - render a `pan spend` or
+  `pan spend report` result as the standard Cursor Canvas.
 
 ## Stage-aligned
 

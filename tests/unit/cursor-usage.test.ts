@@ -194,3 +194,29 @@ test('Cursor dashboard client paginates events and keeps each charged cost', asy
     ],
   )
 })
+
+test('Cursor dashboard client reads an omitted event list as an empty window', async () => {
+  const result = await fetchCursorDashboardUsageEvents({
+    sessionToken: 'session-secret',
+    startDateMs: 1779990000000,
+    endDateMs: 1780010000000,
+    fetchImpl: async () => response({}),
+    eventsEndpoint: 'https://example.test/events',
+  })
+
+  assert.deepEqual(result.events, [])
+  assert.equal(result.pages_fetched, 1)
+})
+
+test('Cursor dashboard client rejects a missing page before the reported total', async () => {
+  await assert.rejects(
+    fetchCursorDashboardUsageEvents({
+      sessionToken: 'session-secret',
+      startDateMs: 1779990000000,
+      endDateMs: 1780010000000,
+      fetchImpl: async () => response({ totalUsageEventsCount: 3 }),
+      eventsEndpoint: 'https://example.test/events',
+    }),
+    { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
+  )
+})

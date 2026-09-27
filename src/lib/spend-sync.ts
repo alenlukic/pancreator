@@ -228,7 +228,7 @@ function readLedger(root: string, instanceId: string): SpendLedger {
           typeof parsed.instance_id === 'string'
             ? parsed.instance_id
             : instanceId,
-        records: parsed.records.filter(isSpendRecord),
+        records: parseSpendRecords(parsed.records),
         tool_calls: parseToolCalls(parsed.tool_calls),
         updated_at:
           typeof parsed.updated_at === 'string'
@@ -768,12 +768,52 @@ function isSpendRecord(value: unknown): value is SpendRecord {
   return (
     isRecord(metrics) &&
     METRIC_FIELDS.every((field) => isFiniteNumber(metrics[field])) &&
+    (metrics.cursor_fee_cents === undefined ||
+      isFiniteNumber(metrics.cursor_fee_cents)) &&
     isRecord(attribution) &&
     ATTRIBUTION_STRING_FIELDS.every(
       (field) => typeof attribution[field] === 'string',
     ) &&
     Array.isArray(attribution.tools) &&
     attribution.tools.every((tool) => typeof tool === 'string')
+  )
+}
+
+// Cursor charges $0.25 per million tokens on every model it does not own.
+// Every fee-bearing usage event reproduces this rate, and none precedes the
+// start instant.
+const CURSOR_FEE_CENTS_PER_TOKEN = 25 / 1_000_000
+const CURSOR_FEE_START_MS = Date.parse('2026-08-27T17:10:00.000Z')
+const CURSOR_OWNED_MODEL_RE = /^(?:cursor-|composer|grok|default$)/iu
+
+/** Cursor's token fee for one event, from its model, time, and token total. */
+export function derivedCursorFeeCents(
+  model: string,
+  timestampMs: number,
+  totalTokens: number,
+): number {
+  return timestampMs < CURSOR_FEE_START_MS || CURSOR_OWNED_MODEL_RE.test(model)
+    ? 0
+    : totalTokens * CURSOR_FEE_CENTS_PER_TOKEN
+}
+
+/** Parse stored records, deriving the fee of records synced before fees were. */
+function parseSpendRecords(values: unknown[]): SpendRecord[] {
+  return values.filter(isSpendRecord).map((record) =>
+    isFiniteNumber(record.metrics.cursor_fee_cents)
+      ? record
+      : {
+          ...record,
+          metrics: {
+            ...record.metrics,
+            cursor_fee_cents: derivedCursorFeeCents(
+              record.model,
+              record.timestamp_ms,
+              record.metrics.total_tokens,
+            ),
+          },
+          fee_derived: true,
+        },
   )
 }
 
@@ -818,7 +858,7 @@ export function parseSpendSnapshot(value: unknown): ParsedSpendSnapshot | null {
     return null
   }
 
-  const records = value.records.filter(isSpendRecord)
+  const records = parseSpendRecords(value.records)
   const sources = isRecord(value.attribution_sources)
     ? value.attribution_sources
     : {}
@@ -872,6 +912,7 @@ function emptyMultiInstanceReport(
       cache_read_tokens: 0,
       total_tokens: 0,
       cost_cents: 0,
+      cursor_fee_cents: 0,
     },
     token_categories: {
       input: 0,
@@ -932,6 +973,23 @@ function selectedToolCalls(
   return toolCalls
 }
 
+/** Keep the newest snapshot of each instance; the host can hold older ones. */
+function latestSnapshotPerInstance(
+  snapshots: SpendSnapshot[],
+): SpendSnapshot[] {
+  const latest = new Map<string, SpendSnapshot>()
+
+  for (const snapshot of snapshots) {
+    const current = latest.get(snapshot.instance_id)
+
+    if (current === undefined || snapshot.synced_at > current.synced_at) {
+      latest.set(snapshot.instance_id, snapshot)
+    }
+  }
+
+  return [...latest.values()]
+}
+
 export interface CombineSpendSnapshotsOptions {
   days: number
   now: Date
@@ -946,12 +1004,19 @@ export interface CombineSpendSnapshotsOptions {
  * totals.
  */
 export function combineSpendSnapshots(
-  snapshots: SpendSnapshot[],
+  uploaded: SpendSnapshot[],
   options: CombineSpendSnapshotsOptions,
 ): MultiInstanceSpendReport {
   const endDateMs = options.now.getTime()
   const startDateMs = endDateMs - options.days * DAY_MS
   const warnings = [...(options.warnings ?? [])]
+  const snapshots = latestSnapshotPerInstance(uploaded)
+
+  if (snapshots.length < uploaded.length) {
+    warnings.push(
+      `Ignored ${uploaded.length - snapshots.length} superseded snapshot(s); each instance contributes only its latest sync.`,
+    )
+  }
   const basePeriod = {
     days: options.days,
     start: new Date(startDateMs).toISOString(),
@@ -1048,6 +1113,16 @@ export function combineSpendSnapshots(
     'Duplicate events across instances were counted once, using the better attributed record.',
     ...aggregated.warnings,
   )
+
+  const feeDerived = selected.filter(
+    (meta) => meta.record.fee_derived === true,
+  ).length
+
+  if (feeDerived > 0) {
+    warnings.push(
+      `${feeDerived} event(s) were synced before Cursor fees were recorded. Their fee is derived at $0.25 per million tokens for models Cursor does not own.`,
+    )
+  }
 
   return {
     scope: 'multi-instance',

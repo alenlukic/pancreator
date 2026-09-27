@@ -661,3 +661,27 @@ configuration switch therefore blocks older runs until their mapping is
 restored; this prevents an invocation card from claiming one model while
 another executes. Runs created before model snapshots use the current live
 mapping for backward compatibility.
+
+## Supervisor handoff record
+
+`pan handoff` records a `supervisor_handoffs` list on the run state. Each handoff attempt appends one record, and each later transition replaces that record in place while the run event log keeps every transition. A record carries:
+
+- `id`: a UUID for this attempt.
+- `status`: `sending` (before Send), `sent` (after Send), `aborted` (Send failed), or `accepted` (new session attested).
+- `from_session_generation`: the supervisor-card session generation of the handing-off session.
+- `prompt`, `model`, `effort`, and `verified_label`, which the `sending` record already carries.
+- `initiated_at`, `sent_at`, `resolved_at`.
+
+The `sending` record is written immediately before Send, under the run operation mutex, and only after the eligibility checks pass again inside that critical section. A second handoff that passed its own earlier checks therefore aborts with `HANDOFF_ALREADY_PENDING` and never presses Send.
+
+- `note_path`: harness-relative path of the handoff note written to run evidence.
+- `evidence_path`: harness-relative path of the step-evidence JSON.
+- `aborted_code`, `accepted_session_generation`: set by the `aborted` and `accepted` transitions.
+
+### Fence
+
+While the latest record is `sending` or `sent` and the session generation is unchanged, `pan prepare` and `pan submit` refuse with `SUPERVISOR_HANDED_OFF`. The new session lifts the fence by attesting the supervisor card, which increments the session generation and marks the record `accepted`.
+
+### Note
+
+A non-dry-run handoff writes the `--note` or `--note-file` text to `runtime/logs/workflows/<run-id>/agent/evidence/handoff-note-<id>.md` before any UI action. `pan status` reports the latest handoff's note path.

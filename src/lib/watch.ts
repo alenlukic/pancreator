@@ -2019,6 +2019,30 @@ export function watchLockOwnerAlive(record: WatchLockRecord): boolean {
   return processStartIdentity(record.pid) === record.process_identity
 }
 
+/**
+ * Whether any invocation of the run holds a watch lock with a live owner. The
+ * evidence directory is scanned rather than the recorded workers, because a
+ * watch can be armed before its worker handle is recorded.
+ */
+export function runHasLiveWatch(root: string, runId: string): boolean {
+  const evidenceDir = resolveRunLayout(root, runId).evidence('.')
+  let names: string[]
+
+  try {
+    names = readdirSync(evidenceDir.absolute)
+  } catch {
+    return false
+  }
+
+  return names
+    .filter((name) => name.endsWith('-watch.lock'))
+    .some((name) => {
+      const record = readWatchLock(path.join(evidenceDir.absolute, name))
+
+      return record !== null && watchLockOwnerAlive(record)
+    })
+}
+
 export interface WatchLockAcquisition {
   /** Release the claim. Idempotent; safe on every exit path. */
   release: () => void

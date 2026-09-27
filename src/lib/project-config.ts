@@ -7,6 +7,7 @@ import { testScratchDeclarationError } from './test-scratch.js'
 import type {
   AwayModeAction,
   AwayModeConfig,
+  HandoffConfig,
   ProjectConfig,
   RegisteredInstallation,
   ResolvedAwayModeConfig,
@@ -674,6 +675,34 @@ function normalizeSpendSyncHost(host: string): string {
   return `${parsed.protocol}//${parsed.host}`
 }
 
+/** Default model and effort used when `config.json` omits the `handoff` block. */
+export const DEFAULT_HANDOFF_MODEL = 'Claude Opus 5.5'
+export const DEFAULT_HANDOFF_EFFORT = 'High'
+
+function assertHandoffBlock(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(value),
+    `${PROJECT_CONFIG_PATH}.handoff MUST be an object when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.model === undefined ||
+      (typeof value.model === 'string' && value.model.trim().length > 0),
+    `${PROJECT_CONFIG_PATH}.handoff.model MUST be a non-empty string when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.effort === undefined ||
+      (typeof value.effort === 'string' && value.effort.trim().length > 0),
+    `${PROJECT_CONFIG_PATH}.handoff.effort MUST be a non-empty string when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+}
+
 function assertSpendBlock(
   value: unknown,
 ): asserts value is SpendConfig | undefined {
@@ -817,6 +846,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   assertScheduleBlock(value.schedule)
   assertFastWallBlock(value.fast_wall)
   assertSpendBlock(value.spend)
+  assertHandoffBlock(value.handoff)
 
   const testScratchError = testScratchDeclarationError(value.test_scratch)
 
@@ -979,4 +1009,49 @@ export function panCommand(root: string): string {
   return isEmbeddedInstallation(root)
     ? `./${EMBEDDED_HARNESS_PREFIX}/bin/pan`
     : './bin/pan'
+}
+
+/** Longest picker label a `pan handoff` flag may name, in UTF-8 bytes. */
+export const HANDOFF_LABEL_MAX_BYTES = 100
+
+function assertHandoffFlag(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    value.trim().length > 0 &&
+      !/[\r\n]/u.test(value) &&
+      Buffer.byteLength(value, 'utf8') <= HANDOFF_LABEL_MAX_BYTES,
+    `--${name} MUST be one non-empty line of at most ` +
+      `${HANDOFF_LABEL_MAX_BYTES} bytes that names a Cursor picker label.`,
+    { code: 'INVALID_ARGUMENT' },
+  )
+}
+
+/**
+ * Resolve model and effort for `pan handoff` with flag, then config, then
+ * built-in default precedence. A flag that is present MUST be a valid label;
+ * it never falls back silently.
+ */
+export function resolveHandoffConfig(
+  config: ProjectConfig | null,
+  flags?: { model?: string; effort?: string },
+): HandoffConfig {
+  assertHandoffFlag('model', flags?.model)
+  assertHandoffFlag('effort', flags?.effort)
+
+  const model =
+    flags?.model ??
+    ((config?.handoff?.model ?? '').trim().length > 0
+      ? (config?.handoff?.model as string)
+      : DEFAULT_HANDOFF_MODEL)
+
+  const effort =
+    flags?.effort ??
+    ((config?.handoff?.effort ?? '').trim().length > 0
+      ? (config?.handoff?.effort as string)
+      : DEFAULT_HANDOFF_EFFORT)
+
+  return { model, effort }
 }

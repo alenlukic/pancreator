@@ -27,6 +27,10 @@ import {
 import { resolveRequirements } from '../requirements/resolve.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { loadState, now, operationMutexPath, persist } from '../state.js'
+import {
+  applyHandoffAccepted,
+  checkHandoffFence,
+} from '../supervisor-handoff.js'
 import { loadWorkflowFile } from '../workflow.js'
 import type {
   Policy,
@@ -431,6 +435,9 @@ export function assertSupervisorCardAttested(
   state: RunState,
   action: 'prepare' | 'submit',
 ): void {
+  // A handoff fences a card-less run too: its generation is 0 until attested.
+  checkHandoffFence(state, action)
+
   const card = state.supervisor_card
 
   if (!card) {
@@ -598,10 +605,21 @@ export function attestSupervisorCard(
 
     card.attested_at = now()
     card.session_generation = (card.session_generation ?? 0) + 1
+
+    // When a handoff is pending and the new generation opens, accept it in-place
+    // before persisting so the single persist call captures both transitions.
+    const acceptedHandoffId = applyHandoffAccepted(
+      state,
+      card.session_generation,
+    )
+
     persist(root, state, 'supervisor_card_attested', {
       path: card.path,
       sha256: card.sha256,
       session_generation: card.session_generation,
+      ...(acceptedHandoffId !== null
+        ? { accepted_handoff_id: acceptedHandoffId }
+        : {}),
     })
 
     return card

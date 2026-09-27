@@ -58,6 +58,7 @@ const RUN_CONSTRUCTION_ALLOWLIST = new Set([
   'tests/integration/set-stage-inflight-worker.test.ts',
   'tests/integration/state.test.ts',
   'tests/integration/submit-advisories.test.ts',
+  'tests/integration/supervisor-handoff.test.ts',
   'tests/integration/workspace-target.test.ts',
   'tests/integration/worktree-cli-runs.test.ts',
   'tests/regression/delivery-old-graph.test.ts',

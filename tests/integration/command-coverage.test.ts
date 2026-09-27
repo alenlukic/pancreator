@@ -422,31 +422,33 @@ test('pan-research is registered with its research card and validates its docume
   )
 })
 
-test('pan-spend is registered with its spend card and keeps raw usage private', () => {
+test('pan-spend and pan-cost are registered with the spend card and keep raw usage private', () => {
   const root = createFixture()
-  const command = readFileSync(
-    path.join(root, 'library/cursor/commands/pan-spend.md'),
-    'utf8',
-  )
   const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
   const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
     card_commands: Array<{ command: string; card_mode: string }>
     target_mutating_commands: Array<{ command: string }>
   }
 
-  assert.match(command, /governance card --mode spend/u)
-  assert.match(command, /Cursor Canvas skill/u)
-  assert.match(command, /Do not expose or reconstruct raw API events/u)
-  assert.deepEqual(
-    registry.card_commands.find((entry) => entry.command === 'pan-spend'),
-    { command: 'pan-spend', card_mode: 'spend' },
-  )
-  assert.equal(
-    registry.target_mutating_commands.some(
-      (entry) => entry.command === 'pan-spend',
-    ),
-    false,
-  )
+  for (const name of ['pan-spend', 'pan-cost']) {
+    const command = readFileSync(
+      path.join(root, `library/cursor/commands/${name}.md`),
+      'utf8',
+    )
+
+    assert.match(command, /governance card --mode spend/u)
+    assert.match(command, /library\/skills\/spend-canvas\.md/u)
+    assert.match(command, /--canvas <absolute-path>/u)
+    assert.match(command, /Do not expose or reconstruct raw API events/u)
+    assert.deepEqual(
+      registry.card_commands.find((entry) => entry.command === name),
+      { command: name, card_mode: 'spend' },
+    )
+    assert.equal(
+      registry.target_mutating_commands.some((entry) => entry.command === name),
+      false,
+    )
+  }
   assert.deepEqual(run(root).errors, [])
 })
 
