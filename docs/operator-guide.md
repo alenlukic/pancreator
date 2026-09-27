@@ -2004,3 +2004,66 @@ Pull all instances and produce a combined report:
 ```sh
 pan spend report [--days <1..365>] [--json]
 ```
+
+## Landing on pan-dev
+
+### Why serialization matters
+
+A version collision on 2026-09-25 traced to two branches (`ban-await-shell-update-pan-watch` and `multi-cost-machine-spend-remediated`) created from the same pan-dev tip at 7.26.0 and both finalized against it before either landed. The first merge moved the tip to 7.28.0; the second branch, still at 7.27.0, now conflicted on every release metadata file. An agent hand-merged and reallocated, landing 7.29.0 through commit `a4d9ecc7`. Evidence: ledger records in `runtime/release/allocations.jsonl`, the pan-dev reflog, `git merge-tree` output showing conflicts in `CHANGELOG.md`, `VERSION`, `docs/embedded-installation.md`, `package.json`, `package-lock.json`, and `release/index.json`, and merge commit `a4d9ecc7`.
+
+Root cause: allocation, finalize, and merge ran without serialization. Two branches from one base both finalized against a stale tip; the first merge moved the tip past the second branch's version.
+
+`pan release land` fixes this by holding a lock from tip read to fast-forward, so two concurrent landings receive distinct versions and one serialized path to pan-dev.
+
+### The landing command
+
+`pan release land` is the only supported way to land a release branch on `pan-dev`:
+
+```sh
+pan release land --worktree <name> [--bump <major|minor|patch>] [--run <run-id>] \
+  [--verify-profile <name>]... [--wait-seconds <n>] [--json]
+```
+
+The command holds the landing mutex at `runtime/release/landing.lock` from tip read to fast-forward and runs these steps in order:
+
+1. **Tip read** — reads the current pan-dev commit and its VERSION.
+2. **Integrate** — when the candidate branch does not yet include the tip, predicts conflicts with `git merge-tree`, stops on source conflicts, or merges the tip and resolves every release metadata file to the tip's content.
+3. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
+4. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
+5. **Finalize** — calls `pan release finalize` to create the release and index commits.
+6. **Verify** — runs each `--verify-profile` (default `full`) against the candidate worktree.
+7. **Check** — runs `bin/check-landing branch <head> pan-dev`.
+8. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
+
+The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `lock_wait_seconds`, and `lock_hold_seconds`.
+
+### Statuses
+
+| Status                | Exit | Meaning                                                           |
+| --------------------- | ---- | ----------------------------------------------------------------- |
+| `landed`              | 0    | pan-dev is at the new version.                                    |
+| `conflict`            | 1    | Source files conflict with the tip. Resolve and rerun.            |
+| `verification_failed` | 1    | Checks failed; release commits stay on the branch. Fix and rerun. |
+| `landing_refused`     | 1    | `bin/check-landing` refused. Fix the named reason and rerun.      |
+
+### Lock location and wait bound
+
+The lock file lives at `runtime/release/landing.lock`. The landing event log at `runtime/release/landing.jsonl` records every acquire, wait-progress report, stale reclaim, release, and timeout.
+
+A waiter prints the holder's pid, worktree, command, start time, and elapsed seconds to stderr at least every 60 seconds while it waits. The default timeout is 7200 seconds (two hours); `--wait-seconds` takes a whole number of seconds and shortens it. A timeout fails with `LANDING_MUTEX_TIMEOUT` and names the holder.
+
+### Stale lock reclaim
+
+A lock is stale when its recorded pid is not running or when the process's start identity no longer matches. A stale lock is moved to `runtime/release/stale-locks/landing.lock.stale-<iso>-<token>` and the next caller acquires without operator intervention. The reclaim is recorded in `landing.jsonl` with `event: 'reclaimed'` and the dead holder's details. Reclaimers serialize, and each moves the lock only while it still carries the stale token, so two waiters never both hold the mutex.
+
+The landing runs synchronously and installs no signal handler. An interrupt or `SIGTERM` ends the holder at once, and the next landing reclaims its lock because the pid is gone. `pan cleanup` deletes reclaimed locks under `runtime/release/stale-locks/` after the retention window (class `landing-lock-stale`) and always keeps `allocations.jsonl`, `landing.jsonl`, and the live lock.
+
+### Source-conflict loop
+
+When `pan release land` returns `conflict`:
+
+1. Merge pan-dev into the candidate branch: `git merge --no-ff --no-edit pan-dev`.
+2. Resolve each source path the result lists. Take the tip's content for every metadata file.
+3. Stage resolved paths and commit.
+4. Run the impacted profile to confirm correctness.
+5. Run `pan release land --worktree <name>` again. The new run re-reads the tip, so a further tip movement is integrated too.

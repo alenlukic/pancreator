@@ -84,15 +84,27 @@ otherwise the request the card delivers, which is the ratified specification.
     test count, wall clock, and delta into `release.validation` as advisory
     text. The profile gates nothing. A card without the section records no
     profile; state that and continue.
-11. Apply the PR-description procedure `PR-001` references after finalization.
-    Read the template and instructions in `inputs.pr_description`. Use the same
-    managed worktree for the Git comparison. Use target mode when the context
-    names target authority. Use fallback mode only when the context permits it.
-    Put `<release-commit>..<index-commit>` in the Changelist.
+11. After finalize, run `pan release land --worktree <name> --run <run-id> --json`
+    to integrate, verify, and fast-forward pan-dev.
+    - On `landed`: record the landed version, tip before and after, release
+      commit, and index commit in `data.release.versioning`. Continue to step 12.
+    - On `conflict`: return `failure` with the land result in `data.landing`.
+      Record each conflicted source path. The remediate stage resolves the
+      conflict on the candidate branch.
+    - On `verification_failed`: return `failure` with the land result in
+      `data.landing`. The remediate stage repairs the failing checks.
+    - On `landing_refused` or `LANDING_MUTEX_TIMEOUT`: return `blocked` with
+      the `pan release land` command as `data.blocked.supplying_command` and
+      the refusal or timeout reason as `data.blocked.missing_precondition`.
+12. Apply the PR-description procedure `PR-001` references after a successful
+    landing. Read the template and instructions in `inputs.pr_description`. Use
+    the same managed worktree for the Git comparison. Use target mode when the
+    context names target authority. Use fallback mode only when the context
+    permits it. Put `<release-commit>..<index-commit>` in the Changelist.
     Write the declared PR artifact.
     The harness runs both PR validators against the named PR artifact. Do not
     open or create a pull request.
-12. Follow the card's `output.operator_brief` contract.
+13. Follow the card's `output.operator_brief` contract.
 
 ## Output
 

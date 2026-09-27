@@ -75,6 +75,29 @@ the `cause` from the verify evidence, the `action` taken, and non-empty
 the dispute and whose evidence proves it. Under `fail_severe`, record any plan
 amendments in `data.plan_amendments`. Follow the card's `output.operator_brief` contract.
 
+## Landing-conflict procedure
+
+When the prior ship output carries `data.landing.status` of `conflict`:
+
+1. Merge pan-dev into the managed worktree branch:
+   `git merge --no-ff --no-edit pan-dev` in the candidate worktree.
+2. Resolve each source path the land result lists in `source_conflicts`.
+   Acceptance criteria, implementation logic, and tests are source paths; take
+   the tip's release metadata files (`VERSION`, `CHANGELOG.md`, `package.json`,
+   `package-lock.json`, `docs/embedded-installation.md`, `release/index.json`)
+   exactly as the tip has them — do not hand-merge release metadata.
+3. Stage all resolved paths and commit.
+4. Run the impacted profile to confirm the resolution is clean.
+5. The run then returns to verify and ship. `pan release land` re-reads the
+   tip, so a tip that moved again is merged too, and verification reruns.
+
+When `data.landing.status` is `verification_failed`:
+
+1. Repair each failure named in the land result's `verification_output`.
+2. Run the impacted profile; fix any remaining failures.
+3. The run returns to verify and ship. `pan release land` re-runs finalize and
+   verification from the repaired state.
+
 ## Done when
 
 Every blocking verify finding is repaired or disputed with evidence, the

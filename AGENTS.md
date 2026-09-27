@@ -40,6 +40,7 @@ These constraints are never traded for the objective, for convenience, or for sp
 - You MUST NOT inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
 - You MUST NOT run concurrent mutating workflows against one workspace. Worktree isolation separates tracked source trees. It does not separate the release version sequence, the `pan-dev` branch, or `release/index.json`. Release preparation MUST serialize those shared resources through the allocation authority.
 - You MUST NOT change Pancreator release metadata outside a self-development ship stage or `/pan-release`, and MUST NOT edit `release/index.json` before the release commit exists.
+- You MUST land on `pan-dev` only through `pan release land`, which holds the landing mutex, integrates, allocates, verifies, and fast-forwards. You MUST NOT merge into `pan-dev` by any other means, and MUST NOT use `git merge`, `git update-ref`, or `pan worktree reconcile --into-branch pan-dev` as a substitute.
 - Browser inspection MUST follow `BROWSER-001`: an isolated context, never the operator's personal browser or host settings.
 - You MUST NOT manufacture completion. Report missing evidence and uncertainty instead.
 - You MUST NOT infer or broaden an operator override. The operator's actual words define its scope.

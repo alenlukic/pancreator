@@ -301,3 +301,21 @@ test('a worktree-less self-development run records the criterion it bypassed', (
   assert.match(evaluated.advisories[0] ?? '', /ship\.local_release_complete/u)
   assert.match(evaluated.advisories[0] ?? '', /no\s+managed worktree/u)
 })
+
+test('delivery ship stage routes failure to remediate for landing-conflict recovery', () => {
+  const shipStage = stageBySlug(
+    loadWorkflow(sharedFixture(), 'delivery'),
+    'ship',
+  )
+
+  assert.equal(shipStage.transitions.failure, 'remediate')
+})
+
+test('metacritic ship stage routes failure to consolidate for landing-conflict recovery', () => {
+  const shipStage = stageBySlug(
+    loadWorkflow(sharedFixture(), 'metacritic'),
+    'ship',
+  )
+
+  assert.equal(shipStage.transitions.failure, 'consolidate')
+})

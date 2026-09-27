@@ -81,24 +81,29 @@ test('worktree reconcile merges into an existing branch through a recorded workt
 })
 
 test('worktree reconcile merges into the branch the main checkout holds', () => {
-  const { root, mainBranch } = worktreeCheckpoint('two-sources')
+  // Use a non-protected branch so the LANDING_REQUIRES_RELEASE_LAND guard
+  // does not apply. The test is checking checkout-held branch reconciliation.
+  const { root } = worktreeCheckpoint('two-sources')
+  const targetBranch = 'reconcile-checkout-target'
+
+  git(root, ['checkout', '-q', '-b', targetBranch])
 
   const result = reconcileWorktrees(
     root,
-    { into_branch: mainBranch },
+    { into_branch: targetBranch },
     TWO_SOURCES,
   )
 
   assert.equal(result.status, 'merged')
-  assert.equal(result.target, mainBranch)
-  assert.equal(result.target_branch, mainBranch)
+  assert.equal(result.target, targetBranch)
+  assert.equal(result.target_branch, targetBranch)
   assert.equal(result.target_kind, 'checkout')
   assert.equal(result.target_path, '.')
   assert.deepEqual(result.merged_sources, TWO_SOURCES)
 
   assert.equal(
     git(root, ['symbolic-ref', '--short', 'HEAD']).trim(),
-    mainBranch,
+    targetBranch,
   )
   assert.equal(git(root, ['status', '--porcelain=v1']), '')
   assert.equal(existsSync(path.join(root, 'one.txt')), true)
@@ -110,7 +115,7 @@ test('worktree reconcile merges into the branch the main checkout holds', () => 
 
   // git creates no worktree for a branch a checkout already holds.
   assert.equal(
-    listWorktrees(root).some((entry) => entry.branch === mainBranch),
+    listWorktrees(root).some((entry) => entry.branch === targetBranch),
     false,
   )
 })
@@ -156,7 +161,13 @@ test('branch reconcile validates sources before creating its target worktree', (
 })
 
 test('reconcile judges a source and the holding checkout by the attribution records', () => {
-  const { root, mainBranch, worktrees } = worktreeCheckpoint('two-sources')
+  // Use a non-protected branch; the test exercises read-only-input handling,
+  // not the landing guard.
+  const { root, worktrees } = worktreeCheckpoint('two-sources')
+  const targetBranch = 'reconcile-attribution-target'
+
+  git(root, ['checkout', '-q', '-b', targetBranch])
+
   const design = 'design-source.svg'
 
   // The operator placed one read-only input in a source worktree and in the
@@ -168,7 +179,7 @@ test('reconcile judges a source and the holding checkout by the attribution reco
   writeFileSync(path.join(root, design), '<svg/>\n')
 
   assert.throws(
-    () => reconcileWorktrees(root, { into_branch: mainBranch }, TWO_SOURCES),
+    () => reconcileWorktrees(root, { into_branch: targetBranch }, TWO_SOURCES),
     (error: unknown) =>
       error instanceof PanError && error.code === 'WORKTREE_DIRTY',
   )
@@ -185,7 +196,7 @@ test('reconcile judges a source and the holding checkout by the attribution reco
 
   const result = reconcileWorktrees(
     root,
-    { into_branch: mainBranch },
+    { into_branch: targetBranch },
     TWO_SOURCES,
   )
 
@@ -196,5 +207,35 @@ test('reconcile judges a source and the holding checkout by the attribution reco
     git(root, ['status', '--porcelain=v1']).trim(),
     `?? ${design}`,
     'the merge left the recorded input untracked and unstaged',
+  )
+})
+
+test('reconcile refuses --into-branch pan-dev with LANDING_REQUIRES_RELEASE_LAND', () => {
+  const { root } = worktreeCheckpoint('two-sources')
+
+  assert.throws(
+    () => reconcileWorktrees(root, { into_branch: 'pan-dev' }, TWO_SOURCES),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'LANDING_REQUIRES_RELEASE_LAND')
+      assert.ok(
+        error.message.includes('pan release land'),
+        'error message names the landing command',
+      )
+      return true
+    },
+  )
+})
+
+test('reconcile refuses --into-branch main with LANDING_REQUIRES_RELEASE_LAND', () => {
+  const { root } = worktreeCheckpoint('two-sources')
+
+  assert.throws(
+    () => reconcileWorktrees(root, { into_branch: 'main' }, TWO_SOURCES),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'LANDING_REQUIRES_RELEASE_LAND')
+      return true
+    },
   )
 })
