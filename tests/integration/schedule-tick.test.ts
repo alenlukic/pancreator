@@ -477,4 +477,20 @@ test('alertReason opens an alert immediately after a failed decision', () => {
 
   assert.ok(alert, 'expected an open alert immediately after a failed decision')
   assert.match(alert.reason ?? '', /failed/iu)
+
+  scheduleTick(root, {
+    now: new Date('2026-01-06T10:00:02.137Z'),
+    executeAction: () => ({ ok: true, reason: 'daily quality run succeeded' }),
+  })
+
+  const cleared = refreshScheduleAlerts(
+    root,
+    new Date('2026-01-06T10:01:00.000Z'),
+  )
+
+  assert.equal(
+    cleared.alerts.some((entry) => entry.job_id === 'daily-quality-test'),
+    false,
+    'a later success must clear the failure alert',
+  )
 })

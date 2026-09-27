@@ -10,6 +10,8 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
+import { scanStyleArtifacts } from '../../src/lib/code-style.js'
+import { scanConformArtifacts } from '../../src/lib/conform.js'
 import { allocateReleaseVersion } from '../../src/lib/release-allocation.js'
 import {
   continueLocalRelease,
@@ -235,8 +237,34 @@ test('release finalize succeeds without quality preconditions', () => {
   const candidate = prepareReleaseCandidate('release-no-quality-gate')
 
   try {
-    // Quality scans no longer gate finalize; this verifies finalize proceeds
-    // even when the worktree has unclean conform/style artifacts.
+    writeFileSync(
+      path.join(candidate.worktreePath, 'AGENTS.md'),
+      `${readFileSync(path.join(candidate.worktreePath, 'AGENTS.md'), 'utf8')}\nDon't ship this sentence.\n`,
+    )
+    git(candidate.worktreePath, ['add', 'AGENTS.md'])
+    git(candidate.worktreePath, ['commit', '-qm', 'test: add conform issue'])
+    writeFileSync(
+      path.join(candidate.worktreePath, 'src', 'quality-issue.ts'),
+      'export function qualityIssue(ready: boolean): void {\n  if (ready) return\n}\n',
+    )
+    git(candidate.worktreePath, ['add', 'src/quality-issue.ts'])
+    git(candidate.worktreePath, ['commit', '-qm', 'test: add style issue'])
+
+    assert.equal(
+      scanConformArtifacts(candidate.root, {
+        workspace_root: candidate.worktreePath,
+        all: true,
+      }).status,
+      'failed',
+    )
+    assert.equal(
+      scanStyleArtifacts(candidate.root, {
+        workspace_root: candidate.worktreePath,
+        all: true,
+      }).status,
+      'failed',
+    )
+
     const finalized = finalizeLocalRelease(
       candidate.root,
       candidate.record.name,
@@ -244,8 +272,8 @@ test('release finalize succeeds without quality preconditions', () => {
     )
 
     assert.equal(finalized.status, 'finalized')
-    assert.equal(typeof finalized.release_commit, 'string')
     assert.equal(finalized.release_commit.length, 40)
+    assert.equal('overridden_quality_passes' in finalized, false)
   } finally {
     rmSync(candidate.remote, { recursive: true, force: true })
   }

@@ -2094,10 +2094,10 @@ The `daily-quality` schedule job runs `pan quality daily` at 04:30 every day on 
 ### What the job does
 
 1. Creates or reuses the `daily-quality` managed worktree and switches it to branch `pan-quality` at the current `pan-dev` tip.
-2. Runs `pan conform scan --all` and `pan style scan --all`. When both pass, it writes both checkpoints, records `clean`, and exits without committing.
+2. Runs the conform scan and `pan style scan --all` over the worktree. The conform scan judges only the worktree's files; harness-root runtime Markdown such as `runtime/research/*.md` stays with `/pan-conform`. When both pass, it writes both checkpoints, records `clean`, and exits without committing.
 3. When either scan is unclean, it launches a headless Cursor agent under the librarian persona to repair only the files the scans identified.
 4. Verifies every changed path is on the daily quality surfaces (`governance/registries/daily_quality_surfaces.json`).
-5. Runs the `static` and `fast` profiles in the worktree. Writes the conform and style checkpoints.
+5. Runs `CODE-STYLE-VALIDATE-001` on each changed source file and `SIMPLIFIED-ENGLISH-VALIDATE-001` on each changed conform file, then the `static` and `fast` profiles in the worktree. Writes the conform and style checkpoints.
 6. Commits with subject `style: daily conform and style pass <YYYY-MM-DD>` and trailer `Pancreator-Daily-Quality: <id>`.
 7. Acquires the landing mutex, rebases the commit onto the current `pan-dev` tip if it moved, reruns `static` and `fast`, and fast-forwards `pan-dev`.
 8. Writes the result to `runtime/logs/quality/<id>/result.json`.
@@ -2128,11 +2128,30 @@ An open alert for `daily-quality` appears immediately after a failed run. A late
 
 ### Change the hour
 
-Edit `config.json` or `config_overrides.json`:
+Edit `config.json` or `config_overrides.json`. An override replaces the whole `schedule.jobs` array, so it must repeat the complete `daily-quality` job and every other job you keep:
 
 ```json
-{ "schedule": { "jobs": [{ "id": "daily-quality", "hour": 6 }] } }
+{
+  "schedule": {
+    "jobs": [
+      {
+        "id": "daily-quality",
+        "enabled": true,
+        "hour": 6,
+        "minute": 30,
+        "workspace": ".",
+        "self_development_only": true,
+        "action": {
+          "kind": "command",
+          "command": "./bin/pan quality daily --json"
+        }
+      }
+    ]
+  }
+}
 ```
+
+Run `./bin/pan schedule validate` to confirm the merged configuration.
 
 Reinstall the agent after changing the hour: `./bin/pan schedule install-agent`.
 

@@ -626,7 +626,7 @@ resolve_source_metadata() {
       # bin/update keeps working (Q-4), but record the actual head.
       SOURCE_DAILY_QUALITY_HEAD="$head"
       local daily_count
-      daily_count="$(git -C "$PANCREATOR_ROOT" rev-list --count "${indexed}..${head}" 2>/dev/null || echo 0)"
+      daily_count="$(git -C "$PANCREATOR_ROOT" log --format='%(trailers:key=Pancreator-Daily-Quality,valueonly)' "${indexed}..${head}" | grep -c . || true)"
       echo "Accepted $daily_count daily quality commit(s) beyond indexed release $VERSION."
     else
       echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
@@ -1238,6 +1238,8 @@ install_payload() {
     ln -s ../.cursor "$PANCREATOR_DIR/.cursor"
   fi
 
+  # bash 3.2 treats an empty array expansion as unbound under `set -u`, so the
+  # optional pair expands only when the array holds it.
   local daily_quality_head_arg=()
   if [[ -n "$SOURCE_DAILY_QUALITY_HEAD" ]]; then
     daily_quality_head_arg=(--source-daily-quality-head "$SOURCE_DAILY_QUALITY_HEAD")
@@ -1250,7 +1252,7 @@ install_payload() {
     --source-commit "$SOURCE_COMMIT" \
     --source-dirty "$SOURCE_DIRTY" \
     --source-indexed "$SOURCE_INDEXED" \
-    "${daily_quality_head_arg[@]}" \
+    ${daily_quality_head_arg[@]+"${daily_quality_head_arg[@]}"} \
     --installed-at "$installed_at" \
     --payload-entries "$(payload_entries_csv)" \
     --payload-manifest "$payload_manifest"

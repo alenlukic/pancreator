@@ -300,39 +300,58 @@ test('pre-commit: refuses a merge whose MERGE_HEAD carries no new indexed releas
   assert.match(result.stderr, /still carries VERSION 1\.0\.0/u)
 })
 
-/** Set up the surfaces file in a repo. */
-function createSurfacesFile(root: string): void {
-  const dir = path.join(root, 'governance', 'registries')
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(
-    path.join(dir, 'daily_quality_surfaces.json'),
-    JSON.stringify(
-      {
-        schema_version: 1,
-        conform_paths: ['AGENTS.md', 'governance/criteria/*.md'],
-        style_extensions: ['.ts', '.tsx'],
-      },
-      null,
-      2,
-    ) + '\n',
-  )
+const DAILY_SURFACES = {
+  schema_version: 1,
+  conform_paths: [
+    'AGENTS.md',
+    'governance/criteria/*.md',
+    'docs/issues/**/*.md',
+  ],
+  style_extensions: ['.ts', '.tsx'],
 }
 
-/** Create a marked daily quality commit on the current branch. */
-function createDailyCommit(
+/**
+ * A repository whose pan-dev carries the surfaces registry, so daily-range
+ * reads it from the base commit of every range these tests check.
+ */
+function createDailyRepo(): { root: string; base: string } {
+  const { root } = createRepo()
+  const registry = path.join(
+    root,
+    'governance',
+    'registries',
+    'daily_quality_surfaces.json',
+  )
+
+  mkdirSync(path.dirname(registry), { recursive: true })
+  writeFileSync(registry, `${JSON.stringify(DAILY_SURFACES, null, 2)}\n`)
+  git(root, ['add', '.'])
+  git(root, ['commit', '-q', '-m', 'add daily quality surfaces'])
+  git(root, ['branch', '-f', 'pan-dev', 'HEAD'])
+
+  return { root, base: git(root, ['rev-parse', 'pan-dev']) }
+}
+
+/** Commit `files` on the current branch, with the daily trailer when `id` is set. */
+function commitFiles(
   root: string,
-  id: string,
-  file: string,
-  content: string,
-): void {
-  writeFileSync(path.join(root, file), content)
-  git(root, ['add', file])
-  git(root, [
-    'commit',
-    '-q',
-    '-m',
-    `style: daily conform and style pass 2026-09-26\n\nPancreator-Daily-Quality: ${id}`,
-  ])
+  files: Record<string, string>,
+  id: string | null,
+): string {
+  for (const [file, content] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+    writeFileSync(path.join(root, file), content)
+    git(root, ['add', file])
+  }
+
+  const message =
+    id === null
+      ? 'style: unmarked change'
+      : `style: daily conform and style pass 2026-09-26\n\nPancreator-Daily-Quality: ${id}`
+
+  git(root, ['commit', '-q', '-m', message])
+
+  return git(root, ['rev-parse', 'HEAD'])
 }
 
 function runCheckLandingResult(
@@ -352,14 +371,18 @@ function runCheckLandingResult(
 }
 
 test('daily-range: accepts a range of marked daily commits inside surfaces', () => {
-  const { root } = createRepo()
-  createSurfacesFile(root)
-
-  const base = git(root, ['rev-parse', 'pan-dev'])
+  const { root, base } = createDailyRepo()
 
   git(root, ['checkout', '-q', '-b', 'daily-pass'])
-  createDailyCommit(root, 'occ-001', 'AGENTS.md', '# Agents\n')
-  const head = git(root, ['rev-parse', 'HEAD'])
+  commitFiles(root, { 'src/fixed.ts': '// fixed\n' }, 'occ-001')
+  const head = commitFiles(
+    root,
+    {
+      'governance/criteria/sample.md': '# Sample\n',
+      'docs/issues/intake/note.md': '# Note\n',
+    },
+    'occ-002',
+  )
 
   const result = runCheckLandingResult(['daily-range', base, head], root)
 
@@ -367,120 +390,127 @@ test('daily-range: accepts a range of marked daily commits inside surfaces', () 
 })
 
 test('daily-range: refuses when range has no daily commits', () => {
-  const { root } = createRepo()
-  createSurfacesFile(root)
-
-  const base = git(root, ['rev-parse', 'pan-dev'])
+  const { root, base } = createDailyRepo()
   const result = runCheckLandingResult(['daily-range', base, base], root)
 
   assert.equal(result.status, 1)
   assert.match(result.stderr, /at least one/u)
 })
 
-test('daily-range: refuses a commit with no trailer', () => {
-  const { root } = createRepo()
-  createSurfacesFile(root)
-
-  const base = git(root, ['rev-parse', 'pan-dev'])
+test('daily-range: refuses an unmarked installable commit', () => {
+  const { root, base } = createDailyRepo()
 
   git(root, ['checkout', '-q', '-b', 'no-trailer'])
-  writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n')
-  git(root, ['add', 'AGENTS.md'])
-  git(root, ['commit', '-q', '-m', 'style: missing trailer'])
-  const head = git(root, ['rev-parse', 'HEAD'])
+  const head = commitFiles(root, { 'src/fixed.ts': '// fixed\n' }, null)
 
   const result = runCheckLandingResult(['daily-range', base, head], root)
 
   assert.equal(result.status, 1)
-  assert.match(result.stderr, /trailer/u)
+  assert.match(result.stderr, /missing the Pancreator-Daily-Quality: trailer/u)
 })
 
 test('daily-range: refuses a marked commit that changes a path outside surfaces', () => {
-  const { root } = createRepo()
-  createSurfacesFile(root)
-
-  const base = git(root, ['rev-parse', 'pan-dev'])
+  const { root, base } = createDailyRepo()
 
   git(root, ['checkout', '-q', '-b', 'out-of-surface'])
-  createDailyCommit(root, 'occ-002', 'src/changed.ts', '// changed\n')
-  // Also add an out-of-surface installable path.
-  writeFileSync(
-    path.join(root, 'package.json'),
-    '{"name":"test","version":"1.0.0"}\n',
+  const head = commitFiles(
+    root,
+    {
+      'src/fixed.ts': '// fixed\n',
+      'package.json': '{"name":"test","version":"1.0.0"}\n',
+    },
+    'occ-003',
   )
-  git(root, ['add', 'package.json'])
-  git(root, [
-    'commit',
-    '-q',
-    '--amend',
-    '-m',
-    'style: daily conform and style pass 2026-09-26\n\nPancreator-Daily-Quality: occ-002',
-  ])
-  const head = git(root, ['rev-parse', 'HEAD'])
 
   const result = runCheckLandingResult(['daily-range', base, head], root)
 
   assert.equal(result.status, 1)
-  assert.match(result.stderr, /not in the daily quality surfaces/u)
+  assert.match(
+    result.stderr,
+    /changes path 'package\.json' which is not in the daily quality surfaces/u,
+  )
+})
+
+test('daily-range: reads the surfaces from the base commit, not the working tree', () => {
+  const { root, base } = createDailyRepo()
+
+  git(root, ['checkout', '-q', '-b', 'widened'])
+  const head = commitFiles(
+    root,
+    { 'package.json': '{"name":"test","version":"1.0.0"}\n' },
+    'occ-004',
+  )
+
+  writeFileSync(
+    path.join(root, 'governance', 'registries', 'daily_quality_surfaces.json'),
+    `${JSON.stringify({ ...DAILY_SURFACES, conform_paths: ['package.json'] })}\n`,
+  )
+
+  const result = runCheckLandingResult(['daily-range', base, head], root)
+
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /'package\.json' which is not in the daily/u)
 })
 
 test('daily-range: refuses a merge commit', () => {
-  const { root } = createRepo()
-  createSurfacesFile(root)
-
-  const base = git(root, ['rev-parse', 'pan-dev'])
+  const { root, base } = createDailyRepo()
 
   git(root, ['checkout', '-q', '-b', 'branch-a'])
-  writeFileSync(path.join(root, 'AGENTS.md'), '# From branch-a\n')
-  git(root, ['add', 'AGENTS.md'])
-  git(root, ['commit', '-q', '-m', 'style: branch-a change'])
-  git(root, ['rev-parse', 'HEAD'])
-
-  git(root, ['checkout', '-q', 'pan-dev'])
-  git(root, ['merge', '--no-ff', '-q', 'branch-a'])
-  // Tag with daily quality trailer.
+  commitFiles(root, { 'src/a.ts': '// a\n' }, 'occ-side')
+  git(root, ['checkout', '-q', '-b', 'integration', base])
   git(root, [
-    'commit',
-    '--allow-empty',
+    'merge',
+    '--no-ff',
     '-q',
-    '--amend',
     '-m',
-    'style: daily conform and style pass 2026-09-26\n\nPancreator-Daily-Quality: occ-merge',
+    'style: daily merge\n\nPancreator-Daily-Quality: occ-merge',
+    'branch-a',
   ])
   const mergeHead = git(root, ['rev-parse', 'HEAD'])
 
   const result = runCheckLandingResult(['daily-range', base, mergeHead], root)
 
   assert.equal(result.status, 1)
-  assert.match(result.stderr, /merge commit/u)
-
-  // Reset pan-dev to base for cleanup.
-  git(root, ['reset', '--hard', base])
+  assert.match(
+    result.stderr,
+    new RegExp(`commit ${mergeHead} is a merge commit`, 'u'),
+  )
 })
 
 test('branch check: accepts a source whose only drift is marked daily commits', () => {
-  const { root } = createRepo()
-  createSurfacesFile(root)
+  const { root } = createDailyRepo()
 
-  // Create a release branch to satisfy the version requirement.
-  createReleaseBranch(root, 'daily-branch-accept', '2.0.0')
+  git(root, ['checkout', '-q', '-b', 'pan-quality', 'pan-dev'])
+  const head = commitFiles(root, { 'src/fixed.ts': '// fixed\n' }, 'occ-branch')
 
-  // Advance pan-dev to carry the release.
-  git(root, ['checkout', '-q', 'pan-dev'])
-  git(root, ['merge', '--ff-only', '-q', 'daily-branch-accept'])
-
-  // Add a daily quality commit after the release.
-  git(root, ['checkout', '-q', 'daily-branch-accept'])
-  createDailyCommit(root, 'occ-branch', 'AGENTS.md', '# fixed\n')
-  const headWithDaily = git(root, ['rev-parse', 'HEAD'])
-
-  // branch check should accept this because the post-release drift is daily commits.
-  const result = runCheckLandingResult(
-    ['branch', headWithDaily, 'pan-dev'],
-    root,
-  )
+  const result = runCheckLandingResult(['branch', head, 'pan-dev'], root)
 
   assert.equal(result.status, 0, `Expected exit 0; stderr: ${result.stderr}`)
+})
 
-  git(root, ['checkout', '-q', '-'])
+test('branch check: refuses an unmarked installable change at the same version', () => {
+  const { root } = createDailyRepo()
+
+  git(root, ['checkout', '-q', '-b', 'pan-quality', 'pan-dev'])
+  const head = commitFiles(root, { 'src/fixed.ts': '// fixed\n' }, null)
+
+  const result = runCheckLandingResult(['branch', head, 'pan-dev'], root)
+
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /still carries VERSION 1\.0\.0/u)
+  assert.match(
+    result.stderr,
+    new RegExp(`commit ${head} changes installable inputs and is missing`, 'u'),
+  )
+})
+
+test('branch check: accepts a marked daily commit that changes only AGENTS.md', () => {
+  const { root } = createDailyRepo()
+
+  git(root, ['checkout', '-q', '-b', 'pan-quality', 'pan-dev'])
+  const head = commitFiles(root, { 'AGENTS.md': '# Agents\n' }, 'occ-agents')
+
+  const result = runCheckLandingResult(['branch', head, 'pan-dev'], root)
+
+  assert.equal(result.status, 0, `Expected exit 0; stderr: ${result.stderr}`)
 })

@@ -3191,7 +3191,15 @@ async function main(): Promise<void> {
       const asJson = hasFlag(args, '--json')
 
       if (sub === 'daily') {
-        print(runDailyQuality(root, { json: asJson }), asJson)
+        const result = runDailyQuality(root)
+
+        print(result, asJson)
+
+        // The schedule records a job as failed only from a non-zero exit.
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
+
         return
       }
 

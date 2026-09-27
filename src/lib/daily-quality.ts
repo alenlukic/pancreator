@@ -5,7 +5,7 @@
  * Only runs inside a self_development installation. Outside self-development
  * it records `skipped` and exits 0.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -20,12 +20,18 @@ import {
   gitStatusPaths,
   INTEGRATION_BRANCH,
 } from './git.js'
-import { readJson, resolveInside, writeJsonAtomic } from './io.js'
+import { isRecord, readJson, resolveInside, writeJsonAtomic } from './io.js'
 import { acquireLandingMutex } from './landing-mutex.js'
 import { loadPipelineConfig, resolvePersonaModel } from './pipeline-config.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
+import { fastForwardIntegration, runLandingCheck } from './release-landing.js'
 import { runRepositoryCheck } from './repository-checks.js'
+import { loadRegistry } from './requirements/registry.js'
+import { isPassingResult, runRequirement } from './requirements/run.js'
+import type { ResolvedRequirement } from './types.js'
+import { codeStylePolicyId } from './validators/code-style.js'
 import {
+  readWorktreeIndex,
   resolveOrCreateWorktree,
   resolveWorktreeWorkspace,
   workspaceRepositoryRoot,
@@ -34,14 +40,31 @@ import { runCursorAgentSession } from './executors/cursor-agent.js'
 
 const DAILY_WORKTREE_NAME = 'daily-quality'
 const QUALITY_BRANCH = 'pan-quality'
+const REPAIR_PERSONA = 'librarian'
 const DAILY_QUALITY_TRAILER_KEY = 'Pancreator-Daily-Quality'
 const SURFACES_REGISTRY = 'governance/registries/daily_quality_surfaces.json'
 const RESULT_ROOT = 'runtime/logs/quality'
+const FAILED_PATCH = 'failed.patch'
 const GIT_TIMEOUT_MS = 30_000
+const GIT_MAX_BUFFER = 64 * 1024 * 1024
 
 export interface DailyScanResult {
   conform_status: string
   style_status: string
+}
+
+export interface DailyValidatorResult {
+  path: string
+  registry_id: string
+  policy_id: string
+  status: string
+  issue_count: number
+}
+
+export interface DailyProfileResult {
+  profile: string
+  phase: 'repair' | 'rebase'
+  status: string
 }
 
 export interface DailyQualityResult {
@@ -50,7 +73,11 @@ export interface DailyQualityResult {
   reason?: string
   scans?: DailyScanResult
   changed_files?: string[]
+  validator_results?: DailyValidatorResult[]
+  profile_results?: DailyProfileResult[]
   commit?: string
+  /** A pan-quality commit that a failed run left unlanded; failed.patch holds it. */
+  unlanded_head?: string
   landed_tip?: string
   lock_wait_ms?: number
   error?: string
@@ -61,10 +88,43 @@ interface SurfacesRegistry {
   style_extensions: string[]
 }
 
-function loadSurfaces(root: string): SurfacesRegistry {
-  const p = resolveInside(root, SURFACES_REGISTRY)
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
 
-  return readJson(p) as SurfacesRegistry
+/**
+ * The surfaces a daily commit may change, read from the pan-dev tip the
+ * repair starts from, so the repair agent cannot widen them.
+ */
+function loadSurfaces(
+  repositoryRoot: string,
+  commit: string,
+): SurfacesRegistry {
+  const shown = gitRun(repositoryRoot, [
+    'show',
+    `${commit}:${SURFACES_REGISTRY}`,
+  ])
+
+  invariant(
+    shown.status === 0,
+    `The pan-dev tip ${commit} carries no ${SURFACES_REGISTRY}.`,
+    { code: 'DAILY_QUALITY_SURFACES_MISSING' },
+  )
+
+  const value: unknown = JSON.parse(shown.stdout)
+
+  invariant(
+    isRecord(value) &&
+      isStringArray(value.conform_paths) &&
+      isStringArray(value.style_extensions),
+    `${SURFACES_REGISTRY} MUST hold string arrays conform_paths and style_extensions.`,
+    { code: 'DAILY_QUALITY_SURFACES_INVALID' },
+  )
+
+  return {
+    conform_paths: value.conform_paths,
+    style_extensions: value.style_extensions,
+  }
 }
 
 /** Convert a glob pattern to a RegExp. Supports * and **. */
@@ -76,6 +136,7 @@ function globToRegex(pattern: string): RegExp {
     if (pattern[i] === '*' && pattern[i + 1] === '*') {
       re += '.*'
       i += 2
+
       if (pattern[i] === '/') {
         i++
       }
@@ -91,17 +152,14 @@ function globToRegex(pattern: string): RegExp {
   return new RegExp(`^${re}$`)
 }
 
-function isPathOnSurface(
-  filePath: string,
-  surfaces: SurfacesRegistry,
-): boolean {
+function isStylePath(filePath: string, surfaces: SurfacesRegistry): boolean {
   const lastDot = filePath.lastIndexOf('.')
-  const ext = lastDot >= 0 ? filePath.slice(lastDot) : ''
+  const extension = lastDot >= 0 ? filePath.slice(lastDot) : ''
 
-  if (surfaces.style_extensions.includes(ext)) {
-    return true
-  }
+  return surfaces.style_extensions.includes(extension)
+}
 
+function isConformPath(filePath: string, surfaces: SurfacesRegistry): boolean {
   return surfaces.conform_paths.some((pattern) =>
     globToRegex(pattern).test(filePath),
   )
@@ -111,12 +169,8 @@ function resultPath(root: string, occurrenceId: string): string {
   return resolveInside(root, path.join(RESULT_ROOT, occurrenceId))
 }
 
-function writeResult(
-  root: string,
-  occurrenceId: string,
-  record: DailyQualityResult,
-): void {
-  const dir = resultPath(root, occurrenceId)
+function writeResult(root: string, record: DailyQualityResult): void {
+  const dir = resultPath(root, record.occurrence_id)
 
   mkdirSync(dir, { recursive: true })
   writeJsonAtomic(path.join(dir, 'result.json'), record)
@@ -131,6 +185,7 @@ function gitRun(
     cwd,
     encoding: 'utf8',
     timeout: GIT_TIMEOUT_MS,
+    maxBuffer: GIT_MAX_BUFFER,
   })
 
   if (options.check && result.status !== 0) {
@@ -147,31 +202,216 @@ function gitRun(
   }
 }
 
-/** Save a diff of uncommitted changes to failed.patch in the result dir. */
-function saveFailedPatch(worktreeAbs: string, resultDir: string): void {
-  mkdirSync(resultDir, { recursive: true })
-  const diff = spawnSync('git', ['diff', 'HEAD'], {
+/** The recorded daily-quality worktree path, or null before the first run. */
+function existingWorktreePath(root: string): string | null {
+  const record = readWorktreeIndex(root).worktrees.find(
+    (entry) => entry.name === DAILY_WORKTREE_NAME,
+  )
+
+  if (!record) {
+    return null
+  }
+
+  const absolute = resolveInside(root, record.path)
+
+  return existsSync(absolute) ? absolute : null
+}
+
+/**
+ * Whether a failed run recorded `head` as its unlanded commit and kept the
+ * patch that preserves it, so switching pan-quality away loses nothing.
+ */
+function hasSavedPatchFor(root: string, head: string): boolean {
+  const resultRoot = resolveInside(root, RESULT_ROOT)
+
+  if (!existsSync(resultRoot)) {
+    return false
+  }
+
+  return readdirSync(resultRoot).some((occurrence) => {
+    const dir = path.join(resultRoot, occurrence)
+    const resultFile = path.join(dir, 'result.json')
+
+    if (!existsSync(resultFile) || !existsSync(path.join(dir, FAILED_PATCH))) {
+      return false
+    }
+
+    try {
+      const value = readJson(resultFile)
+
+      return (
+        isRecord(value) &&
+        value.status === 'failed' &&
+        value.unlanded_head === head
+      )
+    } catch {
+      return false
+    }
+  })
+}
+
+function rebaseInProgress(worktreeAbs: string): boolean {
+  const gitDir = gitRun(worktreeAbs, ['rev-parse', '--absolute-git-dir'])
+
+  return (
+    gitDir.status === 0 &&
+    (existsSync(path.join(gitDir.stdout, 'rebase-merge')) ||
+      existsSync(path.join(gitDir.stdout, 'rebase-apply')))
+  )
+}
+
+/**
+ * Save the unlanded work to failed.patch: the daily commit once it exists,
+ * otherwise every uncommitted change, untracked files included.
+ */
+function saveFailedPatch(
+  worktreeAbs: string,
+  resultDir: string,
+  commitBase: string | null,
+): void {
+  if (commitBase === null) {
+    gitRun(worktreeAbs, ['add', '-A', '--', '.'])
+  }
+
+  const args =
+    commitBase === null
+      ? ['diff', '--cached', '--binary', 'HEAD']
+      : ['format-patch', '--stdout', '--binary', `${commitBase}..HEAD`]
+  // The patch is kept untrimmed so `git apply` and `git am` accept it.
+  const patch = spawnSync('git', args, {
     cwd: worktreeAbs,
     encoding: 'utf8',
     timeout: GIT_TIMEOUT_MS,
+    maxBuffer: GIT_MAX_BUFFER,
   })
-  const diffOutput = diff.stdout ?? ''
+  const text = patch.stdout ?? ''
 
-  if (diffOutput.length > 0) {
-    writeFileSync(path.join(resultDir, 'failed.patch'), diffOutput)
+  if (text.length > 0) {
+    mkdirSync(resultDir, { recursive: true })
+    writeFileSync(path.join(resultDir, FAILED_PATCH), text)
   }
 }
 
-/** Restore the worktree to a clean pan-quality HEAD. */
+/** Restore the worktree to a clean pan-quality head after the patch is saved. */
 function restoreWorktree(worktreeAbs: string): void {
-  spawnSync('git', ['checkout', '.'], {
-    cwd: worktreeAbs,
-    timeout: GIT_TIMEOUT_MS,
-  })
-  spawnSync('git', ['clean', '-fd'], {
-    cwd: worktreeAbs,
-    timeout: GIT_TIMEOUT_MS,
-  })
+  gitRun(worktreeAbs, [
+    'restore',
+    '--source=HEAD',
+    '--staged',
+    '--worktree',
+    '--',
+    '.',
+  ])
+  gitRun(worktreeAbs, ['clean', '-fd'])
+}
+
+function repairPrompt(
+  conformFiles: readonly string[],
+  styleFiles: readonly string[],
+): string {
+  const listed = (files: readonly string[]): string =>
+    files.length > 0 ? files.join(', ') : 'none'
+
+  return [
+    `Run \`./bin/pan governance card --mode conform --worktree ${DAILY_WORKTREE_NAME}\` and read the card.`,
+    `Run \`./bin/pan governance card --mode style --worktree ${DAILY_WORKTREE_NAME}\` and read the card.`,
+    `Repair only the files the scans list. Do not commit. Do not edit any other file.`,
+    `Conform issues: ${listed(conformFiles)}`,
+    `Style issues: ${listed(styleFiles)}`,
+  ].join('\n')
+}
+
+function validatorRequirement(
+  registryId: string,
+  policyId: string,
+  targetPath: string,
+): ResolvedRequirement {
+  return {
+    policy_id: policyId,
+    requirement_id: 'daily-quality-changed-file-validate',
+    registry_id: registryId,
+    registry_version: '1',
+    kind: 'validator',
+    phase: 'pre_submit',
+    executor: 'harness',
+    target: targetPath,
+    arguments: {},
+    enforcement: 'required',
+    failure_route: 'stage_failure',
+    evidence_class: 'validation',
+    success_condition: `${registryId} passes against ${targetPath}`,
+  }
+}
+
+/**
+ * Validate each changed file with the validator its surface names:
+ * CODE-STYLE-VALIDATE-001 for source and SIMPLIFIED-ENGLISH-VALIDATE-001
+ * for conform files.
+ */
+function validateChangedFiles(
+  root: string,
+  worktreeAbs: string,
+  changedPaths: readonly string[],
+  surfaces: SurfacesRegistry,
+): DailyValidatorResult[] {
+  const catalog = loadRegistry(root)
+  const results: DailyValidatorResult[] = []
+
+  for (const changed of changedPaths) {
+    const stylePolicy = isStylePath(changed, surfaces)
+      ? codeStylePolicyId(changed)
+      : null
+    const selected = stylePolicy
+      ? { registry: 'CODE-STYLE-VALIDATE-001', policy: stylePolicy }
+      : isConformPath(changed, surfaces)
+        ? { registry: 'SIMPLIFIED-ENGLISH-VALIDATE-001', policy: 'STE-001' }
+        : null
+
+    if (selected === null) {
+      results.push({
+        path: changed,
+        registry_id: 'none',
+        policy_id: 'none',
+        status: 'not_applicable',
+        issue_count: 0,
+      })
+      continue
+    }
+
+    const result = runRequirement({
+      root: worktreeAbs,
+      requirement: validatorRequirement(
+        selected.registry,
+        selected.policy,
+        changed,
+      ),
+      targetPath: changed,
+      executor: 'harness',
+      catalog,
+      persist: false,
+    })
+
+    results.push({
+      path: changed,
+      registry_id: selected.registry,
+      policy_id: selected.policy,
+      status: isPassingResult(result) ? result.status : 'failed',
+      issue_count: result.issues.length,
+    })
+  }
+
+  return results
+}
+
+function runProfile(
+  root: string,
+  worktreeAbs: string,
+  profile: 'static' | 'fast',
+  phase: DailyProfileResult['phase'],
+): DailyProfileResult {
+  const result = runRepositoryCheck(root, profile, { workspace: worktreeAbs })
+
+  return { profile, phase, status: result.status }
 }
 
 /**
@@ -179,10 +419,7 @@ function restoreWorktree(worktreeAbs: string): void {
  *
  * Outside a self_development installation, returns `skipped` immediately.
  */
-export function runDailyQuality(
-  root: string,
-  _options: { json?: boolean } = {},
-): DailyQualityResult {
+export function runDailyQuality(root: string): DailyQualityResult {
   const occurrenceId = randomUUID()
 
   if (!isSelfDevelopmentInstallation(root)) {
@@ -192,65 +429,86 @@ export function runDailyQuality(
       reason: 'Not a self_development installation.',
     }
 
-    writeResult(root, occurrenceId, result)
+    writeResult(root, result)
     return result
   }
 
   const repositoryRoot = workspaceRepositoryRoot(root)
-  let worktreeAbs: string | null = null
+  const record: DailyQualityResult = {
+    status: 'failed',
+    occurrence_id: occurrenceId,
+  }
+
+  // Set once the run owns the worktree state, so a refusal never touches it.
+  let ownedWorktree: string | null = null
+  // The commit the daily commit sits on, once the commit exists.
+  let commitBase: string | null = null
   let mutex: ReturnType<typeof acquireLandingMutex> | null = null
 
-  const fail = (reason: string, error?: string): DailyQualityResult => {
-    const dir = resultPath(root, occurrenceId)
-
-    if (worktreeAbs !== null) {
-      saveFailedPatch(worktreeAbs, dir)
-      restoreWorktree(worktreeAbs)
+  const releaseMutex = (): void => {
+    if (mutex === null) {
+      return
     }
 
-    if (mutex !== null) {
-      try {
-        mutex.release()
-      } catch {
-        // Best-effort.
+    try {
+      mutex.release()
+    } catch {
+      // The mutex recovers a lock whose holder is gone.
+    }
+
+    mutex = null
+  }
+
+  const fail = (reason: string, error?: string): DailyQualityResult => {
+    if (ownedWorktree !== null) {
+      if (rebaseInProgress(ownedWorktree)) {
+        gitRun(ownedWorktree, ['rebase', '--abort'])
       }
 
-      mutex = null
+      saveFailedPatch(ownedWorktree, resultPath(root, occurrenceId), commitBase)
+      restoreWorktree(ownedWorktree)
+
+      if (commitBase !== null) {
+        record.unlanded_head = gitHead(ownedWorktree) ?? undefined
+      }
     }
+
+    releaseMutex()
 
     const result: DailyQualityResult = {
+      ...record,
       status: 'failed',
-      occurrence_id: occurrenceId,
       reason,
-      error,
+      ...(error === undefined ? {} : { error }),
     }
 
-    writeResult(root, occurrenceId, result)
+    writeResult(root, result)
     return result
   }
 
   try {
-    // Step 1: Setup the daily-quality worktree.
-    resolveOrCreateWorktree(root, DAILY_WORKTREE_NAME, `Daily quality worktree`)
-    worktreeAbs = resolveInside(
-      root,
-      resolveWorktreeWorkspace(root, DAILY_WORKTREE_NAME),
-    )
+    // Step 1: the worktree. A dirty worktree is refused before anything
+    // switches its branch, and the refusal leaves every path in place.
+    const knownWorktree = existingWorktreePath(root)
+    const dirtyPaths = knownWorktree ? gitStatusPaths(knownWorktree) : []
 
-    // Check worktree is clean before switching branches.
-    const statusPaths = gitStatusPaths(worktreeAbs)
-
-    if (statusPaths.length > 0) {
+    if (dirtyPaths.length > 0) {
       return fail(
-        `DAILY_QUALITY_WORKTREE_DIRTY: the daily-quality worktree has uncommitted changes: ${statusPaths.join(', ')}`,
+        `DAILY_QUALITY_WORKTREE_DIRTY: the daily-quality worktree has uncommitted changes: ${dirtyPaths.join(', ')}`,
       )
     }
 
-    // Resolve the current pan-dev tip.
+    resolveOrCreateWorktree(root, DAILY_WORKTREE_NAME, 'Daily quality worktree')
+    const worktreeAbs = resolveInside(
+      root,
+      resolveWorktreeWorkspace(root, DAILY_WORKTREE_NAME),
+    )
     const panDevTip = gitRun(
       repositoryRoot,
       ['rev-parse', INTEGRATION_BRANCH],
-      { check: true },
+      {
+        check: true,
+      },
     ).stdout
 
     invariant(
@@ -259,113 +517,71 @@ export function runDailyQuality(
       { code: 'DAILY_QUALITY_TIP_INVALID' },
     )
 
-    // Switch pan-quality to the current pan-dev tip.
-    // Allow the switch when either:
-    // 1. pan-quality branch doesn't exist yet, or
-    // 2. the old pan-quality head is an ancestor of pan-dev, or
-    // 3. a failed.patch exists from a prior failed run (unlanded changes were saved).
-    const branchExists =
-      gitRun(worktreeAbs, ['rev-parse', '--verify', QUALITY_BRANCH], {
-        check: false,
-      }).status === 0
+    const qualityHead = gitRun(worktreeAbs, [
+      'rev-parse',
+      '--verify',
+      `refs/heads/${QUALITY_BRANCH}`,
+    ])
 
-    if (branchExists) {
-      const qualityHead = gitRun(worktreeAbs, ['rev-parse', QUALITY_BRANCH], {
-        check: true,
-      }).stdout
-      const isAncestor = gitIsAncestor(repositoryRoot, qualityHead, panDevTip)
-
-      // If the quality branch has commits not yet in pan-dev and no failed.patch
-      // saved them, refuse the reset to avoid losing work.
-      if (!isAncestor) {
-        // Check the most recent result dirs for failed.patch.
-        const hasSavedPatch =
-          spawnSync(
-            'find',
-            [
-              resolveInside(root, RESULT_ROOT),
-              '-name',
-              'failed.patch',
-              '-maxdepth',
-              '2',
-            ],
-            { encoding: 'utf8', timeout: GIT_TIMEOUT_MS },
-          ).stdout.trim().length > 0
-
-        if (!hasSavedPatch) {
-          return fail(
-            `${QUALITY_BRANCH} has commits not yet in ${INTEGRATION_BRANCH} and no saved patch from a failed run. Cannot reset safely.`,
-          )
-        }
-      }
+    if (
+      qualityHead.status === 0 &&
+      !gitIsAncestor(repositoryRoot, qualityHead.stdout, panDevTip) &&
+      !hasSavedPatchFor(root, qualityHead.stdout)
+    ) {
+      return fail(
+        `${QUALITY_BRANCH} holds ${qualityHead.stdout}, which is not on ${INTEGRATION_BRANCH} and no failed run saved as a patch. Cannot reset safely.`,
+      )
     }
 
     gitRun(worktreeAbs, ['switch', '-C', QUALITY_BRANCH, panDevTip], {
       check: true,
     })
+    ownedWorktree = worktreeAbs
 
-    // Step 2: Run conform and style scans.
+    // Step 2: scans. Conform judges only the worktree, because harness-root
+    // runtime artifacts are outside the repair agent's write roots.
     const conformScan = scanConformArtifacts(root, {
       workspace_root: worktreeAbs,
       all: true,
+      workspace_only: true,
     })
     const styleScan = scanStyleArtifacts(root, {
       workspace_root: worktreeAbs,
       all: true,
     })
 
-    const conformPassed = conformScan.status === 'passed'
-    const stylePassed = styleScan.status === 'passed'
+    record.scans = {
+      conform_status: conformScan.status,
+      style_status: styleScan.status,
+    }
 
-    if (conformPassed && stylePassed) {
-      // Both pass: write checkpoints, record clean, return.
+    if (conformScan.status === 'passed' && styleScan.status === 'passed') {
       checkpointConformArtifacts(root, {
         workspace_root: worktreeAbs,
         all: true,
+        workspace_only: true,
       })
       checkpointStyleArtifacts(root, { workspace_root: worktreeAbs, all: true })
 
-      const result: DailyQualityResult = {
-        status: 'clean',
-        occurrence_id: occurrenceId,
-        scans: {
-          conform_status: conformScan.status,
-          style_status: styleScan.status,
-        },
-      }
+      const result: DailyQualityResult = { ...record, status: 'clean' }
 
-      writeResult(root, occurrenceId, result)
+      writeResult(root, result)
       return result
     }
 
-    // Step 3: Launch repair agent.
-    const loaded = loadPipelineConfig(root)
-    const model = resolvePersonaModel(loaded.config, 'pan-librarian')
-
-    const repairPrompt = [
-      `Run \`./bin/pan governance card --mode conform --worktree ${DAILY_WORKTREE_NAME}\` and read the card.`,
-      `Run \`./bin/pan governance card --mode style --worktree ${DAILY_WORKTREE_NAME}\` and read the card.`,
-      `Repair only the files the scans list. Do not commit. Do not edit any other file.`,
-      `Conform issues: ${
-        conformPassed
-          ? 'none'
-          : conformScan.files
-              .filter((f) => f.editable && f.issues.length > 0)
-              .map((f) => f.relative_path)
-              .join(', ')
-      }`,
-      `Style issues: ${
-        stylePassed
-          ? 'none'
-          : styleScan.files
-              .filter((f) => f.editable && f.issues.length > 0)
-              .map((f) => f.relative_path)
-              .join(', ')
-      }`,
-    ].join('\n')
-
+    // Step 3: repair agent.
+    const model = resolvePersonaModel(
+      loadPipelineConfig(root).config,
+      REPAIR_PERSONA,
+    )
+    const conformFiles = conformScan.files
+      .filter((file) => file.editable && file.issues.length > 0)
+      .map((file) => file.relative_path)
+    const styleFiles = styleScan.files
+      .filter((file) => file.editable && file.issues.length > 0)
+      .map((file) => file.relative_path)
     const agentResult = runCursorAgentSession({
-      prompt: repairPrompt,
+      prompt: repairPrompt(conformFiles, styleFiles),
       cwd: worktreeAbs,
       workspaceRoot: worktreeAbs,
       installationRoot: root,
@@ -381,18 +597,22 @@ export function runDailyQuality(
       )
     }
 
-    // Step 4: Check scope — every changed path must be on a surface.
-    const surfaces = loadSurfaces(root)
+    // Step 4: scope.
+    const surfaces = loadSurfaces(repositoryRoot, panDevTip)
     const changedPaths = gitStatusPaths(worktreeAbs)
 
+    record.changed_files = changedPaths
+
     if (changedPaths.length === 0) {
-      // Agent made no changes; scans must pass now or fail gracefully.
       return fail(
         'Repair agent ran but made no changes. The scans are still unclean.',
       )
     }
 
-    const offSurface = changedPaths.filter((p) => !isPathOnSurface(p, surfaces))
+    const offSurface = changedPaths.filter(
+      (changed) =>
+        !isStylePath(changed, surfaces) && !isConformPath(changed, surfaces),
+    )
 
     if (offSurface.length > 0) {
       return fail(
@@ -400,53 +620,63 @@ export function runDailyQuality(
       )
     }
 
-    // Step 5: Validate changed files and run profiles.
-    // Run static and fast profiles in the worktree.
-    const staticResult = runRepositoryCheck(root, 'static', {
-      workspace: worktreeAbs,
-    })
-    const fastResult = runRepositoryCheck(root, 'fast', {
-      workspace: worktreeAbs,
-    })
+    // Step 5: validators, profiles, then checkpoints.
+    record.validator_results = validateChangedFiles(
+      root,
+      worktreeAbs,
+      changedPaths,
+      surfaces,
+    )
 
-    if (!staticResult.status || staticResult.status !== 'passed') {
-      return fail(`Static check failed in the daily-quality worktree.`)
+    const failedValidation = record.validator_results.filter(
+      (entry) => entry.status !== 'passed' && entry.status !== 'not_applicable',
+    )
+
+    if (failedValidation.length > 0) {
+      return fail(
+        `Validation failed for: ${failedValidation.map((entry) => `${entry.path} (${entry.registry_id})`).join(', ')}`,
+      )
     }
 
-    if (!fastResult.status || fastResult.status !== 'passed') {
-      return fail(`Fast check failed in the daily-quality worktree.`)
+    record.profile_results = []
+
+    for (const profile of ['static', 'fast'] as const) {
+      const profileResult = runProfile(root, worktreeAbs, profile, 'repair')
+
+      record.profile_results.push(profileResult)
+
+      if (profileResult.status !== 'passed') {
+        return fail(
+          `The ${profile} profile failed in the daily-quality worktree.`,
+        )
+      }
     }
 
-    // Write conform and style checkpoints.
-    const conformCp = checkpointConformArtifacts(root, {
+    const conformCheckpoint = checkpointConformArtifacts(root, {
       workspace_root: worktreeAbs,
       all: true,
+      workspace_only: true,
     })
 
-    if (conformCp.status === 'blocked') {
+    if (conformCheckpoint.status === 'blocked') {
       return fail('Conform checkpoint is still blocked after repair.')
     }
 
-    const styleCp = checkpointStyleArtifacts(root, {
+    const styleCheckpoint = checkpointStyleArtifacts(root, {
       workspace_root: worktreeAbs,
       all: true,
     })
 
-    if (styleCp.status === 'blocked') {
+    if (styleCheckpoint.status === 'blocked') {
       return fail('Style checkpoint is still blocked after repair.')
     }
 
-    // Step 6: Commit with trailer.
+    // Step 6: commit.
     const today = new Date().toISOString().slice(0, 10)
-    const commitSubject = `style: daily conform and style pass ${today}`
-    const commitMessage = `${commitSubject}\n\n${DAILY_QUALITY_TRAILER_KEY}: ${occurrenceId}\n`
+    const commitMessage = `style: daily conform and style pass ${today}\n\n${DAILY_QUALITY_TRAILER_KEY}: ${occurrenceId}\n`
 
     gitStagePaths(worktreeAbs, changedPaths)
-    const commitResult = spawnSync('git', ['commit', '-m', commitMessage], {
-      cwd: worktreeAbs,
-      encoding: 'utf8',
-      timeout: GIT_TIMEOUT_MS,
-    })
+    const commitResult = gitRun(worktreeAbs, ['commit', '-m', commitMessage])
 
     if (commitResult.status !== 0) {
       return fail(
@@ -454,57 +684,52 @@ export function runDailyQuality(
       )
     }
 
-    const commitHash = gitHead(worktreeAbs)
+    commitBase = panDevTip
+    record.commit = gitHead(worktreeAbs) ?? undefined
 
-    if (!commitHash) {
-      return fail('Could not read commit hash after commit.')
-    }
-
-    // Step 7: Land under mutex.
+    // Step 7: land under the mutex.
     const mutexStartMs = Date.now()
 
     mutex = acquireLandingMutex(root, {
       worktree: DAILY_WORKTREE_NAME,
       command: 'pan quality daily',
     })
+    record.lock_wait_ms = Date.now() - mutexStartMs
 
-    const lockWaitMs = Date.now() - mutexStartMs
-
-    // Re-read the pan-dev tip; it may have moved while we were repairing.
     const currentTip = gitRun(
       repositoryRoot,
       ['rev-parse', INTEGRATION_BRANCH],
-      { check: true },
+      {
+        check: true,
+      },
     ).stdout
 
     if (currentTip !== panDevTip) {
-      // Tip moved. Rebase the one commit onto the new tip.
-      const rebaseResult = spawnSync('git', ['rebase', currentTip], {
-        cwd: worktreeAbs,
-        encoding: 'utf8',
-        timeout: GIT_TIMEOUT_MS,
-      })
+      const rebase = gitRun(worktreeAbs, [
+        'rebase',
+        '--onto',
+        currentTip,
+        panDevTip,
+      ])
 
-      if (rebaseResult.status !== 0) {
+      if (rebase.status !== 0) {
         return fail(
-          `Rebase onto moved pan-dev tip failed: ${rebaseResult.stderr || rebaseResult.stdout}`,
+          `Rebase onto moved pan-dev tip failed: ${rebase.stderr || rebase.stdout}`,
         )
       }
 
-      // Re-run static and fast after rebase.
-      const staticResult2 = runRepositoryCheck(root, 'static', {
-        workspace: worktreeAbs,
-      })
-      const fastResult2 = runRepositoryCheck(root, 'fast', {
-        workspace: worktreeAbs,
-      })
+      commitBase = currentTip
 
-      if (!staticResult2.status || staticResult2.status !== 'passed') {
-        return fail('Static check failed after rebase onto moved pan-dev tip.')
-      }
+      for (const profile of ['static', 'fast'] as const) {
+        const profileResult = runProfile(root, worktreeAbs, profile, 'rebase')
 
-      if (!fastResult2.status || fastResult2.status !== 'passed') {
-        return fail('Fast check failed after rebase onto moved pan-dev tip.')
+        record.profile_results.push(profileResult)
+
+        if (profileResult.status !== 'passed') {
+          return fail(
+            `The ${profile} profile failed after rebase onto the moved pan-dev tip.`,
+          )
+        }
       }
     }
 
@@ -514,78 +739,46 @@ export function runDailyQuality(
       return fail('Could not read HEAD after landing preparation.')
     }
 
-    // Run bin/check-landing to validate the daily commit.
-    const checkLandingPath = path.join(root, 'bin', 'check-landing')
-    const checkResult = spawnSync(
-      checkLandingPath,
-      ['daily-range', currentTip, finalHead],
-      { cwd: repositoryRoot, encoding: 'utf8', timeout: GIT_TIMEOUT_MS },
+    record.commit = finalHead
+
+    const landingCheck = runLandingCheck(
+      root,
+      repositoryRoot,
+      QUALITY_BRANCH,
+      INTEGRATION_BRANCH,
     )
 
-    if (checkResult.status !== 0) {
+    if (!landingCheck.passed) {
       return fail(
-        `bin/check-landing daily-range refused the commit: ${checkResult.stderr || checkResult.stdout}`,
+        `bin/check-landing branch ${QUALITY_BRANCH} ${INTEGRATION_BRANCH} refused the commit: ${landingCheck.output}`,
       )
     }
 
-    // Fast-forward pan-dev.
-    const ffResult = spawnSync(
-      'git',
-      ['update-ref', `refs/heads/${INTEGRATION_BRANCH}`, finalHead, currentTip],
-      { cwd: repositoryRoot, encoding: 'utf8', timeout: GIT_TIMEOUT_MS },
-    )
-
-    if (ffResult.status !== 0) {
-      // Try via checked-out worktree if present.
-      const ffMerge = spawnSync('git', ['merge', '--ff-only', finalHead], {
-        cwd: repositoryRoot,
-        encoding: 'utf8',
-        timeout: GIT_TIMEOUT_MS,
-      })
-
-      if (ffMerge.status !== 0) {
-        return fail(
-          `Fast-forward of ${INTEGRATION_BRANCH} failed: ${ffMerge.stderr || ffMerge.stdout}`,
-        )
-      }
+    try {
+      fastForwardIntegration(repositoryRoot, finalHead, currentTip)
+    } catch (error) {
+      return fail(
+        `Fast-forward of ${INTEGRATION_BRANCH} failed.`,
+        errorMessage(error),
+      )
     }
 
-    // Release mutex.
-    mutex.release()
-    mutex = null
+    releaseMutex()
 
-    const landedTip = gitRun(
-      repositoryRoot,
-      ['rev-parse', INTEGRATION_BRANCH],
-      { check: true },
-    ).stdout
-
-    // Step 8: Write result record.
+    // Step 8: record.
     const result: DailyQualityResult = {
+      ...record,
       status: 'repaired',
-      occurrence_id: occurrenceId,
-      scans: {
-        conform_status: conformScan.status,
-        style_status: styleScan.status,
-      },
-      changed_files: changedPaths,
-      commit: finalHead,
-      landed_tip: landedTip,
-      lock_wait_ms: lockWaitMs,
+      landed_tip: gitRun(repositoryRoot, ['rev-parse', INTEGRATION_BRANCH], {
+        check: true,
+      }).stdout,
     }
 
-    writeResult(root, occurrenceId, result)
+    writeResult(root, result)
     return result
   } catch (error) {
     return fail(`Unexpected error: ${errorMessage(error)}`, errorMessage(error))
   } finally {
-    // Ensure mutex is always released.
-    if (mutex !== null) {
-      try {
-        mutex.release()
-      } catch {
-        // Ignore.
-      }
-    }
+    releaseMutex()
   }
 }

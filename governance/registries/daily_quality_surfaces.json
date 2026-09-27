@@ -11,5 +11,14 @@
     "library/cursor/rules/*.mdc",
     "docs/issues/**/*.md"
   ],
-  "style_extensions": [".ts", ".tsx", ".py", ".pyi", ".js", ".mjs", ".cjs"]
+  "style_extensions": [
+    ".ts",
+    ".tsx",
+    ".py",
+    ".pyi",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs"
+  ]
 }
