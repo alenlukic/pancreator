@@ -175,10 +175,23 @@
     "active": "light"
   },
   "schedule": {
-    "enabled": false,
+    "enabled": true,
     "catch_up_window_minutes": 360,
     "grace_period_minutes": 60,
-    "jobs": []
+    "jobs": [
+      {
+        "id": "daily-quality",
+        "enabled": true,
+        "hour": 4,
+        "minute": 30,
+        "workspace": ".",
+        "self_development_only": true,
+        "action": {
+          "kind": "command",
+          "command": "./bin/pan quality daily --json"
+        }
+      }
+    ]
   },
   "away_mode": {
     "enabled": false

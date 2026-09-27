@@ -1874,13 +1874,6 @@ until every selected removal, repair, and freed entry is complete.
 
 Use `/pan-release` when release metadata must be prepared or regenerated outside a workflow ship stage. The command is self-development-only and refuses to version an embedded target repository. It resolves the commit that introduced the committed `VERSION`, evaluates all committed, staged, unstaged, and relevant untracked changes after that baseline, and asks the release steward to choose exactly `major`, `minor`, or `patch`.
 
-Before release preparation, `/pan-release` runs the code style and conform scans
-against the selected candidate. The librarian repairs and checkpoints an
-unclean pass before the release steward begins. `pan release finalize` enforces
-the same precondition with `RELEASE_STYLE_UNCLEAN` and
-`RELEASE_CONFORM_UNCLEAN`. An explicit `--allow-unclean <conform|style>`
-override is repeatable and appears in the finalization result.
-
 The release steward then authors or regenerates the latest Common Changelog entry and synchronizes `VERSION`, `package.json`, `package-lock.json`, the README current-version references, and the current-version statement in `docs/embedded-installation.md`. If a dirty release candidate already exists, the command updates it in place rather than bumping again. If there is no post-bump delta and no candidate, it makes no changes.
 
 `/pan-release` validates formatting, types, and repository contracts. The shared
@@ -2093,3 +2086,62 @@ Run the command directly when you want to observe a wrapped agent command:
 `SHELL-MONITOR-VALIDATE-001`, which `pan validate` runs, checks the fail-closed hook entry, both scripts, and that the hook's `ALLOWLIST` equals the allowlist `DELEGATE-001` states.
 
 After the release lands, run `./bin/pan models --sync` so the new hook projection and the updated policy rules reach the local `.cursor/` tree.
+
+## Daily quality job
+
+The `daily-quality` schedule job runs `pan quality daily` at 04:30 every day on the local machine. It repairs conform and style issues on the `pan-dev` tip and lands one marked, unversioned repair commit.
+
+### What the job does
+
+1. Creates or reuses the `daily-quality` managed worktree and switches it to branch `pan-quality` at the current `pan-dev` tip.
+2. Runs `pan conform scan --all` and `pan style scan --all`. When both pass, it writes both checkpoints, records `clean`, and exits without committing.
+3. When either scan is unclean, it launches a headless Cursor agent under the librarian persona to repair only the files the scans identified.
+4. Verifies every changed path is on the daily quality surfaces (`governance/registries/daily_quality_surfaces.json`).
+5. Runs the `static` and `fast` profiles in the worktree. Writes the conform and style checkpoints.
+6. Commits with subject `style: daily conform and style pass <YYYY-MM-DD>` and trailer `Pancreator-Daily-Quality: <id>`.
+7. Acquires the landing mutex, rebases the commit onto the current `pan-dev` tip if it moved, reruns `static` and `fast`, and fast-forwards `pan-dev`.
+8. Writes the result to `runtime/logs/quality/<id>/result.json`.
+
+On any failure, `pan-dev` stays unchanged, the mutex is released, the worktree diff is saved to `failed.patch` in the result directory, and the worktree is restored to a clean `pan-quality` head.
+
+### Install the launchd trigger
+
+```sh
+./bin/pan schedule install-agent
+```
+
+This installs the macOS launchd plist that fires `pan schedule tick` at the configured hour. Confirm with `./bin/pan schedule status`.
+
+### Check job status
+
+```sh
+./bin/pan schedule status
+```
+
+An open alert for `daily-quality` appears immediately after a failed run. A later success clears it.
+
+### Run the job manually
+
+```sh
+./bin/pan schedule run daily-quality
+```
+
+### Change the hour
+
+Edit `config.json` or `config_overrides.json`:
+
+```json
+{ "schedule": { "jobs": [{ "id": "daily-quality", "hour": 6 }] } }
+```
+
+Reinstall the agent after changing the hour: `./bin/pan schedule install-agent`.
+
+### Where results live
+
+Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run also writes `failed.patch` in that directory.
+
+### Uninstall the agent
+
+```sh
+./bin/pan schedule uninstall-agent
+```

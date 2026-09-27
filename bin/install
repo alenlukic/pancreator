@@ -6,6 +6,7 @@ PANCREATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_COMMIT_OVERRIDE=""
 SOURCE_DIRTY_OVERRIDE=""
 SOURCE_INDEXED_OVERRIDE=""
+SOURCE_DAILY_QUALITY_HEAD=""
 
 TARGET_DIR=""
 HARNESS_DIR=""
@@ -615,9 +616,23 @@ resolve_source_metadata() {
   if ! git -C "$PANCREATOR_ROOT" diff --quiet "$indexed" "$head" -- \
     .gitignore config.json "${SOURCE_PAYLOAD_ENTRIES[@]}" \
     ':(exclude)release/index.json'; then
-    echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
-    echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
-    exit 1
+    # Drift detected. Accept the drift when it consists entirely of marked
+    # daily quality commits (ACTION-001, VERSION-001, AGENTS.md exemption).
+    local check_landing_bin="$SCRIPT_DIR/check-landing"
+    if [[ -x "$check_landing_bin" ]] && \
+       git -C "$PANCREATOR_ROOT" rev-parse --show-toplevel >/dev/null 2>&1 && \
+       (cd "$PANCREATOR_ROOT" && "$check_landing_bin" daily-range "$indexed" "$head") 2>/dev/null; then
+      # Daily quality drift accepted. SOURCE_COMMIT stays as indexed so
+      # bin/update keeps working (Q-4), but record the actual head.
+      SOURCE_DAILY_QUALITY_HEAD="$head"
+      local daily_count
+      daily_count="$(git -C "$PANCREATOR_ROOT" rev-list --count "${indexed}..${head}" 2>/dev/null || echo 0)"
+      echo "Accepted $daily_count daily quality commit(s) beyond indexed release $VERSION."
+    else
+      echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
+      echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
+      exit 1
+    fi
   fi
 
   SOURCE_COMMIT="$indexed"
@@ -1223,6 +1238,11 @@ install_payload() {
     ln -s ../.cursor "$PANCREATOR_DIR/.cursor"
   fi
 
+  local daily_quality_head_arg=()
+  if [[ -n "$SOURCE_DAILY_QUALITY_HEAD" ]]; then
+    daily_quality_head_arg=(--source-daily-quality-head "$SOURCE_DAILY_QUALITY_HEAD")
+  fi
+
   node "$PANCREATOR_ROOT/bin/install-support" write-marker \
     --destination "$INSTALL_MARKER" \
     --cursor-manifest "$cursor_manifest" \
@@ -1230,6 +1250,7 @@ install_payload() {
     --source-commit "$SOURCE_COMMIT" \
     --source-dirty "$SOURCE_DIRTY" \
     --source-indexed "$SOURCE_INDEXED" \
+    "${daily_quality_head_arg[@]}" \
     --installed-at "$installed_at" \
     --payload-entries "$(payload_entries_csv)" \
     --payload-manifest "$payload_manifest"

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "description": "The one authoritative list of paths a daily quality commit may change. bin/check-landing daily-range and bin/install use this file for their acceptance check. A regression test asserts this list covers every editable conform surface in src/lib/conform.ts and every extension src/lib/code-style.ts scans.",
+  "conform_paths": [
+    "AGENTS.md",
+    "governance/criteria/*.md",
+    "governance/policies/*.json",
+    "library/personas/*.md",
+    "library/skills/*.md",
+    "library/cursor/commands/*.md",
+    "library/cursor/rules/*.mdc",
+    "docs/issues/**/*.md"
+  ],
+  "style_extensions": [".ts", ".tsx", ".py", ".pyi", ".js", ".mjs", ".cjs"]
+}

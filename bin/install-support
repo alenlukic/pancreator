@@ -1681,6 +1681,23 @@ function writeProject() {
   config.installation_mode = detachedWorkspace ? 'detached' : 'embedded'
   delete config.self_development
 
+  // Drop self_development_only jobs from the staged config. They are not
+  // meaningful in an embedded or detached installation. When dropping all jobs
+  // leaves scheduling with no jobs, disable it so the target does not start a
+  // scheduler with nothing to run.
+  if (
+    config.schedule !== null &&
+    typeof config.schedule === 'object' &&
+    Array.isArray(config.schedule.jobs)
+  ) {
+    config.schedule.jobs = config.schedule.jobs.filter(
+      (job) => !job.self_development_only,
+    )
+    if (config.schedule.jobs.length === 0) {
+      config.schedule.enabled = false
+    }
+  }
+
   const defaults =
     typeof config.defaults === 'object' && config.defaults !== null
       ? config.defaults
@@ -1917,12 +1934,15 @@ function writeMarker() {
     .split(',')
     .filter(Boolean)
 
+  const dailyQualityHead = option('--source-daily-quality-head')
+
   writeJson(destination, {
     schema_version: 4,
     version: requiredOption('--version'),
     source_commit: requiredOption('--source-commit'),
     source_dirty: requiredOption('--source-dirty') === 'true',
     source_indexed: requiredOption('--source-indexed') === 'true',
+    ...(dailyQualityHead ? { daily_quality_head: dailyQualityHead } : {}),
     installed_at: requiredOption('--installed-at'),
     payload_entries: payloadEntries,
     payload_files: payloadManifest.payload_files,

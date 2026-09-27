@@ -8,10 +8,15 @@
 # direct commit on pan-dev that touches an installable input is the same
 # defect from the other side, and it is refused too.
 #
+# Exception: daily quality commits carrying the Pancreator-Daily-Quality:
+# trailer and touching only surface paths are exempt. `daily-range` checks
+# this property; `branch` accepts a source whose installable changes since the
+# merge base all pass `daily-range`.
+#
 # The installer enforces the same invariant at install time: a clean checkout
-# installs only when its installable inputs match the indexed release. This
-# guard moves that refusal to the moment the landing is attempted, where the
-# fix is still cheap.
+# installs only when its installable inputs match the indexed release, or its
+# only drift is marked daily quality commits. This guard moves that refusal to
+# the moment the landing is attempted, where the fix is still cheap.
 #
 # Modes:
 #   check-landing pre-commit        refuse a direct commit on a protected branch
@@ -19,12 +24,19 @@
 #   check-landing branch <ref> [<base-ref>]
 #                                   report whether <ref> is landable onto <base-ref>
 #                                   (defaults to HEAD when <base-ref> is omitted)
+#   check-landing daily-range <base> <head>
+#                                   exit 0 only when every commit in base..head
+#                                   that touches installable inputs is a non-merge
+#                                   commit carrying Pancreator-Daily-Quality: and
+#                                   changing only surface paths, and the range holds
+#                                   at least one such commit
 #
 # Exit 0 permits, exit 1 refuses with the reason on stderr.
 set -euo pipefail
 
 mode="${1:-}"
 protected_re='^(pan-dev|main)$'
+DAILY_QUALITY_TRAILER='Pancreator-Daily-Quality:'
 
 # Installable inputs mirror SOURCE_PAYLOAD_ENTRIES in bin/install plus the two
 # files the installer also compares. release/index.json is the one file the
@@ -67,6 +79,102 @@ refuse() {
   exit 1
 }
 
+refuse_range() {
+  echo "check-landing: daily-range: $1" >&2
+  exit 1
+}
+
+# Check whether a path matches the daily quality surfaces.
+# Reads governance/registries/daily_quality_surfaces.json and returns 0 when
+# the path matches a conform_paths glob or has a style_extensions extension.
+path_is_surface() {
+  local file_path="$1"
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+  local surfaces_file="$repo_root/governance/registries/daily_quality_surfaces.json"
+
+  if [[ ! -f "$surfaces_file" ]]; then
+    return 1
+  fi
+
+  node -e "
+const fs = require('node:fs')
+const surfaces = JSON.parse(fs.readFileSync('${surfaces_file}', 'utf8'))
+const filePath = process.argv[1]
+
+const conformPaths = surfaces.conform_paths ?? []
+const styleExtensions = surfaces.style_extensions ?? []
+
+const lastDot = filePath.lastIndexOf('.')
+const ext = lastDot >= 0 ? filePath.slice(lastDot) : ''
+const matchesStyle = styleExtensions.includes(ext)
+
+function globToRegex(pattern) {
+  let re = ''
+  let i = 0
+  while (i < pattern.length) {
+    if (pattern[i] === '*' && pattern[i + 1] === '*') {
+      re += '.*'
+      i += 2
+      if (pattern[i] === '/') i++
+    } else if (pattern[i] === '*') {
+      re += '[^/]*'
+      i++
+    } else {
+      re += pattern[i].replace(/[.+^${}()|[\]\\\\]/g, '\\\\$&')
+      i++
+    }
+  }
+  return new RegExp('^' + re + '$')
+}
+
+const matchesConform = conformPaths.some((pattern) => globToRegex(pattern).test(filePath))
+process.exit(matchesConform || matchesStyle ? 0 : 1)
+" "$file_path"
+}
+
+# Check whether a commit hash is a marked daily quality commit and touches only surfaces.
+# Returns 0 for a valid daily commit, 1 for a refusal (sets DAILY_REFUSE_REASON).
+DAILY_REFUSE_REASON=''
+
+is_valid_daily_commit() {
+  local commit="$1"
+
+  # Reject merge commits.
+  local parent_count
+  parent_count="$(git cat-file -p "$commit" | grep -c '^parent ' || true)"
+  if [[ "$parent_count" -gt 1 ]]; then
+    DAILY_REFUSE_REASON="commit $commit is a merge commit"
+    return 1
+  fi
+
+  # Require the daily quality trailer.
+  local trailer
+  trailer="$(git log -1 --format='%(trailers:key=Pancreator-Daily-Quality,valueonly)' "$commit" 2>/dev/null | tr -d '[:space:]')"
+  if [[ -z "$trailer" ]]; then
+    DAILY_REFUSE_REASON="commit $commit is missing the Pancreator-Daily-Quality: trailer"
+    return 1
+  fi
+
+  # Every changed installable path must be a surface path.
+  local changed_installable
+  changed_installable="$(git diff-tree --no-commit-id -r --name-only "$commit" -- "${installable[@]}" ':(exclude)release/index.json' 2>/dev/null)"
+  if [[ -z "$changed_installable" ]]; then
+    # No installable inputs changed; not a relevant commit.
+    DAILY_REFUSE_REASON="commit $commit carries the trailer but changes no installable inputs"
+    return 1
+  fi
+
+  while IFS= read -r changed_path; do
+    if ! path_is_surface "$changed_path"; then
+      DAILY_REFUSE_REASON="commit $commit changes path '$changed_path' which is not in the daily quality surfaces"
+      return 1
+    fi
+  done <<< "$changed_installable"
+
+  return 0
+}
+
 case "$mode" in
   pre-commit)
     branch="$(current_branch)"
@@ -106,6 +214,35 @@ case "$mode" in
     exec "$0" branch "$source_ref"
     ;;
 
+  daily-range)
+    daily_base="${2:-}"
+    daily_head="${3:-}"
+    [[ -n "$daily_base" && -n "$daily_head" ]] || {
+      echo "usage: check-landing daily-range <base> <head>" >&2
+      exit 2
+    }
+
+    # Collect commits in range that touch installable inputs.
+    daily_commits=()
+    while IFS= read -r commit; do
+      if touches_installable diff-tree --no-commit-id -r --name-only "$commit"; then
+        daily_commits+=("$commit")
+      fi
+    done < <(git log --format='%H' "${daily_base}..${daily_head}" 2>/dev/null)
+
+    if [[ "${#daily_commits[@]}" -eq 0 ]]; then
+      refuse_range "the range ${daily_base}..${daily_head} holds no commit that touches installable inputs; at least one marked daily quality commit is required"
+    fi
+
+    for commit in "${daily_commits[@]}"; do
+      if ! is_valid_daily_commit "$commit"; then
+        refuse_range "$DAILY_REFUSE_REASON"
+      fi
+    done
+
+    exit 0
+    ;;
+
   branch)
     source_ref="${2:-}"
     [[ -n "$source_ref" ]] || {
@@ -133,6 +270,10 @@ case "$mode" in
     fi
 
     if [[ "$source_version" == "$head_version" ]]; then
+      # The versions match; check whether this is an all-daily-commits range.
+      if ("$0" daily-range "$base" "$source_ref") 2>/dev/null; then
+        exit 0
+      fi
       refuse "'$source_ref' changes installable inputs but still carries VERSION $source_version, which '$base_ref' already holds."
     fi
 
@@ -147,6 +288,10 @@ case "$mode" in
     fi
 
     if touches_installable diff --name-only "$indexed_commit" "$source_ref"; then
+      # Check whether the post-release changes are all daily quality commits.
+      if ("$0" daily-range "$indexed_commit" "$source_ref") 2>/dev/null; then
+        exit 0
+      fi
       refuse "'$source_ref' changes installable inputs after its indexed release commit for $source_version; run 'pan release land --worktree <name>' again."
     fi
 
@@ -154,7 +299,7 @@ case "$mode" in
     ;;
 
   *)
-    echo "usage: check-landing pre-commit | pre-merge-commit | branch <ref> [<base-ref>]" >&2
+    echo "usage: check-landing pre-commit | pre-merge-commit | branch <ref> [<base-ref>] | daily-range <base> <head>" >&2
     exit 2
     ;;
 esac

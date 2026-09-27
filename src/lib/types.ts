@@ -795,7 +795,6 @@ export interface LocalReleaseFinalizeResult {
   release_commit: string
   index_commit: string
   advisories: LocalReleaseAdvisory[]
-  overridden_quality_passes: Array<'conform' | 'style'>
   clean: boolean
 }
 
@@ -978,6 +977,8 @@ export interface ScheduleJob {
   grace_period_minutes?: number
   workspace?: string
   worktree?: string
+  /** When true, skip this job outside a self_development installation. */
+  self_development_only?: boolean
   action: ScheduleAction
 }
 

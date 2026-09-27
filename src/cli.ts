@@ -272,6 +272,7 @@ import {
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import { generateTokenSpendReport } from './lib/token-spend.js'
 import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
+import { runDailyQuality } from './lib/daily-quality.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -647,6 +648,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'inbox',
   'installs',
   'output',
+  'quality',
   'release',
   'repository-check',
   'requirements',
@@ -2781,7 +2783,6 @@ async function main(): Promise<void> {
             worktreeName,
             requiredArgument(option(args, '--fetched-main'), '--fetched-main'),
             option(args, '--run') ?? undefined,
-            options(args, '--allow-unclean'),
           ),
           hasFlag(args, '--json'),
         )
@@ -3184,6 +3185,19 @@ async function main(): Promise<void> {
         hasFlag(args, '--json'),
       )
       return
+    }
+    case 'quality': {
+      const sub = args[0]
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'daily') {
+        print(runDailyQuality(root, { json: asJson }), asJson)
+        return
+      }
+
+      throw new PanError(`Unknown quality subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'spend': {
       const subcommand = args[0]

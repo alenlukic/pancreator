@@ -271,8 +271,15 @@ test('every operator-owned action list surface states the pan-dev landing rule o
       1,
       `${surface} states the promotion rule more than once`,
     )
+    // Permit the daily quality exemption (Pancreator-Daily-Quality trailer and
+    // surface paths). Any other trailer or path-scoping carve-out is still refused.
+    const bodyWithoutDailyExemption = body
+      .replace(/Pancreator-Daily-Quality[^\n]*/gu, '')
+      .replace(/daily quality[^\n]*/giu, '')
+      .replace(/surface path[^\n]*/giu, '')
+
     assert.ok(
-      !/trailer|path-scop/iu.test(body),
+      !/trailer|path-scop/iu.test(bodyWithoutDailyExemption),
       `${surface} adds a branching rule beyond the pan-dev landing idea`,
     )
   }
