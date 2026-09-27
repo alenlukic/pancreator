@@ -1,5 +1,33 @@
 # Changelog
 
+## [7.31.0] - 2026-09-27
+
+This release serializes every landing on `pan-dev`, moves conform and style repairs onto a daily job, and wraps every agent shell command. Waiver `waiver-9397e564-a803-4e88-9a4f-3173335a7750` covers the failed conform scan and the failed style scan. Those scans did not pass.
+
+### Changed
+
+- Land on `pan-dev` only through `pan release land`, and refuse a hand merge or `pan worktree reconcile` into `pan-dev` or `main` ([0e7fe7fc](https://github.com/alenlukic/pancreator/commit/0e7fe7fc)).
+- Route a delivery ship failure to remediate, and a metacritic ship failure to consolidate ([0e7fe7fc](https://github.com/alenlukic/pancreator/commit/0e7fe7fc)).
+- Remove the conform scan and the style scan from the release path ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
+- Run every agent shell command inside `bin/pan-run`, except a short read-only allowlist ([06e70a43](https://github.com/alenlukic/pancreator/commit/06e70a43)).
+- Exempt a marked daily quality commit from `bin/check-landing` and from installer drift, and only that commit ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
+
+### Added
+
+- Add `pan release land` with a crash-safe landing mutex at `runtime/release/landing.lock` ([0e7fe7fc](https://github.com/alenlukic/pancreator/commit/0e7fe7fc)).
+- Add `pan quality daily` and the `daily-quality` schedule job at 04:30 ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
+- Add `bin/pan-run`, a heartbeat, redacted logs, and `bin/pan-hook-shell-monitor` ([06e70a43](https://github.com/alenlukic/pancreator/commit/06e70a43)).
+- Add `pan watch --process --exit-record` so a wrapped command reports its exit status ([06e70a43](https://github.com/alenlukic/pancreator/commit/06e70a43)).
+
+### Removed
+
+- Remove `--allow-unclean` and the `RELEASE_CONFORM_UNCLEAN` and `RELEASE_STYLE_UNCLEAN` refusals from `pan release finalize` ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
+
+### Fixed
+
+- Copy `bin/pan-run` into build-wrapper fixtures, and keep `pan worktree reconcile` off `pan-dev` except the cohort integration path ([3c162bf0](https://github.com/alenlukic/pancreator/commit/3c162bf0)).
+- Route a stageless operator reject at the delivery ship gate to remediate ([3c162bf0](https://github.com/alenlukic/pancreator/commit/3c162bf0)).
+
 ## [7.30.0] - 2026-09-27
 
 This release adds `pan handoff` on macOS. The operator can move one run into a new Cursor Agents chat. Waiver `waiver-683aa417-eef4-47ed-9d9a-3d44eded187a` covers the failed conform scan and the failed style scan. Those scans did not pass.
