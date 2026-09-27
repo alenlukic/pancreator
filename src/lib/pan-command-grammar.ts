@@ -137,6 +137,10 @@ export const HELP_BODY = `Usage:
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when a mapping stays empty that defaults does not fill.
       --force requires --sync. It projects the configured specs when the local Cursor model catalog is stale or incomplete. Grammar still applies. Live --probe still reports what Cursor resolves.
       A bare pan models and pan doctor are diagnostic, so they report cursor_model_catalog (presence, recorded captured_at, age, freshness, and every persona mapping the catalog cannot resolve) instead of failing at config load. Every lifecycle command still validates against the catalog.
+  pan handoff <run-id> [--model <name>] [--effort <level>] [--note <text> | --note-file <path>] [--dry-run] [--json]
+      Hand off supervision of a run to a new Cursor Agents chat. Builds the prompt /pan-resume <run-id>, opens a new chat without activating Cursor, writes the prompt, selects the model and effort, verifies both, and presses Send. Requires --note or --note-file for a real handoff. --dry-run does every step except Send and writes step evidence. Model and effort default to config.json handoff.model and handoff.effort (built-in defaults: Claude Opus 5.5 and High). Refuses while a watch is open, a worker is in flight, the run is terminal, the run is session-bound, or a handoff is already pending.
+  pan handoff --self-check [--capture-tree <runtime-relative-path>] [--json]
+      Locate the Agents window, New Chat button, busy state, current composer, picker, and Send button without pressing or writing anything. --capture-tree writes the snapshot as a redacted JSON fixture under runtime/.
   pan validate [--json]
   pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]

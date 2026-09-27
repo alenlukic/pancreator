@@ -1,0 +1,44 @@
+[
+  {
+    "id": "ax-1",
+    "role": "AXWindow",
+    "title": "Cursor Agents"
+  },
+  {
+    "id": "ax-2",
+    "parent_id": "ax-1",
+    "role": "AXButton",
+    "title": "New Chat"
+  },
+  {
+    "id": "ax-3",
+    "parent_id": "ax-1",
+    "role": "AXGroup",
+    "title": "<redacted>"
+  },
+  {
+    "id": "ax-4",
+    "parent_id": "ax-3",
+    "role": "AXTextArea",
+    "title": "Prompt Editor",
+    "value": ""
+  },
+  {
+    "id": "ax-5",
+    "parent_id": "ax-3",
+    "role": "AXGroup",
+    "title": "<redacted>"
+  },
+  {
+    "id": "ax-6",
+    "parent_id": "ax-5",
+    "role": "AXPopUpButton",
+    "title": "claude sonnet High"
+  },
+  {
+    "id": "ax-7",
+    "parent_id": "ax-3",
+    "role": "AXButton",
+    "title": "Send message"
+  }
+]

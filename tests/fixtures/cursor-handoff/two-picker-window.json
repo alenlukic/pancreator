@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ax-1",
+    "role": "AXWindow",
+    "title": "Cursor Agents"
+  },
+  {
+    "id": "ax-2",
+    "parent_id": "ax-1",
+    "role": "AXGroup",
+    "title": "<redacted>"
+  },
+  {
+    "id": "ax-3",
+    "parent_id": "ax-2",
+    "role": "AXTextArea",
+    "title": "Prompt Editor",
+    "value": ""
+  },
+  {
+    "id": "ax-4",
+    "parent_id": "ax-2",
+    "role": "AXPopUpButton",
+    "title": "claude sonnet High"
+  },
+  {
+    "id": "ax-5",
+    "parent_id": "ax-2",
+    "role": "AXPopUpButton",
+    "title": "gpt High"
+  },
+  {
+    "id": "ax-6",
+    "parent_id": "ax-2",
+    "role": "AXButton",
+    "title": "Send message"
+  }
+]

@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -109,6 +116,8 @@ import {
   localConfigName,
   mergeConfigValues,
   panCommand,
+  readProjectConfig,
+  resolveHandoffConfig,
   resolveRetentionDays,
 } from './lib/project-config.js'
 import { resolvePolicies } from './lib/policies.js'
@@ -148,7 +157,10 @@ import {
   integrationBranchReadiness,
   isGitRepository,
 } from './lib/git.js'
-import { liveRunsBoundToWorktree } from './lib/state.js'
+import {
+  liveRunsBoundToWorktree,
+  loadState as loadRunState,
+} from './lib/state.js'
 import { listInbox, renderInbox, restoreInboxRequest } from './lib/inbox.js'
 import {
   archiveInstallationInboxItems,
@@ -208,6 +220,27 @@ import {
   scaffoldStageOutput,
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
+import { cursorHandoffReadiness } from './lib/cursor-handoff/readiness.js'
+import {
+  checkHandoffEligibility,
+  prepareHandoff,
+  sendingRecordCallback,
+  markHandoffSent,
+  markHandoffAborted,
+  writeHandoffEvidence,
+} from './lib/supervisor-handoff.js'
+import {
+  ensureHelper,
+  spawnHelperSession,
+} from './lib/cursor-handoff/helper.js'
+import { runHandoffDriver, selfCheck } from './lib/cursor-handoff/driver.js'
+import { redactSnapshot } from './lib/cursor-handoff/selectors.js'
+import type {
+  Bridge,
+  BridgePreflight,
+  BridgeSnapshot,
+} from './lib/cursor-handoff/driver.js'
+import type { HelperSession } from './lib/cursor-handoff/helper.js'
 import {
   gradeEvalRun,
   listEvalScenarios,
@@ -970,6 +1003,93 @@ function print(value: unknown, asJson = false): void {
   } else {
     process.stdout.write(value.endsWith('\n') ? value : `${value}\n`)
   }
+}
+
+/**
+ * Adapt a `HelperSession` (line-protocol stdio) into the `Bridge` interface
+ * the driver expects. Each call sends one JSON request and awaits one reply.
+ * The helper protocol returns `{ ok: false, code, error }` on failure; this
+ * adapter re-throws as an Error with the code attached.
+ */
+function helperSessionBridge(session: HelperSession): Bridge {
+  async function call(
+    request: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const reply = await session.send(request)
+    if (reply['ok'] === false) {
+      throw new PanError(String(reply['error'] ?? 'Helper error'), {
+        code: String(reply['code'] ?? 'HANDOFF_HELPER_PROTOCOL'),
+      })
+    }
+    return reply
+  }
+
+  return {
+    async preflight(): Promise<BridgePreflight> {
+      const r = await call({ op: 'preflight' })
+      return {
+        accessibility_trusted: Boolean(r['accessibility_trusted']),
+        cursor_pid:
+          typeof r['cursor_pid'] === 'number' ? r['cursor_pid'] : null,
+        agents_window_present: Boolean(r['agents_window_present']),
+        frontmost_pid:
+          typeof r['frontmost_pid'] === 'number' ? r['frontmost_pid'] : null,
+      }
+    },
+
+    async snapshot(): Promise<BridgeSnapshot> {
+      const r = await call({ op: 'snapshot' })
+      return { nodes: r['nodes'] as BridgeSnapshot['nodes'] }
+    },
+
+    async press(id: string): Promise<void> {
+      await call({ op: 'press', id })
+    },
+
+    async setValue(id: string, value: string): Promise<void> {
+      await call({ op: 'set_value', id, value })
+    },
+
+    async focusInsert(id: string, value: string): Promise<void> {
+      await call({ op: 'focus_insert', id, value })
+    },
+
+    async frontmost(): Promise<number | null> {
+      const r = await call({ op: 'frontmost' })
+      return typeof r['frontmost_pid'] === 'number' ? r['frontmost_pid'] : null
+    },
+  }
+}
+
+/**
+ * Resolve a `--capture-tree` path. The fixture is harness evidence, so it may
+ * land only under `runtime/`; any other path, including tracked source, is
+ * refused before the helper runs. An existing file is refused too, so a typo
+ * cannot replace run state such as a run's `state.json`.
+ */
+function handoffCapturePath(root: string, captureTree: string): string {
+  const absolute = resolveInside(root, captureTree)
+  const relative = path.relative(path.join(root, 'runtime'), absolute)
+
+  if (
+    relative.length === 0 ||
+    relative.startsWith('..') ||
+    path.isAbsolute(relative)
+  ) {
+    throw new PanError(
+      `--capture-tree must name a file under runtime/, not '${captureTree}'.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  if (existsSync(absolute)) {
+    throw new PanError(
+      `--capture-tree must name a new file; '${captureTree}' already exists.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  return absolute
 }
 
 function parseRunState(value: unknown, source: string): RunState {
@@ -5351,6 +5471,178 @@ async function main(): Promise<void> {
         code: 'UNKNOWN_COMMAND',
       })
     }
+    case 'handoff': {
+      const grammar = validatePanInvocation(['handoff', ...args])
+
+      if (!grammar.valid) {
+        throw new PanError(grammar.error ?? 'Invalid pan handoff options.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const asJson = hasFlag(args, '--json')
+      const selfCheckMode = hasFlag(args, '--self-check')
+      const captureTree = option(args, '--capture-tree')
+
+      if (selfCheckMode) {
+        const capturePath =
+          captureTree === null ? null : handoffCapturePath(root, captureTree)
+        const { binaryPath } = ensureHelper(root)
+        const session = spawnHelperSession(binaryPath)
+        let selfCheckResult: Awaited<ReturnType<typeof selfCheck>>
+
+        try {
+          const bridge = helperSessionBridge(session)
+          selfCheckResult = await selfCheck(bridge)
+
+          if (capturePath !== null) {
+            const snap = await bridge.snapshot()
+            mkdirSync(path.dirname(capturePath), { recursive: true })
+            writeJsonAtomic(capturePath, redactSnapshot(snap.nodes))
+          }
+        } finally {
+          await session.close()
+        }
+
+        print(selfCheckResult, asJson)
+        return
+      }
+
+      if (captureTree !== null) {
+        throw new PanError('--capture-tree requires --self-check.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const runId = requiredPositional(args[0], 'run-id')
+      const dryRun = hasFlag(args, '--dry-run')
+      const noteInline = option(args, '--note')
+      const noteFile = option(args, '--note-file')
+      const modelFlag = option(args, '--model') ?? undefined
+      const effortFlag = option(args, '--effort') ?? undefined
+
+      if (noteInline !== null && noteFile !== null) {
+        throw new PanError('--note and --note-file cannot be used together.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const config = readProjectConfig(root)
+      const handoffConfig = resolveHandoffConfig(config, {
+        model: modelFlag,
+        effort: effortFlag,
+      })
+
+      const prompt = `/pan-resume ${runId}`
+
+      // Refuse before the helper build, which can take a minute on first use.
+      // prepareHandoff repeats both checks under the run operation mutex.
+      {
+        const state = loadRunState(root, runId)
+        const eligibility = checkHandoffEligibility(root, state)
+        if (!eligibility.ok) {
+          throw new PanError(eligibility.message ?? 'Handoff refused.', {
+            code: eligibility.code ?? 'HANDOFF_RUN_TERMINAL',
+          })
+        }
+
+        if (!dryRun && noteInline === null && noteFile === null) {
+          throw new PanError(
+            'A handoff note is required: pass --note <text> or --note-file <path>.',
+            { code: 'HANDOFF_NOTE_MISSING' },
+          )
+        }
+      }
+
+      const { binaryPath } = ensureHelper(root)
+
+      const { handoffId, notePath, evidencePath, fromSessionGeneration } =
+        prepareHandoff(root, {
+          runId,
+          prompt,
+          model: handoffConfig.model,
+          effort: handoffConfig.effort,
+          note: noteInline ?? undefined,
+          noteFile: noteFile ?? undefined,
+          dryRun,
+        })
+
+      const session = spawnHelperSession(binaryPath)
+      let driverResult: Awaited<ReturnType<typeof runHandoffDriver>>
+
+      try {
+        driverResult = await runHandoffDriver({
+          bridge: helperSessionBridge(session),
+          prompt,
+          model: handoffConfig.model,
+          effort: handoffConfig.effort,
+          dryRun,
+          preSendCallback: dryRun
+            ? undefined
+            : sendingRecordCallback(root, runId, {
+                handoffId,
+                fromSessionGeneration,
+                evidencePath,
+                notePath,
+                prompt,
+                model: handoffConfig.model,
+                effort: handoffConfig.effort,
+              }),
+        })
+      } catch (error) {
+        const code =
+          error instanceof PanError ? error.code : 'HANDOFF_HELPER_PROTOCOL'
+        writeHandoffEvidence(root, runId, handoffId, {
+          status: 'aborted',
+          code,
+          error: errorMessage(error),
+        })
+        markHandoffAborted(root, runId, handoffId, code)
+        throw error
+      } finally {
+        await session.close()
+      }
+
+      writeHandoffEvidence(root, runId, handoffId, driverResult)
+
+      if (driverResult.status === 'sent') {
+        markHandoffSent(
+          root,
+          runId,
+          handoffId,
+          driverResult.verified_label ?? '',
+        )
+      } else if (driverResult.status === 'aborted') {
+        markHandoffAborted(
+          root,
+          runId,
+          handoffId,
+          driverResult.code ?? 'HANDOFF_PRESS_FAILED',
+        )
+      }
+
+      const output = {
+        ...driverResult,
+        handoff_id: handoffId,
+        run_id: runId,
+        ...(notePath !== null ? { note_path: notePath } : {}),
+        evidence_path: evidencePath,
+        next_action:
+          driverResult.status === 'sent'
+            ? 'End your turn now. The new session will resume the run.'
+            : driverResult.status === 'drafted'
+              ? 'Draft is in place. Re-run without --dry-run to send.'
+              : `Handoff aborted (${driverResult.code ?? 'unknown'}). See error for details.`,
+      }
+
+      print(output, asJson)
+
+      if (driverResult.status === 'aborted') {
+        process.exitCode = 1
+      }
+
+      return
+    }
     case 'doctor': {
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const validation = validateRepository(root)
@@ -5425,6 +5717,10 @@ async function main(): Promise<void> {
           ...gateCacheStatus(root),
           disable_with: `${GATE_CACHE_ENV}=0`,
         },
+        // Advisory: pan handoff needs macOS, swiftc/built helper, Cursor running,
+        // the Agents window, and Accessibility permission. None of these MUST fail
+        // doctor; they are readiness gaps reported here.
+        cursor_handoff: cursorHandoffReadiness(root),
         // Advisory: `PRIMER-001` makes the primer mandatory reading in every
         // installation, so doctor states its freshness even where repository
         // validation stays silent. A drifted primer is a readiness gap the

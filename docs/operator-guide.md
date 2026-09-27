@@ -2004,3 +2004,94 @@ Pull all instances and produce a combined report:
 ```sh
 pan spend report [--days <1..365>] [--json]
 ```
+
+## Supervisor handoff
+
+`pan handoff` moves supervision of one run into a fresh Cursor Agents chat. The command opens a new chat (no focus change, no deeplink), writes `/pan-resume <run-id>`, selects the model and effort, verifies both, and presses Send.
+
+### Prerequisites
+
+- macOS only.
+- Grant the Accessibility permission to the application running the command (Terminal or Cursor).
+- A running Cursor with a `Cursor Agents` panel open.
+- `swiftc` from the Xcode Command Line Tools (`xcode-select --install`). The helper compiles on first use.
+- Check readiness with `pan doctor`.
+
+### Configuration
+
+Set default model and effort in `config.json`:
+
+```json
+{
+  "handoff": {
+    "model": "Claude Opus 5.5",
+    "effort": "High"
+  }
+}
+```
+
+Flag arguments override configuration. Configuration overrides built-in defaults.
+
+### Commands
+
+```
+pan handoff <run-id> --note "Context for the next session." [--model <name>] [--effort <level>] [--json]
+pan handoff <run-id> --dry-run [--note <text> | --note-file <path>]
+pan handoff --self-check [--capture-tree <runtime-relative-path>] [--json]
+```
+
+- `--dry-run`: performs every step except Send; leaves the drafted chat in place.
+- `--self-check`: locates the window and controls without pressing anything.
+- `--capture-tree`: saves a redacted accessibility tree fixture for debugging.
+
+`--capture-tree` accepts only a path under `runtime/`; any other path fails with `INVALID_ARGUMENT`. `--model` and `--effort` must each be one non-empty line of at most 100 bytes.
+
+### Error codes
+
+Every failed check sends nothing and names its own code.
+
+| Code                            | Check that failed                                                     |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `HANDOFF_UNSUPPORTED_PLATFORM`  | The host is not macOS.                                                |
+| `HANDOFF_HELPER_UNAVAILABLE`    | No built helper and no `swiftc`.                                      |
+| `HANDOFF_HELPER_BUILD_FAILED`   | `swiftc` failed.                                                      |
+| `HANDOFF_HELPER_PROTOCOL`       | The helper exited or returned a malformed reply.                      |
+| `HANDOFF_ACCESSIBILITY_DENIED`  | The process lacks the Accessibility permission.                       |
+| `HANDOFF_CURSOR_NOT_RUNNING`    | No Cursor process.                                                    |
+| `HANDOFF_AGENTS_WINDOW_MISSING` | No window titled `Cursor Agents`.                                     |
+| `HANDOFF_UI_BUSY`               | A menu, sheet, or dialog is open in the Agents window.                |
+| `HANDOFF_NEW_CHAT_MISSING`      | No `New Chat` button.                                                 |
+| `HANDOFF_COMPOSER_TIMEOUT`      | No new empty composer within 6 seconds.                               |
+| `HANDOFF_COMPOSER_AMBIGUOUS`    | More than one new empty composer.                                     |
+| `HANDOFF_PROMPT_REJECTED`       | The composer does not hold the exact prompt after both write methods. |
+| `HANDOFF_PROMPT_LOST`           | The re-resolved composer no longer holds the exact prompt.            |
+| `HANDOFF_PICKER_MISSING`        | No model picker in the composer's ancestor scope.                     |
+| `HANDOFF_PICKER_AMBIGUOUS`      | More than one model picker in that scope.                             |
+| `HANDOFF_MENU_ITEM_MISSING`     | No `Model` or `Effort` menu item.                                     |
+| `HANDOFF_OPTION_MISSING`        | The requested model or effort option is not offered.                  |
+| `HANDOFF_PICKER_MISMATCH`       | The picker label is not exactly `<model> <effort>`.                   |
+| `HANDOFF_SEND_MISSING`          | No `Send message` button in the picker's scope.                       |
+| `HANDOFF_PRESS_FAILED`          | An `AXPress` or attribute write returned an error.                    |
+| `HANDOFF_ELEMENT_STALE`         | An element id no longer resolves.                                     |
+| `HANDOFF_FOCUS_CHANGED`         | The frontmost application changed before Send.                        |
+| `HANDOFF_TIMEOUT`               | The whole sequence exceeded 30 seconds.                               |
+| `HANDOFF_RUN_TERMINAL`          | The run is `succeeded`, `failed`, or `canceled`.                      |
+| `HANDOFF_WORKER_IN_FLIGHT`      | The pending action is `invoke_agent`.                                 |
+| `HANDOFF_WATCH_OPEN`            | A watch lock of the run has a live owner.                             |
+| `HANDOFF_SESSION_UNSUPPORTED`   | The run belongs to a cohort, long-horizon, or best-of-N session.      |
+| `HANDOFF_ALREADY_PENDING`       | The latest handoff record is `sending` or `sent`.                     |
+| `HANDOFF_NOTE_MISSING`          | A non-dry-run handoff has no note.                                    |
+| `SUPERVISOR_HANDED_OFF`         | `pan prepare` or `pan submit` from the handing-off session.           |
+
+### Fence
+
+After `pan handoff` sends, the handing-off session cannot run `pan prepare` or `pan submit` until the new session attests its supervisor card, which opens a new session generation and lifts the fence. `pan status` shows the latest handoff and its note path.
+
+### Live check after a Cursor update
+
+CI cannot drive the Cursor UI, so the operator runs this check on macOS with Cursor running, a `Cursor Agents` window open, and the Accessibility permission granted:
+
+1. Run `pan handoff --self-check --json`. Expect `ok: true` and empty `codes`.
+2. Run `pan handoff <run-id> --dry-run --json`. Expect `status: drafted`, the verified label `<model> <effort>`, and `frontmost.changed: false`. Delete the drafted chat.
+3. Run `pan handoff <run-id> --note "<resume context>" --json` on a run at a clean boundary. Expect `status: sent`, a new chat that runs `/pan-resume <run-id>` on the chosen model and effort, and no focus change.
+4. A failure names one code from the table above. `pan handoff --self-check --capture-tree runtime/<file>.json` saves a redacted tree for repair of the selector table.
