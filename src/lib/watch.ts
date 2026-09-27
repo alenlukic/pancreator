@@ -3932,6 +3932,8 @@ export interface GenericWatchRecordEntry {
    */
   requires_inspection?: boolean
   terminal_state?: GenericWatchTerminalState
+  /** Exit status on an `exited` terminal wake of a process watch. */
+  exit_status?: 'unknown' | number
   interrupted_reason?: string
 }
 
@@ -3962,6 +3964,9 @@ export interface GenericWatchResult {
   rearm_command?: string
 }
 
+const EXIT_RECORD_SETTLE_ATTEMPTS = 10
+const EXIT_RECORD_SETTLE_INTERVAL_MS = 200
+
 export interface ProcessWatchOptions {
   /** The process to observe. */
   pid: number
@@ -3972,9 +3977,10 @@ export interface ProcessWatchOptions {
   /** Harness-relative record path; defaults under `runtime/logs/watch/`. */
   recordPath?: string
   /**
-   * Harness-relative path to a `pan-run` exit record (`record.json`). When
-   * the process has exited and the record holds a numeric `exit_code`, the
-   * result's `exit_status` reports that code instead of `'unknown'`.
+   * Harness-relative path, inside `runtime/logs`, to a `pan-run` exit record
+   * (`record.json`). When the process has exited and the record holds a
+   * numeric `exit_code`, the result's `exit_status` reports that code instead
+   * of `'unknown'`.
    */
   exitRecordPath?: string
   cadenceSeconds?: number
@@ -3998,23 +4004,37 @@ export interface TimerWatchOptions {
   onInterrupted?: (signal: string) => void
 }
 
+function resolveInsideRuntimeLogs(
+  root: string,
+  relative: string,
+  subject: string,
+): string {
+  const absolute = resolveInside(root, relative)
+  const logsRoot = resolveInside(root, 'runtime/logs')
+
+  invariant(
+    absolute === logsRoot || absolute.startsWith(`${logsRoot}${path.sep}`),
+    `${subject} MUST stay inside the runtime tree (runtime/logs): ${relative}`,
+    { code: 'PATH_ESCAPE' },
+  )
+
+  return absolute
+}
+
 function genericWatchRecordPath(
   root: string,
   label: string,
   recordPath: string | undefined,
 ): { absolute: string; relative: string } {
   if (recordPath !== undefined) {
-    const absolute = resolveInside(root, recordPath)
-    const logsRoot = resolveInside(root, 'runtime/logs')
-
-    invariant(
-      absolute === logsRoot || absolute.startsWith(`${logsRoot}${path.sep}`),
-      `A watch record path MUST stay inside the runtime tree ` +
-        `(runtime/logs): ${recordPath}`,
-      { code: 'PATH_ESCAPE' },
-    )
-
-    return { absolute, relative: recordPath }
+    return {
+      absolute: resolveInsideRuntimeLogs(
+        root,
+        recordPath,
+        'A watch record path',
+      ),
+      relative: recordPath,
+    }
   }
 
   const safeLabel = label
@@ -4077,6 +4097,14 @@ export async function watchProcess(
   const outputAbsolute = options.outputPath
     ? resolveInside(root, options.outputPath)
     : null
+  const exitRecordAbsolute =
+    options.exitRecordPath === undefined
+      ? null
+      : resolveInsideRuntimeLogs(
+          root,
+          options.exitRecordPath,
+          'An --exit-record path',
+        )
 
   const append = (entry: GenericWatchRecordEntry): void => {
     appendJsonLine(record.absolute, entry)
@@ -4097,44 +4125,79 @@ export async function watchProcess(
     })
   }, options.onInterrupted)
 
+  const readExitRecord = (): {
+    exitCode: number | null
+    wrapperPid: number
+  } => {
+    try {
+      const raw: unknown = JSON.parse(
+        readFileSync(exitRecordAbsolute as string, 'utf8'),
+      )
+
+      if (isRecord(raw)) {
+        return {
+          exitCode: Number.isInteger(raw.exit_code)
+            ? (raw.exit_code as number)
+            : null,
+          wrapperPid: Number.isInteger(raw.wrapper_pid)
+            ? (raw.wrapper_pid as number)
+            : 0,
+        }
+      }
+    } catch {
+      // An absent or partly written record reads as no exit code.
+    }
+
+    return { exitCode: null, wrapperPid: 0 }
+  }
+
   /**
-   * Read the numeric `exit_code` from a `pan-run` exit record when the
-   * process has exited. Returns `'unknown'` when the record is absent,
-   * unreadable, or does not hold a finished numeric exit code yet.
+   * The wrapper writes the exit code after its output drains, so a record
+   * without one is re-read briefly while that wrapper is still alive.
    */
-  const readExitCode = (): 'unknown' | number => {
-    if (options.exitRecordPath === undefined) {
+  const settleExitStatus = async (): Promise<'unknown' | number> => {
+    if (exitRecordAbsolute === null) {
       return 'unknown'
     }
 
-    const absolute = resolveInside(root, options.exitRecordPath)
+    for (let attempt = 0; ; attempt += 1) {
+      const { exitCode, wrapperPid } = readExitRecord()
 
-    try {
-      const raw: unknown = JSON.parse(readFileSync(absolute, 'utf8'))
+      if (exitCode !== null) {
+        return exitCode
+      }
 
       if (
-        isRecord(raw) &&
-        typeof raw.exit_code === 'number' &&
-        Number.isInteger(raw.exit_code)
+        attempt >= EXIT_RECORD_SETTLE_ATTEMPTS ||
+        wrapperPid <= 0 ||
+        !processRunning(wrapperPid)
       ) {
-        return raw.exit_code
+        return 'unknown'
       }
-    } catch {
-      // Record absent or not yet written — fall through to 'unknown'.
-    }
 
-    return 'unknown'
+      await sleep(EXIT_RECORD_SETTLE_INTERVAL_MS)
+    }
   }
 
-  const finish = (state: GenericWatchTerminalState): GenericWatchResult => {
+  const finish = (
+    state: GenericWatchTerminalState,
+    exitStatus: 'unknown' | number | null = null,
+  ): GenericWatchResult => {
     const endedMs = now()
     const rearmCommand =
       state === 'timed_out'
-        ? `./bin/pan watch --process ${options.pid} --label ${shellSingleQuote(options.label)} --timeout-seconds ${timeoutSeconds}`
+        ? [
+            `./bin/pan watch --process ${options.pid}`,
+            `--label ${shellSingleQuote(options.label)}`,
+            ...(options.outputPath
+              ? [`--output ${shellSingleQuote(options.outputPath)}`]
+              : []),
+            ...(options.exitRecordPath
+              ? [`--exit-record ${shellSingleQuote(options.exitRecordPath)}`]
+              : []),
+            `--timeout-seconds ${timeoutSeconds}`,
+          ].join(' ')
         : undefined
-
-    const exitStatus: 'unknown' | number | null =
-      state === 'exited' ? readExitCode() : null
 
     return {
       state,
@@ -4262,6 +4325,8 @@ export async function watchProcess(
         terminal = 'timed_out'
       }
 
+      const exitStatus =
+        terminal === 'exited' ? await settleExitStatus() : undefined
       const output = observeOutput()
       const entry: GenericWatchRecordEntry = {
         schema_version: 1,
@@ -4276,13 +4341,14 @@ export async function watchProcess(
         process_identity_match: identityMatch,
         ...(output ? { output } : {}),
         ...(terminal ? { terminal_state: terminal } : {}),
+        ...(exitStatus !== undefined ? { exit_status: exitStatus } : {}),
       }
 
       append(entry)
       options.onWake?.(entry)
 
       if (terminal) {
-        return finish(terminal)
+        return finish(terminal, exitStatus ?? null)
       }
     }
   } finally {

@@ -169,6 +169,93 @@ test('AC-18: shell-monitor hook allow and deny cases', async (t) => {
     assert.equal(permission('rg --search-zip .'), 'deny')
   })
 
+  await t.test('allows the -c form whose quoted string pipes or chains', () => {
+    assert.equal(permission("bin/pan-run -c 'git status | head'"), 'allow')
+    assert.equal(permission("bin/pan-run -c 'npm test && echo ok'"), 'allow')
+  })
+
+  const bypasses: [string, string][] = [
+    ['a newline-separated second command', 'bin/pan-run -- true\nnpm test'],
+    ['an unquoted operator after the wrapper', 'bin/pan-run -- true; npm test'],
+    ['a quoted assignment that is really the command', "'FOO=x' bin/pan-run"],
+    [
+      'a backtick after a double-quoted single quote',
+      'cat "\'" `touch /tmp/pan-hook-test` "\'"',
+    ],
+    ['$(...) inside double quotes', 'cat "$(touch /tmp/pan-hook-test)"'],
+    ['the <> redirection', 'ls <>/tmp/pan-hook-test'],
+    ['a redirect to a file', 'git status > /tmp/pan-hook-test'],
+    ['an allowlisted basename at another path', '/tmp/evil/cat x'],
+    ['an unterminated quote', "cat 'README.md"],
+    [
+      'an ANSI-C string that hides an operator',
+      "cat $'\\' ';touch /tmp/pan-hook-test;: '\\'",
+    ],
+    [
+      'an ANSI-C string after the wrapper',
+      "bin/pan-run -- echo hi $'\\' ';touch /tmp/pan-hook-test;: '\\'",
+    ],
+    [
+      'a zsh parameter flag inside double quotes',
+      'cat "${(e):-\\$(touch /tmp/pan-hook-test)}"',
+    ],
+    ['a braced parameter expansion', 'cat ${HOME}'],
+    ['a locale string', 'cat $"README.md"'],
+    ['an arithmetic expansion', 'ls $[1+1]'],
+    ['a zsh glob-substitution flag', 'cat $~HOME'],
+  ]
+
+  for (const [name, command] of bypasses) {
+    await t.test(`denies ${name}`, () => {
+      assert.equal(permission(command), 'deny')
+    })
+  }
+
+  const refusedFlags = [
+    'git --config-env=core.pager=X status',
+    'git log --exec-path=/tmp',
+    'git diff --ext-diff',
+    'git diff --ext',
+    'git show --textconv HEAD',
+    'git log --output /tmp/pan-hook-test',
+    'rg --pre=/tmp/evil foo',
+    'rg --pre-glob=*.x foo',
+    'rg -z foo',
+    'rg -iz foo',
+  ]
+
+  for (const command of refusedFlags) {
+    await t.test(`denies refused flag: ${command}`, () => {
+      assert.equal(permission(command), 'deny')
+    })
+  }
+
+  await t.test('allows options that only resemble a refused flag', () => {
+    assert.equal(permission('git diff --text --no-ext-diff'), 'allow')
+    assert.equal(permission("cat '$(not a substitution)'"), 'allow')
+  })
+
+  await t.test('allows plain parameters and a literal dollar sign', () => {
+    assert.equal(permission('ls -la $HOME'), 'allow')
+    assert.equal(permission('cat "$HOME/README.md"'), 'allow')
+    assert.equal(permission('rg "foo$" src'), 'allow')
+    assert.equal(permission("bin/pan-run -c 'echo ${HOME}'"), 'allow')
+  })
+
+  await t.test('denies a payload that is not JSON and exits 0', () => {
+    const result = spawnSync(HOOK, {
+      input: 'not json',
+      encoding: 'utf8',
+      timeout: TIMEOUT_MS,
+    })
+
+    assert.equal(result.status, 0)
+    assert.equal(
+      (JSON.parse(result.stdout) as Record<string, unknown>).permission,
+      'deny',
+    )
+  })
+
   // ---- output format ----
 
   await t.test('allow response is {"permission":"allow"}', () => {

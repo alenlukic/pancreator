@@ -354,105 +354,100 @@ test('AC-023: generic watch', async (t) => {
 })
 
 // AC-16: --exit-record support
-test('AC-16: --exit-record passes exit status from pan-run record.json', async (t) => {
+test('AC-16: --exit-record reports the exit status of a wrapped command', async (t) => {
+  const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
+  const BANNER =
+    /observe: \.\/bin\/pan watch --process (\d+) --label \S+ --output \S+ --exit-record (\S+)/u
+
   await t.test(
-    'exit_status is numeric from record.json when --exit-record is supplied',
+    'a watch armed on a live wrapped command that exits 3 reports exit_status 3',
     async () => {
       const root = createTestTempDirectory('watch-exit-record-')
+      const env: NodeJS.ProcessEnv = { ...process.env, PANCREATOR_ROOT: root }
 
-      // Create a minimal record.json with exit_code 3
-      const { mkdirSync, writeFileSync } = await import('node:fs')
-      const { randomUUID } = await import('node:crypto')
-      const recordDir = path.join(
-        root,
-        'runtime',
-        'logs',
-        'shell',
-        `test-${randomUUID().slice(0, 8)}`,
-      )
-      mkdirSync(recordDir, { recursive: true })
-      const recordPath = path.join(recordDir, 'record.json')
-      const recordRelative = path.relative(root, recordPath)
+      delete env.PAN_VERBOSE
+      delete env.PAN_PROGRESS_FD
 
-      // Write the record with exit_code: 3 (process already exited)
-      writeFileSync(
-        recordPath,
-        JSON.stringify({
-          schema_version: 1,
-          label: 'test',
-          command: ['bash', '-c', 'exit 3'],
-          cwd: '/tmp',
-          pid: 99999,
-          wrapper_pid: 99998,
-          started_at: new Date().toISOString(),
-          ended_at: new Date().toISOString(),
-          exit_code: 3,
-          signal: null,
-          log_path: 'runtime/logs/shell/test/output.log',
-          heartbeat_path: 'runtime/logs/shell/test/heartbeat.json',
-          heartbeat_seconds: 30,
-        }),
-      )
-
-      // Use a PID that is definitely not running (a very large PID)
-      const result = await watchProcess(root, {
-        pid: 99999,
-        label: 'test-exit-record',
-        exitRecordPath: recordRelative,
-        cadenceSeconds: 0.1,
-        timeoutSeconds: 5,
+      const wrapper = spawn(PAN_RUN, ['--', 'bash', '-c', 'sleep 1; exit 3'], {
+        env,
+        stdio: ['ignore', 'ignore', 'pipe'],
       })
+      let stderr = ''
 
-      // Process is not running → unverified (or exited if it reuses the PID)
-      // The key test is that when state IS exited, exit_status comes from the record
-      if (result.state === 'exited') {
-        assert.equal(
-          result.exit_status,
-          3,
-          'exit_status must be 3 from record.json',
-        )
-      }
-      // When unverified or timed_out, exit_status must be null (not from record)
-      else {
-        assert.equal(
-          result.exit_status,
-          null,
-          'exit_status must be null when process did not exit',
-        )
+      wrapper.stderr.on('data', (chunk: Buffer) => (stderr += chunk))
+
+      const wrapperClosed = once(wrapper, 'close')
+      // Hang guard only; the proof is the recorded exit status.
+      const guard = setTimeout(() => wrapper.kill('SIGKILL'), 30_000)
+
+      try {
+        await waitFor(() => BANNER.test(stderr))
+
+        const [, pid, exitRecord] = BANNER.exec(stderr) as RegExpExecArray
+        const result = await watchProcess(root, {
+          pid: Number(pid),
+          label: 'wrapped-exit-3',
+          exitRecordPath: exitRecord,
+          cadenceSeconds: 0.2,
+          timeoutSeconds: 30,
+        })
+
+        assert.equal(result.state, 'exited')
+        assert.equal(result.exit_status, 3)
+
+        const terminal = readGenericRecord(root, result.record_path).at(-1)
+
+        assert.equal(terminal?.terminal_state, 'exited')
+        assert.equal(terminal?.exit_status, 3)
+
+        const [status] = (await wrapperClosed) as [number | null]
+
+        assert.equal(status, 3)
+      } finally {
+        clearTimeout(guard)
       }
     },
   )
 
   await t.test(
-    'exit_status is "unknown" when no --exit-record is supplied',
+    'an --exit-record outside runtime/logs is refused at arm',
     async () => {
-      const root = createTestTempDirectory('watch-no-exit-record-')
-      const { spawn } = await import('node:child_process')
-      const { once } = await import('node:events')
+      const root = createTestTempDirectory('watch-exit-record-escape-')
 
-      const child = spawn(
-        process.execPath,
-        ['-e', 'setTimeout(() => process.exit(3), 200)'],
-        { stdio: 'ignore' },
+      await assert.rejects(
+        watchProcess(root, {
+          pid: process.pid,
+          label: 'escape',
+          exitRecordPath: 'record.json',
+          cadenceSeconds: 0.1,
+          timeoutSeconds: 1,
+        }),
+        (error: unknown) =>
+          error instanceof PanError && error.code === 'PATH_ESCAPE',
       )
+    },
+  )
 
-      assert.ok(child.pid)
-
-      const exited = once(child, 'exit')
+  await t.test(
+    'the re-arm command carries --output and --exit-record',
+    async () => {
+      const root = createTestTempDirectory('watch-exit-record-rearm-')
       const result = await watchProcess(root, {
-        pid: child.pid,
-        label: 'test-unknown-exit',
+        pid: process.pid,
+        label: 'rearm',
+        outputPath: 'runtime/logs/shell/x/output.log',
+        exitRecordPath: 'runtime/logs/shell/x/record.json',
         cadenceSeconds: 0.1,
-        timeoutSeconds: 30,
+        timeoutSeconds: 0.2,
       })
 
-      await exited
-
-      assert.equal(result.state, 'exited')
+      assert.equal(result.state, 'timed_out')
+      assert.equal(result.exit_status, null)
       assert.equal(
-        result.exit_status,
-        'unknown',
-        'exit_status must be "unknown" without --exit-record',
+        result.rearm_command,
+        `./bin/pan watch --process ${process.pid} --label 'rearm' ` +
+          `--output 'runtime/logs/shell/x/output.log' ` +
+          `--exit-record 'runtime/logs/shell/x/record.json' --timeout-seconds 0.2`,
       )
     },
   )

@@ -10,29 +10,27 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  collectShellMonitorIssues,
-  SHELL_MONITOR_ALLOWLIST,
-} from '../../src/lib/validators/shell-monitor.js'
+import { collectShellMonitorIssues } from '../../src/lib/validators/shell-monitor.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
 const HOOKS_SOURCE = 'library/cursor/hooks.json'
 const HOOK_SCRIPT = 'bin/pan-hook-shell-monitor'
 const PAN_RUN = 'bin/pan-run'
+const POLICY = 'governance/policies/DELEGATE-001.json'
 
 /** Set up a minimal repo root with the required files. */
 function setupRoot(): string {
   const root = createTestTempDirectory('shell-monitor-validator-')
 
-  // Create needed directories
   mkdirSync(path.join(root, 'library', 'cursor'), { recursive: true })
   mkdirSync(path.join(root, 'bin'), { recursive: true })
+  mkdirSync(path.join(root, 'governance', 'policies'), { recursive: true })
 
-  // Copy the real hooks.json and scripts
   cpSync(path.join(REPO_ROOT, HOOKS_SOURCE), path.join(root, HOOKS_SOURCE))
   cpSync(path.join(REPO_ROOT, HOOK_SCRIPT), path.join(root, HOOK_SCRIPT))
   cpSync(path.join(REPO_ROOT, PAN_RUN), path.join(root, PAN_RUN))
+  cpSync(path.join(REPO_ROOT, POLICY), path.join(root, POLICY))
 
   // Preserve executable bits
   chmodSync(path.join(root, HOOK_SCRIPT), 0o755)
@@ -150,33 +148,64 @@ test('AC-19: shell-monitor validator pass and fail cases', async (t) => {
     )
   })
 
+  await t.test('passes on an unmodified copy of the three sources', () => {
+    assert.deepEqual(
+      collectShellMonitorIssues(setupRoot()).map((i) => i.code),
+      [],
+    )
+  })
+
   await t.test(
-    'SHELL_MONITOR_ALLOWLIST contains the DELEGATE-001 entries',
+    'fails with allowlist drift when the hook gains an entry',
     () => {
-      const expected = [
-        'git status',
-        'git log',
-        'git diff',
-        'git show',
-        'git rev-parse',
-        'ls',
-        'rg',
-        'cat',
-        'pwd',
-      ]
+      const root = setupRoot()
+      const hookPath = path.join(root, HOOK_SCRIPT)
+      const hook = readFileSync(hookPath, 'utf8')
+      const edited = hook.replace('"pwd"]', '"pwd", "find"]')
 
-      for (const entry of expected) {
-        assert.ok(
-          SHELL_MONITOR_ALLOWLIST.includes(entry),
-          `allowlist must include '${entry}'`,
-        )
-      }
+      assert.notEqual(edited, hook, 'the fixture edit must change the hook')
+      writeFileSync(hookPath, edited)
 
-      assert.equal(
-        SHELL_MONITOR_ALLOWLIST.length,
-        expected.length,
-        'allowlist must have exactly the expected entries',
+      assert.deepEqual(
+        collectShellMonitorIssues(root).map((i) => i.code),
+        ['shell_monitor.allowlist_drift'],
       )
     },
   )
+
+  await t.test(
+    'fails with allowlist drift when the policy drops an entry',
+    () => {
+      const root = setupRoot()
+      const policyPath = path.join(root, POLICY)
+      const policy = readFileSync(policyPath, 'utf8')
+      const edited = policy.replace('`cat`, `pwd`.', '`cat`.')
+
+      assert.notEqual(edited, policy, 'the fixture edit must change the policy')
+      writeFileSync(policyPath, edited)
+
+      assert.deepEqual(
+        collectShellMonitorIssues(root).map((i) => i.code),
+        ['shell_monitor.allowlist_drift'],
+      )
+    },
+  )
+
+  await t.test('fails when the policy no longer states the allowlist', () => {
+    const root = setupRoot()
+    const policyPath = path.join(root, POLICY)
+
+    writeFileSync(
+      policyPath,
+      readFileSync(policyPath, 'utf8').replace(
+        'The allowlist contains:',
+        'Allowed:',
+      ),
+    )
+
+    assert.deepEqual(
+      collectShellMonitorIssues(root).map((i) => i.code),
+      ['shell_monitor.policy_allowlist_unreadable'],
+    )
+  })
 })

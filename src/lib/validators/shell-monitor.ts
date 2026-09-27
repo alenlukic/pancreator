@@ -7,23 +7,8 @@ import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 const HOOKS_SOURCE = 'library/cursor/hooks.json'
 const HOOK_COMMAND_SUFFIX = 'bin/pan-hook-shell-monitor'
 const PAN_RUN_RELATIVE = 'bin/pan-run'
-
-/**
- * Canonical allowlist as declared in DELEGATE-001. The validator checks that
- * the hook's embedded allowlist matches these entries. Both lists must agree
- * for the gate to pass.
- */
-export const SHELL_MONITOR_ALLOWLIST: readonly string[] = [
-  'git status',
-  'git log',
-  'git diff',
-  'git show',
-  'git rev-parse',
-  'ls',
-  'rg',
-  'cat',
-  'pwd',
-]
+const POLICY_SOURCE = 'governance/policies/DELEGATE-001.json'
+const POLICY_ALLOWLIST_LEAD = 'The allowlist contains:'
 
 type Issue = HandlerResult['issues'][number]
 
@@ -36,7 +21,10 @@ function isExecutable(absolute: string): boolean {
   }
 }
 
-/** Read the ALLOWLISTED_COMMANDS and ALLOWLISTED_GIT_SUB sets from the hook. */
+/**
+ * Read the `ALLOWLIST = [...]` literal the hook's evaluator derives every
+ * allowed command from. Returns null when the literal is absent or malformed.
+ */
 function readHookAllowlist(hookPath: string): string[] | null {
   let text: string
 
@@ -46,69 +34,80 @@ function readHookAllowlist(hookPath: string): string[] | null {
     return null
   }
 
-  // Extract the Python ALLOWLISTED_GIT_SUB set and command prefixes.
-  // The hook encodes the allowlist as two Python sets:
-  //   ALLOWLISTED_GIT_SUB = {"status", "log", "diff", "show", "rev-parse"}
-  //   and cmd_name checks for "ls", "cat", "pwd", "rg", "git"
-  // We reconstruct the canonical list from those literals.
+  const match = /^ALLOWLIST = (\[.*\])$/mu.exec(text)
 
-  const gitSubMatch = /ALLOWLISTED_GIT_SUB\s*=\s*\{([^}]+)\}/u.exec(text)
-
-  if (gitSubMatch === null) {
+  if (match === null) {
     return null
   }
 
-  const gitSubs = gitSubMatch[1]
-    .split(',')
-    .map((s) => s.trim().replace(/^["']|["']$/gu, ''))
-    .filter(Boolean)
+  try {
+    const parsed: unknown = JSON.parse(match[1])
 
-  const result: string[] = []
-
-  for (const sub of gitSubs) {
-    result.push(`git ${sub}`)
+    return Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      parsed.every((entry) => typeof entry === 'string')
+      ? parsed
+      : null
+  } catch {
+    return null
   }
-
-  // Extract non-git allowlisted commands from patterns like:
-  //   if cmd_name in ("ls", "cat", "pwd"): return True
-  //   if cmd_name == "rg":
-  for (const match of text.matchAll(
-    /if cmd_name in \(([^)]+)\):\s*return True/gu,
-  )) {
-    const cmds = match[1]
-      .split(',')
-      .map((s) => s.trim().replace(/^["']|["']$/gu, ''))
-      .filter((c) => c !== '' && c !== 'git')
-
-    result.push(...cmds)
-  }
-
-  // Also pick up single-command patterns: if cmd_name == "rg":
-  for (const match of text.matchAll(/if cmd_name == ["']([a-z]+)["']:/gu)) {
-    const cmd = match[1]
-
-    if (cmd !== '' && cmd !== 'git' && !result.includes(cmd)) {
-      result.push(cmd)
-    }
-  }
-
-  return result.length > 0 ? result : null
 }
 
-function allowlistsMatch(
-  fromHook: string[],
-  canonical: readonly string[],
-): boolean {
-  const hookSet = new Set(fromHook.map((e) => e.trim()))
-  const canonicalSet = new Set(canonical.map((e) => e.trim()))
+/**
+ * Read the backticked entries of the DELEGATE-001 instruction sentence that
+ * opens with `The allowlist contains:`. Returns null when no instruction
+ * states the allowlist.
+ */
+function readPolicyAllowlist(policyPath: string): string[] | null {
+  let policy: unknown
 
-  if (hookSet.size !== canonicalSet.size) return false
-
-  for (const entry of canonicalSet) {
-    if (!hookSet.has(entry)) return false
+  try {
+    policy = readJson(policyPath)
+  } catch {
+    return null
   }
 
-  return true
+  if (!isRecord(policy) || !Array.isArray(policy.instructions)) {
+    return null
+  }
+
+  for (const instruction of policy.instructions) {
+    const text =
+      typeof instruction === 'string'
+        ? instruction
+        : isRecord(instruction) && typeof instruction.text === 'string'
+          ? instruction.text
+          : ''
+    const lead = text.indexOf(POLICY_ALLOWLIST_LEAD)
+
+    if (lead === -1) {
+      continue
+    }
+
+    const sentence = text
+      .slice(lead + POLICY_ALLOWLIST_LEAD.length)
+      .split(/\.(?:\s|$)/u)[0]
+    const entries = [...sentence.matchAll(/`([^`]+)`/gu)].map(
+      (entry) => entry[1],
+    )
+
+    return entries.length > 0 ? entries : null
+  }
+
+  return null
+}
+
+function sameEntries(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  const leftSet = new Set(left)
+  const rightSet = new Set(right)
+
+  return (
+    leftSet.size === rightSet.size &&
+    [...leftSet].every((entry) => rightSet.has(entry))
+  )
 }
 
 /**
@@ -217,26 +216,42 @@ export function collectShellMonitorIssues(root: string): Issue[] {
     })
   }
 
-  // Check the allowlist in the hook script matches DELEGATE-001
-  if (fileExists(hookScriptAbsolute)) {
-    const hookAllowlist = readHookAllowlist(hookScriptAbsolute)
+  if (!fileExists(hookScriptAbsolute)) {
+    return issues
+  }
 
-    if (hookAllowlist === null) {
-      issues.push({
-        code: 'shell_monitor.allowlist_unreadable',
-        message: `${HOOK_COMMAND_SUFFIX}: could not extract the allowlist from the hook script.`,
-        pointer: HOOK_COMMAND_SUFFIX,
-      })
-    } else if (!allowlistsMatch(hookAllowlist, SHELL_MONITOR_ALLOWLIST)) {
-      issues.push({
-        code: 'shell_monitor.allowlist_drift',
-        message:
-          `${HOOK_COMMAND_SUFFIX}: the hook's embedded allowlist does not match ` +
-          `the DELEGATE-001 allowlist. Hook has: [${hookAllowlist.sort().join(', ')}]. ` +
-          `Expected: [${[...SHELL_MONITOR_ALLOWLIST].sort().join(', ')}].`,
-        pointer: HOOK_COMMAND_SUFFIX,
-      })
-    }
+  const hookAllowlist = readHookAllowlist(hookScriptAbsolute)
+  const policyAllowlist = readPolicyAllowlist(path.join(root, POLICY_SOURCE))
+
+  if (hookAllowlist === null) {
+    issues.push({
+      code: 'shell_monitor.allowlist_unreadable',
+      message: `${HOOK_COMMAND_SUFFIX}: could not read the ALLOWLIST literal from the hook script.`,
+      pointer: HOOK_COMMAND_SUFFIX,
+    })
+  }
+
+  if (policyAllowlist === null) {
+    issues.push({
+      code: 'shell_monitor.policy_allowlist_unreadable',
+      message: `${POLICY_SOURCE}: no instruction states '${POLICY_ALLOWLIST_LEAD}' with backticked entries.`,
+      pointer: POLICY_SOURCE,
+    })
+  }
+
+  if (
+    hookAllowlist !== null &&
+    policyAllowlist !== null &&
+    !sameEntries(hookAllowlist, policyAllowlist)
+  ) {
+    issues.push({
+      code: 'shell_monitor.allowlist_drift',
+      message:
+        `${HOOK_COMMAND_SUFFIX}: the hook's embedded allowlist does not match ` +
+        `the ${POLICY_SOURCE} allowlist. Hook has: [${[...hookAllowlist].sort().join(', ')}]. ` +
+        `Policy states: [${[...policyAllowlist].sort().join(', ')}].`,
+      pointer: HOOK_COMMAND_SUFFIX,
+    })
   }
 
   return issues
