@@ -92,7 +92,7 @@
   ],
   "transitions": {
     "success": "succeeded",
-    "failure": "paused",
+    "failure": "consolidate",
     "blocked": "paused"
   }
 }

@@ -120,9 +120,14 @@ Do not rewrite historical versions, examples, migration references, or
    `rationale`, `compatibility`, `updated_files`, and `release_index_action`.
 5. Run `pan release finalize` with the managed worktree and fetched-main hash.
    Record the resulting release and index commit hashes.
+6. After finalize, run `pan release land --worktree <name> --json` to
+   integrate, verify, and land on pan-dev. On `landed`, record the landed
+   version, tip before and after, release commit, and index commit. On any
+   other status, surface the result and stop.
 
 ## Boundaries
 
-Only `pan release finalize` may edit `release/index.json` and create the two
-final local commits. `VERSION-001` on the active card owns the remote-action
-prohibitions.
+Only `pan release finalize` may create the two final local commits.
+Only `pan release land` may fast-forward pan-dev. Never use `git merge` or
+`git update-ref` by hand. `VERSION-001` on the active card owns the
+remote-action prohibitions.

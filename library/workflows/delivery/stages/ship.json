@@ -105,7 +105,7 @@
   ],
   "transitions": {
     "success": "succeeded",
-    "failure": "paused",
+    "failure": "remediate",
     "blocked": "paused"
   }
 }

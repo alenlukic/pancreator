@@ -115,7 +115,11 @@ import { resolvePolicies } from './lib/policies.js'
 import { renderRunInvocationCard } from './lib/context-card.js'
 import { orderedWorkerActions } from './lib/render.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
-import { allocateReleaseVersion } from './lib/release-allocation.js'
+import {
+  allocateReleaseVersion,
+  isReleaseBump,
+} from './lib/release-allocation.js'
+import { landRelease } from './lib/release-landing.js'
 import {
   continueLocalRelease,
   finalizeLocalRelease,
@@ -2794,6 +2798,47 @@ async function main(): Promise<void> {
           ),
           hasFlag(args, '--json'),
         )
+        return
+      }
+
+      if (sub === 'land') {
+        const bumpArg = option(args, '--bump')
+        const bump = bumpArg !== null ? bumpArg : undefined
+        const waitSecondsArg = option(args, '--wait-seconds')
+        const verifyProfileArgs = options(args, '--verify-profile')
+
+        if (bump !== undefined && !isReleaseBump(bump)) {
+          throw new PanError(
+            `--bump must be major, minor, or patch, not '${bump}'.`,
+            { code: 'INVALID_RELEASE_BUMP' },
+          )
+        }
+
+        if (waitSecondsArg !== null && !/^\d+$/u.test(waitSecondsArg)) {
+          throw new PanError(
+            `--wait-seconds must be a non-negative whole number, not '${waitSecondsArg}'.`,
+            { code: 'INVALID_WAIT_SECONDS' },
+          )
+        }
+
+        const result = landRelease(root, {
+          worktree: worktreeName,
+          ...(bump !== undefined ? { bump } : {}),
+          runId: option(args, '--run'),
+          ...(verifyProfileArgs.length > 0
+            ? { verifyProfiles: verifyProfileArgs }
+            : {}),
+          ...(waitSecondsArg !== null
+            ? { waitSeconds: Number(waitSecondsArg) }
+            : {}),
+        })
+
+        print(result, hasFlag(args, '--json'))
+
+        if (result.status !== 'landed') {
+          process.exitCode = 1
+        }
+
         return
       }
 

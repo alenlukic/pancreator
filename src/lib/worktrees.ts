@@ -1527,6 +1527,19 @@ export function reconcileWorktrees(
   target: ReconcileTarget,
   sourceNames: string[],
 ): ReconcileWorktreesResult {
+  // pan-dev and main are protected landing targets. Every release landing on
+  // pan-dev must go through `pan release land`, which holds the mutex,
+  // integrates, allocates a version, verifies, and fast-forwards the branch.
+  // A direct reconcile into pan-dev or main bypasses that gate.
+  const protectedBranches = new Set(['pan-dev', 'main'])
+
+  invariant(
+    !target.into_branch || !protectedBranches.has(target.into_branch),
+    `Reconcile cannot target '${target.into_branch}' directly. ` +
+      `Use 'pan release land --worktree <name>' to land on pan-dev, ` +
+      `which integrates, versions, verifies, and fast-forwards the branch.`,
+    { code: 'LANDING_REQUIRES_RELEASE_LAND' },
+  )
   invariant(
     Boolean(target.into) !== Boolean(target.into_branch),
     'Reconcile requires exactly one of --into or --into-branch.',

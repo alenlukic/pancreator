@@ -40,6 +40,24 @@ edit its declared source and reference the rendered HTML. Do not run the
 renderer. When the contract omits `output.operator_brief`, do not create either
 brief file.
 
+## Landing-conflict procedure
+
+When the prior ship output carries `data.landing.status` of `conflict`:
+
+1. Merge pan-dev into the main workspace branch:
+   `git merge --no-ff --no-edit pan-dev` in the main workspace.
+2. Resolve each source path the land result lists in `source_conflicts`.
+   Take the tip's release metadata files exactly as they stand on the tip.
+3. Stage all resolved paths and commit.
+4. Run the impacted profile to confirm the resolution is clean.
+5. The run returns to verify and ship. `pan release land` re-reads the tip.
+
+When `data.landing.status` is `verification_failed`:
+
+1. Repair each failure named in the land result's `verification_output`.
+2. Run the impacted profile and fix remaining failures.
+3. The run returns to verify and ship.
+
 ## Done when
 
 Every candidate has a recorded evaluation; the consolidated implementation is

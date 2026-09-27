@@ -16,7 +16,9 @@
 # Modes:
 #   check-landing pre-commit        refuse a direct commit on a protected branch
 #   check-landing pre-merge-commit  refuse a merge whose source has no release
-#   check-landing branch <ref>      report whether <ref> is landable onto HEAD
+#   check-landing branch <ref> [<base-ref>]
+#                                   report whether <ref> is landable onto <base-ref>
+#                                   (defaults to HEAD when <base-ref> is omitted)
 #
 # Exit 0 permits, exit 1 refuses with the reason on stderr.
 set -euo pipefail
@@ -61,7 +63,7 @@ indexed_commit_for() {
 
 refuse() {
   echo "check-landing: $1" >&2
-  echo "check-landing: nothing lands on pan-dev without a proper version. Do the work on a worktree branch, run the release flow there (/pan-release, or the ship stage), which creates the release commit and the release/index.json commit for a new VERSION, then merge that branch. VERSION-001 and ACTION-001 state the rule." >&2
+  echo "check-landing: nothing lands on pan-dev without a proper version. Use 'pan release land --worktree <name>', which integrates, versions, verifies, and fast-forwards pan-dev. VERSION-001 and ACTION-001 state the rule." >&2
   exit 1
 }
 
@@ -71,9 +73,21 @@ case "$mode" in
     [[ "$branch" =~ $protected_re ]] || exit 0
 
     # A merge that needed conflict resolution commits through `git commit`.
-    # The merge hook has already judged the source, so that commit is a
-    # landing of the judged branch rather than a direct change.
+    # When MERGE_HEAD is present on a protected branch:
+    #   1. Validate that MERGE_HEAD carries a new indexed release.
+    #   2. Refuse when the staged installable inputs differ from MERGE_HEAD.
     if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+      merge_source="$(git rev-parse MERGE_HEAD)"
+
+      # Run the branch check for MERGE_HEAD against the pre-merge HEAD.
+      # Execute in a subshell so this script can continue after a clean pass.
+      ("$0" branch "$merge_source" HEAD) || exit 1
+
+      # Refuse if the staged resolution differs from MERGE_HEAD's installables.
+      if touches_installable diff --cached --name-only MERGE_HEAD; then
+        refuse "the staged resolution of installable inputs differs from MERGE_HEAD ($merge_source); the resolved tree must equal the released source's installable inputs."
+      fi
+
       exit 0
     fi
 
@@ -95,18 +109,23 @@ case "$mode" in
   branch)
     source_ref="${2:-}"
     [[ -n "$source_ref" ]] || {
-      echo "usage: check-landing branch <ref>" >&2
+      echo "usage: check-landing branch <ref> [<base-ref>]" >&2
       exit 2
     }
 
-    base="$(git merge-base HEAD "$source_ref")"
+    base_ref="${3:-HEAD}"
+
+    base="$(git merge-base "$base_ref" "$source_ref" 2>/dev/null)" || {
+      echo "check-landing: cannot compute merge-base for '$base_ref' and '$source_ref'" >&2
+      exit 2
+    }
 
     if ! touches_installable diff --name-only "$base" "$source_ref"; then
       # Only runtime records or tests changed: no release is owed.
       exit 0
     fi
 
-    head_version="$(version_at HEAD)"
+    head_version="$(version_at "$base_ref")"
     source_version="$(version_at "$source_ref")"
 
     if [[ -z "$source_version" ]]; then
@@ -114,13 +133,13 @@ case "$mode" in
     fi
 
     if [[ "$source_version" == "$head_version" ]]; then
-      refuse "'$source_ref' changes installable inputs but still carries VERSION $source_version, which HEAD already holds."
+      refuse "'$source_ref' changes installable inputs but still carries VERSION $source_version, which '$base_ref' already holds."
     fi
 
     indexed_commit="$(indexed_commit_for "$source_ref" "$source_version")"
 
     if [[ -z "$indexed_commit" ]]; then
-      refuse "'$source_ref' carries VERSION $source_version but its release/index.json does not index it; run 'pan release finalize' on that worktree first."
+      refuse "'$source_ref' carries VERSION $source_version but its release/index.json does not index it; run 'pan release land --worktree <name>' to finalize and land."
     fi
 
     if ! git merge-base --is-ancestor "$indexed_commit" "$source_ref" 2>/dev/null; then
@@ -128,14 +147,14 @@ case "$mode" in
     fi
 
     if touches_installable diff --name-only "$indexed_commit" "$source_ref"; then
-      refuse "'$source_ref' changes installable inputs after its indexed release commit for $source_version; release again before landing."
+      refuse "'$source_ref' changes installable inputs after its indexed release commit for $source_version; run 'pan release land --worktree <name>' again."
     fi
 
     exit 0
     ;;
 
   *)
-    echo "usage: check-landing pre-commit | pre-merge-commit | branch <ref>" >&2
+    echo "usage: check-landing pre-commit | pre-merge-commit | branch <ref> [<base-ref>]" >&2
     exit 2
     ;;
 esac
