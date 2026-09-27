@@ -905,6 +905,19 @@ export interface SpendConfig {
   vercel_host?: string
 }
 
+/**
+ * Default model and effort the `pan handoff` command selects when the operator
+ * omits `--model` and `--effort`. Values must match Cursor picker labels
+ * exactly. Both fields are non-empty strings; the loader rejects an empty or
+ * absent value with `INVALID_PROJECT_CONFIG`.
+ */
+export interface HandoffConfig {
+  /** Default Cursor picker model label, e.g. `"Claude Opus 5.5"`. */
+  model: string
+  /** Default Cursor picker effort label, e.g. `"High"`. */
+  effort: string
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
@@ -937,6 +950,8 @@ export interface ProjectConfig {
   installations?: RegisteredInstallation[]
   /** Multi-instance spend sync configuration. */
   spend?: SpendConfig
+  /** Default model and effort for `pan handoff`. */
+  handoff?: HandoffConfig
 }
 
 export type ScheduleWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
@@ -2694,6 +2709,14 @@ export interface RunState {
    * prepare.
    */
   workspace_setup?: WorkspaceSetupRecord
+  /**
+   * Supervisor-handoff records for this run, one per attempt. An attempt
+   * appends a `sending` record, and each later transition to `sent`,
+   * `aborted`, or `accepted` replaces that latest record in place. The run
+   * event log keeps every transition. Only the latest record decides the
+   * fence.
+   */
+  supervisor_handoffs?: SupervisorHandoffRecord[]
 }
 
 /**
@@ -2818,4 +2841,54 @@ export interface RepositoryValidationResult {
    */
   target_repo_primer?: TargetRepoPrimerFreshness
   report_hash: string
+}
+
+/**
+ * Status of one supervisor-handoff attempt recorded under a run. `pan handoff`
+ * writes the records through the run operation mutex. A transition replaces
+ * the attempt's latest record in place, and the run event log keeps the
+ * transition history.
+ */
+export type SupervisorHandoffStatus =
+  | 'sending'
+  | 'sent'
+  | 'aborted'
+  | 'accepted'
+
+/** One supervisor-handoff event appended to `supervisor_handoffs` in RunState. */
+export interface SupervisorHandoffRecord {
+  /** Stable id of this handoff attempt, a UUID. */
+  id: string
+  status: SupervisorHandoffStatus
+  /**
+   * Supervisor-card `session_generation` of the handing-off session, or 0
+   * when the card has never been attested. The fence compares this against the
+   * current generation to decide whether to refuse.
+   */
+  from_session_generation: number
+  /** Prompt sent to the new chat: always `/pan-resume <run-id>`. */
+  prompt: string
+  /** Model picker label, e.g. `"Claude Opus 5.5"`. */
+  model: string
+  /** Effort picker label, e.g. `"High"`. */
+  effort: string
+  /**
+   * Verified picker label (`"<model> <effort>"`). The `sending` record carries
+   * it from the moment it is written, before Send is pressed.
+   */
+  verified_label?: string
+  /** ISO-8601 timestamp when the `sending` record was written. */
+  initiated_at: string
+  /** ISO-8601 timestamp when the `sent` status was recorded. */
+  sent_at?: string
+  /** ISO-8601 timestamp when `aborted` or `accepted` was recorded. */
+  resolved_at?: string
+  /** Harness-relative path of the handoff note file. */
+  note_path?: string
+  /** Harness-relative path of the step-evidence JSON. */
+  evidence_path?: string
+  /** Error code that caused an `aborted` transition. */
+  aborted_code?: string
+  /** Session generation of the new supervisor session that `accepted`. */
+  accepted_session_generation?: number
 }

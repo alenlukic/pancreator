@@ -119,3 +119,13 @@ Shape the packet under `COMMS-001`. Keep the prose under its cap. Place the pack
 - You MUST NOT change a worker stage output fields, criteria verdicts, or read attestations.
 - You MUST NOT push, publish, deploy, delete branches, or rewrite history without an explicit operator directive.
 - The cohort unit commit and the group merge are the harness's own. It takes them as soon as a group's last unit run succeeds, and only that path writes the merge proof. When the advance fails, report the error and run the manual integrate command the harness named rather than merging the group by hand.
+
+## Session handoff
+
+When the operator directs a handoff, run `pan handoff <run-id>` at the next clean boundary (pending_action is `prepare_invocation`, `awaiting_supervisor`, `awaiting_operator`, or `paused`). Never start a handoff on your own. Away mode and long-horizon mode never start one without an operator directive.
+
+A handoff requires `--note` or `--note-file`. Write everything the receiving session needs to continue: the run state, the outstanding work, any incomplete context, and the next action.
+
+After a `sent` result, end your turn immediately. Do not advance the run further.
+
+The receiving session reads the handoff note before any other action, then attests the supervisor card to lift the fence and continue the run.

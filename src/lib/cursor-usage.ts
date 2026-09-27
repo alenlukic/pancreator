@@ -209,16 +209,22 @@ function parseDashboardUsagePage(value: unknown): {
   total: number
 } {
   invariant(
-    isRecord(value) && Array.isArray(value.usageEventsDisplay),
-    "Cursor dashboard usage response MUST contain a 'usageEventsDisplay' array.",
+    isRecord(value) &&
+      (value.usageEventsDisplay === undefined ||
+        Array.isArray(value.usageEventsDisplay)),
+    "Cursor dashboard usage response 'usageEventsDisplay' MUST be an array when present.",
     { code: 'CURSOR_USAGE_INVALID_RESPONSE' },
   )
 
+  // Cursor omits both fields for a window or page that holds no events.
+  const displayed = value.usageEventsDisplay ?? []
+
   return {
-    events: value.usageEventsDisplay.map(parseUsageEvent),
+    events: displayed.map(parseUsageEvent),
     total: nonNegativeNumber(
       value.totalUsageEventsCount,
       'totalUsageEventsCount',
+      0,
     ),
   }
 }

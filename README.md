@@ -103,6 +103,7 @@ For indexed release updates:
 - `/pan-summarize-context`: emit a copyable Markdown handoff for a fresh agent conversation
 - `/pan-cleanup`: report and apply configured retention to harness runtime state and finished worktrees
 - `/pan-spend [--days <1..365>]`: render Cursor token volume, cost, and Pancreator attribution in Canvas
+- `/pan-cost [--days <1..365>]`: render and open the combined cost of every synced instance, including the Cursor fee, in Canvas
 - `/pan-release`: checkpoint, rebase, finalize local release commits, and write PR copy
 - `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 

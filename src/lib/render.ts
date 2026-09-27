@@ -27,6 +27,7 @@ import type {
 import { DELEGATION_HEADING, normalizeMarkdownContent } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
 import { DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION } from './workspace-attribution.js'
+import { latestHandoffStatus } from './supervisor-handoff.js'
 
 function fencedJson(value: unknown): string {
   return ['```json', JSON.stringify(value, null, 2), '```'].join('\n')
@@ -1578,6 +1579,21 @@ function renderDeliveryHandoff(
 }
 
 /** Render a one-screen status summary for `pan status`. */
+/** The latest supervisor handoff and the note the receiving session reads. */
+function renderSupervisorHandoff(state: RunState): string[] {
+  const handoff = latestHandoffStatus(state)
+
+  if (!handoff) {
+    return []
+  }
+
+  return [
+    `Supervisor handoff: ${handoff.status} (${handoff.id})` +
+      (handoff.aborted_code ? `, ${handoff.aborted_code}` : ''),
+    ...(handoff.note_path ? [`Handoff note: ${handoff.note_path}`] : []),
+  ]
+}
+
 export function renderStatus(
   state: RunState,
   validationStatus: InvocationValidationStatus | null = null,
@@ -1604,6 +1620,7 @@ export function renderStatus(
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
     ...renderDeliveryHandoff(state.delivery_handoff),
+    ...renderSupervisorHandoff(state),
     `Revision: ${state.revision}`,
     `Transitions: ${state.transition_count}/` +
       state.limits.max_total_transitions,

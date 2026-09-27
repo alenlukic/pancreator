@@ -1,32 +1,45 @@
 # Changelog
 
-## [7.31.0] - 2026-09-27
+## [7.30.0] - 2026-09-27
 
-This release serializes every landing on `pan-dev`, moves conform and style repairs onto a daily job, and wraps every agent shell command. Waiver `waiver-9397e564-a803-4e88-9a4f-3173335a7750` covers the failed conform scan and the failed style scan. Those scans did not pass.
+This release adds `pan handoff` on macOS. The operator can move one run into a new Cursor Agents chat. Waiver `waiver-683aa417-eef4-47ed-9d9a-3d44eded187a` covers the failed conform scan and the failed style scan. Those scans did not pass.
 
 ### Changed
 
-- Land on `pan-dev` only through `pan release land`, and refuse a hand merge or `pan worktree reconcile` into `pan-dev` or `main` ([0e7fe7fc](https://github.com/alenlukic/pancreator/commit/0e7fe7fc)).
-- Route a delivery ship failure to remediate, and a metacritic ship failure to consolidate ([0e7fe7fc](https://github.com/alenlukic/pancreator/commit/0e7fe7fc)).
-- Remove the conform scan and the style scan from the release path ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
-- Run every agent shell command inside `bin/pan-run`, except a short read-only allowlist ([06e70a43](https://github.com/alenlukic/pancreator/commit/06e70a43)).
-- Exempt a marked daily quality commit from `bin/check-landing` and from installer drift, and only that commit ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
+- Instruct the supervisor to run `pan handoff` only on an operator direction, and to end its turn after Send ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Tell `/pan-resume` to read the handoff note before further action ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
 
 ### Added
 
-- Add `pan release land` with a crash-safe landing mutex at `runtime/release/landing.lock` ([0e7fe7fc](https://github.com/alenlukic/pancreator/commit/0e7fe7fc)).
-- Add `pan quality daily` and the `daily-quality` schedule job at 04:30 ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
-- Add `bin/pan-run`, a heartbeat, redacted logs, and `bin/pan-hook-shell-monitor` ([06e70a43](https://github.com/alenlukic/pancreator/commit/06e70a43)).
-- Add `pan watch --process --exit-record` so a wrapped command reports its exit status ([06e70a43](https://github.com/alenlukic/pancreator/commit/06e70a43)).
-
-### Removed
-
-- Remove `--allow-unclean` and the `RELEASE_CONFORM_UNCLEAN` and `RELEASE_STYLE_UNCLEAN` refusals from `pan release finalize` ([4f73b4f1](https://github.com/alenlukic/pancreator/commit/4f73b4f1)).
+- Add `pan handoff` with dry-run, self-check, note, model, and effort options ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Add a `handoff` block in `config.json` with defaults Claude Opus 5.5 and High ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Add a Swift Accessibility helper that compiles on first use ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Report handoff readiness in `pan doctor` ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Fence `pan prepare` and `pan submit` after Send until a new session attests ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
 
 ### Fixed
 
-- Copy `bin/pan-run` into build-wrapper fixtures, and keep `pan worktree reconcile` off `pan-dev` except the cohort integration path ([3c162bf0](https://github.com/alenlukic/pancreator/commit/3c162bf0)).
-- Route a stageless operator reject at the delivery ship gate to remediate ([3c162bf0](https://github.com/alenlukic/pancreator/commit/3c162bf0)).
+- Put an RFC 2119 keyword on the ORCH-001 fence instruction ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Write the verified picker label into the pre-Send record ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Re-check eligibility inside the pre-Send write so a second handoff cannot send ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+
+## [7.29.2] - 2026-09-26
+
+This release reports the Cursor token fee in spend reports and adds `/pan-cost`, which renders and opens the combined cost of every synced instance.
+
+### Added
+
+- Add `/pan-cost`, which runs `pan spend report` with the same arguments, writes the report canvas, and opens it ([5bcea901](https://github.com/alenlukic/pancreator/commit/5bcea901835225e7b21c555818f4406d2237c423)).
+- Add `--canvas <path>` to `pan spend` and `pan spend report` to render the report into the standard spend canvas template ([5bcea901](https://github.com/alenlukic/pancreator/commit/5bcea901835225e7b21c555818f4406d2237c423)).
+- Add the `spend-canvas` skill, which documents the spend canvas layout for `/pan-spend` and `/pan-cost` ([5bcea901](https://github.com/alenlukic/pancreator/commit/5bcea901835225e7b21c555818f4406d2237c423)).
+- Report `cursor_fee_cents` in every spend total, day, slice, and instance ([65e9c45c](https://github.com/alenlukic/pancreator/commit/65e9c45c37a54909eaf4373eae900acfefaddd2e)).
+
+### Fixed
+
+- Derive the Cursor fee at $0.25 per million tokens for events synced before fees were recorded ([65e9c45c](https://github.com/alenlukic/pancreator/commit/65e9c45c37a54909eaf4373eae900acfefaddd2e)).
+- Count only the latest snapshot of each instance in `pan spend report`, so a superseded upload no longer adds stale events ([65e9c45c](https://github.com/alenlukic/pancreator/commit/65e9c45c37a54909eaf4373eae900acfefaddd2e)).
+- Treat a Cursor dashboard page with no event list as an empty window in `pan spend sync` ([97b4907d](https://github.com/alenlukic/pancreator/commit/97b4907db6f1e5ed66b42d52499f9caf0a08f7d7)).
+- Skip URLs in Simplified Technical English vocabulary checks, so a cited link no longer fails `pan conform` ([88d13a12](https://github.com/alenlukic/pancreator/commit/88d13a12ee539f9381ea94e98a78cd3d8df04b8c)).
 
 ## [7.29.1] - 2026-09-25
 

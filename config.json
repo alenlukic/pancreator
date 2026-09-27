@@ -199,5 +199,9 @@
   "installation_mode": "self_development",
   "test_scratch": {
     "root": "~/Dev/scratch"
+  },
+  "handoff": {
+    "model": "Claude Opus 5.5",
+    "effort": "High"
   }
 }

@@ -297,6 +297,7 @@ function snapshotRecord(
       cache_read_tokens: 0,
       total_tokens: 120,
       cost_cents: 2,
+      cursor_fee_cents: 0.5,
     },
     attribution: {
       command,
