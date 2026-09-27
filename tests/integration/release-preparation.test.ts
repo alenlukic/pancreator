@@ -10,6 +10,8 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
+import { scanStyleArtifacts } from '../../src/lib/code-style.js'
+import { scanConformArtifacts } from '../../src/lib/conform.js'
 import { allocateReleaseVersion } from '../../src/lib/release-allocation.js'
 import {
   continueLocalRelease,
@@ -57,15 +59,8 @@ function finalizeWithQualityOverrides(
   worktreeName: string,
   fetchedMain: string,
   ownerRunId?: string,
-  allowUnclean: readonly string[] = ['conform', 'style'],
 ) {
-  return finalizeLocalRelease(
-    root,
-    worktreeName,
-    fetchedMain,
-    ownerRunId,
-    allowUnclean,
-  )
+  return finalizeLocalRelease(root, worktreeName, fetchedMain, ownerRunId)
 }
 
 function startProcessAudit(): {
@@ -238,8 +233,8 @@ function commitReleaseMetadata(worktreePath: string, version: string): string {
   return git(worktreePath, ['rev-parse', 'HEAD'])
 }
 
-test('release finalize enforces quality passes and records overrides', () => {
-  const candidate = prepareReleaseCandidate('release-quality-passes')
+test('release finalize succeeds without quality preconditions', () => {
+  const candidate = prepareReleaseCandidate('release-no-quality-gate')
 
   try {
     writeFileSync(
@@ -248,28 +243,6 @@ test('release finalize enforces quality passes and records overrides', () => {
     )
     git(candidate.worktreePath, ['add', 'AGENTS.md'])
     git(candidate.worktreePath, ['commit', '-qm', 'test: add conform issue'])
-
-    const beforeConformRefusal = git(candidate.worktreePath, [
-      'rev-parse',
-      'HEAD',
-    ])
-
-    assert.equal(
-      errorCode(() =>
-        finalizeLocalRelease(
-          candidate.root,
-          candidate.record.name,
-          candidate.fetchedMain,
-        ),
-      ),
-      'RELEASE_CONFORM_UNCLEAN',
-    )
-    // A refusal creates no release commit.
-    assert.equal(
-      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
-      beforeConformRefusal,
-    )
-
     writeFileSync(
       path.join(candidate.worktreePath, 'src', 'quality-issue.ts'),
       'export function qualityIssue(ready: boolean): void {\n  if (ready) return\n}\n',
@@ -277,37 +250,30 @@ test('release finalize enforces quality passes and records overrides', () => {
     git(candidate.worktreePath, ['add', 'src/quality-issue.ts'])
     git(candidate.worktreePath, ['commit', '-qm', 'test: add style issue'])
 
-    const beforeStyleRefusal = git(candidate.worktreePath, [
-      'rev-parse',
-      'HEAD',
-    ])
-
     assert.equal(
-      errorCode(() =>
-        finalizeLocalRelease(
-          candidate.root,
-          candidate.record.name,
-          candidate.fetchedMain,
-          undefined,
-          ['conform'],
-        ),
-      ),
-      'RELEASE_STYLE_UNCLEAN',
+      scanConformArtifacts(candidate.root, {
+        workspace_root: candidate.worktreePath,
+        all: true,
+      }).status,
+      'failed',
     )
     assert.equal(
-      git(candidate.worktreePath, ['rev-parse', 'HEAD']),
-      beforeStyleRefusal,
+      scanStyleArtifacts(candidate.root, {
+        workspace_root: candidate.worktreePath,
+        all: true,
+      }).status,
+      'failed',
     )
 
     const finalized = finalizeLocalRelease(
       candidate.root,
       candidate.record.name,
       candidate.fetchedMain,
-      undefined,
-      ['conform', 'style'],
     )
 
-    assert.deepEqual(finalized.overridden_quality_passes, ['conform', 'style'])
+    assert.equal(finalized.status, 'finalized')
+    assert.equal(finalized.release_commit.length, 40)
+    assert.equal('overridden_quality_passes' in finalized, false)
   } finally {
     rmSync(candidate.remote, { recursive: true, force: true })
   }

@@ -352,3 +352,103 @@ test('AC-023: generic watch', async (t) => {
     assert.equal(parsed.exit_status, 'unknown')
   })
 })
+
+// AC-16: --exit-record support
+test('AC-16: --exit-record reports the exit status of a wrapped command', async (t) => {
+  const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
+  const BANNER =
+    /observe: \.\/bin\/pan watch --process (\d+) --label \S+ --output \S+ --exit-record (\S+)/u
+
+  await t.test(
+    'a watch armed on a live wrapped command that exits 3 reports exit_status 3',
+    async () => {
+      const root = createTestTempDirectory('watch-exit-record-')
+      const env: NodeJS.ProcessEnv = { ...process.env, PANCREATOR_ROOT: root }
+
+      delete env.PAN_VERBOSE
+      delete env.PAN_PROGRESS_FD
+
+      const wrapper = spawn(PAN_RUN, ['--', 'bash', '-c', 'sleep 1; exit 3'], {
+        env,
+        stdio: ['ignore', 'ignore', 'pipe'],
+      })
+      let stderr = ''
+
+      wrapper.stderr.on('data', (chunk: Buffer) => (stderr += chunk))
+
+      const wrapperClosed = once(wrapper, 'close')
+      // Hang guard only; the proof is the recorded exit status.
+      const guard = setTimeout(() => wrapper.kill('SIGKILL'), 30_000)
+
+      try {
+        await waitFor(() => BANNER.test(stderr))
+
+        const [, pid, exitRecord] = BANNER.exec(stderr) as RegExpExecArray
+        const result = await watchProcess(root, {
+          pid: Number(pid),
+          label: 'wrapped-exit-3',
+          exitRecordPath: exitRecord,
+          cadenceSeconds: 0.2,
+          timeoutSeconds: 30,
+        })
+
+        assert.equal(result.state, 'exited')
+        assert.equal(result.exit_status, 3)
+
+        const terminal = readGenericRecord(root, result.record_path).at(-1)
+
+        assert.equal(terminal?.terminal_state, 'exited')
+        assert.equal(terminal?.exit_status, 3)
+
+        const [status] = (await wrapperClosed) as [number | null]
+
+        assert.equal(status, 3)
+      } finally {
+        clearTimeout(guard)
+      }
+    },
+  )
+
+  await t.test(
+    'an --exit-record outside runtime/logs is refused at arm',
+    async () => {
+      const root = createTestTempDirectory('watch-exit-record-escape-')
+
+      await assert.rejects(
+        watchProcess(root, {
+          pid: process.pid,
+          label: 'escape',
+          exitRecordPath: 'record.json',
+          cadenceSeconds: 0.1,
+          timeoutSeconds: 1,
+        }),
+        (error: unknown) =>
+          error instanceof PanError && error.code === 'PATH_ESCAPE',
+      )
+    },
+  )
+
+  await t.test(
+    'the re-arm command carries --output and --exit-record',
+    async () => {
+      const root = createTestTempDirectory('watch-exit-record-rearm-')
+      const result = await watchProcess(root, {
+        pid: process.pid,
+        label: 'rearm',
+        outputPath: 'runtime/logs/shell/x/output.log',
+        exitRecordPath: 'runtime/logs/shell/x/record.json',
+        cadenceSeconds: 0.1,
+        timeoutSeconds: 0.2,
+      })
+
+      assert.equal(result.state, 'timed_out')
+      assert.equal(result.exit_status, null)
+      assert.equal(
+        result.rearm_command,
+        `./bin/pan watch --process ${process.pid} --label 'rearm' ` +
+          `--output 'runtime/logs/shell/x/output.log' ` +
+          `--exit-record 'runtime/logs/shell/x/record.json' --timeout-seconds 0.2`,
+      )
+    },
+  )
+})

@@ -47,6 +47,12 @@ export interface ConformScanOptions {
   workspace_root: string
   since_ref?: string | null
   all?: boolean
+  /**
+   * Judge only `workspace` candidates. A caller that can repair only the
+   * workspace sets it, so harness-root runtime artifacts neither fail its scan
+   * nor block its checkpoint, and the checkpoint keeps their prior entries.
+   */
+  workspace_only?: boolean
 }
 
 export interface ConformScanFile {
@@ -126,10 +132,12 @@ function isEligibleWorkspacePath(
 }
 
 /** Harness-owned intake records, which live beside the harness, not the target. */
+export const HARNESS_ISSUES_DIRECTORY = 'docs/issues'
+
 function isEligibleHarnessIssuesPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
 
-  return rel.startsWith('docs/issues/') && rel.endsWith('.md')
+  return rel.startsWith(`${HARNESS_ISSUES_DIRECTORY}/`) && rel.endsWith('.md')
 }
 
 /**
@@ -164,7 +172,7 @@ function isEligibleRuntimeMarkdownPath(relativePath: string): boolean {
  * instruction files directly, so none carries a nested tree. Handbooks stay
  * out, because they are guidance rather than instruction text.
  */
-const EDITABLE_INSTRUCTION_DIRECTORIES = [
+export const EDITABLE_INSTRUCTION_DIRECTORIES = [
   { directory: 'governance/criteria', extension: '.md' },
   { directory: 'governance/policies', extension: '.json' },
   { directory: 'library/cursor/commands', extension: '.md' },
@@ -173,7 +181,7 @@ const EDITABLE_INSTRUCTION_DIRECTORIES = [
   { directory: 'library/skills', extension: '.md' },
 ] as const
 
-const EDITABLE_INSTRUCTION_FILES = ['AGENTS.md'] as const
+export const EDITABLE_INSTRUCTION_FILES = ['AGENTS.md'] as const
 
 function isEligibleInstructionPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
@@ -293,7 +301,7 @@ function listHarnessMarkdownIssuesFiles(harnessRoot: string): string[] {
 
   const found: string[] = []
   const stack: Array<{ absolute: string; relative: string }> = [
-    { absolute: base, relative: 'docs/issues' },
+    { absolute: base, relative: HARNESS_ISSUES_DIRECTORY },
   ]
 
   while (stack.length > 0) {
@@ -639,7 +647,9 @@ export function scanConformArtifacts(
         )
 
   const runtimeCandidates = new Set(
-    listEligibleRuntimePaths(harnessRoot, selfDevelopment),
+    options.workspace_only
+      ? []
+      : listEligibleRuntimePaths(harnessRoot, selfDevelopment),
   )
 
   const candidates: Array<{ root: ConformRoot; relative_path: string }> = [
@@ -692,7 +702,8 @@ export function scanConformArtifacts(
 
       if (
         parsed.root === 'runtime' &&
-        !isEligibleRuntimePath(parsed.relative_path, selfDevelopment)
+        (options.workspace_only ||
+          !isEligibleRuntimePath(parsed.relative_path, selfDevelopment))
       ) {
         continue
       }
@@ -770,6 +781,7 @@ export function checkpointConformArtifacts(
   const scan = scanConformArtifacts(harnessRoot, {
     workspace_root: workspaceRoot,
     all: true,
+    workspace_only: options.workspace_only === true,
   })
 
   const editableIssueFiles = scan.files.filter(
@@ -797,6 +809,16 @@ export function checkpointConformArtifacts(
   }
 
   const files: Record<string, ConformCheckpointFileEntry> = {}
+
+  if (options.workspace_only) {
+    for (const [key, entry] of Object.entries(
+      loadCheckpoint(harnessRoot)?.files ?? {},
+    )) {
+      if (parseCheckpointKey(key)?.root === 'runtime') {
+        files[key] = entry
+      }
+    }
+  }
 
   for (const file of scan.files) {
     if (!file.exists || !file.sha256) {

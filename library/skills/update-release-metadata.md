@@ -14,18 +14,6 @@ Prepare one complete local release:
 - create the immutable release commit before indexing it
 - create a separate commit that changes only `release/index.json`
 
-## Confirm release quality
-
-Before release metadata changes, run the conform scan and code style scan
-against the selected release workspace. Repair an unclean pass under the
-`librarian` persona and its matching standalone card. The release steward must
-not make those repairs under its metadata mutation boundary.
-
-`pan release finalize` enforces both scans. It reports
-`RELEASE_CONFORM_UNCLEAN` or `RELEASE_STYLE_UNCLEAN` with the matching repair
-command. Use `--allow-unclean <conform|style>` only under an explicit operator
-decision, and record the override returned by finalization.
-
 ## Establish the baseline
 
 1. Read `config.json` and stop without mutation unless `installation_mode` is
@@ -120,9 +108,14 @@ Do not rewrite historical versions, examples, migration references, or
    `rationale`, `compatibility`, `updated_files`, and `release_index_action`.
 5. Run `pan release finalize` with the managed worktree and fetched-main hash.
    Record the resulting release and index commit hashes.
+6. After finalize, run `pan release land --worktree <name> --json` to
+   integrate, verify, and land on pan-dev. On `landed`, record the landed
+   version, tip before and after, release commit, and index commit. On any
+   other status, surface the result and stop.
 
 ## Boundaries
 
-Only `pan release finalize` may edit `release/index.json` and create the two
-final local commits. `VERSION-001` on the active card owns the remote-action
-prohibitions.
+Only `pan release finalize` may create the two final local commits.
+Only `pan release land` may fast-forward pan-dev. Never use `git merge` or
+`git update-ref` by hand. `VERSION-001` on the active card owns the
+remote-action prohibitions.

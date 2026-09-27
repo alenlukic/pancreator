@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
+# Thin shim: delegates to bin/pan-run.
+#
+# PAN_VERBOSE=1 streams output by exec-ing pan-run without --quiet.
+# Otherwise exec-ing pan-run --quiet --label <basename of argv0>.
+# Quiet mode keeps today's contract: nothing on success, and on failure the
+# captured stdout then stderr, each truncated to its last 16 MiB with a notice.
+# The log, heartbeat file, and exit record are written in every mode.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-MAX_CAPTURE_BYTES=$((16 * 1024 * 1024))
-
-usage() {
-  echo "Usage: bin/run-quiet -- <command> [args...]" >&2
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 is_verbose() {
   case "${PAN_VERBOSE:-}" in
@@ -16,150 +17,22 @@ is_verbose() {
   esac
 }
 
-# Ticks default to interactive terminals only, so captured output stays
-# byte-identical to the quiet contract. A nested wrapper ticks to
-# PAN_PROGRESS_FD, the sink the outer wrapper opened on the real terminal.
-progress_enabled() {
-  if [[ -n "${PAN_PROGRESS_FD:-}" ]]; then
-    return 0
-  fi
-
-  case "${PAN_PROGRESS:-}" in
-    1 | true | yes | TRUE | YES) return 0 ;;
-    0 | false | no | FALSE | NO) return 1 ;;
-    *) [[ -t 2 ]] ;;
-  esac
-}
-
 if [[ $# -eq 0 ]] || [[ "${1:-}" != '--' ]]; then
-  usage
+  printf 'Usage: bin/run-quiet -- <command> [args...]\n' >&2
   exit 1
 fi
 
-shift
+shift  # remove '--'
 if [[ $# -eq 0 ]]; then
-  usage
+  printf 'Usage: bin/run-quiet -- <command> [args...]\n' >&2
   exit 1
 fi
 
-command=("$@")
+# Derive label from the first argument's basename
+LABEL="${1##*/}"
 
 if is_verbose; then
-  exec "${command[@]}"
-fi
-
-# Capture files live under the root rather than in the shared temp directory.
-# This wrapper allocates three of them per invocation and wraps every npm
-# script, so a temp directory that any other process has made slow would tax
-# every build, check, and test run. runtime/ is gitignored, and the paths stay
-# per-root, so concurrent roots never contend.
-CAPTURE_DIRECTORY="$ROOT/runtime/tmp"
-
-if mkdir -p "$CAPTURE_DIRECTORY" 2>/dev/null; then
-  capture_template="$CAPTURE_DIRECTORY/quiet.XXXXXX"
+  exec "$SCRIPT_DIR/pan-run" --label "$LABEL" -- "$@"
 else
-  # An unwritable root must not break every wrapped command; the shared temp
-  # directory still works, it is only slower.
-  capture_template="${TMPDIR:-/tmp}/pancreator-quiet.XXXXXX"
+  exec "$SCRIPT_DIR/pan-run" --quiet --label "$LABEL" -- "$@"
 fi
-
-stdout_file="$(mktemp "$capture_template")"
-stderr_file="$(mktemp "$capture_template")"
-tick_marker="$(mktemp "$capture_template")"
-rm -f "$tick_marker"
-ticker_pid=''
-
-# cleanup must kill the ticker. An orphaned ticker writes to the terminal
-# from outside the foreground process group, where Ctrl-C cannot reach it.
-# Bash skips the EXIT trap on untrapped fatal signals, so trap INT and TERM
-# as well.
-cleanup() {
-  if [[ -n "$ticker_pid" ]]; then
-    stop_ticker
-  fi
-  rm -f "$stdout_file" "$stderr_file" "$tick_marker"
-}
-
-# The in-flight sleep is a child of the ticker. Kill the children first, or
-# the sleep outlives the subshell.
-stop_ticker() {
-  pkill -P "$ticker_pid" 2>/dev/null || true
-  kill "$ticker_pid" 2>/dev/null || true
-}
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-
-if progress_enabled; then
-  tick_interval="${PAN_PROGRESS_INTERVAL_SECONDS:-5}"
-  script_pid=$$
-  # The outermost wrapper copies its stderr to fd 9 and exports the number,
-  # so every nested wrapper ticks to the terminal.
-  if [[ -z "${PAN_PROGRESS_FD:-}" ]]; then
-    exec 9>&2
-    export PAN_PROGRESS_FD=9
-  fi
-  # A dot marks an interval with new output, so a stopped dot stream shows a
-  # silent command. The sleep holds no inherited stdio, or a captured stderr
-  # pipe stays open after the subshell dies.
-  (
-    # /dev/null hides the "Terminated" notice bash prints for the killed
-    # sleep.
-    exec 2>/dev/null
-    last_bytes=0
-    while sleep "$tick_interval" >/dev/null 2>&1 </dev/null 9>&-; do
-      kill -0 "$script_pid" 2>/dev/null || exit 0
-      stdout_bytes="$(wc -c <"$stdout_file" 2>/dev/null || echo 0)"
-      stderr_bytes="$(wc -c <"$stderr_file" 2>/dev/null || echo 0)"
-      current_bytes=$((stdout_bytes + stderr_bytes))
-      if [[ "$current_bytes" -gt "$last_bytes" ]]; then
-        printf '.' >&9
-        : >"$tick_marker"
-        last_bytes="$current_bytes"
-      fi
-    done
-  ) &
-  ticker_pid=$!
-fi
-
-set +e
-"${command[@]}" >"$stdout_file" 2>"$stderr_file"
-status=$?
-set -e
-
-if [[ -n "$ticker_pid" ]]; then
-  stop_ticker
-  wait "$ticker_pid" 2>/dev/null || true
-  ticker_pid=''
-  if [[ -e "$tick_marker" ]]; then
-    printf '\n' >&9
-  fi
-fi
-
-if [[ "$status" -eq 0 ]]; then
-  exit 0
-fi
-
-stdout_bytes="$(wc -c <"$stdout_file" | tr -d ' ')"
-stderr_bytes="$(wc -c <"$stderr_file" | tr -d ' ')"
-truncated=0
-
-if [[ "$stdout_bytes" -gt "$MAX_CAPTURE_BYTES" ]]; then
-  tail -c "$MAX_CAPTURE_BYTES" "$stdout_file" >"${stdout_file}.tail"
-  mv "${stdout_file}.tail" "$stdout_file"
-  truncated=1
-fi
-
-if [[ "$stderr_bytes" -gt "$MAX_CAPTURE_BYTES" ]]; then
-  tail -c "$MAX_CAPTURE_BYTES" "$stderr_file" >"${stderr_file}.tail"
-  mv "${stderr_file}.tail" "$stderr_file"
-  truncated=1
-fi
-
-if [[ "$truncated" -eq 1 ]]; then
-  echo "[quiet runner] output truncated to the last ${MAX_CAPTURE_BYTES} bytes" >&2
-fi
-
-cat "$stdout_file"
-cat "$stderr_file" >&2
-exit "$status"

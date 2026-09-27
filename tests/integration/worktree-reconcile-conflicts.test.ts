@@ -14,13 +14,18 @@ import {
   worktreeCheckpoint,
 } from './worktree-helpers.js'
 
+// The held checkout moves to an unprotected branch, because the
+// LANDING_REQUIRES_RELEASE_LAND guard refuses main before any checkout state
+// is read.
 test('worktree reconcile refuses a dirty checkout that holds the target branch', () => {
-  const { root, mainBranch, mainHead } = worktreeCheckpoint('two-sources')
+  const { root, mainHead } = worktreeCheckpoint('two-sources')
+  const heldBranch = 'reconcile-held-target'
 
+  git(root, ['checkout', '-q', '-b', heldBranch])
   writeFileSync(path.join(root, 'uncommitted.txt'), 'operator work\n')
 
   assert.throws(
-    () => reconcileWorktrees(root, { into_branch: mainBranch }, TWO_SOURCES),
+    () => reconcileWorktrees(root, { into_branch: heldBranch }, TWO_SOURCES),
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'WORKTREE_DIRTY' &&
@@ -34,11 +39,14 @@ test('worktree reconcile refuses a dirty checkout that holds the target branch',
 })
 
 test('a held-checkout conflict aborts only the conflicted merge', () => {
-  const { root, mainBranch, mainHead: preHead } = worktreeCheckpoint('conflict')
+  const { root, mainHead: preHead } = worktreeCheckpoint('conflict')
+  const heldBranch = 'reconcile-held-target'
+
+  git(root, ['checkout', '-q', '-b', heldBranch])
 
   const result = reconcileWorktrees(
     root,
-    { into_branch: mainBranch },
+    { into_branch: heldBranch },
     TWO_SOURCES,
   )
 

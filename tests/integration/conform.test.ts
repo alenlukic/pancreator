@@ -440,6 +440,54 @@ test('--all omits an absent CHANGELOG.md', () => {
   assert.equal(result.summary.deleted_files, 0)
 })
 
+test('a workspace-only pass ignores runtime issues and its checkpoint keeps prior runtime entries', () => {
+  const root = createFixture()
+
+  clearInstructionSurfaces(root)
+
+  write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
+  git(root, ['add', 'CHANGELOG.md'])
+  git(root, ['commit', '-qm', 'pin changelog'])
+  write(root, 'runtime/research/clean.md', '# Memo\n\nRun this command.\n')
+  checkpointConformArtifacts(root, { workspace_root: root })
+  write(
+    root,
+    'runtime/research/unclean.md',
+    '# Memo\n\nThe job runs daily; it repairs files.\n',
+  )
+
+  assert.equal(
+    checkpointConformArtifacts(root, { workspace_root: root }).status,
+    'blocked',
+  )
+
+  const scan = scanConformArtifacts(root, {
+    workspace_root: root,
+    all: true,
+    workspace_only: true,
+  })
+
+  assert.equal(scan.status, 'passed')
+  assert.deepEqual(
+    scan.files.map((file) => file.key),
+    ['workspace:CHANGELOG.md'],
+  )
+
+  const checkpoint = checkpointConformArtifacts(root, {
+    workspace_root: root,
+    workspace_only: true,
+  })
+  const saved = JSON.parse(
+    readFileSync(path.join(root, CONFORM_CACHE_RELATIVE_PATH), 'utf8'),
+  ) as { files: Record<string, unknown> }
+
+  assert.equal(checkpoint.status, 'passed')
+  assert.deepEqual(Object.keys(saved.files).sort(), [
+    'runtime:runtime/research/clean.md',
+    'workspace:CHANGELOG.md',
+  ])
+})
+
 test('checkpoint replacement drops entries for deleted files', () => {
   const root = createFixture()
 

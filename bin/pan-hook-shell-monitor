@@ -1,0 +1,268 @@
+#!/usr/bin/env bash
+# Enforce the pan-run wrapper requirement for agent shell commands.
+# Reads a Cursor beforeShellExecution JSON payload from stdin and prints
+# {"permission":"allow"} or {"permission":"deny",...} to stdout. Exits 0
+# always; Cursor blocks the action on invalid output from a permission hook.
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# The payload travels in the environment because stdin carries the program.
+PAN_HOOK_PAYLOAD="$(cat 2>/dev/null || true)" \
+  PAN_HOOK_PAN_RUN="$HARNESS_ROOT/bin/pan-run" \
+  python3 - 2>/dev/null <<'PYTHON_EOF' ||
+import json
+import os
+import re
+
+# SHELL-MONITOR-VALIDATE-001 compares this list with the DELEGATE-001 allowlist.
+ALLOWLIST = ["git status", "git log", "git diff", "git show", "git rev-parse", "ls", "rg", "cat", "pwd"]
+
+ALLOWED_COMMANDS = {entry.split()[0] for entry in ALLOWLIST}
+ALLOWED_GIT_SUBCOMMANDS = {entry.split()[1] for entry in ALLOWLIST if entry.startswith("git ")}
+GIT_REFUSED_LONG = {"--config-env", "--exec-path", "--output", "--ext-diff", "--textconv"}
+GIT_REFUSED_EXACT = {"-c"}
+RG_REFUSED_LONG = {"--pre", "--pre-glob", "--search-zip", "--hostname-bin"}
+RG_REFUSED_SHORT = {"z"}
+# Real options that are also prefixes of a refused option.
+SAFE_LONG_PREFIXES = {"--text"}
+OPERATORS = sorted(
+    ["&&", "||", ";;", ";&", "<<<", "<<-", "<<", ">>", "<>", ">&", "<&", ">|", "&>>", "&>", "|&",
+     "|", "&", ";", "<", ">", "(", ")", "\n"],
+    key=len, reverse=True,
+)
+SEPARATORS = {"&&", "||", "|", ";", "\n"}
+ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+PAN_RUN_WORDS = {"bin/pan-run", "./bin/pan-run", ".pancreator/bin/pan-run"}
+# bash and zsh give most other characters after '$' a meaning this lexer does
+# not model ($'...', $"...", ${...}, $[...], zsh $~ $= $^), so only a plain
+# parameter name or a special parameter may follow an expanding '$'.
+DOLLAR_FOLLOWERS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_?#@*!-$")
+
+
+class Substitution(Exception):
+    pass
+
+
+class UnsupportedExpansion(Exception):
+    pass
+
+
+def lex(text):
+    """Split a command into ('word', value, raw) and ('op', value, raw) tokens.
+
+    Raises Substitution on command or process substitution outside single
+    quotes, UnsupportedExpansion on any other '$' form it does not model, and
+    ValueError on an unterminated quote.
+    """
+    tokens = []
+    i, n = 0, len(text)
+    value, start, quoted = [], None, False
+
+    def check_dollar(at, in_double):
+        follower = text[at + 1] if at + 1 < n else ""
+        if follower == "(":
+            raise Substitution()
+        if follower in ("", " ", "\t", "\n") or follower in DOLLAR_FOLLOWERS:
+            return
+        if in_double and follower == '"':
+            return
+        raise UnsupportedExpansion()
+
+    def flush(end):
+        nonlocal value, start, quoted
+        if start is not None:
+            tokens.append(("word", "".join(value), text[start:end], quoted))
+        value, start, quoted = [], None, False
+
+    while i < n:
+        c = text[i]
+        if c == "\\":
+            if i + 1 < n and text[i + 1] == "\n":
+                i += 2
+                continue
+            if i + 1 >= n:
+                raise ValueError("trailing backslash")
+            start = i if start is None else start
+            value.append(text[i + 1])
+            quoted = True
+            i += 2
+            continue
+        if c == "'":
+            end = text.find("'", i + 1)
+            if end < 0:
+                raise ValueError("unterminated single quote")
+            start = i if start is None else start
+            value.append(text[i + 1:end])
+            quoted = True
+            i = end + 1
+            continue
+        if c == '"':
+            start = i if start is None else start
+            quoted = True
+            i += 1
+            while True:
+                if i >= n:
+                    raise ValueError("unterminated double quote")
+                d = text[i]
+                if d == '"':
+                    i += 1
+                    break
+                if d == "`":
+                    raise Substitution()
+                if d == "$":
+                    check_dollar(i, True)
+                if d == "\\" and i + 1 < n and text[i + 1] in '$`"\\\n':
+                    value.append(text[i + 1])
+                    i += 2
+                    continue
+                value.append(d)
+                i += 1
+            continue
+        if c == "`":
+            raise Substitution()
+        if c == "$":
+            check_dollar(i, False)
+        if c in "<>" and text.startswith("(", i + 1):
+            raise Substitution()
+        if c in " \t":
+            flush(i)
+            i += 1
+            continue
+        if c == "#" and start is None:
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        op = next((o for o in OPERATORS if text.startswith(o, i)), None)
+        if op is not None:
+            word = "".join(value)
+            if op[0] in "<>" and start is not None and not quoted and word.isdigit():
+                # An fd number joined to a redirection belongs to it: 2>
+                tokens.append(("op", word + op, text[start:i + len(op)], False))
+                value, start, quoted = [], None, False
+            else:
+                flush(i)
+                tokens.append(("op", op, op, False))
+            i += len(op)
+            continue
+        start = i if start is None else start
+        value.append(c)
+        i += 1
+    flush(n)
+    return tokens
+
+
+def is_assignment(token):
+    return token[0] == "word" and ASSIGNMENT.match(token[2]) is not None
+
+
+def is_pan_run(word):
+    return word in PAN_RUN_WORDS or (word.startswith("/") and word.endswith("/bin/pan-run"))
+
+
+def is_wrapped(tokens):
+    index = 0
+    while index < len(tokens) and is_assignment(tokens[index]):
+        index += 1
+    if index >= len(tokens) or tokens[index][0] != "word" or not is_pan_run(tokens[index][1]):
+        return False
+    return all(kind == "word" for kind, _, _, _ in tokens[index + 1:])
+
+
+def refuses_long(arg, refused):
+    name = arg.split("=", 1)[0]
+    if not name.startswith("--") or len(name) <= 2:
+        return False
+    if name in refused:
+        return True
+    return name not in SAFE_LONG_PREFIXES and any(option.startswith(name) for option in refused)
+
+
+def allowlisted_segment(words):
+    if not words or ASSIGNMENT.match(words[0][2]):
+        return False
+    command, args = words[0][1], [word[1] for word in words[1:]]
+    if command not in ALLOWED_COMMANDS:
+        return False
+    if command == "git":
+        if not args or args[0] not in ALLOWED_GIT_SUBCOMMANDS:
+            return False
+        return not any(arg in GIT_REFUSED_EXACT or refuses_long(arg, GIT_REFUSED_LONG) for arg in args)
+    if command == "rg":
+        for arg in args:
+            if refuses_long(arg, RG_REFUSED_LONG):
+                return False
+            if arg.startswith("-") and not arg.startswith("--") and RG_REFUSED_SHORT & set(arg[1:]):
+                return False
+    return True
+
+
+def is_allowlisted(tokens):
+    segments, current = [], []
+    index = 0
+    while index < len(tokens):
+        kind, value, _, _ = tokens[index]
+        if kind == "word":
+            current.append(tokens[index])
+        elif value == "2>" and index + 1 < len(tokens) and tokens[index + 1][:2] == ("word", "/dev/null"):
+            index += 1
+        elif value in SEPARATORS:
+            segments.append(current)
+            current = []
+        else:
+            return False
+        index += 1
+    segments.append(current)
+    if segments and not segments[-1]:
+        segments.pop()
+    return bool(segments) and all(allowlisted_segment(segment) for segment in segments)
+
+
+def verdict(command):
+    command = command.strip()
+    if not command:
+        return "No command provided."
+    try:
+        tokens = lex(command)
+    except Substitution:
+        return "Command contains a command or process substitution ($(...), backticks, <(...), or >(...))."
+    except UnsupportedExpansion:
+        return "Command uses a '$' expansion form the monitor does not accept outside single quotes ($'...', $\"...\", ${...}, $[...], or a zsh $~ $= $^ form)."
+    except ValueError:
+        return "Command could not be parsed."
+    if is_wrapped(tokens) or is_allowlisted(tokens):
+        return None
+    return ""
+
+
+def deny_message(reason, pan_run):
+    lead = (reason + " ") if reason else ""
+    return (
+        lead
+        + "Every agent shell command must run inside bin/pan-run. Use one of these forms:\n"
+        + "  " + pan_run + " -- <command> [args...]\n"
+        + "  " + pan_run + " -c '<shell string>'\n"
+        + "Allowlisted read-only commands (" + ", ".join(ALLOWLIST) + ") may run without the "
+        + "wrapper and may chain only into other allowlisted commands, with no command "
+        + "substitution and no redirection except 2>/dev/null."
+    )
+
+
+try:
+    payload = json.loads(os.environ.get("PAN_HOOK_PAYLOAD", ""))
+    command = payload.get("command", "") if isinstance(payload, dict) else ""
+    command = command if isinstance(command, str) else ""
+    reason = verdict(command)
+except Exception:
+    reason = "Shell monitor could not read the hook payload."
+
+if reason is None:
+    print(json.dumps({"permission": "allow"}))
+else:
+    message = deny_message(reason, os.environ.get("PAN_HOOK_PAN_RUN", "bin/pan-run"))
+    print(json.dumps({"permission": "deny", "user_message": message[:200], "agent_message": message}))
+PYTHON_EOF
+  printf '%s\n' '{"permission":"deny","user_message":"Shell monitor error","agent_message":"Shell monitor failed to evaluate the command; denying as fail-closed."}'
+
+exit 0

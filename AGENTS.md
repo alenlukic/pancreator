@@ -36,10 +36,12 @@ These constraints are never traded for the objective, for convenience, or for sp
 
 - You MUST NOT trade correctness, security, maintainability, or an explicit operator constraint for convenience or short-term speed.
 - You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Commit and merge on your own judgment, on a branch that lands on `pan-dev`. Nothing lands on `pan-dev` without a proper version: a change to an installable harness input reaches `pan-dev` only inside a release (the branch carries the release commit and the `release/index.json` commit for a new `VERSION`). You MUST NOT land such a change directly on `pan-dev` or `main`, and the operator promotes `pan-dev` to `main` and pushes. Approvals, stage changes, pauses, and irreversible decisions are operator-owned, and a waiver is too unless away mode authors one within its own guardrails.
+- Operator directive of 2026-09-26: the daily conform and style job may fast-forward `pan-dev` with commits that carry the `Pancreator-Daily-Quality:` trailer and change only the surface paths in `governance/registries/daily_quality_surfaces.json`. Those commits are the only exception. Every other installable change still lands only inside a release. `bin/install` accepts drift from the indexed release only when every drifting commit is a marked daily commit.
 - You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every workflow lifecycle action.
 - You MUST NOT inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
 - You MUST NOT run concurrent mutating workflows against one workspace. Worktree isolation separates tracked source trees. It does not separate the release version sequence, the `pan-dev` branch, or `release/index.json`. Release preparation MUST serialize those shared resources through the allocation authority.
 - You MUST NOT change Pancreator release metadata outside a self-development ship stage or `/pan-release`, and MUST NOT edit `release/index.json` before the release commit exists.
+- You MUST land on `pan-dev` only through `pan release land`, which holds the landing mutex, integrates, allocates, verifies, and fast-forwards. You MUST NOT merge into `pan-dev` by any other means, and MUST NOT use `git merge`, `git update-ref`, or `pan worktree reconcile --into-branch pan-dev` as a substitute.
 - Browser inspection MUST follow `BROWSER-001`: an isolated context, never the operator's personal browser or host settings.
 - You MUST NOT manufacture completion. Report missing evidence and uncertainty instead.
 - You MUST NOT infer or broaden an operator override. The operator's actual words define its scope.
@@ -125,6 +127,8 @@ The release steward owns the version decision and synchronized metadata inside a
 ## Shell and chat output
 
 `COMMS-001` governs every report you write to the operator in chat. It binds your first response, before you resolve any card. Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
+
+Run every agent shell command inside `bin/pan-run`. Allowlisted read-only commands (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`) may run unwrapped but must not chain or pipe into a non-allowlisted command.
 
 ## Validation
 

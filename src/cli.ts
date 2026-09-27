@@ -115,7 +115,11 @@ import { resolvePolicies } from './lib/policies.js'
 import { renderRunInvocationCard } from './lib/context-card.js'
 import { orderedWorkerActions } from './lib/render.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
-import { allocateReleaseVersion } from './lib/release-allocation.js'
+import {
+  allocateReleaseVersion,
+  isReleaseBump,
+} from './lib/release-allocation.js'
+import { landRelease } from './lib/release-landing.js'
 import {
   continueLocalRelease,
   finalizeLocalRelease,
@@ -268,6 +272,7 @@ import {
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import { generateTokenSpendReport } from './lib/token-spend.js'
 import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
+import { runDailyQuality } from './lib/daily-quality.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
@@ -643,6 +648,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'inbox',
   'installs',
   'output',
+  'quality',
   'release',
   'repository-check',
   'requirements',
@@ -2777,7 +2783,6 @@ async function main(): Promise<void> {
             worktreeName,
             requiredArgument(option(args, '--fetched-main'), '--fetched-main'),
             option(args, '--run') ?? undefined,
-            options(args, '--allow-unclean'),
           ),
           hasFlag(args, '--json'),
         )
@@ -2794,6 +2799,47 @@ async function main(): Promise<void> {
           ),
           hasFlag(args, '--json'),
         )
+        return
+      }
+
+      if (sub === 'land') {
+        const bumpArg = option(args, '--bump')
+        const bump = bumpArg !== null ? bumpArg : undefined
+        const waitSecondsArg = option(args, '--wait-seconds')
+        const verifyProfileArgs = options(args, '--verify-profile')
+
+        if (bump !== undefined && !isReleaseBump(bump)) {
+          throw new PanError(
+            `--bump must be major, minor, or patch, not '${bump}'.`,
+            { code: 'INVALID_RELEASE_BUMP' },
+          )
+        }
+
+        if (waitSecondsArg !== null && !/^\d+$/u.test(waitSecondsArg)) {
+          throw new PanError(
+            `--wait-seconds must be a non-negative whole number, not '${waitSecondsArg}'.`,
+            { code: 'INVALID_WAIT_SECONDS' },
+          )
+        }
+
+        const result = landRelease(root, {
+          worktree: worktreeName,
+          ...(bump !== undefined ? { bump } : {}),
+          runId: option(args, '--run'),
+          ...(verifyProfileArgs.length > 0
+            ? { verifyProfiles: verifyProfileArgs }
+            : {}),
+          ...(waitSecondsArg !== null
+            ? { waitSeconds: Number(waitSecondsArg) }
+            : {}),
+        })
+
+        print(result, hasFlag(args, '--json'))
+
+        if (result.status !== 'landed') {
+          process.exitCode = 1
+        }
+
         return
       }
 
@@ -3139,6 +3185,27 @@ async function main(): Promise<void> {
         hasFlag(args, '--json'),
       )
       return
+    }
+    case 'quality': {
+      const sub = args[0]
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'daily') {
+        const result = runDailyQuality(root)
+
+        print(result, asJson)
+
+        // The schedule records a job as failed only from a non-zero exit.
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown quality subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'spend': {
       const subcommand = args[0]
@@ -5033,12 +5100,15 @@ async function main(): Promise<void> {
           return
         }
 
+        const exitRecordArg = option(args, '--exit-record')
+
         const result = await watchProcess(root, {
           pid: Number(processPid),
           label: requiredArgument(option(args, '--label'), '--label'),
           ...(option(args, '--output')
             ? { outputPath: option(args, '--output') as string }
             : {}),
+          ...(exitRecordArg !== null ? { exitRecordPath: exitRecordArg } : {}),
           ...(genericRecord ? { recordPath: genericRecord } : {}),
           cadenceSeconds: genericCadence,
           timeoutSeconds: parseTimeoutSeconds(
@@ -5047,17 +5117,22 @@ async function main(): Promise<void> {
           onWake: genericOnWake,
         })
 
+        const exitStatusNote =
+          result.state === 'exited'
+            ? typeof result.exit_status === 'number'
+              ? `; exit status ${result.exit_status} (from exit record)`
+              : '; observed exit only — the exit status is unknown without authoritative completion evidence'
+            : ''
+
         print(
           json
             ? result
             : `process watch ${result.state}: '${result.label}' (pid ` +
                 `${result.subject}) after ${result.elapsed_seconds.toFixed(1)}s ` +
                 `over ${result.wakes} wakes; record ${result.record_path}` +
-                (result.state === 'exited'
-                  ? '; observed exit only — the exit status is unknown without authoritative completion evidence'
-                  : result.state === 'timed_out' && result.rearm_command
-                    ? `\nre-arm with: ${result.rearm_command}`
-                    : ''),
+                (result.state === 'timed_out' && result.rearm_command
+                  ? `\nre-arm with: ${result.rearm_command}`
+                  : exitStatusNote),
           json,
         )
         process.exitCode =

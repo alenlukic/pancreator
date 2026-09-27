@@ -24,6 +24,11 @@ const LANGUAGE_BY_EXTENSION = new Map<string, CodeStyleLanguage>([
   ['.tsx', 'typescript'],
 ])
 
+/** Every file extension the code style scan and checker cover. */
+export const CODE_STYLE_EXTENSIONS: readonly string[] = [
+  ...LANGUAGE_BY_EXTENSION.keys(),
+]
+
 const JAVASCRIPT_EXTENSIONS: readonly string[] = [
   ...LANGUAGE_BY_EXTENSION.entries(),
 ]

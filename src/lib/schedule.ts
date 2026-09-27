@@ -21,7 +21,10 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { loadPipelineConfig, resolvePersonaMapping } from './pipeline-config.js'
-import { loadProjectConfig } from './project-config.js'
+import {
+  isSelfDevelopmentInstallation,
+  loadProjectConfig,
+} from './project-config.js'
 import { listRunStatesWhere, runIsLive } from './state.js'
 import type {
   ManagedWorktreeReference,
@@ -606,6 +609,20 @@ function decideJob(
 
   if (
     !forced &&
+    job.self_development_only &&
+    !isSelfDevelopmentInstallation(root)
+  ) {
+    const reason =
+      'The job is self_development_only and this is not a self_development installation.'
+    return emit(
+      root,
+      decision(job, occurrence, 'skipped', reason, now, undefined, damaged),
+      !alreadyRecorded(history, occurrence, 'skipped', reason),
+    )
+  }
+
+  if (
+    !forced &&
     history.some(
       (entry) =>
         entry.occurrence_at === occurrence.toISOString() &&
@@ -716,6 +733,40 @@ function alertReason(
     }
   }
 
+  if (job.self_development_only && !isSelfDevelopmentInstallation(root)) {
+    return {
+      open: false,
+      reason:
+        'The job is self_development_only and this is not a self_development installation.',
+      lastSuccessAt: null,
+      disabled: true,
+    }
+  }
+
+  const history = readScheduleHistory(root, job.id)
+
+  // An immediate alert on a failed decision: open at once when the latest
+  // decision is 'failed', cleared only by a later success.
+  const successes = history.filter((entry) =>
+    ['fired', 'caught_up'].includes(entry.outcome),
+  )
+  const lastSuccess = successes.at(-1)?.recorded_at ?? null
+  const failures = history.filter((entry) => entry.outcome === 'failed')
+  const lastFailure = failures.at(-1)
+
+  if (
+    lastFailure !== undefined &&
+    (lastSuccess === null ||
+      Date.parse(lastFailure.recorded_at) > Date.parse(lastSuccess))
+  ) {
+    return {
+      open: true,
+      reason: lastFailure.reason ?? 'The most recent run failed.',
+      lastSuccessAt: lastSuccess,
+      disabled: false,
+    }
+  }
+
   const occurrence = mostRecentScheduleOccurrence(job, now)
   const previous = mostRecentScheduleOccurrence(
     job,
@@ -727,11 +778,6 @@ function alertReason(
     (job.catch_up_window_minutes ?? config.catch_up_window_minutes) * MINUTE_MS
   const grace =
     (job.grace_period_minutes ?? config.grace_period_minutes) * MINUTE_MS
-
-  const successes = readScheduleHistory(root, job.id).filter((entry) =>
-    ['fired', 'caught_up'].includes(entry.outcome),
-  )
-  const lastSuccess = successes.at(-1)?.recorded_at ?? null
 
   const overdue = lastSuccess
     ? now.getTime() - Date.parse(lastSuccess) > interval + window + grace

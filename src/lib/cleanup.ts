@@ -192,6 +192,21 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     disposal: 'retain',
   },
   {
+    // The landing event log is append-only and durable for audit purposes.
+    name: 'landing-log',
+    paths: ['runtime/release/landing.jsonl'],
+    age_source: 'none',
+    disposal: 'retain',
+  },
+  {
+    // Reclaimed landing locks only. The ledgers and the live lock sit one
+    // level up, outside every deleting path.
+    name: 'landing-lock-stale',
+    paths: ['runtime/release/stale-locks'],
+    age_source: 'mtime',
+    disposal: 'delete',
+  },
+  {
     name: 'repository-checks',
     paths: ['runtime/repository-checks.json'],
     age_source: 'none',
@@ -202,6 +217,12 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     paths: ['runtime/spend'],
     age_source: 'none',
     disposal: 'retain',
+  },
+  {
+    name: 'shell-logs',
+    paths: ['runtime/logs/shell'],
+    age_source: 'mtime',
+    disposal: 'archive_then_delete',
   },
 ]
 

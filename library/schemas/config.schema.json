@@ -413,6 +413,10 @@
               "grace_period_minutes": { "type": "integer", "minimum": 0 },
               "workspace": { "type": "string", "minLength": 1 },
               "worktree": { "type": "string", "minLength": 1 },
+              "self_development_only": {
+                "type": "boolean",
+                "description": "When true, skip this job outside a self_development installation."
+              },
               "action": {
                 "oneOf": [
                   {

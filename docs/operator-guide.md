@@ -1874,13 +1874,6 @@ until every selected removal, repair, and freed entry is complete.
 
 Use `/pan-release` when release metadata must be prepared or regenerated outside a workflow ship stage. The command is self-development-only and refuses to version an embedded target repository. It resolves the commit that introduced the committed `VERSION`, evaluates all committed, staged, unstaged, and relevant untracked changes after that baseline, and asks the release steward to choose exactly `major`, `minor`, or `patch`.
 
-Before release preparation, `/pan-release` runs the code style and conform scans
-against the selected candidate. The librarian repairs and checkpoints an
-unclean pass before the release steward begins. `pan release finalize` enforces
-the same precondition with `RELEASE_STYLE_UNCLEAN` and
-`RELEASE_CONFORM_UNCLEAN`. An explicit `--allow-unclean <conform|style>`
-override is repeatable and appears in the finalization result.
-
 The release steward then authors or regenerates the latest Common Changelog entry and synchronizes `VERSION`, `package.json`, `package-lock.json`, the README current-version references, and the current-version statement in `docs/embedded-installation.md`. If a dirty release candidate already exists, the command updates it in place rather than bumping again. If there is no post-bump delta and no candidate, it makes no changes.
 
 `/pan-release` validates formatting, types, and repository contracts. The shared
@@ -2003,4 +1996,171 @@ Pull all instances and produce a combined report:
 
 ```sh
 pan spend report [--days <1..365>] [--json]
+```
+
+## Landing on pan-dev
+
+### Why serialization matters
+
+A version collision on 2026-09-25 traced to two branches (`ban-await-shell-update-pan-watch` and `multi-cost-machine-spend-remediated`) created from the same pan-dev tip at 7.26.0 and both finalized against it before either landed. The first merge moved the tip to 7.28.0; the second branch, still at 7.27.0, now conflicted on every release metadata file. An agent hand-merged and reallocated, landing 7.29.0 through commit `a4d9ecc7`. Evidence: ledger records in `runtime/release/allocations.jsonl`, the pan-dev reflog, `git merge-tree` output showing conflicts in `CHANGELOG.md`, `VERSION`, `docs/embedded-installation.md`, `package.json`, `package-lock.json`, and `release/index.json`, and merge commit `a4d9ecc7`.
+
+Root cause: allocation, finalize, and merge ran without serialization. Two branches from one base both finalized against a stale tip; the first merge moved the tip past the second branch's version.
+
+`pan release land` fixes this by holding a lock from tip read to fast-forward, so two concurrent landings receive distinct versions and one serialized path to pan-dev.
+
+### The landing command
+
+`pan release land` is the only supported way to land a release branch on `pan-dev`:
+
+```sh
+pan release land --worktree <name> [--bump <major|minor|patch>] [--run <run-id>] \
+  [--verify-profile <name>]... [--wait-seconds <n>] [--json]
+```
+
+The command holds the landing mutex at `runtime/release/landing.lock` from tip read to fast-forward and runs these steps in order:
+
+1. **Tip read** — reads the current pan-dev commit and its VERSION.
+2. **Integrate** — when the candidate branch does not yet include the tip, predicts conflicts with `git merge-tree`, stops on source conflicts, or merges the tip and resolves every release metadata file to the tip's content.
+3. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
+4. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
+5. **Finalize** — calls `pan release finalize` to create the release and index commits.
+6. **Verify** — runs each `--verify-profile` (default `full`) against the candidate worktree.
+7. **Check** — runs `bin/check-landing branch <head> pan-dev`.
+8. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
+
+The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `lock_wait_seconds`, and `lock_hold_seconds`.
+
+### Statuses
+
+| Status                | Exit | Meaning                                                           |
+| --------------------- | ---- | ----------------------------------------------------------------- |
+| `landed`              | 0    | pan-dev is at the new version.                                    |
+| `conflict`            | 1    | Source files conflict with the tip. Resolve and rerun.            |
+| `verification_failed` | 1    | Checks failed; release commits stay on the branch. Fix and rerun. |
+| `landing_refused`     | 1    | `bin/check-landing` refused. Fix the named reason and rerun.      |
+
+### Lock location and wait bound
+
+The lock file lives at `runtime/release/landing.lock`. The landing event log at `runtime/release/landing.jsonl` records every acquire, wait-progress report, stale reclaim, release, and timeout.
+
+A waiter prints the holder's pid, worktree, command, start time, and elapsed seconds to stderr at least every 60 seconds while it waits. The default timeout is 7200 seconds (two hours); `--wait-seconds` takes a whole number of seconds and shortens it. A timeout fails with `LANDING_MUTEX_TIMEOUT` and names the holder.
+
+### Stale lock reclaim
+
+A lock is stale when its recorded pid is not running or when the process's start identity no longer matches. A stale lock is moved to `runtime/release/stale-locks/landing.lock.stale-<iso>-<token>` and the next caller acquires without operator intervention. The reclaim is recorded in `landing.jsonl` with `event: 'reclaimed'` and the dead holder's details. Reclaimers serialize, and each moves the lock only while it still carries the stale token, so two waiters never both hold the mutex.
+
+The landing runs synchronously and installs no signal handler. An interrupt or `SIGTERM` ends the holder at once, and the next landing reclaims its lock because the pid is gone. `pan cleanup` deletes reclaimed locks under `runtime/release/stale-locks/` after the retention window (class `landing-lock-stale`) and always keeps `allocations.jsonl`, `landing.jsonl`, and the live lock.
+
+### Source-conflict loop
+
+When `pan release land` returns `conflict`:
+
+1. Merge pan-dev into the candidate branch: `git merge --no-ff --no-edit pan-dev`.
+2. Resolve each source path the result lists. Take the tip's content for every metadata file.
+3. Stage resolved paths and commit.
+4. Run the impacted profile to confirm correctness.
+5. Run `pan release land --worktree <name>` again. The new run re-reads the tip, so a further tip movement is integrated too.
+
+## Monitored shell execution
+
+Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the exact `pan watch` command to observe the process:
+
+```
+[pan-run] log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+```
+
+Run the command directly when you want to observe a wrapped agent command:
+
+```sh
+./bin/pan watch --process <pid> --label <label> \
+  --output runtime/logs/shell/.../output.log \
+  --exit-record runtime/logs/shell/.../record.json
+```
+
+`--exit-record` supplies the wrapper's `record.json`, and the path must stay inside `runtime/logs`; any other path is refused with `PATH_ESCAPE` when the watch arms. When the process has exited and the record holds a numeric `exit_code`, `pan watch` reports `exit_status` as that code instead of `unknown`, and the terminal wake entry records it. A timed-out watch prints a re-arm command that keeps `--output` and `--exit-record`.
+
+### Shell hook
+
+`bin/pan-hook-shell-monitor` runs as a `beforeShellExecution` hook in every Cursor session where the harness is projected. It allows commands wrapped with `bin/pan-run` and a short read-only allowlist (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`). An allowlisted command must be named bare, may chain only into other allowlisted commands, and may redirect only `2>/dev/null`. A command or process substitution, a refused flag, and every other command are denied, and the agent message names both wrapper forms. Outside single quotes, a `$` may introduce only a plain parameter name or a special parameter, so `$'...'`, `$"..."`, `${...}`, `$[...]`, and the zsh `$~`, `$=`, and `$^` forms are denied in both the allowlist and the wrapped form; put such syntax inside a `bin/pan-run -c '...'` string.
+
+`SHELL-MONITOR-VALIDATE-001`, which `pan validate` runs, checks the fail-closed hook entry, both scripts, and that the hook's `ALLOWLIST` equals the allowlist `DELEGATE-001` states.
+
+After the release lands, run `./bin/pan models --sync` so the new hook projection and the updated policy rules reach the local `.cursor/` tree.
+
+## Daily quality job
+
+The `daily-quality` schedule job runs `pan quality daily` at 04:30 every day on the local machine. It repairs conform and style issues on the `pan-dev` tip and lands one marked, unversioned repair commit.
+
+### What the job does
+
+1. Creates or reuses the `daily-quality` managed worktree and switches it to branch `pan-quality` at the current `pan-dev` tip.
+2. Runs the conform scan and `pan style scan --all` over the worktree. The conform scan judges only the worktree's files; harness-root runtime Markdown such as `runtime/research/*.md` stays with `/pan-conform`. When both pass, it writes both checkpoints, records `clean`, and exits without committing.
+3. When either scan is unclean, it launches a headless Cursor agent under the librarian persona to repair only the files the scans identified.
+4. Verifies every changed path is on the daily quality surfaces (`governance/registries/daily_quality_surfaces.json`).
+5. Runs `CODE-STYLE-VALIDATE-001` on each changed source file and `SIMPLIFIED-ENGLISH-VALIDATE-001` on each changed conform file, then the `static` and `fast` profiles in the worktree. Writes the conform and style checkpoints.
+6. Commits with subject `style: daily conform and style pass <YYYY-MM-DD>` and trailer `Pancreator-Daily-Quality: <id>`.
+7. Acquires the landing mutex, rebases the commit onto the current `pan-dev` tip if it moved, reruns `static` and `fast`, and fast-forwards `pan-dev`.
+8. Writes the result to `runtime/logs/quality/<id>/result.json`.
+
+On any failure, `pan-dev` stays unchanged, the mutex is released, the worktree diff is saved to `failed.patch` in the result directory, and the worktree is restored to a clean `pan-quality` head.
+
+### Install the launchd trigger
+
+```sh
+./bin/pan schedule install-agent
+```
+
+This installs the macOS launchd plist that fires `pan schedule tick` at the configured hour. Confirm with `./bin/pan schedule status`.
+
+### Check job status
+
+```sh
+./bin/pan schedule status
+```
+
+An open alert for `daily-quality` appears immediately after a failed run. A later success clears it.
+
+### Run the job manually
+
+```sh
+./bin/pan schedule run daily-quality
+```
+
+### Change the hour
+
+Edit `config.json` or `config_overrides.json`. An override replaces the whole `schedule.jobs` array, so it must repeat the complete `daily-quality` job and every other job you keep:
+
+```json
+{
+  "schedule": {
+    "jobs": [
+      {
+        "id": "daily-quality",
+        "enabled": true,
+        "hour": 6,
+        "minute": 30,
+        "workspace": ".",
+        "self_development_only": true,
+        "action": {
+          "kind": "command",
+          "command": "./bin/pan quality daily --json"
+        }
+      }
+    ]
+  }
+}
+```
+
+Run `./bin/pan schedule validate` to confirm the merged configuration.
+
+Reinstall the agent after changing the hour: `./bin/pan schedule install-agent`.
+
+### Where results live
+
+Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run also writes `failed.patch` in that directory.
+
+### Uninstall the agent
+
+```sh
+./bin/pan schedule uninstall-agent
 ```

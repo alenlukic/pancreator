@@ -39,7 +39,7 @@ test('build lock keeps the CLI available during concurrent commands', async () =
     mkdirSync(toolDirectory, { recursive: true })
     symlinkSync(process.execPath, path.join(toolDirectory, 'node'))
 
-    for (const script of ['build', 'run-built', 'run-quiet']) {
+    for (const script of ['build', 'pan-run', 'run-built', 'run-quiet']) {
       const target = path.join(binDirectory, script)
 
       copyFileSync(path.join(ROOT, 'bin', script), target)

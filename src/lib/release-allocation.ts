@@ -381,6 +381,112 @@ export function releaseAllocationForVersion(
   )
 }
 
+export interface LandingAllocationRecord extends ReleaseAllocationRecord {
+  /** Distinguishes a landing allocation from a regular pre-release allocation. */
+  kind: 'landing'
+  /** Branch the tip version was read from. */
+  base_source: 'pan-dev'
+}
+
+export interface LandingAllocationResult {
+  version: string
+  tip_version: string
+  allocation: LandingAllocationRecord
+  ledger_path: string
+}
+
+/**
+ * Allocate the next release version for a `pan release land` operation.
+ *
+ * Unlike `allocateReleaseVersion`, this function reads the tip of `pan-dev`
+ * as the authoritative base, computes exactly `nextSemanticVersion(tipVersion,
+ * bump)`, and refuses with `LANDING_VERSION_NOT_ABOVE` when that version is
+ * not strictly above every version indexed on the tip and on the local default
+ * branch.
+ */
+export function allocateLandingVersion(
+  root: string,
+  worktreeName: string,
+  tipVersion: string,
+  bump: ReleaseBump,
+  options: { runId?: string | null; repositoryRoot?: string } = {},
+): LandingAllocationResult {
+  const repositoryRoot = options.repositoryRoot ?? workspaceRepositoryRoot(root)
+  const worktreePath = path.resolve(
+    root,
+    resolveWorktreeWorkspace(root, worktreeName),
+  )
+  const ledgerPath = releaseAllocationLedgerPath(root)
+
+  const newVersion = nextSemanticVersion(tipVersion, bump)
+
+  invariant(
+    newVersion !== null,
+    `Cannot bump version '${tipVersion}' by ${bump}.`,
+    { code: 'RELEASE_VERSION_UNREADABLE' },
+  )
+
+  return withOperationMutex(
+    resolveInside(root, ALLOCATIONS_MUTEX),
+    () => {
+      // Collect indexed versions on pan-dev and the default branch.
+      const branches = new Set<string>([INTEGRATION_BRANCH])
+      const defaultBranch = gitDefaultBranch(repositoryRoot)
+
+      if (defaultBranch) {
+        branches.add(defaultBranch)
+      }
+
+      const indexedVersions: string[] = []
+
+      for (const branch of branches) {
+        if (!gitBranchExists(repositoryRoot, branch)) {
+          continue
+        }
+
+        const indexed = indexedVersionsAtRef(repositoryRoot, branch)
+        indexedVersions.push(...indexed)
+      }
+
+      const maxIndexed = highest(indexedVersions)
+
+      invariant(
+        maxIndexed === null || compareVersions(newVersion, maxIndexed) > 0,
+        `Landing version ${newVersion} is not above the highest indexed version ` +
+          `${maxIndexed ?? 'none'} on pan-dev or the default branch.`,
+        { code: 'LANDING_VERSION_NOT_ABOVE' },
+      )
+
+      const allocation: LandingAllocationRecord = {
+        schema_version: 1,
+        version: newVersion,
+        bump,
+        base_version: tipVersion,
+        committed_version: tipVersion,
+        worktree: worktreeName,
+        workspace: worktreePath,
+        run_id: options.runId ?? null,
+        sources: [
+          { source: `${INTEGRATION_BRANCH}:VERSION`, version: tipVersion },
+        ],
+        allocated_at: new Date().toISOString(),
+        kind: 'landing',
+        base_source: 'pan-dev',
+      }
+
+      appendJsonLine(ledgerPath, allocation)
+
+      return {
+        version: newVersion,
+        tip_version: tipVersion,
+        allocation,
+        ledger_path: ledgerPath,
+      }
+    },
+    { waitForHolderMs: 10_000 },
+  )
+}
+
 export interface ReleaseVersionCollision {
   branch: string
   commit: string

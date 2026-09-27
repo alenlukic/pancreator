@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 
-import { CLEANUP_ARTIFACT_CLASSES } from '../../src/lib/cleanup.js'
+import { CLEANUP_ARTIFACT_CLASSES, planCleanup } from '../../src/lib/cleanup.js'
 import {
   resolveRetentionDays,
   retentionDaysFromConfig,
@@ -72,5 +74,29 @@ test('cleanup artifact table covers ephemeral and retained classes', () => {
     byName
       .get('release-allocations')
       ?.paths.includes('runtime/release/allocations.jsonl'),
+  )
+})
+
+test('stale landing lock retention plans only reclaimed locks, never the release ledgers or the live lock', () => {
+  const root = createTestTempDirectory('cleanup-landing-locks-')
+  const release = path.join(root, 'runtime', 'release')
+  const staleLock = 'landing.lock.stale-2026-08-01T00-00-00.000Z-deadbeef'
+
+  mkdirSync(path.join(release, 'stale-locks'), { recursive: true })
+
+  for (const name of ['allocations.jsonl', 'landing.jsonl', 'landing.lock']) {
+    writeFileSync(path.join(release, name), '{}\n')
+  }
+
+  writeFileSync(path.join(release, 'stale-locks', staleLock), '{}\n')
+
+  const plan = planCleanup(root, {
+    classes: ['landing-lock-stale'],
+    now: new Date(Date.now() + 60 * 24 * 60 * 60 * 1_000),
+  })
+
+  assert.deepEqual(
+    plan.actions.map((action) => [action.action, action.path]),
+    [['delete', `runtime/release/stale-locks/${staleLock}`]],
   )
 })

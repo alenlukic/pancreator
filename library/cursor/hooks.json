@@ -16,6 +16,14 @@
         "timeout": 5,
         "failClosed": true
       }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-shell-monitor",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": true
+      }
     ]
   }
 }
