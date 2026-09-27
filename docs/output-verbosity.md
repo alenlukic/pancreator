@@ -90,3 +90,39 @@ operator to read.
 Deterministic coverage:
 
 - `tests/unit/cursor-sdk-logging.test.ts`
+
+## Agent shell commands
+
+`bin/pan-run` wraps every agent shell command with a redacted durable log, a heartbeat, and an exit record. It accepts two forms:
+
+```sh
+bin/pan-run [--label <name>] [--quiet] [--cwd <dir>] [--heartbeat-seconds <n>] -- <command> [args...]
+bin/pan-run [same options] -c '<shell string>'
+```
+
+Each invocation writes to `runtime/logs/shell/<timestamp>-<label>-<hex>/`:
+
+- `record.json` — command, pid, wrapper pid, start/end times, exit code, log path.
+- `output.log` — redacted combined output, streamed as the command runs.
+- `heartbeat.json` — updated each beat: elapsed seconds, log bytes, last five output lines.
+- `stdout.log`, `stderr.log` — in quiet mode only.
+
+The wrapper prints one stderr line at start naming the exact `pan watch` observation command:
+
+```
+[pan-run] observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+```
+
+Redaction applies to values from the process environment and from `.env` files whose names match `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `API_KEY`, `ACCESS_KEY`, `PRIVATE_KEY`, `CREDENTIAL`, `AUTH`, or `SESSION` (case-insensitive) and are at least 8 characters long.
+
+The heartbeat cadence defaults to 30 seconds; `--heartbeat-seconds` or `PAN_RUN_HEARTBEAT_SECONDS` can lower it. Any value above 60 is clamped to 60.
+
+`bin/run-quiet` is a thin shim that delegates to `pan-run`. `PAN_VERBOSE=1` streams by exec-ing `pan-run` without `--quiet`; otherwise it execs `pan-run --quiet`.
+
+`bin/pan-hook-shell-monitor` enforces the wrapper through the `beforeShellExecution` Cursor hook. It allows the wrapped form and a short read-only allowlist; it denies everything else and names both wrapper forms in the agent message.
+
+Deterministic coverage:
+
+- `tests/integration/pan-run.test.ts`
+- `tests/unit/shell-monitor-hook.test.ts`
+- `tests/unit/shell-monitor-validator.test.ts`

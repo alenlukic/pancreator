@@ -1,0 +1,487 @@
+#!/usr/bin/env bash
+# Run a command inside a harness wrapper that streams a redacted durable log,
+# beats a heartbeat, and records the exit.
+#
+# Forms:
+#   pan-run [options] -- <argv...>      run argv without a shell
+#   pan-run [options] -c '<string>'     run the string with bash -c
+#
+# Options:
+#   --label <name>            human-readable name for the wait
+#   --quiet                   suppress streaming; capture to stdout.log/stderr.log
+#   --cwd <dir>               working directory for the command
+#   --heartbeat-seconds <n>   heartbeat cadence (1-60, default 30, clamped to 60)
+#
+# Environment overrides:
+#   PANCREATOR_ROOT               harness root
+#   PAN_RUN_HEARTBEAT_SECONDS     heartbeat cadence
+#   PAN_VERBOSE                   stream output when set to 1/true/yes
+#   PAN_PROGRESS_FD               heartbeat line sink fd in quiet mode
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+
+# ---------------------------------------------------------------------------
+# Root resolution
+# ---------------------------------------------------------------------------
+resolve_root() {
+  if [[ -n "${PANCREATOR_ROOT:-}" ]]; then
+    printf '%s' "$PANCREATOR_ROOT"
+    return
+  fi
+  local candidate
+  candidate="$(dirname "$SCRIPT_DIR")"
+  # When script dir is a linked Git worktree and main worktree has pan-run
+  # and config.json, log to main so pan watch finds the logs.
+  if [[ -f "$candidate/.git" ]]; then
+    local gc
+    gc="$(git -C "$candidate" rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "${gc:-}" ]]; then
+      local mr
+      mr="$(dirname "$gc")"
+      if [[ -f "$mr/bin/pan-run" && -f "$mr/config.json" ]]; then
+        printf '%s' "$mr"
+        return
+      fi
+    fi
+  fi
+  printf '%s' "$candidate"
+}
+
+ROOT="$(resolve_root)"
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+LABEL=""
+QUIET=0
+CWD=""
+HB_ARG=""
+SHELL_STRING=""
+COMMAND_ARGV=()
+
+is_verbose() {
+  case "${PAN_VERBOSE:-}" in
+    1 | true | yes | TRUE | YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+while [[ $# -gt 0 ]]; do
+  case "${1:-}" in
+    --label)
+      [[ $# -ge 2 ]] || { printf 'pan-run: --label requires an argument\n' >&2; exit 1; }
+      LABEL="$2"; shift 2 ;;
+    --quiet)
+      QUIET=1; shift ;;
+    --cwd)
+      [[ $# -ge 2 ]] || { printf 'pan-run: --cwd requires an argument\n' >&2; exit 1; }
+      CWD="$2"; shift 2 ;;
+    --heartbeat-seconds)
+      [[ $# -ge 2 ]] || { printf 'pan-run: --heartbeat-seconds requires an argument\n' >&2; exit 1; }
+      HB_ARG="$2"; shift 2 ;;
+    -c)
+      [[ $# -ge 2 ]] || { printf 'pan-run: -c requires an argument\n' >&2; exit 1; }
+      SHELL_STRING="$2"; shift 2; break ;;
+    --)
+      shift; COMMAND_ARGV=("$@"); break ;;
+    *)
+      printf 'pan-run: unexpected argument: %s\n' "$1" >&2; exit 1 ;;
+  esac
+done
+
+if [[ ${#COMMAND_ARGV[@]} -eq 0 && -z "$SHELL_STRING" ]]; then
+  printf 'pan-run: no command given. Use -- <argv...> or -c '\''<string>'\''\n' >&2
+  exit 1
+fi
+
+is_verbose && QUIET=0
+
+# ---------------------------------------------------------------------------
+# Heartbeat cadence (1-60, default 30, clamped to 60)
+# ---------------------------------------------------------------------------
+_resolve_hb() {
+  local raw="${HB_ARG:-${PAN_RUN_HEARTBEAT_SECONDS:-30}}"
+  local n
+  n="$(printf '%s' "$raw" | tr -cd '0-9')"
+  if [[ -z "$n" ]]; then n=30; fi
+  # Bash integer comparisons work here; use arithmetic for portability
+  if (( n < 1 )) 2>/dev/null; then n=30; fi
+  if (( n > 60 )) 2>/dev/null; then n=60; fi
+  printf '%s' "$n"
+}
+HB_SECONDS="$(_resolve_hb)"
+
+# ---------------------------------------------------------------------------
+# Label
+# ---------------------------------------------------------------------------
+if [[ -z "$LABEL" ]]; then
+  if [[ -n "$SHELL_STRING" ]]; then
+    LABEL="${SHELL_STRING%% *}"; LABEL="${LABEL##*/}"
+  else
+    LABEL="${COMMAND_ARGV[0]##*/}"
+  fi
+  LABEL="$(printf '%s' "$LABEL" | tr -cd 'a-zA-Z0-9._-')"
+  [[ -n "$LABEL" ]] || LABEL="cmd"
+fi
+
+# ---------------------------------------------------------------------------
+# Record directory
+# ---------------------------------------------------------------------------
+TIMESTAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+HEX="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(4).toString("hex"))' 2>/dev/null || printf '%08x' "$(( RANDOM * RANDOM ))")"
+SAFE_LABEL="$(printf '%s' "$LABEL" | tr -cd 'a-zA-Z0-9._-' | cut -c1-32)"
+RECORD_DIR_REL="runtime/logs/shell/${TIMESTAMP}-${SAFE_LABEL}-${HEX}"
+RECORD_DIR="$ROOT/$RECORD_DIR_REL"
+mkdir -p "$RECORD_DIR"
+
+LOG_PATH="$RECORD_DIR/output.log"
+RECORD_PATH="$RECORD_DIR/record.json"
+HB_PATH="$RECORD_DIR/heartbeat.json"
+STDOUT_LOG="$RECORD_DIR/stdout.log"
+STDERR_LOG="$RECORD_DIR/stderr.log"
+RECENT_FILE="$RECORD_DIR/.recent-lines"
+printf '[]' > "$RECENT_FILE"
+touch "$LOG_PATH" "$HB_PATH"
+
+# ---------------------------------------------------------------------------
+# Collect env files for redaction
+# ---------------------------------------------------------------------------
+_EFS_JSON="[]"
+{
+  _ef_list="$ROOT/.env"
+  if [[ -n "$CWD" ]]; then
+    _gt="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "${_gt:-}" && "$_gt" != "$ROOT" ]] && _ef_list="$_ef_list
+$_gt/.env"
+  fi
+  _EFS_JSON="$(printf '%s' "$_ef_list" | node -e "
+const l=require('node:fs').readFileSync('/dev/stdin','utf8').split('\n').filter(Boolean);
+process.stdout.write(JSON.stringify(l));
+" 2>/dev/null || printf '[]')"
+} 2>/dev/null || true
+
+# ---------------------------------------------------------------------------
+# Build and write the node redaction filter script to a temp file
+# ---------------------------------------------------------------------------
+# The filter takes its config from process.argv[2] (env files JSON) and
+# process.argv[3] (recent lines file path). Using a heredoc avoids all
+# shell-level escaping issues with regex and special characters.
+FILTER_SCRIPT="$RECORD_DIR/.filter.cjs"
+
+cat > "$FILTER_SCRIPT" << 'FILTER_JS_EOF'
+"use strict";
+const { readFileSync, existsSync, writeFileSync, renameSync } = require("node:fs");
+const SNAMES = ["TOKEN", "SECRET", "PASSWORD", "PASSWD", "API_KEY",
+  "ACCESS_KEY", "PRIVATE_KEY", "CREDENTIAL", "AUTH", "SESSION"];
+const SRE = new RegExp(SNAMES.join("|"), "i");
+
+function collectSecrets(envFiles) {
+  const s = new Map();
+  for (const [k, v] of Object.entries(process.env)) {
+    if (SRE.test(k) && typeof v === "string" && v.length >= 8) s.set(k, v);
+  }
+  for (const f of envFiles) {
+    if (!existsSync(f)) continue;
+    let text = "";
+    try { text = readFileSync(f, "utf8"); } catch { continue; }
+    for (const line of text.split(/\r?\n/)) {
+      const m = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line.trim());
+      if (!m) continue;
+      const k = m[1], raw = m[2];
+      const v = (/^'.*'$/.test(raw) || /^".*"$/.test(raw)) ? raw.slice(1, -1) : raw;
+      if (SRE.test(k) && v.length >= 8) s.set(k, v);
+    }
+  }
+  return s;
+}
+
+function redact(text, entries) {
+  for (const [name, val] of entries) {
+    const tok = "[REDACTED:" + name + "]";
+    let i = text.indexOf(val);
+    while (i !== -1) {
+      text = text.slice(0, i) + tok + text.slice(i + val.length);
+      i = text.indexOf(val, i + tok.length);
+    }
+  }
+  return text;
+}
+
+const envFiles = JSON.parse(process.argv[2] || "[]");
+const recentFile = process.argv[3];
+const secrets = collectSecrets(envFiles);
+const entries = [...secrets.entries()].sort((a, b) => b[1].length - a[1].length);
+const maxLen = entries.length > 0 ? entries[0][1].length : 0;
+const tailLen = Math.max(0, maxLen - 1);
+let buf = Buffer.alloc(0);
+let lastFlush = Date.now();
+const recent = [];
+
+function saveRecent() {
+  if (!recentFile) return;
+  try {
+    const tmp = recentFile + ".tmp";
+    writeFileSync(tmp, JSON.stringify(recent));
+    renameSync(tmp, recentFile);
+  } catch {}
+}
+
+function emit(chunk) {
+  const text = redact(chunk.toString("utf8"), entries);
+  process.stdout.write(text);
+  let changed = false;
+  for (const line of text.split("\n")) {
+    if (line.length > 0) {
+      recent.push(line);
+      if (recent.length > 5) recent.shift();
+      changed = true;
+    }
+  }
+  if (changed) saveRecent();
+}
+
+function flushBuf(force) {
+  const nl = buf.lastIndexOf(0x0a);
+  if (nl !== -1) {
+    emit(buf.slice(0, nl + 1));
+    buf = buf.slice(nl + 1);
+    lastFlush = Date.now();
+    return;
+  }
+  const now = Date.now();
+  if (force || (now - lastFlush >= 500 && buf.length > tailLen)) {
+    const keep = tailLen > 0 && !force ? buf.slice(-tailLen) : Buffer.alloc(0);
+    const out = buf.slice(0, buf.length - keep.length);
+    if (out.length > 0) emit(out);
+    buf = keep;
+    lastFlush = now;
+  }
+}
+
+process.stdin.on("data", (c) => { buf = Buffer.concat([buf, c]); flushBuf(false); });
+const timer = setInterval(() => flushBuf(false), 100);
+process.stdin.on("end", () => { clearInterval(timer); flushBuf(true); saveRecent(); });
+process.on("SIGTERM", () => process.exit(0));
+FILTER_JS_EOF
+
+# ---------------------------------------------------------------------------
+# Build command JSON (secret values redacted)
+# ---------------------------------------------------------------------------
+_build_cmd_json() {
+  if [[ -n "$SHELL_STRING" ]]; then
+    node -e "
+const a=['bash','-c',process.argv[1]];
+const s=new Map();const R=/(TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL|AUTH|SESSION)/i;
+for(const[k,v]of Object.entries(process.env)){if(R.test(k)&&typeof v==='string'&&v.length>=8)s.set(k,v);}
+process.stdout.write(JSON.stringify(a.map(x=>{let t=x;for(const[n,v]of s)t=t.split(v).join('[REDACTED:'+n+']');return t;})));
+" -- "$SHELL_STRING" 2>/dev/null || printf '["bash","-c","<string>"]'
+  else
+    node -e "
+const a=process.argv.slice(1);
+const s=new Map();const R=/(TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL|AUTH|SESSION)/i;
+for(const[k,v]of Object.entries(process.env)){if(R.test(k)&&typeof v==='string'&&v.length>=8)s.set(k,v);}
+process.stdout.write(JSON.stringify(a.map(x=>{let t=x;for(const[n,v]of s)t=t.split(v).join('[REDACTED:'+n+']');return t;})));
+" -- "${COMMAND_ARGV[@]}" 2>/dev/null || printf '[]'
+  fi
+}
+COMMAND_JSON="$(_build_cmd_json)"
+
+# ---------------------------------------------------------------------------
+# Record writer (atomic)
+# ---------------------------------------------------------------------------
+STARTED_AT="$(node -e "process.stdout.write(new Date().toISOString())" 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')"
+WRAPPER_PID=$$
+
+_label_json="$(node -e "process.stdout.write(JSON.stringify(process.argv[1]))" -- "$LABEL" 2>/dev/null || printf '"%s"' "$LABEL")"
+_cwd_json="$(node -e "process.stdout.write(JSON.stringify(process.argv[1]))" -- "${CWD:-$PWD}" 2>/dev/null || printf '"%s"' "${CWD:-$PWD}")"
+
+_write_record() {
+  local pid_v="${1:-null}" exit_v="${2:-null}" sig_v="${3:-null}" ended_v="${4:-null}"
+  local tmp="$RECORD_PATH.$$.tmp"
+  node -e "
+process.stdout.write(JSON.stringify({
+  schema_version:1,label:$_label_json,command:$COMMAND_JSON,cwd:$_cwd_json,
+  pid:$pid_v,wrapper_pid:$WRAPPER_PID,started_at:'$STARTED_AT',ended_at:$ended_v,
+  exit_code:$exit_v,signal:$sig_v,
+  log_path:'$RECORD_DIR_REL/output.log',
+  heartbeat_path:'$RECORD_DIR_REL/heartbeat.json',
+  heartbeat_seconds:$HB_SECONDS,
+},null,2)+'\n');
+" > "$tmp" && mv "$tmp" "$RECORD_PATH" 2>/dev/null || true
+}
+_write_record "null" "null" "null" "null"
+
+# ---------------------------------------------------------------------------
+# Named pipe for output routing
+# ---------------------------------------------------------------------------
+FIFO_OUT="$RECORD_DIR/out.fifo"
+mkfifo "$FIFO_OUT"
+
+# ---------------------------------------------------------------------------
+# Start redaction filter
+# ---------------------------------------------------------------------------
+# cat reads from the FIFO (handles macOS FIFO EOF correctly), then pipes to
+# node for redaction. Node gets EOF via the anonymous pipe rather than the
+# FIFO directly, which avoids a macOS/libuv issue where node on a FIFO does
+# not properly detect EOF when all writers close.
+if [[ "$QUIET" -eq 1 ]]; then
+  cat "$FIFO_OUT" | node "$FILTER_SCRIPT" "$_EFS_JSON" "$RECENT_FILE" >> "$LOG_PATH" &
+else
+  cat "$FIFO_OUT" | node "$FILTER_SCRIPT" "$_EFS_JSON" "$RECENT_FILE" | tee -a "$LOG_PATH" &
+fi
+FILTER_PID=$!
+
+# ---------------------------------------------------------------------------
+# Open FIFO for writing and start the command
+# ---------------------------------------------------------------------------
+exec 9>"$FIFO_OUT"
+
+# Run command in background. After exec, the subshell PID is the command's PID.
+if [[ -n "$SHELL_STRING" ]]; then
+  if [[ -n "$CWD" ]]; then
+    { cd "$CWD" && exec bash -c "$SHELL_STRING"; } >&9 2>&9 &
+  else
+    { exec bash -c "$SHELL_STRING"; } >&9 2>&9 &
+  fi
+else
+  if [[ -n "$CWD" ]]; then
+    { cd "$CWD" && exec "${COMMAND_ARGV[@]}"; } >&9 2>&9 &
+  else
+    { exec "${COMMAND_ARGV[@]}"; } >&9 2>&9 &
+  fi
+fi
+CMD_BG_PID=$!
+CMD_PID="$CMD_BG_PID"
+
+# Close the main shell's write end of FIFO_OUT; the command still holds its
+# copy. When the command exits, FIFO_OUT has no writers and the filter gets EOF.
+# NOTE: exec with no command applies redirections to the current shell permanently.
+# Do NOT use 2>/dev/null here; it would redirect the shell's stderr permanently.
+exec 9>&-
+
+_write_record "$CMD_PID" "null" "null" "null"
+
+# Print startup observation line to stderr.
+# In quiet mode with non-terminal stderr and no progress fd, suppress it to
+# maintain the "nothing on success" contract (AC-17). In all other cases, print.
+_should_print_diag() {
+  if [[ "$QUIET" -eq 0 ]]; then return 0; fi           # streaming: always print
+  [[ -n "${PAN_PROGRESS_FD:-}" ]] && return 0            # explicit progress sink
+  [[ -t 2 ]] && return 0                                 # terminal stderr
+  return 1
+}
+if _should_print_diag; then
+  printf '[pan-run] log: %s\n' "$RECORD_DIR_REL" >&2
+  printf '[pan-run] observe: ./bin/pan watch --process %d --label %s --output %s --exit-record %s\n' \
+    "$CMD_PID" "$LABEL" "$RECORD_DIR_REL/output.log" "$RECORD_DIR_REL/record.json" >&2
+fi
+
+# ---------------------------------------------------------------------------
+# Heartbeat loop
+# ---------------------------------------------------------------------------
+STARTED_MS="$(node -e "process.stdout.write(String(Date.now()))" 2>/dev/null || printf '%s000' "$(date +%s)")"
+_HB_WRAPPER_PID=$$
+_HB_PROGRESS_FD="${PAN_PROGRESS_FD:-2}"
+_HB_RD="$RECORD_DIR"
+_HB_DIAG_FD="$_HB_PROGRESS_FD"
+
+# In quiet mode with non-terminal stderr and no PAN_PROGRESS_FD, suppress
+# heartbeat diagnostic lines to maintain the "nothing on success" contract.
+# _HB_SINK is the file to redirect the heartbeat subshell's stdout to.
+if [[ "$QUIET" -eq 1 && -z "${PAN_PROGRESS_FD:-}" ]] && ! [[ -t 2 ]]; then
+  _HB_SINK="/dev/null"
+else
+  _HB_SINK="/dev/fd/$_HB_PROGRESS_FD"
+fi
+_HB_STARTED_MS="$STARTED_MS"
+_HB_LABEL_JSON="$_label_json"
+_HB_CMD_PID="$CMD_PID"
+
+# Heartbeat lines go to PAN_PROGRESS_FD (default: 2=stderr). In quiet mode
+# with non-terminal stderr and no explicit progress fd, suppress progress lines
+# to maintain the "nothing on success" contract. The subshell redirects its
+# stdout to the progress sink; node writes the progress line to stdout.
+(
+  set +e
+  while sleep "$HB_SECONDS" 2>/dev/null; do
+    kill -0 "$_HB_WRAPPER_PID" 2>/dev/null || break
+    node -e "
+const{statSync,readFileSync,writeFileSync,renameSync}=require('node:fs');
+const path=require('node:path');
+const rd='$_HB_RD';
+const now=Date.now();
+const elapsedSec=Math.floor((now-$_HB_STARTED_MS)/1000);
+let logBytes=0;
+try{logBytes=statSync(path.join(rd,'output.log')).size;}catch{}
+let recent=[];
+try{recent=JSON.parse(readFileSync(path.join(rd,'.recent-lines'),'utf8')||'[]');}catch{}
+const lastLine=(recent[recent.length-1]||'').slice(0,160);
+const hb={elapsed_seconds:elapsedSec,log_bytes:logBytes,last_output_at:new Date().toISOString(),recent_lines:recent};
+const tmp=path.join(rd,'heartbeat.tmp');
+writeFileSync(tmp,JSON.stringify(hb,null,2)+'\n');
+renameSync(tmp,path.join(rd,'heartbeat.json'));
+process.stdout.write('[pan-run] '+$_HB_LABEL_JSON+' running '+elapsedSec+'s pid=$_HB_CMD_PID last: '+lastLine+'\n');
+" 2>/dev/null || true
+  done
+) >&"$_HB_SINK" &
+HB_PID=$!
+
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+CMD_EXIT=0
+CMD_SIGNAL="null"
+
+_do_cleanup() {
+  kill "$HB_PID" 2>/dev/null || true
+
+  # The main shell's fd9 was already closed after starting the command.
+  # The command's copy is also closed (it has exited). The filter should
+  # have seen EOF by now; wait for it to finish draining to LOG_PATH.
+  wait "$FILTER_PID" 2>/dev/null || true
+
+  local ended_at
+  ended_at="$(node -e "process.stdout.write(new Date().toISOString())" 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  _write_record "$CMD_PID" "$CMD_EXIT" "$CMD_SIGNAL" "\"$ended_at\""
+
+  # Quiet mode: create stdout.log/stderr.log and replay on failure
+  if [[ "$QUIET" -eq 1 ]]; then
+    cp "$LOG_PATH" "$STDOUT_LOG" 2>/dev/null || touch "$STDOUT_LOG"
+    touch "$STDERR_LOG" 2>/dev/null || true
+    if [[ "$CMD_EXIT" -ne 0 ]]; then
+      local max_bytes=$(( 16 * 1024 * 1024 ))
+      local sout_bytes
+      sout_bytes="$(wc -c < "$STDOUT_LOG" 2>/dev/null | tr -d ' ')"
+      if (( ${sout_bytes:-0} > max_bytes )) 2>/dev/null; then
+        tail -c "$max_bytes" "$STDOUT_LOG" > "$STDOUT_LOG.t" && mv "$STDOUT_LOG.t" "$STDOUT_LOG"
+        printf '[pan-run] stdout truncated to the last %d bytes\n' "$max_bytes" >&2
+      fi
+      cat "$STDOUT_LOG"
+      cat "$STDERR_LOG" >&2
+    fi
+  fi
+
+  rm -f "$FIFO_OUT" "$FILTER_SCRIPT" "$RECENT_FILE" 2>/dev/null || true
+}
+
+trap 'CMD_EXIT=130; CMD_SIGNAL="null"; _do_cleanup; exit 130' INT
+trap 'CMD_EXIT=143; CMD_SIGNAL="null"; _do_cleanup; exit 143' TERM
+
+# ---------------------------------------------------------------------------
+# Wait for command to finish
+# ---------------------------------------------------------------------------
+set +e
+wait "$CMD_BG_PID"
+CMD_EXIT=$?
+set -e
+
+if (( CMD_EXIT > 128 )) 2>/dev/null; then
+  _SIG_NUM=$(( CMD_EXIT - 128 ))
+  CMD_SIGNAL="\"$(kill -l "$_SIG_NUM" 2>/dev/null || printf 'UNKNOWN')\""
+fi
+
+_do_cleanup
+
+exit "$CMD_EXIT"

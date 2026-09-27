@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+# Enforce the pan-run wrapper requirement for agent shell commands.
+# Reads a Cursor beforeShellExecution JSON payload from stdin and prints
+# {"permission":"allow"} or {"permission":"deny",...} to stdout. Exits 0
+# always; Cursor blocks the action on invalid output from a permission hook.
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
+PAN_RUN_PATH="$HARNESS_ROOT/bin/pan-run"
+
+input="$(cat 2>/dev/null || true)"
+
+# Write the Python evaluator to a temp file (avoids heredoc-in-$() quoting).
+_py="$(mktemp /tmp/pan-shell-monitor.XXXXXX.py)"
+
+cat > "$_py" << 'PYTHON_EOF'
+import sys, json, shlex, re
+
+pan_run_path = sys.argv[1]
+harness_root = sys.argv[2]
+command = sys.argv[3] if len(sys.argv) > 3 else ""
+if not isinstance(command, str):
+    command = ""
+
+# ---- allowed git subcommands and refused flags ----
+ALLOWLISTED_GIT_SUB = {"status", "log", "diff", "show", "rev-parse"}
+GIT_REFUSED_GLOBAL = {"-c", "--config-env", "--exec-path"}
+GIT_DIFF_LOG_SHOW_REFUSED = {"--output", "--ext-diff", "--textconv"}
+RG_REFUSED = {"--pre", "--pre-glob", "-z", "--search-zip"}
+
+# ---- helper: detect command substitution outside single quotes ----
+def has_substitution(text):
+    in_sq = False
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "'" and not in_sq:
+            in_sq = True; i += 1; continue
+        if c == "'" and in_sq:
+            in_sq = False; i += 1; continue
+        if not in_sq:
+            if c == "$" and i + 1 < len(text) and text[i+1] == "(": return True
+            if c == "`": return True
+            if c in ("<", ">") and i + 1 < len(text) and text[i+1] == "(": return True
+        i += 1
+    return False
+
+# ---- helper: tokenize with shlex ----
+def tokenize(text):
+    try:
+        lex = shlex.shlex(text, posix=True, punctuation_chars=True)
+        lex.whitespace_split = False
+        return list(lex)
+    except Exception:
+        return None
+
+# ---- wrapped form ----
+def is_pan_run_path(word):
+    return (word in ("bin/pan-run", "./bin/pan-run", ".pancreator/bin/pan-run")
+            or word.endswith("/bin/pan-run"))
+
+def is_wrapped_form(cmd):
+    if has_substitution(cmd): return False
+    tokens = tokenize(cmd)
+    if tokens is None: return False
+    idx = 0
+    while idx < len(tokens):
+        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', tokens[idx]): idx += 1
+        else: break
+    if idx >= len(tokens): return False
+    if not is_pan_run_path(tokens[idx]): return False
+    rest = tokens[idx+1:]
+    OPERATORS = set("|;()&<>")
+    for tok in rest:
+        for ch in tok:
+            if ch in OPERATORS: return False
+    return True
+
+# ---- allowlist form ----
+def segments(cmd):
+    return [s.strip() for s in re.split(r"[;|&\n]+", cmd) if s.strip()]
+
+def is_allowlisted_seg(seg):
+    if has_substitution(seg): return False
+    if "&" in seg or "(" in seg or ")" in seg: return False
+    tokens = tokenize(seg)
+    if tokens is None: return False
+    if tokens and re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', tokens[0]): return False
+    clean = []
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        # Allow exactly 2>/dev/null: tokenized as ['2', '>', '/dev/null']
+        if (t == "2" and i+2 < len(tokens) and tokens[i+1] == ">" and tokens[i+2] == "/dev/null"):
+            i += 3; continue
+        # Also handle '2>' as a single token (alternative tokenization)
+        if t == "2>" and i+1 < len(tokens) and tokens[i+1] == "/dev/null":
+            i += 2; continue
+        if t in ("|", ";", "&&", "||", "&", "<", ">", ">>",
+                 "2>", "2>>", "1>", "1>>"):
+            return False
+        clean.append(t); i += 1
+    if not clean: return False
+    cmd_name = clean[0].split("/")[-1]
+    args = clean[1:]
+    if cmd_name == "git":
+        if not args or args[0] not in ALLOWLISTED_GIT_SUB: return False
+        for a in args:
+            if a in GIT_REFUSED_GLOBAL: return False
+        if args[0] in ("diff", "log", "show"):
+            for a in args:
+                if a in GIT_DIFF_LOG_SHOW_REFUSED: return False
+                for refused in GIT_DIFF_LOG_SHOW_REFUSED:
+                    if a.startswith(refused + "="): return False
+        return True
+    if cmd_name in ("ls", "cat", "pwd"): return True
+    if cmd_name == "rg":
+        for a in args:
+            if a in RG_REFUSED: return False
+        return True
+    return False
+
+def is_allowlist_form(cmd):
+    if has_substitution(cmd): return False
+    tokens = tokenize(cmd)
+    if tokens is None: return False
+    for t in tokens:
+        if t in ("&", "(", ")"): return False
+    segs = segments(cmd)
+    return bool(segs) and all(is_allowlisted_seg(s) for s in segs)
+
+# ---- main ----
+if not command.strip():
+    print("deny"); print("No command provided."); sys.exit(0)
+
+tokens = tokenize(command)
+if tokens is None:
+    print("deny"); print("Command parse error (shlex failed)."); sys.exit(0)
+
+if has_substitution(command):
+    print("deny")
+    print("Command contains a command substitution ($(...), backticks, or <(...)/>(...)).")
+    sys.exit(0)
+
+if is_wrapped_form(command):
+    print("allow"); sys.exit(0)
+
+if is_allowlist_form(command):
+    print("allow"); sys.exit(0)
+
+print("deny")
+print(
+    "Every agent shell command must run inside bin/pan-run. "
+    "Use one of these forms:\n"
+    "  " + pan_run_path + " -- <command> [args...]\n"
+    "  " + pan_run_path + " -c '<shell string>'\n"
+    "Allowlisted read-only commands (git status, git log, git diff, "
+    "git show, git rev-parse, ls, rg, cat, pwd) may run without the "
+    "wrapper when they do not chain or pipe into a non-allowlisted command, "
+    "do not use command substitutions, and carry no redirection except "
+    "2>/dev/null."
+)
+PYTHON_EOF
+
+# Parse the command from the JSON payload
+_cmd="$(printf '%s' "$input" | python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    c = d.get('command', '') if isinstance(d, dict) else ''
+    print(c if isinstance(c, str) else '', end='')
+except Exception:
+    pass
+" 2>/dev/null || true)"
+
+# Run the evaluator
+_result="$(python3 "$_py" "$PAN_RUN_PATH" "$HARNESS_ROOT" "$_cmd" 2>/dev/null || printf 'deny\nInternal error.')"
+rm -f "$_py"
+
+_line1="$(printf '%s' "$_result" | head -1)"
+_rest="$(printf '%s' "$_result" | tail -n +2)"
+
+case "$_line1" in
+  allow)
+    printf '%s\n' '{"permission":"allow"}'
+    ;;
+  deny)
+    _agent_json="$(python3 -c "import json,sys; print(json.dumps(sys.argv[2]))" -- "$_rest" 2>/dev/null || printf '"use bin/pan-run"')"
+    _user_json="$(python3 -c "import json,sys; print(json.dumps(sys.argv[2][:200]))" -- "$_rest" 2>/dev/null || printf '"use bin/pan-run"')"
+    printf '{"permission":"deny","user_message":%s,"agent_message":%s}\n' "$_user_json" "$_agent_json"
+    ;;
+  *)
+    printf '{"permission":"deny","user_message":"Shell monitor error","agent_message":"Shell monitor produced unexpected output; denying as fail-closed."}\n'
+    ;;
+esac
+
+exit 0

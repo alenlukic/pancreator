@@ -51,6 +51,7 @@ import { validatePrototypeOutput } from '../validators/prototype-output.js'
 import { validateTuneRecord } from '../validators/tune-record.js'
 import { validateTargetAuthoring } from '../target-authoring.js'
 import { awaitShellBanValidateHandler } from '../validators/await-shell-ban.js'
+import { shellMonitorValidateHandler } from '../validators/shell-monitor.js'
 
 function passed(): HandlerResult {
   return { status: 'passed', issues: [] }
@@ -268,6 +269,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'tune-record-validate': validateTuneRecord,
   'target-authoring-validate': targetAuthoringValidateHandler,
   'await-shell-ban-validate': awaitShellBanValidateHandler,
+  'shell-monitor-validate': shellMonitorValidateHandler,
 }
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))

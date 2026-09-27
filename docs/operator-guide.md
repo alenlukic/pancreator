@@ -2004,3 +2004,29 @@ Pull all instances and produce a combined report:
 ```sh
 pan spend report [--days <1..365>] [--json]
 ```
+
+## Monitored shell execution
+
+Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the exact `pan watch` command to observe the process:
+
+```
+[pan-run] observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+```
+
+Run the command directly when you want to observe a wrapped agent command:
+
+```sh
+./bin/pan watch --process <pid> --label <label> \
+  --output runtime/logs/shell/.../output.log \
+  --exit-record runtime/logs/shell/.../record.json
+```
+
+`--exit-record` supplies the wrapper's `record.json`. When the process has exited and the record holds a numeric `exit_code`, `pan watch` reports `exit_status` as that code instead of `unknown`.
+
+### Shell hook
+
+`bin/pan-hook-shell-monitor` runs as a `beforeShellExecution` hook in every Cursor session where the harness is projected. It allows commands wrapped with `bin/pan-run` and a short read-only allowlist (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`). All other commands are denied and the agent message names both wrapper forms.
+
+The hook and its allowlist are validated by `SHELL-MONITOR-VALIDATE-001`, which `pan validate` runs.
+
+After the release lands, run `./bin/pan models --sync` so the new hook projection and the updated policy rules reach the local `.cursor/` tree.

@@ -203,6 +203,12 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     age_source: 'none',
     disposal: 'retain',
   },
+  {
+    name: 'shell-logs',
+    paths: ['runtime/logs/shell'],
+    age_source: 'mtime',
+    disposal: 'archive_then_delete',
+  },
 ]
 
 /** Classes whose loose files the temporal rename pass standardizes. */

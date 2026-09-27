@@ -5033,12 +5033,15 @@ async function main(): Promise<void> {
           return
         }
 
+        const exitRecordArg = option(args, '--exit-record')
+
         const result = await watchProcess(root, {
           pid: Number(processPid),
           label: requiredArgument(option(args, '--label'), '--label'),
           ...(option(args, '--output')
             ? { outputPath: option(args, '--output') as string }
             : {}),
+          ...(exitRecordArg !== null ? { exitRecordPath: exitRecordArg } : {}),
           ...(genericRecord ? { recordPath: genericRecord } : {}),
           cadenceSeconds: genericCadence,
           timeoutSeconds: parseTimeoutSeconds(
@@ -5047,17 +5050,22 @@ async function main(): Promise<void> {
           onWake: genericOnWake,
         })
 
+        const exitStatusNote =
+          result.state === 'exited'
+            ? typeof result.exit_status === 'number'
+              ? `; exit status ${result.exit_status} (from exit record)`
+              : '; observed exit only — the exit status is unknown without authoritative completion evidence'
+            : ''
+
         print(
           json
             ? result
             : `process watch ${result.state}: '${result.label}' (pid ` +
                 `${result.subject}) after ${result.elapsed_seconds.toFixed(1)}s ` +
                 `over ${result.wakes} wakes; record ${result.record_path}` +
-                (result.state === 'exited'
-                  ? '; observed exit only — the exit status is unknown without authoritative completion evidence'
-                  : result.state === 'timed_out' && result.rearm_command
-                    ? `\nre-arm with: ${result.rearm_command}`
-                    : ''),
+                (result.state === 'timed_out' && result.rearm_command
+                  ? `\nre-arm with: ${result.rearm_command}`
+                  : exitStatusNote),
           json,
         )
         process.exitCode =

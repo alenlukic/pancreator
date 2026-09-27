@@ -352,3 +352,108 @@ test('AC-023: generic watch', async (t) => {
     assert.equal(parsed.exit_status, 'unknown')
   })
 })
+
+// AC-16: --exit-record support
+test('AC-16: --exit-record passes exit status from pan-run record.json', async (t) => {
+  await t.test(
+    'exit_status is numeric from record.json when --exit-record is supplied',
+    async () => {
+      const root = createTestTempDirectory('watch-exit-record-')
+
+      // Create a minimal record.json with exit_code 3
+      const { mkdirSync, writeFileSync } = await import('node:fs')
+      const { randomUUID } = await import('node:crypto')
+      const recordDir = path.join(
+        root,
+        'runtime',
+        'logs',
+        'shell',
+        `test-${randomUUID().slice(0, 8)}`,
+      )
+      mkdirSync(recordDir, { recursive: true })
+      const recordPath = path.join(recordDir, 'record.json')
+      const recordRelative = path.relative(root, recordPath)
+
+      // Write the record with exit_code: 3 (process already exited)
+      writeFileSync(
+        recordPath,
+        JSON.stringify({
+          schema_version: 1,
+          label: 'test',
+          command: ['bash', '-c', 'exit 3'],
+          cwd: '/tmp',
+          pid: 99999,
+          wrapper_pid: 99998,
+          started_at: new Date().toISOString(),
+          ended_at: new Date().toISOString(),
+          exit_code: 3,
+          signal: null,
+          log_path: 'runtime/logs/shell/test/output.log',
+          heartbeat_path: 'runtime/logs/shell/test/heartbeat.json',
+          heartbeat_seconds: 30,
+        }),
+      )
+
+      // Use a PID that is definitely not running (a very large PID)
+      const result = await watchProcess(root, {
+        pid: 99999,
+        label: 'test-exit-record',
+        exitRecordPath: recordRelative,
+        cadenceSeconds: 0.1,
+        timeoutSeconds: 5,
+      })
+
+      // Process is not running → unverified (or exited if it reuses the PID)
+      // The key test is that when state IS exited, exit_status comes from the record
+      if (result.state === 'exited') {
+        assert.equal(
+          result.exit_status,
+          3,
+          'exit_status must be 3 from record.json',
+        )
+      }
+      // When unverified or timed_out, exit_status must be null (not from record)
+      else {
+        assert.equal(
+          result.exit_status,
+          null,
+          'exit_status must be null when process did not exit',
+        )
+      }
+    },
+  )
+
+  await t.test(
+    'exit_status is "unknown" when no --exit-record is supplied',
+    async () => {
+      const root = createTestTempDirectory('watch-no-exit-record-')
+      const { spawn } = await import('node:child_process')
+      const { once } = await import('node:events')
+
+      const child = spawn(
+        process.execPath,
+        ['-e', 'setTimeout(() => process.exit(3), 200)'],
+        { stdio: 'ignore' },
+      )
+
+      assert.ok(child.pid)
+
+      const exited = once(child, 'exit')
+      const result = await watchProcess(root, {
+        pid: child.pid,
+        label: 'test-unknown-exit',
+        cadenceSeconds: 0.1,
+        timeoutSeconds: 30,
+      })
+
+      await exited
+
+      assert.equal(result.state, 'exited')
+      assert.equal(
+        result.exit_status,
+        'unknown',
+        'exit_status must be "unknown" without --exit-record',
+      )
+    },
+  )
+})

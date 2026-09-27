@@ -16,7 +16,13 @@
  */
 import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 
 import { PanError, invariant, isNodeError } from './errors.js'
@@ -3941,11 +3947,12 @@ export interface GenericWatchResult {
   ended_at: string
   elapsed_seconds: number
   /**
-   * Observed exit is reported, never success: the harness saw the process
-   * leave, and nothing about why. An exit status is knowable only from
-   * authoritative completion evidence, which this surface does not collect.
+   * Exit status of the observed process. `'unknown'` means the process was
+   * seen to exit but no authoritative exit record was supplied. A number
+   * means the exit record (`--exit-record`) was read and held a numeric
+   * `exit_code`. `null` means the process did not exit during the watch.
    */
-  exit_status: 'unknown' | null
+  exit_status: 'unknown' | number | null
   watch_session_id: string
   /**
    * Exact command to re-arm the same bounded observation. Present only when
@@ -3964,6 +3971,12 @@ export interface ProcessWatchOptions {
   outputPath?: string
   /** Harness-relative record path; defaults under `runtime/logs/watch/`. */
   recordPath?: string
+  /**
+   * Harness-relative path to a `pan-run` exit record (`record.json`). When
+   * the process has exited and the record holds a numeric `exit_code`, the
+   * result's `exit_status` reports that code instead of `'unknown'`.
+   */
+  exitRecordPath?: string
   cadenceSeconds?: number
   timeoutSeconds?: number
   sleep?: (milliseconds: number) => Promise<void>
@@ -4084,12 +4097,44 @@ export async function watchProcess(
     })
   }, options.onInterrupted)
 
+  /**
+   * Read the numeric `exit_code` from a `pan-run` exit record when the
+   * process has exited. Returns `'unknown'` when the record is absent,
+   * unreadable, or does not hold a finished numeric exit code yet.
+   */
+  const readExitCode = (): 'unknown' | number => {
+    if (options.exitRecordPath === undefined) {
+      return 'unknown'
+    }
+
+    const absolute = resolveInside(root, options.exitRecordPath)
+
+    try {
+      const raw: unknown = JSON.parse(readFileSync(absolute, 'utf8'))
+
+      if (
+        isRecord(raw) &&
+        typeof raw.exit_code === 'number' &&
+        Number.isInteger(raw.exit_code)
+      ) {
+        return raw.exit_code
+      }
+    } catch {
+      // Record absent or not yet written — fall through to 'unknown'.
+    }
+
+    return 'unknown'
+  }
+
   const finish = (state: GenericWatchTerminalState): GenericWatchResult => {
     const endedMs = now()
     const rearmCommand =
       state === 'timed_out'
         ? `./bin/pan watch --process ${options.pid} --label ${shellSingleQuote(options.label)} --timeout-seconds ${timeoutSeconds}`
         : undefined
+
+    const exitStatus: 'unknown' | number | null =
+      state === 'exited' ? readExitCode() : null
 
     return {
       state,
@@ -4102,7 +4147,7 @@ export async function watchProcess(
       started_at: startedAt,
       ended_at: new Date(endedMs).toISOString(),
       elapsed_seconds: (endedMs - startedMs) / 1000,
-      exit_status: state === 'exited' ? 'unknown' : null,
+      exit_status: exitStatus,
       watch_session_id: sessionId,
       ...(rearmCommand ? { rearm_command: rearmCommand } : {}),
     }
