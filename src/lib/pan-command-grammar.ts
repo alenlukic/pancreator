@@ -79,7 +79,7 @@ export const HELP_BODY = `Usage:
       Returns already_current without rebasing when the selected target is already an ancestor of the branch head. Otherwise sync rebases in Git's merge-preserving mode and refuses success with RELEASE_REBASE_TOPOLOGY_LOST when the result drops a merge commit the branch carried or no longer descends from the target; replayed commit hashes are expected to change. --onto <ref> rebases onto a ref the operator names; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result. Sync and finalize return RELEASE_LOCAL_DEFAULT_AHEAD in advisories when the local default branch is ahead of fetched main.
   pan release continue --worktree <name> [--run <run-id>] [--json]
       Returns not_needed with exit 0 when no rebase is active.
-  pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--allow-unclean <conform|style>]... [--json]
+  pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
   pan release allocate --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--json]
       Hand the worktree the next release version above every version published on its head, on pan-dev, on the local default branch, or already allocated, and record the allocation in runtime/release/allocations.jsonl before any release commit exists. Two worktrees allocating against the same base receive different versions, and a repeated request from a worktree whose allocation has not landed returns the same version. The ship validator accepts the allocated version in place of the exact next version for the same bump.
   pan release land --worktree <name> [--bump <major|minor|patch>] [--run <run-id>] [--verify-profile <name>]... [--wait-seconds <n>] [--json]
@@ -166,6 +166,8 @@ export const HELP_BODY = `Usage:
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
   pan best-of-n prune [--force] [--json]
+  pan quality daily [--json]
+      Self-development only. Run the daily conform and style repair pass: scan, repair via the librarian agent, validate, commit, and fast-forward pan-dev under the landing mutex. Records skipped and exits 0 outside self-development.
   pan schedule list|status|tick|validate|install-agent|uninstall-agent [--json]
   pan schedule run <job-id> [--json]
       Evaluate configured calendar jobs, force one named job, inspect filesystem alerts, validate job references, or install and remove the opt-in macOS launchd trigger. Any platform can invoke 'pan schedule tick' from an external trigger.

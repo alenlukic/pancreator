@@ -568,6 +568,12 @@ function assertScheduleBlock(value: unknown): void {
       `${source} MUST name exactly one of workspace or worktree.`,
       { code: 'INVALID_PROJECT_CONFIG' },
     )
+    invariant(
+      job.self_development_only === undefined ||
+        typeof job.self_development_only === 'boolean',
+      `${source}.self_development_only MUST be boolean when present.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
     assertScheduleAction(job.action, `${source}.action`)
   }
 }

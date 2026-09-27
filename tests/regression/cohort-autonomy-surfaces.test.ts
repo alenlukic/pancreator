@@ -39,6 +39,11 @@ const COHORT_OWNING_SURFACES = [
   'docs/operator-guide.md',
 ]
 
+const DAILY_QUALITY_EXEMPTION_SENTENCES = [
+  'Operator directive of 2026-09-26: the daily conform and style job may fast-forward `pan-dev` with commits that carry the `Pancreator-Daily-Quality:` trailer and change only the surface paths in `governance/registries/daily_quality_surfaces.json`.',
+  'Operator directive of 2026-09-26: commits produced by the daily conform and style job that carry the Pancreator-Daily-Quality: trailer and change only the surface paths listed in governance/registries/daily_quality_surfaces.json MAY land on pan-dev by fast-forward without a release.',
+]
+
 /**
  * The surfaces that state the operator-owned action list. Each one has to
  * carry the `pan-dev` landing rule, because that rule is what replaced the
@@ -271,8 +276,16 @@ test('every operator-owned action list surface states the pan-dev landing rule o
       1,
       `${surface} states the promotion rule more than once`,
     )
+    // The operator directive of 2026-09-26 authorizes exactly these daily
+    // quality sentences. Any other trailer or path-scoping carve-out, including
+    // one appended beside them, is still refused.
+    const bodyWithoutDailyExemption = DAILY_QUALITY_EXEMPTION_SENTENCES.reduce(
+      (text, sentence) => text.replace(sentence, ''),
+      body,
+    )
+
     assert.ok(
-      !/trailer|path-scop/iu.test(body),
+      !/trailer|path-scop/iu.test(bodyWithoutDailyExemption),
       `${surface} adds a branching rule beyond the pan-dev landing idea`,
     )
   }

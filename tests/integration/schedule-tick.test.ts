@@ -431,3 +431,66 @@ test('a failed launch agent load removes the plist it rendered', () => {
   )
   assert.equal(existsSync(plist), false)
 })
+
+test('self_development_only job is skipped outside self_development', () => {
+  const root = createFixture()
+  // The fixture uses embedded installation_mode, not self_development.
+  // Override to ensure non-self-development context.
+  const config = read(path.join(root, 'config.json')) as Record<string, unknown>
+  writeJson(path.join(root, 'config.json'), {
+    ...config,
+    installation_mode: 'embedded',
+  })
+  configure(root, [
+    scheduledJob('self-dev-only', { self_development_only: true }),
+  ])
+
+  const result = scheduleTick(root, {
+    now: new Date('2026-01-05T10:00:02.137Z'),
+    executeAction: () => ({ ok: true, reason: '' }),
+  })
+
+  assert.equal(result.decisions[0]?.outcome, 'skipped')
+  assert.match(result.decisions[0]?.reason ?? '', /self_development_only/u)
+})
+
+test('alertReason opens an alert immediately after a failed decision', () => {
+  const root = createFixture()
+  configure(root, [scheduledJob('daily-quality-test')])
+
+  let callCount = 0
+  scheduleTick(root, {
+    now: new Date('2026-01-05T10:00:02.137Z'),
+    executeAction: () => {
+      callCount++
+      return { ok: false, reason: 'daily quality run failed for testing' }
+    },
+  })
+
+  assert.equal(callCount, 1)
+
+  // Immediately after a failed decision, the alert must be open.
+  const now = new Date('2026-01-05T10:01:00.000Z')
+  const alerts = refreshScheduleAlerts(root, now)
+
+  const alert = alerts.alerts.find((a) => a.job_id === 'daily-quality-test')
+
+  assert.ok(alert, 'expected an open alert immediately after a failed decision')
+  assert.match(alert.reason ?? '', /failed/iu)
+
+  scheduleTick(root, {
+    now: new Date('2026-01-06T10:00:02.137Z'),
+    executeAction: () => ({ ok: true, reason: 'daily quality run succeeded' }),
+  })
+
+  const cleared = refreshScheduleAlerts(
+    root,
+    new Date('2026-01-06T10:01:00.000Z'),
+  )
+
+  assert.equal(
+    cleared.alerts.some((entry) => entry.job_id === 'daily-quality-test'),
+    false,
+    'a later success must clear the failure alert',
+  )
+})
