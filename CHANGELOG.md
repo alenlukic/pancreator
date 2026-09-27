@@ -1,5 +1,28 @@
 # Changelog
 
+## [7.30.0] - 2026-09-27
+
+This release adds `pan handoff` on macOS. The operator can move one run into a new Cursor Agents chat. Waiver `waiver-683aa417-eef4-47ed-9d9a-3d44eded187a` covers the failed conform scan and the failed style scan. Those scans did not pass.
+
+### Changed
+
+- Instruct the supervisor to run `pan handoff` only on an operator direction, and to end its turn after Send ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Tell `/pan-resume` to read the handoff note before further action ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+
+### Added
+
+- Add `pan handoff` with dry-run, self-check, note, model, and effort options ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Add a `handoff` block in `config.json` with defaults Claude Opus 5.5 and High ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Add a Swift Accessibility helper that compiles on first use ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Report handoff readiness in `pan doctor` ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Fence `pan prepare` and `pan submit` after Send until a new session attests ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+
+### Fixed
+
+- Put an RFC 2119 keyword on the ORCH-001 fence instruction ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Write the verified picker label into the pre-Send record ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+- Re-check eligibility inside the pre-Send write so a second handoff cannot send ([b80cbe98](https://github.com/alenlukic/pancreator/commit/b80cbe98)).
+
 ## [7.29.1] - 2026-09-25
 
 This release makes `pan spend` report the real Cursor charge. Personal reports understated cost by about 98 times.
