@@ -6,16 +6,24 @@ import test from 'node:test'
 import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
 import { checkpoint } from './delivery-helpers.js'
 
-test('ship reject defaults to a paused operator decision instead of an implementation loop', () => {
+test('ship reject defaults to remediation instead of an implementation loop', () => {
   const { root, runId, state } = checkpoint('delivery@ship-awaiting-operator')
 
   assert.equal(state.status, 'awaiting_operator')
 
   const decided = decideRun(root, runId, 'reject', 'Commit message is wrong.')
 
-  assert.equal(decided.status, 'paused')
-  assert.equal(decided.current_stage, 'ship')
-  assert.equal(decided.pending_action.type, 'operator_decision')
+  assert.equal(decided.status, 'running')
+  assert.equal(decided.current_stage, 'remediate')
+  assert.ok(
+    decided.operator_feedback?.some(
+      (item) =>
+        item.decision === 'reject' &&
+        item.from_stage === 'ship' &&
+        item.to_stage === 'remediate',
+    ),
+    'the rejection note reaches the remediation stage',
+  )
 })
 
 test('ship reject with --stage routes to the chosen stage and resets attempts', () => {

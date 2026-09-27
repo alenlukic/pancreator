@@ -80,7 +80,13 @@ export function createBuildScriptFixture(): BuildScriptFixture {
   mkdirSync(toolDirectory, { recursive: true })
   symlinkSync(process.execPath, path.join(toolDirectory, 'node'))
 
-  for (const script of ['build', 'run-built', 'run-quiet', 'run-tests']) {
+  for (const script of [
+    'build',
+    'pan-run',
+    'run-built',
+    'run-quiet',
+    'run-tests',
+  ]) {
     const target = path.join(binDirectory, script)
 
     copyFileSync(path.join(ROOT, 'bin', script), target)

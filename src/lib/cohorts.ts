@@ -1900,6 +1900,7 @@ function mergeThroughReconcile(
     root,
     { into_branch: target },
     worktreeNames,
+    { cohortIntegration: true },
   )
 
   if (result.status === 'conflict') {

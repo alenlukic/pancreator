@@ -184,7 +184,7 @@ test('governance and artifact defects are advisory before ship and never loop to
   )
 })
 
-test('ship owns governance artifact review and pauses instead of looping to implementation', () => {
+test('ship owns governance artifact review and routes to remediation instead of implementation', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'delivery',
@@ -225,8 +225,8 @@ test('ship owns governance artifact review and pauses instead of looping to impl
 
   const decided = decideRun(root, runId, 'approve', 'Accept the failure route.')
 
-  assert.equal(decided.status, 'paused')
-  assert.equal(decided.current_stage, 'ship')
+  assert.equal(decided.status, 'running')
+  assert.equal(decided.current_stage, 'remediate')
 })
 
 test('baseline capture disclosed dirty paths and predecessor provenance', () => {

@@ -146,6 +146,16 @@ export interface ReconcileTarget {
   into_branch?: string | null
 }
 
+export interface ReconcileOptions {
+  /**
+   * Cohort integration merges chunk branches into the session's own base
+   * branch, which defaults to the branch the repository root holds. That merge
+   * path predates `pan release land` and stays outside the landing guard; the
+   * cohort's release run lands on pan-dev through its ship stage.
+   */
+  cohortIntegration?: boolean
+}
+
 export interface ReconcileWorktreesResult {
   status: 'merged' | 'conflict'
   target: string
@@ -1526,7 +1536,14 @@ export function reconcileWorktrees(
   root: string,
   target: ReconcileTarget,
   sourceNames: string[],
+  options: ReconcileOptions = {},
 ): ReconcileWorktreesResult {
+  invariant(
+    Boolean(target.into) !== Boolean(target.into_branch),
+    'Reconcile requires exactly one of --into or --into-branch.',
+    { code: 'WORKTREE_TARGET_REQUIRED' },
+  )
+
   // pan-dev and main are protected landing targets. Every release landing on
   // pan-dev must go through `pan release land`, which holds the mutex,
   // integrates, allocates a version, verifies, and fast-forwards the branch.
@@ -1534,16 +1551,13 @@ export function reconcileWorktrees(
   const protectedBranches = new Set(['pan-dev', 'main'])
 
   invariant(
-    !target.into_branch || !protectedBranches.has(target.into_branch),
+    options.cohortIntegration === true ||
+      !target.into_branch ||
+      !protectedBranches.has(target.into_branch),
     `Reconcile cannot target '${target.into_branch}' directly. ` +
       `Use 'pan release land --worktree <name>' to land on pan-dev, ` +
       `which integrates, versions, verifies, and fast-forwards the branch.`,
     { code: 'LANDING_REQUIRES_RELEASE_LAND' },
-  )
-  invariant(
-    Boolean(target.into) !== Boolean(target.into_branch),
-    'Reconcile requires exactly one of --into or --into-branch.',
-    { code: 'WORKTREE_TARGET_REQUIRED' },
   )
   invariant(
     sourceNames.length >= 2,
