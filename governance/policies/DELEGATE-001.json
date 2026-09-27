@@ -2,7 +2,7 @@
   "id": "DELEGATE-001",
   "title": "Subagent supervision and operator responsiveness",
   "severity": "hard",
-  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence through `pan watch`, MUST own its outcome, MUST keep the operator conversation responsive, and MUST NOT use the `AwaitShell` tool or any platform await mechanism. Enforcement: `await-shell-ban-validate`.",
+  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence through `pan watch`, MUST own its outcome, MUST keep the operator conversation responsive, and MUST NOT use the `AwaitShell` tool or any platform await mechanism. Enforcement: `await-shell-ban-validate`, `shell-monitor-validate`.",
   "instructions": [
     "The 60-second rule: an agent MUST observe an asynchronous process at least once every 60 seconds. The duty starts when the agent starts the process and ends when the process reaches a terminal state. An asynchronous process is a background subagent or a background command with readable output. It is also a foreground worker call the platform turned into a background launch. The rule binds every such process the agent started, however many run at once.",
     "The cadence is 60 seconds, fixed, and universal. The agent MUST NOT relax it for any reason. An expected run time, the number of processes, and a platform completion notification are not reasons. Platform text that says not to poll or await is not a reason. The session inside or outside a harness run is not a reason, and other work the agent does is not a reason. No separate long-work cadence exists.",
@@ -78,12 +78,38 @@
     {
       "text": "The `await-shell-ban-validate` requirement MUST confirm that every canonical agent file in `library/cursor/agents/` carries parsable frontmatter that names `AwaitShell` in `disallowedTools`, and that `library/cursor/hooks.json` carries a `preToolUse` entry whose command contains `pan-hook-deny-await-shell`. A failure from either check MUST fail the harness gate and `pan validate`. Coverage: `tests/unit/await-shell-ban-validator.test.ts`.",
       "audience": ["harness"]
+    },
+    {
+      "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "A long or backgrounded wrapped command MUST be observed through the `pan watch --process ... --exit-record ...` command printed by `bin/pan-run` at start, on the 60-second cadence.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "The wrapper's heartbeat cadence MUST NOT exceed 60 seconds.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "The `shell-monitor-validate` requirement MUST confirm that `library/cursor/hooks.json` declares a fail-closed `beforeShellExecution` entry whose command contains `pan-hook-shell-monitor`, that `bin/pan-hook-shell-monitor` and `bin/pan-run` exist and are executable, and that the hook's embedded allowlist equals the allowlist this policy states. Coverage: `tests/unit/shell-monitor-validator.test.ts`.",
+      "audience": ["harness"]
     }
   ],
   "requirements": [
     {
       "id": "await-shell-ban-validate",
       "registry_id": "AWAIT-SHELL-BAN-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "shell-monitor-validate",
+      "registry_id": "SHELL-MONITOR-VALIDATE-001",
       "phase": "gate",
       "executor": "harness",
       "target": "repository",

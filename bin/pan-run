@@ -1,0 +1,509 @@
+#!/usr/bin/env bash
+# Run a command inside a harness wrapper that streams a redacted durable log,
+# beats a heartbeat, and records the exit.
+#
+# Forms:
+#   pan-run [options] -- <argv...>      run argv without a shell
+#   pan-run [options] -c '<string>'     run the string with bash -c
+#
+# Options:
+#   --label <name>            human-readable name for the wait
+#   --quiet                   capture to stdout.log/stderr.log; replay on failure
+#   --cwd <dir>               working directory for the command
+#   --heartbeat-seconds <n>   heartbeat cadence (default 30, clamped to 60)
+#
+# Environment overrides:
+#   PANCREATOR_ROOT               harness root
+#   PAN_RUN_HEARTBEAT_SECONDS     heartbeat cadence
+#   PAN_VERBOSE                   stream output when set to 1/true/yes
+#   PAN_PROGRESS_FD               heartbeat line sink fd in quiet mode
+#
+# The script targets Bash 3.2, the macOS system shell.
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+MAX_CAPTURE_BYTES=$((16 * 1024 * 1024))
+
+# A linked worktree logs to its main worktree, where `pan watch` looks.
+resolve_root() {
+  if [[ -n "${PANCREATOR_ROOT:-}" ]]; then
+    printf '%s' "$PANCREATOR_ROOT"
+    return
+  fi
+  local candidate common main
+  candidate="$(dirname "$SCRIPT_DIR")"
+  if [[ -f "$candidate/.git" ]]; then
+    common="$(git -C "$candidate" rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common" ]]; then
+      [[ "$common" == /* ]] || common="$candidate/$common"
+      main="$(dirname "$common")"
+      if [[ -f "$main/bin/pan-run" && -f "$main/config.json" ]]; then
+        printf '%s' "$main"
+        return
+      fi
+    fi
+  fi
+  printf '%s' "$candidate"
+}
+
+is_verbose() {
+  case "${PAN_VERBOSE:-}" in
+    1 | true | yes | TRUE | YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+usage_error() {
+  printf 'pan-run: %s\n' "$1" >&2
+  exit 1
+}
+
+LABEL=""
+QUIET=0
+CWD=""
+HB_ARG=""
+SHELL_STRING=""
+HAS_SHELL_STRING=0
+COMMAND_ARGV=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --label)
+      [[ $# -ge 2 ]] || usage_error '--label requires an argument'
+      LABEL="$2"; shift 2 ;;
+    --quiet)
+      QUIET=1; shift ;;
+    --cwd)
+      [[ $# -ge 2 ]] || usage_error '--cwd requires an argument'
+      CWD="$2"; shift 2 ;;
+    --heartbeat-seconds)
+      [[ $# -ge 2 ]] || usage_error '--heartbeat-seconds requires an argument'
+      HB_ARG="$2"; shift 2 ;;
+    -c)
+      [[ $# -ge 2 ]] || usage_error '-c requires an argument'
+      SHELL_STRING="$2"; HAS_SHELL_STRING=1; shift 2
+      [[ $# -eq 0 ]] || usage_error 'unexpected argument after -c string'
+      break ;;
+    --)
+      shift; COMMAND_ARGV=("$@"); break ;;
+    *)
+      usage_error "unexpected argument: $1" ;;
+  esac
+done
+
+if [[ "$HAS_SHELL_STRING" -eq 1 ]]; then
+  COMMAND_ARGV=(bash -c "$SHELL_STRING")
+elif [[ ${#COMMAND_ARGV[@]} -eq 0 ]]; then
+  usage_error "no command given. Use -- <argv...> or -c '<string>'"
+fi
+
+is_verbose && QUIET=0
+
+if [[ -n "$CWD" ]]; then
+  CWD="$(cd "$CWD" && pwd)" || usage_error "--cwd is not a directory: $CWD"
+fi
+
+HB_SECONDS="${HB_ARG:-${PAN_RUN_HEARTBEAT_SECONDS:-30}}"
+if ! [[ "$HB_SECONDS" =~ ^[0-9]+$ ]] || (( 10#$HB_SECONDS < 1 )); then
+  HB_SECONDS=30
+fi
+HB_SECONDS=$((10#$HB_SECONDS))
+(( HB_SECONDS > 60 )) && HB_SECONDS=60
+
+ROOT="$(resolve_root)"
+HEX="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+SHELL_LOG_DIR="$ROOT/runtime/logs/shell"
+mkdir -p "$SHELL_LOG_DIR"
+
+# One secret set serves the output filter, the label, and the recorded command.
+ENV_FILES="$ROOT/.env"
+GIT_TOP="$(git -C "${CWD:-$PWD}" rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -n "$GIT_TOP" && "$GIT_TOP" != "$ROOT" ]]; then
+  ENV_FILES="$ENV_FILES"$'\n'"$GIT_TOP/.env"
+fi
+
+# The helper starts beside the record directory because the directory name
+# needs the redacted label, which the helper computes.
+HELPER="$SHELL_LOG_DIR/.pan-run-$HEX.cjs"
+trap 'rm -f "$HELPER"' EXIT
+
+# Values reach the helper through the environment of each call, never through
+# interpolated source.
+cat >"$HELPER" <<'HELPER_JS_EOF'
+"use strict";
+const fs = require("node:fs");
+const path = require("node:path");
+const { StringDecoder } = require("node:string_decoder");
+
+const SECRET_NAME = /TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL|AUTH|SESSION/i;
+const MIN_SECRET_LENGTH = 8;
+const IDLE_FLUSH_MS = 500;
+const TAIL_LINES = 5;
+const LAST_LINE_CHARS = 160;
+const env = process.env;
+
+function collectSecrets() {
+  const byValue = new Map();
+  const add = (name, value) => {
+    if (SECRET_NAME.test(name) && typeof value === "string" && value.length >= MIN_SECRET_LENGTH) {
+      byValue.set(value, name);
+    }
+  };
+  for (const [name, value] of Object.entries(env)) add(name, value);
+  for (const file of (env.PAN_RUN_ENV_FILES || "").split("\n").filter(Boolean)) {
+    let text = "";
+    try { text = fs.readFileSync(file, "utf8"); } catch { continue; }
+    for (const line of text.split(/\r?\n/)) {
+      const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line.trim());
+      if (!match) continue;
+      let value = match[2];
+      if (/^'.*'$/.test(value) || /^".*"$/.test(value)) value = value.slice(1, -1);
+      add(match[1], value);
+    }
+  }
+  return [...byValue]
+    .map(([value, name]) => ({ value, token: `[REDACTED:${name}]` }))
+    .sort((a, b) => b.value.length - a.value.length);
+}
+
+function redact(text, secrets) {
+  for (const { value, token } of secrets) text = text.split(value).join(token);
+  return text;
+}
+
+// Moves a cut earlier until no secret, complete or still arriving, straddles it.
+function safeCut(text, cut, secrets) {
+  for (let moved = true; moved; ) {
+    moved = false;
+    for (const { value } of secrets) {
+      for (let start = Math.max(0, cut - value.length + 1); start < cut; start++) {
+        const seen = text.slice(start, start + value.length);
+        if (seen.length === value.length ? seen === value : value.startsWith(seen)) {
+          cut = start;
+          moved = true;
+          break;
+        }
+      }
+    }
+  }
+  return cut;
+}
+
+function writeAtomic(file, text) {
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, text);
+  fs.renameSync(temporary, file);
+}
+
+function writeJson(file, value) {
+  writeAtomic(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
+}
+
+function filter(logPath) {
+  const secrets = collectSecrets();
+  const hold = Math.max(0, (secrets.length > 0 ? secrets[0].value.length : 0) - 1);
+  const log = fs.openSync(logPath, "a");
+  const decoder = new StringDecoder("utf8");
+  let pending = "";
+  let lastEmit = Date.now();
+  let passThrough = true;
+
+  const emitUpTo = (cut) => {
+    cut = safeCut(pending, cut, secrets);
+    if (cut <= 0) return;
+    const out = redact(pending.slice(0, cut), secrets);
+    pending = pending.slice(cut);
+    lastEmit = Date.now();
+    fs.writeSync(log, out);
+    if (!passThrough) return;
+    try { fs.writeSync(1, out); } catch { passThrough = false; }
+  };
+
+  process.stdin.on("data", (chunk) => {
+    pending += decoder.write(chunk);
+    const newline = pending.lastIndexOf("\n");
+    if (newline !== -1) emitUpTo(newline + 1);
+  });
+  const timer = setInterval(() => {
+    if (Date.now() - lastEmit >= IDLE_FLUSH_MS && pending.length > hold) {
+      emitUpTo(pending.length - hold);
+    }
+  }, 100);
+  process.stdin.on("end", () => {
+    clearInterval(timer);
+    pending += decoder.end();
+    const out = redact(pending, secrets);
+    pending = "";
+    fs.writeSync(log, out);
+    if (passThrough) { try { fs.writeSync(1, out); } catch {} }
+    fs.closeSync(log);
+  });
+}
+
+function recordStart(commandArgv) {
+  const secrets = collectSecrets();
+  const dir = env.PAN_RUN_RECORD_DIR;
+  const rel = env.PAN_RUN_RECORD_REL;
+  writeJson(path.join(dir, "record.json"), {
+    schema_version: 1,
+    label: env.PAN_RUN_LABEL,
+    command: commandArgv.map((arg) => redact(arg, secrets)),
+    cwd: env.PAN_RUN_CWD,
+    pid: Number(env.PAN_RUN_PID),
+    wrapper_pid: Number(env.PAN_RUN_WRAPPER_PID),
+    started_at: new Date().toISOString(),
+    ended_at: null,
+    exit_code: null,
+    signal: null,
+    log_path: `${rel}/output.log`,
+    heartbeat_path: `${rel}/heartbeat.json`,
+    heartbeat_seconds: Number(env.PAN_RUN_CADENCE),
+  });
+  writeJson(path.join(dir, "heartbeat.json"), {
+    elapsed_seconds: 0,
+    log_bytes: 0,
+    last_output_at: null,
+    recent_lines: [],
+  });
+}
+
+function recordEnd() {
+  const file = path.join(env.PAN_RUN_RECORD_DIR, "record.json");
+  const record = readJson(file) || {};
+  record.ended_at = new Date().toISOString();
+  record.exit_code = Number(env.PAN_RUN_EXIT_CODE);
+  record.signal = env.PAN_RUN_SIGNAL || null;
+  writeJson(file, record);
+}
+
+function tailLines(logPath, size) {
+  if (size === 0) return [];
+  const length = Math.min(size, 64 * 1024);
+  const buffer = Buffer.alloc(length);
+  const fd = fs.openSync(logPath, "r");
+  try { fs.readSync(fd, buffer, 0, length, size - length); } finally { fs.closeSync(fd); }
+  return buffer.toString("utf8").split(/\r?\n/).filter((line) => line.length > 0).slice(-TAIL_LINES);
+}
+
+function beat() {
+  const dir = env.PAN_RUN_RECORD_DIR;
+  const logPath = path.join(dir, "output.log");
+  const record = readJson(path.join(dir, "record.json")) || {};
+  const startedMs = Date.parse(record.started_at || "") || Date.now();
+  const elapsed = Math.floor((Date.now() - startedMs) / 1000);
+  let stats = null;
+  try { stats = fs.statSync(logPath); } catch {}
+  const size = stats ? stats.size : 0;
+  const recent = stats ? tailLines(logPath, size) : [];
+  writeJson(path.join(dir, "heartbeat.json"), {
+    elapsed_seconds: elapsed,
+    log_bytes: size,
+    last_output_at: size > 0 ? stats.mtime.toISOString() : null,
+    recent_lines: recent,
+  });
+  const last = (recent[recent.length - 1] || "").slice(0, LAST_LINE_CHARS);
+  fs.writeSync(1, `[pan-run] ${env.PAN_RUN_LABEL} running ${elapsed}s pid=${env.PAN_RUN_PID} last: ${last}\n`);
+}
+
+const [mode, ...rest] = process.argv.slice(2);
+if (mode === "redact") process.stdout.write(redact(rest[0] || "", collectSecrets()));
+else if (mode === "filter") filter(rest[0]);
+else if (mode === "record-start") recordStart(rest.slice(1));
+else if (mode === "record-end") recordEnd();
+else if (mode === "beat") beat();
+else { process.stderr.write(`pan-run helper: unknown mode ${mode}\n`); process.exit(2); }
+HELPER_JS_EOF
+
+redact_text() {
+  PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" redact "$1"
+}
+
+# Prints the first word that is not a leading NAME=value assignment.
+first_command_word() {
+  local word
+  for word in "$@"; do
+    [[ "$word" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
+    printf '%s' "$word"
+    return
+  done
+}
+
+# The label is redacted before any derivation, so neither a secret nor a
+# fragment of one reaches record.json, the banner, or the directory name.
+if [[ -n "$LABEL" ]]; then
+  LABEL="$(redact_text "$LABEL")"
+elif [[ "$HAS_SHELL_STRING" -eq 1 ]]; then
+  read -r -a SHELL_WORDS <<<"$(redact_text "${SHELL_STRING//$'\n'/ }")" || true
+  LABEL="$(first_command_word ${SHELL_WORDS[@]+"${SHELL_WORDS[@]}"})"
+  LABEL="${LABEL##*/}"
+else
+  LABEL="$(redact_text "$(first_command_word "${COMMAND_ARGV[@]}")")"
+  LABEL="${LABEL##*/}"
+fi
+SAFE_LABEL="$(printf '%s' "$LABEL" | tr -cd 'a-zA-Z0-9._-' | cut -c1-32)"
+[[ -n "$SAFE_LABEL" ]] || SAFE_LABEL="cmd"
+
+RECORD_DIR_REL="runtime/logs/shell/$(date -u '+%Y%m%dT%H%M%SZ')-${SAFE_LABEL}-${HEX}"
+RECORD_DIR="$ROOT/$RECORD_DIR_REL"
+LOG_PATH="$RECORD_DIR/output.log"
+STDOUT_LOG="$RECORD_DIR/stdout.log"
+STDERR_LOG="$RECORD_DIR/stderr.log"
+FIFO_OUT="$RECORD_DIR/.stdout.fifo"
+FIFO_ERR="$RECORD_DIR/.stderr.fifo"
+mkdir -p "$RECORD_DIR"
+: >"$LOG_PATH"
+mv "$HELPER" "$RECORD_DIR/.pan-run.cjs"
+HELPER="$RECORD_DIR/.pan-run.cjs"
+
+HB_PID=""
+stop_heartbeat() {
+  [[ -n "$HB_PID" ]] || return 0
+  # The in-flight sleep is a child of the loop; kill it first, or it outlives
+  # the loop.
+  pkill -P "$HB_PID" 2>/dev/null || true
+  kill "$HB_PID" 2>/dev/null || true
+  wait "$HB_PID" 2>/dev/null || true
+  HB_PID=""
+}
+
+remove_scratch() {
+  stop_heartbeat
+  rm -f "$FIFO_OUT" "$FIFO_ERR" "$HELPER" 2>/dev/null || true
+}
+trap remove_scratch EXIT
+
+mkfifo "$FIFO_OUT" "$FIFO_ERR"
+
+# cat drains each FIFO so node reads an anonymous pipe: node on a macOS FIFO
+# misses EOF once every writer closes.
+if [[ "$QUIET" -eq 1 ]]; then
+  : >"$STDOUT_LOG"
+  : >"$STDERR_LOG"
+  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >"$STDOUT_LOG" &
+  OUT_FILTER_PID=$!
+  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >"$STDERR_LOG" &
+  ERR_FILTER_PID=$!
+else
+  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" &
+  OUT_FILTER_PID=$!
+  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >&2 &
+  ERR_FILTER_PID=$!
+fi
+
+# Progress sink: stderr when streaming. In quiet mode, PAN_PROGRESS_FD or a
+# terminal stderr, exported so nested quiet wrappers beat to the same sink.
+PROGRESS_FD=""
+if [[ "$QUIET" -eq 0 ]]; then
+  PROGRESS_FD=2
+elif [[ "${PAN_PROGRESS_FD:-}" =~ ^[0-9]+$ ]] && (: >&"$PAN_PROGRESS_FD") 2>/dev/null; then
+  exec 7>&"$PAN_PROGRESS_FD"
+  PROGRESS_FD=7
+elif [[ -t 2 ]]; then
+  exec 7>&2
+  PROGRESS_FD=7
+fi
+if [[ "$PROGRESS_FD" == 7 ]]; then
+  export PAN_PROGRESS_FD=7
+else
+  unset PAN_PROGRESS_FD
+fi
+
+# From here on the command runs, so a failed bookkeeping step must not abandon
+# it.
+set +e
+exec 5>"$FIFO_OUT" 6>"$FIFO_ERR"
+# A background job reads /dev/null unless stdin is passed explicitly. A closed
+# stdin falls back to /dev/null so the command still runs.
+{ exec 8<&0; } 2>/dev/null || exec 8</dev/null
+
+(
+  if [[ -n "$CWD" ]]; then cd "$CWD" || exit 1; fi
+  exec "${COMMAND_ARGV[@]}"
+) <&8 >&5 2>&6 5>&- 6>&- 8<&- &
+CMD_PID=$!
+exec 5>&- 6>&- 8<&-
+WRAPPER_PID=$$
+
+# SIGINT reaches the command as SIGTERM: a background job in a non-interactive
+# shell ignores SIGINT.
+WRAPPER_SIGNAL=""
+WRAPPER_SIGNAL_NUMBER=0
+INTERRUPTED=0
+forward_signal() {
+  WRAPPER_SIGNAL="$1"
+  WRAPPER_SIGNAL_NUMBER="$2"
+  INTERRUPTED=1
+  pkill -TERM -P "$CMD_PID" 2>/dev/null
+  kill -TERM "$CMD_PID" 2>/dev/null
+}
+trap 'forward_signal INT 2' INT
+trap 'forward_signal TERM 15' TERM
+
+PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_RECORD_REL="$RECORD_DIR_REL" \
+  PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" PAN_RUN_PID="$CMD_PID" \
+  PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
+  PAN_RUN_ENV_FILES="$ENV_FILES" \
+  node "$HELPER" record-start -- "${COMMAND_ARGV[@]}"
+
+if [[ -n "$PROGRESS_FD" ]]; then
+  printf '[pan-run] log: %s observe: ./bin/pan watch --process %s --label %s --output %s --exit-record %s\n' \
+    "$RECORD_DIR_REL/output.log" "$CMD_PID" "$SAFE_LABEL" \
+    "$RECORD_DIR_REL/output.log" "$RECORD_DIR_REL/record.json" >&"$PROGRESS_FD"
+fi
+
+(
+  if [[ -n "$PROGRESS_FD" ]]; then exec 1>&"$PROGRESS_FD"; else exec 1>/dev/null; fi
+  exec 2>/dev/null
+  # The sleep holds no inherited descriptor, so a parent reading our output
+  # never waits on it.
+  while sleep "$HB_SECONDS" </dev/null >/dev/null 2>&1 7>&-; do
+    kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
+    PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" \
+      node "$HELPER" beat || true
+  done
+) &
+HB_PID=$!
+
+while :; do
+  INTERRUPTED=0
+  wait "$CMD_PID"
+  CMD_EXIT=$?
+  [[ "$INTERRUPTED" -eq 1 ]] || break
+done
+trap - INT TERM
+
+stop_heartbeat
+wait "$OUT_FILTER_PID" "$ERR_FILTER_PID" 2>/dev/null
+
+SIGNAL_NAME=""
+if [[ -n "$WRAPPER_SIGNAL" ]]; then
+  SIGNAL_NAME="$WRAPPER_SIGNAL"
+  EXIT_CODE=$((128 + WRAPPER_SIGNAL_NUMBER))
+else
+  EXIT_CODE="$CMD_EXIT"
+  if (( CMD_EXIT > 128 )); then
+    SIGNAL_NAME="$(kill -l $((CMD_EXIT - 128)) 2>/dev/null || true)"
+  fi
+fi
+
+PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_EXIT_CODE="$EXIT_CODE" PAN_RUN_SIGNAL="$SIGNAL_NAME" \
+  node "$HELPER" record-end
+
+if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -ne 0 ]]; then
+  truncated=0
+  for capture in "$STDOUT_LOG" "$STDERR_LOG"; do
+    if (( $(wc -c <"$capture") > MAX_CAPTURE_BYTES )); then truncated=1; fi
+  done
+  if [[ "$truncated" -eq 1 ]]; then
+    printf '[quiet runner] output truncated to the last %d bytes\n' "$MAX_CAPTURE_BYTES" >&2
+  fi
+  tail -c "$MAX_CAPTURE_BYTES" "$STDOUT_LOG"
+  tail -c "$MAX_CAPTURE_BYTES" "$STDERR_LOG" >&2
+fi
+
+exit "$EXIT_CODE"

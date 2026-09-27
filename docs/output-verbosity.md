@@ -90,3 +90,42 @@ operator to read.
 Deterministic coverage:
 
 - `tests/unit/cursor-sdk-logging.test.ts`
+
+## Agent shell commands
+
+`bin/pan-run` wraps every agent shell command with a redacted durable log, a heartbeat, and an exit record. It accepts two forms:
+
+```sh
+bin/pan-run [--label <name>] [--quiet] [--cwd <dir>] [--heartbeat-seconds <n>] -- <command> [args...]
+bin/pan-run [same options] -c '<shell string>'
+```
+
+Each invocation writes to `runtime/logs/shell/<timestamp>-<label>-<hex>/`:
+
+- `record.json` — redacted command, working directory, command and wrapper pids, start and end times, exit code, signal, log path. Written at start and at end.
+- `output.log` — redacted output of both streams, appended as the command runs.
+- `heartbeat.json` — written at start and on each beat: elapsed seconds, log bytes, the time of the last output, and the last five output lines.
+- `stdout.log`, `stderr.log` — in quiet mode only, one per stream.
+
+Streaming mode keeps stdout and stderr on their own streams. The command reads the wrapper's stdin. The wrapper prints one stderr line at start naming the log and the exact `pan watch` observation command:
+
+```
+[pan-run] log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+```
+
+Redaction applies to values from the process environment, from the harness root `.env`, and from the `.env` at the command's Git top level, whose names match `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `API_KEY`, `ACCESS_KEY`, `PRIVATE_KEY`, `CREDENTIAL`, `AUTH`, or `SESSION` (case-insensitive) and are at least 8 characters long. One secret set serves the output, the heartbeat tail, and the recorded command.
+
+The heartbeat cadence defaults to 30 seconds; `--heartbeat-seconds` or `PAN_RUN_HEARTBEAT_SECONDS` can lower it. Any value above 60 is clamped to 60. Heartbeat lines go to stderr when streaming. In quiet mode they go only to `PAN_PROGRESS_FD` or a terminal stderr, and the wrapper exports that sink so nested quiet wrappers beat to it.
+
+SIGINT or SIGTERM to the wrapper stops the command and its direct children, records the signal in `record.json`, and exits with 128 plus the signal number. The command receives SIGTERM in both cases, because a background job in a non-interactive shell ignores SIGINT.
+
+`bin/run-quiet` is a thin shim that delegates to `pan-run`. `PAN_VERBOSE=1` streams by exec-ing `pan-run` without `--quiet`; otherwise it execs `pan-run --quiet`, which prints nothing on success and, on failure, replays the captured stdout on stdout and then the captured stderr on stderr, each truncated to its last 16 MiB.
+
+`bin/pan-hook-shell-monitor` enforces the wrapper through the `beforeShellExecution` Cursor hook. It allows both wrapped forms, including a `-c` string that holds quoted pipes or chains, and a short read-only allowlist; it denies everything else and names both wrapper forms in the agent message.
+
+Deterministic coverage:
+
+- `tests/integration/pan-run.test.ts`
+- `tests/integration/quiet-command.test.ts`
+- `tests/integration/shell-monitor-hook.test.ts`
+- `tests/unit/shell-monitor-validator.test.ts`

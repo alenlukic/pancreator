@@ -2067,3 +2067,29 @@ When `pan release land` returns `conflict`:
 3. Stage resolved paths and commit.
 4. Run the impacted profile to confirm correctness.
 5. Run `pan release land --worktree <name>` again. The new run re-reads the tip, so a further tip movement is integrated too.
+
+## Monitored shell execution
+
+Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the exact `pan watch` command to observe the process:
+
+```
+[pan-run] log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+```
+
+Run the command directly when you want to observe a wrapped agent command:
+
+```sh
+./bin/pan watch --process <pid> --label <label> \
+  --output runtime/logs/shell/.../output.log \
+  --exit-record runtime/logs/shell/.../record.json
+```
+
+`--exit-record` supplies the wrapper's `record.json`, and the path must stay inside `runtime/logs`; any other path is refused with `PATH_ESCAPE` when the watch arms. When the process has exited and the record holds a numeric `exit_code`, `pan watch` reports `exit_status` as that code instead of `unknown`, and the terminal wake entry records it. A timed-out watch prints a re-arm command that keeps `--output` and `--exit-record`.
+
+### Shell hook
+
+`bin/pan-hook-shell-monitor` runs as a `beforeShellExecution` hook in every Cursor session where the harness is projected. It allows commands wrapped with `bin/pan-run` and a short read-only allowlist (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`). An allowlisted command must be named bare, may chain only into other allowlisted commands, and may redirect only `2>/dev/null`. A command or process substitution, a refused flag, and every other command are denied, and the agent message names both wrapper forms. Outside single quotes, a `$` may introduce only a plain parameter name or a special parameter, so `$'...'`, `$"..."`, `${...}`, `$[...]`, and the zsh `$~`, `$=`, and `$^` forms are denied in both the allowlist and the wrapped form; put such syntax inside a `bin/pan-run -c '...'` string.
+
+`SHELL-MONITOR-VALIDATE-001`, which `pan validate` runs, checks the fail-closed hook entry, both scripts, and that the hook's `ALLOWLIST` equals the allowlist `DELEGATE-001` states.
+
+After the release lands, run `./bin/pan models --sync` so the new hook projection and the updated policy rules reach the local `.cursor/` tree.
