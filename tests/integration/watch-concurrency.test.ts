@@ -81,15 +81,16 @@ function spawnLongChild(lifetimeMs: number): {
 test('AC-008: five simultaneous process watches across two roots overlap', async () => {
   const root1 = createTestTempDirectory('conc-root1-')
   const root2 = createTestTempDirectory('conc-root2-')
+  const roots = [root1, root1, root1, root2, root2]
+
   const children = Array.from({ length: 5 }, () => spawnLongChild(400))
   const exitedAll = Promise.all(
     children.map(({ child }) => once(child, 'exit')),
   )
-  const roots = [root1, root1, root1, root2, root2]
 
   const results = await Promise.all(
     children.map(({ pid }, i) =>
-      watchProcess(roots[i]!, {
+      watchProcess(roots[i] ?? root1, {
         pid,
         label: `concurrent-watch-${i}`,
         cadenceSeconds: 0.1,
@@ -108,7 +109,9 @@ test('AC-008: five simultaneous process watches across two roots overlap', async
     'each concurrent watch has a distinct record path',
   )
   assertPairwiseOverlap(
-    results.map((result, i) => genericInterval(roots[i]!, result.record_path)),
+    results.map((result, i) =>
+      genericInterval(roots[i] ?? root1, result.record_path),
+    ),
   )
 
   await exitedAll
@@ -160,7 +163,7 @@ test('AC-008: four focused watches on distinct invocations of two runs arm and r
   )
 
   for (const [i, result] of results.entries()) {
-    assert.equal(result.invocation_id, watched[i]!.invocationId)
+    assert.equal(result.invocation_id, watched[i]?.invocationId)
     assert.equal(result.state, 'timed_out', `focused watch ${i} verdict`)
   }
 

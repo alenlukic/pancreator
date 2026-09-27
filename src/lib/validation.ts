@@ -4860,6 +4860,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/templates/repository-checks.json',
     'library/templates/repository-checks.self-development.json',
     'library/templates/launchd-schedule.plist',
+    'library/templates/spend-report.canvas.tsx',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
     'governance/policies/PY-001.json',

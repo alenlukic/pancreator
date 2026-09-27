@@ -11,6 +11,7 @@ import { test } from 'node:test'
 
 import {
   combineSpendSnapshots,
+  derivedCursorFeeCents,
   mergeLedger,
   parseSpendSnapshot,
   selectSpendRecord,
@@ -39,6 +40,7 @@ function makeRecord(overrides: Partial<SpendRecord> = {}): SpendRecord {
       cache_read_tokens: 0,
       total_tokens: 150,
       cost_cents: 0.01,
+      cursor_fee_cents: 0.002,
     },
     attribution: {
       command: 'Unattributed',
@@ -280,7 +282,12 @@ test('counts each event once when snapshots share an event key, and instance tot
   )
   assert.deepEqual([b?.records_in_window, b?.records_selected], [3, 2])
 
-  for (const field of ['events', 'total_tokens', 'cost_cents'] as const) {
+  for (const field of [
+    'events',
+    'total_tokens',
+    'cost_cents',
+    'cursor_fee_cents',
+  ] as const) {
     assert.equal(
       report.instances.reduce(
         (total, instance) => total + instance.totals[field],
@@ -348,6 +355,35 @@ test('aggregates every instance snapshot with the local report keys and tool cal
   )
 })
 
+test('only the latest snapshot of each instance counts, whatever the upload order', () => {
+  const recent = NOW.getTime() - DAY_MS
+  const newer = {
+    ...snapshotOf(INSTANCE_A, [
+      makeRecord({ key: hex('e1'), timestamp_ms: recent }),
+    ]),
+    label: 'renamed-host',
+    synced_at: '2026-09-24T12:00:00.000Z',
+  }
+  const older = snapshotOf(INSTANCE_A, [
+    attributedRecord({ key: hex('e1'), timestamp_ms: recent }),
+    makeRecord({ key: hex('dropped'), timestamp_ms: recent }),
+  ])
+
+  const report = combineSpendSnapshots([newer, older], { days: 14, now: NOW })
+
+  assert.equal(report.totals.events, 1)
+  assert.equal(report.slices.commands[0]?.key, 'Unattributed')
+  assert.deepEqual(
+    report.instances.map((instance) => [instance.label, instance.synced_at]),
+    [['renamed-host', '2026-09-24T12:00:00.000Z']],
+  )
+  assert.ok(
+    report.warnings.includes(
+      'Ignored 1 superseded snapshot(s); each instance contributes only its latest sync.',
+    ),
+  )
+})
+
 test('cost basis is charged for team and personal records', () => {
   const recent = NOW.getTime() - DAY_MS
   const basis = (records: SpendRecord[]): string =>
@@ -397,4 +433,58 @@ test('an invalid snapshot envelope is rejected and a malformed record is skipped
     [hex('valid')],
   )
   assert.deepEqual(Object.keys(parsed?.snapshot.tool_calls ?? {}), [hex('c')])
+})
+
+test('the derived Cursor fee is $0.25 per million tokens on models Cursor does not own after the fee started', () => {
+  const after = Date.parse('2026-09-01T00:00:00.000Z')
+  const before = Date.parse('2026-08-27T17:00:00.000Z')
+
+  assert.equal(derivedCursorFeeCents('claude-opus-5-5-high', after, 4e6), 100)
+  assert.equal(derivedCursorFeeCents('claude-opus-5-5-high', before, 4e6), 0)
+
+  for (const model of [
+    'cursor-grok-4.6-high-fast',
+    'composer-2.5-fast',
+    'Grok 4.6 (Auto Balanced)',
+    'default',
+  ]) {
+    assert.equal(derivedCursorFeeCents(model, after, 4e6), 0, model)
+  }
+})
+
+test('a record synced before fees were recorded gets a derived fee and the report warns', () => {
+  const recent = NOW.getTime() - DAY_MS
+  const current = makeRecord({ key: hex('current'), timestamp_ms: recent })
+  const { cursor_fee_cents: _, ...legacyMetrics } = current.metrics
+  const parsed = parseSpendSnapshot({
+    ...snapshotOf(INSTANCE_A, []),
+    records: [
+      current,
+      { ...current, key: hex('legacy'), metrics: legacyMetrics },
+    ],
+  })
+
+  assert.equal(parsed?.skipped_records, 0)
+  assert.deepEqual(
+    parsed?.snapshot.records.map((record) => [
+      record.metrics.cursor_fee_cents,
+      record.fee_derived,
+    ]),
+    [
+      [0.002, undefined],
+      [150 * 0.000025, true],
+    ],
+  )
+
+  const report = combineSpendSnapshots(
+    parsed === null ? [] : [parsed.snapshot],
+    { days: 14, now: NOW },
+  )
+
+  assert.equal(report.totals.cost_cents, 0.02)
+  assert.ok(
+    report.warnings.some((warning) =>
+      warning.startsWith('1 event(s) were synced before Cursor fees'),
+    ),
+  )
 })
