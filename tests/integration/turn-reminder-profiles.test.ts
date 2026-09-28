@@ -93,6 +93,8 @@ const EXPECTED_SELECTORS: Record<
     'shepherd-verify',
     'shepherd-review',
     'shepherd-branch',
+    'shepherd-reply',
+    'shepherd-table',
   ],
   debloat: [
     ...DELEGATING,

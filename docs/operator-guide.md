@@ -547,27 +547,37 @@ directive. It will not create a run, produce stage outputs or briefs, or convert
 the session into a workflow on its own. Do not run it while a mutating workflow
 agent is active in the same workspace.
 
-Use `/pan-shepherd <pr-number-or-url>` after you open a pull request that review
-bots or teammates will comment on. The shepherd polls the PR's reviews and
-comments in 60-second cycles. A watch window runs 15 cycles and closes only
-after one quiet cycle, so a burst of feedback is assessed as one batch rather
-than item by item. It judges each item against the code and against a durable
-per-session ledger of every reviewer's history — repeated items keep their
-prior disposition, a bot's self-contradictions and induced findings are
-rejected as thrash rather than ping-ponged, and inter-bot conflicts are decided
-on the merits with the losing side recorded. Accepted items are implemented
-with proportionate tests, gated through the review squad coordinated by the
-`pan-shepherd-reviewer` subagent (its model comes from the `shepherd-reviewer`
-mapping in `config.json`, separate from the run-time `reviewer`), and pushed to
-the PR head branch only after the review passes. When the reviewed repository is
-Pancreator itself, the squad swaps its dimensions for the harness lineup in
+Use `/pan-shepherd <pr-number-or-url> [--dimensions <a,b,c>]` after you open a
+pull request that review bots or teammates will comment on. The shepherd first
+clears the feedback already on the PR as batch 0, unless you tell it to watch
+new feedback only; resolved threads and items you already answered stay
+history. It then polls the PR's reviews and comments in 60-second cycles. A
+watch window runs 15 cycles and closes only after one quiet cycle, so a burst of
+feedback is assessed as one batch rather than item by item. It judges each item
+against the code and against a durable per-session ledger of every reviewer's
+history — repeated items keep their prior decision, a bot's self-contradictions
+and induced findings are rejected as thrash rather than ping-ponged, and
+inter-bot conflicts are decided on the merits with the losing side recorded.
+Every item ends actioned, with the commit SHA, or rejected, with a reason. The
+shepherd keeps a decision table of reviewer, timestamp, comment link, decision,
+and detail, and posts the refreshed table to chat whenever it changes. Accepted
+items are implemented with proportionate tests, gated through the review squad
+coordinated by the `pan-shepherd-reviewer` subagent (its model comes from the
+`shepherd-reviewer` mapping in `config.json`, separate from the run-time
+`reviewer`), and pushed to the PR head branch only after the review passes. The
+shepherd scopes each batch's review to the dimensions that change could
+materially affect and records why it left the others out; `--dimensions` fixes
+the set for every batch instead. When the reviewed repository is Pancreator
+itself, the squad draws its dimensions from the harness lineup in
 `library/skills/review-squad-pancreator.md` — correctness and consistency,
 agentic practice, and performance. That lineup is not installed into a target
-repository. The session ends after a quiet
-window, a fully rejected batch, or at most 8 windows, and always closes with a
-full report and the ledger path. Invoking the command authorizes commits and
-pushes to that PR's head branch only; merging stays with you. Do not run it
-while a mutating workflow agent is active in the same workspace.
+repository. After each push the shepherd replies to every decided item on the
+PR: `Fixed in <sha>`, or one concise rejection reason, with no @mentions. The
+session ends after a quiet window, a fully rejected batch after batch 0, or at
+most 8 windows, and always closes with a full report and the ledger path.
+Invoking the command authorizes commits and pushes to that PR's head branch and
+one reply per decided item; merging stays with you. Do not run it while a
+mutating workflow agent is active in the same workspace.
 
 Use `/pan-review [<target>]` when you want the review squad without a pull
 request. It resolves one target — a ref range, a single ref against its merge
@@ -589,8 +599,8 @@ default-lineup dimensions it leaves out. A selected set is the whole lineup:
 activation rules and the harness swap do not apply to it, and each selected
 dimension runs with the charter that defines it. A partial review stays
 visibly partial — the report names the dimensions it did not cover and states
-that the verdict covers the selected dimensions only. The shepherd's per-batch
-review gate takes no selection and always runs the full lineup.
+that the verdict covers the selected dimensions only. `/pan-shepherd` accepts
+the same `--dimensions` option for its per-batch review gate.
 
 Two things the session settles before it delegates. It binds the workspace to
 the target's head, resolving a worktree when your checkout sits elsewhere, so

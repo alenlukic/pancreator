@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.32.0] - 2026-09-28
+
+This release makes `/pan-shepherd` clear existing feedback first, review only the dimensions a batch puts at risk, and record one decision for each comment.
+
+### Changed
+
+- Clear every comment that exists at invocation as batch 0, before the first watch window ([92c00a6f](https://github.com/alenlukic/pancreator/commit/92c00a6f)).
+- Scope the review squad to the dimensions where a batch defect has a material consequence, and record a reason for each left-out dimension ([92c00a6f](https://github.com/alenlukic/pancreator/commit/92c00a6f)).
+- Record each comment as `actioned` with a commit hash or `rejected` with a reason, and treat an out-of-scope item as rejected on scope ([92c00a6f](https://github.com/alenlukic/pancreator/commit/92c00a6f)).
+
+### Added
+
+- Add `--dimensions` to `pan governance card --mode shepherd`, so an operator selection holds for every batch ([92c00a6f](https://github.com/alenlukic/pancreator/commit/92c00a6f)).
+- Post a refreshed decision table to operator chat on every change, with reviewer, time, comment link, decision, and detail ([92c00a6f](https://github.com/alenlukic/pancreator/commit/92c00a6f)).
+- Reply on the PR with `Fixed in <sha>` or a short rejection reason, without an @mention or a reference to the author in the third person ([92c00a6f](https://github.com/alenlukic/pancreator/commit/92c00a6f)).
+
 ## [7.31.0] - 2026-09-27
 
 This release serializes every landing on `pan-dev`, moves conform and style repairs onto a daily job, and wraps every agent shell command. Waiver `waiver-9397e564-a803-4e88-9a4f-3173335a7750` covers the failed conform scan and the failed style scan. Those scans did not pass.
