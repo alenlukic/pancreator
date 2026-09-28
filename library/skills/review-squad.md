@@ -46,10 +46,15 @@ whether or not its rule matches.
 Without a selection, the lineup is the set the rules above or the harness
 lineup resolve. That set is the default lineup.
 
-A standalone `/pan-review` session MAY carry an operator selection from
-`--dimensions <a,b,c>`. The selection reaches the coordinator through the
-review card, which records it and refuses an unknown slug before any agent
-launches.
+A standalone `/pan-review` session or a `/pan-shepherd` session MAY carry an
+operator selection from `--dimensions <a,b,c>`. The selection reaches the
+coordinator through the session's card, which records it and refuses an
+unknown slug before any agent launches.
+
+A shepherd review always carries a selection. Without an operator selection,
+the shepherd scopes one to each batch: it keeps only the dimensions under which
+a defect in that change could carry a material consequence given the PR's
+scope, and it sends the reason for each dimension it left out.
 
 - When a selection is present, the lineup MUST be exactly the selected set.
 - Activation rules and the harness lineup swap MUST NOT change a selected set.
@@ -87,8 +92,8 @@ it is absent and this paragraph does not apply.
    When the target states no intent, say so in the brief, and nothing can then
    be dropped as already answered.
 3. Resolve the lineup. State which conditional dimensions activated and which
-   ones the diff skipped. When the operator selected dimensions, the lineup is
-   that set. State the default-lineup dimensions it leaves out.
+   ones the diff skipped. When the caller sent a selection, the lineup is that
+   set. State the default-lineup dimensions it leaves out.
 4. Delegate one subagent per dimension in the lineup, in one message, so they
    run at the same time.
    Each prompt MUST carry the captured diff path, the review workspace path,
@@ -346,7 +351,7 @@ the exact API for a "the library already does it" finding.
   counted maintenance cost.
 - A dimension that returns nothing MUST appear in the review artifact as empty
   rather than absent.
-- A dimension the operator selection left out MUST appear in the review
-  artifact as not run, never as empty.
+- A dimension a selection left out MUST appear in the review artifact as not
+  run, never as empty.
 - Raise anything that touches credentials, data loss, or an authorization bypass
   to the top of the ranking.

@@ -317,7 +317,7 @@
           "id": "shepherd-ledger",
           "type": "policy",
           "policy_id": "SHEPHERD-001",
-          "instruction_sha256": "cff29890612559c041261df6f9e8b0d3906b38a8468cb3081763fb78fd3f2ad2"
+          "instruction_sha256": "1a987e8e1f73aff282a90a228ce83055cf9eadf4a709be13047eec5641afcdaf"
         },
         {
           "id": "shepherd-verify",
@@ -329,13 +329,25 @@
           "id": "shepherd-review",
           "type": "policy",
           "policy_id": "SHEPHERD-001",
-          "instruction_sha256": "e208d57279021a7ce1c1d413b1ee52998955dbd0a32210b572ee0e0a2882969d"
+          "instruction_sha256": "00ab355edcf7a4078b5806a3a7ededf5ec8b081edb3cf65bd4adde235babaff0"
         },
         {
           "id": "shepherd-branch",
           "type": "policy",
           "policy_id": "SHEPHERD-001",
-          "instruction_sha256": "1638682d08bc37c3bfce14556fe5a2cd492bc94f10f2621ba2eab69b2e6109e6"
+          "instruction_sha256": "d7026e993e53689b687ced2dafdeeccd433f011fbcb2e15c43c8d857bb0a29eb"
+        },
+        {
+          "id": "shepherd-reply",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "9c5954e9964ed76110c2a15ae78c746a133b146b3111d9d82b683057afe5c614"
+        },
+        {
+          "id": "shepherd-table",
+          "type": "policy",
+          "policy_id": "SHEPHERD-001",
+          "instruction_sha256": "cac820b4cd540ecc44c082677b49f4e4c65b7ced11753e656447ee4f5d03eade"
         }
       ]
     },

@@ -674,7 +674,43 @@ test('an unknown dimension fails the review card before any side effect', () => 
   assert.equal(existsSync(path.join(root, 'worktrees')), false)
 })
 
-test('--dimensions is refused outside the review mode', () => {
+test('a shepherd card records an operator dimension selection for every batch', () => {
+  const root = sharedFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'shepherd',
+    outputPath: 'runtime/inbox/shepherd-subset-card.md',
+    dimensions: ['security'],
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.deepEqual(card.review_dimensions?.selected, ['security'])
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
+  assert.match(written, /Every batch review runs exactly these dimensions/u)
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['security'])
+  assert.deepEqual(
+    cardSlugs(written, 'Not run'),
+    card.review_dimensions?.not_run,
+  )
+})
+
+test('a shepherd card without a selection leaves the per-batch scoping to the shepherd', () => {
+  const root = sharedFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'shepherd',
+    outputPath: 'runtime/inbox/shepherd-default-card.md',
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.equal(card.review_dimensions?.default, true)
+  assert.match(written, /For each batch the shepherd selects/u)
+  assert.doesNotMatch(written, /runs the full default lineup/u)
+  assert.deepEqual(
+    cardSlugs(written, 'Default lineup'),
+    defaultReviewLineup(root).map((dimension) => dimension.slug),
+  )
+})
+
+test('--dimensions is refused outside the review and shepherd modes', () => {
   const root = sharedFixture()
 
   assert.throws(
@@ -687,7 +723,9 @@ test('--dimensions is refused outside the review mode', () => {
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
-      /--dimensions applies to the review mode only/u.test(error.message),
+      /--dimensions applies to the review and shepherd modes only/u.test(
+        error.message,
+      ),
   )
 
   // An empty selection is the default and binds nothing, so it passes through.

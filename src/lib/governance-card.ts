@@ -184,7 +184,9 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT merge, close, retarget, or rebase the pull request, MUST NOT force-push, and MUST NOT push to any other branch.',
       PROTECTED_PATH_RULE,
       'You MUST NOT create, advance, or write state for a workflow run.',
-      'You MUST record every feedback item and its disposition in the session ledger, and MUST NOT post PR comments unless the operator directed it.',
+      'You MUST record every feedback item and its decision in the session ledger.',
+      'You MUST post only one reply to each decided feedback item, and MUST NOT post any other PR comment unless the operator directed it.',
+      'You MUST review each batch with the dimensions the operator selected with --dimensions, or otherwise with only the dimensions the batch could materially affect.',
     ],
   },
   review: {
@@ -537,7 +539,7 @@ export interface GovernanceCard {
   requirements: RequirementManifest
   /** Worktree the shared `--worktree` option resolved or created, when given. */
   worktree?: WorktreeRecord
-  /** Review mode only. The dimension selection the card records. */
+  /** Review and shepherd modes only. The dimension selection the card records. */
   review_dimensions?: ReviewDimensionSelection
 }
 
@@ -754,20 +756,30 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
 }
 
 /**
- * The card is the durable session record of a standalone review, so the
- * dimension selection lands here. A later reader then sees that a partial
- * review was partial, and which lenses it never applied.
+ * The card is the durable session record of a standalone review or a shepherd
+ * session, so the dimension selection lands here. A later reader then sees
+ * that a partial review was partial, and which lenses it never applied.
  */
-function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
+function renderReviewDimensions(
+  selection: ReviewDimensionSelection,
+  kind: InvocationKind,
+): string[] {
   const lines = ['## 🎯 Review dimensions', '']
   const slugList = (slugs: string[]): string =>
     slugs.length > 0 ? slugs.map((slug) => `\`${slug}\``).join(', ') : 'none'
+  const shepherd = kind === 'shepherd'
 
   if (selection.default) {
     lines.push(
-      'The operator selected no dimension set. The squad runs the full ' +
-        'default lineup the squad procedure resolves, including its ' +
-        'activation rules.',
+      shepherd
+        ? 'The operator selected no dimension set. For each batch the ' +
+            'shepherd selects, from the lineup below, only the dimensions ' +
+            'under which a defect in that change could carry a material ' +
+            'consequence given the PR scope. It records each dimension it ' +
+            'left out with the reason.'
+        : 'The operator selected no dimension set. The squad runs the full ' +
+            'default lineup the squad procedure resolves, including its ' +
+            'activation rules.',
       '',
       `- Default lineup: ${slugList(selection.selected)}`,
       `- Conditional, resolved by the coordinator: ${slugList(selection.conditional)}`,
@@ -781,8 +793,9 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
   // dimension is left for the coordinator to resolve and a conditional one
   // the operator did not name is listed as not run.
   lines.push(
-    'The operator selected a dimension set with `--dimensions`. The squad ' +
-      'runs exactly these dimensions, each with the charter that defines it. ' +
+    'The operator selected a dimension set with `--dimensions`. ' +
+      (shepherd ? 'Every batch review' : 'The squad') +
+      ' runs exactly these dimensions, each with the charter that defines it. ' +
       'Neither the harness lineup swap nor the activation rules apply to a ' +
       'selected set. This review is partial: the report MUST name the ' +
       'dimensions below that it did not cover.',
@@ -810,7 +823,7 @@ export function renderGovernanceCardMarkdown(options: {
   harnessPrefixNote: string | null
   worktree: WorktreeRecord | null
   baseConduct: BaseConductBlock | null
-  /** Present only on the review card. */
+  /** Present only on the review and shepherd cards. */
   reviewDimensions?: ReviewDimensionSelection | null
   /** Present only on the supervisor card, which binds to one run. */
   run?: GovernanceCardRunBinding | null
@@ -895,7 +908,7 @@ export function renderGovernanceCardMarkdown(options: {
     '',
     ...(options.baseConduct ? renderBaseConduct(options.baseConduct) : []),
     ...(options.reviewDimensions
-      ? renderReviewDimensions(options.reviewDimensions)
+      ? renderReviewDimensions(options.reviewDimensions, mode.kind)
       : []),
     ...(agentRequirements.length > 0
       ? [
@@ -1005,18 +1018,20 @@ export function buildGovernanceCard(
       code: 'INVALID_GOVERNANCE_CARD_OPTION',
     },
   )
+  const selectsDimensions =
+    options.mode === 'review' || options.mode === 'shepherd'
+
   invariant(
-    !options.dimensions?.length || options.mode === 'review',
-    '--dimensions applies to the review mode only.',
+    !options.dimensions?.length || selectsDimensions,
+    '--dimensions applies to the review and shepherd modes only.',
     { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
   )
 
   // Resolve the selection before any side effect, so an unknown dimension
   // fails the session at the card step and before any worker launches.
-  const reviewDimensions =
-    options.mode === 'review'
-      ? resolveReviewDimensionSelection(root, options.dimensions ?? [])
-      : null
+  const reviewDimensions = selectsDimensions
+    ? resolveReviewDimensionSelection(root, options.dimensions ?? [])
+    : null
 
   if (options.requestPath) {
     invariant(

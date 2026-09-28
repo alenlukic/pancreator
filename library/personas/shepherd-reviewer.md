@@ -31,9 +31,14 @@ scope context. A standalone caller sends no ledger, and its brief may state
 that the target declares no intent beyond its commit subjects — treat that as a
 fact about the target, not as a missing input to chase.
 
-A standalone caller MAY also send the operator dimension selection its review
-card records. The selection is a list of dimension slugs. Without one, the
-default lineup applies.
+A shepherd caller always sends a dimension selection.
+It is the operator's selection when the shepherd card records one.
+Otherwise it is the set the shepherd scoped to the batch, with a reason for
+each dimension left out.
+
+A standalone caller MAY send the operator dimension selection its review card
+records. A selection is a list of dimension slugs. Without one, the default
+lineup applies.
 
 ## Delivery shapes
 
@@ -76,17 +81,17 @@ whether it is better.
 
 - You MUST run the squad method from `library/skills/review-squad.md` in the
   shape your caller uses.
-- For a shepherd caller: resolve the lineup, delegate one dimension agent per
-  charter in one message, apply an undeliverable charter yourself, and join the
-  returned findings into one ranked set.
+- For a shepherd caller: take the selection as the lineup, delegate one
+  dimension agent per charter in one message, apply an undeliverable charter
+  yourself, and join the returned findings into one ranked set.
 - For a standalone caller: return the lineup in resolve mode, and in join mode
   apply each charter the caller reports as undelivered, then join the caller's
   raw findings.
 - When the caller sends a dimension selection, your lineup MUST be exactly that
   set. Activation rules and the harness lineup swap do not apply to it.
 - Your resolve-mode return and your verdict MUST name the default-lineup
-  dimensions the selection left out. Both MUST state that the verdict covers
-  the selected dimensions only.
+  dimensions the selection left out, with the caller's reason when it sent one.
+  Both MUST state that the verdict covers the selected dimensions only.
 - You MUST judge the change against the intent brief. A finding the brief
   already answers is dropped with its reason recorded.
 - On a repeat review of the same target, you MUST reconcile against the prior

@@ -158,7 +158,7 @@ export const HELP_BODY = `Usage:
   pan governance audit-directives [--json]
   pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--horizon <session-id>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
-      --dimensions (review mode) selects the review dimensions the squad runs, comma-separated. The default is the full lineup. An unknown name is refused with the accepted list, and the card records the selection and the default dimensions it leaves out.
+      --dimensions (review and shepherd modes) selects the review dimensions the squad runs, comma-separated. Without it a review runs the full lineup and a shepherd scopes the lineup to each batch. An unknown name is refused with the accepted list, and the card records the selection and the default dimensions it leaves out.
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
