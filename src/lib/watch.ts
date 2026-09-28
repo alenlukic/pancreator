@@ -17,6 +17,7 @@
 import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import {
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -27,6 +28,15 @@ import path from 'node:path'
 
 import { PanError, invariant, isNodeError } from './errors.js'
 import { gitWorkspaceActivityFingerprint, gitWorkspaceSnapshot } from './git.js'
+import {
+  agentActivitySignature,
+  getAgentEntry,
+  getLatestEvent,
+  getOpenCall,
+  getStopRecord,
+  readAgentIndex,
+  resolveCanonicalId,
+} from './agent-index.js'
 import {
   appendJsonLine,
   fileExists,
@@ -125,6 +135,7 @@ export const WATCH_TARGET_BUSY = 'WATCH_TARGET_BUSY'
 export const DELEGATION_CADENCE_EXTENDED = 'DELEGATION_CADENCE_EXTENDED'
 export const DELEGATION_WATCH_LOW_COVERAGE = 'DELEGATION_WATCH_LOW_COVERAGE'
 export const DELEGATION_TIMER_UNAWAITED = 'DELEGATION_TIMER_UNAWAITED'
+export const DELEGATION_FOREGROUND_RETURN = 'DELEGATION_FOREGROUND_RETURN'
 
 export interface WatchedPathObservation {
   path: string
@@ -4275,10 +4286,24 @@ export async function watchProcess(
           }
 
     if (!aliveAtArm) {
-      // The process was already gone when the watch armed. That is an
-      // observed absence, not a watched exit: nothing was held across it.
+      // The process was already gone when the watch armed. When the caller
+      // supplied an exit record, read it: an integer exit code means the
+      // process exited cleanly and the caller can rely on the status.
+      // Without a readable integer code the observation stays unverified.
+      let deadAtArmExitStatus: number | null = null
+
+      if (exitRecordAbsolute !== null) {
+        const { exitCode } = readExitRecord()
+
+        if (typeof exitCode === 'number') {
+          deadAtArmExitStatus = exitCode
+        }
+      }
+
       wakes += 1
       const output = observeOutput()
+      const terminalState: GenericWatchTerminalState =
+        deadAtArmExitStatus !== null ? 'exited' : 'unverified'
       const entry: GenericWatchRecordEntry = {
         schema_version: 1,
         event: 'wake',
@@ -4291,13 +4316,16 @@ export async function watchProcess(
         process_alive: false,
         process_identity_match: false,
         ...(output ? { output } : {}),
-        terminal_state: 'unverified',
+        terminal_state: terminalState,
+        ...(deadAtArmExitStatus !== null
+          ? { exit_status: deadAtArmExitStatus }
+          : {}),
       }
 
       append(entry)
       options.onWake?.(entry)
 
-      return finish('unverified')
+      return finish(terminalState, deadAtArmExitStatus)
     }
 
     const cadenceMs = Math.round(cadenceSeconds * 1000)
@@ -4975,4 +5003,339 @@ export function writeRedlineRecord(
 
     return record
   })
+}
+
+// ---------------------------------------------------------------------------
+// Standalone agent watch (US-003, US-004, AC-006)
+// ---------------------------------------------------------------------------
+
+export interface WatchAgentOptions {
+  /** How long between wakes, in seconds. */
+  cadenceSeconds?: number
+  /** Five-minute stall window. */
+  stallTimeoutSeconds?: number
+  /** One-hour default bound. */
+  timeoutSeconds?: number
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
+  onWake?: (info: WatchAgentWakeInfo) => void
+}
+
+export interface AgentActivity {
+  agent_id: string
+  last_event_kind: string | null
+  last_event_tool: string | null
+  last_event_at: string | null
+  last_event_age_seconds: number | null
+  open_call: { tool: string; started_at: string; summary?: string } | null
+  stop: {
+    status: string
+    recorded_at: string
+    terminal_output_present: boolean
+  } | null
+}
+
+export interface WatchAgentWakeInfo {
+  schema_version: 1
+  event: 'wake'
+  subject: string
+  recorded_at: string
+  wake: number
+  cadence_seconds: number
+  watch_session_id: string
+  agent_activity: AgentActivity
+  terminal_state?: string
+  stall_wake_count?: number
+}
+
+export interface WatchAgentResult {
+  state: 'completed' | 'failed' | 'stalled' | 'timed_out' | 'interrupted'
+  agent_id: string
+  wakes: number
+  started_at: string
+  ended_at: string
+  elapsed_seconds: number
+  watch_session_id: string
+  record_path: string
+}
+
+/** The path where standalone agent-watch ledgers live. */
+function agentWatchLedgerPath(root: string, agentId: string): string {
+  const safe = agentId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)
+  return path.join(root, 'runtime', 'logs', 'watch', `agent-${safe}.jsonl`)
+}
+
+/**
+ * Standalone agent watch for a subagent launched outside a run.
+ *
+ * Exits 0 on completed stop, 1 on error/aborted stop, 2 on stall,
+ * 3 at timeout, 130 on interruption.
+ */
+export async function watchAgent(
+  root: string,
+  agentId: string,
+  options: WatchAgentOptions = {},
+): Promise<WatchAgentResult> {
+  const cadenceSeconds = options.cadenceSeconds ?? DEFAULT_WATCH_CADENCE_SECONDS
+  const stallTimeoutSeconds =
+    options.stallTimeoutSeconds ?? DEFAULT_STALL_TIMEOUT_SECONDS
+  const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
+
+  invariant(
+    timeoutSeconds >= cadenceSeconds,
+    `--timeout-seconds ${timeoutSeconds} is below the resolved cadence ${cadenceSeconds}.`,
+    { code: WATCH_TIMEOUT_BELOW_CADENCE },
+  )
+
+  const sleep = options.sleep ?? defaultSleep
+  const now = options.now ?? Date.now
+  const sessionId = randomUUID()
+  const startedMs = now()
+  const startedAt = new Date(startedMs).toISOString()
+  const recordPath = agentWatchLedgerPath(root, agentId)
+
+  // Ensure the watch ledger directory exists
+  const recordDir = path.dirname(recordPath)
+  try {
+    mkdirSync(recordDir, { recursive: true })
+  } catch {
+    // ignore
+  }
+
+  // Resolve any alias
+  const index = readAgentIndex(root)
+  const canonicalId = resolveCanonicalId(index, agentId) ?? agentId
+
+  let wakes = 0
+  let stallWakes = 0
+  const maxStallWakes = Math.max(
+    1,
+    Math.ceil(stallTimeoutSeconds / cadenceSeconds),
+  )
+  let lastActivitySig: string | null = null
+  let interrupted = false
+
+  const finish = (state: WatchAgentResult['state']): WatchAgentResult => ({
+    state,
+    agent_id: canonicalId,
+    wakes,
+    started_at: startedAt,
+    ended_at: new Date(now()).toISOString(),
+    elapsed_seconds: (now() - startedMs) / 1000,
+    watch_session_id: sessionId,
+    record_path: path.relative(root, recordPath),
+  })
+
+  const appendWake = (info: WatchAgentWakeInfo): void => {
+    try {
+      appendJsonLine(recordPath, info)
+    } catch {
+      // ignore write errors
+    }
+  }
+
+  // Install signal handler
+  const signalHandler = (): void => {
+    interrupted = true
+    const info: WatchAgentWakeInfo = {
+      schema_version: 1,
+      event: 'wake',
+      subject: canonicalId,
+      recorded_at: new Date(now()).toISOString(),
+      wake: wakes + 1,
+      cadence_seconds: cadenceSeconds,
+      watch_session_id: sessionId,
+      agent_activity: buildAgentActivity(root, canonicalId, now),
+      terminal_state: 'interrupted',
+    }
+    appendWake(info)
+    options.onWake?.(info)
+  }
+
+  process.once('SIGINT', signalHandler)
+  process.once('SIGTERM', signalHandler)
+
+  try {
+    for (;;) {
+      if (interrupted) {
+        return finish('interrupted')
+      }
+
+      const elapsedMs = now() - startedMs
+
+      if (elapsedMs >= timeoutSeconds * 1000) {
+        const info: WatchAgentWakeInfo = {
+          schema_version: 1,
+          event: 'wake',
+          subject: canonicalId,
+          recorded_at: new Date(now()).toISOString(),
+          wake: wakes + 1,
+          cadence_seconds: cadenceSeconds,
+          watch_session_id: sessionId,
+          agent_activity: buildAgentActivity(root, canonicalId, now),
+          terminal_state: 'timed_out',
+        }
+        wakes += 1
+        appendWake(info)
+        options.onWake?.(info)
+        return finish('timed_out')
+      }
+
+      // Sleep one cadence
+      await sleep(
+        Math.min(cadenceSeconds * 1000, timeoutSeconds * 1000 - elapsedMs),
+      )
+
+      if (interrupted) {
+        return finish('interrupted')
+      }
+
+      wakes += 1
+      const activity = buildAgentActivity(root, canonicalId, now)
+      const sig = agentActivitySignature(root, canonicalId)
+
+      // Check completion: a completed stop with terminal output
+      const stop = getStopRecord(root, canonicalId)
+
+      if (stop !== null) {
+        const isCompletedStop =
+          stop.status === 'completed' &&
+          activity.stop?.terminal_output_present === true
+
+        const isFailedStop =
+          stop.status === 'error' || stop.status === 'aborted'
+
+        const isNoOutputStop =
+          stop.status === 'completed' &&
+          activity.stop?.terminal_output_present !== true
+
+        if (isCompletedStop) {
+          const info: WatchAgentWakeInfo = {
+            schema_version: 1,
+            event: 'wake',
+            subject: canonicalId,
+            recorded_at: new Date(now()).toISOString(),
+            wake: wakes,
+            cadence_seconds: cadenceSeconds,
+            watch_session_id: sessionId,
+            agent_activity: activity,
+            terminal_state: 'completed',
+          }
+          appendWake(info)
+          options.onWake?.(info)
+          return finish('completed')
+        }
+
+        if (isFailedStop || isNoOutputStop) {
+          const info: WatchAgentWakeInfo = {
+            schema_version: 1,
+            event: 'wake',
+            subject: canonicalId,
+            recorded_at: new Date(now()).toISOString(),
+            wake: wakes,
+            cadence_seconds: cadenceSeconds,
+            watch_session_id: sessionId,
+            agent_activity: activity,
+            terminal_state: isFailedStop ? 'failed' : 'unverified',
+          }
+          appendWake(info)
+          options.onWake?.(info)
+          return finish('failed')
+        }
+      }
+
+      // Check stall: no new activity for stallTimeoutSeconds
+      if (activity.open_call === null) {
+        if (sig === lastActivitySig) {
+          stallWakes += 1
+        } else {
+          stallWakes = 0
+        }
+      } else {
+        // An open call suppresses the stall verdict
+        stallWakes = 0
+      }
+
+      lastActivitySig = sig
+
+      if (stallWakes >= maxStallWakes) {
+        const info: WatchAgentWakeInfo = {
+          schema_version: 1,
+          event: 'wake',
+          subject: canonicalId,
+          recorded_at: new Date(now()).toISOString(),
+          wake: wakes,
+          cadence_seconds: cadenceSeconds,
+          watch_session_id: sessionId,
+          agent_activity: activity,
+          terminal_state: 'stalled',
+          stall_wake_count: stallWakes,
+        }
+        appendWake(info)
+        options.onWake?.(info)
+        return finish('stalled')
+      }
+
+      const info: WatchAgentWakeInfo = {
+        schema_version: 1,
+        event: 'wake',
+        subject: canonicalId,
+        recorded_at: new Date(now()).toISOString(),
+        wake: wakes,
+        cadence_seconds: cadenceSeconds,
+        watch_session_id: sessionId,
+        agent_activity: activity,
+      }
+      appendWake(info)
+      options.onWake?.(info)
+    }
+  } finally {
+    process.removeListener('SIGINT', signalHandler)
+    process.removeListener('SIGTERM', signalHandler)
+  }
+}
+
+function buildAgentActivity(
+  root: string,
+  agentId: string,
+  now: () => number,
+): AgentActivity {
+  const entry = getAgentEntry(root, agentId)
+  const latest = getLatestEvent(root, agentId)
+  const openCall = getOpenCall(root, agentId)
+  const stop = getStopRecord(root, agentId)
+
+  const nowMs = now()
+  const lastEventAt = entry?.last_event_at ?? latest?.timestamp ?? null
+  const lastEventAgeSeconds =
+    lastEventAt !== null ? (nowMs - Date.parse(lastEventAt)) / 1000 : null
+
+  // For terminal output detection: check if the agent has a transcript
+  const terminalOutputPresent =
+    stop !== null &&
+    (stop.status === 'completed' ||
+      stop.tool_call_count > 0 ||
+      stop.modified_file_count > 0)
+
+  return {
+    agent_id: agentId,
+    last_event_kind: entry?.last_event_kind ?? latest?.kind ?? null,
+    last_event_tool: latest?.tool_name ?? null,
+    last_event_at: lastEventAt,
+    last_event_age_seconds: lastEventAgeSeconds,
+    open_call: openCall
+      ? {
+          tool: openCall.tool_name ?? 'unknown',
+          started_at: openCall.timestamp,
+          ...(openCall.summary ? { summary: openCall.summary } : {}),
+        }
+      : null,
+    stop: stop
+      ? {
+          status: stop.status,
+          recorded_at: stop.recorded_at,
+          terminal_output_present: terminalOutputPresent,
+        }
+      : null,
+  }
 }

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Cursor hook: record agent activity events into the agent-index.
+# Usage: pan-hook-agent-index <event>
+# Events: preToolUse | postToolUse | postToolUseFailure | subagentStart | subagentStop
+#
+# Reads the Cursor hook payload from stdin and prints the event-appropriate
+# valid JSON response to stdout. Fails open on any error (C-002).
+#
+# C-002: always exits 0 and prints valid JSON even when node/dist/ is absent.
+set -u
+
+EVENT="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# A linked worktree resolves to the main checkout (same as bin/pan-run).
+resolve_root() {
+  if [[ -n "${PANCREATOR_ROOT:-}" ]]; then
+    printf '%s' "$PANCREATOR_ROOT"
+    return
+  fi
+  local candidate common main
+  candidate="$HARNESS_ROOT"
+  if [[ -f "$candidate/.git" ]]; then
+    common="$(git -C "$candidate" rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common" ]]; then
+      [[ "$common" == /* ]] || common="$candidate/$common"
+      main="$(dirname "$common")"
+      if [[ -f "$main/bin/pan-run" && -f "$main/config.json" ]]; then
+        printf '%s' "$main"
+        return
+      fi
+    fi
+  fi
+  printf '%s' "$candidate"
+}
+
+RESOLVED_ROOT="$(resolve_root)"
+DIST="$RESOLVED_ROOT/dist/src/agent-index-hook.js"
+
+# Determine the event-appropriate fallback response (C-002).
+fallback_response() {
+  case "$EVENT" in
+    preToolUse | subagentStart)
+      printf '%s\n' '{"permission":"allow"}'
+      ;;
+    *)
+      printf '%s\n' '{}'
+      ;;
+  esac
+}
+
+# Read the full payload from stdin before attempting any dispatch.
+PAYLOAD="$(cat 2>/dev/null || true)"
+
+if [[ -z "$EVENT" ]]; then
+  fallback_response
+  exit 0
+fi
+
+if [[ ! -f "$DIST" ]] || ! command -v node >/dev/null 2>&1; then
+  fallback_response
+  exit 0
+fi
+
+# Run the compiled entry point; fall back on any failure.
+printf '%s' "$PAYLOAD" | node "$DIST" "$EVENT" 2>/dev/null || fallback_response
+
+exit 0

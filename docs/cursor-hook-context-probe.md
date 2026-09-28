@@ -117,3 +117,33 @@ records the observations below. A workflow worker cannot perform it.
 
 - Result: Pending
 - Operator notes:
+
+## Subagent identity probe
+
+This probe records, from a live background-agent-index session, whether `subagentStart.subagent_id`, the child's `conversation_id` (from a `preToolUse`/`postToolUse` payload inside that subagent), and the `Task` handle returned by the parent's launch match each other. The index links them when they differ.
+
+### Procedure
+
+1. Open the worktree (`worktrees/operator/background-delegation-fixes`) as a Cursor workspace with the compiled CLI present (`npm run build`) and `.cursor/hooks.json` naming the projected hooks including `bin/pan-hook-agent-index`.
+2. Launch one background subagent (any type; a short task suffices) with `run_in_background: true`.
+3. Record the `Task` handle the platform returned.
+4. After the subagent finishes, run:
+
+   ```sh
+   cat runtime/logs/agents/index.json
+   ```
+
+5. Record whether the subagent's entry shows all three ids equal, or which differ and which `aliases` entries bridge them.
+6. Fill in the observation table below.
+
+### Observations
+
+| Field                                            | Expected           | Observed | Date | Cursor version |
+| ------------------------------------------------ | ------------------ | -------- | ---- | -------------- |
+| `subagentStart.subagent_id` == `conversation_id` | Yes or noted alias |          |      |                |
+| `subagentStart.subagent_id` == `Task` handle     | Yes or noted alias |          |      |                |
+| Alias links bridging any mismatch                | Listed below       |          |      |                |
+
+- Result: Pending
+- Alias field observation (if ids differ):
+- Operator notes:
