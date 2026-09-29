@@ -26,34 +26,6 @@ This release removes the away-mode evaluator. The supervisor records each away-m
 
 - Restore tests of retained away-mode contracts after the first verify failure ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
 
-## [7.33.0] - 2026-09-29
-
-This release makes every subagent launch background-only and observable. It adds a hook-fed agent activity index and `pan watch --agent`. AC-007, the live identity probe, is waived and deferred. It did not pass.
-
-### Changed
-
-- Rewrite `DELEGATE-001` to one background-plus-watch rule by role ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Align `ORCH-001`, `COHORT-001`, `BESTOFN-001`, the start and resume commands, and the dispatch card with that rule ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Deny a `Task` call unless `run_in_background` is `true`, and keep `AwaitShell` and `Await` denied ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Report the latest agent event on each `pan watch` wake, and treat a completed stop as `agent_state` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-
-### Added
-
-- Add a hook-fed agent activity index under `runtime/logs/agents/` with `bin/pan-hook-agent-index` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Add standalone `pan watch --agent <id>` for a watch outside a run ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Add the `agent-index` class to `pan cleanup` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Emit `DELEGATION_FOREGROUND_RETURN` when a submit rests on a foreground-return attestation ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Add the operator identity probe procedure in `docs/cursor-hook-context-probe.md` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-
-### Removed
-
-- Remove the instruction to launch a subagent in the foreground from governance, commands, and personas ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-
-### Fixed
-
-- Read a supplied exit record on the dead-at-arm path of `pan watch --process` (F-004) ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
-- Repair the watch-attach fixture race and the model-evidence submit helper so the full profile stays deterministic ([9382ca94](https://github.com/alenlukic/pancreator/commit/9382ca94)).
-
 ## [7.32.0] - 2026-09-28
 
 This release makes `/pan-shepherd` clear existing feedback first, review only the dimensions a batch puts at risk, and record one decision for each comment.
