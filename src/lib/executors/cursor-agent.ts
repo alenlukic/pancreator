@@ -35,7 +35,7 @@ function stderrSummary(stderr: string): string {
   return ` ${lastLine.slice(0, STDERR_SUMMARY_MAX)}`
 }
 
-/** Bound for a probe or an away evaluation, which answers one question. */
+/** Bound for a probe or an arbiter call, which answers one question. */
 const DEFAULT_TIMEOUT_MS = 120_000
 /**
  * Bound for a stage-worker session. A coder implementing an intake works for
@@ -59,7 +59,7 @@ function effectiveTimeoutMs(request: CursorAgentRequest): number {
   )
 }
 
-/** Binary used for bounded Cursor evaluations and session recovery. */
+/** Binary used for bounded Cursor exchanges and external-executor sessions. */
 export function cursorAgentBinary(): string {
   return process.env.PANCREATOR_CURSOR_AGENT_BIN?.trim() || 'cursor-agent'
 }
@@ -79,9 +79,8 @@ function declaredFlagsIn(help: string): Set<string> {
  *
  * Cursor removes options between releases. Run 63310 genre-label lost every
  * worker model probe to `unknown option '--mode'`; the next run lost them to
- * `unknown option '--trust'` and took the away-mode evaluator down with them,
- * so an operator-owned ratification silently became a supervisor stand-in.
- * Every optional flag has to be asked for rather than assumed.
+ * `unknown option '--trust'` and took every tool-free JSON call down with
+ * them. Every optional flag has to be asked for rather than assumed.
  *
  * An unreadable help output keeps the documented argument form: a capability
  * check that fails closed would strip flags a working CLI needs.
@@ -397,14 +396,14 @@ function runCursorAgent(
     cwd: request.cwd,
     // ASK-001: a CURSOR_API_KEY in the process environment wins, otherwise the
     // installation or workspace .env supplies it. Every cursor-agent spawn
-    // authenticates the same way the model probe does, so an away evaluator
+    // authenticates the same way the model probe does, so the horizon arbiter
     // or an external-executor stage never fails auth that the probe passed.
     env: workerEnvironment(request.installationRoot),
     encoding: 'utf8',
     // The prompt travels over stdin, never as an argv element. Endpoint
     // security on an operator machine was observed to SIGKILL the cursor-agent
     // wrapper at exec time whenever one argument reached 1000 bytes, which
-    // every real evaluator or delegation prompt does. `-p` reads the prompt
+    // every real arbiter or delegation prompt does. `-p` reads the prompt
     // from stdin when no positional prompt is given, as claude-code.ts relies
     // on for the same reason.
     input: request.prompt,
@@ -490,10 +489,6 @@ function runCursorAgent(
 }
 
 /**
- * Run one tool-free Cursor evaluation. Ask mode prevents filesystem or shell
- * mutation while the evaluator ranks bounded options.
- */
-/**
  * The environment a spawned worker inherits. `PANCREATOR_EXEC_ROOT` selects
  * the build that executes the parent's own `pan` command (a release lane or a
  * supervisor running a newer build), and it resolves against the checkout that
@@ -515,6 +510,11 @@ function workerEnvironment(installationRoot: string): NodeJS.ProcessEnv {
   return env
 }
 
+/**
+ * Run one tool-free Cursor call that must answer with JSON. Ask mode prevents
+ * filesystem or shell mutation while the agent answers, which the horizon
+ * arbiter relies on.
+ */
 export function runCursorAgentJson(
   request: CursorAgentRequest,
 ): CursorAgentResult {

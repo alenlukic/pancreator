@@ -346,14 +346,6 @@
                             "waive-gate"
                           ]
                         }
-                      },
-                      "max_decisions_per_run": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "max_remediation_attempts_per_agent": {
-                        "type": "integer",
-                        "minimum": 1
                       }
                     }
                   }

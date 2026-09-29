@@ -18,7 +18,7 @@ import {
 import { readArbiterLedger } from '../../src/lib/horizon-arbiter.js'
 import { loadState, statePath } from '../../src/lib/state.js'
 import { CLI, markSucceeded } from './cohort-helpers.js'
-import { withFakeEvaluatorAndArbiter } from './delivery-helpers.js'
+import { withFakeArbiter } from './delivery-helpers.js'
 import { createFixture, read, writeJson } from '../helpers.js'
 
 /**
@@ -241,9 +241,8 @@ test('the headless checkpoint drives the routed run, not the finished planning r
   // The fixture has no worker, so the delivery run stops at its first
   // delegation and the arbiter names a hard block to end the exchange. What
   // matters here is which run the driver picked up: the routed one.
-  const driven = withFakeEvaluatorAndArbiter(
+  const driven = withFakeArbiter(
     root,
-    { ok: true },
     {
       verdict: 'hard_block',
       hard_block: 'LH-H2',

@@ -34,7 +34,7 @@ function withCursorApiKey<T>(value: string | undefined, run: () => T): T {
 }
 
 test('every cursor-agent spawn receives the .env credential, not only the probe', () => {
-  // The away evaluator, the hypervisor, and external-executor stages all go
+  // The horizon arbiter, prompt tasks, and external-executor stages all go
   // through runCursorAgent. The fake binary echoes the key it was given, so a
   // regression to a bare inherited environment shows up as a missing key.
   const root = makeRoot()

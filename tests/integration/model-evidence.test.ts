@@ -1098,9 +1098,9 @@ test('the probe adapts to the flags the installed cursor-agent accepts', () => {
   )
 })
 
-// The away evaluator and every external stage run through the executor, not
-// the probe. Run 63310_Aug-30-0872 lost the plan-gate away evaluation to the
-// same rejected flag, so an operator-owned ratification became a supervisor
+// The horizon arbiter and every external stage run through the executor, not
+// the probe. Run 63310_Aug-30-0872 lost a plan-gate exchange to the same
+// rejected flag, so an operator-owned ratification became a supervisor
 // stand-in.
 test('the executor sends only the flags the installed cursor-agent declares', () => {
   const root = createTestTempDirectory('cursor-agent-argv-')

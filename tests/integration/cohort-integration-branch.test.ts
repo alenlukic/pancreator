@@ -26,7 +26,7 @@ test('--into-branch integrates past a dirty base checkout and retargets later co
   // that reaches the chunk and release call sites of profile propagation costs
   // a full fan-out, integration, and release, so this retargeting regression
   // carries those assertions rather than paying for a second such session.
-  // The retargeting contract does not touch the away-mode evaluator, so the
+  // The retargeting contract does not touch away-mode decisions, so the
   // profile changes the recorded metadata and not the behaviour under test.
   const planRunId = ratifiedPlanRun(
     root,

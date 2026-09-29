@@ -5,7 +5,7 @@ import { fileExists, readText } from '../io.js'
 import { readProjectConfig } from '../project-config.js'
 
 // Credential resolution for every spawned cursor-agent process: the model
-// probe, the away evaluator, the hypervisor, and external-executor stages.
+// probe, the horizon arbiter, and external-executor stages.
 // It lives apart from cursor-probe.ts so cursor-agent.ts can import it
 // without a cycle.
 

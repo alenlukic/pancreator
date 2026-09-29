@@ -48,7 +48,7 @@ Start one detached hypervisor process after installation:
 The process runs one non-overlapping health tick every 15 minutes. Each tick
 reconciles active invocations with transcript, process, executor, and terminal
 evidence. The materialized registry is
-`runtime/logs/hypervisor/registry.json`; health changes and recovery evidence
+`runtime/logs/hypervisor/registry.json`; health changes and quarantine events
 append to `runtime/logs/hypervisor/events.jsonl`.
 
 Run one foreground scan for diagnosis, or stop the detached process:
@@ -58,9 +58,11 @@ Run one foreground scan for diagnosis, or stop the detached process:
 ./bin/pan hypervisor stop
 ```
 
-The hypervisor never recovers an agent whose health is unknown. It requires two
-unchanged scans before a stalled verdict and quarantines the second matching
-recovery failure.
+The hypervisor checks agent liveness only. It never acts on an agent whose
+health is unknown, and it requires two unchanged scans before a stalled
+verdict. It quarantines an agent on a non-terminal run the first time that
+agent is stalled or dead, and pauses the run once with the liveness evidence.
+It spawns no agent and prepares no invocation.
 
 ## Configure away mode
 
@@ -79,9 +81,7 @@ guardrails:
         "resume",
         "set-stage",
         "waive-gate"
-      ],
-      "max_decisions_per_run": 3,
-      "max_remediation_attempts_per_agent": 2
+      ]
     }
   }
 }
@@ -97,52 +97,50 @@ cannot perform an external release action.
 end the session at one. It is the action to remove first when you want a
 narrower absence. A waiver fits a blocker with a mechanical or administrative
 root cause, or one whose blast radius is small enough to repair separately; the
-evaluator states that reason in the option note, and the recorded waiver
+supervisor states that reason in the decision note, and the recorded waiver
 carries the note as its directive with away authorship rather than yours.
 
-Inspect and evaluate one named blocker:
+The supervisor is the authority for every away-mode decision, and the
+hypervisor checks agent liveness only. Inspect a named blocker and record the
+supervisor's decision:
 
 ```sh
 ./bin/pan away status <run-id>
-./bin/pan away evaluate <run-id>
-./bin/pan away apply <run-id> --decision <decision-id>
+./bin/pan away decide <run-id> --action <action> --note "reason"
 ```
 
-The evaluator ranks bounded options without tools. The ranking it grades
-carries what the stage output itself declares unsettled, and an output whose
-declared next action names an operator decision cannot be approved. Add
-`--action <action>` to `apply` to name the action the apply must take: it is
-honored when it matches the recorded recommendation and refused with
-`AWAY_ACTION_REFUSED` when it does not, so the apply never substitutes a
-different action. An option an away subcommand does not accept is refused with
-`UNKNOWN_OPTION`. Pan validates the selected action and its rollback plan before
-apply. Each evaluator transport or parse attempt writes distinct
-`away-evaluator-*.json` exchange evidence, and an invalid reply is retried once.
-Only a valid decision or one generic exhausted evaluator failure appends to
-`runtime/logs/away-mode/decisions.jsonl`; apply results append there too. The
-ledger contains neither raw malformed replies nor per-attempt parse errors, and
-no command rewrites prior records. Use the selected record's `rollback_plan` for
-manual reversal, then append a linked record through the same decision service.
+`away status` prints `run_id`, `enabled`, `blocker`, `allowed_actions`,
+`open_operator_question`, and `decisions`, the count of this run's supervisor
+decisions. `away decide` is the only command that appends a
+`SupervisorDecisionRecord` to `runtime/logs/away-mode/supervisor-decisions.jsonl`.
+It accepts `--action` (one of the allowed guardrail actions), `--note` or
+`--note-file` (the reason), `--stage` (required for `set-stage`), and
+`--worktree` (the worktree a single-chunk plan route starts delivery in). Pan
+refuses a disabled run, an unanswered operator question, a run with no
+permitted blocker, an action outside the guardrails, and a missing argument,
+and a refusal writes nothing. A failed apply appends one `failed` record and
+exits non-zero. No command rewrites prior records, and the older
+`runtime/logs/away-mode/decisions.jsonl` is no longer read.
 
-A successful ship packet uses a deterministic approval record. That record does
-not consume the evaluated decision budget. The approval changes workflow state
-only and cannot authorize an external release action.
+The supervisor approves a successful ship packet with
+`pan away decide <run-id> --action approve`. The approval changes workflow
+state only and cannot authorize an external release action.
 
 ### Supervisor continuation
 
 `ORCH-001` is the normative continuation policy. In practice, keep advancing
 supervisor-owned `pending_action` values in the operator's top-level session.
-When away mode is enabled, evaluate an unresolved operator action, apply one
-permitted decision, inspect status, and continue from the new action. Stop only
-at a real blocker or terminal state.
+When away mode is enabled, decide each unresolved operator action yourself,
+record it with `pan away decide`, inspect status, and continue from the new
+action. Stop only at a real blocker or terminal state.
 
-Real blockers include failed evaluation or apply, rejected options, exhausted
-limits, failed model or delegation proof, unresolved blocked stages, and
-unrecovered agent incidents. The workflow transition, stage-attempt,
-consecutive-failure, away-decision, and remediation limits bound the loop.
+Real blockers include a refused or failed decision, failed model or delegation
+proof, unresolved blocked stages, and quarantined agents. The workflow
+transition, stage-attempt, and consecutive-failure limits bound the loop.
 
-The hypervisor reports agent health and runs bounded recovery. It does not
-evaluate or apply ordinary workflow decisions.
+A scheduled workflow or prompt job has no supervisor, so it stops at an
+away-mode decision point and its run waits for `/pan-resume`. A headless
+horizon session passes the stop to its session arbiter.
 
 When away mode is disabled, stop at each unresolved operator gate as before.
 When the active request already supplies a decision, execute it instead of
@@ -757,11 +755,10 @@ destructive reset, branch deletion, external release), a secret or authorization
 that is genuinely absent, a correctness or security failure no permitted action
 can repair, and a destructive action you did not direct. A cost-, speed-, or
 wall-time-backed criterion (a wall ceiling, a rolling average, a budget), a
-condition the worker caused itself, a transient evaluator or executor failure,
-and any ordinary judgment call are decided and recorded, never deferred. To
-make that hold, the shipped profile allows `waive-gate`, sizes the decision
-budget at 12 per run, re-evaluates a failed evaluator reply, and falls through
-to the next ranked option when a selected option does not apply.
+condition the worker caused itself, a transient executor failure, and any
+ordinary judgment call are decided and recorded, never deferred. To make that
+hold, the shipped profile allows `waive-gate` and records every decision in
+the supervisor-decisions ledger.
 
 No function ends a task. Every stop that is not a terminal success passes to
 the session arbiter, a model exchange that reasons about the stop against the
@@ -1298,7 +1295,7 @@ Two pre-submit validators check the artifact before you ever see it. One rejects
 
 A cohort session runs to its release run without stopping for you between cohorts. When the last chunk run of a cohort reports `succeeded`, the lifecycle command that closed it commits each chunk worktree that still holds work, merges the chunk branches, writes the merge proof, and starts the next cohort or the release run. The response carries that under an `advance` object: `status: "integrated"` repeats the integration result with the continuation nested under `autostart`, and `status: "failed"` names the error together with the `pan cohort integrate <cohort-id>` retry. Every other transition adds only worktrees, branches, and run records. Pushing, merging the integration branch onward, publishing, deploying, and deleting branches stay yours.
 
-The `decide` response, and an `away apply` response that approves the gate, carries an `autostart` object with a `status` of `started`, `already_started`, or `failed` and a `kind`. For `kind: delivery` the object carries `run_id`, `worktree`, and `resume_command` (`/pan-resume <run-id>`). For `kind: cohort` it carries `cohort_id`, `cohort_index`, `max_parallel`, `deferred_chunks` (the chunks the parallelism limit left unstarted), `supervise_command` (the `/pan-cohort <cohort-id>` session for the whole cohort), and `chunks`, one entry per started chunk run with `chunk`, `run_id`, `worktree`, and `resume_command`. `already_started` means an earlier approval already started that delivery, so nothing failed. For `failed` the object carries `error` and `manual_commands`; the approval and the ratified plan stand. The one manual command is `pan cohort route --plan-run <plan-run-id>`, for the single-chunk route and the cohort route alike. It is the idempotent retry: it adopts a run or session the failed attempt already created rather than creating a second one, so running it twice is safe. The failed route is persisted on the plan run, so `pan status <plan-run-id>` shows `Delivery route failed: <error>` with that command under `Manual:`, and a successful route replaces the failed line with the started delivery. `pan status <plan-run-id>` names the handoff (`delivery_handoff`), and `pan cohort integrate` reports its own continuation under the same `autostart` key with `kind: cohort` or `kind: release`; `pan cohort status` names the release run as `release_run_id`.
+The `decide` response, and an `away decide` response that approves the gate, carries an `autostart` object with a `status` of `started`, `already_started`, or `failed` and a `kind`. For `kind: delivery` the object carries `run_id`, `worktree`, and `resume_command` (`/pan-resume <run-id>`). For `kind: cohort` it carries `cohort_id`, `cohort_index`, `max_parallel`, `deferred_chunks` (the chunks the parallelism limit left unstarted), `supervise_command` (the `/pan-cohort <cohort-id>` session for the whole cohort), and `chunks`, one entry per started chunk run with `chunk`, `run_id`, `worktree`, and `resume_command`. `already_started` means an earlier approval already started that delivery, so nothing failed. For `failed` the object carries `error` and `manual_commands`; the approval and the ratified plan stand. The one manual command is `pan cohort route --plan-run <plan-run-id>`, for the single-chunk route and the cohort route alike. It is the idempotent retry: it adopts a run or session the failed attempt already created rather than creating a second one, so running it twice is safe. The failed route is persisted on the plan run, so `pan status <plan-run-id>` shows `Delivery route failed: <error>` with that command under `Manual:`, and a successful route replaces the failed line with the started delivery. `pan status <plan-run-id>` names the handoff (`delivery_handoff`), and `pan cohort integrate` reports its own continuation under the same `autostart` key with `kind: cohort` or `kind: release`; `pan cohort status` names the release run as `release_run_id`.
 
 The route runs after your decision is already recorded and never rewrites it. It fires for your own `pan decide approve` and for an away-mode approval applied on your behalf, because the route is a recorded property of the run rather than a judgment made at approval time.
 

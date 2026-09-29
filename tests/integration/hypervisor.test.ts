@@ -10,20 +10,20 @@ import {
 } from '../../src/lib/engine.js'
 import { readAwayDecisionLedger } from '../../src/lib/away-mode.js'
 import {
+  agentRegistryPath,
   completeInvocationAgent,
-  createAgentRecoveryRunner,
   HYPERVISOR_INTERVAL_MS,
   hypervisorEventsPath,
   readAgentRegistry,
   reconcileAgentRecords,
-  recoverAgent,
   registerPreparedInvocation,
   registryHealthForRun,
   runHypervisorLoop,
   tickHypervisor,
 } from '../../src/lib/hypervisor.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import type { AgentRecord, RunState } from '../../src/lib/types.js'
+import type { RunState } from '../../src/lib/types.js'
+import { validateHypervisorState } from '../../src/lib/validators/autonomy-state.js'
 import { createFixture } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
 import { checkpoint } from '../integration/delivery-helpers.js'
@@ -196,7 +196,7 @@ test('hypervisor observes an external executor session from run state', () => {
   assert.equal(agent?.health, 'unknown')
 })
 
-test('hypervisor never recovers an invocation that no longer needs a worker', () => {
+test('hypervisor never quarantines a completed invocation', () => {
   const root = createFixture()
   const result = tickHypervisor(root, {
     observations: [
@@ -206,18 +206,13 @@ test('hypervisor never recovers an invocation that no longer needs a worker', ()
         terminal: true,
       },
     ],
-    recoveryRunner: {
-      nudge: () => {
-        throw new Error('Recovery must not run.')
-      },
-    },
   })
 
   assert.equal(result.agents[0]?.health, 'completed')
-  assert.deepEqual(result.recovery_events, [])
+  assert.deepEqual(result.quarantine_events, [])
 })
 
-test('hypervisor quarantines the second matching recovery failure', () => {
+test('hypervisor quarantines a dead agent immediately', () => {
   const root = createFixture()
   const result = tickHypervisor(root, {
     now: '2026-08-21T10:15:00.000Z',
@@ -227,111 +222,48 @@ test('hypervisor quarantines the second matching recovery failure', () => {
         process_alive: false,
       },
     ],
-    recoveryRunner: {
-      nudge: () => ({
-        ok: false,
-        failure_signature: 'executor-unavailable',
-        evidence: 'The executor is unavailable.',
-      }),
-      resume: () => ({
-        ok: false,
-        failure_signature: 'executor-unavailable',
-        evidence: 'The executor is unavailable.',
-      }),
-    },
   })
 
   assert.equal(result.agents[0]?.health, 'dead')
   assert.equal(result.agents[0]?.recovery.quarantined, true)
   assert.equal(result.agents[0]?.recovery.step, 'quarantine')
-  assert.deepEqual(
-    result.recovery_events.map((event) => event.step),
-    ['nudge', 'resume', 'quarantine'],
-  )
+  assert.equal(result.quarantine_events.length, 1)
+  assert.equal(result.quarantine_events[0]?.health, 'dead')
   assert.match(
     readFileSync(hypervisorEventsPath(root), 'utf8'),
-    /"type":"recovery"/u,
+    /"type":"quarantine"/u,
   )
   assert.equal(readAgentRegistry(root).agents.length, 1)
 })
 
-function stalledAgent(): AgentRecord {
-  return {
-    agent_id: 'run-1:invoke-1',
-    parent_agent_id: null,
-    run_id: 'run-1',
-    invocation_id: 'invoke-1',
-    persona: 'coder',
-    executor: 'cursor',
-    model: null,
-    session_id: null,
-    transcript_path: null,
-    process_id: null,
-    process_alive: null,
-    discovered_at: '2026-08-21T10:00:00.000Z',
-    last_observed_at: '2026-08-21T10:30:00.000Z',
-    last_transcript_at: '2026-08-21T10:00:00.000Z',
-    consecutive_unchanged_scans: 2,
-    health: 'stalled',
-    health_evidence: ['Two consecutive scans found no transcript change.'],
-    recovery: { attempts: 0, consecutive_failures: 0, quarantined: false },
+test('the registry validator accepts a legacy recovery step and rejects an unknown one', () => {
+  const root = createFixture()
+
+  tickHypervisor(root, { observations: [stalledObservation] })
+
+  const registry = readAgentRegistry(root)
+  const withStep = (step: string): void => {
+    writeFileSync(
+      agentRegistryPath(root),
+      `${JSON.stringify({
+        ...registry,
+        agents: registry.agents.map((agent) => ({
+          ...agent,
+          recovery: { ...agent.recovery, step },
+        })),
+      })}\n`,
+    )
   }
-}
+  const input = { root } as Parameters<typeof validateHypervisorState>[0]
 
-const unsupportedStep = (evidence: string) => () => ({
-  ok: false,
-  supported: false,
-  evidence,
-})
+  withStep('nudge')
+  assert.equal(validateHypervisorState(input).status, 'passed')
 
-test('recovery falls back to redelivery when nudge and resume are unsupported', () => {
-  const result = recoverAgent(
-    stalledAgent(),
-    {
-      nudge: unsupportedStep('No live session accepts a nudge.'),
-      resume: unsupportedStep('No resumable session is registered.'),
-      redeliver: () => ({
-        ok: true,
-        evidence: 'The canonical invocation was redelivered.',
-      }),
-    },
-    '2026-08-21T10:45:00.000Z',
-  )
-
+  withStep('rewind')
   assert.deepEqual(
-    result.events.map((event) => event.step),
-    ['nudge', 'resume', 'redeliver'],
+    validateHypervisorState(input).issues.map((issue) => issue.code),
+    ['hypervisor.agent.recovery'],
   )
-  assert.equal(result.agent.health, 'running')
-  assert.equal(result.agent.recovery.step, 'redeliver')
-  assert.equal(result.agent.recovery.attempts, 1)
-})
-
-test('re-prepare is refused while the canonical invocation stays valid', () => {
-  const result = recoverAgent(
-    stalledAgent(),
-    {
-      nudge: unsupportedStep('No live session accepts a nudge.'),
-      resume: unsupportedStep('No resumable session is registered.'),
-      redeliver: unsupportedStep('Redelivery is unsupported for this agent.'),
-      reprepare: () => ({
-        ok: false,
-        supported: false,
-        failure_signature: 'canonical-invocation-still-valid',
-        evidence:
-          'The canonical invocation still validates against the workspace.',
-      }),
-    },
-    '2026-08-21T10:45:00.000Z',
-  )
-
-  assert.deepEqual(
-    result.events.map((event) => event.step),
-    ['nudge', 'resume', 'redeliver', 'reprepare'],
-  )
-  assert.equal(result.agent.health, 'stalled')
-  assert.equal(result.agent.recovery.attempts, 0)
-  assert.equal(result.agent.recovery.quarantined, false)
 })
 
 test('prepared invocation registration is idempotent and completable', () => {
@@ -355,23 +287,6 @@ test('prepared invocation registration is idempotent and completable', () => {
 
   assert.equal(readAgentRegistry(root).agents.length, 1)
   assert.equal(completed?.health, 'completed')
-})
-
-test('redelivery refuses an invocation after workspace drift', () => {
-  const { root } = checkpoint('planning@plan-prepared')
-  const agent = readAgentRegistry(root).agents[0]
-
-  assert.ok(agent)
-  writeFileSync(
-    path.join(root, 'src', 'base.ts'),
-    'export const base = false\n',
-  )
-
-  const result = createAgentRecoveryRunner(root).redeliver?.(agent)
-
-  assert.equal(result?.ok, false)
-  assert.equal(result?.supported, false)
-  assert.equal(result?.failure_signature, 'invocation-workspace-stale')
 })
 
 test('hypervisor loop runs ticks sequentially at fixed cadence', async () => {

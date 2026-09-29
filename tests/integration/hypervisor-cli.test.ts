@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -10,10 +9,7 @@ import {
   pauseRun,
   prepareInvocation,
 } from '../../src/lib/engine.js'
-import {
-  readAwayDecisionLedger,
-  recordAwayApplyResult,
-} from '../../src/lib/away-mode.js'
+import { readAwayDecisionLedger } from '../../src/lib/away-mode.js'
 import {
   agentRegistryPath,
   readAgentRegistry,
@@ -54,14 +50,13 @@ test('hypervisor CLI start is singleton and stop is reversible', () => {
   const root = createFixture()
 
   const tick = run(root, 'hypervisor', 'tick') as {
-    tick: { agents: unknown[]; recovery_events: unknown[] }
-    away_decisions: unknown[]
+    tick: { agents: unknown[]; quarantine_events: unknown[] }
   }
   const idle = run(root, 'hypervisor', 'status')
 
+  assert.deepEqual(Object.keys(tick), ['tick'])
   assert.deepEqual(tick.tick.agents, [])
-  assert.deepEqual(tick.tick.recovery_events, [])
-  assert.deepEqual(tick.away_decisions, [])
+  assert.deepEqual(tick.tick.quarantine_events, [])
   assert.equal(idle.running, false)
 
   try {
@@ -78,7 +73,7 @@ test('hypervisor CLI start is singleton and stop is reversible', () => {
   }
 })
 
-test('hypervisor quarantine pauses the run and records a decision', () => {
+test('hypervisor quarantine pauses the run and records no away decision', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
@@ -144,17 +139,21 @@ test('hypervisor quarantine pauses the run and records a decision', () => {
   )
 
   try {
-    run(root, 'hypervisor', 'tick')
+    const tick = run(root, 'hypervisor', 'tick') as {
+      tick: { quarantine_events: Array<{ agent_id: string }> }
+    }
 
     const next = getRunState(root, state.run_id)
-    const ledger = readAwayDecisionLedger(root)
 
+    assert.deepEqual(Object.keys(tick), ['tick'])
+    assert.deepEqual(
+      tick.tick.quarantine_events.map((event) => event.agent_id),
+      [agent.agent_id],
+    )
     assert.equal(next.status, 'paused')
     assert.equal(next.pending_action.type, 'operator_decision')
     assert.match(next.pause_reason ?? '', /was quarantined/u)
-    assert.equal(ledger.length, 1)
-    assert.equal(ledger[0]?.blocker.type, 'hypervisor_incident')
-    assert.equal(ledger[0]?.result, 'rejected')
+    assert.deepEqual(readAwayDecisionLedger(root), [])
   } finally {
     if (previousBinary === undefined) {
       delete process.env.PANCREATOR_CURSOR_AGENT_BIN
@@ -164,29 +163,13 @@ test('hypervisor quarantine pauses the run and records a decision', () => {
   }
 })
 
-test('away evaluate and apply resume a paused run exactly once', () => {
+test('pan away decide resumes a paused run and records a supervisor decision', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
   >
-  const binary = path.join(root, 'fake-cursor-agent')
-  const response = {
-    ranked_options: [
-      {
-        rank: 1,
-        action: 'resume',
-        feasible: true,
-        rationale: 'Resume the paused run.',
-        evidence: ['runtime/logs/workflows/run/agent/state.json'],
-        rollback_plan: {
-          steps: ['Pause the run again.'],
-          verification: 'Confirm that the run is paused.',
-        },
-      },
-    ],
-  }
 
   writeFileSync(
     configPath,
@@ -202,122 +185,46 @@ test('away evaluate and apply resume a paused run exactly once', () => {
       2,
     )}\n`,
   )
-  writeFileSync(
-    binary,
-    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
-      session_id: 'evaluator-session',
-      result: JSON.stringify(response),
-    })}'\n`,
-  )
-  chmodSync(binary, 0o755)
 
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
+  prepareInvocation(root, state.run_id)
   pauseRun(root, state.run_id, 'Operator unavailable.')
 
-  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+  const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
-  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
-
-  try {
-    const evaluated = run(root, 'away', 'evaluate', state.run_id) as {
-      decision_id: string
-      decision_kind: string
-      result: string
-      selected_action: { action: string } | null
-    }
-
-    assert.equal(evaluated.result, 'accepted')
-    assert.equal(evaluated.decision_kind, 'evaluated')
-    assert.equal(evaluated.selected_action?.action, 'resume')
-
-    // Status exposes the exact id apply accepts, so a supervisor that lost
-    // the evaluate stdout never falls back to a mirrored run-local packet id.
-    const status = run(root, 'away', 'status', state.run_id) as {
-      apply_ready_decision_ids: string[]
-    }
-
-    assert.deepEqual(status.apply_ready_decision_ids, [evaluated.decision_id])
-
-    // A wrong id names the canonical namespace and the apply-ready ids
-    // instead of a bare not-found.
-    assert.throws(
-      () =>
-        run(root, 'away', 'apply', state.run_id, '--decision', randomUUID()),
-      (error: unknown) => {
-        const stderr = String((error as { stderr?: unknown }).stderr ?? '')
-
-        return (
-          /AWAY_DECISION_NOT_FOUND/u.test(stderr) &&
-          /away decision ledger/u.test(stderr) &&
-          stderr.includes(evaluated.decision_id)
-        )
-      },
-    )
-
-    // A failed apply leaves its ledger record but does not consume the
-    // decision: it stays apply-ready and a retry succeeds once the cause is
-    // repaired.
-    const accepted = readAwayDecisionLedger(root).find(
-      (record) => record.decision_id === evaluated.decision_id,
-    )
-
-    assert.ok(accepted)
-    recordAwayApplyResult(root, accepted, 'failed', 'Inbox move collision.')
-
-    const afterFailure = run(root, 'away', 'status', state.run_id) as {
-      apply_ready_decision_ids: string[]
-    }
-
-    assert.deepEqual(afterFailure.apply_ready_decision_ids, [
-      evaluated.decision_id,
-    ])
-
-    const applied = run(
-      root,
-      'away',
-      'apply',
-      state.run_id,
-      '--decision',
-      evaluated.decision_id,
-    ) as {
-      state: { status: string; pending_action: { type: string } }
-      decision: { result: string; linked_decision_id: string }
-    }
-
-    assert.equal(applied.state.status, 'running')
-    assert.equal(applied.state.pending_action.type, 'prepare_invocation')
-    assert.equal(applied.decision.result, 'applied')
-    assert.equal(applied.decision.linked_decision_id, evaluated.decision_id)
-
-    assert.throws(
-      () =>
-        run(
-          root,
-          'away',
-          'apply',
-          state.run_id,
-          '--decision',
-          evaluated.decision_id,
-        ),
-      (error: unknown) =>
-        error instanceof Error &&
-        /AWAY_DECISION_ALREADY_APPLIED/u.test(
-          String((error as { stderr?: unknown }).stderr ?? ''),
-        ),
-    )
-    assert.deepEqual(
-      readAwayDecisionLedger(root).map((record) => record.result),
-      ['accepted', 'failed', 'applied'],
-    )
-  } finally {
-    if (previousBinary === undefined) {
-      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
-    } else {
-      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
-    }
+  const decided = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [
+        CLI,
+        'away',
+        'decide',
+        state.run_id,
+        '--action',
+        'resume',
+        '--note',
+        'Resuming the paused run.',
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8' },
+    ),
+  ) as {
+    state: { status: string }
+    decision: { result: string; action: string }
   }
+
+  assert.equal(decided.state.status, 'running')
+  assert.equal(decided.decision.result, 'applied')
+  assert.equal(decided.decision.action, 'resume')
+
+  const ledger = readAwayDecisionLedger(root)
+
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.action, 'resume')
+  assert.equal(ledger[0]?.result, 'applied')
+  assert.equal(ledger[0]?.author, 'supervisor')
 })

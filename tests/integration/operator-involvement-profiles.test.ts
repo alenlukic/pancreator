@@ -152,8 +152,6 @@ test('the shipped long-horizon profile is listed and snapshots its mode', () => 
         'set-stage',
         'waive-gate',
       ],
-      max_decisions_per_run: 12,
-      max_remediation_attempts_per_agent: 2,
     },
   })
 
@@ -202,8 +200,6 @@ test('the long-horizon contract forces away mode on and records the override', (
           enabled: false,
           guardrails: {
             allowed_actions: ['resume'],
-            max_decisions_per_run: 1,
-            max_remediation_attempts_per_agent: 1,
           },
         },
       },

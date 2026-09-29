@@ -1,5 +1,59 @@
 # Changelog
 
+## [7.34.0] - 2026-09-29
+
+This release removes the away-mode evaluator. The supervisor records each away-mode decision. The hypervisor checks agent liveness only.
+
+### Changed
+
+- Make the supervisor the sole authority for away-mode decisions ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Reduce the hypervisor to liveness checks and liveness quarantine ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Move the away-mode ledger to `runtime/logs/away-mode/supervisor-decisions.jsonl` ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Rewrite AWAY-001, ORCH-001, SHIP-001, HORIZON-001, and the operator docs ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+### Added
+
+- Add `pan away decide` with an action, a reason, and supervisor authorship ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Add regression tests for supervisor authority and hypervisor liveness quarantine ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+### Removed
+
+- Remove `pan away evaluate` and `pan away apply` ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Remove the evaluator spawn, ranking, and deterministic ship approval ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Remove the hypervisor recovery runner and the evaluator-only config keys ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+### Fixed
+
+- Restore tests of retained away-mode contracts after the first verify failure ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+## [7.33.0] - 2026-09-29
+
+This release makes every subagent launch background-only and observable. It adds a hook-fed agent activity index and `pan watch --agent`. AC-007, the live identity probe, is waived and deferred. It did not pass.
+
+### Changed
+
+- Rewrite `DELEGATE-001` to one background-plus-watch rule by role ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Align `ORCH-001`, `COHORT-001`, `BESTOFN-001`, the start and resume commands, and the dispatch card with that rule ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Deny a `Task` call unless `run_in_background` is `true`, and keep `AwaitShell` and `Await` denied ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Report the latest agent event on each `pan watch` wake, and treat a completed stop as `agent_state` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+
+### Added
+
+- Add a hook-fed agent activity index under `runtime/logs/agents/` with `bin/pan-hook-agent-index` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Add standalone `pan watch --agent <id>` for a watch outside a run ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Add the `agent-index` class to `pan cleanup` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Emit `DELEGATION_FOREGROUND_RETURN` when a submit rests on a foreground-return attestation ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Add the operator identity probe procedure in `docs/cursor-hook-context-probe.md` ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+
+### Removed
+
+- Remove the instruction to launch a subagent in the foreground from governance, commands, and personas ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+
+### Fixed
+
+- Read a supplied exit record on the dead-at-arm path of `pan watch --process` (F-004) ([d137c595](https://github.com/alenlukic/pancreator/commit/d137c595)).
+- Repair the watch-attach fixture race and the model-evidence submit helper so the full profile stays deterministic ([9382ca94](https://github.com/alenlukic/pancreator/commit/9382ca94)).
+
 ## [7.32.0] - 2026-09-28
 
 This release makes `/pan-shepherd` clear existing feedback first, review only the dimensions a batch puts at risk, and record one decision for each comment.

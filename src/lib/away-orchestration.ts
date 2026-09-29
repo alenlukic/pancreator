@@ -1,19 +1,10 @@
-import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 import {
-  awayEvaluatorFailureLimitError,
-  awayEvaluatorPrompt,
-  countAwayDecisions,
-  countAwayEvaluatorFailures,
-  parseAwayOptions,
-  recordAwayEvaluation,
-  recordAwayEvaluationFailure,
-  recordAwayEvaluatorExchange,
+  appendSupervisorDecision,
+  awayModeTrigger,
   openOperatorQuestion,
-  recordDeterministicShipApproval,
-  recordOperatorQuestionRefusal,
-  type AwayBlocker,
-  type AwayDecisionRecord,
+  type SupervisorDecisionRecord,
 } from './away-mode.js'
 import {
   decideRunAsAway,
@@ -21,25 +12,17 @@ import {
   setRunStageAsAway,
   waiveGate,
 } from './engine.js'
-import { errorMessage, PanError } from './errors.js'
-import { runCursorAgentJson } from './executors/cursor-agent.js'
-import { hypervisorEventsPath } from './hypervisor.js'
-import {
-  loadPipelineConfig,
-  loadPipelineConfigSnapshot,
-} from './pipeline-config.js'
+import { errorMessage, invariant, PanError } from './errors.js'
 import { resolveRunLayout } from './run-layout.js'
-import type { RunState } from './types.js'
+import type { AwayModeAction, RunState } from './types.js'
 
-/**
- * One away-mode evaluation and one away-mode application, shared by every
- * caller that drives a blocked run without an operator.
- *
- * The CLI and the long-horizon session both reach a pause the same way, so
- * they resolve it through one implementation. A second copy diverged on the
- * snapshotted hypervisor model, the resolved event path, and the guardrail
- * pre-checks before this module existed.
- */
+const NOTE_MAX = 3_000
+
+function bounded(text: string): string {
+  return text.length <= NOTE_MAX
+    ? text
+    : `${text.slice(0, NOTE_MAX)}\n[truncated]`
+}
 
 function required(value: string | null | undefined, name: string): string {
   if (!value) {
@@ -49,204 +32,184 @@ function required(value: string | null | undefined, name: string): string {
   return value
 }
 
-export interface AwayEvaluationOptions {
-  runEvaluator?: typeof runCursorAgentJson
-  recordedAt?: () => string
+export interface DecideAwayRequest {
+  action: string
+  note: string | null
+  stage?: string | null
 }
 
-/** The hypervisor model the run snapshotted, never a later configuration edit. */
-export function hypervisorModelForRun(root: string, state: RunState): string {
-  if (state.pipeline_config) {
-    const snapshot = loadPipelineConfigSnapshot(
-      root,
-      state.pipeline_config.path,
-    )
-    const model = snapshot.personas.hypervisor
-
-    if (model) {
-      return model
-    }
-  }
-
-  const model = loadPipelineConfig(root).config.personas.hypervisor
-
-  if (!model) {
-    throw new PanError(
-      "Pipeline configuration does not map persona 'hypervisor'.",
-      { code: 'INVALID_PIPELINE_CONFIG' },
-    )
-  }
-
-  return model
-}
-
-export function applyAwayDecision(
+/**
+ * Apply one supervisor away-mode decision to the run, append the immutable
+ * ledger record, and return the updated run state.
+ *
+ * Refusals throw a `PanError`, write no ledger record, and leave the run state
+ * unchanged. They run in this order:
+ *   1. Away mode disabled (`AWAY_MODE_DISABLED`)
+ *   2. Open operator question (`AWAY_OPERATOR_QUESTION_OPEN`)
+ *   3. No permitted blocker (`AWAY_TRIGGER_UNAVAILABLE`)
+ *   4. Action outside allowed_actions (`AWAY_ACTION_FORBIDDEN`)
+ *   5. Missing or empty note (`INVALID_ARGUMENT`)
+ *   6. `set-stage` without `--stage` (`INVALID_ARGUMENT`)
+ */
+export function decideAwayAsSupervisor(
   root: string,
   state: RunState,
-  decision: AwayDecisionRecord,
-): RunState {
-  const selected = decision.selected_action
+  request: DecideAwayRequest,
+  recordedAt = new Date().toISOString(),
+): { state: RunState; record: SupervisorDecisionRecord } {
+  const awayMode = state.away_mode
 
-  if (!selected) {
-    throw new PanError('The away decision selected no action.', {
-      code: 'AWAY_DECISION_NOT_APPLICABLE',
-    })
-  }
+  invariant(awayMode?.enabled, 'Away mode is disabled for this run.', {
+    code: 'AWAY_MODE_DISABLED',
+  })
 
-  switch (selected.action) {
-    case 'approve':
-    case 'reject':
-    case 'revise':
-      return decideRunAsAway(
-        root,
-        state.run_id,
-        selected.action,
-        selected.note ?? selected.rationale,
-      )
-    case 'resume': {
-      const stage = selected.stage ?? state.current_stage
-      const note = selected.note ?? selected.rationale
-
-      // The evaluator ranks `resume` to mean "re-attempt the stage". Only a
-      // paused run can literally resume; a run awaiting the operator reaches
-      // the same re-attempt through an away-authored stage set. Failing here
-      // instead turned a sound ranking into a deferred task (HORIZON-001).
-      if (state.status !== 'paused' && stage) {
-        return setRunStageAsAway(root, state.run_id, stage, note)
-      }
-
-      return resumeRunAsAway(root, state.run_id, stage, note)
-    }
-    case 'set-stage':
-      return setRunStageAsAway(
-        root,
-        state.run_id,
-        required(selected.stage, 'selected stage'),
-        selected.note ?? selected.rationale,
-      )
-    case 'waive-gate':
-      // The note is the directive, and `selectAwayOption` already refused an
-      // option that carries none. The waiver is recorded with away
-      // authorship, so nothing in the record claims the operator wrote it.
-      return waiveGate(root, state.run_id, {
-        note: required(selected.note, 'selected note'),
-        actor: 'away',
-      }).state
-    default:
-      throw new PanError(
-        `Unsupported away action: ${String(selected.action)}`,
-        { code: 'AWAY_DECISION_NOT_APPLICABLE' },
-      )
-  }
-}
-
-export function evaluateAwayState(
-  root: string,
-  state: RunState,
-  blocker: AwayBlocker,
-  options: AwayEvaluationOptions = {},
-): AwayDecisionRecord {
-  // Every caller that can reach the evaluator reaches it through this
-  // function, so the operator-question refusal sits here rather than at each
-  // call site, where the next caller would have to remember it.
-  //
-  // The refusal reads the run rather than the blocker class. A question
-  // stands against the run, and the trigger reports one class at a time, so
-  // keying the refusal to `operator_question` alone would let a hypervisor
-  // incident or a pending approval carry the same gate into a ranking.
   const question = openOperatorQuestion(root, state)
 
   if (question) {
-    return recordOperatorQuestionRefusal(
-      root,
-      state,
-      blocker,
-      question,
-      options.recordedAt?.(),
+    throw new PanError(
+      `An unanswered operator question stands on this run: ${question}`,
+      { code: 'AWAY_OPERATOR_QUESTION_OPEN' },
     )
   }
+
+  const blocker = awayModeTrigger(state, root)
+
+  if (!blocker) {
+    throw new PanError('The run has no blocker that away mode can clear.', {
+      code: 'AWAY_TRIGGER_UNAVAILABLE',
+    })
+  }
+
+  const action = request.action
+  const allowedActions = awayMode.guardrails.allowed_actions
 
   if (
-    blocker.type === 'operator_approval' &&
-    blocker.stage === 'ship' &&
-    state.pending_action.type === 'operator_approval' &&
-    (state.pending_action.outcome ?? 'success') === 'success'
+    typeof action !== 'string' ||
+    !allowedActions.includes(action as AwayModeAction)
   ) {
-    const evidenceReferences = [
-      resolveRunLayout(root, state.run_id).state.relative,
-      state.stage_history.at(-1)?.output_path,
-    ].filter((item): item is string => typeof item === 'string')
-
-    return recordDeterministicShipApproval(root, state, evidenceReferences)
-  }
-
-  // The ledger append re-checks the limit under its lock. This pre-check only
-  // skips a model evaluation whose record could never be persisted.
-  const budget = state.away_mode?.guardrails.max_decisions_per_run ?? 0
-
-  if (countAwayDecisions(root, state.run_id) >= budget) {
     throw new PanError(
-      'The away-mode decision limit for this run is exhausted.',
-      { code: 'AWAY_DECISION_LIMIT' },
+      `Action '${action}' is outside operator guardrails. Allowed: ${allowedActions.join(', ')}.`,
+      { code: 'AWAY_ACTION_FORBIDDEN' },
     )
   }
 
-  const evaluatorFailures = countAwayEvaluatorFailures(root, state.run_id)
+  const note = request.note
 
-  if (evaluatorFailures >= budget) {
-    throw awayEvaluatorFailureLimitError(root, state, evaluatorFailures, budget)
+  if (!note || note.trim().length === 0) {
+    throw new PanError(
+      '--note or --note-file is required for pan away decide.',
+      { code: 'INVALID_ARGUMENT' },
+    )
   }
 
-  const prompt = awayEvaluatorPrompt(root, state, blocker, {
-    hypervisorEventsPath: path
-      .relative(root, hypervisorEventsPath(root))
-      .split(path.sep)
-      .join('/'),
-  })
-  const runEvaluator = options.runEvaluator ?? runCursorAgentJson
-  const recordedAt = options.recordedAt ?? (() => new Date().toISOString())
-  const evidenceReferences: string[] = []
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const evaluation = runEvaluator({
-      cwd: root,
-      installationRoot: root,
-      model: hypervisorModelForRun(root, state),
-      prompt,
+  if (action === 'set-stage' && !request.stage) {
+    throw new PanError('--stage is required for set-stage.', {
+      code: 'INVALID_ARGUMENT',
     })
-    let parseError: string | undefined
-
-    if (evaluation.ok && evaluation.value !== undefined) {
-      try {
-        parseAwayOptions(evaluation.value)
-      } catch (error) {
-        parseError = errorMessage(error)
-      }
-    }
-
-    const transportError =
-      !evaluation.ok || evaluation.value === undefined
-        ? (evaluation.error ?? 'The away evaluator returned no decision.')
-        : undefined
-    const evidenceReference = recordAwayEvaluatorExchange(
-      root,
-      state,
-      prompt,
-      {
-        ...evaluation,
-        attempt,
-        ...(transportError ? { error: transportError } : {}),
-        ...(parseError ? { parse_error: parseError } : {}),
-      },
-      recordedAt(),
-    )
-
-    evidenceReferences.push(evidenceReference)
-
-    if (!transportError && !parseError) {
-      return recordAwayEvaluation(root, state, blocker, evaluation.value)
-    }
   }
 
-  return recordAwayEvaluationFailure(root, state, blocker, evidenceReferences)
+  const boundedNote = bounded(note)
+
+  // Resolve evidence references: run state and last stage output.
+  const layout = resolveRunLayout(root, state.run_id)
+  const evidenceReferences = [
+    layout.state.relative,
+    state.stage_history.at(-1)?.output_path,
+  ].filter((item): item is string => typeof item === 'string')
+
+  // Apply the action through the existing engine functions.
+  let next: RunState
+  let applyError: string | undefined
+
+  try {
+    switch (action as AwayModeAction) {
+      case 'approve':
+      case 'reject':
+      case 'revise':
+        next = decideRunAsAway(
+          root,
+          state.run_id,
+          action as AwayModeAction,
+          boundedNote,
+        )
+        break
+      case 'resume': {
+        const stage = request.stage ?? state.current_stage
+
+        if (state.status !== 'paused' && stage) {
+          next = setRunStageAsAway(root, state.run_id, stage, boundedNote)
+        } else {
+          next = resumeRunAsAway(
+            root,
+            state.run_id,
+            stage ?? undefined,
+            boundedNote,
+          )
+        }
+        break
+      }
+      case 'set-stage':
+        next = setRunStageAsAway(
+          root,
+          state.run_id,
+          required(request.stage, 'stage'),
+          boundedNote,
+        )
+        break
+      case 'waive-gate':
+        next = waiveGate(root, state.run_id, {
+          note: boundedNote,
+          actor: 'away',
+        }).state
+        break
+      default:
+        throw new PanError(`Unsupported away action: ${String(action)}`, {
+          code: 'AWAY_ACTION_FORBIDDEN',
+        })
+    }
+  } catch (error) {
+    applyError = errorMessage(error)
+
+    // Build a failed record and append it, then rethrow.
+    const failedRecord: SupervisorDecisionRecord = {
+      schema_version: 1,
+      decision_id: randomUUID(),
+      author: 'supervisor',
+      run_id: state.run_id,
+      invocation_id: state.current_invocation?.id ?? null,
+      blocker,
+      action: action as AwayModeAction,
+      ...(request.stage ? { stage: request.stage } : {}),
+      reason: boundedNote,
+      guardrails: { allowed_actions: [...allowedActions] as AwayModeAction[] },
+      result: 'failed',
+      error: bounded(applyError),
+      evidence_references: evidenceReferences,
+      recorded_at: recordedAt,
+    }
+
+    appendSupervisorDecision(root, failedRecord)
+
+    throw error
+  }
+
+  const record: SupervisorDecisionRecord = {
+    schema_version: 1,
+    decision_id: randomUUID(),
+    author: 'supervisor',
+    run_id: state.run_id,
+    invocation_id: state.current_invocation?.id ?? null,
+    blocker,
+    action: action as AwayModeAction,
+    ...(request.stage ? { stage: request.stage } : {}),
+    reason: boundedNote,
+    guardrails: { allowed_actions: [...allowedActions] as AwayModeAction[] },
+    result: 'applied',
+    evidence_references: evidenceReferences,
+    recorded_at: recordedAt,
+  }
+
+  appendSupervisorDecision(root, record)
+
+  return { state: next, record }
 }

@@ -15,8 +15,8 @@
     "Self-development ship with a managed worktree MUST checkpoint eligible changes, fetch main, and rebase. It MUST then create the release commit and the release-index commit.",
     "The workflow MUST create final PR copy after all local commits in the same managed worktree.",
     "The workflow MUST pause for operator approval before branch push, pull-request creation, merge, publication, or deployment.",
-    "When away mode enables `approve`, a successful ship packet MAY receive deterministic approval.",
-    "Deterministic approval MUST apply only the recorded outcome and terminal workflow transition.",
+    "When away mode allows `approve`, the supervisor MAY approve a successful ship packet with `pan away decide`.",
+    "That approval MUST apply only the recorded outcome and the terminal workflow transition.",
     "An away-mode ship approval MUST NOT authorize push, pull-request creation, merge, publication, deployment, or branch deletion.",
     "The release steward MUST review the run governance/artifact diagnostics index and repair safe runtime-only defects. It MUST record a disposition for every issue. It MUST continue when no legitimate implementation, test, security, or release concern remains. Governance/artifact defects MUST never transition back to implementation. A legitimate concern MUST pause for operator decision.",
     "Before operator approval, four artifacts MUST run their resolved policy-bound validators under VALID-001. They are the release data, the waiver and follow-up disclosure, the diff-grounded change list, and the referenced release packet."

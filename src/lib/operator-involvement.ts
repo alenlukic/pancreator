@@ -120,20 +120,6 @@ function parseProfileAwayMode(value: unknown, source: string): AwayModeConfig {
     { code: 'INVALID_OPERATOR_INVOLVEMENT' },
   )
 
-  for (const key of [
-    'max_decisions_per_run',
-    'max_remediation_attempts_per_agent',
-  ] as const) {
-    const candidate = guardrails[key]
-
-    invariant(
-      candidate === undefined ||
-        (Number.isInteger(candidate) && (candidate as number) > 0),
-      `${source}.guardrails.${key} MUST be a positive integer when present.`,
-      { code: 'INVALID_OPERATOR_INVOLVEMENT' },
-    )
-  }
-
   return {
     enabled: value.enabled,
     guardrails: {
@@ -142,17 +128,6 @@ function parseProfileAwayMode(value: unknown, source: string): AwayModeConfig {
             allowed_actions: [
               ...(guardrails.allowed_actions as AwayModeAction[]),
             ],
-          }
-        : {}),
-      ...(guardrails.max_decisions_per_run !== undefined
-        ? {
-            max_decisions_per_run: guardrails.max_decisions_per_run as number,
-          }
-        : {}),
-      ...(guardrails.max_remediation_attempts_per_agent !== undefined
-        ? {
-            max_remediation_attempts_per_agent:
-              guardrails.max_remediation_attempts_per_agent as number,
           }
         : {}),
     },

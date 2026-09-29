@@ -12,7 +12,7 @@ import {
   startHorizonSession,
 } from '../../src/lib/horizon.js'
 import { createFixture, read, writeJson } from '../helpers.js'
-import { withFakeEvaluator } from './delivery-helpers.js'
+import { withFakeArbiter } from './delivery-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -126,7 +126,7 @@ test('a session advancing three tasks opens each one in its own driver process',
   // it opens each task in a driver process of its own rather than continuing
   // the previous one. Without the flag, start arms the session and returns
   // for the chat supervisor.
-  withFakeEvaluator(root, { ok: true }, () =>
+  withFakeArbiter(root, null, () =>
     execFileSync(
       process.execPath,
       [

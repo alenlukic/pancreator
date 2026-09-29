@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 
-import { awayGateContext, readAwayDecisionLedger } from './away-mode.js'
+import { readAwayDecisionLedger } from './away-mode.js'
 import {
   decideRunAsAway,
   liftOperatorOnlyPauseForHorizon,
@@ -21,19 +21,20 @@ import {
   writeJsonAtomic,
 } from './io.js'
 import { loadPipelineConfig, resolvePersonaMapping } from './pipeline-config.js'
+import { resolveRunLayout } from './run-layout.js'
 import type { RunState } from './types.js'
 
 /**
  * The long-horizon arbiter: the session's reasoning layer over every stop.
  *
- * Before this module existed, a run that stopped for any reason the away
- * evaluator did not clear went straight to the deferral ledger. A reply that
- * did not parse, a `resume` the engine refused on an awaiting run, a spent
- * decision budget, and a worker that wrote `blocked` over a wall-time ceiling
- * all deferred a task on a function's verdict, with no agent reasoning about
- * whether the stop was one of the four hard blocks HORIZON-001 names.
+ * A headless session has no chat supervisor, so the arbiter is the supervisor
+ * for every stop, including a gate pause that waits for an away-mode
+ * decision. A `resume` the engine refused on an awaiting run and a worker that
+ * wrote `blocked` over a wall-time ceiling must not defer a task on a
+ * function's verdict without an agent reasoning about whether the stop is one
+ * of the four hard blocks HORIZON-001 names.
  *
- * The arbiter reverses that default. The harness may not defer a task on its
+ * The harness may not defer a task on its
  * own; every stop that is not a terminal success passes through here, and the
  * arbiter overrides unless it names a hard block. Every round, verdict, apply
  * result, and failure is appended to the session's `arbiter.jsonl`, and each
@@ -96,7 +97,7 @@ export interface ArbiterRecord {
     | 'applied'
     | 'apply_failed'
     | 'hard_block'
-    | 'evaluator_failed'
+    | 'reply_failed'
     | 'fallback_applied'
     | 'harness_unrecoverable'
     | 'override_bound'
@@ -245,12 +246,120 @@ function parseVerdict(value: unknown): ArbiterVerdict {
   return { verdict: 'override', action: parsed, reasoning }
 }
 
+interface RunGateContext {
+  operator_request: string | null
+  stage_outcome: string | null
+  stage_summary: string | null
+  stage_artifacts: string[]
+  stage_output_path: string | null
+  stage_open_questions: string[]
+  stage_unknowns: string[]
+  stage_next_action: string | null
+}
+
+function runGateContext(root: string, run: RunState): RunGateContext {
+  const layout = resolveRunLayout(root, run.run_id)
+  const requestPath = layout.request().absolute
+  const operatorRequest = fileExists(requestPath)
+    ? bounded(readText(requestPath))
+    : null
+
+  const last = run.stage_history.at(-1)
+  let summary: string | null = null
+  let nextAction: string | null = null
+
+  const artifacts: string[] = []
+  const openQuestions: string[] = []
+  const unknowns: string[] = []
+
+  if (last?.output_path && fileExists(path.join(root, last.output_path))) {
+    try {
+      const output = readJson(path.join(root, last.output_path))
+
+      if (isRecord(output)) {
+        if (typeof output.summary === 'string') {
+          summary = bounded(output.summary)
+        }
+
+        if (Array.isArray(output.artifacts)) {
+          for (const artifact of output.artifacts) {
+            if (isRecord(artifact) && typeof artifact.path === 'string') {
+              artifacts.push(artifact.path)
+            }
+          }
+        }
+
+        const operatorBlock = isRecord(output.$operator)
+          ? output.$operator
+          : null
+
+        if (typeof operatorBlock?.next_action === 'string') {
+          nextAction = bounded(operatorBlock.next_action)
+        }
+
+        for (const unknown of Array.isArray(output.unknowns)
+          ? output.unknowns
+          : []) {
+          if (typeof unknown === 'string') {
+            unknowns.push(bounded(unknown))
+          }
+        }
+
+        const spec = isRecord(output.data) ? output.data.product_spec : null
+
+        for (const question of isRecord(spec) &&
+        Array.isArray(spec.open_questions)
+          ? spec.open_questions
+          : []) {
+          if (typeof question === 'string') {
+            openQuestions.push(bounded(question))
+          }
+        }
+
+        const cohortPlan = isRecord(output.data)
+          ? output.data.cohort_plan
+          : null
+
+        if (isRecord(cohortPlan)) {
+          if (typeof cohortPlan.parent_spec_path === 'string') {
+            artifacts.push(cohortPlan.parent_spec_path)
+          }
+
+          if (Array.isArray(cohortPlan.chunks)) {
+            for (const chunk of cohortPlan.chunks) {
+              if (
+                isRecord(chunk) &&
+                typeof chunk.child_spec_path === 'string'
+              ) {
+                artifacts.push(chunk.child_spec_path)
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // A malformed output is itself a defect the arbiter can weigh from the outcome alone.
+    }
+  }
+
+  return {
+    operator_request: operatorRequest,
+    stage_outcome: last?.outcome ?? null,
+    stage_summary: summary,
+    stage_artifacts: [...new Set(artifacts)],
+    stage_output_path: last?.output_path ?? null,
+    stage_open_questions: openQuestions,
+    stage_unknowns: unknowns,
+    stage_next_action: nextAction,
+  }
+}
+
 function runContext(root: string, run: RunState | null): unknown {
   if (!run) {
     return null
   }
 
-  const gate = awayGateContext(root, run)
+  const gate = runGateContext(root, run)
   let risks: string[] = []
 
   if (
@@ -274,13 +383,12 @@ function runContext(root: string, run: RunState | null): unknown {
     .filter((record) => record.run_id === run.run_id)
     .slice(-6)
     .map((record) => ({
-      decision_kind: record.decision_kind ?? 'evaluated',
+      author: record.author,
       blocker: record.blocker,
-      selected: record.selected_action?.action ?? null,
+      action: record.action,
+      reason: record.reason,
       result: record.result,
-      applied_action: record.applied_action ?? null,
       error: record.error ?? null,
-      rejected: record.rejected_options,
     }))
 
   return {
@@ -328,7 +436,7 @@ export function arbiterPrompt(
     'Reason from the operating principles: accomplish the operator objective, keep the critical path unblocked, minimize operator attention, prefer the smallest reversible action, and never trade correctness, security, or an explicit operator constraint for speed.',
     'Exactly four conditions are hard blocks. Every other stop is overridden.',
     JSON.stringify(HARD_BLOCK_TEXT),
-    'These are never hard blocks: a criterion, ceiling, budget, or cadence backed only by cost, speed, or wall time, wherever it sits (waive it with a reason); a condition the run caused itself (its own test run moved a rolling average, its own commit changed a fingerprint); a transient failure (an evaluator reply that did not parse, an executor timeout, a stale build, an apply error); a spent budget or ladder rung; a worker that cited a policy, a rung, or a gate identifier as its reason to report blocked; and any ordinary judgment call.',
+    'These are never hard blocks: a criterion, ceiling, budget, or cadence backed only by cost, speed, or wall time, wherever it sits (waive it with a reason); a condition the run caused itself (its own test run moved a rolling average, its own commit changed a fingerprint); a transient failure (an agent reply that did not parse, an executor timeout, a stale build, an apply error); a spent budget or ladder rung; a worker that cited a policy, a rung, or a gate identifier as its reason to report blocked; and any ordinary judgment call.',
     'Your default is override. Return hard_block only when one of the four conditions is genuinely met on the evidence, and name it.',
     `Available actions: ${availableActions.join(', ')}. resume re-attempts the current stage (name a stage to re-attempt another). set-stage routes the run to a stage with a directive note the next worker must act on. decide takes approve, reject, or revise on a pending gate. waive-gate waives the failing criterion; the note is the recorded waiver directive and must name the gate or the destination stage. restart-task opens a fresh run of the task from its stored request.`,
     'Write the note as the directive the next worker or the record needs: what to do, why the stop was not a block, and what you accept.',
@@ -545,7 +653,7 @@ export function arbitrateHorizonStop(
         ...base,
         round,
         verdict: null,
-        result: 'evaluator_failed',
+        result: 'reply_failed',
         error,
         exchange_path: exchangePath,
       })

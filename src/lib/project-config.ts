@@ -80,8 +80,6 @@ export const AWAY_MODE_ACTIONS = [
 ] as const satisfies readonly AwayModeAction[]
 
 const DEFAULT_AWAY_MODE_ACTIONS = [...AWAY_MODE_ACTIONS]
-const DEFAULT_MAX_AWAY_DECISIONS_PER_RUN = 3
-const DEFAULT_MAX_REMEDIATION_ATTEMPTS_PER_AGENT = 2
 export const DEFAULT_RETENTION_DAYS = 30
 
 /**
@@ -238,14 +236,6 @@ function assertWorktreeReadinessPaths(value: unknown): void {
   }
 }
 
-function assertPositiveInteger(value: unknown, source: string): void {
-  invariant(
-    value === undefined || (Number.isInteger(value) && (value as number) > 0),
-    `${source} MUST be a positive integer when present.`,
-    { code: 'INVALID_PROJECT_CONFIG' },
-  )
-}
-
 function assertRetentionBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -316,15 +306,6 @@ function assertAwayModeBlock(value: unknown): void {
         )),
     `${PROJECT_CONFIG_PATH}.away_mode.guardrails.allowed_actions MUST contain only ${AWAY_MODE_ACTIONS.join(', ')}.`,
     { code: 'INVALID_PROJECT_CONFIG' },
-  )
-
-  assertPositiveInteger(
-    guardrails.max_decisions_per_run,
-    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.max_decisions_per_run`,
-  )
-  assertPositiveInteger(
-    guardrails.max_remediation_attempts_per_agent,
-    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.max_remediation_attempts_per_agent`,
   )
 }
 
@@ -957,12 +938,6 @@ export function resolveAwayModeConfig(
     enabled: configured?.enabled ?? false,
     guardrails: {
       allowed_actions: [...allowedActions],
-      max_decisions_per_run:
-        configured?.guardrails?.max_decisions_per_run ??
-        DEFAULT_MAX_AWAY_DECISIONS_PER_RUN,
-      max_remediation_attempts_per_agent:
-        configured?.guardrails?.max_remediation_attempts_per_agent ??
-        DEFAULT_MAX_REMEDIATION_ATTEMPTS_PER_AGENT,
     },
     source_sha256: sha256(configured ?? { enabled: false }),
   }

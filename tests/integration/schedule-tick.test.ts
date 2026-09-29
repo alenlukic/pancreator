@@ -166,7 +166,7 @@ test('a deferred occurrence waits for the holding run and then starts', () => {
   assert.equal(resumed.decisions[0]?.occurrence_at, '2026-01-05T10:00:00.000Z')
 })
 
-test('workflow jobs keep card attestation opt-in and record ladder pauses', () => {
+test('workflow jobs keep card attestation opt-in and report a gate pause as waiting for the supervisor', () => {
   const root = createFixture()
   configure(root, [
     scheduledJob('ladder', {
@@ -181,35 +181,26 @@ test('workflow jobs keep card attestation opt-in and record ladder pauses', () =
   ])
   let attestation: boolean | undefined
   let drives = 0
+  let drivenRunId = ''
 
   const tick = scheduleTick(root, {
     now: new Date('2026-01-05T10:10:02.137Z'),
-    // `operator_only` stays false so the typed ladder pause is the only clause
-    // that can stop the away loop. Without that guard the loop would ask the
-    // away evaluator to advance the blocker and drive the run again.
+    // No supervisor runs inside a scheduled job, so one drive ends the job at
+    // the gate and the run waits for a supervisor decision.
     driveWorkflow: (_root, runId, options) => {
       attestation = options?.attestSupervisorCard
       drives += 1
+      drivenRunId = runId
       return {
-        state: {
-          ...getRunState(root, runId),
-          horizon_ladder: {
-            retries_spent: 0,
-            strategy_switches_spent: 0,
-            replans_spent: 0,
-            last_failure_signature: [],
-            approaches_tried: [],
-            pause_kind: 'ladder_exhausted' as const,
-          },
-        },
+        state: getRunState(root, runId),
         stop: {
           type: 'operator_pause',
           action: 'operator_decision',
           stage: 'verify',
           operator_only: false,
-          reason: 'ladder exhausted',
+          reason: 'the stage reported blocked',
         },
-        handoff_reason: 'ladder exhausted',
+        handoff_reason: 'the stage reported blocked',
         steps: 1,
         decisions_applied: [],
         last_autostart: null,
@@ -221,7 +212,12 @@ test('workflow jobs keep card attestation opt-in and record ladder pauses', () =
   assert.equal(attestation, false)
   assert.equal(drives, 1)
   assert.equal(tick.decisions[0]?.outcome, 'failed')
-  assert.equal(tick.decisions[0]?.reason, 'ladder exhausted')
+  assert.equal(
+    tick.decisions[0]?.reason,
+    `Workflow run '${drivenRunId}' waits for a supervisor decision ` +
+      `(operator_decision at stage 'verify'). ` +
+      `Resume it with /pan-resume ${drivenRunId}.`,
+  )
 })
 
 test('an opted-in prompt writes the inbox request and starts a run', () => {

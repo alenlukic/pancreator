@@ -806,21 +806,10 @@ export type AwayModeAction =
   | 'set-stage'
   | 'waive-gate'
 
-export type AwayDecisionKind =
-  | 'evaluated'
-  | 'deterministic_ship_approval'
-  | 'hypervisor_quarantine'
-  /** The evaluator could not run or returned no ranking; not a decision. */
-  | 'evaluator_failure'
-  /** An unanswered operator question refused the blocker before ranking. */
-  | 'operator_question_refusal'
-
 export type RunActionActor = 'operator' | 'away'
 
 export interface AwayModeGuardrails {
   allowed_actions?: AwayModeAction[]
-  max_decisions_per_run?: number
-  max_remediation_attempts_per_agent?: number
 }
 
 export interface AwayModeConfig {
@@ -832,8 +821,6 @@ export interface ResolvedAwayModeConfig {
   enabled: boolean
   guardrails: {
     allowed_actions: AwayModeAction[]
-    max_decisions_per_run: number
-    max_remediation_attempts_per_agent: number
   }
   source_sha256: string
 }
