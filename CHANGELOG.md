@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.35.1] - 2026-09-29
+
+This release closes three build and observation defects: an installation behind this checkout's own config schema disappeared from `pan installs list` and `pan spend`, a retained retired `tests/` tree could break every `pan` command after a refresh, and `pan watch --agent` reported an unregistered subagent as stalled.
+
+### Fixed
+
+- Read a registered installation's `installation_mode` and `workspace_root` without validating its `config.json` against this checkout's current schema, so a version-skewed installation keeps its real `version`, `stale`, and `queued_items` instead of losing them to a schema failure the installation's own harness does not have ([f1759983](https://github.com/alenlukic/pancreator/commit/f1759983)).
+- Name each installation `pan spend` still cannot resolve in the report's `warnings`, instead of a silent skip, and count every regular queue file instead of only `.md` ([f1759983](https://github.com/alenlukic/pancreator/commit/f1759983)).
+- Narrow the installed `tsconfig.json` to `src/**/*.ts` during staging, so a retired `tests/` tree a refresh retains (because ownership cannot be proven, or a file was modified or target-added) never becomes build input; `bin/build` no longer fingerprints `tests/` when the active `tsconfig.json` does not compile it ([3dc01e79](https://github.com/alenlukic/pancreator/commit/3dc01e79)).
+- State in the installer's kept-files notices that retained files sit outside the installed build and may be deleted ([3dc01e79](https://github.com/alenlukic/pancreator/commit/3dc01e79)).
+- End `pan watch --agent` with a new `unregistered` verdict (exit `6`), instead of `stalled`, for an agent id the index has never registered; name a stale `.cursor/hooks.json` agent-index projection at arming and on that verdict, and point at `pan models --sync` ([ee3bd621](https://github.com/alenlukic/pancreator/commit/ee3bd621)).
+
 ## [7.35.0] - 2026-09-29
 
 This release adds two cost dimensions to every harness repair audit. The technician now finds work that is correct but too slow or too expensive, without being told where to look.
