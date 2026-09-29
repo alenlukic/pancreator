@@ -10,6 +10,7 @@ import { cursorAgentName } from './projection.js'
 import {
   renderContextReferenceBlock,
   renderPolicyBlocks,
+  type PolicyRulePointer,
 } from './policy-guidance.js'
 import { effectiveRepositoryCheckProfile } from './verification.js'
 import type {
@@ -874,6 +875,26 @@ function renderResolvedGateBound(
 }
 
 /** Render an invocation card for both the operator and the assigned worker. */
+/** The pointer-delivered policies of a worker card, keyed by policy id. */
+export function invocationPolicyPointers(
+  invocation: Pick<Invocation, 'policy_delivery'>,
+): Map<string, PolicyRulePointer> {
+  const pointers = new Map<string, PolicyRulePointer>()
+
+  for (const [policyId, delivery] of Object.entries(
+    invocation.policy_delivery ?? {},
+  )) {
+    if (delivery.mode === 'pointer') {
+      pointers.set(policyId, {
+        target: delivery.target,
+        sha256: delivery.sha256,
+      })
+    }
+  }
+
+  return pointers
+}
+
 export function renderInvocationMarkdown(invocation: Invocation): string {
   const { stage } = invocation
   const requiredData = Object.entries(invocation.output.required_data)
@@ -902,7 +923,14 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ).slice(1)
     : []
 
-  const policies = renderPolicyBlocks(invocation.policies, 3, 'agent')
+  const policies = renderPolicyBlocks(
+    invocation.policies,
+    3,
+    'agent',
+    new Set(),
+    new Set(),
+    invocationPolicyPointers(invocation),
+  )
   const requirements = invocation.requirements
     ? [
         ...invocation.requirements.automation_requirements,

@@ -29,7 +29,11 @@
     "On a detected stall or crash, the starting agent MUST report the condition and MUST take or propose a recovery action.",
     "Background-plus-watch rule by role. Every agent that starts a subagent MUST launch it with `run_in_background: true` and MUST NOT wait on the platform's subagent wait. The `preToolUse` deny hook refuses every `Task` call without that flag in every installation. (1) Any agent outside an in-run worker delegation, which is the operator session or a child agent that launches an auxiliary subagent: it MUST observe the subagent in the same turn with `pan watch --agent <id>`. (2) Supervisor (in-run worker delegation): it MUST run `pan watch <run-id> --mark-background` in the same turn as the launch, because it blocks on the watch for the worker result; when the platform detaches the blocking `pan watch` call, the supervisor MUST run `pan watch --attach <ledger>` at once.",
     "Worker model evidence is best-effort. When no probe answer lands, the harness MUST record the run snapshot's projected model as a labeled `default`. Every display MUST distinguish that projected default from a probed `match` or `recorded` result. A probed model that contradicts the run snapshot remains a hard `MODEL_EVIDENCE_MISMATCH` failure.",
-    "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging). Such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
+    {
+      "text": "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging). Such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
     {
       "text": "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. A worker the harness delegated is exempt only when its harness-authored delegation execution record names the run and invocation.",
       "audience": ["supervisor"]
@@ -81,7 +85,8 @@
     },
     {
       "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist.",
-      "audience": ["agent"]
+      "audience": ["agent"],
+      "excerpt": true
     },
     {
       "text": "A long or backgrounded wrapped command MUST be observed through the `pan watch --process ... --exit-record ...` command printed by `bin/pan-run` at start, on the 60-second cadence.",

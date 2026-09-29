@@ -6,9 +6,11 @@ import test from 'node:test'
 import { sha256 } from '../../src/lib/io.js'
 import {
   guidanceSelectedRange,
+  policySectionDigest,
   renderGuidanceBlock,
   renderPolicyBlocks,
 } from '../../src/lib/policy-guidance.js'
+import { policyDeliveryPlan } from '../../src/lib/projection.js'
 import { GATE_CACHE_ACCEPTANCE_RULE } from '../../src/lib/gate-cache.js'
 import {
   buildInvocationContractManifest,
@@ -1398,5 +1400,129 @@ test('a card handed gate evidence carries the same gate-cache rule', () => {
 
   assert.ok(
     renderInvocationMarkdown(invocation).includes(GATE_CACHE_ACCEPTANCE_RULE),
+  )
+})
+
+// HR-004 of the 2026-09-29 efficiency audit: a Cursor worker already
+// receives the projected always-apply policies as rules, so a second inline
+// copy was a third of every remediate card.
+test('a Cursor worker card points at projected always-apply policies and keeps their excerpt clauses', () => {
+  const root = sharedFixture()
+  const invocation = baseInvocation(root, 'delivery', 'remediate')
+  const inline = renderInvocationMarkdown(invocation)
+  const delivery = policyDeliveryPlan(root, invocation.policies, {
+    executor: 'cursor',
+    mode: 'self_development',
+  })
+  const pointed: Invocation = { ...invocation, policy_delivery: delivery }
+  const markdown = renderInvocationMarkdown(pointed)
+  const projected = ['PRINCIPLES-001', 'DELEGATE-001', 'COMMS-001']
+
+  for (const policyId of projected) {
+    const entry = delivery[policyId]
+
+    assert.equal(entry?.mode, 'pointer', policyId)
+  }
+
+  assert.equal(delivery['GLOBAL-001']?.mode, 'inline')
+
+  const catalog = loadPolicyCatalog(root)
+
+  for (const policyId of projected) {
+    const policy = catalog.get(policyId) as Policy
+    const entry = delivery[policyId] as {
+      mode: 'pointer'
+      target: string
+      sha256: string
+    }
+
+    assert.equal(entry.sha256, policySectionDigest(policy, 'agent'))
+    assert.ok(markdown.includes(`**${policy.id} · ${policy.title}**`))
+    assert.ok(markdown.includes(`\`${entry.target}\``))
+    assert.ok(markdown.includes(`sha256:${entry.sha256}`))
+
+    for (const instruction of policy.instructions) {
+      if (!policyInstructionAppliesToCard(instruction, 'agent')) {
+        continue
+      }
+
+      assert.equal(
+        markdown.includes(`- ${instruction.text}`),
+        instruction.excerpt === true,
+        `${policyId}: ${instruction.text.slice(0, 60)}`,
+      )
+    }
+  }
+
+  const delegate = catalog.get('DELEGATE-001') as Policy
+
+  assert.ok(
+    delegate.instructions.some(
+      (instruction) =>
+        instruction.excerpt === true &&
+        instruction.text.includes('bin/pan-run'),
+    ),
+  )
+  assert.ok(
+    Buffer.byteLength(markdown) + 15_000 < Buffer.byteLength(inline),
+    `pointer card ${Buffer.byteLength(markdown)} B, inline ${Buffer.byteLength(inline)} B`,
+  )
+
+  const validation = validateInvocationMarkdown(pointed, markdown)
+
+  assert.equal(
+    validation.passed,
+    true,
+    validation.checks
+      .filter((check) => !check.passed)
+      .map((check) => check.message)
+      .join('\n'),
+  )
+})
+
+test('a pointer whose digest no longer names its policy section fails card validation', () => {
+  const root = sharedFixture()
+  const invocation = baseInvocation(root, 'delivery', 'remediate')
+  const delivery = policyDeliveryPlan(root, invocation.policies, {
+    executor: 'cursor',
+    mode: 'self_development',
+  })
+  const stale = {
+    ...delivery,
+    'COMMS-001': {
+      mode: 'pointer' as const,
+      target: '.cursor/rules/pan-chat-output.mdc',
+      sha256: '0'.repeat(64),
+    },
+  }
+  const pointed: Invocation = { ...invocation, policy_delivery: stale }
+  const validation = validateInvocationMarkdown(
+    pointed,
+    renderInvocationMarkdown(pointed),
+  )
+  const check = validation.checks.find(
+    (item) => item.id === 'policy.COMMS-001.pointer_digest',
+  )
+
+  assert.equal(validation.passed, false)
+  assert.equal(check?.passed, false)
+  assert.match(check?.message ?? '', /does not match its section digest/u)
+})
+
+test('an external executor card inlines every policy', () => {
+  const root = sharedFixture()
+  const invocation = baseInvocation(root, 'delivery', 'remediate')
+  const delivery = policyDeliveryPlan(root, invocation.policies, {
+    executor: 'claude-code',
+    mode: 'self_development',
+  })
+
+  assert.ok(
+    Object.values(delivery).every((entry) => entry.mode === 'inline'),
+    JSON.stringify(delivery),
+  )
+  assert.equal(
+    renderInvocationMarkdown({ ...invocation, policy_delivery: delivery }),
+    renderInvocationMarkdown(invocation),
   )
 })

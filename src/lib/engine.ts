@@ -224,6 +224,7 @@ import {
 import {
   cursorAgentName,
   cursorAgentTarget,
+  policyDeliveryPlan,
   projectPersonaVariants,
   syncCursorProjection,
 } from './projection.js'
@@ -5545,6 +5546,14 @@ export function prepareInvocation(
       ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       ...(fastWall ? { fast_wall: fastWall } : {}),
       policies,
+      policy_delivery: policyDeliveryPlan(root, policies, {
+        executor: externalExecutor ?? 'cursor',
+        mode: isSelfDevelopmentInstallation(root)
+          ? 'self_development'
+          : isDetachedInstallation(root)
+            ? 'detached'
+            : 'embedded',
+      }),
       requirements,
       rubric: stage.criteria,
       output: {

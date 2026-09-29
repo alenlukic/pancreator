@@ -536,7 +536,22 @@ export type PolicyAudience = 'agent' | 'supervisor' | 'harness' | 'operator'
 export interface PolicyInstruction {
   text: string
   audience: PolicyAudience[]
+  /**
+   * Keep this instruction on a card that delivers its policy as a pointer to
+   * a projected always-apply rule. Marks a clause a worker has to meet on
+   * the card itself, beside the rule.
+   */
+  excerpt?: boolean
 }
+
+/**
+ * How one policy reaches a worker card. `pointer` names the projected
+ * always-apply Cursor rule that carries the policy text and the digest of
+ * the agent-audience section the pointer stands for.
+ */
+export type PolicyDelivery =
+  | { mode: 'inline' }
+  | { mode: 'pointer'; target: string; sha256: string }
 
 export interface Policy {
   id: string
@@ -1426,6 +1441,12 @@ export interface Invocation {
   /** Fast-lane measurements bracketing this run's implementation stage. */
   fast_wall?: FastWallStageSummary
   policies: Policy[]
+  /**
+   * Delivery mode of each policy on the worker card, keyed by policy id.
+   * Absent on cards prepared before pointer delivery existed, which inline
+   * every policy.
+   */
+  policy_delivery?: Record<string, PolicyDelivery>
   requirements?: RequirementManifest
   rubric: Criterion[]
   output: {

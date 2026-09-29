@@ -419,7 +419,15 @@ test('a verify visit reads configuration and impacted integration evidence from 
     readFileSync(path.join(root, pointer.json_path), 'utf8'),
   ) as {
     inputs: { references: Array<{ gate_evidence?: { profile?: string } }> }
+    policy_delivery?: Record<string, { mode: string; target?: string }>
   }
+
+  // A prepared Cursor card points at the projected always-apply policies.
+  for (const policyId of ['PRINCIPLES-001', 'DELEGATE-001', 'COMMS-001']) {
+    assert.equal(invocation.policy_delivery?.[policyId]?.mode, 'pointer')
+  }
+
+  assert.equal(invocation.policy_delivery?.['GLOBAL-001']?.mode, 'inline')
   const profiles = new Set(
     invocation.inputs.references
       .map((reference) => reference.gate_evidence?.profile)

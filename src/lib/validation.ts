@@ -84,6 +84,8 @@ import {
   guidanceInlineHeading,
   guidanceReferenceHeading,
   guidanceSelectedRange,
+  policyRulePointerSentence,
+  policySectionDigest,
   renderGuidanceBlock,
 } from './policy-guidance.js'
 import {
@@ -632,18 +634,44 @@ export function validateInvocationMarkdown(
         : `Markdown MUST include policy id and title for ${policy.id}`,
     })
 
-    checks.push({
-      id: `policy.${policy.id}.summary`,
-      passed: normalized.includes(policy.summary),
-      message: normalized.includes(policy.summary)
-        ? `Policy ${policy.id} summary is present`
-        : `Markdown MUST include policy ${policy.id} summary text`,
-    })
+    const delivery = invocation.policy_delivery?.[policy.id]
+    const pointer = delivery?.mode === 'pointer' ? delivery : null
+
+    // A pointer block leaves the summary to the rule it points at.
+    if (!pointer) {
+      checks.push({
+        id: `policy.${policy.id}.summary`,
+        passed: normalized.includes(policy.summary),
+        message: normalized.includes(policy.summary)
+          ? `Policy ${policy.id} summary is present`
+          : `Markdown MUST include policy ${policy.id} summary text`,
+      })
+    }
+
+    if (pointer) {
+      // A pointer stands for the policy's inline section. It holds only while
+      // its digest still names that section, so a policy edited after the
+      // card was prepared fails the card rather than point at other text.
+      const expected = policySectionDigest(policy, 'agent')
+      const sentence = policyRulePointerSentence(pointer)
+
+      checks.push({
+        id: `policy.${policy.id}.pointer_digest`,
+        passed: pointer.sha256 === expected && normalized.includes(sentence),
+        message:
+          pointer.sha256 !== expected
+            ? `Policy ${policy.id} pointer digest sha256:${pointer.sha256} ` +
+              `does not match its section digest sha256:${expected}`
+            : normalized.includes(sentence)
+              ? `Policy ${policy.id} pointer to ${pointer.target} is present`
+              : `Markdown MUST include the ${policy.id} pointer to ${pointer.target}`,
+      })
+    }
 
     const renderedInstructions = filterPolicyInstructionsForCard(
       policy.instructions,
       'agent',
-    )
+    ).filter((instruction) => !pointer || instruction.excerpt === true)
 
     for (const [index, instruction] of renderedInstructions.entries()) {
       const text = instruction.text

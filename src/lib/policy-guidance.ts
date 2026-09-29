@@ -1,3 +1,4 @@
+import { sha256 } from './io.js'
 import type {
   ContextReference,
   ContextReferenceStatus,
@@ -202,15 +203,26 @@ export function renderPolicyBlocks(
   audience: PolicyCardAudience = 'agent',
   supersededIds: ReadonlySet<string> = new Set(),
   instrumentIds: ReadonlySet<string> = new Set(),
+  pointers: ReadonlyMap<string, PolicyRulePointer> = new Map(),
 ): string[] {
   if (policies.length === 0) {
     return ['- Only global boundaries apply.']
   }
 
   return policiesInCardOrder(policies).flatMap((policy) => {
+    const pointer = pointers.get(policy.id)
     const seen = new Set<string>()
     const instructions = policy.instructions.filter((instruction) => {
       if (!policyInstructionAppliesToCard(instruction, audience)) {
+        return false
+      }
+
+      // A pointer stands for the whole section, so only the clauses the
+      // policy marks as excerpts stay on the card.
+      if (
+        pointer &&
+        (typeof instruction === 'string' || instruction.excerpt !== true)
+      ) {
         return false
       }
 
@@ -247,7 +259,13 @@ export function renderPolicyBlocks(
               '',
             ]
           : []),
-      ...(seen.has(summary) ? [] : [policy.summary, '']),
+      // The rule carries the summary too, so a pointer block holds only the
+      // pointer and the clauses quoted from it.
+      ...(pointer
+        ? policyRulePointerLines(pointer, instructions.length)
+        : seen.has(summary)
+          ? []
+          : [policy.summary, '']),
       ...instructions.map(
         (instruction) => `- ${policyInstructionText(instruction)}`,
       ),
@@ -259,4 +277,45 @@ export function renderPolicyBlocks(
 
     return [lines.join('\n'), '']
   })
+}
+
+/** Where a pointer-delivered policy's full text reaches the worker. */
+export interface PolicyRulePointer {
+  /** Projected always-apply rule path, relative to the projection root. */
+  target: string
+  /** `policySectionDigest` of the policy at the card's audience. */
+  sha256: string
+}
+
+/** The sentence that stands in for a pointer-delivered policy's body. */
+export function policyRulePointerSentence(pointer: PolicyRulePointer): string {
+  return (
+    `> Full text: always-apply rule \`${pointer.target}\` · section ` +
+    `\`sha256:${pointer.sha256}\`. It binds you as this card does.`
+  )
+}
+
+function policyRulePointerLines(
+  pointer: PolicyRulePointer,
+  excerptCount: number,
+): string[] {
+  return [
+    policyRulePointerSentence(pointer),
+    '',
+    ...(excerptCount > 0 ? ['Quoted clauses that bind this card:', ''] : []),
+  ]
+}
+
+/**
+ * Digest of one policy's full section as `renderPolicyBlocks` renders it
+ * inline at `audience`. A supervisor card and a pointer-delivered worker card
+ * both cite a policy by this digest instead of repeating its body.
+ */
+export function policySectionDigest(
+  policy: Policy,
+  audience: PolicyCardAudience,
+): string {
+  return sha256(
+    `${renderPolicyBlocks([policy], 3, audience).join('\n').trimEnd()}\n`,
+  )
 }

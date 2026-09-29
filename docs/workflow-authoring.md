@@ -375,6 +375,23 @@ Every `harness` instruction MUST name a same-policy requirement id or a
 citation MUST NOT serve two instructions of one policy. Repository validation
 enforces that mapping in self-development.
 
+### Pointer delivery on worker cards
+
+A policy that `governance/registries/projection_manifest.json` projects as an
+always-apply Cursor rule (a `policy-rule` transform) already reaches every
+Cursor session. A worker card prepared for a Cursor executor therefore renders
+that policy as a pointer: its header, the rule path, and the section digest
+that `policySectionDigest` computes over the inline form. An external executor
+receives no Cursor rules, so its card keeps every policy inline.
+
+A structured instruction MAY set `excerpt: true`. The card then quotes that
+instruction under the pointer, for a clause a worker has to meet on the card
+itself. Keep excerpts few: each one grows every Cursor worker card.
+
+The invocation JSON records each policy's mode under `policy_delivery`. Card
+validation fails when a pointer's digest no longer matches the policy's
+section, and a card without `policy_delivery` is checked as fully inline.
+
 ## Instruction hierarchy
 
 Agent behavior is authored in five layers. This list is the authoring view: it
