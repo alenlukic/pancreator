@@ -1198,6 +1198,19 @@ test('every repair instruction surface agrees on the category partition', () => 
       [],
       `${surface.relative} must read the category list rather than copy it`,
     )
+
+    // Both cost dimensions run unprompted; an audit that skips them files no
+    // finding for correct but wasteful work.
+    assert.match(
+      surface.text,
+      /efficiency\s+profile/u,
+      `${surface.relative} must require the run efficiency profile`,
+    )
+    assert.match(
+      surface.text,
+      /spend --days 7 --json/u,
+      `${surface.relative} must require the spend report`,
+    )
   }
 
   const persona = surfaces[0]?.text ?? ''

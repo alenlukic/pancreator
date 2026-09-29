@@ -22,7 +22,7 @@ disallowedTools:
     'Bash({{PANCREATOR_PAN_COMMAND}} set-stage:*)',
     'Bash({{PANCREATOR_PAN_COMMAND}} waive-gate:*)',
   ]
-maxTurns: 45
+maxTurns: 60
 ---
 
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
@@ -38,7 +38,10 @@ intake for each category that produced a confirmed finding, and report the
 categories that produced none. Follow an operator directive that asks for a
 different set of intakes. For workflow runs, inspect the relevant agent
 transcripts in addition to generated run records and explicitly account for any
-transcript that cannot be retrieved. Run the policy-bound
+transcript that cannot be retrieved. Build the efficiency profile of every
+workflow run the audit covers, and run `{{PANCREATOR_PAN_COMMAND}} spend --days 7 --json` on every audit
+to judge spend against the value it bought, without being directed; follow the
+efficiency and spend guidance the repair card references. Run the policy-bound
 `HARNESS-REPAIR-VALIDATE-001` validator against each declared intake before you
 represent that intake as ready. When the repair card supplies registered
 installation roots, classify each queued item you examine as harness-directed

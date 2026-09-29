@@ -17,7 +17,29 @@
       "id": "performance",
       "slug": "perf",
       "display_name": "Performance",
-      "scope": "Speed and memory improvements, removal of duplicate agent work or tool calls, bottleneck relief, and concurrency or race-condition repair.",
+      "scope": "Speed and memory of harness code, the test suite, and gates, and concurrency or race-condition repair.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "agent-process-inefficiency",
+      "slug": "ineff",
+      "display_name": "Agent/process inefficiency",
+      "scope": "A harness step, contract, or agent topology whose wall time, agent count, or attention cost is disproportionate to the work it serves, even when every step is correct: fixed agent floors, oversized or duplicated contracts, serial waits, repeated reads or reproductions, retry loops, and cost that does not scale with change size.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "cost-roi",
+      "slug": "roi",
+      "display_name": "Cost/ROI",
+      "scope": "Token and dollar spend that is disproportionate to the value the work delivered, measured from Cursor usage joined to workflow and transcript records: model tiers mismatched to task difficulty, stages, personas, or commands whose spend buys rework, abandoned runs, or unused output, cache-miss and context-weight token cost, and spend that cannot be attributed.",
       "next_action_contract": {
         "name": "pan-start",
         "required_tokens": ["/pan-start"],

@@ -510,6 +510,17 @@ intake, a named subset of categories, or a fixed count when you want a
 different set. The command does not modify the investigated run or implement
 the repair.
 
+Every audit also looks for waste in work that succeeded. The technician builds
+an efficiency profile of each run it covers (stage wall time, agent count,
+serial waits, contract weight, and retry loops against the change each stage
+served) and files disproportionate cost under the agent/process inefficiency
+category. It also runs `pan spend --days 7 --json`, joins that report to the
+workflow and transcript records of the same window, and files spend with a
+poor return under the Cost/ROI category. Each finding cites the measured cost,
+the work it served, the trigger it fired, and the estimated saving, so fixing
+both intakes makes the next run faster and cheaper. The spend step needs the
+same credential as `/pan-spend`; without it the audit records an evidence gap.
+
 ### Sweep registered embedded installations
 
 Keep machine-local installation roots in the untracked

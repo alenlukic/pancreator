@@ -26,7 +26,22 @@
     "The harness technician MUST remain read-only in every registered installation and MUST report the harness-directed item paths each consolidated intake cites without archiving them.",
     "The supervising repair session MUST archive installation inbox items only after every intake it collected passes every resolved policy-bound validator. It MUST use `pan installs archive`, and MUST archive only cited harness-directed items.",
     "A repair input that does not begin with `installs` MUST keep the existing single-report investigation behavior unchanged.",
-    "The harness technician MUST query the commit log for a carried finding's intake file name and finding id before re-verification. A closing repair names both in its commit message, so a commit that names the finding is its disposition. Only a finding no commit names needs re-verification against the repository."
+    "The harness technician MUST query the commit log for a carried finding's intake file name and finding id before re-verification. A closing repair names both in its commit message, so a commit that names the finding is its disposition. Only a finding no commit names needs re-verification against the repository.",
+    "For every workflow run a repair audit covers, the harness technician MUST build the run's efficiency profile from run records and transcripts, and MUST apply the efficiency proportionality test to every stage visit without being directed.",
+    "Every repair audit MUST run `pan spend --days 7 --json`, or the window the operator names, and MUST join that aggregate report to the workflow and transcript records of the same window. It MUST apply the spend return test without being directed, and MUST record a failed spend command as an evidence gap.",
+    "An efficiency or spend finding MUST cite a measured cost, the unit of work that cost served, and the trigger it fired, and MUST estimate the saving its remediation delivers. Each trigger is a cost rule, so the technician MAY override one with a recorded reason."
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/run-efficiency-audit.md",
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you assess the time, agent, or attention cost of a workflow run."
+    },
+    {
+      "path": "library/skills/spend-roi-audit.md",
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you assess token or dollar spend against the value it delivered."
+    }
   ],
   "requirements": [
     {
