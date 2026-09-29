@@ -44,6 +44,10 @@ exist.
   duplicate workers after a supervisor interruption.
 - [`spend-canvas.md`](spend-canvas.md) - render a `pan spend` or
   `pan spend report` result as the standard Cursor Canvas.
+- [`run-efficiency-audit.md`](run-efficiency-audit.md) - measure a workflow
+  run's time, agent, and attention cost against the work it served.
+- [`spend-roi-audit.md`](spend-roi-audit.md) - join the spend report to
+  workflow and transcript records and judge the return on each slice.
 
 ## Stage-aligned
 

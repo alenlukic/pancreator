@@ -11,6 +11,7 @@ import {
   type CursorUsageEventsResult,
 } from './cursor-usage.js'
 import { invariant } from './errors.js'
+import { COMMAND_GOVERNANCE_REGISTRY_PATH } from './governance/command-coverage.js'
 import { fileExists, isDirectory, isRecord, readJson } from './io.js'
 import { readProjectConfig, registeredInstallations } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
@@ -23,6 +24,19 @@ const MAX_SLICE_ROWS = 10
 const COMMAND_MARKER_PATTERN = /---\s*Cursor Command:\s*([A-Za-z0-9-]+)\s*---/u
 const SLASH_COMMAND_PATTERN = /^\/(pan-[a-z0-9-]+)\b/mu
 const TIMESTAMP_PATTERN = /<timestamp>([^<]+)<\/timestamp>/u
+const BRIEF_REFERENCE_PATTERNS = [
+  /workflows\/([^/`\s]+)\/(?:agent\/)?invocations\/([^/`\s.]+)/u,
+  /\*\*Run\*\* `([^`]+)` · \*\*Invocation\*\* `([^`]+)`/u,
+  /\brun `([^`]+)`, invocation `([^`]+)`/u,
+]
+const BRIEF_ROLE_PATTERNS = [
+  /Evidence brief: ([a-z-]+) for stage/u,
+  /^Role `([a-z-]+)` for run/mu,
+  /invocations\/[^/`\s.]+\.([a-z-]+)-brief\.md/u,
+]
+const REVIEW_STAGE = 'review'
+const REVIEW_EVIDENCE_ROLE = 'review'
+const REVIEW_COMMANDS = new Set(['pan-review', 'pan-shepherd'])
 
 export interface SpendMetrics {
   events: number
@@ -194,10 +208,18 @@ export function conversationKeyFromId(id: string): string {
   return createHash('sha256').update(id).digest('hex')
 }
 
+interface WorkerBrief {
+  run_id: string
+  invocation_id: string
+  role: string
+}
+
 interface TranscriptEvidence {
   id: string
   parent_id: string | null
   command: string | null
+  /** The run invocation a worker's opening message names, when it names one. */
+  brief: WorkerBrief | null
   tools: Map<string, number>
   content: string
   at_ms: number
@@ -230,6 +252,12 @@ interface RunStorage {
   state: string
   events: string
   invocation: (invocationId: string) => string
+}
+
+interface WorkflowEvidence {
+  runs: RunEvidence[]
+  workers: Map<string, WorkflowIdentity>
+  storages: Map<string, RunStorage>
 }
 
 export interface EventAttribution {
@@ -386,6 +414,58 @@ function transcriptCommand(content: string): string | null {
   }
 
   return SLASH_COMMAND_PATTERN.exec(content)?.[1] ?? null
+}
+
+function openingText(content: string): string {
+  const newline = content.indexOf('\n')
+  const firstLine = newline === -1 ? content : content.slice(0, newline)
+  let record: unknown
+
+  try {
+    record = JSON.parse(firstLine)
+  } catch {
+    return ''
+  }
+
+  if (!isRecord(record) || !isRecord(record.message)) {
+    return ''
+  }
+
+  const blocks = record.message.content
+
+  if (typeof blocks === 'string') {
+    return blocks
+  }
+
+  if (!Array.isArray(blocks)) {
+    return ''
+  }
+
+  return blocks
+    .filter((block) => isRecord(block) && typeof block.text === 'string')
+    .map((block) => (block as { text: string }).text)
+    .join('\n')
+}
+
+function transcriptBrief(content: string): WorkerBrief | null {
+  const opening = openingText(content)
+
+  for (const pattern of BRIEF_REFERENCE_PATTERNS) {
+    const match = pattern.exec(opening)
+
+    if (match?.[1] === undefined || match[2] === undefined) {
+      continue
+    }
+
+    const role =
+      BRIEF_ROLE_PATTERNS.map(
+        (rolePattern) => rolePattern.exec(opening)?.[1],
+      ).find((value) => value !== undefined) ?? 'worker'
+
+    return { run_id: match[1], invocation_id: match[2], role }
+  }
+
+  return null
 }
 
 function transcriptTools(content: string): Map<string, number> {
@@ -546,10 +626,13 @@ function readTranscripts(
           ? (segments.at(-3) ?? null)
           : null
 
+      const command = transcriptCommand(content)
+
       transcripts.set(id, {
         id,
         parent_id: parentId,
-        command: transcriptCommand(content),
+        command,
+        brief: command === null ? transcriptBrief(content) : null,
         tools: transcriptTools(content),
         content,
         at_ms: transcriptTimestamp(content, stat.mtimeMs),
@@ -683,12 +766,58 @@ function runStorage(
   }
 }
 
-function readWorkflowEvidence(root: string): {
-  runs: RunEvidence[]
-  workers: Map<string, WorkflowIdentity>
-} {
+function workerIdentity(
+  runId: string,
+  storage: RunStorage,
+  invocationId: string,
+  role: string | null,
+): WorkflowIdentity | null {
+  const invocation = safeReadJson(storage.invocation(invocationId))
+
+  if (invocation === null || !isRecord(invocation.stage)) {
+    return null
+  }
+
+  const stage = invocation.stage
+  const evidenceWorkers = Array.isArray(invocation.evidence_workers)
+    ? invocation.evidence_workers
+    : []
+  const evidenceWorker = evidenceWorkers.find(
+    (item) => isRecord(item) && role !== null && item.role === role,
+  )
+
+  const persona =
+    isRecord(evidenceWorker) && typeof evidenceWorker.persona === 'string'
+      ? evidenceWorker.persona
+      : typeof stage.persona === 'string'
+        ? stage.persona
+        : 'unknown'
+  const modelSpec =
+    isRecord(evidenceWorker) && typeof evidenceWorker.model === 'string'
+      ? evidenceWorker.model
+      : typeof stage.model === 'string'
+        ? stage.model
+        : null
+
+  const inputs = isRecord(invocation.inputs) ? invocation.inputs : null
+  const stageSlug = typeof stage.slug === 'string' ? stage.slug : 'unknown'
+
+  return {
+    run_id: runId,
+    persona,
+    stage: role === REVIEW_EVIDENCE_ROLE ? REVIEW_STAGE : stageSlug,
+    role: 'stage',
+    model_spec: modelSpec,
+    remedial:
+      stageSlug === 'remediate' ||
+      (inputs !== null && isRecord(inputs.remediation_return)),
+  }
+}
+
+function readWorkflowEvidence(root: string): WorkflowEvidence {
   const runs: RunEvidence[] = []
   const workers = new Map<string, WorkflowIdentity>()
+  const storages = new Map<string, RunStorage>()
 
   for (const directory of runDirectories(root)) {
     const runId = path.basename(directory)
@@ -698,6 +827,8 @@ function readWorkflowEvidence(root: string): {
     if (state === null) {
       continue
     }
+
+    storages.set(runId, storage)
 
     const modelEvidence = Array.isArray(state.model_evidence)
       ? state.model_evidence
@@ -732,53 +863,20 @@ function readWorkflowEvidence(root: string): {
         continue
       }
 
-      const invocation = safeReadJson(storage.invocation(worker.invocation_id))
-
-      if (invocation === null || !isRecord(invocation.stage)) {
-        continue
-      }
-
-      const stage = invocation.stage
-      const evidenceWorkers = Array.isArray(invocation.evidence_workers)
-        ? invocation.evidence_workers
-        : []
-      const evidenceWorker = evidenceWorkers.find(
-        (item) =>
-          isRecord(item) &&
-          typeof worker.role === 'string' &&
-          item.role === worker.role,
+      const identity = workerIdentity(
+        runId,
+        storage,
+        worker.invocation_id,
+        typeof worker.role === 'string' ? worker.role : null,
       )
 
-      const persona =
-        isRecord(evidenceWorker) && typeof evidenceWorker.persona === 'string'
-          ? evidenceWorker.persona
-          : typeof stage.persona === 'string'
-            ? stage.persona
-            : 'unknown'
-      const modelSpec =
-        isRecord(evidenceWorker) && typeof evidenceWorker.model === 'string'
-          ? evidenceWorker.model
-          : typeof stage.model === 'string'
-            ? stage.model
-            : null
-
-      const inputs = isRecord(invocation.inputs) ? invocation.inputs : null
-      const stageSlug = typeof stage.slug === 'string' ? stage.slug : 'unknown'
-
-      workers.set(worker.handle, {
-        run_id: runId,
-        persona,
-        stage: stageSlug,
-        role: 'stage',
-        model_spec: modelSpec,
-        remedial:
-          stageSlug === 'remediate' ||
-          (inputs !== null && isRecord(inputs.remediation_return)),
-      })
+      if (identity !== null) {
+        workers.set(worker.handle, identity)
+      }
     }
   }
 
-  return { runs, workers }
+  return { runs, workers, storages }
 }
 
 function stageAt(run: RunEvidence, atMs: number): string | null {
@@ -837,11 +935,35 @@ function fastMode(modelSpec: string | null): EventAttribution['fast_mode'] {
   return 'unknown'
 }
 
+function readSupervisorCommands(root: string): Set<string> | null {
+  const registry = safeReadJson(
+    path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH),
+  )
+  const commands = registry?.supervisor_commands
+
+  return Array.isArray(commands) &&
+    commands.every((item) => typeof item === 'string')
+    ? new Set(commands)
+    : null
+}
+
+function mayBeSupervisor(
+  transcript: TranscriptEvidence,
+  supervisorCommands: Set<string> | null,
+): boolean {
+  return (
+    transcript.command === null ||
+    supervisorCommands === null ||
+    supervisorCommands.has(transcript.command)
+  )
+}
+
 function attributionForEvent(
   event: CursorUsageEvent,
   transcripts: Map<string, TranscriptEvidence>,
   runs: RunEvidence[],
   workers: Map<string, WorkflowIdentity>,
+  supervisorCommands: Set<string> | null,
 ): EventAttribution {
   const transcript =
     (event.conversation_id === null
@@ -859,11 +981,15 @@ function attributionForEvent(
       : workers.get(event.cloud_agent_id))
   const identity =
     worker ??
-    (transcript === undefined
+    (transcript === undefined ||
+    !mayBeSupervisor(transcript, supervisorCommands)
       ? null
       : supervisorIdentity(transcript, runs, event.timestamp_ms))
 
   const command = transcript?.command ?? 'Unattributed'
+  const stage =
+    identity?.stage ??
+    (REVIEW_COMMANDS.has(command) ? REVIEW_STAGE : 'Unattributed')
   const persona = identity?.persona ?? 'Unattributed'
 
   return {
@@ -881,7 +1007,7 @@ function attributionForEvent(
           ? 'unattributed'
           : 'ad hoc',
     workflow_role: identity?.role ?? 'unattributed',
-    stage: identity?.stage ?? 'Unattributed',
+    stage,
     remediation:
       identity === null
         ? 'unattributed'
@@ -1023,14 +1149,45 @@ export async function collectSpendRecords(
         aggregate.workers.set(handle, identity)
       }
 
+      for (const [runId, storage] of evidence.storages) {
+        aggregate.storages.set(runId, storage)
+      }
+
       return aggregate
     },
     {
       runs: [] as RunEvidence[],
       workers: new Map<string, WorkflowIdentity>(),
+      storages: new Map<string, RunStorage>(),
     },
   )
 
+  for (const transcript of transcripts.values()) {
+    const brief = transcript.brief
+    const storage =
+      brief === null ? undefined : workflow.storages.get(brief.run_id)
+
+    if (
+      brief === null ||
+      storage === undefined ||
+      workflow.workers.has(transcript.id)
+    ) {
+      continue
+    }
+
+    const identity = workerIdentity(
+      brief.run_id,
+      storage,
+      brief.invocation_id,
+      brief.role,
+    )
+
+    if (identity !== null) {
+      workflow.workers.set(transcript.id, identity)
+    }
+  }
+
+  const supervisorCommands = readSupervisorCommands(root)
   const records: SpendRecord[] = []
   const tool_calls = new Map<string, Map<string, number>>()
 
@@ -1040,6 +1197,7 @@ export async function collectSpendRecords(
       transcripts,
       workflow.runs,
       workflow.workers,
+      supervisorCommands,
     )
     const key = spendEventKey(event, source)
 

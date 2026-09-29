@@ -20,6 +20,7 @@ self-development intake without implementing the repair.
    - For an installation sweep, also supply the selected registry entries. Require the technician to classify each queued item it examines as harness-directed or target-owned. Require it never to consolidate a target-owned item.
    - Require the technician to consolidate harness-directed findings across installations within the category partition. Require it to name each originating installation and item. Require it to report the cited harness-directed item paths per intake without archiving them.
    - Require it to audit every registry category for harness bugs, compliance issues, governance misses, agent execution errors, target-repository defects, and unresolved hypotheses.
+   - Require it to build the efficiency profile of every workflow run the audit covers, and to run `{{PANCREATOR_PAN_COMMAND}} spend --days 7 --json` and join that report to the workflow and transcript records of the same window. Both apply without an operator prompt. A window the operator names replaces the 7 days.
    - Require it to write one intake for each category that produced a confirmed finding, and none for a category that produced no finding.
    - Require it to report the path of each intake it wrote together with the categories it cleared.
 7. Run this command once for each intake path the subagent reported: `{{PANCREATOR_PAN_COMMAND}} requirements run --persona harness-technician --workflow standalone --stage repair --kind repair --registry HARNESS-REPAIR-VALIDATE-001 --target <harness-relative-output-path> --json`.
@@ -35,4 +36,5 @@ self-development intake without implementing the repair.
     - For a category with an intake, give the validated path, its complete contents, and the findings it covers. Also give the next action its category contract names.
     - The operator can pass a category routed to `/pan-start` directly to that command in the Pancreator self-development repository. The out-of-band category names supervised execution outside the harness.
     - For a category with no confirmed finding, state that result explicitly.
+    - List the triggered efficiency signals for each run, and the spend window total, labeled cost, and lowest attribution coverage.
     - State any required remediation order across the intakes.

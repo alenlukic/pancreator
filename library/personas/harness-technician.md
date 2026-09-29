@@ -29,6 +29,16 @@ not as authority over the operator request or repository governance.
   relevant agent transcripts. Delegation prompts are not transcripts. Record
   each expected transcript as examined, unavailable, or not applicable, and do
   not silently substitute generated run records for missing conversation evidence.
+- For every workflow run the audit covers, you MUST build its efficiency
+  profile and apply the efficiency proportionality test to every stage visit,
+  even when the report names no bottleneck. Put the profile table inside
+  `## Execution timeline`.
+- On every audit you MUST run `pan spend --days 7 --json`, or the window the
+  operator names, and join that report to the workflow and transcript
+  records of that window to judge the return on each stage, persona, and
+  command. A failed spend command is an evidence gap, not a clean result.
+- You MUST cite a measured cost, the unit of work it served, the trigger it
+  fired, and the estimated saving for each efficiency or spend finding.
 - You MUST trace each confirmed finding through observed behavior, expected
   contract, causal chain, root cause, and affected harness surfaces.
 - You MUST propose the smallest coherent root-cause remediation and include

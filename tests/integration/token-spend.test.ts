@@ -267,6 +267,113 @@ test('token spend keeps tool totals non-additive and unmatched usage visible', a
   assert.ok(report.slices.commands.some((row) => row.key === 'Unattributed'))
 })
 
+test('token spend files review workers and review sessions under the review stage', async () => {
+  const root = createFixture()
+  const transcripts = path.join(root, 'transcripts')
+  const now = new Date('2026-09-22T16:00:00.000Z')
+  const runId = '63287_Sep-22-0300_review-spend'
+  const planRunId = '63287_Sep-22-0200_review-plan'
+  const invocationId = '4_verify-1_0123abcd'
+  const runs = path.join(root, 'runtime/logs/workflows')
+
+  writeJson(path.join(runs, runId, 'agent/state.json'), {
+    run_id: runId,
+    current_stage: 'verify',
+    delegated_workers: [],
+  })
+  writeJson(path.join(runs, runId, `agent/invocations/${invocationId}.json`), {
+    stage: { slug: 'verify', persona: 'verifier', model: 'verifier-model' },
+    evidence_workers: [
+      { role: 'review', persona: 'reviewer', model: 'reviewer-model' },
+      { role: 'qa', persona: 'qa-tester', model: 'qa-model' },
+    ],
+    inputs: {},
+  })
+  writeJson(path.join(runs, planRunId, 'agent/state.json'), {
+    run_id: planRunId,
+    current_stage: 'plan',
+  })
+
+  const opening = (text: string): string =>
+    JSON.stringify({
+      role: 'user',
+      message: { content: [{ type: 'text', text }] },
+    })
+  const conversations: Record<string, string> = {
+    'supervisor/subagents/review-worker':
+      `Role \`review\` for run \`${runId}\`, invocation \`${invocationId}\`.\n` +
+      `Plan context: \`${planRunId}\`.`,
+    'supervisor/subagents/qa-worker':
+      `# Evidence brief: qa for stage \`verify\`\n\n` +
+      `**Run** \`${runId}\` · **Invocation** \`${invocationId}\``,
+    'shepherd-session': '--- Cursor Command: pan-shepherd ---\nShepherd PR 12.',
+    'cleanup-session': `--- Cursor Command: pan-cleanup ---\nRetained ${runId}.`,
+  }
+
+  for (const [relative, text] of Object.entries(conversations)) {
+    const absolute = path.join(transcripts, `${relative}.jsonl`)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, opening(text))
+  }
+
+  const usageEvent = (conversationId: string, inputTokens: number) => ({
+    timestamp: String(now.getTime() - 1_000),
+    conversationId,
+    model: 'composer',
+    kind: 'Usage-based',
+    maxMode: false,
+    requestsCosts: 1,
+    isTokenBasedCall: true,
+    isChargeable: true,
+    isHeadless: false,
+    tokenUsage: {
+      inputTokens,
+      outputTokens: 0,
+      cacheWriteTokens: 0,
+      cacheReadTokens: 0,
+      totalCents: 1,
+    },
+    chargedCents: 1,
+  })
+  const fetchImpl: typeof fetch = async () =>
+    new Response(
+      JSON.stringify({
+        pagination: { hasNextPage: false },
+        usageEvents: [
+          usageEvent('review-worker', 40),
+          usageEvent('qa-worker', 30),
+          usageEvent('shepherd-session', 20),
+          usageEvent('cleanup-session', 10),
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )
+  const report = await generateTokenSpendReport(root, {
+    apiKey: 'test-key',
+    now,
+    fetchImpl,
+    transcriptsRoot: transcripts,
+  })
+  const stageTokens = Object.fromEntries(
+    report.slices.stages.map((row) => [row.key, row.metrics.total_tokens]),
+  )
+
+  assert.deepEqual(stageTokens, { review: 60, verify: 30, Unattributed: 10 })
+  assert.ok(
+    report.slices.persona_models.some(
+      (row) =>
+        row.key === 'reviewer · composer' && row.metrics.total_tokens === 40,
+    ),
+  )
+  assert.ok(
+    report.slices.persona_models.some(
+      (row) =>
+        row.key === 'qa-tester · composer' && row.metrics.total_tokens === 30,
+    ),
+  )
+})
+
 test('personal spend reports each event charged cost, including the Cursor fee', async () => {
   const root = createFixture()
   const transcripts = path.join(root, 'transcripts')
