@@ -334,7 +334,11 @@ test('AC-006: pan watch --attach follows an agent ledger to its verdict exit cod
   assert.equal(followedFailure.exit_code, 1)
 
   const unregisteredRoot = makeRoot()
-  const unregistered = await watchAgent(unregisteredRoot, 'never-seen', fakeClock())
+  const unregistered = await watchAgent(
+    unregisteredRoot,
+    'never-seen',
+    fakeClock(),
+  )
   const followedUnregistered = await watchAttach(unregisteredRoot, {
     ledgers: [unregistered.record_path],
     ...fakeClock(),

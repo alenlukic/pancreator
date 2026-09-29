@@ -106,9 +106,7 @@ export function agentIndexHooksStatus(
     return { projected: true, missing_events: [] }
   }
 
-  const projected = readJsonFileOrNull(
-    path.join(root, '.cursor', 'hooks.json'),
-  )
+  const projected = readJsonFileOrNull(path.join(root, '.cursor', 'hooks.json'))
 
   if (projected === null) {
     return { projected: false, missing_events: requiredEvents }
@@ -121,7 +119,10 @@ export function agentIndexHooksStatus(
     (event) => !projectedEvents.has(event),
   )
 
-  return { projected: missingEvents.length === 0, missing_events: missingEvents }
+  return {
+    projected: missingEvents.length === 0,
+    missing_events: missingEvents,
+  }
 }
 
 // ---------------------------------------------------------------------------

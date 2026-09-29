@@ -5058,8 +5058,8 @@ async function main(): Promise<void> {
                 `${agentIndexHooksHint(finalHooksProjection) ?? 'Confirm the agent id and rearm.'} ` +
                 `record ${result.record_path}`
               : `agent watch ${result.state}: '${result.agent_id}' after ` +
-                  `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
-                  `record ${result.record_path}`,
+                `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
+                `record ${result.record_path}`,
           json,
         )
         process.exitCode =
