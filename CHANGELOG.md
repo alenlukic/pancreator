@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.35.0] - 2026-09-29
+
+This release adds two cost dimensions to every harness repair audit. The technician now finds work that is correct but too slow or too expensive, without being told where to look.
+
+### Changed
+
+- Narrow the Performance repair category to the speed and memory of harness code, the suite, and gates ([d99d36c3](https://github.com/alenlukic/pancreator/commit/d99d36c3)).
+- Require the harness technician to profile the efficiency of every run it audits and to run `pan spend --days 7 --json` on every audit ([d99d36c3](https://github.com/alenlukic/pancreator/commit/d99d36c3)).
+
+### Added
+
+- Add the Agent/process inefficiency repair category for time, agent, and attention cost that is out of proportion to the work served ([d99d36c3](https://github.com/alenlukic/pancreator/commit/d99d36c3)).
+- Add the Cost/ROI repair category for token and dollar spend with a poor return, measured by joining the spend report to workflow and transcript records ([d99d36c3](https://github.com/alenlukic/pancreator/commit/d99d36c3)).
+- Add the `run-efficiency-audit` and `spend-roi-audit` skills, which `REPAIR-001` delivers on the repair card ([d99d36c3](https://github.com/alenlukic/pancreator/commit/d99d36c3)).
+
 ## [7.34.1] - 2026-09-29
 
 This release attributes review work to the review stage in `pan spend`. Review spend was reported under verify, under an unrelated earlier run, or as unattributed.
