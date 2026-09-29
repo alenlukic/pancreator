@@ -329,6 +329,7 @@ import {
   watchTimer,
   writeRedlineRecord,
   type GenericWatchRecordEntry,
+  type WatchAgentSessionEntry,
   type WatchAgentWakeInfo,
   type WatchRecordEntry,
 } from './lib/watch.js'
@@ -5205,23 +5206,45 @@ async function main(): Promise<void> {
           option(args, '--cadence-directed-by-operator'),
         )
 
+        const agentCadenceAuthority =
+          option(args, '--cadence-directed-by-operator')?.trim() || undefined
         const result = await watchAgent(root, agentId, {
           cadenceSeconds: agentCadence,
+          ...(agentCadenceAuthority
+            ? { cadenceAuthority: agentCadenceAuthority }
+            : {}),
           timeoutSeconds: parseTimeoutSeconds(
             option(args, '--timeout-seconds'),
           ),
+          onSessionStart: (entry: WatchAgentSessionEntry) => {
+            const indexed = entry.agent_entry
+            process.stderr.write(
+              `[pan watch:agent:${entry.subject}] armed ` +
+                `${entry.cadence_seconds}s cadence, ` +
+                `${entry.timeout_seconds}s bound; ` +
+                (indexed
+                  ? `index: ${indexed.status}, last ${indexed.last_event_kind} ` +
+                    `at ${indexed.last_event_at}` +
+                    (entry.aliases.length > 0
+                      ? `, aliases ${entry.aliases.join(', ')}`
+                      : '')
+                  : 'index: not registered yet') +
+                `; attach: ./bin/pan watch --attach ${entry.record_path}\n`,
+            )
+          },
           onWake: interactive
             ? (info: WatchAgentWakeInfo) => {
                 const activity = info.agent_activity
-                const openTool = activity.open_call?.tool ?? null
+                const openTool = activity?.open_call?.tool ?? null
                 const age =
-                  activity.last_event_age_seconds !== null
+                  activity?.last_event_age_seconds != null
                     ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
                     : ''
                 process.stderr.write(
                   `[pan watch:agent:${info.subject}] wake ${info.wake}` +
+                    (activity ? '' : ' not registered') +
                     (openTool ? ` open:${openTool}` : '') +
-                    (activity.last_event_kind
+                    (activity?.last_event_kind
                       ? ` last:${activity.last_event_kind}${age}`
                       : '') +
                     (info.terminal_state ? ` -> ${info.terminal_state}` : '') +

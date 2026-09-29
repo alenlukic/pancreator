@@ -142,7 +142,7 @@
           "id": "orch-delivery-proof",
           "type": "policy",
           "policy_id": "ORCH-001",
-          "instruction_sha256": "dec0146013be5cc91f4d9809a68104073bb4b132ce3ac6224cafe4a5c533a11a"
+          "instruction_sha256": "5c8c4c37eb234c7564f9c77a491c66cc4c6267e7779eacaae58353472d427a07"
         },
         {
           "id": "orch-reconcile",

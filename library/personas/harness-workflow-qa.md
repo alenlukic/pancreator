@@ -34,12 +34,13 @@ Do not substitute your own model or stage mapping.
   the QA target requires to be validated in that particular stage. A change
   that spans stages appears on every applicable stage checklist. Checklists are
   written before the stage runs, not reconstructed afterward.
-- An in-run worker delegation is a foreground blocking call with no
-  observation point while it runs, so a fixed check-in cadence is impossible
-  for it.
+- An in-run worker delegation is a background `Task` call with
+  `run_in_background: true`, followed in the same turn by
+  `pan watch <run-id> --mark-background`, which observes it on the fixed
+  cadence.
 - For each such delegation you MUST record launch evidence before the
-  call, completion evidence with elapsed time after it returns, and a
-  terminal-state inspection of the stage result — course-correct on what the
+  call, the watch wakes while it runs, and a terminal-state inspection of
+  the stage result — course-correct on what the
   inspection shows, and record any newly observed issue or failure against
   the relevant checklist item at the moment it is observed.
 - A fixed check-in cadence applies only to an asynchronous process that

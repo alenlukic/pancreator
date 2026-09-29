@@ -29,7 +29,8 @@ the task plus the configs path. It preserves the task under
 from there.
 
 The meta-orchestrator runs as a nested subagent. It directly supervises every
-session run and invokes run-scoped stage workers in foreground. This flattened
+session run and launches run-scoped stage workers in the background, each
+followed by `pan watch <run-id> --mark-background`. This flattened
 shape avoids an unsupported second level of subagent delegation.
 
 ## Configs file

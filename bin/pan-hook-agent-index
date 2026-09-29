@@ -35,8 +35,10 @@ resolve_root() {
   printf '%s' "$candidate"
 }
 
+# Code runs from the harness beside this wrapper; the index lives at the
+# resolved root.
 RESOLVED_ROOT="$(resolve_root)"
-DIST="$RESOLVED_ROOT/dist/src/agent-index-hook.js"
+DIST="$HARNESS_ROOT/dist/src/agent-index-hook.js"
 
 # Determine the event-appropriate fallback response (C-002).
 fallback_response() {
@@ -63,7 +65,14 @@ if [[ ! -f "$DIST" ]] || ! command -v node >/dev/null 2>&1; then
   exit 0
 fi
 
-# Run the compiled entry point; fall back on any failure.
-printf '%s' "$PAYLOAD" | node "$DIST" "$EVENT" 2>/dev/null || fallback_response
+# The entry point resolves its root from PANCREATOR_ROOT, so a hook fired in
+# a linked worktree or a target repository writes to the resolved harness.
+# Print its response only when it succeeded; otherwise print the fallback, so
+# Cursor never receives two JSON documents.
+if response="$(printf '%s' "$PAYLOAD" | PANCREATOR_ROOT="$RESOLVED_ROOT" node "$DIST" "$EVENT" 2>/dev/null)" && [[ -n "$response" ]]; then
+  printf '%s\n' "$response"
+else
+  fallback_response
+fi
 
 exit 0

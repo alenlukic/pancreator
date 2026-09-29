@@ -212,10 +212,11 @@ without a card, and `pan validate` enforces that list from
 
 ### Watch a worker launch
 
-A worker launch can return before the worker's declared output exists. Cursor
-can also turn a foreground subagent call into a background launch and tell the
-supervisor not to poll or await it. Run 63311 lost its supervisor to exactly
-that text. The polling therefore no longer depends on model judgment:
+Every worker `Task` call sets `run_in_background: true`, and the `preToolUse`
+deny hook refuses one without it. Cursor may tell the supervisor not to poll
+or await a background launch. Run 63311 lost its supervisor to exactly that
+text. The polling therefore no longer depends on model judgment: in the launch
+turn the supervisor runs `pan watch <run-id> --mark-background`.
 
 ```bash
 ./bin/pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-timeout-seconds <n>] [--timeout-seconds <n>] [--mark-background] [--launched-at <iso-8601>] [--handle <platform-handle>] [--agent <name>] [--model <name>] [--agent-state running|completed] [--json]
@@ -255,10 +256,28 @@ belongs to. An arming with no handle still succeeds and records that none was
 supplied. `--agent-state` reports what the supervisor saw when it inspected
 the launched agent itself.
 
-`--mark-background` records that the platform turned the launch into a
-background subagent. A launch that returns with the worker output already
-present exposes no observation point to watch, so the supervisor records its
-return instead:
+Each wake also records the worker's activity from the hook-fed agent index:
+its latest tool event, any open call, and its stop. A new event counts as
+progress, and an open call holds off a stall (a shell call only while its
+`bin/pan-run` heartbeat stays fresh). A completed stop with the output present
+completes the watch on `agent_state`. An error, abort, or completed stop
+without output ends it `unverified` (exit 4) and names the reason.
+
+A subagent launched outside a run is watched by its agent id:
+
+```bash
+./bin/pan watch --agent <agent-id> [--timeout-seconds <n>] [--json]
+```
+
+It exits `0` on a completed stop, `1` on an error or aborted stop, `2` on a
+stall, `3` at the bound, and `130` on interruption. Each wake records whether
+the stop left a transcript. Its ledger at `runtime/logs/watch/agent-<id>.jsonl`
+starts with a `session_started` entry, so `pan watch --attach` follows it.
+
+`--mark-background` records that the launch is a background subagent. As
+recovery only, a worker call that still returned in the foreground with the
+output already present exposes no observation point to watch, so the
+supervisor records its return instead:
 
 ```bash
 ./bin/pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]

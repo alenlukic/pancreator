@@ -164,3 +164,41 @@ test('AC-010: submit emits DELEGATION_FOREGROUND_RETURN when observation is a fo
   )
   assert.deepEqual(submitted.advisories, recorded)
 })
+
+test('AC-010: submit emits no DELEGATION_FOREGROUND_RETURN for a watched background launch', async () => {
+  const root = createFixture()
+  const created = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const prepared = prepareInvocation(root, created.run_id)
+  assert.ok(prepared.invocation)
+
+  const { state } = prepared
+  const invocationId = prepared.invocation.invocation_id
+  const outputPath = prepared.invocation.output.path
+
+  fillPreparedOutput(root, state)
+  markDelegationBackground(root, state.run_id, invocationId)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(watched.state, 'completed')
+
+  const submitted = submitOutput(root, state.run_id, outputPath)
+
+  assert.equal(
+    submitted.record.delegation_observation?.source,
+    'watch_completed',
+  )
+  assert.equal(
+    submitted.advisories.some((advisory) =>
+      advisory.message.includes(DELEGATION_FOREGROUND_RETURN),
+    ),
+    false,
+    `unexpected ${DELEGATION_FOREGROUND_RETURN}: ${JSON.stringify(submitted.advisories)}`,
+  )
+})

@@ -7,7 +7,7 @@
  *
  * Layout under `runtime/logs/agents/`:
  *   index.json    — summary of known agents with aliases and pending launches
- *   <id>.jsonl    — append-only event stream for one agent
+ *   <id>.jsonl    — append-only event stream for one agent id or alias
  *   index.lock    — operation mutex
  */
 import { createHash } from 'node:crypto'
@@ -15,9 +15,11 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -32,14 +34,49 @@ const LOCK_FILE = 'index.lock'
 const SCHEMA_VERSION = 1
 const MAX_EVENT_LINE_BYTES = 4096
 const MAX_SUMMARY_CHARS = 200
+// A truncated path names no file, so a longer one is left off the event line.
+const MAX_TRANSCRIPT_PATH_CHARS = 1024
+const MAX_ID_CHARS = 128
 const HEARTBEAT_THROTTLE_MS = 15_000
-const PRUNE_TERMINAL_AFTER_MS = 7 * 24 * 60 * 60 * 1_000
-const LOCK_WAIT_MS = 500
-const LOCK_RETRIES = 6
+// Cost-backed bound: it keeps index.json small and its rewrite fast.
+const PRUNE_AFTER_MS = 7 * 24 * 60 * 60 * 1_000
+const LOCK_ATTEMPTS = 10
+const LOCK_RETRY_SLEEP_MS = 25
+// A lock file whose owner never wrote its pid is stale after this long.
+const EMPTY_LOCK_STALE_MS = 5_000
+// A pan-run record that started this long before a shell call cannot be its.
+const PAN_RUN_LINK_LEAD_MS = 2_000
+const PAN_RUN_LINK_WINDOW_MS = 30_000
 
 const SECRET_NAME =
   /TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL|AUTH|SESSION/i
 const MIN_SECRET_LENGTH = 8
+const INLINE_ASSIGNMENT = /\b([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S+)/g
+const SECRET_FLAG =
+  /(--?[A-Za-z0-9_-]*(?:token|secret|password|passwd|api[-_]?key|credential)[A-Za-z0-9_-]*)(=|\s+)(\S+)/gi
+
+const SHELL_TOOLS = new Set(['Shell', 'Bash', 'run_terminal_cmd'])
+const FILE_TOOLS = new Set([
+  'Read',
+  'Write',
+  'StrReplace',
+  'Edit',
+  'MultiEdit',
+  'Delete',
+  'EditNotebook',
+  'NotebookEdit',
+  'read_file',
+  'edit_file',
+  'search_replace',
+  'delete_file',
+])
+const PATH_FIELDS = [
+  'path',
+  'file_path',
+  'target_file',
+  'target_notebook',
+  'notebook_path',
+]
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -77,16 +114,22 @@ export interface AgentEntry {
   invocation_id: string | null
   aliases: string[]
   transcript_path: string | null
+  /** Digest of the task text, the last key the stop resolution tries. */
+  prompt_digest?: string | null
   stop: AgentStopRecord | null
 }
 
 export interface PendingLaunch {
   parent_agent_id: string
   tool_use_id: string
-  prompt_digest: string
+  prompt_digest: string | null
   subagent_type: string | null
   description: string | null
   requested_at: string
+  /** Handle the parent's Task call returned, once seen. */
+  handle?: string | null
+  /** Child the launch linked to, once `subagentStart` matched it. */
+  resolved_agent_id?: string | null
 }
 
 export interface AgentIndex {
@@ -107,6 +150,9 @@ export interface AgentEvent {
   summary?: string
   duration_ms?: number
   failure_type?: string
+  status?: AgentStatus
+  /** On a `stopped` line, so the stop survives a dropped index update. */
+  transcript_path?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +162,7 @@ export interface AgentEvent {
 export interface PreToolUsePayload {
   event: 'preToolUse'
   conversation_id?: string
+  parent_tool_call_id?: string
   tool_name?: string
   tool_use_id?: string
   tool_input?: unknown
@@ -124,9 +171,11 @@ export interface PreToolUsePayload {
 export interface PostToolUsePayload {
   event: 'postToolUse' | 'postToolUseFailure'
   conversation_id?: string
+  parent_tool_call_id?: string
   tool_name?: string
   tool_use_id?: string
   tool_output?: unknown
+  failure_type?: string
 }
 
 export interface SubagentStartPayload {
@@ -146,7 +195,8 @@ export interface SubagentStopPayload {
   conversation_id?: string
   subagent_id?: string
   parent_conversation_id?: string
-  status?: AgentStatus
+  status?: string
+  task_text?: string
   agent_transcript_path?: string
   tool_call_count?: number
   modified_file_count?: number
@@ -180,27 +230,68 @@ function lockPath(root: string): string {
 }
 
 function sanitizeId(id: string): string {
-  return id.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128)
+  return id.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, MAX_ID_CHARS)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
 }
 
 // ---------------------------------------------------------------------------
-// Redaction
+// Redaction and summaries
 // ---------------------------------------------------------------------------
 
-function collectSecrets(): string[] {
-  const secrets: string[] = []
-
-  for (const [name, value] of Object.entries(process.env)) {
+/**
+ * The secret set `bin/pan-run` applies: values of secret-named environment
+ * variables and of secret-named entries in the root `.env`.
+ */
+export function collectSecrets(root: string): string[] {
+  const secrets = new Set<string>()
+  const add = (name: string, value: unknown): void => {
     if (
       SECRET_NAME.test(name) &&
       typeof value === 'string' &&
       value.length >= MIN_SECRET_LENGTH
     ) {
-      secrets.push(value)
+      secrets.add(value)
     }
   }
 
-  return secrets.sort((a, b) => b.length - a.length)
+  for (const [name, value] of Object.entries(process.env)) {
+    add(name, value)
+  }
+
+  let envText = ''
+
+  try {
+    envText = readFileSync(path.join(root, '.env'), 'utf8')
+  } catch {
+    // No .env file is the common case.
+  }
+
+  for (const line of envText.split(/\r?\n/)) {
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(
+      line.trim(),
+    )
+
+    if (!match) {
+      continue
+    }
+
+    let value = match[2] as string
+
+    if (/^'.*'$/.test(value) || /^".*"$/.test(value)) {
+      value = value.slice(1, -1)
+    }
+
+    add(match[1] as string, value)
+  }
+
+  return [...secrets].sort((a, b) => b.length - a.length)
 }
 
 function redact(text: string, secrets: string[]): string {
@@ -210,19 +301,98 @@ function redact(text: string, secrets: string[]): string {
     result = result.split(secret).join('[REDACTED]')
   }
 
-  return result
+  // A literal typed inline never reaches the environment, so the name of the
+  // assignment or flag is the only signal left.
+  result = result.replace(INLINE_ASSIGNMENT, (whole, name: string) =>
+    SECRET_NAME.test(name) ? `${name}=[REDACTED]` : whole,
+  )
+
+  return result.replace(
+    SECRET_FLAG,
+    (_whole, flag: string, separator: string) =>
+      `${flag}${separator}[REDACTED]`,
+  )
 }
 
-function boundedSummary(
-  text: string,
-  secrets: string[],
-  maxChars = MAX_SUMMARY_CHARS,
-): string {
+function boundedSummary(text: string, secrets: string[]): string {
   const redacted = redact(text, secrets)
 
-  return redacted.length > maxChars
-    ? redacted.slice(0, maxChars) + '…'
+  return redacted.length > MAX_SUMMARY_CHARS
+    ? redacted.slice(0, MAX_SUMMARY_CHARS) + '…'
     : redacted
+}
+
+function parseToolInput(toolInput: unknown): Record<string, unknown> | null {
+  if (isRecord(toolInput)) {
+    return toolInput
+  }
+
+  if (typeof toolInput === 'string') {
+    try {
+      const parsed = JSON.parse(toolInput) as unknown
+
+      return isRecord(parsed) ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+/**
+ * The only input a call event keeps: a redacted, truncated command for shell
+ * tools, the path for file tools, the subagent type and short description
+ * for `Task`, and nothing for every other tool. File contents, prompt
+ * bodies, and tool output never reach the index.
+ */
+export function summarizeToolInput(
+  toolName: string,
+  toolInput: unknown,
+  secrets: string[],
+): string | undefined {
+  const input = parseToolInput(toolInput)
+
+  if (!input) {
+    return undefined
+  }
+
+  if (SHELL_TOOLS.has(toolName)) {
+    const command = nonEmptyString(input.command)
+
+    return command ? boundedSummary(command, secrets) : undefined
+  }
+
+  if (FILE_TOOLS.has(toolName)) {
+    for (const field of PATH_FIELDS) {
+      const value = nonEmptyString(input[field])
+
+      if (value) {
+        return boundedSummary(value, secrets)
+      }
+    }
+
+    return undefined
+  }
+
+  if (toolName === 'Task') {
+    const type = nonEmptyString(input.subagent_type)
+    const description = nonEmptyString(input.description)
+    const text = [type, description].filter(Boolean).join(': ')
+
+    return text.length > 0 ? boundedSummary(text, secrets) : undefined
+  }
+
+  return undefined
+}
+
+/** Digest of a prompt text; both link sides digest the same field. */
+export function promptDigest(text: string | null | undefined): string | null {
+  if (typeof text !== 'string' || text.length === 0) {
+    return null
+  }
+
+  return createHash('sha256').update(text).digest('hex').slice(0, 16)
 }
 
 // ---------------------------------------------------------------------------
@@ -230,7 +400,7 @@ function boundedSummary(
 // ---------------------------------------------------------------------------
 
 const RUN_INVOCATION_PATTERN =
-  /runtime\/logs\/workflows\/([^/]+)\/agent\/invocations\/([^/.\s]+)\./u
+  /runtime\/logs\/workflows\/([^/\s]+)\/agent\/invocations\/([^/.\s]+)\.(?:md|json|delegation\.md)\b/u
 
 export function parseRunInvocation(
   text: string,
@@ -245,12 +415,17 @@ export function parseRunInvocation(
 }
 
 // ---------------------------------------------------------------------------
-// Mutex (best-effort file lock)
+// Mutex (file lock with stale-owner recovery)
 // ---------------------------------------------------------------------------
+
+const sleepCell = new Int32Array(new SharedArrayBuffer(4))
+
+function sleepSync(milliseconds: number): void {
+  Atomics.wait(sleepCell, 0, 0, milliseconds)
+}
 
 function tryAcquireLock(lockFile: string): boolean {
   try {
-    // O_EXCL: fails if file already exists
     writeFileSync(lockFile, String(process.pid), { flag: 'wx' })
     return true
   } catch {
@@ -258,34 +433,65 @@ function tryAcquireLock(lockFile: string): boolean {
   }
 }
 
-function releaseLock(lockFile: string): void {
+function processAlive(pid: number): boolean {
   try {
-    rmSync(lockFile)
-  } catch {
-    // ignore
+    process.kill(pid, 0)
+    return true
+  } catch (error: unknown) {
+    // EPERM means the process exists under another user.
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
   }
 }
 
-function withLock<T>(lockFile: string, fn: () => T, fallback: () => T): T {
-  for (let i = 0; i < LOCK_RETRIES; i += 1) {
-    if (tryAcquireLock(lockFile)) {
-      try {
-        return fn()
-      } finally {
-        releaseLock(lockFile)
-      }
-    }
+function lockIsStale(lockFile: string): boolean {
+  let text: string
+  let mtimeMs: number
 
-    // Synchronous busy-wait (hook must be fast; total max ~250ms)
-    const deadline = Date.now() + LOCK_WAIT_MS / LOCK_RETRIES
-
-    while (Date.now() < deadline) {
-      // spin
-    }
+  try {
+    text = readFileSync(lockFile, 'utf8').trim()
+    mtimeMs = statSync(lockFile).mtimeMs
+  } catch {
+    return false
   }
 
-  // Lock contention: fail open (C-004)
-  return fallback()
+  const pid = Number.parseInt(text, 10)
+
+  if (Number.isInteger(pid) && pid > 0) {
+    return !processAlive(pid)
+  }
+
+  return Date.now() - mtimeMs > EMPTY_LOCK_STALE_MS
+}
+
+/**
+ * Run `fn` under the index mutex. Returns false without running it when the
+ * lock stays held past the bounded wait, which callers treat as a dropped
+ * index update (fail open). Event lines are appended outside the lock.
+ */
+function withLock(lockFile: string, fn: () => void): boolean {
+  for (let attempt = 0; attempt < LOCK_ATTEMPTS; attempt += 1) {
+    if (tryAcquireLock(lockFile)) {
+      try {
+        fn()
+      } finally {
+        rmSync(lockFile, { force: true })
+      }
+
+      return true
+    }
+
+    // A dead owner is removed at once. Two processes can both judge the same
+    // lock stale; the loser then overwrites one index update, which the
+    // index already tolerates, and never an event line.
+    if (lockIsStale(lockFile)) {
+      rmSync(lockFile, { force: true })
+      continue
+    }
+
+    sleepSync(LOCK_RETRY_SLEEP_MS)
+  }
+
+  return false
 }
 
 // ---------------------------------------------------------------------------
@@ -307,12 +513,13 @@ function readIndex(root: string): AgentIndex {
     const raw = JSON.parse(readFileSync(indexPath(root), 'utf8')) as unknown
 
     if (
-      raw !== null &&
-      typeof raw === 'object' &&
-      !Array.isArray(raw) &&
-      (raw as Record<string, unknown>).schema_version === SCHEMA_VERSION
+      isRecord(raw) &&
+      raw.schema_version === SCHEMA_VERSION &&
+      Array.isArray(raw.agents) &&
+      isRecord(raw.aliases) &&
+      Array.isArray(raw.pending_launches)
     ) {
-      return raw as AgentIndex
+      return raw as unknown as AgentIndex
     }
   } catch {
     // unreadable or malformed
@@ -321,64 +528,63 @@ function readIndex(root: string): AgentIndex {
   return emptyIndex()
 }
 
-function writeIndex(root: string, index: AgentIndex): void {
+function writeIndex(root: string, index: AgentIndex, nowIso: string): void {
+  pruneIndex(index, Date.parse(nowIso))
+  index.updated_at = nowIso
+
   const file = indexPath(root)
   const tmp = `${file}.${process.pid}.tmp`
 
   writeFileSync(tmp, JSON.stringify(index, null, 2) + '\n')
-  // Atomic rename (same filesystem)
+
   try {
     renameSync(tmp, file)
   } catch {
-    try {
-      rmSync(tmp)
-    } catch {
-      // ignore
-    }
+    rmSync(tmp, { force: true })
   }
 }
-
-// ---------------------------------------------------------------------------
-// Pruning
-// ---------------------------------------------------------------------------
 
 function isTerminal(status: AgentStatus): boolean {
   return status === 'completed' || status === 'error' || status === 'aborted'
 }
 
 function pruneIndex(index: AgentIndex, nowMs: number): void {
-  const cutoffMs = nowMs - PRUNE_TERMINAL_AFTER_MS
-  const toRemove = new Set<string>()
+  const cutoffMs = nowMs - PRUNE_AFTER_MS
+  const removed = new Set<string>()
 
   for (const agent of index.agents) {
-    if (isTerminal(agent.status)) {
-      const lastMs = Date.parse(agent.last_event_at)
+    const lastMs = Date.parse(agent.last_event_at)
 
-      if (Number.isFinite(lastMs) && lastMs < cutoffMs) {
-        toRemove.add(agent.agent_id)
-      }
+    if (
+      isTerminal(agent.status) &&
+      Number.isFinite(lastMs) &&
+      lastMs < cutoffMs
+    ) {
+      removed.add(agent.agent_id)
     }
   }
 
-  if (toRemove.size === 0) {
-    return
+  if (removed.size > 0) {
+    index.agents = index.agents.filter((a) => !removed.has(a.agent_id))
+    index.aliases = Object.fromEntries(
+      Object.entries(index.aliases).filter(
+        ([, canonical]) => !removed.has(canonical),
+      ),
+    )
   }
 
-  index.agents = index.agents.filter((a) => !toRemove.has(a.agent_id))
+  // A launch whose child never registered, or one already resolved, has no
+  // further use once it is older than the retention window.
+  index.pending_launches = index.pending_launches.filter((launch) => {
+    const requestedMs = Date.parse(launch.requested_at)
+    const resolved = launch.resolved_agent_id ?? null
 
-  const aliasMap: Record<string, string> = {}
-
-  for (const [alias, canonical] of Object.entries(index.aliases)) {
-    if (!toRemove.has(canonical)) {
-      aliasMap[alias] = canonical
+    if (resolved !== null && removed.has(resolved)) {
+      return false
     }
-  }
 
-  index.aliases = aliasMap
-
-  index.pending_launches = index.pending_launches.filter(
-    (pl) => !toRemove.has(pl.parent_agent_id),
-  )
+    return !(Number.isFinite(requestedMs) && requestedMs < cutoffMs)
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -389,45 +595,120 @@ export function resolveCanonicalId(
   index: AgentIndex,
   id: string,
 ): string | null {
-  // Check if this is already a canonical id
   if (index.agents.some((a) => a.agent_id === id)) {
     return id
   }
 
-  // Check aliases
-  return index.aliases[id] ?? null
+  const canonical = index.aliases[id]
+
+  return canonical !== undefined &&
+    index.agents.some((a) => a.agent_id === canonical)
+    ? canonical
+    : null
 }
 
-function registerAlias(
-  index: AgentIndex,
-  alias: string,
-  canonical: string,
-): void {
-  if (alias !== canonical && !index.aliases[alias]) {
-    index.aliases[alias] = canonical
+function findAgent(index: AgentIndex, canonical: string): AgentEntry | null {
+  return index.agents.find((a) => a.agent_id === canonical) ?? null
+}
+
+function linkAlias(index: AgentIndex, alias: string, canonical: string): void {
+  if (alias === canonical || index.aliases[alias] !== undefined) {
+    return
   }
+
+  if (index.agents.some((a) => a.agent_id === alias)) {
+    return
+  }
+
+  index.aliases[alias] = canonical
+  const entry = findAgent(index, canonical)
+
+  if (entry && !entry.aliases.includes(alias)) {
+    entry.aliases.push(alias)
+  }
+}
+
+function newAgentEntry(agentId: string, nowIso: string): AgentEntry {
+  return {
+    agent_id: agentId,
+    parent_agent_id: null,
+    subagent_type: null,
+    model: null,
+    status: 'running',
+    registered_at: nowIso,
+    last_event_at: nowIso,
+    last_event_kind: 'registered',
+    run_id: null,
+    invocation_id: null,
+    aliases: [],
+    transcript_path: null,
+    prompt_digest: null,
+    stop: null,
+  }
+}
+
+/**
+ * Resolve the agent behind a tool event. An unknown conversation id whose
+ * `parent_tool_call_id` names a registered child becomes that child's alias,
+ * so a child's own tool calls land on the entry its launch registered.
+ */
+function resolveActor(
+  index: AgentIndex,
+  rawId: string,
+  parentToolCallId: string | null,
+  nowIso: string,
+): { entry: AgentEntry; changed: boolean } {
+  const known = resolveCanonicalId(index, rawId)
+
+  if (known !== null) {
+    return { entry: findAgent(index, known) as AgentEntry, changed: false }
+  }
+
+  if (parentToolCallId !== null) {
+    const child = resolveCanonicalId(index, parentToolCallId)
+
+    if (child !== null) {
+      linkAlias(index, rawId, child)
+      return { entry: findAgent(index, child) as AgentEntry, changed: true }
+    }
+  }
+
+  const entry = newAgentEntry(rawId, nowIso)
+  index.agents.push(entry)
+
+  return { entry, changed: true }
 }
 
 // ---------------------------------------------------------------------------
 // Event appending
 // ---------------------------------------------------------------------------
 
-function appendEvent(root: string, agentId: string, event: AgentEvent): void {
-  const file = agentEventFile(root, agentId)
-  const line = JSON.stringify(event)
+function ensureAgentsDir(root: string): void {
+  mkdirSync(agentsDir(root), { recursive: true })
+}
+
+function appendEvent(root: string, fileId: string, event: AgentEvent): void {
+  let line = JSON.stringify(event)
 
   if (Buffer.byteLength(line, 'utf8') > MAX_EVENT_LINE_BYTES) {
-    // Truncate the summary field to fit
-    const trimmed = {
-      ...event,
-      summary: event.summary
-        ? event.summary.slice(0, 100) + '…'
-        : event.summary,
-    }
-    appendFileSync(file, JSON.stringify(trimmed) + '\n')
-  } else {
-    appendFileSync(file, line + '\n')
+    line = JSON.stringify({ ...event, summary: undefined })
   }
+
+  appendFileSync(agentEventFile(root, fileId), line + '\n')
+}
+
+function touch(entry: AgentEntry, nowIso: string, kind: EventKind): void {
+  entry.last_event_at = nowIso
+  entry.last_event_kind = kind
+}
+
+function heartbeatDue(entry: AgentEntry, nowIso: string): boolean {
+  const lastMs = Date.parse(entry.last_event_at)
+
+  return (
+    !Number.isFinite(lastMs) ||
+    Date.parse(nowIso) - lastMs >= HEARTBEAT_THROTTLE_MS
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -435,447 +716,516 @@ function appendEvent(root: string, agentId: string, event: AgentEvent): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Handle `preToolUse` — record a call_started event and, for Task calls,
- * a pending launch in the index.
+ * Handle `preToolUse`: append `call_started`, and for a `Task` call record a
+ * pending launch keyed by parent and `tool_use_id`.
  */
 export function handlePreToolUse(
   root: string,
   payload: PreToolUsePayload,
 ): void {
-  const agentId = payload.conversation_id
+  const rawId = nonEmptyString(payload.conversation_id)
 
-  if (!agentId) {
+  if (!rawId) {
     return
   }
 
-  const now = new Date().toISOString()
-  const secrets = collectSecrets()
-  const toolName = payload.tool_name ?? 'unknown'
-  const toolUseId = payload.tool_use_id ?? ''
+  const nowIso = new Date().toISOString()
+  const secrets = collectSecrets(root)
+  const toolName = nonEmptyString(payload.tool_name) ?? 'unknown'
+  const toolUseId = nonEmptyString(payload.tool_use_id) ?? ''
+  const summary = summarizeToolInput(toolName, payload.tool_input, secrets)
 
-  // Derive a bounded summary from the tool input
-  let summary: string | undefined
-
-  if (payload.tool_input !== null && payload.tool_input !== undefined) {
-    try {
-      const raw =
-        typeof payload.tool_input === 'string'
-          ? payload.tool_input
-          : JSON.stringify(payload.tool_input)
-
-      summary = boundedSummary(raw, secrets)
-    } catch {
-      // ignore
-    }
-  }
-
-  // Append event to per-agent file
   ensureAgentsDir(root)
-  appendEvent(root, agentId, {
+  appendEvent(root, rawId, {
     schema_version: SCHEMA_VERSION,
     kind: 'call_started',
-    agent_id: agentId,
-    timestamp: now,
+    agent_id: rawId,
+    timestamp: nowIso,
     tool_name: toolName,
     tool_use_id: toolUseId,
     ...(summary !== undefined ? { summary } : {}),
   })
 
-  // For Task calls, record a pending launch in the index
-  if (toolName === 'Task') {
-    const description = extractTaskDescription(payload.tool_input, secrets)
-    const promptDigest = computePromptDigest(payload.tool_input)
+  const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
 
-    withLock(
-      lockPath(root),
-      () => {
-        const index = readIndex(root)
-        const now2 = new Date().toISOString()
-
-        // Ensure agent is registered
-        ensureAgentEntry(index, agentId, now2)
-        index.agents.find((a) => a.agent_id === agentId)!.last_event_at = now2
-        index.agents.find((a) => a.agent_id === agentId)!.last_event_kind =
-          'launch_requested'
-
-        // Add pending launch (keyed by parent+tool_use_id)
-        const existing = index.pending_launches.findIndex(
-          (pl) =>
-            pl.parent_agent_id === agentId && pl.tool_use_id === toolUseId,
-        )
-
-        const launch: PendingLaunch = {
-          parent_agent_id: agentId,
-          tool_use_id: toolUseId,
-          prompt_digest: promptDigest,
-          subagent_type: null,
-          description,
-          requested_at: now2,
-        }
-
-        if (existing >= 0) {
-          index.pending_launches[existing] = launch
-        } else {
-          index.pending_launches.push(launch)
-        }
-
-        pruneIndex(index, Date.now())
-        index.updated_at = now2
-        writeIndex(root, index)
-      },
-      () => {
-        // fail open: event already appended, skip index update
-      },
+  withLock(lockPath(root), () => {
+    const index = readIndex(root)
+    const { entry, changed } = resolveActor(
+      index,
+      rawId,
+      parentToolCallId,
+      nowIso,
     )
-  } else {
-    // Update last_event_at in index (throttled)
-    updateLastEventThrottled(root, agentId, now, 'call_started')
-  }
+
+    if (toolName === 'Task') {
+      const input = parseToolInput(payload.tool_input)
+      const launch: PendingLaunch = {
+        parent_agent_id: entry.agent_id,
+        tool_use_id: toolUseId,
+        prompt_digest: promptDigest(nonEmptyString(input?.prompt)),
+        subagent_type: nonEmptyString(input?.subagent_type),
+        description:
+          input && nonEmptyString(input.description)
+            ? boundedSummary(input.description as string, secrets)
+            : null,
+        requested_at: nowIso,
+        handle: null,
+        resolved_agent_id: null,
+      }
+      const existing = index.pending_launches.findIndex(
+        (pl) =>
+          pl.parent_agent_id === entry.agent_id && pl.tool_use_id === toolUseId,
+      )
+
+      if (existing >= 0) {
+        index.pending_launches[existing] = launch
+      } else {
+        index.pending_launches.push(launch)
+      }
+
+      touch(entry, nowIso, 'launch_requested')
+      writeIndex(root, index, nowIso)
+      return
+    }
+
+    if (changed || heartbeatDue(entry, nowIso)) {
+      touch(entry, nowIso, 'call_started')
+      writeIndex(root, index, nowIso)
+    }
+  })
 }
 
 /**
- * Handle `postToolUse` or `postToolUseFailure` — record call_finished or
- * call_failed, and for Task calls record the returned handle.
+ * Handle `postToolUse` or `postToolUseFailure`. For a returned `Task`, parse
+ * the agent handle into an alias; the output body is never stored.
  */
 export function handlePostToolUse(
   root: string,
   payload: PostToolUsePayload,
 ): void {
-  const agentId = payload.conversation_id
+  const rawId = nonEmptyString(payload.conversation_id)
 
-  if (!agentId) {
+  if (!rawId) {
     return
   }
 
-  const now = new Date().toISOString()
-  const isFailed = payload.event === 'postToolUseFailure'
-  const kind: EventKind = isFailed ? 'call_failed' : 'call_finished'
-  const toolName = payload.tool_name ?? 'unknown'
-  const toolUseId = payload.tool_use_id ?? ''
+  const nowIso = new Date().toISOString()
+  const failed = payload.event === 'postToolUseFailure'
+  const kind: EventKind = failed ? 'call_failed' : 'call_finished'
+  const toolName = nonEmptyString(payload.tool_name) ?? 'unknown'
+  const toolUseId = nonEmptyString(payload.tool_use_id) ?? ''
+  const failureType = failed ? nonEmptyString(payload.failure_type) : null
 
   ensureAgentsDir(root)
-  appendEvent(root, agentId, {
+  appendEvent(root, rawId, {
     schema_version: SCHEMA_VERSION,
     kind,
-    agent_id: agentId,
-    timestamp: now,
+    agent_id: rawId,
+    timestamp: nowIso,
     tool_name: toolName,
     tool_use_id: toolUseId,
+    ...(failureType ? { failure_type: failureType.slice(0, 64) } : {}),
   })
 
-  // For Task postToolUse, extract the returned handle and record launch_returned
-  if (toolName === 'Task' && !isFailed) {
-    const handle = extractTaskHandle(payload.tool_output)
+  const handle =
+    toolName === 'Task' && !failed
+      ? extractTaskHandle(payload.tool_output)
+      : null
 
-    if (handle) {
-      appendEvent(root, agentId, {
-        schema_version: SCHEMA_VERSION,
-        kind: 'launch_returned',
-        agent_id: agentId,
-        timestamp: now,
-        tool_use_id: toolUseId,
-        summary: boundedSummary(handle, collectSecrets()),
-      })
+  if (handle !== null) {
+    appendEvent(root, rawId, {
+      schema_version: SCHEMA_VERSION,
+      kind: 'launch_returned',
+      agent_id: rawId,
+      timestamp: nowIso,
+      tool_name: toolName,
+      tool_use_id: toolUseId,
+      summary: handle,
+    })
+  }
+
+  const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
+
+  withLock(lockPath(root), () => {
+    const index = readIndex(root)
+    const { entry, changed } = resolveActor(
+      index,
+      rawId,
+      parentToolCallId,
+      nowIso,
+    )
+
+    if (handle !== null) {
+      const launch = index.pending_launches.find(
+        (pl) =>
+          pl.parent_agent_id === entry.agent_id && pl.tool_use_id === toolUseId,
+      )
+
+      if (launch) {
+        launch.handle = handle
+
+        if (launch.resolved_agent_id) {
+          linkAlias(index, handle, launch.resolved_agent_id)
+        }
+      }
+
+      touch(entry, nowIso, 'launch_returned')
+      writeIndex(root, index, nowIso)
+      return
     }
 
-    withLock(
-      lockPath(root),
-      () => {
-        const index = readIndex(root)
-        const agent = index.agents.find((a) => a.agent_id === agentId)
-
-        if (agent) {
-          agent.last_event_at = now
-          agent.last_event_kind = 'launch_returned'
-        }
-
-        // Link the handle as an alias to the pending launch's child when we
-        // know the child id; otherwise record it as an unresolved alias.
-        if (handle) {
-          // Find pending launch by tool_use_id
-          const launch = index.pending_launches.find(
-            (pl) =>
-              pl.parent_agent_id === agentId && pl.tool_use_id === toolUseId,
-          )
-
-          if (launch) {
-            // Try to find the child agent registered for this launch
-            const child = index.agents.find(
-              (a) =>
-                a.parent_agent_id === agentId && a.aliases.includes(toolUseId),
-            )
-
-            if (child) {
-              registerAlias(index, handle, child.agent_id)
-            } else {
-              // Record as pending alias resolution
-              if (!index.aliases[handle]) {
-                index.aliases[handle] = handle
-              }
-            }
-          }
-        }
-
-        pruneIndex(index, Date.now())
-        index.updated_at = now
-        writeIndex(root, index)
-      },
-      () => {},
-    )
-  } else {
-    updateLastEventThrottled(root, agentId, now, kind)
-  }
+    if (changed || heartbeatDue(entry, nowIso)) {
+      touch(entry, nowIso, kind)
+      writeIndex(root, index, nowIso)
+    }
+  })
 }
 
 /**
- * Handle `subagentStart` — register the child agent and link it to the
- * pending launch.
+ * Handle `subagentStart`: register the child, parse its run and invocation,
+ * and link the parent's pending launch by `tool_call_id` equality or by
+ * parent plus prompt digest.
  */
 export function handleSubagentStart(
   root: string,
   payload: SubagentStartPayload,
 ): void {
-  // Use subagent_id when present, else conversation_id of the child
-  const rawChildId = payload.subagent_id ?? payload.conversation_id ?? null
+  const subagentId = nonEmptyString(payload.subagent_id)
+  const conversationId = nonEmptyString(payload.conversation_id)
+  const explicitParent = nonEmptyString(payload.parent_conversation_id)
+  const childId = subagentId ?? conversationId
 
-  if (!rawChildId) {
+  if (!childId) {
     return
   }
 
-  const parentId = payload.parent_conversation_id ?? null
-  const toolCallId = payload.tool_call_id ?? null
-  const now = new Date().toISOString()
-  const taskText = payload.task_text ?? ''
+  // Without an explicit parent field, a payload that carries both ids fired
+  // in the parent's conversation, so `conversation_id` names the parent.
+  const parentId =
+    explicitParent ??
+    (subagentId && conversationId && conversationId !== subagentId
+      ? conversationId
+      : null)
+  const childConversationId =
+    explicitParent &&
+    subagentId &&
+    conversationId &&
+    conversationId !== explicitParent &&
+    conversationId !== subagentId
+      ? conversationId
+      : null
+  const toolCallId = nonEmptyString(payload.tool_call_id)
+  const taskText = nonEmptyString(payload.task_text) ?? ''
   const parsed = parseRunInvocation(taskText)
-
-  // Prompt digest to match against pending launches
-  const promptDigest = computePromptDigest(taskText)
+  const digest = promptDigest(taskText)
+  const nowIso = new Date().toISOString()
 
   ensureAgentsDir(root)
-  appendEvent(root, rawChildId, {
+  appendEvent(root, childId, {
     schema_version: SCHEMA_VERSION,
     kind: 'registered',
-    agent_id: rawChildId,
-    timestamp: now,
+    agent_id: childId,
+    timestamp: nowIso,
     ...(toolCallId ? { tool_use_id: toolCallId } : {}),
   })
 
-  withLock(
-    lockPath(root),
-    () => {
-      const index = readIndex(root)
+  withLock(lockPath(root), () => {
+    const index = readIndex(root)
+    const parentCanonical =
+      parentId !== null
+        ? (resolveCanonicalId(index, parentId) ?? parentId)
+        : null
+    const canonical = resolveCanonicalId(index, childId)
+    let child = canonical !== null ? findAgent(index, canonical) : null
 
-      // Register the child
-      let childEntry = index.agents.find((a) => a.agent_id === rawChildId)
+    if (!child) {
+      child = newAgentEntry(childId, nowIso)
+      index.agents.push(child)
+    }
 
-      if (!childEntry) {
-        childEntry = {
-          agent_id: rawChildId,
-          parent_agent_id: parentId,
-          subagent_type: payload.subagent_type ?? null,
-          model: payload.model ?? null,
-          status: 'running',
-          registered_at: now,
-          last_event_at: now,
-          last_event_kind: 'registered',
-          run_id: parsed?.run_id ?? null,
-          invocation_id: parsed?.invocation_id ?? null,
-          aliases: [],
-          transcript_path: null,
-          stop: null,
-        }
-        index.agents.push(childEntry)
-      } else {
-        childEntry.last_event_at = now
-        childEntry.last_event_kind = 'registered'
+    child.parent_agent_id = parentCanonical ?? child.parent_agent_id
+    child.subagent_type =
+      nonEmptyString(payload.subagent_type) ?? child.subagent_type
+    child.model = nonEmptyString(payload.model) ?? child.model
+    child.prompt_digest = digest ?? child.prompt_digest ?? null
+    child.status = 'running'
+    touch(child, nowIso, 'registered')
 
-        if (parsed && !childEntry.run_id) {
-          childEntry.run_id = parsed.run_id
-          childEntry.invocation_id = parsed.invocation_id
-        }
+    if (parsed) {
+      child.run_id = parsed.run_id
+      child.invocation_id = parsed.invocation_id
+    }
+
+    for (const alias of [toolCallId, childConversationId]) {
+      if (alias) {
+        linkAlias(index, alias, child.agent_id)
       }
+    }
 
-      // Register aliases
-      if (toolCallId && toolCallId !== rawChildId) {
-        registerAlias(index, toolCallId, rawChildId)
+    if (parentCanonical !== null) {
+      const open = index.pending_launches.filter(
+        (pl) =>
+          pl.parent_agent_id === parentCanonical &&
+          (pl.resolved_agent_id ?? null) === null,
+      )
+      const launch =
+        (toolCallId
+          ? open.find((pl) => pl.tool_use_id === toolCallId)
+          : undefined) ??
+        (digest ? open.find((pl) => pl.prompt_digest === digest) : undefined)
 
-        if (!childEntry.aliases.includes(toolCallId)) {
-          childEntry.aliases.push(toolCallId)
+      if (launch) {
+        launch.resolved_agent_id = child.agent_id
+
+        if (launch.tool_use_id) {
+          linkAlias(index, launch.tool_use_id, child.agent_id)
         }
-      }
 
-      // Link to pending launch: by tool_call_id equality or by parent+digest
-      if (parentId) {
-        const launch = index.pending_launches.find(
-          (pl) =>
-            pl.parent_agent_id === parentId &&
-            (toolCallId
-              ? pl.tool_use_id === toolCallId
-              : pl.prompt_digest === promptDigest),
-        )
-
-        if (launch) {
-          // Register the tool_use_id of the launch as an alias of this child
-          if (
-            launch.tool_use_id !== rawChildId &&
-            !childEntry.aliases.includes(launch.tool_use_id)
-          ) {
-            registerAlias(index, launch.tool_use_id, rawChildId)
-            childEntry.aliases.push(launch.tool_use_id)
-          }
-
-          if (launch.subagent_type) {
-            childEntry.subagent_type = launch.subagent_type
-          }
+        if (launch.handle) {
+          linkAlias(index, launch.handle, child.agent_id)
         }
-      }
 
-      pruneIndex(index, Date.now())
-      index.updated_at = now
-      writeIndex(root, index)
-    },
-    () => {},
-  )
+        child.subagent_type = child.subagent_type ?? launch.subagent_type
+      }
+    }
+
+    writeIndex(root, index, nowIso)
+  })
+}
+
+function transcriptKey(transcriptPath: string | null): string | null {
+  if (!transcriptPath) {
+    return null
+  }
+
+  const key = path.basename(transcriptPath).replace(/\.jsonl?$/u, '')
+
+  return key.length > 0 ? key : null
+}
+
+function normalizeStopStatus(value: unknown): AgentStatus {
+  return value === 'error' || value === 'aborted' ? value : 'completed'
 }
 
 /**
- * Handle `subagentStop` — mark the agent stopped.
+ * Resolve the stopped child in the Q-002 order: `subagent_id`, the transcript
+ * basename, a registered child `conversation_id`, then parent plus task-text
+ * digest. The parent itself is never the answer. The caller passes the
+ * transcript path already redacted, because its basename becomes an alias
+ * and, for an unresolved stop, the event file name.
+ */
+function resolveStoppedChild(
+  index: AgentIndex,
+  payload: SubagentStopPayload,
+  transcriptPath: string | null,
+): { canonical: string | null; rawKeys: string[] } {
+  const parentId = nonEmptyString(payload.parent_conversation_id)
+  const parentCanonical =
+    parentId !== null ? (resolveCanonicalId(index, parentId) ?? parentId) : null
+  const notParent = (canonical: string | null): string | null =>
+    canonical !== null && canonical !== parentCanonical ? canonical : null
+  const subagentId = nonEmptyString(payload.subagent_id)
+  const transcript = transcriptKey(transcriptPath)
+  const rawKeys = [subagentId, transcript].filter(
+    (key): key is string => key !== null,
+  )
+
+  for (const key of rawKeys) {
+    const canonical = notParent(resolveCanonicalId(index, key))
+
+    if (canonical !== null) {
+      return { canonical, rawKeys }
+    }
+  }
+
+  const conversationId = nonEmptyString(payload.conversation_id)
+
+  if (conversationId !== null) {
+    const canonical = notParent(resolveCanonicalId(index, conversationId))
+    const entry = canonical !== null ? findAgent(index, canonical) : null
+
+    if (entry && entry.parent_agent_id !== null) {
+      return { canonical, rawKeys }
+    }
+  }
+
+  const digest = promptDigest(nonEmptyString(payload.task_text))
+
+  if (parentCanonical !== null && digest !== null) {
+    const match = index.agents
+      .filter(
+        (a) =>
+          a.parent_agent_id === parentCanonical &&
+          a.prompt_digest === digest &&
+          a.status === 'running',
+      )
+      .sort((a, b) => b.registered_at.localeCompare(a.registered_at))[0]
+
+    if (match) {
+      return { canonical: match.agent_id, rawKeys }
+    }
+  }
+
+  return { canonical: null, rawKeys }
+}
+
+/**
+ * Handle `subagentStop`: append the stop line first, so lock contention can
+ * drop only the index update, then record the stop on the child's entry.
  */
 export function handleSubagentStop(
   root: string,
   payload: SubagentStopPayload,
 ): void {
-  const now = new Date().toISOString()
+  const nowIso = new Date().toISOString()
+  const status = normalizeStopStatus(payload.status)
+  const rawTranscriptPath = nonEmptyString(payload.agent_transcript_path)
+  const transcriptPath =
+    rawTranscriptPath !== null
+      ? redact(rawTranscriptPath, collectSecrets(root))
+      : null
+  const storedTranscriptPath =
+    transcriptPath !== null &&
+    transcriptPath.length <= MAX_TRANSCRIPT_PATH_CHARS
+      ? transcriptPath
+      : null
+  const { canonical, rawKeys } = resolveStoppedChild(
+    readIndex(root),
+    payload,
+    transcriptPath,
+  )
+  const target = canonical ?? rawKeys[0] ?? null
+
+  if (target === null) {
+    return
+  }
 
   ensureAgentsDir(root)
+  appendEvent(root, target, {
+    schema_version: SCHEMA_VERSION,
+    kind: 'stopped',
+    agent_id: target,
+    timestamp: nowIso,
+    status,
+    ...(typeof payload.duration_seconds === 'number'
+      ? { duration_ms: Math.round(payload.duration_seconds * 1000) }
+      : {}),
+    ...(storedTranscriptPath !== null
+      ? { transcript_path: storedTranscriptPath }
+      : {}),
+  })
 
-  withLock(
-    lockPath(root),
-    () => {
-      const index = readIndex(root)
+  withLock(lockPath(root), () => {
+    const index = readIndex(root)
+    const resolved =
+      resolveStoppedChild(index, payload, transcriptPath).canonical ?? target
+    let agent = findAgent(
+      index,
+      resolveCanonicalId(index, resolved) ?? resolved,
+    )
 
-      // Resolve the stopped child in priority order (Q-002 disposition)
-      const rawId =
-        payload.subagent_id ??
-        (payload.agent_transcript_path
-          ? path.basename(payload.agent_transcript_path, '.json')
-          : null) ??
-        payload.conversation_id ??
-        null
+    if (!agent) {
+      agent = newAgentEntry(resolved, nowIso)
+      agent.parent_agent_id = nonEmptyString(payload.parent_conversation_id)
+      index.agents.push(agent)
+    }
 
-      if (!rawId) {
-        return
+    agent.status = status
+    touch(agent, nowIso, 'stopped')
+    agent.transcript_path = storedTranscriptPath ?? agent.transcript_path
+    agent.stop = {
+      status,
+      recorded_at: nowIso,
+      tool_call_count:
+        typeof payload.tool_call_count === 'number'
+          ? payload.tool_call_count
+          : 0,
+      modified_file_count:
+        typeof payload.modified_file_count === 'number'
+          ? payload.modified_file_count
+          : 0,
+      duration_seconds:
+        typeof payload.duration_seconds === 'number'
+          ? payload.duration_seconds
+          : null,
+    }
+
+    for (const key of rawKeys) {
+      linkAlias(index, key, agent.agent_id)
+    }
+
+    writeIndex(root, index, nowIso)
+  })
+}
+
+/**
+ * The agent handle a `Task` call returned: a JSON string or an object's id
+ * field, else a plain handle token, else an `agent id: <token>` mention.
+ */
+export function extractTaskHandle(toolOutput: unknown): string | null {
+  let output = toolOutput
+
+  if (typeof output === 'string') {
+    const trimmed = output.trim()
+
+    try {
+      output = JSON.parse(trimmed) as unknown
+    } catch {
+      output = trimmed
+    }
+  }
+
+  if (typeof output === 'string') {
+    if (/^[A-Za-z0-9_-]{1,128}$/u.test(output)) {
+      return output
+    }
+
+    const mention =
+      /agent[ _-]?id["']?\s*[:=]\s*["']?([A-Za-z0-9_-]{1,128})/iu.exec(output)
+
+    return mention ? (mention[1] as string) : null
+  }
+
+  if (isRecord(output)) {
+    for (const field of ['agent_id', 'agentId', 'id', 'conversation_id']) {
+      const value = nonEmptyString(output[field])
+
+      if (value && /^[A-Za-z0-9_-]{1,128}$/u.test(value)) {
+        return value
       }
+    }
+  }
 
-      const canonical = resolveCanonicalId(index, rawId) ?? rawId
-
-      // Append stop event to the agent's event file
-      const stopStatus: AgentStatus =
-        (payload.status as AgentStatus | undefined) ?? 'completed'
-      appendEvent(root, canonical, {
-        schema_version: SCHEMA_VERSION,
-        kind: 'stopped',
-        agent_id: canonical,
-        timestamp: now,
-        ...(payload.duration_seconds !== undefined
-          ? { duration_ms: Math.round(payload.duration_seconds * 1000) }
-          : {}),
-      })
-
-      // Update index entry
-      let agent = index.agents.find((a) => a.agent_id === canonical)
-
-      if (!agent) {
-        // Late-registering stop: create a minimal entry
-        agent = {
-          agent_id: canonical,
-          parent_agent_id: payload.parent_conversation_id ?? null,
-          subagent_type: null,
-          model: null,
-          status: stopStatus,
-          registered_at: now,
-          last_event_at: now,
-          last_event_kind: 'stopped',
-          run_id: null,
-          invocation_id: null,
-          aliases: [],
-          transcript_path: payload.agent_transcript_path ?? null,
-          stop: null,
-        }
-        index.agents.push(agent)
-      }
-
-      agent.status = stopStatus
-      agent.last_event_at = now
-      agent.last_event_kind = 'stopped'
-
-      if (payload.agent_transcript_path && !agent.transcript_path) {
-        agent.transcript_path = payload.agent_transcript_path
-      }
-
-      agent.stop = {
-        status: stopStatus,
-        recorded_at: now,
-        tool_call_count: payload.tool_call_count ?? 0,
-        modified_file_count: payload.modified_file_count ?? 0,
-        duration_seconds: payload.duration_seconds ?? null,
-      }
-
-      // Register aliases from stop payload
-      if (rawId !== canonical) {
-        registerAlias(index, rawId, canonical)
-      }
-
-      pruneIndex(index, Date.now())
-      index.updated_at = now
-      writeIndex(root, index)
-    },
-    () => {},
-  )
+  return null
 }
 
 // ---------------------------------------------------------------------------
 // Reader helpers for watch integration
 // ---------------------------------------------------------------------------
 
-/**
- * Load all events for an agent (merging aliases).
- */
-export function loadAgentEvents(root: string, agentId: string): AgentEvent[] {
-  const index = readIndex(root)
-  const canonical = resolveCanonicalId(index, agentId) ?? agentId
-  const agent = index.agents.find((a) => a.agent_id === canonical)
-
-  if (!agent) {
-    return []
-  }
-
-  const ids = [canonical, ...agent.aliases]
+function loadEventsForEntry(root: string, agent: AgentEntry): AgentEvent[] {
   const events: AgentEvent[] = []
 
-  for (const id of ids) {
+  for (const id of [agent.agent_id, ...agent.aliases]) {
     const file = agentEventFile(root, id)
 
     if (!existsSync(file)) {
       continue
     }
 
-    const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean)
+    for (const line of readFileSync(file, 'utf8').split('\n')) {
+      if (line.length === 0) {
+        continue
+      }
 
-    for (const line of lines) {
       try {
         const event = JSON.parse(line) as unknown
 
-        if (
-          event !== null &&
-          typeof event === 'object' &&
-          !Array.isArray(event) &&
-          (event as Record<string, unknown>).schema_version === SCHEMA_VERSION
-        ) {
-          events.push(event as AgentEvent)
+        if (isRecord(event) && event.schema_version === SCHEMA_VERSION) {
+          events.push(event as unknown as AgentEvent)
         }
       } catch {
-        // ignore unparseable lines
+        // A torn final line from a concurrent append is skipped.
       }
     }
   }
@@ -883,255 +1233,339 @@ export function loadAgentEvents(root: string, agentId: string): AgentEvent[] {
   return events.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
 }
 
-/**
- * Get the latest event for an agent.
- */
+/** Load every event for an agent, merging the event files of its aliases. */
+export function loadAgentEvents(root: string, agentId: string): AgentEvent[] {
+  const agent = getAgentEntry(root, agentId)
+
+  return agent ? loadEventsForEntry(root, agent) : []
+}
+
 export function getLatestEvent(
   root: string,
   agentId: string,
 ): AgentEvent | null {
   const events = loadAgentEvents(root, agentId)
 
-  return events.length > 0 ? events[events.length - 1]! : null
+  return events[events.length - 1] ?? null
 }
 
-/**
- * Get the open call (started but not finished) for an agent.
- */
-export function getOpenCall(root: string, agentId: string): AgentEvent | null {
-  const events = loadAgentEvents(root, agentId)
-  const openByToolUseId = new Map<string, AgentEvent>()
+function openCallIn(events: AgentEvent[]): AgentEvent | null {
+  const open = new Map<string, AgentEvent>()
 
   for (const event of events) {
     const id = event.tool_use_id ?? ''
 
     if (event.kind === 'call_started') {
-      openByToolUseId.set(id, event)
+      open.set(id, event)
     } else if (event.kind === 'call_finished' || event.kind === 'call_failed') {
-      openByToolUseId.delete(id)
+      open.delete(id)
+    } else if (event.kind === 'stopped') {
+      open.clear()
     }
   }
 
-  const openCalls = [...openByToolUseId.values()]
-
-  return openCalls.length > 0 ? openCalls[openCalls.length - 1]! : null
+  return [...open.values()].pop() ?? null
 }
 
-/**
- * Get the stop record for an agent from the index.
- */
+/** The call that started without finishing, when one is open. */
+export function getOpenCall(root: string, agentId: string): AgentEvent | null {
+  return openCallIn(loadAgentEvents(root, agentId))
+}
+
 export function getStopRecord(
   root: string,
   agentId: string,
 ): AgentStopRecord | null {
-  const index = readIndex(root)
-  const canonical = resolveCanonicalId(index, agentId) ?? agentId
-  const agent = index.agents.find((a) => a.agent_id === canonical)
-
-  return agent?.stop ?? null
+  return getAgentEntry(root, agentId)?.stop ?? null
 }
 
-/**
- * Get the full agent entry from the index.
- */
 export function getAgentEntry(
   root: string,
   agentId: string,
 ): AgentEntry | null {
   const index = readIndex(root)
-  const canonical = resolveCanonicalId(index, agentId) ?? agentId
+  const canonical = resolveCanonicalId(index, agentId)
 
-  return index.agents.find((a) => a.agent_id === canonical) ?? null
+  return canonical !== null ? findAgent(index, canonical) : null
 }
 
-/**
- * Get the agent entry from run+invocation ids.
- */
+/** The newest agent registered for one run invocation. */
 export function getAgentByRunInvocation(
   root: string,
   runId: string,
   invocationId: string,
 ): AgentEntry | null {
-  const index = readIndex(root)
-
   return (
-    index.agents.find(
-      (a) => a.run_id === runId && a.invocation_id === invocationId,
-    ) ?? null
+    readIndex(root)
+      .agents.filter(
+        (a) => a.run_id === runId && a.invocation_id === invocationId,
+      )
+      .sort((a, b) => b.registered_at.localeCompare(a.registered_at))[0] ?? null
   )
 }
 
-/**
- * Compute an activity signature (hash) for use in progress fingerprinting.
- */
-export function agentActivitySignature(
-  root: string,
-  agentId: string,
-): string | null {
-  const latest = getLatestEvent(root, agentId)
-
-  if (!latest) {
-    return null
-  }
-
-  return createHash('sha256')
-    .update(
-      `${agentId}:${latest.timestamp}:${latest.kind}:${latest.tool_use_id ?? ''}`,
-    )
-    .digest('hex')
-    .slice(0, 16)
-}
-
-/**
- * Read the full index.
- */
 export function readAgentIndex(root: string): AgentIndex {
   return readIndex(root)
 }
 
 // ---------------------------------------------------------------------------
-// Internal helpers
+// Activity view for watch wakes
 // ---------------------------------------------------------------------------
 
-function ensureAgentsDir(root: string): void {
-  const dir = agentsDir(root)
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
+export interface ShellHeartbeat {
+  record_path: string
+  heartbeat_at: string
+  age_seconds: number
 }
 
-function ensureAgentEntry(
-  index: AgentIndex,
-  agentId: string,
-  now: string,
-): AgentEntry {
-  const existing = index.agents.find((a) => a.agent_id === agentId)
-
-  if (existing) {
-    return existing
-  }
-
-  const entry: AgentEntry = {
-    agent_id: agentId,
-    parent_agent_id: null,
-    subagent_type: null,
-    model: null,
-    status: 'running',
-    registered_at: now,
-    last_event_at: now,
-    last_event_kind: 'registered',
-    run_id: null,
-    invocation_id: null,
-    aliases: [],
-    transcript_path: null,
-    stop: null,
-  }
-  index.agents.push(entry)
-
-  return entry
+export interface AgentActivity {
+  agent_id: string
+  aliases: string[]
+  /** Harness-relative event file of the canonical id. */
+  event_file: string
+  event_count: number
+  last_event_kind: EventKind | null
+  last_event_tool: string | null
+  last_event_at: string | null
+  last_event_age_seconds: number | null
+  open_call: {
+    tool: string
+    started_at: string
+    summary?: string
+    shell_heartbeat: ShellHeartbeat | null
+  } | null
+  /**
+   * An open call holds off a stall verdict. A shell call holds it only while
+   * its linked `bin/pan-run` heartbeat is younger than two cadences.
+   */
+  stall_suppressed: boolean
+  stop: {
+    status: AgentStatus
+    recorded_at: string
+    transcript_path: string | null
+    /** The stop left a readable, non-empty transcript behind. */
+    terminal_output_present: boolean
+  } | null
+  /** Changes whenever an event lands or the stop record changes. */
+  signature: string
 }
 
-function updateLastEventThrottled(
-  root: string,
-  agentId: string,
-  now: string,
-  kind: EventKind,
-): void {
-  withLock(
-    lockPath(root),
-    () => {
-      const index = readIndex(root)
-      const agent = index.agents.find((a) => a.agent_id === agentId)
+function shellRecordDirectoryMs(name: string): number | null {
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z-/u.exec(name)
 
-      if (!agent) {
-        // First time we see this agent from a non-Task tool call
-        ensureAgentEntry(index, agentId, now)
-        const newAgent = index.agents.find((a) => a.agent_id === agentId)!
-        newAgent.last_event_at = now
-        newAgent.last_event_kind = kind
-        pruneIndex(index, Date.now())
-        index.updated_at = now
-        writeIndex(root, index)
-        return
-      }
+  if (!match) {
+    return null
+  }
 
-      const lastMs = Date.parse(agent.last_event_at)
-      const nowMs = Date.parse(now)
+  const [, y, mo, d, h, mi, s] = match
 
-      // Throttle: only update if enough time has passed
-      if (!Number.isFinite(lastMs) || nowMs - lastMs >= HEARTBEAT_THROTTLE_MS) {
-        agent.last_event_at = now
-        agent.last_event_kind = kind
-        pruneIndex(index, Date.now())
-        index.updated_at = now
-        writeIndex(root, index)
-      }
-    },
-    () => {},
+  return Date.UTC(
+    Number(y),
+    Number(mo) - 1,
+    Number(d),
+    Number(h),
+    Number(mi),
+    Number(s),
   )
 }
 
-function extractTaskDescription(
-  toolInput: unknown,
-  secrets: string[],
-): string | null {
-  try {
-    const input =
-      typeof toolInput === 'string' ? JSON.parse(toolInput) : toolInput
+/**
+ * The `bin/pan-run` record an open shell call started: the earliest record
+ * that began within the link window after the call and has not ended.
+ */
+export function linkedShellHeartbeat(
+  root: string,
+  callStartedAt: string,
+  nowMs: number,
+): ShellHeartbeat | null {
+  const startedMs = Date.parse(callStartedAt)
+  const shellDir = path.join(root, 'runtime', 'logs', 'shell')
 
-    if (
-      input !== null &&
-      typeof input === 'object' &&
-      !Array.isArray(input) &&
-      typeof (input as Record<string, unknown>).description === 'string'
-    ) {
-      return boundedSummary(
-        (input as Record<string, unknown>).description as string,
-        secrets,
-      )
-    }
+  if (!Number.isFinite(startedMs)) {
+    return null
+  }
+
+  let names: string[]
+
+  try {
+    names = readdirSync(shellDir)
   } catch {
-    // ignore
+    return null
+  }
+
+  const candidates = names
+    .map((name) => ({ name, ms: shellRecordDirectoryMs(name) }))
+    .filter(
+      (item): item is { name: string; ms: number } =>
+        item.ms !== null &&
+        item.ms >=
+          Math.floor((startedMs - PAN_RUN_LINK_LEAD_MS) / 1000) * 1000 &&
+        item.ms <= startedMs + PAN_RUN_LINK_WINDOW_MS,
+    )
+    .sort((a, b) => a.ms - b.ms)
+
+  for (const { name } of candidates) {
+    const directory = path.join(shellDir, name)
+
+    try {
+      const record = JSON.parse(
+        readFileSync(path.join(directory, 'record.json'), 'utf8'),
+      ) as unknown
+
+      if (!isRecord(record) || record.ended_at !== null) {
+        continue
+      }
+
+      const heartbeatMs = statSync(
+        path.join(directory, 'heartbeat.json'),
+      ).mtimeMs
+
+      return {
+        record_path: path.relative(root, path.join(directory, 'record.json')),
+        heartbeat_at: new Date(heartbeatMs).toISOString(),
+        age_seconds: Math.max(0, (nowMs - heartbeatMs) / 1000),
+      }
+    } catch {
+      continue
+    }
   }
 
   return null
 }
 
-function extractTaskHandle(toolOutput: unknown): string | null {
+function transcriptPresent(transcriptPath: string | null): boolean {
+  if (!transcriptPath) {
+    return false
+  }
+
   try {
-    const output =
-      typeof toolOutput === 'string' ? JSON.parse(toolOutput) : toolOutput
+    return statSync(transcriptPath).size > 0
+  } catch {
+    return false
+  }
+}
 
-    if (typeof output === 'string' && output.length > 0) {
-      return output.slice(0, 128)
+/**
+ * The agent's stop from its index record, else from its latest kept
+ * `stopped` line, because lock contention can drop the index update.
+ */
+function resolveStop(
+  agent: AgentEntry,
+  events: AgentEvent[],
+): {
+  status: AgentStatus
+  recorded_at: string
+  transcript_path: string | null
+} | null {
+  if (agent.stop) {
+    return {
+      status: agent.stop.status,
+      recorded_at: agent.stop.recorded_at,
+      transcript_path: agent.transcript_path,
     }
+  }
 
-    if (
-      output !== null &&
-      typeof output === 'object' &&
-      !Array.isArray(output)
-    ) {
-      const record = output as Record<string, unknown>
-      const id = record.agent_id ?? record.id ?? record.conversation_id ?? null
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i] as AgentEvent
 
-      if (typeof id === 'string' && id.length > 0) {
-        return id.slice(0, 128)
+    if (event.kind === 'stopped' && event.status !== undefined) {
+      return {
+        status: event.status,
+        recorded_at: event.timestamp,
+        transcript_path: event.transcript_path ?? agent.transcript_path,
       }
     }
-  } catch {
-    // ignore
   }
 
   return null
 }
 
-function computePromptDigest(input: unknown): string {
-  try {
-    const text = typeof input === 'string' ? input : JSON.stringify(input)
+/**
+ * Everything one watch wake records about an agent. Returns null when the
+ * index does not know the id yet.
+ */
+export function readAgentActivity(
+  root: string,
+  agentId: string,
+  nowMs: number,
+  cadenceSeconds: number,
+): AgentActivity | null {
+  const agent = getAgentEntry(root, agentId)
 
-    return createHash('sha256').update(text).digest('hex').slice(0, 16)
-  } catch {
-    return ''
+  if (!agent) {
+    return null
   }
+
+  const events = loadEventsForEntry(root, agent)
+  const latest = events[events.length - 1] ?? null
+  const openEvent = openCallIn(events)
+  const lastEventAt = latest?.timestamp ?? agent.last_event_at
+  const lastMs = Date.parse(lastEventAt)
+  const stopRecord = resolveStop(agent, events)
+  let openCall: AgentActivity['open_call'] = null
+  let stallSuppressed = false
+
+  if (openEvent && stopRecord === null) {
+    const tool = openEvent.tool_name ?? 'unknown'
+    const shell = SHELL_TOOLS.has(tool)
+    const heartbeat = shell
+      ? linkedShellHeartbeat(root, openEvent.timestamp, nowMs)
+      : null
+
+    openCall = {
+      tool,
+      started_at: openEvent.timestamp,
+      ...(openEvent.summary ? { summary: openEvent.summary } : {}),
+      shell_heartbeat: heartbeat,
+    }
+    stallSuppressed = shell
+      ? heartbeat !== null && heartbeat.age_seconds < 2 * cadenceSeconds
+      : true
+  }
+
+  const stop = stopRecord
+    ? {
+        ...stopRecord,
+        terminal_output_present: transcriptPresent(stopRecord.transcript_path),
+      }
+    : null
+  const signature = createHash('sha256')
+    .update(
+      [
+        agent.agent_id,
+        events.length,
+        latest?.timestamp ?? '',
+        latest?.kind ?? '',
+        latest?.tool_use_id ?? '',
+        stopRecord?.status ?? '',
+        stopRecord?.recorded_at ?? '',
+      ].join(':'),
+    )
+    .digest('hex')
+    .slice(0, 16)
+
+  return {
+    agent_id: agent.agent_id,
+    aliases: [...agent.aliases],
+    event_file: path.relative(root, agentEventFile(root, agent.agent_id)),
+    event_count: events.length,
+    last_event_kind: latest?.kind ?? agent.last_event_kind,
+    last_event_tool: latest?.tool_name ?? null,
+    last_event_at: lastEventAt,
+    last_event_age_seconds: Number.isFinite(lastMs)
+      ? Math.max(0, (nowMs - lastMs) / 1000)
+      : null,
+    open_call: openCall,
+    stall_suppressed: stallSuppressed,
+    stop,
+    signature,
+  }
+}
+
+/** Activity signature for progress fingerprinting, or null for an unknown id. */
+export function agentActivitySignature(
+  root: string,
+  agentId: string,
+): string | null {
+  return readAgentActivity(root, agentId, Date.now(), 60)?.signature ?? null
 }

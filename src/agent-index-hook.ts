@@ -7,9 +7,11 @@
  * Reads the Cursor hook payload from stdin and writes the event-appropriate
  * JSON response to stdout. Fails open on any error (C-002).
  */
-import { readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 
 import {
+  AGENTS_DIR,
   handlePostToolUse,
   handlePreToolUse,
   handleSubagentStart,
@@ -43,6 +45,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
+/** Payload fields whose values the identity probe needs to compare. */
+const PROBE_ID_FIELD = /(^|_)(id|ids|path)$/u
+
+/**
+ * While `runtime/logs/agents/probe.enabled` exists, append each payload's
+ * field names, `tool_input` field names, and identifier or path values, so the
+ * subagent identity probe sees fields the index does not read. No other value
+ * is written.
+ */
+function captureProbe(
+  root: string,
+  event: EventName,
+  payload: Record<string, unknown>,
+): void {
+  const directory = path.join(root, AGENTS_DIR)
+
+  if (!existsSync(path.join(directory, 'probe.enabled'))) {
+    return
+  }
+
+  const toolInput = isRecord(payload.tool_input) ? payload.tool_input : null
+  const ids = Object.fromEntries(
+    Object.entries(payload).filter(
+      ([key, value]) => PROBE_ID_FIELD.test(key) && typeof value === 'string',
+    ),
+  )
+
+  appendFileSync(
+    path.join(directory, 'probe-payloads.jsonl'),
+    JSON.stringify({
+      recorded_at: new Date().toISOString(),
+      event,
+      fields: Object.keys(payload).sort(),
+      tool_input_fields: toolInput ? Object.keys(toolInput).sort() : null,
+      ids,
+    }) + '\n',
+  )
+}
+
 function run(event: EventName, payloadText: string): void {
   const defaultResponse = eventDefaultResponse(event)
 
@@ -55,6 +96,12 @@ function run(event: EventName, payloadText: string): void {
     }
 
     const root = findProjectRoot()
+
+    try {
+      captureProbe(root, event, payload)
+    } catch {
+      // The probe never blocks the index update.
+    }
 
     const hookPayload = { ...payload, event } as HookPayload
 

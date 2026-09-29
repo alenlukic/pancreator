@@ -29,13 +29,11 @@ import path from 'node:path'
 import { PanError, invariant, isNodeError } from './errors.js'
 import { gitWorkspaceActivityFingerprint, gitWorkspaceSnapshot } from './git.js'
 import {
-  agentActivitySignature,
+  getAgentByRunInvocation,
   getAgentEntry,
-  getLatestEvent,
-  getOpenCall,
-  getStopRecord,
-  readAgentIndex,
-  resolveCanonicalId,
+  readAgentActivity,
+  type AgentActivity,
+  type AgentEntry,
 } from './agent-index.js'
 import {
   appendJsonLine,
@@ -179,9 +177,23 @@ export interface WatchObservation {
   workspace_fingerprint?: string
   /** The Git-visible workspace differs from the invocation's pre-work state. */
   workspace_changed_from_invocation?: boolean
+  /**
+   * The watched worker as the hook-fed agent index sees it: its latest tool
+   * event, an open call, and its stop record. Absent when the index knows no
+   * agent for this invocation.
+   */
+  agent_activity?: AgentActivity
   /** Stable digest of the watched paths; equal digests mean no change. */
   fingerprint: string
 }
+
+export type { AgentActivity } from './agent-index.js'
+
+/** Why an agent stop ended a run-scoped watch without a completion. */
+export type AgentStopReason =
+  | 'agent_stopped_error'
+  | 'agent_stopped_aborted'
+  | 'agent_stopped_without_output'
 
 /**
  * An observation gap between two watch sessions of one invocation.
@@ -272,6 +284,8 @@ export interface WatchRecordEntry {
   terminal_state?: WatchTerminalState
   /** The signal that closed an `interrupted` terminal wake. */
   interrupted_reason?: string
+  /** The agent stop behind an `unverified` terminal wake, when one was. */
+  unverified_reason?: AgentStopReason
   /** Present on `gap` entries. */
   gap?: WatchGap
   /** Present on `session_ended`: why a session closed without a verdict. */
@@ -807,9 +821,76 @@ function workspaceChangedFromInvocation(
   }
 }
 
+/**
+ * The indexed agent behind one invocation: the launch record's handle when
+ * the index knows it, else the newest agent registered for the run and
+ * invocation ids its task text named.
+ */
+export function watchedAgentActivity(
+  root: string,
+  invocation: Invocation,
+  nowMs: number,
+  cadenceSeconds: number,
+): AgentActivity | null {
+  const handle = readLaunchRecord(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )?.worker_handle
+
+  const byHandle = handle
+    ? readAgentActivity(root, handle, nowMs, cadenceSeconds)
+    : null
+
+  if (byHandle) {
+    return byHandle
+  }
+
+  const registered = getAgentByRunInvocation(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
+
+  return registered
+    ? readAgentActivity(root, registered.agent_id, nowMs, cadenceSeconds)
+    : null
+}
+
+/**
+ * What an agent stop decides for a run-scoped watch. A completed stop with a
+ * terminal output completes on the agent's own state; a stop with an error,
+ * an abort, or no terminal output ends the watch unverified with the reason.
+ */
+export function agentStopVerdict(
+  observation: WatchObservation,
+):
+  | { terminal: 'completed'; basis: 'agent_state' }
+  | { terminal: 'unverified'; reason: AgentStopReason }
+  | null {
+  const stop = observation.agent_activity?.stop
+
+  if (!stop) {
+    return null
+  }
+
+  if (stop.status === 'error') {
+    return { terminal: 'unverified', reason: 'agent_stopped_error' }
+  }
+
+  if (stop.status === 'aborted') {
+    return { terminal: 'unverified', reason: 'agent_stopped_aborted' }
+  }
+
+  return isTerminalObservation(observation)
+    ? { terminal: 'completed', basis: 'agent_state' }
+    : { terminal: 'unverified', reason: 'agent_stopped_without_output' }
+}
+
 export function observeInvocation(
   root: string,
   invocation: Invocation,
+  cadenceSeconds: number = DEFAULT_WATCH_CADENCE_SECONDS,
 ): WatchObservation {
   const outputPath = invocation.output.path
   const outputAbsolute = resolveInside(root, outputPath)
@@ -880,16 +961,26 @@ export function observeInvocation(
   const workspaceChanged = outputPresent
     ? null
     : workspaceChangedFromInvocation(root, invocation)
+  const observedMs = Date.now()
+  const agentActivity = watchedAgentActivity(
+    root,
+    invocation,
+    observedMs,
+    cadenceSeconds,
+  )
+  // A new agent event counts as progress, so a worker that only reads and
+  // thinks between turns is never called stalled.
   const fingerprint = [
     ...watched.map(
       (item) => `${item.path}:${item.exists}:${item.size}:${item.mtime_ms}`,
     ),
     `run-tree:${runTree}`,
     `workspace:${workspace ?? 'none'}`,
+    `agent:${agentActivity?.signature ?? 'none'}`,
   ].join('|')
 
   return {
-    observed_at: new Date().toISOString(),
+    observed_at: new Date(observedMs).toISOString(),
     output_path: outputPath,
     output_present: outputPresent,
     output_parses: outputParses,
@@ -902,6 +993,7 @@ export function observeInvocation(
     ...(workspaceChanged !== null
       ? { workspace_changed_from_invocation: workspaceChanged }
       : {}),
+    ...(agentActivity ? { agent_activity: agentActivity } : {}),
     fingerprint,
   }
 }
@@ -2547,7 +2639,7 @@ export async function watchInvocation(
     // the supervisor commonly resolves one without submitting and the next
     // worker rewrites the same path.
     const observe = (): WatchObservation => {
-      const observation = observeInvocation(root, invocation)
+      const observation = observeInvocation(root, invocation, cadenceSeconds)
 
       snapshotBlockedOutput(root, runId, invocationId)
 
@@ -2611,6 +2703,29 @@ export async function watchInvocation(
     // The output signature the confirming wake compares against. Non-null means
     // a finished-looking output is being held for one more observation.
     let heldOutput: string | null = null
+    const initialStop = agentStopVerdict(initial)
+
+    if (initialStop) {
+      append({
+        schema_version: 1,
+        event: 'wake',
+        run_id: runId,
+        invocation_id: invocationId,
+        recorded_at: new Date(now()).toISOString(),
+        cadence_seconds: cadenceSeconds,
+        wake: 0,
+        watch_session_id: sessionId,
+        observation: initial,
+        ...(initialStop.terminal === 'completed'
+          ? { terminal_basis: initialStop.basis }
+          : { unverified_reason: initialStop.reason }),
+        changed: true,
+        unchanged_wakes: 0,
+        terminal_state: initialStop.terminal,
+      })
+
+      return finish(initialStop.terminal, 0, 0)
+    }
 
     if (initialEvidence.strength === 'strong') {
       append({
@@ -2718,11 +2833,17 @@ export async function watchInvocation(
       }
 
       previousFingerprint = observation.fingerprint
-      unchangedWakes = changed || scaffoldOrderAdvisory ? 0 : unchangedWakes + 1
+      unchangedWakes =
+        changed ||
+        scaffoldOrderAdvisory ||
+        observation.agent_activity?.stall_suppressed === true
+          ? 0
+          : unchangedWakes + 1
 
       let terminal: WatchTerminalState | undefined
       let terminalBasis: WatchRecordEntry['terminal_basis']
       let hold: WeakCompletionReason | undefined
+      let unverifiedReason: AgentStopReason | undefined
       const evidence = completionEvidenceForObservation(
         observation,
         launchToOutputSeconds(root, runId, invocationId),
@@ -2730,8 +2851,15 @@ export async function watchInvocation(
         agentState,
         agentStateEvidence,
       )
+      const stopVerdict = agentStopVerdict(observation)
 
-      if (evidence.strength === 'strong') {
+      if (stopVerdict?.terminal === 'completed') {
+        terminal = 'completed'
+        terminalBasis = stopVerdict.basis
+      } else if (stopVerdict?.terminal === 'unverified') {
+        terminal = 'unverified'
+        unverifiedReason = stopVerdict.reason
+      } else if (evidence.strength === 'strong') {
         terminal = 'completed'
         terminalBasis = evidence.basis
       } else if (evidence.strength === 'weak') {
@@ -2786,6 +2914,7 @@ export async function watchInvocation(
           ? { agent_state_evidence: evidenceReference }
           : {}),
         ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+        ...(unverifiedReason ? { unverified_reason: unverifiedReason } : {}),
         ...(hold ? { completion_hold: hold } : {}),
         ...(scaffoldOrderAdvisory
           ? { advisories: [scaffoldOrderAdvisory] }
@@ -3150,7 +3279,7 @@ export async function watchInvocations(
       appendJsonLine(item.recordAbsolute, sessionStart)
       options.onSessionStart?.(sessionStart)
 
-      const initial = observeInvocation(root, item.invocation)
+      const initial = observeInvocation(root, item.invocation, cadenceSeconds)
 
       item.initial = initial
       item.previousFingerprint = initial.fingerprint
@@ -3203,19 +3332,32 @@ export async function watchInvocations(
         cadenceSeconds,
       )
     const initiallyMoved: MultiplexedWatchMovement[] = []
+    const initiallyUnverified: MultiplexedWatchMovement[] = []
 
     for (const item of watched) {
       const initial = item.initial as WatchObservation
       const evidence = evidenceFor(item, initial)
+      const stopVerdict = agentStopVerdict(initial)
 
-      if (evidence.strength === 'none') {
+      if (evidence.strength === 'none' && stopVerdict === null) {
         continue
       }
 
-      const terminal = evidence.strength === 'strong' ? 'completed' : undefined
+      const terminal: WatchTerminalState | undefined =
+        stopVerdict?.terminal ??
+        (evidence.strength === 'strong' ? 'completed' : undefined)
       const terminalBasis =
-        evidence.strength === 'strong' ? evidence.basis : undefined
-      const hold = evidence.strength === 'weak' ? evidence.reason : undefined
+        stopVerdict?.terminal === 'completed'
+          ? stopVerdict.basis
+          : stopVerdict === null && evidence.strength === 'strong'
+            ? evidence.basis
+            : undefined
+      const unverifiedReason =
+        stopVerdict?.terminal === 'unverified' ? stopVerdict.reason : undefined
+      const hold =
+        stopVerdict === null && evidence.strength === 'weak'
+          ? evidence.reason
+          : undefined
 
       if (hold !== undefined) {
         item.heldOutput = outputSignature(initial)
@@ -3232,6 +3374,7 @@ export async function watchInvocations(
         watch_session_id: item.sessionId,
         observation: initial,
         ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+        ...(unverifiedReason ? { unverified_reason: unverifiedReason } : {}),
         ...(hold ? { completion_hold: hold } : {}),
         changed: true,
         unchanged_wakes: 0,
@@ -3241,7 +3384,10 @@ export async function watchInvocations(
       appendJsonLine(item.recordAbsolute, entry)
       options.onWake?.(entry)
 
-      if (terminal) {
+      if (terminal === 'unverified') {
+        item.terminalReached = true
+        initiallyUnverified.push(movement(item, terminal))
+      } else if (terminal) {
         item.terminalReached = true
         initiallyMoved.push(movement(item, terminal))
       }
@@ -3250,7 +3396,13 @@ export async function watchInvocations(
     if (initiallyMoved.length > 0) {
       endOpenSessions()
 
-      return finish('changed', initiallyMoved, [], 0)
+      return finish('changed', initiallyMoved, initiallyUnverified, 0)
+    }
+
+    if (initiallyUnverified.length > 0) {
+      endOpenSessions()
+
+      return finish('unverified', [], initiallyUnverified, 0)
     }
 
     const cadenceMs = Math.round(cadenceSeconds * 1000)
@@ -3292,7 +3444,11 @@ export async function watchInvocations(
 
       for (const item of watched) {
         item.wakes = wakes
-        const observation = observeInvocation(root, item.invocation)
+        const observation = observeInvocation(
+          root,
+          item.invocation,
+          cadenceSeconds,
+        )
 
         snapshotBlockedOutput(
           root,
@@ -3314,14 +3470,26 @@ export async function watchInvocations(
 
         item.previousFingerprint = observation.fingerprint
         item.unchangedWakes =
-          changed || scaffoldOrderAdvisory ? 0 : item.unchangedWakes + 1
+          changed ||
+          scaffoldOrderAdvisory ||
+          observation.agent_activity?.stall_suppressed === true
+            ? 0
+            : item.unchangedWakes + 1
 
         const evidence = evidenceFor(item, observation)
+        const stopVerdict = agentStopVerdict(observation)
         let terminal: WatchTerminalState | undefined
         let terminalBasis: WatchRecordEntry['terminal_basis']
         let hold: WeakCompletionReason | undefined
+        let unverifiedReason: AgentStopReason | undefined
 
-        if (evidence.strength === 'strong') {
+        if (stopVerdict?.terminal === 'completed') {
+          terminal = 'completed'
+          terminalBasis = stopVerdict.basis
+        } else if (stopVerdict?.terminal === 'unverified') {
+          terminal = 'unverified'
+          unverifiedReason = stopVerdict.reason
+        } else if (evidence.strength === 'strong') {
           terminal = 'completed'
           terminalBasis = evidence.basis
         } else if (evidence.strength === 'weak') {
@@ -3369,6 +3537,7 @@ export async function watchInvocations(
           watch_session_id: item.sessionId,
           observation,
           ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+          ...(unverifiedReason ? { unverified_reason: unverifiedReason } : {}),
           ...(hold ? { completion_hold: hold } : {}),
           ...(scaffoldOrderAdvisory
             ? { advisories: [scaffoldOrderAdvisory] }
@@ -4417,6 +4586,7 @@ const FOLLOWED_VERDICT_EXIT_CODES: Record<string, number> = {
   ...WATCH_EXIT_CODES,
   exited: 0,
   elapsed: 0,
+  failed: 1,
 }
 
 export type AttachTerminalState =
@@ -5012,6 +5182,8 @@ export function writeRedlineRecord(
 export interface WatchAgentOptions {
   /** How long between wakes, in seconds. */
   cadenceSeconds?: number
+  /** Trimmed operator direction behind a non-default cadence. */
+  cadenceAuthority?: string
   /** Five-minute stall window. */
   stallTimeoutSeconds?: number
   /** One-hour default bound. */
@@ -5019,20 +5191,40 @@ export interface WatchAgentOptions {
   sleep?: (ms: number) => Promise<void>
   now?: () => number
   onWake?: (info: WatchAgentWakeInfo) => void
+  /** Fired once with the `session_started` entry before the first arming. */
+  onSessionStart?: (entry: WatchAgentSessionEntry) => void
+  /** Test hook replacing the signal re-raise that ends an interrupted watch. */
+  onInterrupted?: (signal: string) => void
 }
 
-export interface AgentActivity {
-  agent_id: string
-  last_event_kind: string | null
-  last_event_tool: string | null
-  last_event_at: string | null
-  last_event_age_seconds: number | null
-  open_call: { tool: string; started_at: string; summary?: string } | null
-  stop: {
-    status: string
-    recorded_at: string
-    terminal_output_present: boolean
-  } | null
+export type AgentWatchVerdict =
+  | 'completed'
+  | 'failed'
+  | 'stalled'
+  | 'timed_out'
+  | 'interrupted'
+
+/**
+ * The first ledger entry of a standalone agent watch. It carries the watcher
+ * pid so `pan watch --attach` can follow the ledger, and the agent's index
+ * entry and aliases as the watch found them at arming.
+ */
+export interface WatchAgentSessionEntry {
+  schema_version: 1
+  event: 'session_started'
+  subject: string
+  recorded_at: string
+  cadence_seconds: number
+  wake: 0
+  watch_session_id: string
+  watcher_pid: number
+  watcher_process_identity: string | null
+  timeout_seconds: number
+  cadence_authority?: string
+  /** The ledger `pan watch --attach` follows, relative to the root. */
+  record_path: string
+  agent_entry: AgentEntry | null
+  aliases: string[]
 }
 
 export interface WatchAgentWakeInfo {
@@ -5043,13 +5235,17 @@ export interface WatchAgentWakeInfo {
   wake: number
   cadence_seconds: number
   watch_session_id: string
-  agent_activity: AgentActivity
-  terminal_state?: string
-  stall_wake_count?: number
+  /** Null while the index has not registered the agent. */
+  agent_activity: AgentActivity | null
+  changed: boolean
+  unchanged_wakes: number
+  terminal_state?: AgentWatchVerdict
+  terminal_basis?: 'agent_state'
+  interrupted_reason?: string
 }
 
 export interface WatchAgentResult {
-  state: 'completed' | 'failed' | 'stalled' | 'timed_out' | 'interrupted'
+  state: AgentWatchVerdict
   agent_id: string
   wakes: number
   started_at: string
@@ -5068,8 +5264,16 @@ function agentWatchLedgerPath(root: string, agentId: string): string {
 /**
  * Standalone agent watch for a subagent launched outside a run.
  *
- * Exits 0 on completed stop, 1 on error/aborted stop, 2 on stall,
- * 3 at timeout, 130 on interruption.
+ * The first ledger entry is `session_started`, so `pan watch --attach` can
+ * rejoin the ledger. Each wake reads the agent index afresh, so an agent the
+ * index registers after arming is still found. A completed stop completes on
+ * the agent's own state, and the wake records whether a transcript was left;
+ * an error or aborted stop fails. An open call
+ * suppresses the stall verdict, but an open shell call only while its linked
+ * `bin/pan-run` heartbeat stays fresh.
+ *
+ * The CLI exits 0 on completed, 1 on failed, 2 on stall, 3 at the bound, and
+ * 130 on interruption.
  */
 export async function watchAgent(
   root: string,
@@ -5093,31 +5297,24 @@ export async function watchAgent(
   const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
   const recordPath = agentWatchLedgerPath(root, agentId)
-
-  // Ensure the watch ledger directory exists
-  const recordDir = path.dirname(recordPath)
-  try {
-    mkdirSync(recordDir, { recursive: true })
-  } catch {
-    // ignore
-  }
-
-  // Resolve any alias
-  const index = readAgentIndex(root)
-  const canonicalId = resolveCanonicalId(index, agentId) ?? agentId
-
-  let wakes = 0
-  let stallWakes = 0
   const maxStallWakes = Math.max(
     1,
     Math.ceil(stallTimeoutSeconds / cadenceSeconds),
   )
-  let lastActivitySig: string | null = null
-  let interrupted = false
 
-  const finish = (state: WatchAgentResult['state']): WatchAgentResult => ({
+  mkdirSync(path.dirname(recordPath), { recursive: true })
+
+  const read = (): AgentActivity | null =>
+    readAgentActivity(root, agentId, now(), cadenceSeconds)
+  let activity = read()
+  let wakes = 0
+  let unchangedWakes = 0
+  let previousSignature = activity?.signature ?? null
+
+  const subject = (): string => activity?.agent_id ?? agentId
+  const finish = (state: AgentWatchVerdict): WatchAgentResult => ({
     state,
-    agent_id: canonicalId,
+    agent_id: subject(),
     wakes,
     started_at: startedAt,
     ended_at: new Date(now()).toISOString(),
@@ -5125,65 +5322,99 @@ export async function watchAgent(
     watch_session_id: sessionId,
     record_path: path.relative(root, recordPath),
   })
-
-  const appendWake = (info: WatchAgentWakeInfo): void => {
-    try {
-      appendJsonLine(recordPath, info)
-    } catch {
-      // ignore write errors
-    }
-  }
-
-  // Install signal handler
-  const signalHandler = (): void => {
-    interrupted = true
+  const record = (
+    fields: Pick<WatchAgentWakeInfo, 'changed'> &
+      Partial<
+        Pick<
+          WatchAgentWakeInfo,
+          'terminal_state' | 'terminal_basis' | 'interrupted_reason'
+        >
+      >,
+  ): WatchAgentWakeInfo => {
     const info: WatchAgentWakeInfo = {
       schema_version: 1,
       event: 'wake',
-      subject: canonicalId,
+      subject: subject(),
       recorded_at: new Date(now()).toISOString(),
-      wake: wakes + 1,
+      wake: wakes,
       cadence_seconds: cadenceSeconds,
       watch_session_id: sessionId,
-      agent_activity: buildAgentActivity(root, canonicalId, now),
-      terminal_state: 'interrupted',
+      agent_activity: activity,
+      unchanged_wakes: unchangedWakes,
+      ...fields,
     }
-    appendWake(info)
+
+    appendJsonLine(recordPath, info)
     options.onWake?.(info)
+
+    return info
+  }
+  const stopVerdict = (): AgentWatchVerdict | null => {
+    const stop = activity?.stop
+
+    if (!stop) {
+      return null
+    }
+
+    return stop.status === 'completed' ? 'completed' : 'failed'
   }
 
-  process.once('SIGINT', signalHandler)
-  process.once('SIGTERM', signalHandler)
+  const entry = getAgentEntry(root, agentId)
+  const session: WatchAgentSessionEntry = {
+    schema_version: 1,
+    event: 'session_started',
+    subject: subject(),
+    recorded_at: startedAt,
+    cadence_seconds: cadenceSeconds,
+    wake: 0,
+    watch_session_id: sessionId,
+    watcher_pid: process.pid,
+    watcher_process_identity: processStartIdentity(process.pid),
+    timeout_seconds: timeoutSeconds,
+    ...(options.cadenceAuthority
+      ? { cadence_authority: options.cadenceAuthority }
+      : {}),
+    record_path: path.relative(root, recordPath),
+    agent_entry: entry,
+    aliases: activity?.aliases ?? [],
+  }
+
+  appendJsonLine(recordPath, session)
+  options.onSessionStart?.(session)
+
+  const initialStop = stopVerdict()
+
+  if (initialStop) {
+    record({
+      changed: true,
+      terminal_state: initialStop,
+      ...(initialStop === 'completed'
+        ? { terminal_basis: 'agent_state' as const }
+        : {}),
+    })
+
+    return finish(initialStop)
+  }
+
+  let interrupted = false
+  const disposeInterruption = installInterruptionHandlers((signal) => {
+    interrupted = true
+    record({
+      changed: false,
+      terminal_state: 'interrupted',
+      interrupted_reason: signal,
+    })
+  }, options.onInterrupted)
 
   try {
     for (;;) {
-      if (interrupted) {
-        return finish('interrupted')
-      }
-
       const elapsedMs = now() - startedMs
 
-      if (elapsedMs >= timeoutSeconds * 1000) {
-        const info: WatchAgentWakeInfo = {
-          schema_version: 1,
-          event: 'wake',
-          subject: canonicalId,
-          recorded_at: new Date(now()).toISOString(),
-          wake: wakes + 1,
-          cadence_seconds: cadenceSeconds,
-          watch_session_id: sessionId,
-          agent_activity: buildAgentActivity(root, canonicalId, now),
-          terminal_state: 'timed_out',
-        }
-        wakes += 1
-        appendWake(info)
-        options.onWake?.(info)
-        return finish('timed_out')
-      }
-
-      // Sleep one cadence
       await sleep(
-        Math.min(cadenceSeconds * 1000, timeoutSeconds * 1000 - elapsedMs),
+        Math.max(
+          0,
+          Math.min(cadenceSeconds * 1000, timeoutSeconds * 1000 - elapsedMs),
+        ),
       )
 
       if (interrupted) {
@@ -5191,151 +5422,36 @@ export async function watchAgent(
       }
 
       wakes += 1
-      const activity = buildAgentActivity(root, canonicalId, now)
-      const sig = agentActivitySignature(root, canonicalId)
+      activity = read()
 
-      // Check completion: a completed stop with terminal output
-      const stop = getStopRecord(root, canonicalId)
+      const signature = activity?.signature ?? null
+      const changed = signature !== previousSignature
 
-      if (stop !== null) {
-        const isCompletedStop =
-          stop.status === 'completed' &&
-          activity.stop?.terminal_output_present === true
+      previousSignature = signature
+      unchangedWakes =
+        changed || activity?.stall_suppressed === true ? 0 : unchangedWakes + 1
 
-        const isFailedStop =
-          stop.status === 'error' || stop.status === 'aborted'
+      const verdict: AgentWatchVerdict | null =
+        stopVerdict() ??
+        (unchangedWakes >= maxStallWakes
+          ? 'stalled'
+          : now() - startedMs >= timeoutSeconds * 1000
+            ? 'timed_out'
+            : null)
 
-        const isNoOutputStop =
-          stop.status === 'completed' &&
-          activity.stop?.terminal_output_present !== true
+      record({
+        changed,
+        ...(verdict ? { terminal_state: verdict } : {}),
+        ...(verdict === 'completed'
+          ? { terminal_basis: 'agent_state' as const }
+          : {}),
+      })
 
-        if (isCompletedStop) {
-          const info: WatchAgentWakeInfo = {
-            schema_version: 1,
-            event: 'wake',
-            subject: canonicalId,
-            recorded_at: new Date(now()).toISOString(),
-            wake: wakes,
-            cadence_seconds: cadenceSeconds,
-            watch_session_id: sessionId,
-            agent_activity: activity,
-            terminal_state: 'completed',
-          }
-          appendWake(info)
-          options.onWake?.(info)
-          return finish('completed')
-        }
-
-        if (isFailedStop || isNoOutputStop) {
-          const info: WatchAgentWakeInfo = {
-            schema_version: 1,
-            event: 'wake',
-            subject: canonicalId,
-            recorded_at: new Date(now()).toISOString(),
-            wake: wakes,
-            cadence_seconds: cadenceSeconds,
-            watch_session_id: sessionId,
-            agent_activity: activity,
-            terminal_state: isFailedStop ? 'failed' : 'unverified',
-          }
-          appendWake(info)
-          options.onWake?.(info)
-          return finish('failed')
-        }
+      if (verdict) {
+        return finish(verdict)
       }
-
-      // Check stall: no new activity for stallTimeoutSeconds
-      if (activity.open_call === null) {
-        if (sig === lastActivitySig) {
-          stallWakes += 1
-        } else {
-          stallWakes = 0
-        }
-      } else {
-        // An open call suppresses the stall verdict
-        stallWakes = 0
-      }
-
-      lastActivitySig = sig
-
-      if (stallWakes >= maxStallWakes) {
-        const info: WatchAgentWakeInfo = {
-          schema_version: 1,
-          event: 'wake',
-          subject: canonicalId,
-          recorded_at: new Date(now()).toISOString(),
-          wake: wakes,
-          cadence_seconds: cadenceSeconds,
-          watch_session_id: sessionId,
-          agent_activity: activity,
-          terminal_state: 'stalled',
-          stall_wake_count: stallWakes,
-        }
-        appendWake(info)
-        options.onWake?.(info)
-        return finish('stalled')
-      }
-
-      const info: WatchAgentWakeInfo = {
-        schema_version: 1,
-        event: 'wake',
-        subject: canonicalId,
-        recorded_at: new Date(now()).toISOString(),
-        wake: wakes,
-        cadence_seconds: cadenceSeconds,
-        watch_session_id: sessionId,
-        agent_activity: activity,
-      }
-      appendWake(info)
-      options.onWake?.(info)
     }
   } finally {
-    process.removeListener('SIGINT', signalHandler)
-    process.removeListener('SIGTERM', signalHandler)
-  }
-}
-
-function buildAgentActivity(
-  root: string,
-  agentId: string,
-  now: () => number,
-): AgentActivity {
-  const entry = getAgentEntry(root, agentId)
-  const latest = getLatestEvent(root, agentId)
-  const openCall = getOpenCall(root, agentId)
-  const stop = getStopRecord(root, agentId)
-
-  const nowMs = now()
-  const lastEventAt = entry?.last_event_at ?? latest?.timestamp ?? null
-  const lastEventAgeSeconds =
-    lastEventAt !== null ? (nowMs - Date.parse(lastEventAt)) / 1000 : null
-
-  // For terminal output detection: check if the agent has a transcript
-  const terminalOutputPresent =
-    stop !== null &&
-    (stop.status === 'completed' ||
-      stop.tool_call_count > 0 ||
-      stop.modified_file_count > 0)
-
-  return {
-    agent_id: agentId,
-    last_event_kind: entry?.last_event_kind ?? latest?.kind ?? null,
-    last_event_tool: latest?.tool_name ?? null,
-    last_event_at: lastEventAt,
-    last_event_age_seconds: lastEventAgeSeconds,
-    open_call: openCall
-      ? {
-          tool: openCall.tool_name ?? 'unknown',
-          started_at: openCall.timestamp,
-          ...(openCall.summary ? { summary: openCall.summary } : {}),
-        }
-      : null,
-    stop: stop
-      ? {
-          status: stop.status,
-          recorded_at: stop.recorded_at,
-          terminal_output_present: terminalOutputPresent,
-        }
-      : null,
+    disposeInterruption()
   }
 }
