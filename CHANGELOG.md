@@ -1,5 +1,16 @@
 # Changelog
 
+## [7.34.1] - 2026-09-29
+
+This release attributes review work to the review stage in `pan spend`. Review spend was reported under verify, under an unrelated earlier run, or as unattributed.
+
+### Fixed
+
+- Attribute reviewer evidence workers to the `review` stage, and keep QA workers under `verify` ([9df91fe1](https://github.com/alenlukic/pancreator/commit/9df91fe1)).
+- Match an unrecorded worker subagent to its run, invocation, and role from its opening brief, and stop matching it to any run its prompt mentions ([9df91fe1](https://github.com/alenlukic/pancreator/commit/9df91fe1)).
+- Attribute standalone `/pan-review` and `/pan-shepherd` sessions to the `review` stage ([9df91fe1](https://github.com/alenlukic/pancreator/commit/9df91fe1)).
+- Stop attributing a non-supervisor session, such as `/pan-cleanup`, to a run only because it names that run ([9df91fe1](https://github.com/alenlukic/pancreator/commit/9df91fe1)).
+
 ## [7.34.0] - 2026-09-29
 
 This release removes the away-mode evaluator. The supervisor records each away-mode decision. The hypervisor checks agent liveness only.
