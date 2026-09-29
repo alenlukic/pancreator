@@ -1,5 +1,31 @@
 # Changelog
 
+## [7.34.0] - 2026-09-29
+
+This release removes the away-mode evaluator. The supervisor records each away-mode decision. The hypervisor checks agent liveness only.
+
+### Changed
+
+- Make the supervisor the sole authority for away-mode decisions ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Reduce the hypervisor to liveness checks and liveness quarantine ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Move the away-mode ledger to `runtime/logs/away-mode/supervisor-decisions.jsonl` ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Rewrite AWAY-001, ORCH-001, SHIP-001, HORIZON-001, and the operator docs ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+### Added
+
+- Add `pan away decide` with an action, a reason, and supervisor authorship ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Add regression tests for supervisor authority and hypervisor liveness quarantine ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+### Removed
+
+- Remove `pan away evaluate` and `pan away apply` ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Remove the evaluator spawn, ranking, and deterministic ship approval ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+- Remove the hypervisor recovery runner and the evaluator-only config keys ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
+### Fixed
+
+- Restore tests of retained away-mode contracts after the first verify failure ([9f24470a](https://github.com/alenlukic/pancreator/commit/9f24470a)).
+
 ## [7.33.0] - 2026-09-29
 
 This release makes every subagent launch background-only and observable. It adds a hook-fed agent activity index and `pan watch --agent`. AC-007, the live identity probe, is waived and deferred. It did not pass.
