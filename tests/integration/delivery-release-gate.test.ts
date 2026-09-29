@@ -408,28 +408,20 @@ test('a verify visit reads configuration and impacted integration evidence from 
       fast: { probes: [], commands: [PASS] },
       configuration: { probes: [], commands: [PASS] },
       'impacted-integration': { probes: [], commands: [PASS] },
-      full: { probes: [], commands: [PASS] },
+      full: { probes: [], commands: [`node -e "process.exitCode=0"`] },
     }),
   )
-  const state = getRunState(root, runId)
-  const invocationId = state.current_invocation?.invocation_id
+  const pointer = getRunState(root, runId).current_invocation
 
-  assert.ok(invocationId)
+  assert.ok(pointer)
 
-  const manifest = JSON.parse(
-    readFileSync(
-      path.join(
-        root,
-        'runtime/logs/workflows',
-        runId,
-        'agent/invocations',
-        `${invocationId}.context-manifest.json`,
-      ),
-      'utf8',
-    ),
-  ) as { references?: Array<{ gate_evidence?: { profile?: string } }> }
+  const invocation = JSON.parse(
+    readFileSync(path.join(root, pointer.json_path), 'utf8'),
+  ) as {
+    inputs: { references: Array<{ gate_evidence?: { profile?: string } }> }
+  }
   const profiles = new Set(
-    (manifest.references ?? [])
+    invocation.inputs.references
       .map((reference) => reference.gate_evidence?.profile)
       .filter((profile): profile is string => typeof profile === 'string'),
   )
