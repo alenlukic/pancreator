@@ -15,6 +15,7 @@ import {
   type InstallMarker,
   cloneInstalledProject,
   readJson,
+  runInstalledPan,
   runInstaller,
 } from './install-helpers.js'
 
@@ -450,6 +451,69 @@ test('refresh removes only unmodified files from retired payload entries', () =>
       readJson<InstallMarker>(markerPath).payload_entries.includes('tests'),
       false,
     )
+
+    // AC-007: the installed tsconfig.json no longer compiles the retained
+    // tree. AC-006: the refreshed harness still builds and runs despite the
+    // retained modified and target-added files sitting beside it.
+    const tsconfig = readJson<{ include: string[] }>(
+      path.join(pancreatorDir, 'tsconfig.json'),
+    )
+
+    assert.equal(
+      tsconfig.include.some((entry) => entry.startsWith('tests/')),
+      false,
+    )
+
+    const doctor = runInstalledPan(project, ['doctor', '--json'])
+
+    assert.equal(doctor.status, 0, `${doctor.stdout}\n${doctor.stderr}`)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('a pre-manifest retired tests/ tree is retained and stays outside the installed build', () => {
+  const project = cloneInstalledProject()
+  const pancreatorDir = path.join(project, '.pancreator')
+  const markerPath = path.join(pancreatorDir, 'install.json')
+  const testsDirectory = path.join(pancreatorDir, 'tests', 'unit')
+  const legacyPath = path.join(testsDirectory, 'legacy.test.ts')
+
+  try {
+    mkdirSync(testsDirectory, { recursive: true })
+    // References a helper the current payload does not ship. A build that
+    // reaches this file fails; the point of this test is that no build does.
+    writeFileSync(
+      legacyPath,
+      "import { missingHelper } from '../helpers/missing.js'\nmissingHelper()\n",
+    )
+
+    // A marker with no payload_files at all predates local-change tracking:
+    // reconcilePayload's early-return path (ownership cannot be proven).
+    const marker = readJson<InstallMarker>(markerPath)
+
+    marker.payload_files = []
+    writeFileSync(markerPath, `${JSON.stringify(marker, null, 2)}\n`)
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /ownership cannot be proven/u)
+    assert.match(result.stdout, /outside the installed build/u)
+    assert.equal(readFileSync(legacyPath, 'utf8').includes('missingHelper'), true)
+
+    const tsconfig = readJson<{ include: string[] }>(
+      path.join(pancreatorDir, 'tsconfig.json'),
+    )
+
+    assert.equal(
+      tsconfig.include.some((entry) => entry.startsWith('tests/')),
+      false,
+    )
+
+    const doctor = runInstalledPan(project, ['doctor', '--json'])
+
+    assert.equal(doctor.status, 0, `${doctor.stdout}\n${doctor.stderr}`)
   } finally {
     rmSync(project, { recursive: true, force: true })
   }
