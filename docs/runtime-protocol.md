@@ -268,14 +268,25 @@ legacy all-history input behavior for compatibility. New runs use the scoped
 `ORCH-001` defines how the supervisor consumes `pending_action`, which actions it
 must continue through, and where operator handoff is required.
 
-Continuation never depends on a platform completion notification. When a worker
-launch returns before the declared output exists, the supervisor awaits
-`pan watch <run-id>`. The command loops on the `DELEGATE-001` cadence,
-inspects the invocation's output and evidence paths, and appends every arming
-and wake to `agent/evidence/<invocation-id>-watch.jsonl`. It exits `completed`
-(0), `stalled` (2), `timed_out` (3), or `unverified` (4). `--mark-background`
-writes `agent/evidence/<invocation-id>-delegation-background.json` when the
-platform turned the launch into a background subagent.
+Continuation never depends on a platform completion notification. Every worker
+`Task` call sets `run_in_background: true`, and in the same turn the supervisor
+awaits `pan watch <run-id> --mark-background`. The command loops on the
+`DELEGATE-001` cadence, inspects the invocation's output and evidence paths,
+and appends every arming and wake to
+`agent/evidence/<invocation-id>-watch.jsonl`. It exits `completed` (0),
+`stalled` (2), `timed_out` (3), or `unverified` (4). `--mark-background`
+writes `agent/evidence/<invocation-id>-delegation-background.json`.
+
+Each wake also reads the hook-fed agent index under `runtime/logs/agents/` for
+the worker the launch `--handle` names, else the agent whose task text named
+the invocation. The wake records that agent's latest event, any open call, and
+its stop. A new agent event counts as progress. An open call holds off a stall
+verdict, but an open shell call does so only while its linked `bin/pan-run`
+heartbeat is younger than two cadences. A completed stop with the output
+present completes the watch with `terminal_basis: agent_state`. An error stop,
+an aborted stop, or a completed stop without output ends it `unverified` with
+`agent_stopped_error`, `agent_stopped_aborted`, or
+`agent_stopped_without_output`.
 
 The first arming writes the launch record
 `agent/evidence/<invocation-id>-launch.json` with the launch time, the source
@@ -286,8 +297,9 @@ delegated worker for the invocation, and an arming with no handle succeeds
 and records `null`. Every launch-relative number the harness reports reads
 that record, including the `DELEGATION_WATCH_LATE` advisory.
 
-A launch that returns with the declared output already present exposes no
-observation point. The supervisor records that return with
+As recovery only, a worker call that still returned in the foreground with the
+declared output already present exposes no observation point. The supervisor
+records that return with
 `pan watch <run-id> --foreground-returned [--invocation <id>] [--launched-at <iso-8601>]`,
 which writes `agent/evidence/<invocation-id>-foreground-return.json` beside the
 watch record with the launch and return wall-clock times, the elapsed seconds,

@@ -250,7 +250,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT create worktrees, runs, session records, or run records by hand.',
       'You MUST directly perform supervisor mechanics for every child run.',
       'You MUST NOT delegate a child run to another `pan-orchestrator`.',
-      'You MUST delegate stages to run-scoped worker agents with foreground, blocking calls.',
+      'You MUST delegate stages to run-scoped worker agents as background `Task` calls with `run_in_background: true`, each followed by `pan watch <run-id>` in the same turn.',
       'You MUST collect terminal candidate failures without creating an operator gate.',
       'You MUST report only non-terminal execution blockers that make a candidate unable to continue.',
       PROTECTED_PATH_RULE,

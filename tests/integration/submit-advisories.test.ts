@@ -12,7 +12,9 @@ import {
 } from '../../src/lib/engine.js'
 import { statePath } from '../../src/lib/state.js'
 import {
+  DELEGATION_FOREGROUND_RETURN,
   markDelegationBackground,
+  recordForegroundReturn,
   watchInvocation,
 } from '../../src/lib/watch.js'
 import { createFixture, read, writeJson } from '../helpers.js'
@@ -121,5 +123,82 @@ test('a submission returns every advisory it records', async () => {
   assert.match(
     getRunStatus(root, state.run_id) as string,
     /Platform guidance conflict: "Plan mode forbids file edits"/u,
+  )
+})
+
+test('AC-010: submit emits DELEGATION_FOREGROUND_RETURN when observation is a foreground-return attestation', async () => {
+  const root = createFixture()
+  const created = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  const prepared = prepareInvocation(root, created.run_id)
+  assert.ok(prepared.invocation)
+
+  const { state } = prepared
+  const invocationId = prepared.invocation.invocation_id
+  const outputPath = prepared.invocation.output.path
+
+  fillPreparedOutput(root, state)
+
+  // Record a foreground-return attestation instead of a completed watch record
+  recordForegroundReturn(root, state.run_id, {
+    invocationId,
+    launchedAt: new Date(Date.now() - 5000).toISOString(),
+  })
+
+  const before = getRunState(root, state.run_id).advisories ?? []
+  const submitted = submitOutput(root, state.run_id, outputPath)
+  const recorded = (getRunState(root, state.run_id).advisories ?? []).slice(
+    before.length,
+  )
+
+  assert.ok(
+    submitted.advisories.some(
+      (advisory) =>
+        advisory.kind === 'delegation_supervision' &&
+        advisory.message.includes(DELEGATION_FOREGROUND_RETURN),
+    ),
+    `expected ${DELEGATION_FOREGROUND_RETURN} advisory, got: ${JSON.stringify(submitted.advisories)}`,
+  )
+  assert.deepEqual(submitted.advisories, recorded)
+})
+
+test('AC-010: submit emits no DELEGATION_FOREGROUND_RETURN for a watched background launch', async () => {
+  const root = createFixture()
+  const created = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const prepared = prepareInvocation(root, created.run_id)
+  assert.ok(prepared.invocation)
+
+  const { state } = prepared
+  const invocationId = prepared.invocation.invocation_id
+  const outputPath = prepared.invocation.output.path
+
+  fillPreparedOutput(root, state)
+  markDelegationBackground(root, state.run_id, invocationId)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(watched.state, 'completed')
+
+  const submitted = submitOutput(root, state.run_id, outputPath)
+
+  assert.equal(
+    submitted.record.delegation_observation?.source,
+    'watch_completed',
+  )
+  assert.equal(
+    submitted.advisories.some((advisory) =>
+      advisory.message.includes(DELEGATION_FOREGROUND_RETURN),
+    ),
+    false,
+    `unexpected ${DELEGATION_FOREGROUND_RETURN}: ${JSON.stringify(submitted.advisories)}`,
   )
 })

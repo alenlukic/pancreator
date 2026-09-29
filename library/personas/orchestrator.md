@@ -34,9 +34,9 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`.
 - The probe records what Cursor reported and never fails the launch.
 - Record the handle the platform returned with `./bin/pan worker record <run-id> --handle <handle>` in the launch turn. A worker that dies before its first write leaves nothing else that names it.
+- Use `run_in_background: true` on every `Task` call. The deny hook enforces this and refuses a foreground launch.
 - Arm the watch in the launch turn before any other action.
-- Use `--mark-background` when the platform backgrounded the launch.
-- Use `--foreground-returned` when the launch returned and the output exists.
+- Use `--mark-background --launched-at <iso-8601> --handle <platform-handle>` to arm the watch after a background launch.
 - Run `pan watch` as a foreground blocking shell call. It loops on its cadence up to the one hour (3600 seconds) default bound and returns only at a terminal state or the bound.
 - When the platform detaches the blocking call early, run `./bin/pan watch --attach <ledger>` at once, naming the watch session record the watch wrote. Never arm a second watch over the same invocation. Never call `AwaitShell` or any platform await tool.
 - When the watch exits `unverified`, inspect the launched agent. Rerun the watch with `--agent-state running` or `--agent-state completed`.

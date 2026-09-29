@@ -310,12 +310,15 @@ import {
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchAgent,
   watchAttach,
   watchInvocations,
   watchProcess,
   watchTimer,
   writeRedlineRecord,
   type GenericWatchRecordEntry,
+  type WatchAgentSessionEntry,
+  type WatchAgentWakeInfo,
   type WatchRecordEntry,
 } from './lib/watch.js'
 import { runWatchAudit } from './lib/watch-audit.js'
@@ -4935,6 +4938,111 @@ async function main(): Promise<void> {
 
       const processPid = option(args, '--process')
       const timerMode = hasFlag(args, '--timer')
+      const agentId = option(args, '--agent')
+
+      // Standalone --agent <id> form: no positional run id (Q-008 disposition).
+      if (
+        agentId !== null &&
+        (args[0] === undefined || args[0].startsWith('--'))
+      ) {
+        const agentExclusive = [
+          '--targets',
+          '--invocation',
+          '--foreground-returned',
+          '--mark-background',
+          '--agent-state',
+          '--agent-state-evidence',
+          '--handle',
+          '--launched-at',
+          '--process',
+        ]
+
+        if (
+          hasFlag(args, '--timer') ||
+          agentExclusive.some(
+            (name) => option(args, name) !== null || hasFlag(args, name),
+          )
+        ) {
+          throw new PanError(
+            '--agent (standalone) is exclusive with --process, --timer, ' +
+              '--targets, --invocation, and delegation flags.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const agentCadence = parseCadenceSeconds(
+          option(args, '--cadence-seconds'),
+          option(args, '--cadence-directed-by-operator'),
+        )
+
+        const agentCadenceAuthority =
+          option(args, '--cadence-directed-by-operator')?.trim() || undefined
+        const result = await watchAgent(root, agentId, {
+          cadenceSeconds: agentCadence,
+          ...(agentCadenceAuthority
+            ? { cadenceAuthority: agentCadenceAuthority }
+            : {}),
+          timeoutSeconds: parseTimeoutSeconds(
+            option(args, '--timeout-seconds'),
+          ),
+          onSessionStart: (entry: WatchAgentSessionEntry) => {
+            const indexed = entry.agent_entry
+            process.stderr.write(
+              `[pan watch:agent:${entry.subject}] armed ` +
+                `${entry.cadence_seconds}s cadence, ` +
+                `${entry.timeout_seconds}s bound; ` +
+                (indexed
+                  ? `index: ${indexed.status}, last ${indexed.last_event_kind} ` +
+                    `at ${indexed.last_event_at}` +
+                    (entry.aliases.length > 0
+                      ? `, aliases ${entry.aliases.join(', ')}`
+                      : '')
+                  : 'index: not registered yet') +
+                `; attach: ./bin/pan watch --attach ${entry.record_path}\n`,
+            )
+          },
+          onWake: interactive
+            ? (info: WatchAgentWakeInfo) => {
+                const activity = info.agent_activity
+                const openTool = activity?.open_call?.tool ?? null
+                const age =
+                  activity?.last_event_age_seconds != null
+                    ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
+                    : ''
+                process.stderr.write(
+                  `[pan watch:agent:${info.subject}] wake ${info.wake}` +
+                    (activity ? '' : ' not registered') +
+                    (openTool ? ` open:${openTool}` : '') +
+                    (activity?.last_event_kind
+                      ? ` last:${activity.last_event_kind}${age}`
+                      : '') +
+                    (info.terminal_state ? ` -> ${info.terminal_state}` : '') +
+                    '\n',
+                )
+              }
+            : undefined,
+        })
+
+        print(
+          json
+            ? result
+            : `agent watch ${result.state}: '${result.agent_id}' after ` +
+                `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
+                `record ${result.record_path}`,
+          json,
+        )
+        process.exitCode =
+          result.state === 'completed'
+            ? 0
+            : result.state === 'failed'
+              ? 1
+              : result.state === 'stalled'
+                ? 2
+                : result.state === 'timed_out'
+                  ? 3
+                  : 130
+        return
+      }
 
       if (processPid !== null || timerMode) {
         if (processPid !== null && timerMode) {

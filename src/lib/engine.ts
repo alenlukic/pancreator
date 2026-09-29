@@ -103,6 +103,7 @@ import {
 } from './fast-wall-series.js'
 import {
   DELEGATION_CADENCE_EXTENDED,
+  DELEGATION_FOREGROUND_RETURN,
   DELEGATION_TIMER_UNAWAITED,
   DELEGATION_UNOBSERVED,
   DELEGATION_WATCH_LATE,
@@ -7220,6 +7221,19 @@ export function submitOutput(
             `attached terminal, so the harness cannot show the timer was ` +
             `awaited. Awaitedness stays unknown; platform or harness ` +
             `transport evidence can refine it later.`,
+        ])
+      }
+
+      // US-005: a submission resting on a foreground-return attestation
+      // rather than a completed watch earns a submit advisory so the run
+      // record stays honest about what was observed.
+      if (delegationObservation.source === 'foreground_return') {
+        advise('delegation_supervision', [
+          `${DELEGATION_FOREGROUND_RETURN}: invocation ` +
+            `${invocation.invocation_id} was observed through a ` +
+            `foreground-return attestation rather than a completed watch. ` +
+            `DELEGATE-001 requires every new launch to use ` +
+            `run_in_background: true and be observed with pan watch.`,
         ])
       }
     }
