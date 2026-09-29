@@ -1004,6 +1004,25 @@ function print(value: unknown, asJson = false): void {
 }
 
 /**
+ * A hint naming the agent-index hooks a stale `.cursor/hooks.json` is
+ * missing, or null when there is nothing to report. `pan watch --agent`
+ * surfaces this both at arming and on an `unregistered` verdict, because a
+ * stale hook projection is the ordinary reason no subagent ever registers.
+ */
+function agentIndexHooksHint(
+  status: WatchAgentSessionEntry['hooks_projection'],
+): string | null {
+  if (status === null || status.projected) {
+    return null
+  }
+
+  return (
+    `hooks: agent-index hooks missing from .cursor/hooks.json ` +
+    `(${status.missing_events.join(', ')}); run ./bin/pan models --sync`
+  )
+}
+
+/**
  * Adapt a `HelperSession` (line-protocol stdio) into the `Bridge` interface
  * the driver expects. Each call sends one JSON request and awaits one reply.
  * The helper protocol returns `{ ok: false, code, error }` on failure; this
@@ -4977,6 +4996,8 @@ async function main(): Promise<void> {
 
         const agentCadenceAuthority =
           option(args, '--cadence-directed-by-operator')?.trim() || undefined
+        let finalHooksProjection: WatchAgentSessionEntry['hooks_projection'] =
+          null
         const result = await watchAgent(root, agentId, {
           cadenceSeconds: agentCadence,
           ...(agentCadenceAuthority
@@ -4987,6 +5008,8 @@ async function main(): Promise<void> {
           ),
           onSessionStart: (entry: WatchAgentSessionEntry) => {
             const indexed = entry.agent_entry
+            finalHooksProjection = entry.hooks_projection
+            const hooksHint = agentIndexHooksHint(entry.hooks_projection)
             process.stderr.write(
               `[pan watch:agent:${entry.subject}] armed ` +
                 `${entry.cadence_seconds}s cadence, ` +
@@ -4998,7 +5021,9 @@ async function main(): Promise<void> {
                       ? `, aliases ${entry.aliases.join(', ')}`
                       : '')
                   : 'index: not registered yet') +
-                `; attach: ./bin/pan watch --attach ${entry.record_path}\n`,
+                `; attach: ./bin/pan watch --attach ${entry.record_path}` +
+                (hooksHint ? `; ${hooksHint}` : '') +
+                '\n',
             )
           },
           onWake: interactive
@@ -5026,9 +5051,15 @@ async function main(): Promise<void> {
         print(
           json
             ? result
-            : `agent watch ${result.state}: '${result.agent_id}' after ` +
-                `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
-                `record ${result.record_path}`,
+            : result.state === 'unregistered'
+              ? `agent watch unregistered: the index never registered ` +
+                `'${result.agent_id}' after ${result.elapsed_seconds.toFixed(1)}s ` +
+                `over ${result.wakes} wakes; this is not evidence of a stall. ` +
+                `${agentIndexHooksHint(finalHooksProjection) ?? 'Confirm the agent id and rearm.'} ` +
+                `record ${result.record_path}`
+              : `agent watch ${result.state}: '${result.agent_id}' after ` +
+                  `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
+                  `record ${result.record_path}`,
           json,
         )
         process.exitCode =
@@ -5040,7 +5071,9 @@ async function main(): Promise<void> {
                 ? 2
                 : result.state === 'timed_out'
                   ? 3
-                  : 130
+                  : result.state === 'unregistered'
+                    ? 6
+                    : 130
         return
       }
 

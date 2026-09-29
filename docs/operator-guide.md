@@ -268,9 +268,15 @@ A subagent launched outside a run is watched by its agent id:
 ```
 
 It exits `0` on a completed stop, `1` on an error or aborted stop, `2` on a
-stall, `3` at the bound, and `130` on interruption. Each wake records whether
-the stop left a transcript. Its ledger at `runtime/logs/watch/agent-<id>.jsonl`
-starts with a `session_started` entry, so `pan watch --attach` follows it.
+stall, `3` at the bound, `6` when the agent index has never registered the id
+(`unregistered`), and `130` on interruption. `unregistered` never counts as a
+stall: an id the index has never seen supplies no evidence of unchanged
+state. Both the arming line and the `unregistered` verdict name whether the
+projected `.cursor/hooks.json` is missing the agent-index hooks and, when it
+is, point at `./bin/pan models --sync`, because a stale hook projection is
+the ordinary cause. Each wake records whether the stop left a transcript.
+Its ledger at `runtime/logs/watch/agent-<id>.jsonl` starts with a
+`session_started` entry, so `pan watch --attach` follows it.
 
 `--mark-background` records that the launch is a background subagent. As
 recovery only, a worker call that still returned in the foreground with the

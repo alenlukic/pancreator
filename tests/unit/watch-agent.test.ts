@@ -187,17 +187,25 @@ test('AC-006: a stop whose index update a live lock dropped still ends the watch
   assert.equal(result.wakes, 1)
 })
 
-test('AC-006: an agent the index never registers stalls after the stall window', async () => {
+test('AC-009: an agent the index never registers ends unregistered, never stalled', async () => {
   const root = makeRoot()
   const wakes: WatchAgentWakeInfo[] = []
+  const sessions: WatchAgentSessionEntry[] = []
   const result = await watchAgent(root, 'never-seen', {
     ...fakeClock(),
     onWake: (info) => wakes.push(info),
+    onSessionStart: (entry) => sessions.push(entry),
   })
 
-  assert.equal(result.state, 'stalled')
-  assert.equal(result.wakes, 5, 'five 60-second wakes make the 5-minute stall')
-  assert.equal(wakes[0]?.agent_activity, null)
+  assert.equal(result.state, 'unregistered')
+  assert.equal(result.wakes, 5, 'five 60-second wakes make the 5-minute window')
+  assert.ok(wakes.every((wake) => wake.agent_activity === null))
+  assert.equal(wakes.at(-1)?.terminal_state, 'unregistered')
+  // The canonical hooks.json this temp root carries none of, so there is
+  // nothing to compare against and the status reads null rather than a
+  // false claim of drift.
+  assert.equal(sessions[0]?.hooks_projection, null)
+  assert.equal(wakes.at(-1)?.hooks_projection, null)
 })
 
 test('AC-006: an agent registered after arming is found on a later wake', async () => {
@@ -220,6 +228,25 @@ test('AC-006: an agent registered after arming is found on a later wake', async 
   assert.equal(wakes[0]?.agent_activity, null)
   assert.equal(wakes[1]?.agent_activity?.agent_id, AGENT)
   assert.equal(wakes[1]?.changed, true)
+})
+
+test('AC-011: an agent registered after arming still stalls once its state stops changing', async () => {
+  const root = makeRoot()
+  const wakes: WatchAgentWakeInfo[] = []
+  const result = await watchAgent(root, AGENT, {
+    ...fakeClock((wake) => {
+      if (wake === 2) {
+        register(root)
+      }
+    }),
+    onWake: (info) => wakes.push(info),
+  })
+
+  assert.equal(result.state, 'stalled')
+  assert.equal(wakes[0]?.agent_activity, null)
+  assert.equal(wakes[1]?.agent_activity?.agent_id, AGENT)
+  assert.equal(wakes[1]?.changed, true)
+  assert.equal(wakes.at(-1)?.terminal_state, 'stalled')
 })
 
 test('AC-006: an open non-shell call holds off the stall until the bound', async () => {
@@ -305,4 +332,13 @@ test('AC-006: pan watch --attach follows an agent ledger to its verdict exit cod
   })
 
   assert.equal(followedFailure.exit_code, 1)
+
+  const unregisteredRoot = makeRoot()
+  const unregistered = await watchAgent(unregisteredRoot, 'never-seen', fakeClock())
+  const followedUnregistered = await watchAttach(unregisteredRoot, {
+    ledgers: [unregistered.record_path],
+    ...fakeClock(),
+  })
+
+  assert.equal(followedUnregistered.exit_code, 6)
 })

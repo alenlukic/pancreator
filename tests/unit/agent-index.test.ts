@@ -21,6 +21,7 @@ import {
   AGENTS_DIR,
   agentActivitySignature,
   agentEventFile,
+  agentIndexHooksStatus,
   collectSecrets,
   extractTaskHandle,
   getAgentEntry,
@@ -731,4 +732,83 @@ test('AC-011: an index write prunes old terminal agents and old launches', () =>
   )
   assert.equal(index.aliases['old-alias'], undefined)
   assert.equal(index.pending_launches.length, 0)
+})
+
+function writeHooksJson(
+  filePath: string,
+  events: Record<string, string[]>,
+): void {
+  const hooks: Record<string, Array<{ command: string }>> = {}
+
+  for (const [event, commands] of Object.entries(events)) {
+    hooks[event] = commands.map((command) => ({ command }))
+  }
+
+  mkdirSync(path.dirname(filePath), { recursive: true })
+  writeFileSync(filePath, JSON.stringify({ version: 1, hooks }, null, 2))
+}
+
+test('agentIndexHooksStatus is null with no canonical hooks.json to compare against', () => {
+  const root = createTestTempDirectory('agent-index-hooks-')
+
+  assert.equal(agentIndexHooksStatus(root), null)
+})
+
+test('agentIndexHooksStatus reports every canonical agent-index event a stale projection lacks', () => {
+  const root = createTestTempDirectory('agent-index-hooks-')
+
+  writeHooksJson(path.join(root, 'library', 'cursor', 'hooks.json'), {
+    preToolUse: [
+      'bin/pan-hook-deny-await-shell',
+      'bin/pan-hook-agent-index preToolUse',
+    ],
+    postToolUse: ['bin/pan-hook-agent-index postToolUse'],
+    subagentStart: ['bin/pan-hook-agent-index subagentStart'],
+  })
+  // The projected file predates the agent-index hooks: it still wires the
+  // deny hook, but never the agent-index one, and carries no subagentStart
+  // entry at all.
+  writeHooksJson(path.join(root, '.cursor', 'hooks.json'), {
+    preToolUse: ['bin/pan-hook-deny-await-shell'],
+    postToolUse: ['bin/pan-hook-agent-index postToolUse'],
+  })
+
+  const status = agentIndexHooksStatus(root)
+
+  assert.equal(status?.projected, false)
+  assert.deepEqual(
+    [...(status?.missing_events ?? [])].sort(),
+    ['preToolUse', 'subagentStart'],
+  )
+})
+
+test('agentIndexHooksStatus reports current when the projection carries every agent-index hook', () => {
+  const root = createTestTempDirectory('agent-index-hooks-')
+
+  writeHooksJson(path.join(root, 'library', 'cursor', 'hooks.json'), {
+    preToolUse: ['bin/pan-hook-agent-index preToolUse'],
+    subagentStart: ['bin/pan-hook-agent-index subagentStart'],
+  })
+  writeHooksJson(path.join(root, '.cursor', 'hooks.json'), {
+    preToolUse: ['bin/pan-hook-agent-index preToolUse'],
+    subagentStart: ['bin/pan-hook-agent-index subagentStart'],
+  })
+
+  const status = agentIndexHooksStatus(root)
+
+  assert.equal(status?.projected, true)
+  assert.deepEqual(status?.missing_events, [])
+})
+
+test('agentIndexHooksStatus reports every event missing when the projected file is absent', () => {
+  const root = createTestTempDirectory('agent-index-hooks-')
+
+  writeHooksJson(path.join(root, 'library', 'cursor', 'hooks.json'), {
+    subagentStart: ['bin/pan-hook-agent-index subagentStart'],
+  })
+
+  const status = agentIndexHooksStatus(root)
+
+  assert.equal(status?.projected, false)
+  assert.deepEqual(status?.missing_events, ['subagentStart'])
 })
