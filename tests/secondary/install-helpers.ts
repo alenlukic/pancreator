@@ -4,6 +4,7 @@ import {
   cpSync,
   existsSync,
   readFileSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -79,6 +80,65 @@ export function runInstaller(
     ...sourceArgs,
     ...args,
   ])
+}
+
+/**
+ * Run the installed `bin/pan` wrapper inside a `--skip-dependencies`
+ * project. That install carries no toolchain of its own, so its own
+ * on-demand build (`bin/build` inside `.pancreator`) can only find `tsc`
+ * through whichever PATH the parent process supplies. Prefixing PATH with
+ * this checkout's own `node_modules/.bin` supplies it; `@types/node`
+ * resolves because every test fixture is created under this checkout's own
+ * scratch root (`createTestTempDirectory`), so TypeScript's upward
+ * directory walk from the installed `tsconfig.json` reaches this checkout's
+ * `node_modules/@types` on its own.
+ */
+export function runInstalledPan(
+  project: string,
+  args: string[],
+): CommandResult {
+  const installedNodeModules = path.join(
+    project,
+    '.pancreator',
+    'node_modules',
+  )
+
+  // A `--skip-dependencies` install carries no node_modules of its own, so
+  // TypeScript's ambient `types: ["node"]` entry can only resolve through a
+  // `node_modules/@types` an ancestor directory of the installed
+  // tsconfig.json supplies. This checkout's own `test_scratch.root` puts
+  // fixtures outside this repository tree (see config.json), so that
+  // directory walk never reaches this repo's own node_modules on its own.
+  // Linking it in is test-only scaffolding: it stands in for whatever
+  // toolchain a real installation shares with its host, and lets the
+  // installed harness's own on-demand build actually run `tsc`, which is
+  // the whole point of a test that exercises HR-002.
+  if (!existsSync(installedNodeModules)) {
+    symlinkSync(
+      path.join(REPO_ROOT, 'node_modules'),
+      installedNodeModules,
+      'dir',
+    )
+  }
+
+  const result = spawnSync(
+    path.join(project, '.pancreator', 'bin', 'pan'),
+    args,
+    {
+      cwd: project,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${path.join(REPO_ROOT, 'node_modules', '.bin')}:${process.env.PATH ?? ''}`,
+      },
+    },
+  )
+
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    status: result.status,
+  }
 }
 
 export function readJson<T>(filePath: string): T {

@@ -29,11 +29,13 @@ import path from 'node:path'
 import { PanError, invariant, isNodeError } from './errors.js'
 import { gitWorkspaceActivityFingerprint, gitWorkspaceSnapshot } from './git.js'
 import {
+  agentIndexHooksStatus,
   getAgentByRunInvocation,
   getAgentEntry,
   readAgentActivity,
   type AgentActivity,
   type AgentEntry,
+  type AgentIndexHooksStatus,
 } from './agent-index.js'
 import {
   appendJsonLine,
@@ -4587,6 +4589,8 @@ const FOLLOWED_VERDICT_EXIT_CODES: Record<string, number> = {
   exited: 0,
   elapsed: 0,
   failed: 1,
+  // 5 is already WATCH_ATTACH_EXIT_ORPHANED.
+  unregistered: 6,
 }
 
 export type AttachTerminalState =
@@ -5203,6 +5207,7 @@ export type AgentWatchVerdict =
   | 'stalled'
   | 'timed_out'
   | 'interrupted'
+  | 'unregistered'
 
 /**
  * The first ledger entry of a standalone agent watch. It carries the watcher
@@ -5225,6 +5230,8 @@ export interface WatchAgentSessionEntry {
   record_path: string
   agent_entry: AgentEntry | null
   aliases: string[]
+  /** Whether the projected `.cursor/hooks.json` still wires the agent-index hooks, or null when there is nothing canonical to compare against. */
+  hooks_projection: AgentIndexHooksStatus | null
 }
 
 export interface WatchAgentWakeInfo {
@@ -5242,6 +5249,8 @@ export interface WatchAgentWakeInfo {
   terminal_state?: AgentWatchVerdict
   terminal_basis?: 'agent_state'
   interrupted_reason?: string
+  /** Recorded again on the `unregistered` verdict so the ledger's last line carries the likely cause. */
+  hooks_projection?: AgentIndexHooksStatus | null
 }
 
 export interface WatchAgentResult {
@@ -5272,8 +5281,13 @@ function agentWatchLedgerPath(root: string, agentId: string): string {
  * suppresses the stall verdict, but an open shell call only while its linked
  * `bin/pan-run` heartbeat stays fresh.
  *
- * The CLI exits 0 on completed, 1 on failed, 2 on stall, 3 at the bound, and
- * 130 on interruption.
+ * The CLI exits 0 on completed, 1 on failed, 2 on stall, 3 at the bound, 6 on
+ * `unregistered`, and 130 on interruption. `unregistered` covers an agent id
+ * the index has never seen: that is not evidence the agent is unchanged, so
+ * it never counts toward a stall. The session-start ledger entry and the
+ * `unregistered` wake both record whether the projected `.cursor/hooks.json`
+ * still wires the agent-index hooks, because a stale projection is the
+ * ordinary cause.
  */
 export async function watchAgent(
   root: string,
@@ -5309,7 +5323,14 @@ export async function watchAgent(
   let activity = read()
   let wakes = 0
   let unchangedWakes = 0
+  // Separate from unchangedWakes: an agent id the index has never seen is
+  // not evidence of unchanged state, it is an absence of evidence. Counting
+  // it toward the same threshold would make "never registered" and "went
+  // quiet" the same verdict, and DELEGATE-001's stall recovery instruction
+  // does not apply to the former.
+  let unregisteredWakes = 0
   let previousSignature = activity?.signature ?? null
+  const hooksProjection = agentIndexHooksStatus(root)
 
   const subject = (): string => activity?.agent_id ?? agentId
   const finish = (state: AgentWatchVerdict): WatchAgentResult => ({
@@ -5327,7 +5348,10 @@ export async function watchAgent(
       Partial<
         Pick<
           WatchAgentWakeInfo,
-          'terminal_state' | 'terminal_basis' | 'interrupted_reason'
+          | 'terminal_state'
+          | 'terminal_basis'
+          | 'interrupted_reason'
+          | 'hooks_projection'
         >
       >,
   ): WatchAgentWakeInfo => {
@@ -5377,6 +5401,7 @@ export async function watchAgent(
     record_path: path.relative(root, recordPath),
     agent_entry: entry,
     aliases: activity?.aliases ?? [],
+    hooks_projection: hooksProjection,
   }
 
   appendJsonLine(recordPath, session)
@@ -5428,22 +5453,33 @@ export async function watchAgent(
       const changed = signature !== previousSignature
 
       previousSignature = signature
-      unchangedWakes =
-        changed || activity?.stall_suppressed === true ? 0 : unchangedWakes + 1
+
+      if (activity === null) {
+        unregisteredWakes += 1
+      } else {
+        unregisteredWakes = 0
+        unchangedWakes =
+          changed || activity.stall_suppressed === true ? 0 : unchangedWakes + 1
+      }
 
       const verdict: AgentWatchVerdict | null =
         stopVerdict() ??
-        (unchangedWakes >= maxStallWakes
-          ? 'stalled'
-          : now() - startedMs >= timeoutSeconds * 1000
-            ? 'timed_out'
-            : null)
+        (unregisteredWakes >= maxStallWakes
+          ? 'unregistered'
+          : unchangedWakes >= maxStallWakes
+            ? 'stalled'
+            : now() - startedMs >= timeoutSeconds * 1000
+              ? 'timed_out'
+              : null)
 
       record({
         changed,
         ...(verdict ? { terminal_state: verdict } : {}),
         ...(verdict === 'completed'
           ? { terminal_basis: 'agent_state' as const }
+          : {}),
+        ...(verdict === 'unregistered'
+          ? { hooks_projection: hooksProjection }
           : {}),
       })
 

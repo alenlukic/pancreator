@@ -301,10 +301,35 @@ run_smoke() {
     fs.writeFileSync(markerPath, `${JSON.stringify(marker, null, 2)}\n`)
   ' "$fresh_project/.pancreator/install.json" \
     "$fresh_project/.pancreator/tests/unit/legacy.test.ts"
-  smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
-    --pancreator-root "$PANCREATOR_ROOT" "${smoke_source_args[@]}" \
-    --yes --skip-dependencies --skip-shell-alias
-  smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
+  # A file under the same retired entry that the previous marker never
+  # recorded (a target addition, or an upgrade from a release predating the
+  # manifest) is retained rather than removed, and must not become build
+  # input in the refreshed harness.
+  printf 'import { missingHelper } from "../helpers/missing.js"\nmissingHelper()\n' \
+    >"$fresh_project/.pancreator/tests/unit/target-added.test.ts"
+  smoke_step "idempotent refresh" bash -c \
+    "bash '$0' --target '$fresh_project' --pancreator-root '$PANCREATOR_ROOT' \
+      ${smoke_source_args[*]} --yes --skip-dependencies --skip-shell-alias \
+      >'$smoke_root/retired-entry-refresh.log'"
+  # smoke_verify is not reused here: it asserts no `.pancreator/tests`
+  # remains at all, which no longer holds once a target-added file is
+  # deliberately retained under it. The checks below assert what actually
+  # matters for this scenario instead.
+  smoke_step "refresh exits cleanly" test -x \
+    "$fresh_project/.pancreator/bin/pan"
+  smoke_step "remove the unmodified retired file" grep -q \
+    'retired  tests/unit/legacy.test.ts' \
+    "$smoke_root/retired-entry-refresh.log"
+  smoke_step "retain the target-added file outside the build" grep -q \
+    'retained  tests/unit/target-added.test.ts' \
+    "$smoke_root/retired-entry-refresh.log"
+  smoke_step "name the retained files as outside the build" grep -q \
+    'outside the installed build' "$smoke_root/retired-entry-refresh.log"
+  smoke_step "retained file stays on disk" test -f \
+    "$fresh_project/.pancreator/tests/unit/target-added.test.ts"
+  smoke_step "installed tsconfig no longer compiles tests" bash -c \
+    '! grep -q "tests/" "$1/.pancreator/tsconfig.json"' \
+    _ "$fresh_project"
 
   existing_cursor_project="$(smoke_project)"
   mkdir -p "$existing_cursor_project/.cursor/rules"
@@ -1070,6 +1095,14 @@ prepare_staging_payload() {
   # advertise scripts that would invoke it.
   node "$PANCREATOR_ROOT/bin/install-support" strip-harness-test-scripts \
     --package "$staging/package.json"
+
+  # tests/ is not part of the staged payload, but a later refresh can retain
+  # a changed or unmanifested tests/ tree that a previous release did ship
+  # (payload reconciliation preserves what it cannot prove it owns). The
+  # installed tsconfig.json must not compile such a tree, or the first `pan`
+  # command after that refresh fails its own on-demand build.
+  node "$PANCREATOR_ROOT/bin/install-support" narrow-tsconfig \
+    --tsconfig "$staging/tsconfig.json"
 
   if [[ "$DETACHED" -eq 1 ]]; then
     cp "$PANCREATOR_ROOT/library/templates/detached-AGENTS.md" \

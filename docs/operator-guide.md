@@ -268,9 +268,15 @@ A subagent launched outside a run is watched by its agent id:
 ```
 
 It exits `0` on a completed stop, `1` on an error or aborted stop, `2` on a
-stall, `3` at the bound, and `130` on interruption. Each wake records whether
-the stop left a transcript. Its ledger at `runtime/logs/watch/agent-<id>.jsonl`
-starts with a `session_started` entry, so `pan watch --attach` follows it.
+stall, `3` at the bound, `6` when the agent index has never registered the id
+(`unregistered`), and `130` on interruption. `unregistered` never counts as a
+stall: an id the index has never seen supplies no evidence of unchanged
+state. Both the arming line and the `unregistered` verdict name whether the
+projected `.cursor/hooks.json` is missing the agent-index hooks and, when it
+is, point at `./bin/pan models --sync`, because a stale hook projection is
+the ordinary cause. Each wake records whether the stop left a transcript.
+Its ledger at `runtime/logs/watch/agent-<id>.jsonl` starts with a
+`session_started` entry, so `pan watch --attach` follows it.
 
 `--mark-background` records that the launch is a background subagent. As
 recovery only, a worker call that still returned in the foreground with the
@@ -546,7 +552,18 @@ unreadable installation is reported on its own row and does not hide the other
 entries. Each row carries the installation's `version`, the `harness_version`
 of this checkout, and `stale`, which is `true` when the two differ and `null`
 when either is unknown, so an installation that fell behind is visible without
-a manual comparison.
+a manual comparison. `queued_items` counts every regular file in the
+installation's `runtime/inbox/queue/`, matching `pan inbox` eligibility. A
+`version` this old, this checkout's own current schema can outrun: an
+installation's `config.json` can fail a field a later release of this
+checkout requires, even though that installation's own harness still accepts
+it. That failure never blanks `version`, `installation_mode`, `stale`, or
+`queued_items`; it appears only in `error`, naming the failing field, so a
+schema-behind installation stays visible and distinguishable from one whose
+config is corrupt (which reports `installation_mode: null` with a JSON parse
+error instead). `pan spend` applies the same tolerant read: an installation it
+cannot resolve this way is named in the report's `warnings` with its id and
+reason, rather than silently dropped from `attribution_sources`.
 
 Run `/pan-repair installs` to sweep every registered installation, or append a
 comma-separated id list to narrow the sweep. The technician classifies queued

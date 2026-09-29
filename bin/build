@@ -17,7 +17,16 @@ fingerprint() {
   local dirs=()
 
   [[ -d src ]] && dirs+=(src)
-  [[ -d tests ]] && dirs+=(tests)
+  # Only fingerprint tests/ when tsconfig.json's `include` actually compiles
+  # it. An installed harness narrows `include` to `src/**/*.ts` and can still
+  # carry a retained but uncompiled tests/ tree (a refresh keeps a changed or
+  # unmanifested retired payload entry in place); fingerprinting it there
+  # would force a rebuild on every invocation for a directory tsc never
+  # reads. Self-development's tsconfig.json keeps tests/**/*.ts, so this
+  # checkout's own fingerprint is unaffected.
+  if [[ -d tests ]] && grep -q '"tests/' tsconfig.json 2>/dev/null; then
+    dirs+=(tests)
+  fi
 
   {
     stat_line tsconfig.json package.json package-lock.json

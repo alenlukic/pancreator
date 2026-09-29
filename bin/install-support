@@ -1242,7 +1242,10 @@ function reconcilePayload() {
       process.stdout.write(
         'Installed payload predates local-change tracking: harness-owned ' +
           'files are replaced wholesale this update and tracked from now on. ' +
-          'Retired entries remain because their ownership cannot be proven.\n',
+          'Retired entries remain because their ownership cannot be proven. ' +
+          'They are outside the installed build (the narrowed tsconfig.json ' +
+          `no longer compiles them) and may be deleted; nothing under ` +
+          `${backupRoot} preserves them, because none was backed up.\n`,
       )
     }
 
@@ -1352,8 +1355,9 @@ function reconcilePayload() {
     lines.push(
       '',
       'Changed or target-added files under retired payload entries were retained.',
-      'Each retained version is also preserved under',
-      `${backupRoot}:`,
+      'They are outside the installed build (the narrowed tsconfig.json no',
+      'longer compiles them). Each retained version is also preserved under',
+      `${backupRoot}, and may be deleted from the installation:`,
       '',
       ...retainedRetired.sort().map((relative) => `  retained  ${relative}`),
     )
@@ -1834,6 +1838,37 @@ function stripHarnessTestScripts() {
   writeJson(packagePath, { ...value, scripts })
 }
 
+// The harness test suite is not part of an installed payload, but a refresh
+// can still retain a changed or unmanifested tests/ tree on disk (payload
+// reconciliation preserves what it cannot prove it owns). An installed
+// tsconfig.json that still names tests/**/*.ts in `include` would then run
+// tsc over files whose helpers the payload no longer ships, and every `pan`
+// command's own on-demand build would fail. Narrowing `include` here, before
+// the payload is hashed for the install marker, keeps a retained tests/ tree
+// on disk without letting it reach the compiler.
+function narrowTsconfig() {
+  const tsconfigPath = path.resolve(requiredOption('--tsconfig'))
+  const value = readJson(tsconfigPath)
+
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    fail(`${tsconfigPath} MUST contain a JSON object.`)
+  }
+
+  if (!Array.isArray(value.include)) {
+    fail(`${tsconfigPath}.include MUST be an array.`)
+  }
+
+  const include = value.include.filter(
+    (entry) => typeof entry !== 'string' || !entry.startsWith('tests/'),
+  )
+
+  if (include.length === 0) {
+    fail(`${tsconfigPath}.include MUST NOT become empty.`)
+  }
+
+  writeJson(tsconfigPath, { ...value, include })
+}
+
 function detectExistingHarness() {
   const targetRoot = path.resolve(requiredOption('--target-root'))
   const sourceRoot = path.resolve(requiredOption('--source-root'))
@@ -2030,6 +2065,8 @@ if (command === 'project-cursor') {
   await configureShellAlias()
 } else if (command === 'strip-harness-test-scripts') {
   stripHarnessTestScripts()
+} else if (command === 'narrow-tsconfig') {
+  narrowTsconfig()
 } else if (command === 'report-clean-target-extensions') {
   reportCleanTargetExtensions()
 } else {
