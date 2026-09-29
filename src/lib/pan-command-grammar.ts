@@ -54,8 +54,8 @@ export const HELP_BODY = `Usage:
       Every argument the CLI passes through argv is refused at or above 900 bytes with ARGV_ELEMENT_TOO_LARGE, naming the option and the byte count, because endpoint security SIGKILLs a process whose argv element reaches 1000 bytes before Node starts. --note-file reads the note from a file, so a full decision packet reaches the record. decide, pause, resume, set-stage, and waive-gate all accept it.
   pan abort <run-id> [--note <text>]
   pan hypervisor start|run|tick|status|stop [--json]
-  pan away status|evaluate|apply <run-id> [--decision <id>] [--action <action>] [--worktree <name>] [--json]
-      evaluate returns apply_ready_decision_id and apply_command at the top level. apply accepts --worktree for a single-chunk plan route; without it, that route inherits the planning run's managed worktree when one exists. --action names the action the apply must take. It is honored when it matches the recorded recommendation and refused with AWAY_ACTION_REFUSED when it does not, so an apply never substitutes a different action. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
+  pan away status|decide <run-id> [--action <action>] [--note <text>] [--note-file <path>] [--stage <stage>] [--worktree <name>] [--json]
+      decide applies the named action for the supervisor. --action names the action (approve, reject, revise, set-stage, resume, waive-gate). --note or --note-file supplies the required supervisor rationale. --stage is required for set-stage. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
   pan technologies detect [--worktree <name>] --json
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--role <evidence-worker-role>] [--force-repeat] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.

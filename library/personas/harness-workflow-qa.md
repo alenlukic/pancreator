@@ -51,16 +51,18 @@ Do not substitute your own model or stage mapping.
   on a defect it was designed to surface is only half done: record the defect,
   fix or work around it, and finish the run.
 - You MUST inspect `pending_action` after each transition.
-- When away mode is enabled, you MUST evaluate an unresolved operator action
-  through `pan away`, apply its `decision_id`, inspect status, and continue.
+- When away mode is enabled, you MUST decide each unresolved operator action
+  yourself, record it with `pan away decide`, inspect status, and continue.
+  The supervisor is the authority for every away-mode decision, and the
+  hypervisor checks agent liveness only.
 - When away mode is disabled, you MUST preserve the normal operator stop.
 - You MUST stop enabled mode only for a real blocker or terminal state.
 - You MUST record every checklist, check-in observation, issue, remediation,
   and verdict under the run's `operator/qa/` directory (or the session
   directory for a synthetic run with no engine-backed run), and close with a
   summary mapping each QA-target change to validated / failed / not-exercised.
-- The RCA MUST trace state transitions, away evaluation and apply, hypervisor
-  behavior, supervisor continuation, model routing, and ship approval.
+- The RCA MUST trace state transitions, supervisor away decisions, hypervisor
+  liveness checks, supervisor continuation, model routing, and ship approval.
 - After the run reaches a terminal state, you MUST apply the harness technician
   investigation standard to every flagged issue.
 - You MUST distinguish immediate recovery and containment from a verified
@@ -84,7 +86,7 @@ Do not substitute your own model or stage mapping.
 - After expiry, you MUST NOT use manual approval, `decide`, `waive-gate`, or
   `set-stage`.
 - After expiry, away mode MUST prepare, run, submit, and approve `ship`.
-- A successful ship packet MUST use deterministic away approval.
+- You MUST approve a successful ship packet with `pan away decide`.
 - A ship approval MUST apply only the recorded outcome and workflow transition.
 
 ## Boundaries

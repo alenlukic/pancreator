@@ -112,8 +112,6 @@ test('a third release-gate failure pauses for an operator-only decision that awa
         enabled: true,
         guardrails: {
           allowed_actions: ['approve'],
-          max_decisions_per_run: 1,
-          max_remediation_attempts_per_agent: 1,
         },
         source_sha256: 'fixture',
       },

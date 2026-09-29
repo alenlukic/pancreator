@@ -350,8 +350,8 @@ test('an explicit worktree is accepted for a single-chunk route and the run occu
     description: 'Prepared by the operator before the plan was approved.',
   })
   // The away route is the one that runs unattended, so the explicit value is
-  // proven on that actor; `pan decide` and `pan away apply` both hand the same
-  // parsed option to this function.
+  // proven on that actor; `pan decide` and `pan away decide` both hand the
+  // same parsed option to this function.
   const started = maybeStartDelivery(
     root,
     loadState(root, planRunId),

@@ -2794,7 +2794,7 @@ function applyTransition(
     // A `blocked` at a release-gated stage used to be marked operator-only
     // under the long-horizon contract, which carried it straight to the
     // session's deferral rung. HORIZON-001 now names four hard blocks and
-    // nothing else; a stage's `blocked` is a claim the away evaluator tests
+    // nothing else; a stage's `blocked` is a claim the supervisor tests
     // (revise, set-stage, or a recorded waiver of a cost-backed criterion),
     // not a verdict. The release boundary itself is unchanged: away mode
     // still cannot push, publish, or deploy.
@@ -9567,7 +9567,7 @@ export function quarantineRunForAgent(
     state.pending_action = { type: 'operator_decision' }
 
     writeDecision(root, state, 'Hypervisor quarantined an agent', reason, [
-      `Review agent '${agentId}' and its recovery evidence.`,
+      `Review agent '${agentId}' and its liveness evidence.`,
       `Resume with: ${panCommand(root)} resume ${state.run_id}`,
       `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
     ])

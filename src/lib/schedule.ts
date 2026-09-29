@@ -6,11 +6,7 @@ import path from 'node:path'
 import { createRun } from './engine.js'
 import { PanError, errorMessage, invariant } from './errors.js'
 import { driveRun } from './headless-driver.js'
-import {
-  driveRunUnderAwayMode,
-  initHorizonSession,
-  parseHorizonQueue,
-} from './horizon.js'
+import { initHorizonSession, parseHorizonQueue } from './horizon.js'
 import {
   appendJsonLine,
   ensureDir,
@@ -352,23 +348,24 @@ function runWorkflowAction(
     verification: action.verification,
     pipelineConfigName: action.pipeline_config,
   })
-  const attempt = driveRunUnderAwayMode(
-    root,
-    run.run_id,
-    {
-      attestSupervisorCard: action.attest_supervisor_card ?? false,
-      attestedBy: `schedule:${job.id}`,
-    },
-    runtime.driveWorkflow ?? driveRun,
-  )
-
-  if (attempt.blocked !== null) {
-    return { ok: false, run_id: run.run_id, reason: attempt.blocked }
-  }
-
-  const driven = attempt.driven
+  const driven = (runtime.driveWorkflow ?? driveRun)(root, run.run_id, {
+    attestSupervisorCard: action.attest_supervisor_card ?? false,
+    attestedBy: `schedule:${job.id}`,
+  })
   const ok =
     driven.stop.type === 'terminal' && driven.stop.status === 'succeeded'
+
+  if (driven.stop.type === 'operator_pause') {
+    // No supervisor runs inside a scheduled job, so the run waits for one.
+    return {
+      ok: false,
+      run_id: run.run_id,
+      reason:
+        `Workflow run '${run.run_id}' waits for a supervisor decision ` +
+        `(${driven.stop.action} at stage '${driven.stop.stage}'). ` +
+        `Resume it with /pan-resume ${run.run_id}.`,
+    }
+  }
 
   return {
     ok,

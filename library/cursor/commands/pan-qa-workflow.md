@@ -11,11 +11,11 @@ Drive a workflow in this top-level session to validate harness changes.
 9. For a bound run, use `./bin/pan submit <run-id> <output-json> --worktree <name>`.
 10. Write each stage checklist before that stage starts. For each foreground worker delegation, record launch evidence, completion evidence with elapsed time, and a terminal-state inspection. Apply a fixed check-in cadence only to asynchronous processes that expose an observation point. Record drift, issues, and remediation immediately.
 11. Inspect `pending_action` after every transition. Continue each supervisor-owned action in this top-level session.
-12. When away mode is enabled, evaluate through `pan away`, apply the returned `decision_id`, inspect status, and continue.
+12. When away mode is enabled, decide each unresolved operator action yourself with `pan away decide`, inspect status, and continue. The supervisor is the authority for every away-mode decision, and the hypervisor checks agent liveness only.
 13. When away mode is disabled, preserve the normal operator stop. Stop enabled mode only for a real blocker or terminal state.
 14. Apply the temporary QA waiver only to surgical repair, governance, workflow, and verification work for this case.
 15. Expire the temporary QA waiver after the first successful `test` stage record. Record the exact expiry point.
-16. After waiver expiry, do not use manual approval, `decide`, `waive-gate`, or `set-stage`. Let away mode complete `ship`.
+16. After waiver expiry, do not use manual approval, `pan decide`, `pan waive-gate`, or `pan set-stage`. Approve `ship` with `pan away decide`.
 17. Keep push, publication, deployment, branch deletion, and destructive actions outside the waiver.
 18. Write the complete QA record under the run's `operator/qa/` directory. Include the RCA, checklists, check-ins, issues, remediation, waivers, and verdicts.
 19. After the run reaches a terminal state, investigate every flagged issue and identify its root cause from preserved evidence.
