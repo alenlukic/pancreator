@@ -45,7 +45,7 @@ const VALID_HOOKS = {
     preToolUse: [
       {
         command: '{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-deny-await-shell',
-        matcher: 'AwaitShell|Await',
+        matcher: 'AwaitShell|Await|Task',
         timeout: 5,
         failClosed: true,
       },
@@ -295,4 +295,47 @@ test('AC-009: DELEGATE-001 binds the ban validator as an authoritative harness g
       (issue) => issue.code === 'await_shell_ban.missing_from_disallowed_tools',
     ),
   )
+})
+
+test('AC-003: deny matcher must include Task', () => {
+  const root = createTestTempDirectory('ban-validator-task-matcher-')
+  writeAgentFile(
+    root,
+    'agent.md',
+    'description: A\nmodel: __MODEL__\ndisallowedTools: [AwaitShell]',
+  )
+
+  // Matcher without Task should fail
+  writeHooksJson(root, {
+    version: 1,
+    hooks: {
+      preToolUse: [
+        {
+          command: '{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-deny-await-shell',
+          matcher: 'AwaitShell|Await',
+          timeout: 5,
+          failClosed: true,
+        },
+      ],
+    },
+  })
+  const resultWithout = validateAwaitShellBan(makeInput(root))
+  assert.equal(resultWithout.status, 'failed')
+  const issue = resultWithout.issues.find(
+    (i) => i.code === 'await_shell_ban.deny_matcher_missing_task',
+  )
+  assert.ok(
+    issue,
+    `missing-task issue present: ${JSON.stringify(resultWithout.issues)}`,
+  )
+  assert.ok(
+    issue.message.includes('Task'),
+    `message names Task: ${issue.message}`,
+  )
+
+  // Matcher with Task should pass
+  writeHooksJson(root, VALID_HOOKS)
+  const resultWith = validateAwaitShellBan(makeInput(root))
+  assert.equal(resultWith.status, 'passed')
+  assert.equal(resultWith.issues.length, 0)
 })

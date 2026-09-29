@@ -7,7 +7,7 @@
     "The projected `pan-meta-orchestrator` agent MUST be the only start surface for a best-of-N session.",
     "The meta-orchestrator MUST run as a nested subagent and directly do the supervisor mechanics for every session child run.",
     "The meta-orchestrator MUST NOT delegate a child run to another `pan-orchestrator`, because a second-level supervisor cannot launch workers.",
-    "The meta-orchestrator MUST delegate stages to run-scoped worker agents with foreground, blocking calls.",
+    "The meta-orchestrator MUST delegate stages to run-scoped worker agents with `run_in_background: true` and MUST follow each launch with `pan watch <run-id> --mark-background` in the same turn.",
     "Worker delivery MUST use the body the invocation card names. Referenced delivery names the generated delivery prompt. Verbatim delivery names the complete canonical card. A summary, an excerpt, or a bare path MUST NOT substitute for that body.",
     "The delegating session MUST NOT add a parallel scope, policy, gate, or plan restatement ahead of the delivered body. One short persona label line MAY precede it, formatted as `Agent: <launched agent name>` followed by one blank line.",
     "The meta-orchestrator MUST repair a missing or mismatched delegation artifact against the same active invocation. It MUST NOT bypass the artifact or report it as successful delivery.",

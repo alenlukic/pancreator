@@ -8,6 +8,7 @@ const AGENTS_DIR = 'library/cursor/agents'
 const HOOKS_SOURCE = 'library/cursor/hooks.json'
 const DENIED_TOOL = 'AwaitShell'
 const DENY_HOOK_COMMAND = 'pan-hook-deny-await-shell'
+const TASK_TOOL = 'Task'
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u
 const TOP_LEVEL_KEY_PATTERN = /^([A-Za-z][\w-]*):(?:[ \t]+(.*))?$/u
 
@@ -314,29 +315,50 @@ function hooksIssues(root: string): Issue[] {
   }
 
   const preToolUse = hooks.hooks.preToolUse
-  const hasDenyEntry =
-    Array.isArray(preToolUse) &&
-    preToolUse.some(
-      (entry) =>
-        isRecord(entry) &&
-        typeof entry.command === 'string' &&
-        entry.command.includes(DENY_HOOK_COMMAND),
-    )
+  const denyEntry = Array.isArray(preToolUse)
+    ? preToolUse.find(
+        (entry) =>
+          isRecord(entry) &&
+          typeof entry.command === 'string' &&
+          entry.command.includes(DENY_HOOK_COMMAND),
+      )
+    : undefined
+  const hasDenyEntry = denyEntry !== undefined
 
-  if (hasDenyEntry) {
-    return []
+  if (!hasDenyEntry) {
+    return [
+      {
+        code: 'await_shell_ban.pre_tool_use_hook_missing',
+        message:
+          `${HOOKS_SOURCE}: no preToolUse entry found whose command ` +
+          `contains '${DENY_HOOK_COMMAND}'. Add the hook to enforce ` +
+          `the AwaitShell ban at the platform level.`,
+        pointer: HOOKS_SOURCE,
+      },
+    ]
   }
 
-  return [
-    {
-      code: 'await_shell_ban.pre_tool_use_hook_missing',
-      message:
-        `${HOOKS_SOURCE}: no preToolUse entry found whose command ` +
-        `contains '${DENY_HOOK_COMMAND}'. Add the hook to enforce ` +
-        `the AwaitShell ban at the platform level.`,
-      pointer: HOOKS_SOURCE,
-    },
-  ]
+  // The deny entry's matcher must also cover Task so foreground Task calls
+  // are blocked at the hook level (AC-003).
+  const matcher =
+    isRecord(denyEntry) && typeof denyEntry.matcher === 'string'
+      ? denyEntry.matcher
+      : ''
+
+  if (!matcher.split('|').includes(TASK_TOOL)) {
+    return [
+      {
+        code: 'await_shell_ban.deny_matcher_missing_task',
+        message:
+          `${HOOKS_SOURCE}: the preToolUse deny entry's matcher '${matcher}' ` +
+          `does not include '${TASK_TOOL}'. Widen it to ` +
+          `'AwaitShell|Await|Task' so foreground Task calls are denied.`,
+        pointer: HOOKS_SOURCE,
+      },
+    ]
+  }
+
+  return []
 }
 
 /**

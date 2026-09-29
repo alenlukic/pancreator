@@ -224,6 +224,12 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     age_source: 'mtime',
     disposal: 'archive_then_delete',
   },
+  {
+    name: 'agent-index',
+    paths: ['runtime/logs/agents'],
+    age_source: 'mtime',
+    disposal: 'delete',
+  },
 ]
 
 /** Classes whose loose files the temporal rename pass standardizes. */

@@ -100,7 +100,7 @@
     },
     "The number of concurrent unit runs MUST NOT exceed the parallelism limit recorded on the session (`pan cohort init --max-parallel`, default 4). `pan cohort start` MUST create runs only for the free slots and MUST name the deferred units. Run it again to start the deferred units once a unit run reaches a terminal state.",
     {
-      "text": "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message, so the launches run in parallel. It MUST keep every launch foreground. It MUST observe each launched run with its own `pan watch <run-id>`. It MUST do each run's pending action independently, so one gated or stalled run never blocks its siblings.",
+      "text": "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message, so the launches run in parallel. Each `Task` call MUST set `run_in_background: true`. It MUST observe each launched run with its own `pan watch <run-id>`. It MUST do each run's pending action independently, so one gated or stalled run never blocks its siblings.",
       "audience": ["supervisor"]
     },
     {

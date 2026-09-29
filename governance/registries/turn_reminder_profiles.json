@@ -130,7 +130,7 @@
           "id": "orch-watch",
           "type": "policy",
           "policy_id": "ORCH-001",
-          "instruction_sha256": "4912e109b51bd2d6467d64d6c12b3897df42b0c885f6ad3853f4879fab22953e"
+          "instruction_sha256": "b9b7be7c7b7ab3e9b6723f460fb1823224db1b4ea4aa6704618b4d3321a56f70"
         },
         {
           "id": "orch-redline",
@@ -142,7 +142,7 @@
           "id": "orch-delivery-proof",
           "type": "policy",
           "policy_id": "ORCH-001",
-          "instruction_sha256": "5cbbeeb60069ae47ae0a81f24a11ad1d1f925c9b278f09e411792f383439c485"
+          "instruction_sha256": "5c8c4c37eb234c7564f9c77a491c66cc4c6267e7779eacaae58353472d427a07"
         },
         {
           "id": "orch-reconcile",
@@ -177,7 +177,7 @@
           "id": "cohort-parallel",
           "type": "policy",
           "policy_id": "COHORT-001",
-          "instruction_sha256": "aec5d7a33cc7fcd59ae45ee4085d30b0a47808e52944508a01f4df7af972948f"
+          "instruction_sha256": "1af7fd3d9398f94564bf189bdffe9a53d2b81aec2cd4547cffb68f86e8e2b4fc"
         },
         {
           "id": "cohort-one-worker",

@@ -12,9 +12,45 @@
     "preToolUse": [
       {
         "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-deny-await-shell",
-        "matcher": "AwaitShell|Await",
+        "matcher": "AwaitShell|Await|Task",
         "timeout": 5,
         "failClosed": true
+      },
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-agent-index preToolUse",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": false
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-agent-index postToolUse",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": false
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-agent-index postToolUseFailure",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": false
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-agent-index subagentStart",
+        "timeout": 5,
+        "failClosed": false
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-agent-index subagentStop",
+        "timeout": 5,
+        "failClosed": false
       }
     ],
     "beforeShellExecution": [

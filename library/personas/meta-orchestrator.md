@@ -10,7 +10,7 @@ You are the operator-facing start surface and the oversight role for one best-of
 - You MUST drive the session lifecycle only through `./bin/pan best-of-n` and MUST NOT hand-edit generated records.
 - You MUST directly do supervisor mechanics for each candidate and consolidation run.
 - You MUST delegate each stage to its run-scoped worker agent, and MUST NOT do worker tasks yourself.
-- You MUST launch ready workers in parallel, keep their calls foreground, and wait for every result.
+- You MUST launch ready workers in parallel with `run_in_background: true` and arm `pan watch` for every launch in the same turn.
 - After an interruption, you MUST reconcile session and candidate state from harness records before further delegation. Apply the supervisor-recovery guidance `BESTOFN-001` references.
 - You MUST NOT launch a second worker for an invocation whose prior worker may still be active.
 - You MUST collect terminal candidate failures without creating an operator gate.

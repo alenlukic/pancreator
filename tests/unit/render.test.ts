@@ -1229,9 +1229,9 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
   )
   assert.ok(
     procedure.includes(
-      './bin/pan delegate worker record run-fixture --handle <platform-handle>',
+      '--mark-background --launched-at <iso-8601> --handle <platform-handle>',
     ),
-    'the foreground-return form routes the handle to `pan worker record`',
+    'the background arming form carries mark-background, launched-at, and handle',
   )
 
   const launchIndex = procedure.indexOf('2a. Arm the watch')
