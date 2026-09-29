@@ -172,10 +172,7 @@ test('pan installs list reports healthy missing and unreadable installations', (
   assert.equal(payload[4]?.version, '6.20.0')
   assert.equal(payload[4]?.stale, true)
   assert.equal(payload[4]?.queued_items, 0)
-  assert.match(
-    String(payload[4]?.error),
-    /max_load_average_per_cpu/u,
-  )
+  assert.match(String(payload[4]?.error), /max_load_average_per_cpu/u)
 })
 
 test('pan installs archive moves cited items without installation commands or target changes', () => {

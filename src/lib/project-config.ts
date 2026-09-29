@@ -874,9 +874,10 @@ export function loadProjectConfig(root: string): ProjectConfig {
  * out-of-range `installation_mode` reads as null rather than throwing, and a
  * non-string or empty `workspace_root` reads as null the same way.
  */
-export function readInstallationIdentity(
-  root: string,
-): { installation_mode: 'self_development' | 'embedded' | 'detached' | null; workspace_root: string | null } | null {
+export function readInstallationIdentity(root: string): {
+  installation_mode: 'self_development' | 'embedded' | 'detached' | null
+  workspace_root: string | null
+} | null {
   const configPath = resolveConfigPath(root)
 
   if (!configPath) {

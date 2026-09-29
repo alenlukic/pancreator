@@ -776,10 +776,10 @@ test('agentIndexHooksStatus reports every canonical agent-index event a stale pr
   const status = agentIndexHooksStatus(root)
 
   assert.equal(status?.projected, false)
-  assert.deepEqual(
-    [...(status?.missing_events ?? [])].sort(),
-    ['preToolUse', 'subagentStart'],
-  )
+  assert.deepEqual([...(status?.missing_events ?? [])].sort(), [
+    'preToolUse',
+    'subagentStart',
+  ])
 })
 
 test('agentIndexHooksStatus reports current when the projection carries every agent-index hook', () => {

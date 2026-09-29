@@ -500,7 +500,10 @@ test('a pre-manifest retired tests/ tree is retained and stays outside the insta
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /ownership cannot be proven/u)
     assert.match(result.stdout, /outside the installed build/u)
-    assert.equal(readFileSync(legacyPath, 'utf8').includes('missingHelper'), true)
+    assert.equal(
+      readFileSync(legacyPath, 'utf8').includes('missingHelper'),
+      true,
+    )
 
     const tsconfig = readJson<{ include: string[] }>(
       path.join(pancreatorDir, 'tsconfig.json'),

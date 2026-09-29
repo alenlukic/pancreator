@@ -97,11 +97,7 @@ export function runInstalledPan(
   project: string,
   args: string[],
 ): CommandResult {
-  const installedNodeModules = path.join(
-    project,
-    '.pancreator',
-    'node_modules',
-  )
+  const installedNodeModules = path.join(project, '.pancreator', 'node_modules')
 
   // A `--skip-dependencies` install carries no node_modules of its own, so
   // TypeScript's ambient `types: ["node"]` entry can only resolve through a
