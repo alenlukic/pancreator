@@ -95,6 +95,7 @@ test('pan installs list reports healthy missing and unreadable installations', (
   )
   const broken = installationRoot('broken', false)
   const current = installationRoot('current')
+  const behind = installationRoot('behind', false)
 
   writeText(path.join(healthy, 'VERSION'), '6.9.0\n')
   writeText(path.join(current, 'VERSION'), '0.0.0-test\n')
@@ -102,11 +103,28 @@ test('pan installs list reports healthy missing and unreadable installations', (
   writeText(path.join(healthy, 'runtime/inbox/queue/ignore.txt'), 'ignore\n')
   writeText(path.join(broken, 'config.json'), '{not-json\n')
 
+  // A registered installation whose config.json predates a schema field this
+  // checkout's harness now requires (`fast_wall.max_load_average_per_cpu`,
+  // required since 3bcc43b8). Its own harness still accepts this config; only
+  // this checkout's current-schema read fails.
+  writeJson(path.join(behind, 'config.json'), {
+    schema_version: 1,
+    installation_mode: 'embedded',
+    workspace_root: '..',
+    fast_wall: {
+      ceiling_ms: 120_000,
+      anchor_date: '2026-01-01',
+      weekly_allowance_ms: 3_600_000,
+    },
+  })
+  writeText(path.join(behind, 'VERSION'), '6.20.0\n')
+
   const source = sourceRoot([
     { id: 'healthy', path: healthy },
     { id: 'missing', path: missing },
     { id: 'broken', path: broken },
     { id: 'current', path: current },
+    { id: 'behind', path: behind },
   ])
   const result = run(source, ['installs', 'list', '--json'])
 
@@ -115,7 +133,7 @@ test('pan installs list reports healthy missing and unreadable installations', (
 
   assert.deepEqual(
     payload.map((entry) => entry.id),
-    ['healthy', 'missing', 'broken', 'current'],
+    ['healthy', 'missing', 'broken', 'current', 'behind'],
   )
   assert.deepEqual(Object.keys(payload[0] ?? {}), [
     'id',
@@ -134,7 +152,8 @@ test('pan installs list reports healthy missing and unreadable installations', (
   assert.equal(payload[0]?.version, '6.9.0')
   assert.equal(payload[0]?.harness_version, '0.0.0-test')
   assert.equal(payload[0]?.stale, true)
-  assert.equal(payload[0]?.queued_items, 1)
+  // Every regular file counts, matching pan inbox's own eligibility rule.
+  assert.equal(payload[0]?.queued_items, 2)
   assert.equal(payload[1]?.exists, false)
   assert.equal(payload[1]?.stale, null)
   assert.equal(payload[2]?.exists, true)
@@ -144,6 +163,19 @@ test('pan installs list reports healthy missing and unreadable installations', (
   assert.notEqual(payload[2]?.error, '')
   assert.equal(payload[3]?.version, '0.0.0-test')
   assert.equal(payload[3]?.stale, false)
+
+  // A config that fails only this checkout's current schema still reports
+  // its real version, mode, staleness, and queue depth; the schema failure
+  // lands in `error` as a diagnostic instead of blanking the other fields.
+  assert.equal(payload[4]?.exists, true)
+  assert.equal(payload[4]?.installation_mode, 'embedded')
+  assert.equal(payload[4]?.version, '6.20.0')
+  assert.equal(payload[4]?.stale, true)
+  assert.equal(payload[4]?.queued_items, 0)
+  assert.match(
+    String(payload[4]?.error),
+    /max_load_average_per_cpu/u,
+  )
 })
 
 test('pan installs archive moves cited items without installation commands or target changes', () => {

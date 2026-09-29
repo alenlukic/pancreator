@@ -858,6 +858,52 @@ export function loadProjectConfig(root: string): ProjectConfig {
   return config
 }
 
+/**
+ * The subset of a registered installation's configuration that requires no
+ * schema currency: `installation_mode` and `workspace_root`. A version-skewed
+ * installation's `config.json` can fail `readProjectConfig` against this
+ * checkout's current schema (a required field added after that installation
+ * was last refreshed) even though its own harness still accepts it. Callers
+ * that only need to know what kind of installation this is, and where its
+ * workspace sits, read this instead of the full-schema reader so a schema
+ * failure never blanks fields that do not depend on it.
+ *
+ * Returns null when no config file exists. Throws when the file exists but
+ * is not valid JSON, or its `config_overrides.json` is not an object, exactly
+ * as `readHarnessConfig` does. Type-checks only the two returned fields: an
+ * out-of-range `installation_mode` reads as null rather than throwing, and a
+ * non-string or empty `workspace_root` reads as null the same way.
+ */
+export function readInstallationIdentity(
+  root: string,
+): { installation_mode: 'self_development' | 'embedded' | 'detached' | null; workspace_root: string | null } | null {
+  const configPath = resolveConfigPath(root)
+
+  if (!configPath) {
+    return null
+  }
+
+  const value = readHarnessConfig(root, configPath)
+
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const mode =
+    value.installation_mode === 'self_development' ||
+    value.installation_mode === 'embedded' ||
+    value.installation_mode === 'detached'
+      ? value.installation_mode
+      : null
+
+  const workspaceRoot =
+    typeof value.workspace_root === 'string' && value.workspace_root.length > 0
+      ? value.workspace_root
+      : null
+
+  return { installation_mode: mode, workspace_root: workspaceRoot }
+}
+
 export function configuredWorkspaceRoot(root: string): string {
   return loadProjectConfig(root).workspace_root ?? '.'
 }

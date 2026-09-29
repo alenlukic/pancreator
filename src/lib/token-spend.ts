@@ -10,10 +10,14 @@ import {
   type CursorUsageEvent,
   type CursorUsageEventsResult,
 } from './cursor-usage.js'
-import { invariant } from './errors.js'
+import { errorMessage, invariant } from './errors.js'
 import { COMMAND_GOVERNANCE_REGISTRY_PATH } from './governance/command-coverage.js'
 import { fileExists, isDirectory, isRecord, readJson } from './io.js'
-import { readProjectConfig, registeredInstallations } from './project-config.js'
+import {
+  readInstallationIdentity,
+  readProjectConfig,
+  registeredInstallations,
+} from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
@@ -173,6 +177,8 @@ export interface CollectSpendRecordsResult {
     workspaces_scanned: number
     embedded_installations_scanned: number
   }
+  /** One entry per registered installation skipped for attribution, naming its id and reason. */
+  warnings: string[]
 }
 
 export interface AggregateSpendRecordsResult {
@@ -517,62 +523,82 @@ function transcriptTimestamp(content: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-function attributionRoots(root: string): AttributionRoot[] {
+function attributionRoots(root: string): {
+  roots: AttributionRoot[]
+  warnings: string[]
+} {
   const roots: AttributionRoot[] = []
+  const warnings: string[] = []
   const seen = new Set<string>()
-  const add = (harnessRoot: string, embedded: boolean): void => {
+
+  const add = (
+    harnessRoot: string,
+    workspaceRoot: string | null,
+    embedded: boolean,
+  ): void => {
     const absoluteHarness = path.resolve(harnessRoot)
 
     if (seen.has(absoluteHarness)) {
       return
     }
 
-    let config: ReturnType<typeof readProjectConfig>
-
-    try {
-      config = readProjectConfig(absoluteHarness)
-    } catch {
-      return
-    }
-
-    if (config === null) {
-      return
-    }
-
-    const workspaceRoot = path.resolve(
-      absoluteHarness,
-      config.workspace_root ?? '.',
-    )
-
     roots.push({
       harness_root: absoluteHarness,
-      workspace_root: workspaceRoot,
+      workspace_root: path.resolve(absoluteHarness, workspaceRoot ?? '.'),
       embedded,
     })
     seen.add(absoluteHarness)
   }
 
+  // A registered installation's config.json is read for identity only
+  // (installation_mode, workspace_root), never against this checkout's
+  // current full schema: an older installation can fail a field this
+  // checkout's own schema added since, even though its own harness still
+  // accepts it. A skipped installation is named in `warnings` rather than
+  // dropped silently, so a spend report's attribution coverage stays
+  // explainable.
+  const resolveIdentity = (
+    harnessRoot: string,
+    label: string,
+  ): ReturnType<typeof readInstallationIdentity> => {
+    try {
+      const identity = readInstallationIdentity(harnessRoot)
+
+      if (identity === null) {
+        warnings.push(
+          `Installation ${label} skipped for spend attribution: no harness configuration found.`,
+        )
+      }
+
+      return identity
+    } catch (error) {
+      warnings.push(
+        `Installation ${label} skipped for spend attribution: ${errorMessage(error)}`,
+      )
+
+      return null
+    }
+  }
+
   const current = readProjectConfig(root)
 
-  add(root, current?.installation_mode === 'embedded')
+  add(
+    root,
+    current?.workspace_root ?? null,
+    current?.installation_mode === 'embedded',
+  )
 
   if (current?.installation_mode === 'self_development') {
     for (const installation of registeredInstallations(root)) {
-      let config: ReturnType<typeof readProjectConfig>
+      const identity = resolveIdentity(installation.path, installation.id)
 
-      try {
-        config = readProjectConfig(installation.path)
-      } catch {
-        continue
-      }
-
-      if (config?.installation_mode === 'embedded') {
-        add(installation.path, true)
+      if (identity?.installation_mode === 'embedded') {
+        add(installation.path, identity.workspace_root, true)
       }
     }
   }
 
-  return roots
+  return { roots, warnings }
 }
 
 function readTranscripts(
@@ -1128,7 +1154,7 @@ export async function collectSpendRecords(
       ? 'team'
       : 'personal'
 
-  const roots = attributionRoots(root)
+  const { roots, warnings: attributionWarnings } = attributionRoots(root)
   const transcripts = readTranscripts(
     roots,
     startDateMs,
@@ -1246,6 +1272,7 @@ export async function collectSpendRecords(
       embedded_installations_scanned: roots.filter((item) => item.embedded)
         .length,
     },
+    warnings: attributionWarnings,
   }
 }
 
@@ -1463,6 +1490,7 @@ export async function generateTokenSpendReport(
     slices: aggregated.slices,
     coverage: aggregated.coverage,
     warnings: [
+      ...collected.warnings,
       ...aggregated.warnings,
       'Unmatched usage remains unattributed; no email, conversation identifier, or raw event is included in this report.',
     ],

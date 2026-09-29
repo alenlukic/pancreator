@@ -38,7 +38,18 @@ test('token spend attributes embedded-installation conversations to workflow ide
     installations: [],
   }
 
-  sourceConfig.installations = [{ id: 'embedded-target', path: embedded }]
+  // A second registered installation whose config.json is not valid JSON:
+  // attributionRoots must skip it with a named warning rather than throw or
+  // silently drop it from attribution_sources.
+  const brokenEmbedded = path.join(root, 'broken-target', '.pancreator')
+
+  mkdirSync(brokenEmbedded, { recursive: true })
+  writeFileSync(path.join(brokenEmbedded, 'config.json'), '{not-json\n')
+
+  sourceConfig.installations = [
+    { id: 'embedded-target', path: embedded },
+    { id: 'broken-target', path: brokenEmbedded },
+  ]
   writeJson(path.join(root, 'config.json'), sourceConfig)
   writeJson(path.join(embedded, 'config.json'), embeddedConfig)
 
@@ -152,6 +163,14 @@ test('token spend attributes embedded-installation conversations to workflow ide
     workspaces_scanned: 2,
     embedded_installations_scanned: 1,
   })
+  assert.ok(
+    report.warnings.some(
+      (warning) =>
+        warning.includes('broken-target') &&
+        warning.includes('skipped for spend attribution'),
+    ),
+    `expected a skip warning naming broken-target, got: ${JSON.stringify(report.warnings)}`,
+  )
   assert.equal(report.totals.total_tokens, 200)
   assert.equal(report.totals.cost_cents, 2.25)
   assert.equal(report.slices.commands[0]?.key, 'pan-start')

@@ -6,6 +6,7 @@ import { archiveInboxRequest, inboxStatusOf } from './inbox.js'
 import { fileExists, isFile, readText, resolveInside } from './io.js'
 import {
   harnessConfigName,
+  readInstallationIdentity,
   readProjectConfig,
   registeredInstallations,
   resolveRegisteredInstallation,
@@ -44,8 +45,10 @@ function queuedItemCount(root: string): number {
     return 0
   }
 
-  return readdirSync(queuePath, { withFileTypes: true }).filter(
-    (entry) => entry.isFile() && entry.name.endsWith('.md'),
+  // Matches the eligibility rule `listInboxStatus` (src/lib/inbox.ts) applies
+  // to every inbox status directory: every regular file, not just `.md`.
+  return readdirSync(queuePath, { withFileTypes: true }).filter((entry) =>
+    entry.isFile(),
   ).length
 }
 
@@ -86,31 +89,42 @@ export function describeInstallations(root: string): InstallationDescription[] {
       }
     }
 
-    try {
-      const config = readProjectConfig(entry.path)
-      const version = installationVersion(entry.path)
+    // Version and queue depth need no config schema, so a config that fails
+    // the harness's current schema (an older installation behind a required
+    // field this checkout added since) must not blank them. The full-schema
+    // read still runs, and its message, when any, becomes `error`: it is a
+    // diagnostic the operator can act on, not a reason to hide the row.
+    const version = installationVersion(entry.path)
+    const queuedItems = queuedItemCount(entry.path)
 
-      return {
-        ...base,
-        exists: true,
-        installation_mode: config?.installation_mode ?? null,
-        version,
-        harness_version: harnessVersion,
-        stale: staleVersion(version, harnessVersion),
-        queued_items: queuedItemCount(entry.path),
-        error: null,
-      }
+    let installationMode: InstallationDescription['installation_mode'] = null
+    let identityError: string | null = null
+
+    try {
+      const identity = readInstallationIdentity(entry.path)
+
+      installationMode = identity?.installation_mode ?? null
     } catch (error) {
-      return {
-        ...base,
-        exists: true,
-        installation_mode: null,
-        version: null,
-        harness_version: harnessVersion,
-        stale: null,
-        queued_items: 0,
-        error: errorMessage(error),
-      }
+      identityError = errorMessage(error)
+    }
+
+    let schemaError: string | null = null
+
+    try {
+      readProjectConfig(entry.path)
+    } catch (error) {
+      schemaError = errorMessage(error)
+    }
+
+    return {
+      ...base,
+      exists: true,
+      installation_mode: installationMode,
+      version,
+      harness_version: harnessVersion,
+      stale: staleVersion(version, harnessVersion),
+      queued_items: queuedItems,
+      error: identityError ?? schemaError,
     }
   })
 }
