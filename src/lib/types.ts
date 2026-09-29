@@ -1767,6 +1767,12 @@ export interface DeterministicResult {
   environment_blocked?: boolean
   repository_check_delta?: RepositoryCheckDelta
   failure_classifications?: GateFailureClassification[]
+  /**
+   * Lanes a failed repository-check gate failed in: a test lane directory
+   * name (`unit`, `integration`, ...) for a failing test, otherwise the
+   * failing command. Absent on a pass and on a non-profile gate.
+   */
+  failed_lanes?: string[]
   workspace_fingerprint: string
   delta?: WorkspaceDelta
   /**
@@ -1798,6 +1804,12 @@ export interface StageEntryGateRecord {
   repair_stage?: string
   /** Latest execution, pass or fail. */
   last_result: DeterministicResult
+  /**
+   * Set on a failure in a lane no earlier gate of the run proved current for
+   * the same workspace: the lanes and the profiles that were current. Audits
+   * count these to find checks that belong before the verify verdict.
+   */
+  lane_gap?: { lanes: string[]; verified_profiles: string[] }
   /**
    * Length of `stage_history` when the current visit passed. The pass stands
    * while no other stage submits after it; leaving the stage closes the visit.

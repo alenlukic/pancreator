@@ -47,9 +47,11 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   minimal: {
     summary:
       'Static and fast checks gate the implement and remediate loops; no ' +
-      'gate runs the full profile, including the ship release gate. QA ' +
-      'argues from manual cases and prior gate evidence.',
+      'gate runs the full profile, including the ship release gate, or the ' +
+      'impacted integration tests. QA argues from manual cases and prior ' +
+      'gate evidence.',
     gates: {
+      'implement.impacted_integration': false,
       'test.full_suite': false,
       'verify.full_suite': false,
       'remediate.full_suite': false,
@@ -58,8 +60,8 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   },
   light: {
     summary:
-      'Static and fast checks gate the implement and remediate loops. The ' +
-      'full profile runs only as the ship release gate when the run enters ' +
+      'Static, configuration, fast, and impacted integration checks gate ' +
+      'the implement and remediate loops. The full profile runs only as the ship release gate when the run enters ' +
       'ship; a failure routes to remediate and a repaired run returns to ' +
       'ship for another full run, at most twice before the operator ' +
       'decides. Agents run the fast profile once each as final validation ' +

@@ -377,6 +377,55 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
   }
 })
 
+test('the integration lane selects the integration tests a change reaches and leaves the default selection unchanged', async () => {
+  const root = createSyntheticTree()
+
+  try {
+    const graph = await buildModuleGraph(root)
+    const integration = selectImpactedTests(graph, ['src/lib/core.ts'], {
+      lanes: ['tests/integration'],
+    })
+
+    assert.deepEqual(integration.selected, [
+      'tests/integration/pre-release.test.ts',
+    ])
+    assert.equal(integration.lane_count, 1)
+    assert.deepEqual(integration.unreached, [])
+    // The fast profile covers no integration test, so the ratio advisory
+    // never recommends it for this selection.
+    assert.equal(integration.advisory, null)
+    assert.deepEqual(laneTests(graph, ['tests/integration']), [
+      'tests/integration/pre-release.test.ts',
+    ])
+
+    const untouched = selectImpactedTests(graph, ['src/lib/lonely.ts'], {
+      lanes: ['tests/integration'],
+    })
+    assert.deepEqual(untouched.selected, [])
+
+    // A bin reference an integration test would carry never credits a
+    // default-lane selection.
+    const defaults = selectImpactedTests(graph, ['src/lib/core.ts'])
+    assert.ok(
+      !defaults.selected.includes('tests/integration/pre-release.test.ts'),
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('parseImpactArgs maps --lane names to lane directories and rejects an unknown lane', () => {
+  assert.deepEqual(
+    parseImpactArgs(['--lane', 'integration', '--lane', 'unit']).lanes,
+    ['tests/integration', 'tests/unit'],
+  )
+  assert.equal(parseImpactArgs([]).lanes, undefined)
+  assert.throws(
+    () => parseImpactArgs(['--lane', 'secondary']),
+    /--lane must be one of: unit, regression, integration/u,
+  )
+})
+
 test('a hub or global change selects most of the lane and raises the advisory', async () => {
   const root = createSyntheticTree()
 

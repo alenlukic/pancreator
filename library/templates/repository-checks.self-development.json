@@ -27,6 +27,13 @@
       "probes": ["node --version", "npm --version"],
       "commands": ["./bin/pan tests impacted"]
     },
+    "impacted-integration": {
+      "description": "Interior gate before verify: run the integration tests whose static import closure reaches any file this branch changed against pan-dev, plus the dirty tree. The full profile at the ship gate still runs every lane.",
+      "probes": ["node --version", "npm --version"],
+      "commands": [
+        "./bin/pan tests impacted --lane integration --changed pan-dev"
+      ]
+    },
     "secondary": {
       "description": "Run Pancreator's installer suites, which are outside the default lane.",
       "probes": ["node --version", "npm --version"],

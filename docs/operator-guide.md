@@ -1594,11 +1594,11 @@ Evals are bounded toy workflow runs plus deterministic graders over the run's re
 `./bin/pan tests impacted` is the iteration profile. It is never a gate. The
 command builds the runtime import graph of `src/**/*.ts` and `tests/**/*.ts`
 with the TypeScript parser, takes the change set from Git, and runs every test
-in `tests/unit` and `tests/regression` that the change reaches. It never
-selects `tests/integration`: that lane runs only before a branch lands on
-`pan-dev`, in the `full` profile and in `/pan-release`. The `fast` profile
-stays the validation run at the end of an iteration loop, and `full` stays the
-release gate.
+in `tests/unit` and `tests/regression` that the change reaches. By default it
+never selects `tests/integration`. `--lane <unit|regression|integration>`
+replaces the default lanes with the named ones. The `fast` profile stays the
+validation run at the end of an iteration loop, and `full` stays the release
+gate.
 
 A test is selected when:
 
@@ -1652,6 +1652,28 @@ ratio, advisory flag, graph build time, duration, and the run result.
 The `impacted` profile in `runtime/repository-checks.json` runs the same
 command. An embedded target may declare its own `impacted` command in its
 `repository-checks.json`; the harness never treats that profile as a gate.
+
+The `impacted-integration` profile is different: it is an interior gate. It
+runs `./bin/pan tests impacted --lane integration --changed pan-dev`, which
+selects the integration tests that any file the branch changed reaches. The
+delivery and delivery-chunk implement and remediate stages gate on it and on
+`configuration`, and a returning verify refreshes both. A passed verify
+therefore rests on every lane the ship `full` gate can fail on, except the
+installer suites and integration tests the import graph cannot reach. The
+`minimal` verification level skips the integration gate. A target
+installation that does not declare the profile skips the gate as
+`not_configured`.
+
+In self-development, `runtime/repository-checks.json` is untracked, so a
+profile added to `library/templates/repository-checks.self-development.json`
+does not reach it by itself. `pan validate` warns for each template profile
+the live file lacks. Copy the profile from the template.
+
+When the ship entry gate fails, its run-state record names each failed lane
+that no earlier gate proved at the same workspace, under `lane_gap`, and the
+`entry_gate_failed` event carries `lane_gap: true` with the lanes. A lane is a
+test lane directory (`unit`, `integration`, `secondary`) or the failing
+command.
 
 ## Read a gate's failure classification
 

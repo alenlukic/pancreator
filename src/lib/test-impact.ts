@@ -21,9 +21,23 @@ import { readProjectConfig } from './project-config.js'
 
 /**
  * The fast lanes. Integration tests run only before release, in the `full`
- * profile, so iteration never selects them.
+ * profile, so iteration never selects them unless a caller names the
+ * integration lane with `--lane integration`.
  */
 export const TEST_LANES = ['tests/unit', 'tests/regression']
+
+/**
+ * Every lane `--lane` can name. The graph records bin, fixture, and data
+ * references for all of them, and selection filters to the lanes in force, so
+ * the default selection is unchanged by the wider graph.
+ */
+export const SELECTABLE_LANES: Record<string, string> = {
+  unit: 'tests/unit',
+  regression: 'tests/regression',
+  integration: 'tests/integration',
+}
+
+const ALL_TEST_LANES = Object.values(SELECTABLE_LANES)
 
 /** Repository files whose change invalidates every test in the lane. */
 export const GLOBAL_FILES = [
@@ -115,6 +129,8 @@ export interface ImpactOptions {
   list?: boolean
   json?: boolean
   advisoryRatio?: number
+  /** Lane directories to select from; `TEST_LANES` when absent. */
+  lanes?: string[]
 }
 
 export interface ImpactResult extends Selection {
@@ -365,10 +381,10 @@ export function referencesFixture(source: string, name: string): boolean {
   return pattern.test(source)
 }
 
-export function isLaneTest(file: string): boolean {
+export function isLaneTest(file: string, lanes = TEST_LANES): boolean {
   return (
     file.endsWith('.test.ts') &&
-    TEST_LANES.some((lane) => file.startsWith(`${lane}/`))
+    lanes.some((lane) => file.startsWith(`${lane}/`))
   )
 }
 
@@ -469,7 +485,7 @@ function laneTestsDependingOn(
   while (queue.length > 0) {
     const current = queue.shift() as string
 
-    if (isLaneTest(current)) {
+    if (isLaneTest(current, ALL_TEST_LANES)) {
       tests.add(current)
     }
 
@@ -677,8 +693,8 @@ export function reverseClosure(
   return reached
 }
 
-export function laneTests(graph: ModuleGraph): string[] {
-  return graph.files.filter(isLaneTest)
+export function laneTests(graph: ModuleGraph, lanes = TEST_LANES): string[] {
+  return graph.files.filter((file) => isLaneTest(file, lanes))
 }
 
 function globToRegex(glob: string): RegExp {
@@ -736,9 +752,15 @@ export function dataSeedKeys(file: string): string[] {
 export function selectImpactedTests(
   graph: ModuleGraph,
   changed: string[],
-  options: { include?: string[]; advisoryRatio?: number; depth?: number } = {},
+  options: {
+    include?: string[]
+    advisoryRatio?: number
+    depth?: number
+    lanes?: string[]
+  } = {},
 ): Selection {
-  const lane = laneTests(graph)
+  const lanes = options.lanes ?? TEST_LANES
+  const lane = laneTests(graph, lanes)
   const laneSet = new Set(lane)
 
   const reasons = new Map<string, string>()
@@ -749,7 +771,13 @@ export function selectImpactedTests(
   const maxDepth = options.depth ?? Number.POSITIVE_INFINITY
 
   const select = (test: string, reason: string, depth = 0): void => {
-    if (laneSet.has(test) && !reasons.has(test)) {
+    // The reference maps span every lane, so a test outside the lanes in
+    // force neither selects nor credits its reason as reached.
+    if (!laneSet.has(test)) {
+      return
+    }
+
+    if (!reasons.has(test)) {
       reasons.set(test, reason)
       depths.set(test, depth)
     }
@@ -846,8 +874,11 @@ export function selectImpactedTests(
       !(globalChange && GLOBAL_FILES.includes(file)) &&
       !GENERATED_ROOTS.some((root) => file.startsWith(root)),
   )
+  // The fast profile covers only the default lanes, so recommending it for a
+  // selection that includes another lane would drop that lane's tests.
+  const fastCovers = lanes.every((entry) => TEST_LANES.includes(entry))
   const advisory =
-    selected.length > 0 && ratio >= threshold
+    fastCovers && selected.length > 0 && ratio >= threshold
       ? `The change reaches ${selected.length} of ${lane.length} lane tests ` +
         `(${Math.round(ratio * 100)}%). The fast profile is the cheaper choice. ` +
         `Iterate on the ${directCount} direct tests with --depth 1, then run fast once.`
@@ -1069,6 +1100,20 @@ export function parseImpactArgs(args: string[]): ImpactOptions {
         options.advisoryRatio =
           readNumberOption(valueOf(), '--advisory-ratio') ?? undefined
         break
+      case '--lane': {
+        const name = valueOf()
+        const lane = SELECTABLE_LANES[name]
+
+        if (!lane) {
+          throw new PanError(
+            `--lane must be one of: ${Object.keys(SELECTABLE_LANES).join(', ')}.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        options.lanes = [...new Set([...(options.lanes ?? []), lane])]
+        break
+      }
       case '--worktree':
         // The CLI resolves the named worktree to a workspace path through the
         // shared option, so the selection only has to accept the spelling.
@@ -1176,6 +1221,7 @@ export async function runTestsImpacted(
     include: impactOptions.include,
     advisoryRatio: impactOptions.advisoryRatio,
     depth: impactOptions.depth,
+    ...(impactOptions.lanes ? { lanes: impactOptions.lanes } : {}),
   })
 
   // The record stays at the installation root so one history covers every
@@ -1219,6 +1265,7 @@ export async function runTestsImpacted(
     changed_count: selection.changed.length,
     selected_count: selection.selected_count,
     lane_count: selection.lane_count,
+    ...(impactOptions.lanes ? { lanes: impactOptions.lanes } : {}),
     ratio: selection.ratio,
     advisory: selection.advisory !== null,
     graph_build_ms: graph.build_ms,

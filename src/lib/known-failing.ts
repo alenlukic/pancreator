@@ -190,6 +190,56 @@ export function repositoryCheckTestFailures(
   return failures
 }
 
+/** A test file path inside one of the harness test lanes. */
+const TEST_LANE_PATH =
+  /(?:^|[\s(/])tests\/(unit|regression|integration|secondary)\/\S*\.test\.[cm]?[jt]s\b/u
+
+/**
+ * The lanes a failed repository-check result failed in.
+ *
+ * A failing test names its lane from the lane directory its file lives in. A
+ * failing command that names no test in a known lane is its own lane, spelled
+ * as the command with its whitespace collapsed. Probe failures are
+ * environment failures and name no lane.
+ */
+export function failedRepositoryCheckLanes(
+  result: RepositoryCheckResult,
+): string[] {
+  const lanes = new Set<string>()
+
+  for (const entry of result.results) {
+    if (entry.passed || entry.kind === 'probe') {
+      continue
+    }
+
+    let named = false
+
+    if (!entry.timed_out) {
+      for (const diagnostic of commandFailureDiagnostics(
+        entry,
+        result.workspace_root,
+      )) {
+        // Diagnostics arrive normalized, with line numbers replaced, so the
+        // lane is read from the failure headline itself.
+        const lane = isFailureHeadline(diagnostic)
+          ? TEST_LANE_PATH.exec(diagnostic)?.[1]
+          : undefined
+
+        if (lane) {
+          lanes.add(lane)
+          named = true
+        }
+      }
+    }
+
+    if (!named) {
+      lanes.add(entry.command.trim().replaceAll(/\s+/gu, ' '))
+    }
+  }
+
+  return [...lanes].sort()
+}
+
 function splitOnce(
   value: string,
   separators: readonly string[],

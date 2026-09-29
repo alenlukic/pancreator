@@ -20,6 +20,7 @@ import {
 import { validateEvalScenarios } from './evals/scenario.js'
 import {
   creditKnownFailures,
+  failedRepositoryCheckLanes,
   isolationExecutedTest,
   parseTestFailureIdentity,
   repositoryCheckTestFailures,
@@ -32,6 +33,7 @@ import {
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
   repositoryCheckProfileName,
+  repositoryCheckTemplateGaps,
   runRepositoryCheck,
 } from './repository-checks.js'
 import type {
@@ -3206,6 +3208,10 @@ function runShellCheck(
     baselineResult,
     baselineComparison,
   )
+  const failedLanes =
+    !passed && repositoryResult?.status === 'failed'
+      ? failedRepositoryCheckLanes(repositoryResult)
+      : []
 
   return {
     id: criterion.id,
@@ -3279,6 +3285,7 @@ function runShellCheck(
     ...(failureClassification.classifications.length > 0
       ? { failure_classifications: failureClassification.classifications }
       : {}),
+    ...(failedLanes.length > 0 ? { failed_lanes: failedLanes } : {}),
     workspace_fingerprint: workspaceFingerprint,
   }
 }
@@ -4922,6 +4929,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   try {
     assertRepositoryChecksValid(root)
+
+    if (selfDevelopment) {
+      warnings.push(...repositoryCheckTemplateGaps(root))
+    }
   } catch (error) {
     errors.push(errorMessage(error))
   }

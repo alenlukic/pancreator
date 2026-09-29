@@ -280,6 +280,7 @@ import type {
   RunState,
   SameReasonFailureTrackers,
   StageDefinition,
+  StageEntryGateRecord,
   StageFailureTracker,
   StageHistoryItem,
   StageOutcome,
@@ -2119,6 +2120,107 @@ function boundedCriterionList(criterionIds: string[]): string {
  * exceeded `max_loops` and the run now waits for an operator decision that
  * away mode cannot take.
  */
+/**
+ * Profiles whose commands prove a test lane on their own. A lane named here is
+ * covered when one of its profiles passed at the gate's workspace. The
+ * integration lane has no entry: the only profile short of `full` that runs
+ * it selects by import closure, so a failure there is always a gap.
+ */
+const LANE_COVERING_PROFILES: Readonly<Record<string, readonly string[]>> = {
+  unit: ['fast'],
+  regression: ['fast'],
+  secondary: ['secondary'],
+}
+
+/**
+ * Repository-check profiles, other than the `full` release profile, that some
+ * gate of this run passed at `fingerprint`: stage gates the run recorded and
+ * profile passes recorded against the run.
+ */
+function profilesPassedAtFingerprint(
+  root: string,
+  state: RunState,
+  fingerprint: string,
+): string[] {
+  const profiles = new Set<string>()
+
+  for (const item of state.stage_history) {
+    for (const result of item.deterministic ?? []) {
+      const profile = result.command
+        ? repositoryCheckProfileName(result.command)
+        : null
+
+      if (
+        profile &&
+        profile !== FULL_PROFILE &&
+        result.passed &&
+        !result.disabled &&
+        !result.skipped &&
+        result.workspace_fingerprint === fingerprint
+      ) {
+        profiles.add(profile)
+      }
+    }
+  }
+
+  for (const pass of agentRecordedProfilePasses(root, state.run_id)) {
+    if (pass.fingerprint === fingerprint && pass.profile !== FULL_PROFILE) {
+      profiles.add(pass.profile)
+    }
+  }
+
+  return [...profiles].sort()
+}
+
+/**
+ * The lanes of a failed entry gate that no earlier gate of the run proved at
+ * the same workspace. A lane is covered by a profile listed for it in
+ * `LANE_COVERING_PROFILES`, or, for a lane spelled as a command, by a passed
+ * profile that declares that exact command.
+ */
+function entryGateLaneGap(
+  root: string,
+  state: RunState,
+  result: DeterministicResult,
+): StageEntryGateRecord['lane_gap'] {
+  const lanes = result.failed_lanes ?? []
+
+  if (lanes.length === 0) {
+    return undefined
+  }
+
+  const verified = profilesPassedAtFingerprint(
+    root,
+    state,
+    result.workspace_fingerprint,
+  )
+  let declared: Record<string, { commands: string[] }> = {}
+
+  try {
+    declared = loadRepositoryChecks(root).profiles
+  } catch {
+    // An unreadable profile file leaves only the lane table to decide.
+  }
+
+  const normalize = (command: string): string =>
+    command.trim().replaceAll(/\s+/gu, ' ')
+  const uncovered = lanes.filter(
+    (lane) =>
+      !(LANE_COVERING_PROFILES[lane] ?? []).some((profile) =>
+        verified.includes(profile),
+      ) &&
+      !verified.some((profile) =>
+        (declared[profile]?.commands ?? []).some(
+          (command) => normalize(command) === lane,
+        ),
+      ),
+  )
+
+  return uncovered.length > 0
+    ? { lanes: uncovered, verified_profiles: verified }
+    : undefined
+}
+
 function runStageEntryGate(
   root: string,
   state: RunState,
@@ -2227,6 +2329,12 @@ function runStageEntryGate(
 
   records[stage.slug] = record
 
+  const laneGap = entryGateLaneGap(root, state, result)
+
+  if (laneGap) {
+    record.lane_gap = laneGap
+  }
+
   const evidence = result.evidence_path
     ? ` Evidence: ${result.evidence_path}.`
     : ''
@@ -2331,6 +2439,7 @@ function runStageEntryGate(
     failures,
     routed_to: gate.failure,
     ...(result.evidence_path ? { evidence_path: result.evidence_path } : {}),
+    ...(laneGap ? { lane_gap: true, lanes: laneGap.lanes } : {}),
   })
 
   return 'routed'
@@ -4715,6 +4824,12 @@ function refreshReturningVerifyProfiles(
       timeout_ms: profile.timeout_ms,
       workspace: state.workspace_root || '.',
     })
+
+    // A profile the repository does not declare has nothing to refresh. Its
+    // stage gate skips it the same way, so it never blocks a return visit.
+    if (result.status === 'not_configured') {
+      continue
+    }
 
     if (result.status !== 'passed') {
       recordAgentRepositoryCheckForRuns(

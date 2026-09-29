@@ -31,7 +31,10 @@ test('the full profile runs only at the ship release gate under every built-in l
     'remediate.full_suite': false,
     'ship.full_suite': 'full',
   })
+  // minimal also skips the impacted integration interior gate, so its loops
+  // gate on static and fast checks alone.
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.minimal.gates, {
+    'implement.impacted_integration': false,
     'test.full_suite': false,
     'verify.full_suite': false,
     'remediate.full_suite': false,
@@ -62,7 +65,10 @@ test('the full profile runs only at the ship release gate under every built-in l
     }
 
     for (const [criterionId, profile] of Object.entries(level.gates)) {
-      assert.ok(criterionId.endsWith('.full_suite'))
+      assert.ok(
+        criterionId.endsWith('.full_suite') ||
+          criterionId === 'implement.impacted_integration',
+      )
       assert.notEqual(profile, 'fast')
     }
   }
@@ -152,6 +158,7 @@ test('resolveVerification snapshots the named level from config.json', () => {
 
   assert.equal(active.level, 'minimal')
   assert.deepEqual(active.gates, {
+    'implement.impacted_integration': false,
     'test.full_suite': false,
     'verify.full_suite': false,
     'remediate.full_suite': false,
