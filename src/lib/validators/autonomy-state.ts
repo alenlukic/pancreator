@@ -1,7 +1,10 @@
+import path from 'node:path'
+
 import { readAwayDecisionLedger } from '../away-mode.js'
 import { errorMessage } from '../errors.js'
 import { readAgentRegistry } from '../hypervisor.js'
 import { isRecord } from '../io.js'
+import { AWAY_MODE_ACTIONS } from '../project-config.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 const AGENT_HEALTH_VALUES = new Set([
@@ -11,14 +14,9 @@ const AGENT_HEALTH_VALUES = new Set([
   'completed',
   'unknown',
 ])
-const AWAY_RESULTS = new Set(['accepted', 'rejected', 'applied', 'failed'])
-const AWAY_DECISION_KINDS = new Set([
-  'evaluated',
-  'deterministic_ship_approval',
-  'hypervisor_quarantine',
-  'evaluator_failure',
-  'operator_question_refusal',
-])
+
+// The hypervisor now writes only `quarantine`, but registry records written
+// before recovery was removed keep their steps and must stay readable.
 const RECOVERY_STEPS = new Set([
   'nudge',
   'resume',
@@ -101,136 +99,129 @@ export function validateHypervisorState(input: HandlerInput): HandlerResult {
   }
 }
 
+const SUPERVISOR_DECISION_RESULTS = new Set(['applied', 'failed'])
+const AWAY_BLOCKER_TYPES = new Set([
+  'stage_blocked',
+  'operator_decision',
+  'operator_approval',
+  'operator_question',
+])
+
+function isRepositoryRelative(reference: unknown): boolean {
+  if (typeof reference !== 'string' || reference.length === 0) {
+    return false
+  }
+
+  if (path.isAbsolute(reference) || reference.includes('\\')) {
+    return false
+  }
+
+  const normalized = path.posix.normalize(reference)
+
+  return normalized !== '..' && !normalized.startsWith('../')
+}
+
+function nonEmptyString(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
   try {
     const records = readAwayDecisionLedger(input.root)
     const issues: HandlerResult['issues'] = []
     const ids = new Set<string>()
 
-    for (const [index, record] of records.entries()) {
-      const decisionKind = record.decision_kind ?? 'evaluated'
+    for (const [index, entry] of records.entries()) {
+      const record: unknown = entry
 
-      if (ids.has(record.decision_id)) {
+      if (!isRecord(record)) {
         issues.push({
-          code: 'away.decision.duplicate',
-          message: `Duplicate decision_id: ${record.decision_id}`,
+          code: 'away.decision.invalid',
+          message: `Ledger record ${index} MUST be an object.`,
         })
-      } else {
-        ids.add(record.decision_id)
+        continue
       }
 
-      if (!AWAY_RESULTS.has(record.result)) {
+      if (!nonEmptyString(record.decision_id)) {
+        issues.push({
+          code: 'away.decision.identity',
+          message: `Ledger record ${index} MUST have a non-empty decision_id.`,
+        })
+      } else if (ids.has(record.decision_id as string)) {
+        issues.push({
+          code: 'away.decision.duplicate',
+          message: `Duplicate decision_id: ${String(record.decision_id)}`,
+        })
+      } else {
+        ids.add(record.decision_id as string)
+      }
+
+      if (record.author !== 'supervisor') {
+        issues.push({
+          code: 'away.decision.author',
+          message: `Ledger record ${index} MUST have author 'supervisor'.`,
+        })
+      }
+
+      const allowedActions =
+        isRecord(record.guardrails) &&
+        Array.isArray(record.guardrails.allowed_actions)
+          ? (record.guardrails.allowed_actions as unknown[])
+          : null
+
+      if (!allowedActions) {
+        issues.push({
+          code: 'away.decision.guardrails',
+          message: `Ledger record ${index} MUST carry guardrails.allowed_actions.`,
+        })
+      }
+
+      if (
+        !(AWAY_MODE_ACTIONS as readonly unknown[]).includes(record.action) ||
+        (allowedActions !== null && !allowedActions.includes(record.action))
+      ) {
+        issues.push({
+          code: 'away.decision.action',
+          message: `Ledger record ${index} MUST name an action its guardrails allow.`,
+        })
+      }
+
+      if (!nonEmptyString(record.reason)) {
+        issues.push({
+          code: 'away.decision.reason',
+          message: `Ledger record ${index} MUST have a non-empty reason.`,
+        })
+      }
+
+      if (
+        !isRecord(record.blocker) ||
+        !AWAY_BLOCKER_TYPES.has(String(record.blocker.type))
+      ) {
+        issues.push({
+          code: 'away.decision.blocker',
+          message: `Ledger record ${index} MUST carry a blocker of a known type.`,
+        })
+      }
+
+      if (!SUPERVISOR_DECISION_RESULTS.has(String(record.result))) {
         issues.push({
           code: 'away.decision.result',
           message: `Ledger record ${index} has an invalid result.`,
         })
-      }
-
-      if (!AWAY_DECISION_KINDS.has(decisionKind)) {
+      } else if (record.result === 'failed' && !nonEmptyString(record.error)) {
         issues.push({
-          code: 'away.decision.kind',
-          message: `Ledger record ${index} has an invalid decision kind.`,
-        })
-      }
-
-      if (!isRecord(record.blocker) || !isRecord(record.guardrails)) {
-        issues.push({
-          code: 'away.decision.contract',
-          message: `Ledger record ${index} lacks blocker or guardrails data.`,
-        })
-      }
-
-      // `complete` is the command-grammar verdict on the recorded steps. An
-      // accepted option whose plan failed that check carries a rollback
-      // narrative the operator cannot run, which is the state this rule
-      // exists to keep out of the ledger.
-      if (
-        record.result === 'accepted' &&
-        (!record.selected_action ||
-          !record.selected_action.feasible ||
-          record.selected_action.rollback_plan.steps.length === 0 ||
-          record.selected_action.rollback_plan.verification.trim().length ===
-            0 ||
-          record.selected_action.rollback_plan.complete === false)
-      ) {
-        issues.push({
-          code: 'away.decision.rollback',
-          message: `Accepted ledger record ${index} lacks a complete rollback plan.`,
+          code: 'away.decision.error',
+          message: `Failed ledger record ${index} MUST carry a non-empty error.`,
         })
       }
 
       if (
-        decisionKind === 'deterministic_ship_approval' &&
-        (record.blocker.type !== 'operator_approval' ||
-          record.blocker.stage !== 'ship' ||
-          record.selected_action?.action !== 'approve' ||
-          !record.guardrails.allowed_actions.includes('approve'))
+        !Array.isArray(record.evidence_references) ||
+        !record.evidence_references.every(isRepositoryRelative)
       ) {
         issues.push({
-          code: 'away.decision.ship',
-          message: `Ledger record ${index} is not a valid ship approval.`,
-        })
-      }
-
-      if (
-        decisionKind === 'hypervisor_quarantine' &&
-        (record.blocker.type !== 'hypervisor_incident' ||
-          record.result !== 'rejected')
-      ) {
-        issues.push({
-          code: 'away.decision.quarantine',
-          message: `Ledger record ${index} is not a valid quarantine record.`,
-        })
-      }
-
-      // An evaluator failure is not a decision: it ranks nothing, selects
-      // nothing, and is always rejected with the error that stopped it.
-      if (
-        decisionKind === 'evaluator_failure' &&
-        (record.result !== 'rejected' ||
-          record.selected_action !== null ||
-          !Array.isArray(record.ranked_options) ||
-          record.ranked_options.length !== 0 ||
-          typeof record.error !== 'string' ||
-          record.error.length === 0)
-      ) {
-        issues.push({
-          code: 'away.decision.evaluator_failure',
-          message: `Ledger record ${index} is not a valid evaluator failure.`,
-        })
-      }
-
-      if (
-        (record.result === 'applied' || record.result === 'failed') &&
-        typeof record.linked_decision_id !== 'string'
-      ) {
-        issues.push({
-          code: 'away.decision.link',
-          message: `Ledger record ${index} lacks its source decision link.`,
-        })
-      }
-    }
-
-    const byId = new Map(records.map((record) => [record.decision_id, record]))
-
-    for (const [index, record] of records.entries()) {
-      if (!record.linked_decision_id) {
-        continue
-      }
-
-      const source = byId.get(record.linked_decision_id)
-      const recordKind = record.decision_kind ?? 'evaluated'
-      const sourceKind = source?.decision_kind ?? 'evaluated'
-
-      if (
-        !source ||
-        source.run_id !== record.run_id ||
-        sourceKind !== recordKind ||
-        source.result !== 'accepted'
-      ) {
-        issues.push({
-          code: 'away.decision.link',
-          message: `Ledger record ${index} has an invalid source decision link.`,
+          code: 'away.decision.evidence',
+          message: `Ledger record ${index} MUST carry repository-relative evidence references.`,
         })
       }
     }

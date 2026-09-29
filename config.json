@@ -71,7 +71,6 @@
     "harness-technician": "anthropic:advanced",
     "repo-technician": "anthropic:advanced",
     "harness-workflow-qa": "anthropic:ultra",
-    "hypervisor": "anthropic:advanced",
     "debloater": "anthropic:advanced"
   },
   "$operator": {
@@ -144,7 +143,7 @@
         "contracts": ["technical_director"]
       },
       "long-horizon": {
-        "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged. waive-gate is allowed so a cost- or wall-time-backed criterion never stops a task; the decision budget is sized for a multi-hour run.",
+        "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged. waive-gate is allowed so a cost- or wall-time-backed criterion never stops a task; the supervisor decides and records every away-mode action.",
         "gates": {
           "plan": "supervisor"
         },
@@ -159,9 +158,7 @@
               "resume",
               "set-stage",
               "waive-gate"
-            ],
-            "max_decisions_per_run": 12,
-            "max_remediation_attempts_per_agent": 2
+            ]
           }
         }
       }

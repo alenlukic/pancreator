@@ -13,16 +13,12 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 
 import { isNodeError, PanError } from './errors.js'
-import { runCursorAgentSession } from './executors/cursor-agent.js'
-import { gitWorkspaceSnapshot } from './git.js'
 import {
   appendJsonLine,
   ensureDir,
   fileExists,
   isRecord,
   readJson,
-  readText,
-  resolveInside,
   withOperationMutex,
   writeJsonAtomic,
 } from './io.js'
@@ -68,29 +64,13 @@ export interface AgentObservation {
   terminal?: boolean
 }
 
-export interface RecoveryResult {
-  ok: boolean
-  evidence: string
-  failure_signature?: string
-  session_id?: string
-  supported?: boolean
-}
-
-export interface AgentRecoveryRunner {
-  nudge?: (agent: AgentRecord) => RecoveryResult
-  resume?: (agent: AgentRecord) => RecoveryResult
-  redeliver?: (agent: AgentRecord) => RecoveryResult
-  reprepare?: (agent: AgentRecord) => RecoveryResult
-}
-
 export interface HypervisorTickResult {
   scanned_at: string
   agents: AgentRecord[]
   changed_agent_ids: string[]
-  recovery_events: Array<{
+  quarantine_events: Array<{
     agent_id: string
-    step: NonNullable<AgentRecoveryState['step']>
-    ok: boolean
+    health: Extract<AgentHealth, 'stalled' | 'dead'>
     evidence: string
   }>
 }
@@ -657,366 +637,11 @@ function discoverRunObservations(
   return observations
 }
 
-function normalizeFailure(result: RecoveryResult): string {
-  return result.failure_signature ?? result.evidence.trim().toLowerCase()
-}
-
-function cursorRecoveryResult(
-  result: ReturnType<typeof runCursorAgentSession>,
-): RecoveryResult {
-  return result.ok
-    ? {
-        ok: true,
-        evidence: `Cursor agent completed recovery in ${result.duration_ms}ms.`,
-        ...(result.session_id ? { session_id: result.session_id } : {}),
-      }
-    : {
-        ok: false,
-        failure_signature: [
-          result.timed_out ? 'timeout' : 'exit',
-          String(result.exit_code),
-          result.error ?? 'unknown',
-        ].join(':'),
-        evidence: result.error ?? 'Cursor agent recovery failed.',
-      }
-}
-
-type RedeliveryReadiness =
-  | {
-      ready: true
-      invocation: NonNullable<RunState['current_invocation']>
-    }
-  | {
-      ready: false
-      result: RecoveryResult
-    }
-
-function redeliveryReadiness(
-  root: string,
-  agent: AgentRecord,
-): RedeliveryReadiness {
-  const statePath = resolveRunLayout(root, agent.run_id).state.absolute
-
-  if (!fileExists(statePath)) {
-    return {
-      ready: false,
-      result: {
-        ok: false,
-        supported: false,
-        failure_signature: 'run-state-missing',
-        evidence: 'The run state for redelivery is unavailable.',
-      },
-    }
-  }
-
-  const stateValue = readJson(statePath)
-
-  if (!isRecord(stateValue)) {
-    return {
-      ready: false,
-      result: {
-        ok: false,
-        supported: false,
-        failure_signature: 'run-state-invalid',
-        evidence: 'The run state is not a valid object.',
-      },
-    }
-  }
-
-  const state = stateValue as unknown as RunState
-  const invocation = state.current_invocation
-
-  if (!invocation || invocation.id !== agent.invocation_id) {
-    return {
-      ready: false,
-      result: {
-        ok: false,
-        supported: false,
-        failure_signature: 'invocation-changed',
-        evidence: 'The run no longer expects this invocation.',
-      },
-    }
-  }
-
-  const invocationValue = readJson(resolveInside(root, invocation.json_path))
-  const delegation =
-    isRecord(invocationValue) && isRecord(invocationValue.delegation)
-      ? invocationValue.delegation
-      : null
-  const workspaceBefore =
-    isRecord(invocationValue) && isRecord(invocationValue.workspace_before)
-      ? invocationValue.workspace_before
-      : null
-
-  const validationPath =
-    delegation && typeof delegation.invocation_validation_path === 'string'
-      ? resolveInside(root, delegation.invocation_validation_path)
-      : null
-  const validation =
-    validationPath && fileExists(validationPath)
-      ? readJson(validationPath)
-      : undefined
-
-  if (!isRecord(validation) || validation.status !== 'pass') {
-    return {
-      ready: false,
-      result: {
-        ok: false,
-        supported: false,
-        failure_signature: 'invocation-validation-failed',
-        evidence:
-          'The canonical invocation lacks a passing validation artifact.',
-      },
-    }
-  }
-
-  const priorFingerprint =
-    workspaceBefore && typeof workspaceBefore.fingerprint === 'string'
-      ? workspaceBefore.fingerprint
-      : null
-  const currentFingerprint = gitWorkspaceSnapshot(
-    state.workspace_root,
-  ).fingerprint
-
-  if (priorFingerprint === null || priorFingerprint !== currentFingerprint) {
-    return {
-      ready: false,
-      result: {
-        ok: false,
-        supported: false,
-        failure_signature: 'invocation-workspace-stale',
-        evidence:
-          'The workspace changed after the canonical invocation was prepared.',
-      },
-    }
-  }
-
-  return { ready: true, invocation }
-}
-
-export function createAgentRecoveryRunner(root: string): AgentRecoveryRunner {
-  const resume = (agent: AgentRecord): RecoveryResult => {
-    if (agent.executor !== 'cursor' || !agent.session_id) {
-      return {
-        ok: false,
-        supported: false,
-        failure_signature: 'cursor-session-unavailable',
-        evidence: 'No resumable Cursor session is registered for this agent.',
-      }
-    }
-
-    return cursorRecoveryResult(
-      runCursorAgentSession({
-        cwd: root,
-        installationRoot: root,
-        model: agent.model ?? undefined,
-        sessionId: agent.session_id,
-        prompt:
-          'Continue the assigned Pancreator invocation from its current state.',
-      }),
-    )
-  }
-
-  return {
-    nudge: (agent): RecoveryResult => {
-      if (agent.process_alive !== true) {
-        return {
-          ok: false,
-          supported: false,
-          failure_signature: 'live-cursor-session-unavailable',
-          evidence: 'Process evidence does not show a live session to nudge.',
-        }
-      }
-
-      return resume(agent)
-    },
-    resume,
-    redeliver: (agent): RecoveryResult => {
-      if (agent.executor !== 'cursor') {
-        return {
-          ok: false,
-          supported: false,
-          failure_signature: 'cursor-redelivery-unsupported',
-          evidence:
-            'Automatic redelivery currently requires a Cursor executor.',
-        }
-      }
-
-      const readiness = redeliveryReadiness(root, agent)
-
-      if (!readiness.ready) {
-        return readiness.result
-      }
-
-      const invocation = readiness.invocation
-      const deliveryPath = invocation.markdown_path.replace(
-        /\.md$/u,
-        '.delivery.md',
-      )
-      const deliveryAbsolute = resolveInside(root, deliveryPath)
-      const promptPath = fileExists(deliveryAbsolute)
-        ? deliveryAbsolute
-        : resolveInside(root, invocation.markdown_path)
-
-      return cursorRecoveryResult(
-        runCursorAgentSession({
-          cwd: root,
-          installationRoot: root,
-          model: agent.model ?? undefined,
-          prompt: readText(promptPath),
-        }),
-      )
-    },
-    reprepare: (): RecoveryResult => ({
-      ok: false,
-      supported: false,
-      failure_signature: 'reprepare-requires-validation',
-      evidence:
-        'Automatic re-prepare requires a fresh invocation validation result.',
-    }),
-  }
-}
-
-/** Apply the ordered recovery sequence and quarantine repeated failures. */
-export function recoverAgent(
-  agent: AgentRecord,
-  runner: AgentRecoveryRunner,
-  attemptedAt: string,
-  maxAttempts = 2,
-): {
-  agent: AgentRecord
-  events: HypervisorTickResult['recovery_events']
-} {
-  if (
-    agent.health !== 'stalled' &&
-    agent.health !== 'dead' &&
-    !agent.recovery.quarantined
-  ) {
-    return { agent, events: [] }
-  }
-
-  if (agent.recovery.quarantined) {
-    return { agent, events: [] }
-  }
-
-  const steps = [
-    ['nudge', runner.nudge],
-    ['resume', runner.resume],
-    ['redeliver', runner.redeliver],
-    ['reprepare', runner.reprepare],
-  ] as const
-  const events: HypervisorTickResult['recovery_events'] = []
-  let recovery = { ...agent.recovery }
-
-  for (const [step, operation] of steps) {
-    if (!operation) {
-      continue
-    }
-
-    if (recovery.attempts >= maxAttempts) {
-      recovery = { ...recovery, step: 'quarantine', quarantined: true }
-      events.push({
-        agent_id: agent.agent_id,
-        step: 'quarantine',
-        ok: false,
-        evidence: 'The configured recovery-attempt limit was reached.',
-      })
-      return { agent: { ...agent, recovery }, events }
-    }
-
-    const result = operation(agent)
-    const signature = result.ok ? undefined : normalizeFailure(result)
-
-    events.push({
-      agent_id: agent.agent_id,
-      step,
-      ok: result.ok,
-      evidence: result.evidence,
-    })
-
-    if (result.supported === false) {
-      continue
-    }
-
-    if (result.ok) {
-      recovery = {
-        ...recovery,
-        step,
-        attempts: recovery.attempts + 1,
-        consecutive_failures: 0,
-        last_attempt_at: attemptedAt,
-        quarantined: false,
-      }
-
-      return {
-        agent: {
-          ...agent,
-          health: 'running',
-          recovery,
-          ...(result.session_id ? { session_id: result.session_id } : {}),
-        },
-        events,
-      }
-    }
-
-    const repeated =
-      signature !== undefined &&
-      signature === recovery.last_failure_signature &&
-      recovery.consecutive_failures >= 1
-
-    recovery = {
-      ...recovery,
-      step,
-      attempts: recovery.attempts + 1,
-      consecutive_failures: recovery.consecutive_failures + 1,
-      ...(signature ? { last_failure_signature: signature } : {}),
-      last_attempt_at: attemptedAt,
-      quarantined: repeated,
-    }
-
-    if (repeated) {
-      events.push({
-        agent_id: agent.agent_id,
-        step: 'quarantine',
-        ok: false,
-        evidence:
-          'The same recovery signature failed twice. Autonomous retries stopped.',
-      })
-
-      return {
-        agent: { ...agent, recovery: { ...recovery, step: 'quarantine' } },
-        events,
-      }
-    }
-  }
-
-  return { agent: { ...agent, recovery }, events }
-}
-
-function recoveryAttemptLimit(root: string, agent: AgentRecord): number {
-  const statePath = resolveRunLayout(root, agent.run_id).state.absolute
-
-  if (!fileExists(statePath)) {
-    return 2
-  }
-
-  const value = readJson(statePath)
-
-  if (!isRecord(value)) {
-    return 2
-  }
-
-  const state = value as unknown as RunState
-
-  return state.away_mode?.guardrails.max_remediation_attempts_per_agent ?? 2
-}
-
-/** Run one registry scan and optional recovery pass. */
+/** Run one registry scan and quarantine any stalled or dead agents. */
 export function tickHypervisor(
   root: string,
   options: {
     observations?: AgentObservation[]
-    recoveryRunner?: AgentRecoveryRunner
     now?: string
   } = {},
 ): HypervisorTickResult {
@@ -1026,22 +651,33 @@ export function tickHypervisor(
     options.observations ?? discoverRunObservations(root, registry.agents)
 
   let agents = reconcileAgentRecords(registry.agents, observations, scannedAt)
-  const recoveryEvents: HypervisorTickResult['recovery_events'] = []
 
-  const recoveryRunner =
-    options.recoveryRunner ?? createAgentRecoveryRunner(root)
+  // Quarantine any newly stalled or dead agents that have not been quarantined
+  // yet. The health is 'stalled' or 'dead' only for agents on non-terminal
+  // runs; 'completed' is returned for any agent on a terminal run.
+  const quarantineEvents: HypervisorTickResult['quarantine_events'] = []
 
   agents = agents.map((agent) => {
-    const recovered = recoverAgent(
-      agent,
-      recoveryRunner,
-      scannedAt,
-      recoveryAttemptLimit(root, agent),
-    )
+    if (
+      (agent.health !== 'stalled' && agent.health !== 'dead') ||
+      agent.recovery.quarantined
+    ) {
+      return agent
+    }
 
-    recoveryEvents.push(...recovered.events)
+    const recovery = {
+      ...agent.recovery,
+      step: 'quarantine' as const,
+      quarantined: true,
+    }
 
-    return recovered.agent
+    quarantineEvents.push({
+      agent_id: agent.agent_id,
+      health: agent.health,
+      evidence: agent.health_evidence.join(' '),
+    })
+
+    return { ...agent, recovery }
   })
 
   const priorHealth = new Map(
@@ -1050,14 +686,15 @@ export function tickHypervisor(
   const changedAgentIds = agents
     .filter((agent) => priorHealth.get(agent.agent_id) !== agent.health)
     .map((agent) => agent.agent_id)
+
   withOperationMutex(hypervisorPath(root, LEDGER_LOCK_FILE), () => {
     const latest = readAgentRegistry(root)
     const currentIds = new Set(agents.map((agent) => agent.agent_id))
-    const registeredDuringRecovery = latest.agents.filter(
+    const registeredDuringTick = latest.agents.filter(
       (agent) => !currentIds.has(agent.agent_id),
     )
 
-    agents = [...agents, ...registeredDuringRecovery].sort((left, right) =>
+    agents = [...agents, ...registeredDuringTick].sort((left, right) =>
       left.agent_id.localeCompare(right.agent_id),
     )
     writeJsonAtomic(agentRegistryPath(root), {
@@ -1079,12 +716,14 @@ export function tickHypervisor(
       })
     }
 
-    for (const event of recoveryEvents) {
+    for (const event of quarantineEvents) {
       appendJsonLine(hypervisorEventsPath(root), {
         schema_version: 1,
-        type: 'recovery',
+        type: 'quarantine',
         timestamp: scannedAt,
-        ...event,
+        agent_id: event.agent_id,
+        health: event.health,
+        evidence: event.evidence,
       })
     }
   })
@@ -1093,7 +732,7 @@ export function tickHypervisor(
     scanned_at: scannedAt,
     agents,
     changed_agent_ids: changedAgentIds,
-    recovery_events: recoveryEvents,
+    quarantine_events: quarantineEvents,
   }
 }
 

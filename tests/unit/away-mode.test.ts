@@ -1,41 +1,24 @@
 import assert from 'node:assert/strict'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 
 import {
-  awayBlockerCanBeCleared,
+  awayDecisionLedgerPath,
   awayModeTrigger,
-  parseAwayOptions,
-  selectAwayOption,
+  readAwayDecisionLedger,
   unknownAwayOption,
 } from '../../src/lib/away-mode.js'
+import { decideAwayAsSupervisor } from '../../src/lib/away-orchestration.js'
 import { AWAY_MODE_ACTIONS } from '../../src/lib/project-config.js'
 import type {
   AwayModeAction,
+  OperatorFeedbackItem,
   ResolvedAwayModeConfig,
   RunState,
   StageHistoryItem,
 } from '../../src/lib/types.js'
-
-function option(rank: number, action: AwayModeAction): Record<string, unknown> {
-  return {
-    rank,
-    action,
-    feasible: true,
-    rationale: `Use ${action}.`,
-    evidence: ['runtime/logs/workflows/run/agent/state.json'],
-    rollback_plan: {
-      steps: ['Restore the prior run state.'],
-      verification: 'Confirm the prior pending action.',
-    },
-    ...(action === 'revise' ? { note: 'Clarify the implementation.' } : {}),
-    ...(action === 'set-stage' ? { stage: 'implement' } : {}),
-    ...(action === 'waive-gate'
-      ? {
-          note: 'The baseline is stale rather than the change broken; route the run to ship.',
-        }
-      : {}),
-  }
-}
+import { createTestTempDirectory } from '../temp.js'
 
 function awayConfig(
   guardrails: Partial<ResolvedAwayModeConfig['guardrails']> = {},
@@ -44,8 +27,6 @@ function awayConfig(
     enabled: true,
     guardrails: {
       allowed_actions: [...AWAY_MODE_ACTIONS],
-      max_decisions_per_run: 3,
-      max_remediation_attempts_per_agent: 2,
       ...guardrails,
     },
     source_sha256: 'a'.repeat(64),
@@ -78,128 +59,6 @@ function blockedHistoryItem(stage: string): StageHistoryItem {
   }
 }
 
-test('away mode rejects duplicate ranks and missing action details', () => {
-  assert.throws(
-    () =>
-      parseAwayOptions({
-        ranked_options: [{ ...option(1, 'resume'), action: 'push' }],
-      }),
-    /MUST be one of approve, reject, revise, resume, set-stage, waive-gate/u,
-  )
-  assert.throws(
-    () =>
-      parseAwayOptions({
-        ranked_options: [option(1, 'resume'), option(1, 'approve')],
-      }),
-    /ranks MUST be unique/u,
-  )
-  assert.throws(
-    () =>
-      parseAwayOptions({
-        ranked_options: [
-          {
-            ...option(1, 'resume'),
-            evidence: ['The run waits for an operator decision.'],
-          },
-        ],
-      }),
-    /repository-relative path references/u,
-  )
-
-  const rollbackOptions = parseAwayOptions({
-    ranked_options: [
-      {
-        ...option(1, 'resume'),
-        rollback_plan: {
-          steps: ['Run ./bin/pan run status --run run-id.'],
-          verification: 'Confirm the prior run status.',
-        },
-      },
-      {
-        ...option(2, 'resume'),
-        rollback_plan: {
-          steps: ['Run ./bin/pan status run-id.'],
-          verification: 'Confirm the prior run status.',
-        },
-      },
-    ],
-  })
-
-  assert.equal(rollbackOptions[0]?.rollback_plan.complete, false)
-  assert.match(
-    rollbackOptions[0]?.rollback_plan.issues[0] ?? '',
-    /Unknown pan command surface 'run status'/u,
-  )
-  assert.equal(rollbackOptions[1]?.rollback_plan.complete, true)
-  assert.deepEqual(rollbackOptions[1]?.rollback_plan.issues, [])
-
-  const rollbackSelection = selectAwayOption(rollbackOptions, awayConfig())
-
-  assert.equal(rollbackSelection.selected?.rank, 2)
-  assert.match(
-    rollbackSelection.rejected[0]?.reason ?? '',
-    /rollback plan is incomplete.*run status/iu,
-  )
-
-  const selection = selectAwayOption(
-    parseAwayOptions({
-      ranked_options: [
-        { ...option(1, 'revise'), note: undefined },
-        { ...option(2, 'set-stage'), stage: undefined },
-      ],
-    }),
-    awayConfig(),
-  )
-
-  assert.equal(selection.selected, null)
-  assert.deepEqual(
-    selection.rejected.map((rejection) => rejection.reason),
-    ['revise requires a non-empty note.', 'set-stage requires a target stage.'],
-  )
-})
-
-test('away mode skips infeasible options before selecting a rollback', () => {
-  const selection = selectAwayOption(
-    parseAwayOptions({
-      ranked_options: [
-        { ...option(1, 'resume'), feasible: false },
-        option(2, 'revise'),
-      ],
-    }),
-    awayConfig(),
-  )
-
-  assert.equal(selection.selected?.action, 'revise')
-  assert.deepEqual(selection.rejected, [
-    {
-      rank: 1,
-      reason: 'The evaluator marked this option infeasible.',
-    },
-  ])
-})
-
-test('an option an away subcommand does not accept is named, not ignored', () => {
-  assert.equal(
-    unknownAwayOption('apply', ['apply', 'run-1', '--decision', 'd-1']),
-    null,
-  )
-  assert.equal(
-    unknownAwayOption('apply', ['apply', 'run-1', '--action', 'resume']),
-    null,
-  )
-  assert.equal(
-    unknownAwayOption('apply', ['apply', 'run-1', '--dceision', 'd-1']),
-    '--dceision',
-  )
-  assert.equal(
-    unknownAwayOption('status', ['status', 'run-1', '--decision', 'd-1']),
-    '--decision',
-  )
-  // An unrecognized subcommand is the subcommand handler's refusal, not this
-  // guard's, so it claims nothing about the options.
-  assert.equal(unknownAwayOption('sttaus', ['sttaus', '--json']), null)
-})
-
 test('a stale blocked outcome does not trigger on a progressing run', () => {
   assert.equal(
     awayModeTrigger(
@@ -215,13 +74,6 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
   const running = runStateLiteral({ away_mode: awayConfig() })
 
   assert.equal(awayModeTrigger(running), null)
-  assert.equal(
-    awayModeTrigger(running, {
-      health: 'dead',
-      summary: 'The process ended.',
-    })?.type,
-    'hypervisor_incident',
-  )
 
   const state = runStateLiteral({
     away_mode: awayConfig(),
@@ -239,42 +91,232 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
   assert.equal(blocker?.stage, 'plan')
 })
 
-test('blocker recovery predicate rejects every human-only exit a session meets', () => {
-  // Each human-only class AC-21 names reaches the session the same way: the
-  // ranked options survive nothing, so `selectAwayOption` selects none. The
-  // predicate reads that selection and nothing the caller asserts about it.
-  const deniedDecision = selectAwayOption(
-    parseAwayOptions({ ranked_options: [option(1, 'approve')] }),
-    awayConfig(),
-    { operator_decision: true },
+test('away mode triggers on operator_approval pending action', () => {
+  const state = runStateLiteral({
+    away_mode: awayConfig(),
+    status: 'paused',
+    pending_action: {
+      type: 'operator_approval',
+      stage: 'ship',
+      proposed_transition: 'advance',
+    },
+  })
+
+  const blocker = awayModeTrigger(state)
+
+  assert.equal(blocker?.type, 'operator_approval')
+  assert.equal(blocker?.stage, 'ship')
+})
+
+test('away mode does not trigger when away_mode is disabled', () => {
+  const state = runStateLiteral({
+    away_mode: { ...awayConfig(), enabled: false },
+    status: 'paused',
+    pending_action: { type: 'operator_decision' },
+    stage_history: [blockedHistoryItem('implement')],
+  })
+
+  assert.equal(awayModeTrigger(state), null)
+})
+
+test('an option an away subcommand does not accept is named, not ignored', () => {
+  assert.equal(
+    unknownAwayOption('decide', ['decide', 'run-1', '--action', 'resume']),
+    null,
   )
-  const guardrailFiltered = selectAwayOption(
-    parseAwayOptions({
-      ranked_options: [option(1, 'resume'), option(2, 'set-stage')],
-    }),
-    awayConfig({ allowed_actions: ['approve'] }),
+  assert.equal(
+    unknownAwayOption('decide', ['decide', 'run-1', '--note', 'text']),
+    null,
   )
-  const unsupportedQuarantine = selectAwayOption(
-    parseAwayOptions({
-      ranked_options: [{ ...option(1, 'resume'), feasible: false }],
-    }),
-    awayConfig(),
+  assert.equal(
+    unknownAwayOption('decide', ['decide', 'run-1', '--dceision', 'd-1']),
+    '--dceision',
   )
-  const recoverable = selectAwayOption(
-    parseAwayOptions({ ranked_options: [option(1, 'resume')] }),
-    awayConfig(),
+  assert.equal(
+    unknownAwayOption('status', ['status', 'run-1', '--decision', 'd-1']),
+    '--decision',
+  )
+  // An unrecognized subcommand is the subcommand handler's refusal, not this
+  // guard's, so it claims nothing about the options.
+  assert.equal(unknownAwayOption('sttaus', ['sttaus', '--json']), null)
+})
+
+function stageOutput(
+  root: string,
+  stage: string,
+  submittedAt: string,
+  body: string,
+): StageHistoryItem {
+  const relative = `runtime/logs/workflows/run-literal/agent/outputs/${stage}.json`
+
+  mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+  writeFileSync(path.join(root, relative), body)
+
+  return {
+    ...blockedHistoryItem(stage),
+    outcome: 'success',
+    output_path: relative,
+    submitted_at: submittedAt,
+  }
+}
+
+function awaitingPlanApproval(stageHistory: StageHistoryItem[]): RunState {
+  return runStateLiteral({
+    away_mode: awayConfig(),
+    status: 'paused',
+    pending_action: {
+      type: 'operator_approval',
+      stage: 'plan',
+      proposed_transition: 'advance',
+    },
+    stage_history: stageHistory,
+  })
+}
+
+function feedback(
+  source: 'away' | 'operator',
+  timestamp: string,
+): OperatorFeedbackItem {
+  return {
+    decision: 'approve',
+    source,
+    from_stage: 'plan',
+    to_stage: 'implement',
+    attempt: 1,
+    note: `${source} decision`,
+    path: `runtime/logs/workflows/run-literal/agent/decisions/${source}.md`,
+    timestamp,
+  }
+}
+
+// An unreadable output cannot show that no question stands. Away mode once
+// treated the failed read as consent and cleared the gate.
+test('an unreadable stage output fails closed as an open operator question', () => {
+  const root = createTestTempDirectory('pan-away-unit-')
+  const state = awaitingPlanApproval([
+    stageOutput(root, 'plan', '2026-09-19T10:00:00.000Z', '{ not json'),
+  ])
+
+  const blocker = awayModeTrigger(state, root)
+
+  assert.equal(blocker?.type, 'operator_question')
+  assert.match(blocker?.summary ?? '', /could not be read/u)
+  assert.throws(
+    () => decideAwayAsSupervisor(root, state, { action: 'approve', note: 'n' }),
+    { code: 'AWAY_OPERATOR_QUESTION_OPEN' },
+  )
+  assert.equal(existsSync(awayDecisionLedgerPath(root)), false)
+})
+
+// A question raised by one stage survives the next stage writing an output
+// with none, and only the operator's own decision retires it.
+test('an away decision does not retire an operator question; the operator does', () => {
+  const root = createTestTempDirectory('pan-away-unit-')
+  const state = awaitingPlanApproval([
+    stageOutput(
+      root,
+      'plan',
+      '2026-09-19T10:00:00.000Z',
+      JSON.stringify({
+        schema_version: 1,
+        operator_question: {
+          question: 'Which store owns the retry record?',
+          reason: 'Two materially different choices remain.',
+          evidence: ['runtime/logs/workflows/run-literal/operator/request.md'],
+        },
+      }),
+    ),
+    stageOutput(
+      root,
+      'implement',
+      '2026-09-19T11:00:00.000Z',
+      JSON.stringify({ schema_version: 1, summary: 'No question here.' }),
+    ),
+  ])
+
+  assert.equal(awayModeTrigger(state, root)?.type, 'operator_question')
+
+  state.operator_feedback = [feedback('away', '2026-09-19T12:00:00.000Z')]
+
+  assert.equal(awayModeTrigger(state, root)?.type, 'operator_question')
+  assert.throws(
+    () => decideAwayAsSupervisor(root, state, { action: 'approve', note: 'n' }),
+    { code: 'AWAY_OPERATOR_QUESTION_OPEN' },
   )
 
-  assert.equal(deniedDecision.selected, null)
-  assert.match(
-    deniedDecision.rejected[0]?.reason ?? '',
-    /declares an operator decision/u,
-  )
-  assert.equal(awayBlockerCanBeCleared(deniedDecision), false)
-  assert.equal(guardrailFiltered.rejected.length, 2)
-  assert.equal(awayBlockerCanBeCleared(guardrailFiltered), false)
-  assert.match(unsupportedQuarantine.rejected[0]?.reason ?? '', /infeasible/u)
-  assert.equal(awayBlockerCanBeCleared(unsupportedQuarantine), false)
-  assert.equal(recoverable.selected?.action, 'resume')
-  assert.equal(awayBlockerCanBeCleared(recoverable), true)
+  state.operator_feedback.push(feedback('operator', '2026-09-19T13:00:00.000Z'))
+
+  assert.equal(awayModeTrigger(state, root)?.type, 'operator_approval')
+})
+
+test('the supervisor decision ledger rejects a malformed line', () => {
+  const root = createTestTempDirectory('pan-away-unit-')
+  const ledgerPath = awayDecisionLedgerPath(root)
+
+  mkdirSync(path.dirname(ledgerPath), { recursive: true })
+
+  for (const line of [
+    'not json',
+    '{"schema_version":2,"decision_id":"d"}',
+    '{"schema_version":1}',
+  ]) {
+    writeFileSync(ledgerPath, `${line}\n`)
+
+    assert.throws(
+      () => readAwayDecisionLedger(root),
+      (error: unknown) =>
+        error instanceof Error &&
+        (error as { code?: unknown }).code === 'INVALID_AWAY_LEDGER' &&
+        error.message.includes(ledgerPath),
+      line,
+    )
+  }
+})
+
+// The release gate raises an operator-only pause after its repair loops run
+// out. The supervisor cannot clear it with any action.
+test('pan away decide refuses every action on an operator-only pause', () => {
+  const root = createTestTempDirectory('pan-away-unit-')
+  const actions: AwayModeAction[] = [
+    'approve',
+    'resume',
+    'set-stage',
+    'waive-gate',
+  ]
+
+  for (const outcome of ['success', 'blocked'] as const) {
+    const state = runStateLiteral({
+      away_mode: awayConfig({ allowed_actions: actions }),
+      status: 'paused',
+      current_stage: 'ship',
+      pending_action: { type: 'operator_decision', operator_only: true },
+      stage_history: [{ ...blockedHistoryItem('ship'), outcome }],
+    })
+
+    assert.equal(awayModeTrigger(state, root), null, outcome)
+
+    for (const action of actions) {
+      assert.throws(
+        () =>
+          decideAwayAsSupervisor(root, state, {
+            action,
+            note: 'n',
+            stage: action === 'set-stage' ? 'implement' : null,
+          }),
+        { code: 'AWAY_TRIGGER_UNAVAILABLE' },
+        `${outcome} ${action}`,
+      )
+    }
+  }
+
+  assert.equal(existsSync(awayDecisionLedgerPath(root)), false)
+
+  const ordinary = runStateLiteral({
+    away_mode: awayConfig({ allowed_actions: actions }),
+    status: 'paused',
+    current_stage: 'ship',
+    pending_action: { type: 'operator_decision' },
+  })
+
+  assert.equal(awayModeTrigger(ordinary, root)?.type, 'operator_decision')
 })

@@ -268,14 +268,25 @@ legacy all-history input behavior for compatibility. New runs use the scoped
 `ORCH-001` defines how the supervisor consumes `pending_action`, which actions it
 must continue through, and where operator handoff is required.
 
-Continuation never depends on a platform completion notification. When a worker
-launch returns before the declared output exists, the supervisor awaits
-`pan watch <run-id>`. The command loops on the `DELEGATE-001` cadence,
-inspects the invocation's output and evidence paths, and appends every arming
-and wake to `agent/evidence/<invocation-id>-watch.jsonl`. It exits `completed`
-(0), `stalled` (2), `timed_out` (3), or `unverified` (4). `--mark-background`
-writes `agent/evidence/<invocation-id>-delegation-background.json` when the
-platform turned the launch into a background subagent.
+Continuation never depends on a platform completion notification. Every worker
+`Task` call sets `run_in_background: true`, and in the same turn the supervisor
+awaits `pan watch <run-id> --mark-background`. The command loops on the
+`DELEGATE-001` cadence, inspects the invocation's output and evidence paths,
+and appends every arming and wake to
+`agent/evidence/<invocation-id>-watch.jsonl`. It exits `completed` (0),
+`stalled` (2), `timed_out` (3), or `unverified` (4). `--mark-background`
+writes `agent/evidence/<invocation-id>-delegation-background.json`.
+
+Each wake also reads the hook-fed agent index under `runtime/logs/agents/` for
+the worker the launch `--handle` names, else the agent whose task text named
+the invocation. The wake records that agent's latest event, any open call, and
+its stop. A new agent event counts as progress. An open call holds off a stall
+verdict, but an open shell call does so only while its linked `bin/pan-run`
+heartbeat is younger than two cadences. A completed stop with the output
+present completes the watch with `terminal_basis: agent_state`. An error stop,
+an aborted stop, or a completed stop without output ends it `unverified` with
+`agent_stopped_error`, `agent_stopped_aborted`, or
+`agent_stopped_without_output`.
 
 The first arming writes the launch record
 `agent/evidence/<invocation-id>-launch.json` with the launch time, the source
@@ -286,8 +297,9 @@ delegated worker for the invocation, and an arming with no handle succeeds
 and records `null`. Every launch-relative number the harness reports reads
 that record, including the `DELEGATION_WATCH_LATE` advisory.
 
-A launch that returns with the declared output already present exposes no
-observation point. The supervisor records that return with
+As recovery only, a worker call that still returned in the foreground with the
+declared output already present exposes no observation point. The supervisor
+records that return with
 `pan watch <run-id> --foreground-returned [--invocation <id>] [--launched-at <iso-8601>]`,
 which writes `agent/evidence/<invocation-id>-foreground-return.json` beside the
 watch record with the launch and return wall-clock times, the elapsed seconds,
@@ -358,15 +370,16 @@ The top-level supervisor owns ordinary workflow continuation. It reads the full
 run state after each prepare, worker return, submission, assessment, and away
 decision. For a disabled snapshot, `operator_approval` and `operator_decision`
 keep their existing operator stops. For an enabled snapshot, the supervisor
-uses `pan away evaluate` and `pan away apply`, then continues from the new
-`pending_action`.
+decides each action itself, records it with `pan away decide`, then continues
+from the new `pending_action`. The supervisor is the authority for every
+away-mode decision, and the hypervisor checks agent liveness only.
 
 The original stall had two causes. First, the supervisor contract stopped
 unconditionally at every operator action, even when the run snapshot enabled
 away mode. Second, the detached hypervisor applied at most one away decision.
 That decision changed run state but did not resume the top-level supervisor
 loop. Later preparation, worker routing, submission, and gate handling therefore
-had no control owner.
+had no control owner. The hypervisor now applies no away decision at all.
 
 The stalled entry point also broke model routing. The previous
 `/pan-qa-workflow` command delegated the supervisor role to a child agent, and
@@ -377,35 +390,26 @@ top-level session, so each mapped worker keeps its configured model.
 
 The repaired ownership matrix is:
 
-| Condition                           | Owner                                  | Result                                            |
-| ----------------------------------- | -------------------------------------- | ------------------------------------------------- |
-| `prepare_invocation`                | Top-level supervisor                   | Prepare, read state, and continue                 |
-| `invoke_agent`                      | Top-level supervisor                   | Launch the mapped worker, submit, and continue    |
-| `supervisor_assessment`             | Top-level supervisor                   | Assess, read state, and continue                  |
-| Enabled operator action             | Top-level supervisor plus away service | Evaluate, apply, read state, and continue         |
-| Disabled operator action            | Operator                               | Stop with the decision packet                     |
-| Agent incident                      | Hypervisor                             | Recover or quarantine, then expose incident state |
-| Denied guardrail or exhausted limit | Operator                               | Stop at a real blocker                            |
-| `none`                              | Nobody                                 | Report the terminal result                        |
+| Condition                  | Owner                                  | Result                                         |
+| -------------------------- | -------------------------------------- | ---------------------------------------------- |
+| `prepare_invocation`       | Top-level supervisor                   | Prepare, read state, and continue              |
+| `invoke_agent`             | Top-level supervisor                   | Launch the mapped worker, submit, and continue |
+| `supervisor_assessment`    | Top-level supervisor                   | Assess, read state, and continue               |
+| Enabled operator action    | Top-level supervisor via `away decide` | Decide, read state, and continue               |
+| Disabled operator action   | Operator                               | Stop with the decision packet                  |
+| Stalled or dead agent      | Hypervisor                             | Quarantine and pause the run                   |
+| Refused or failed decision | Operator                               | Stop at a real blocker                         |
+| `none`                     | Nobody                                 | Report the terminal result                     |
 
 Applied away actions use away authorship. They do not create operator decision,
-resume, or stage-repair events. Evaluated accepted and rejected records consume
-`max_decisions_per_run`. Legacy records without `decision_kind` count as
-evaluated. Hypervisor quarantine records and deterministic ship approvals do
-not consume that budget. An `evaluator_failure` record, written when the
-evaluator process could not run, was killed, or returned no parsable ranking,
-does not consume it either: it is not a decision. Those records have their own
-ceiling of the same size per run, refused with `AWAY_EVALUATOR_FAILURE_LIMIT`,
-so a failing evaluator still cannot grow the ledger without bound. That refusal
-names the run's evaluator exchange records
-(`agent/evidence/away-evaluator-<timestamp>.json`, one per attempt, holding the
-prompt and the raw response) and the `pan decide <run-id>
-approve|revise|reject --note <note>` recovery, so the operator's next action is
-a hand decision rather than another evaluate.
+resume, or stage-repair events. Each supervisor decision appends one record to
+`runtime/logs/away-mode/supervisor-decisions.jsonl`, whether it applied or
+failed. A hypervisor quarantine writes to the hypervisor event log and the
+run's quarantine pause, never to that ledger.
 
-A successful ship packet can receive deterministic away approval only when the
-snapshot enables away mode and `allowed_actions` includes `approve`. The
-approval applies the recorded successful outcome and terminal workflow
+The supervisor can approve a successful ship packet with `pan away decide` only
+when the snapshot enables away mode and `allowed_actions` includes `approve`.
+The approval applies the recorded successful outcome and terminal workflow
 transition. It does not authorize or run push, publication, deployment, or
 branch deletion.
 
@@ -599,7 +603,7 @@ Deterministic-gate evidence logs and pre-implementation baselines bound each cap
 
 The operator note is the directive. `--criteria` is optional descriptive scope, `--stage` selects the source stage when needed, and `--to` optionally selects the destination; otherwise the waived stage's success transition is used. The harness records known failures, source and directive-time fingerprints, the operator's terms, and the resulting route, but does not reinterpret those facts as restrictions. A waiver remains active until a later attempt of the same stage supersedes it. Deferred criteria and linked spotfix cases are optional operator choices.
 
-Away mode can author a waiver when its snapshotted `allowed_actions` includes `waive-gate`. The evaluator's option note becomes the directive, and it must name the destination stage or the gate it waives, because a route forward past a gate is otherwise refused. Such a waiver records away authorship: the artifact heading names the away-mode directive, the persisted event is `away_gate_waived` rather than `operator_gate_waived`, and the waiver carries `actor: "away"`. Nothing about it is presented as the operator's own decision. An agent still may not originate a waiver.
+Away mode can author a waiver when its snapshotted `allowed_actions` includes `waive-gate`. The supervisor's decision note becomes the directive, and it must name the destination stage or the gate it waives, because a route forward past a gate is otherwise refused. Such a waiver records away authorship: the artifact heading names the away-mode directive, the persisted event is `away_gate_waived` rather than `operator_gate_waived`, and the waiver carries `actor: "away"`. Nothing about it is presented as the operator's own decision. An agent still may not originate a waiver.
 
 ## Evidence and invalidation
 

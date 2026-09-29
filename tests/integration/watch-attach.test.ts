@@ -45,17 +45,24 @@ test('AC-007: pan watch --attach', async (t) => {
     'returns attach_completed immediately when the session is already terminal',
     async () => {
       const root = createTestTempDirectory('watch-attach-done-')
-      const child = spawn(process.execPath, ['-e', 'process.exit(0)'], {
-        stdio: 'ignore',
-      })
+      const child = spawn(
+        process.execPath,
+        ['-e', 'setInterval(() => {}, 1000)'],
+        { stdio: 'ignore' },
+      )
       assert.ok(child.pid)
       const childExited = once(child, 'exit')
-      const exitResult = await watchProcess(root, {
+      // watchProcess samples liveness synchronously before its first await.
+      // A child that exits on its own can die during that sample, and a
+      // process gone at arm is `unverified`, so the exit waits until after it.
+      const watching = watchProcess(root, {
         pid: child.pid,
         label: 'attach-done-fixture',
         cadenceSeconds: 0.05,
         timeoutSeconds: 30,
       })
+      child.kill()
+      const exitResult = await watching
       assert.equal(exitResult.state, 'exited')
       await childExited
 

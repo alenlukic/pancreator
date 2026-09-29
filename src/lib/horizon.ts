@@ -30,16 +30,6 @@ import { loadPipelineConfig, resolvePersonaMapping } from './pipeline-config.js'
 import { panCommand } from './project-config.js'
 import { runCursorAgentSession } from './executors/cursor-agent.js'
 import {
-  awayBlockerCanBeCleared,
-  awayModeTrigger,
-  OPERATOR_QUESTION_REFUSAL,
-  recordAwayApplyResult,
-  selectAwayOption,
-  type AwayDecisionRecord,
-  type AwayOption,
-} from './away-mode.js'
-import { applyAwayDecision, evaluateAwayState } from './away-orchestration.js'
-import {
   appendArbiterRecord,
   applyArbiterAction,
   arbitrateHorizonStop,
@@ -2034,15 +2024,13 @@ function reconcileDrivenTask(
   return state
 }
 
-const AWAY_STEP_BOUND = 20
-
 /**
- * Convert a pause the session cannot clear into the fourth rung.
+ * Convert a gate pause the headless session cannot clear into the fourth rung.
  *
- * `reconcileDrivenTask` keys rung four on an operator-only stop, so a
- * guardrail refusal, an exhausted decision budget, and an inapplicable
- * decision all have to arrive there. Letting one escape the checkpoint ends
- * the whole session instead of the one task it belongs to.
+ * `reconcileDrivenTask` keys rung four on an operator-only stop, and the
+ * session arbiter is the only supervisor a headless session has. Letting an
+ * ordinary gate pause escape the checkpoint ends the whole session instead of
+ * the one task it belongs to.
  */
 function operatorOnlyStop(
   driven: HeadlessDriverResult,
@@ -2059,192 +2047,6 @@ function operatorOnlyStop(
       reason,
     },
   }
-}
-
-/**
- * How many evaluator failures one blocker absorbs before the task defers.
- *
- * Each `evaluateAwayState` call already retries an unparseable reply once. A
- * failure record is transient by definition (HORIZON-001), so the session
- * evaluates again rather than deferring a task over a reply that did not
- * parse. The run's own evaluator-failure ceiling still bounds the total.
- */
-const AWAY_EVALUATION_ATTEMPTS = 3
-
-/**
- * Apply the selected option, then fall through the remaining allowed ranks
- * when an apply fails. A ranking usually carries a second sound option, and
- * ending the task over the first one's apply error was the defect that
- * deferred a complete release over an inapplicable `resume` (HORIZON-001).
- */
-function applyRankedAwayDecision(
-  root: string,
-  state: RunState,
-  decision: AwayDecisionRecord,
-): { applied: true } | { applied: false; reason: string } {
-  const tried = new Set<number>()
-  let candidate: AwayOption | null = decision.selected_action
-  let lastError = 'The away decision selected no action.'
-
-  while (candidate) {
-    tried.add(candidate.rank)
-    const attempt: AwayDecisionRecord = {
-      ...decision,
-      selected_action: candidate,
-    }
-
-    try {
-      applyAwayDecision(root, state, attempt)
-      recordAwayApplyResult(
-        root,
-        attempt,
-        'applied',
-        undefined,
-        candidate.action,
-      )
-
-      return { applied: true }
-    } catch (error) {
-      lastError = errorMessage(error)
-      recordAwayApplyResult(root, attempt, 'failed', lastError)
-    }
-
-    const remaining = decision.ranked_options.filter(
-      (option) => !tried.has(option.rank),
-    )
-    candidate = selectAwayOption(remaining, {
-      enabled: true,
-      guardrails: decision.guardrails,
-      source_sha256: state.away_mode?.source_sha256 ?? '',
-    }).selected
-  }
-
-  return {
-    applied: false,
-    reason: `The away decision did not apply: ${lastError}`,
-  }
-}
-
-/** Resolve one away-mode blocker, or state why no permitted action clears it. */
-function advanceAwayBlocker(
-  root: string,
-  state: RunState,
-): { advanced: true } | { advanced: false; reason: string } {
-  const blocker = awayModeTrigger(state, undefined, root)
-
-  if (!blocker) {
-    return {
-      advanced: false,
-      reason: 'The pause is not a permitted away-mode blocker class.',
-    }
-  }
-
-  let decision: AwayDecisionRecord | null = null
-  let evaluatorError: string | null = null
-
-  for (let attempt = 1; attempt <= AWAY_EVALUATION_ATTEMPTS; attempt++) {
-    try {
-      const evaluated = evaluateAwayState(root, state, blocker)
-
-      if (evaluated.decision_kind === 'evaluator_failure') {
-        evaluatorError = evaluated.error ?? 'The away evaluator failed.'
-        continue
-      }
-
-      decision = evaluated
-      break
-    } catch (error) {
-      evaluatorError = errorMessage(error)
-
-      // A spent budget or failure ceiling will not change on another attempt.
-      if (
-        error instanceof PanError &&
-        (error.code === 'AWAY_DECISION_LIMIT' ||
-          error.code === 'AWAY_EVALUATOR_FAILURE_LIMIT')
-      ) {
-        break
-      }
-    }
-  }
-
-  if (!decision) {
-    return {
-      advanced: false,
-      reason: `The away evaluator reached no usable decision: ${evaluatorError ?? 'no decision'}`,
-    }
-  }
-
-  // The refusal is deterministic and its record already names the question,
-  // rather than the generic exhausted-ranking reason the evaluated path
-  // below reports.
-  if (decision.decision_kind === 'operator_question_refusal') {
-    return {
-      advanced: false,
-      reason: decision.error ?? OPERATOR_QUESTION_REFUSAL,
-    }
-  }
-
-  if (
-    !awayBlockerCanBeCleared({
-      selected: decision.selected_action,
-      rejected: decision.rejected_options,
-    })
-  ) {
-    return {
-      advanced: false,
-      reason: 'No permitted autonomous action can clear the blocker.',
-    }
-  }
-
-  const applied = applyRankedAwayDecision(root, state, decision)
-
-  if (!applied.applied) {
-    return { advanced: false, reason: applied.reason }
-  }
-
-  return { advanced: true }
-}
-
-/**
- * Drive one run to a stop, applying away-mode decisions while the workflow
- * pauses on a blocker the evaluator owns. `blocked` names the reason the loop
- * gave up, so a caller renders the exhausted bound in its own vocabulary
- * instead of keeping a second copy of this loop and its bound.
- */
-export function driveRunUnderAwayMode(
-  root: string,
-  runId: string,
-  options: { attestSupervisorCard: boolean; attestedBy: string },
-  drive: typeof driveRun = driveRun,
-): { driven: HeadlessDriverResult; blocked: string | null } {
-  let driven = drive(root, runId, options)
-  let awaySteps = 0
-
-  while (
-    driven.stop.type === 'operator_pause' &&
-    !driven.stop.operator_only &&
-    // The session owns rungs three and four for its own typed pause, so the
-    // away evaluator never sees a ladder exhaustion.
-    driven.state.horizon_ladder?.pause_kind !== 'ladder_exhausted'
-  ) {
-    if (awaySteps >= AWAY_STEP_BOUND) {
-      return {
-        driven,
-        blocked: `The task spent its ${AWAY_STEP_BOUND}-decision away-mode bound without clearing the blocker.`,
-      }
-    }
-
-    const attempt = advanceAwayBlocker(root, driven.state)
-
-    if (!attempt.advanced) {
-      return { driven, blocked: attempt.reason }
-    }
-
-    driven = drive(root, runId, options)
-    awaySteps += 1
-  }
-
-  return { driven, blocked: null }
 }
 
 /**
@@ -2382,15 +2184,23 @@ export function checkpointHorizonSession(
         supervisor_card_attested_by: null,
       }
     } else {
-      const attempt = driveRunUnderAwayMode(root, target.run_id, {
+      driven = driveRun(root, target.run_id, {
         attestSupervisorCard: state.preflight.card_attestation_authorized,
         attestedBy: `horizon:${sessionId}`,
       })
 
-      driven =
-        attempt.blocked === null
-          ? attempt.driven
-          : operatorOnlyStop(attempt.driven, attempt.blocked)
+      if (
+        driven.stop.type === 'operator_pause' &&
+        !driven.stop.operator_only &&
+        // The session owns rungs three and four for its own typed pause.
+        driven.state.horizon_ladder?.pause_kind !== 'ladder_exhausted'
+      ) {
+        driven = operatorOnlyStop(
+          driven,
+          `The run waits for a supervisor away-mode decision: ${driven.handoff_reason ?? driven.stop.reason}`,
+        )
+      }
+
       state = reconcileDrivenTask(root, state, task, driven, options)
     }
 

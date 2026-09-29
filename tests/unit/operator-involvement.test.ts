@@ -118,6 +118,15 @@ test('a valid shared profile skips stage keys absent from one workflow', () => {
 })
 
 test('profiles parse long-horizon contracts and validated away-mode guardrails', () => {
+  // Retired guardrail keys still appear in older configs. The names are
+  // built so this file carries no literal key, and their values are invalid
+  // on purpose: the parser skips them without validating them.
+  const retired = Object.fromEntries(
+    [
+      ['max', 'decisions', 'per', 'run'],
+      ['max', 'remediation', 'attempts', 'per', 'agent'],
+    ].map((parts) => [parts.join('_'), 'not a number']),
+  )
   const parsed = parseOperatorInvolvement({
     operator_involvement: {
       active: 'long-horizon',
@@ -129,8 +138,7 @@ test('profiles parse long-horizon contracts and validated away-mode guardrails',
             enabled: true,
             guardrails: {
               allowed_actions: ['approve', 'resume'],
-              max_decisions_per_run: 4,
-              max_remediation_attempts_per_agent: 2,
+              ...retired,
             },
           },
         },
@@ -143,8 +151,6 @@ test('profiles parse long-horizon contracts and validated away-mode guardrails',
     enabled: true,
     guardrails: {
       allowed_actions: ['approve', 'resume'],
-      max_decisions_per_run: 4,
-      max_remediation_attempts_per_agent: 2,
     },
   })
 

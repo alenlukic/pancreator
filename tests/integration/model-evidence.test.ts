@@ -22,6 +22,7 @@ import {
   recordPendingWorkerModelProbe,
   recordSupervisorModelEvidence,
   setRunStage,
+  submitOutput,
 } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
 import { runCursorAgentJson } from '../../src/lib/executors/cursor-agent.js'
@@ -35,6 +36,7 @@ import {
   resolvePersonaModel,
 } from '../../src/lib/pipeline-config.js'
 import { operationMutexPath, statePath } from '../../src/lib/state.js'
+import { watchInvocation } from '../../src/lib/watch.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
   attestRunCard,
@@ -48,6 +50,29 @@ import {
 import { submitAsSupervisor } from '../run-helpers.js'
 import { claudeStubPath, checkpoint, withStub } from './delivery-helpers.js'
 import type { CheckpointVariant } from './delivery-helpers.js'
+import { CADENCE_SECONDS } from './watch-helpers.js'
+
+/**
+ * Submit after a completed watch, the observation DELEGATE-001 requires. A
+ * foreground-return attestation earns its own DELEGATION_FOREGROUND_RETURN
+ * advisory, and a background mark made from a test process with no terminal
+ * earns DELEGATION_TIMER_UNAWAITED, so either would mask whether the model
+ * evidence path added an advisory.
+ */
+async function submitWatched(
+  root: string,
+  runId: string,
+  outputPath: string,
+): Promise<ReturnType<typeof submitOutput>> {
+  const watched = await watchInvocation(root, runId, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(watched.state, 'completed')
+
+  return submitOutput(root, runId, outputPath)
+}
 
 function createdRunCheckpoint(name: 'delivery@created' | 'planning@created') {
   const created = checkpoint(name)
@@ -194,7 +219,7 @@ function withStrictCursorAgent<T>(
   }
 }
 
-test('supervisor evidence activates future worker-card enforcement', () => {
+test('supervisor evidence activates future worker-card enforcement', async () => {
   const { root: legacyRoot, run: legacyRun } =
     createdRunCheckpoint('delivery@created')
   const legacyInvocation = prepareInvocation(
@@ -284,7 +309,11 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   )
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
+  const submitted = await submitWatched(
+    root,
+    run.run_id,
+    invocation.output.path,
+  )
 
   assert.ok(
     submitted.state.stage_history.some(
@@ -644,7 +673,7 @@ test('bare prepare resolves the projected agent while external prepare explains 
   )
 })
 
-test('a probe that never lands settles into a labeled default at submit', () => {
+test('a probe that never lands settles into a labeled default at submit', async () => {
   // The deferral must not invent a new failure mode. A marker with no answer
   // behind it says nothing the run snapshot does not already say, so
   // submission records the projected spec as a default instead of an
@@ -665,7 +694,11 @@ test('a probe that never lands settles into a labeled default at submit', () => 
   )
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
+  const submitted = await submitWatched(
+    root,
+    run.run_id,
+    invocation.output.path,
+  )
   const settled = getRunState(root, run.run_id).model_evidence?.find(
     (item) => item.role === 'worker',
   )
@@ -1098,9 +1131,9 @@ test('the probe adapts to the flags the installed cursor-agent accepts', () => {
   )
 })
 
-// The away evaluator and every external stage run through the executor, not
-// the probe. Run 63310_Aug-30-0872 lost the plan-gate away evaluation to the
-// same rejected flag, so an operator-owned ratification became a supervisor
+// The horizon arbiter and every external stage run through the executor, not
+// the probe. Run 63310_Aug-30-0872 lost a plan-gate exchange to the same
+// rejected flag, so an operator-owned ratification became a supervisor
 // stand-in.
 test('the executor sends only the flags the installed cursor-agent declares', () => {
   const root = createTestTempDirectory('cursor-agent-argv-')

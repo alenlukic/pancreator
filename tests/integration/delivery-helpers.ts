@@ -18,8 +18,10 @@ import {
   prepareInvocation,
   setRunStage,
 } from '../../src/lib/engine.js'
+import { AWAY_MODE_ACTIONS } from '../../src/lib/project-config.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import type {
+  AwayModeAction,
   Invocation,
   RunState,
   StageDefinition,
@@ -337,56 +339,19 @@ export function installOpenAiFixture(
   })
 }
 
-/** Point the away evaluator at a script that answers with `response`. */
-export function withFakeEvaluator<T>(
-  root: string,
-  response: unknown,
-  body: () => T,
-): T {
-  const binary = path.join(root, 'fake-cursor-agent')
-
-  writeFileSync(
-    binary,
-    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
-      session_id: 'evaluator-session',
-      result: JSON.stringify(response),
-    })}'\n`,
-  )
-  chmodSync(binary, 0o755)
-
-  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
-
-  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
-
-  try {
-    return body()
-  } finally {
-    if (previousBinary === undefined) {
-      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
-    } else {
-      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
-    }
-  }
-}
-
 /**
- * A fake `cursor-agent` that answers the away evaluator and the horizon
- * arbiter with different documents. The prompt travels over stdin, and the
- * arbiter prompt opens with a fixed sentence, so the script selects its reply
- * by that marker. `arbiter` may be `null` to make the arbiter exchange fail
- * (no JSON), which exercises the deterministic fallback.
+ * A fake `cursor-agent` that answers the horizon arbiter. The arbiter prompt
+ * opens with a fixed sentence, so the script selects its reply by that marker.
+ * Every other prompt, such as a horizon prompt task, receives `{ ok: true }`.
+ * Pass `null` as `arbiter` to make the arbiter exchange fail (no JSON), which
+ * exercises the deterministic fallback.
  */
-export function withFakeEvaluatorAndArbiter<T>(
+export function withFakeArbiter<T>(
   root: string,
-  evaluator: unknown,
   arbiter: unknown | null,
   body: () => T,
 ): T {
   const binary = path.join(root, 'fake-cursor-agent')
-  const evaluatorReply = JSON.stringify({
-    session_id: 'evaluator-session',
-    result: JSON.stringify(evaluator),
-  })
   const arbiterReply =
     arbiter === null
       ? 'not json'
@@ -394,6 +359,10 @@ export function withFakeEvaluatorAndArbiter<T>(
           session_id: 'arbiter-session',
           result: JSON.stringify(arbiter),
         })
+  const otherReply = JSON.stringify({
+    session_id: 'agent-session',
+    result: JSON.stringify({ ok: true }),
+  })
 
   writeFileSync(
     binary,
@@ -402,7 +371,7 @@ export function withFakeEvaluatorAndArbiter<T>(
       'input=$(cat)',
       'case "$input" in',
       `  *"You are the arbiter of a long-horizon session"*) printf '%s\\n' '${arbiterReply.replaceAll("'", "'\\''")}' ;;`,
-      `  *) printf '%s\\n' '${evaluatorReply.replaceAll("'", "'\\''")}' ;;`,
+      `  *) printf '%s\\n' '${otherReply.replaceAll("'", "'\\''")}' ;;`,
       'esac',
       '',
     ].join('\n'),
@@ -488,45 +457,52 @@ export const BRIEFS: CheckpointVariant = {
 }
 
 /**
- * Away mode enabled with approval as its only action. Away mode is snapshotted
- * into the run at creation, so the event log holds no operator decision.
+ * Enable away mode with the given actions. Away mode is snapshotted into the
+ * run at creation, so the event log holds no operator decision.
  */
+function awayFixture(root: string, allowedActions: AwayModeAction[]): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  writeFileSync(
+    configPath,
+    `${JSON.stringify(
+      {
+        ...config,
+        away_mode: {
+          enabled: true,
+          guardrails: { allowed_actions: allowedActions },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  // Delivery starts at implement, whose target-instruction coverage check
+  // reads the cumulative workspace diff. Fold the fixture edit into the
+  // baseline commit so the run starts from a clean tree; amend rather than
+  // commit because the ship release validator needs the baseline commit to
+  // be the one that introduced VERSION.
+  execFileSync('git', ['add', 'config.json'], { cwd: root })
+  execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
+    cwd: root,
+  })
+}
+
+/** Away mode enabled with approval as its only action. */
 export const AWAY: CheckpointVariant = {
   key: 'away',
-  fixture: (root) => {
-    const configPath = path.join(root, 'config.json')
-    const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-      string,
-      unknown
-    >
+  fixture: (root) => awayFixture(root, ['approve']),
+  run: { title: 'Away continuation fixture' },
+}
 
-    writeFileSync(
-      configPath,
-      `${JSON.stringify(
-        {
-          ...config,
-          away_mode: {
-            enabled: true,
-            guardrails: {
-              allowed_actions: ['approve'],
-              max_decisions_per_run: 1,
-            },
-          },
-        },
-        null,
-        2,
-      )}\n`,
-    )
-    // Delivery starts at implement, whose target-instruction coverage check
-    // reads the cumulative workspace diff. Fold the fixture edit into the
-    // baseline commit so the run starts from a clean tree; amend rather than
-    // commit because the ship release validator needs the baseline commit to
-    // be the one that introduced VERSION.
-    execFileSync('git', ['add', 'config.json'], { cwd: root })
-    execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
-      cwd: root,
-    })
-  },
+/** Away mode enabled with every away action. */
+export const AWAY_ALL: CheckpointVariant = {
+  key: 'away-all',
+  fixture: (root) => awayFixture(root, [...AWAY_MODE_ACTIONS]),
   run: { title: 'Away continuation fixture' },
 }
 

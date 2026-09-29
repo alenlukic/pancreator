@@ -103,6 +103,7 @@ import {
 } from './fast-wall-series.js'
 import {
   DELEGATION_CADENCE_EXTENDED,
+  DELEGATION_FOREGROUND_RETURN,
   DELEGATION_TIMER_UNAWAITED,
   DELEGATION_UNOBSERVED,
   DELEGATION_WATCH_LATE,
@@ -2794,7 +2795,7 @@ function applyTransition(
     // A `blocked` at a release-gated stage used to be marked operator-only
     // under the long-horizon contract, which carried it straight to the
     // session's deferral rung. HORIZON-001 now names four hard blocks and
-    // nothing else; a stage's `blocked` is a claim the away evaluator tests
+    // nothing else; a stage's `blocked` is a claim the supervisor tests
     // (revise, set-stage, or a recorded waiver of a cost-backed criterion),
     // not a verdict. The release boundary itself is unchanged: away mode
     // still cannot push, publish, or deploy.
@@ -7222,6 +7223,19 @@ export function submitOutput(
             `transport evidence can refine it later.`,
         ])
       }
+
+      // US-005: a submission resting on a foreground-return attestation
+      // rather than a completed watch earns a submit advisory so the run
+      // record stays honest about what was observed.
+      if (delegationObservation.source === 'foreground_return') {
+        advise('delegation_supervision', [
+          `${DELEGATION_FOREGROUND_RETURN}: invocation ` +
+            `${invocation.invocation_id} was observed through a ` +
+            `foreground-return attestation rather than a completed watch. ` +
+            `DELEGATE-001 requires every new launch to use ` +
+            `run_in_background: true and be observed with pan watch.`,
+        ])
+      }
     }
 
     if (priorForRevision) {
@@ -9567,7 +9581,7 @@ export function quarantineRunForAgent(
     state.pending_action = { type: 'operator_decision' }
 
     writeDecision(root, state, 'Hypervisor quarantined an agent', reason, [
-      `Review agent '${agentId}' and its recovery evidence.`,
+      `Review agent '${agentId}' and its liveness evidence.`,
       `Resume with: ${panCommand(root)} resume ${state.run_id}`,
       `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
     ])

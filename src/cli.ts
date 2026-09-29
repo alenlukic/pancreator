@@ -86,10 +86,7 @@ import {
   type ArbiterActionType,
   type HorizonHardBlock,
 } from './lib/horizon-arbiter.js'
-import {
-  applyAwayDecision,
-  evaluateAwayState,
-} from './lib/away-orchestration.js'
+import { decideAwayAsSupervisor } from './lib/away-orchestration.js'
 import {
   installScheduleAgent,
   resolveScheduleConfig,
@@ -136,19 +133,12 @@ import {
 } from './lib/release-preparation.js'
 import {
   AWAY_SUBCOMMAND_OPTIONS,
-  awayDecisionLedgerPath,
-  awayEvaluationResponse,
   awayModeTrigger,
+  openOperatorQuestion,
   readAwayDecisionLedger,
-  recordAwayApplyResult,
-  recordHypervisorQuarantine,
-  resolveAwayApplyAction,
   unknownAwayOption,
-  type AwayDecisionRecord,
 } from './lib/away-mode.js'
 import {
-  createAgentRecoveryRunner,
-  hypervisorEventsPath,
   hypervisorProcessStatus,
   registryHealthForRun,
   runHypervisorDaemon,
@@ -195,7 +185,6 @@ import {
   writeTextAtomic,
 } from './lib/io.js'
 import type {
-  AgentRecord,
   DelegatedWorkerRecord,
   Invocation,
   RunState,
@@ -203,7 +192,6 @@ import type {
 import type { InvocationKind } from './lib/requirements/types.js'
 import {
   delegationExecutionPath,
-  invocationValidationPath,
   validateRepository,
 } from './lib/validation.js'
 import { PRIMER_BODY_FRESHNESS_LIMIT } from './lib/validators/target-repo-primer.js'
@@ -322,12 +310,15 @@ import {
   recordForegroundReturn,
   foregroundReturnRecordPath,
   launchRecordPath,
+  watchAgent,
   watchAttach,
   watchInvocations,
   watchProcess,
   watchTimer,
   writeRedlineRecord,
   type GenericWatchRecordEntry,
+  type WatchAgentSessionEntry,
+  type WatchAgentWakeInfo,
   type WatchRecordEntry,
 } from './lib/watch.js'
 import { runWatchAudit } from './lib/watch-audit.js'
@@ -649,7 +640,7 @@ function integerOption(args: string[], name: string): number | null {
 export const WORKTREE_CAPABLE_SURFACES = [
   'init',
   'decide',
-  'away apply',
+  'away decide',
   'cohort route',
   'horizon init',
   'prepare',
@@ -1155,130 +1146,26 @@ function listRuns(root: string): Array<Record<string, unknown>> {
     }))
 }
 
-function reprepareRecoveredAgent(
-  root: string,
-  agent: AgentRecord,
-): {
-  ok: boolean
-  evidence: string
-  failure_signature?: string
-  supported?: boolean
-} {
-  const state = getRunState(root, agent.run_id)
-  const current = state.current_invocation
-
-  if (
-    !current ||
-    current.id !== agent.invocation_id ||
-    state.current_stage === null
-  ) {
-    return {
-      ok: false,
-      supported: false,
-      failure_signature: 'invocation-changed',
-      evidence: 'The run no longer expects this invocation.',
-    }
-  }
-
-  const invocation = readJson(resolveInside(root, current.json_path))
-  const validationPath = resolveInside(
-    root,
-    invocationValidationPath(agent.run_id, agent.invocation_id, root),
-  )
-  const validation = fileExists(validationPath)
-    ? readJson(validationPath)
-    : undefined
-
-  const priorFingerprint =
-    isRecord(invocation) &&
-    isRecord(invocation.workspace_before) &&
-    typeof invocation.workspace_before.fingerprint === 'string'
-      ? invocation.workspace_before.fingerprint
-      : null
-  const currentFingerprint = gitWorkspaceSnapshot(
-    state.workspace_root,
-  ).fingerprint
-  const validationPassed = isRecord(validation) && validation.status === 'pass'
-
-  if (validationPassed && priorFingerprint === currentFingerprint) {
-    return {
-      ok: false,
-      supported: false,
-      failure_signature: 'canonical-invocation-still-valid',
-      evidence:
-        'The canonical invocation still validates against the workspace.',
-    }
-  }
-
-  setRunStage(
-    root,
-    state.run_id,
-    state.current_stage,
-    'Hypervisor re-prepared an invalid or workspace-stale invocation.',
-  )
-  const prepared = prepareInvocation(root, state.run_id)
-
-  if (!prepared.invocation) {
-    return {
-      ok: false,
-      failure_signature: 'reprepare-produced-no-invocation',
-      evidence: 'The harness did not produce a replacement invocation.',
-    }
-  }
-
-  return {
-    ok: true,
-    evidence: `Prepared replacement invocation ${prepared.invocation.invocation_id}.`,
-  }
-}
-
 function runHypervisorCycle(root: string): Record<string, unknown> {
-  const recoveryRunner = createAgentRecoveryRunner(root)
-  const tick = tickHypervisor(root, {
-    recoveryRunner: {
-      ...recoveryRunner,
-      reprepare: (agent) => reprepareRecoveredAgent(root, agent),
-    },
-  })
+  const tick = tickHypervisor(root)
   const quarantinedRuns = new Set<string>()
 
-  for (const event of tick.recovery_events) {
-    if (event.step !== 'quarantine') {
-      continue
-    }
-
+  for (const event of tick.quarantine_events) {
     const agent = tick.agents.find(
       (candidate) => candidate.agent_id === event.agent_id,
     )
 
-    if (
-      !agent ||
-      (agent.health !== 'stalled' && agent.health !== 'dead') ||
-      quarantinedRuns.has(agent.run_id)
-    ) {
+    if (!agent || quarantinedRuns.has(agent.run_id)) {
       continue
     }
 
     const reason = `Agent '${agent.agent_id}' was quarantined. ${event.evidence}`
-    const state = quarantineRunForAgent(
-      root,
-      agent.run_id,
-      agent.agent_id,
-      reason,
-    )
 
-    recordHypervisorQuarantine(root, state, {
-      health: agent.health,
-      summary: reason,
-      evidence_reference: path
-        .relative(root, hypervisorEventsPath(root))
-        .split(path.sep)
-        .join('/'),
-    })
+    quarantineRunForAgent(root, agent.run_id, agent.agent_id, reason)
     quarantinedRuns.add(agent.run_id)
   }
 
-  return { tick, away_decisions: [] }
+  return { tick }
 }
 
 /**
@@ -2080,156 +1967,41 @@ async function main(): Promise<void> {
       }
 
       const state = getRunState(root, runId)
-      const blocker = awayModeTrigger(state, undefined, root)
 
       if (subcommand === 'status') {
         const runDecisions = readAwayDecisionLedger(root).filter(
           (record) => record.run_id === runId,
-        )
-        const appliedIds = new Set(
-          runDecisions
-            .filter((record) => record.result === 'applied')
-            .map((record) => record.linked_decision_id)
-            .filter((value): value is string => typeof value === 'string'),
         )
 
         print(
           {
             run_id: runId,
             enabled: state.away_mode?.enabled ?? false,
-            blocker,
+            blocker: awayModeTrigger(state, root),
+            allowed_actions: state.away_mode?.guardrails.allowed_actions ?? [],
+            open_operator_question: openOperatorQuestion(root, state),
             decisions: runDecisions.length,
-            // The exact ids `pan away apply --decision` accepts, so the
-            // supervisor never has to guess between the ledger id and a
-            // mirrored run-local decision packet id.
-            apply_ready_decision_ids: runDecisions
-              .filter(
-                (record) =>
-                  record.result === 'accepted' &&
-                  !appliedIds.has(record.decision_id),
-              )
-              .map((record) => record.decision_id),
           },
           json,
         )
         return
       }
 
-      if (subcommand === 'evaluate') {
-        if (!blocker) {
-          throw new PanError(
-            'The run has no blocker that away mode can evaluate.',
-            { code: 'AWAY_TRIGGER_UNAVAILABLE' },
-          )
-        }
+      if (subcommand === 'decide') {
+        const action = requiredArgument(option(args, '--action'), '--action')
+        const note = noteOption(root, args)
+        const stage = option(args, '--stage') ?? null
 
-        const decision = evaluateAwayState(root, state, blocker)
+        const { state: next, record } = decideAwayAsSupervisor(root, state, {
+          action,
+          note,
+          stage,
+        })
 
-        print(awayEvaluationResponse(pan, decision), json)
-        return
-      }
-
-      if (subcommand === 'apply') {
-        const decisionId = requiredArgument(
-          option(args, '--decision'),
-          '--decision',
-        )
-        const ledger = readAwayDecisionLedger(root)
-        const decision = ledger.find(
-          (record) =>
-            record.run_id === runId &&
-            record.decision_id === decisionId &&
-            record.result === 'accepted',
-        )
-
-        if (!decision) {
-          const applied = new Set(
-            ledger
-              .filter(
-                (record) =>
-                  record.run_id === runId && record.result === 'applied',
-              )
-              .map((record) => record.linked_decision_id)
-              .filter((value): value is string => typeof value === 'string'),
-          )
-          const applyReady = ledger
-            .filter(
-              (record) =>
-                record.run_id === runId &&
-                record.result === 'accepted' &&
-                !applied.has(record.decision_id),
-            )
-            .map((record) => record.decision_id)
-          const inLedger = ledger.find(
-            (record) => record.decision_id === decisionId,
-          )
-          // A wrong id is almost always the mirrored run-local decision
-          // packet under agent/decisions/. Name the canonical namespace and
-          // the ids it would accept, so the caller needs no source dive.
-          const detail = inLedger
-            ? `The id exists in the ledger but is not an accepted decision for run ${runId} (result: ${inLedger.result}, run: ${inLedger.run_id}).`
-            : `The id is not in the away decision ledger at ${awayDecisionLedgerPath(root)}; run-local agent/decisions/ packet ids are not apply ids.`
-
-          throw new PanError(
-            `Accepted away decision not found: ${decisionId}. ${detail}` +
-              (applyReady.length
-                ? ` Apply-ready decision ids for this run: ${applyReady.join(', ')}.`
-                : ` No accepted, unapplied decisions exist for this run; run 'pan away evaluate' first.`),
-            { code: 'AWAY_DECISION_NOT_FOUND' },
-          )
-        }
-
-        // Only a successful apply consumes the decision. A failed apply leaves
-        // its own ledger record and the decision stays apply-ready, so the
-        // supervisor can retry once the cause is repaired instead of spending
-        // another evaluation on the same gate.
-        if (
-          ledger.some(
-            (record) =>
-              record.run_id === runId &&
-              record.linked_decision_id === decisionId &&
-              record.result === 'applied',
-          )
-        ) {
-          throw new PanError(
-            `Away decision was already applied: ${decisionId}`,
-            { code: 'AWAY_DECISION_ALREADY_APPLIED' },
-          )
-        }
-
-        // The refusal comes before the apply, so a mismatched --action leaves
-        // the decision apply-ready rather than spending it on a failure.
-        const action = resolveAwayApplyAction(
-          decision,
-          option(args, '--action'),
-        )
-        let next: RunState
-        let record: AwayDecisionRecord
-
-        try {
-          next = applyAwayDecision(root, state, decision)
-          record = recordAwayApplyResult(
-            root,
-            decision,
-            'applied',
-            undefined,
-            action,
-          )
-        } catch (error) {
-          recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
-          throw error
-        }
-
-        // Same hook as `pan decide`: it runs after the applied decision is
-        // durable and outside the try above, so a routing failure neither rolls
-        // back the approval nor records a `failed` beside the `applied`.
         const autostart = maybeStartDelivery(
           root,
           next,
-          {
-            actor: 'away',
-            action: decision.selected_action?.action ?? '',
-          },
+          { actor: 'away', action },
           deliveryRouteOptions(args),
         )
         const advance = maybeAdvanceCohort(root, next)
@@ -5166,6 +4938,111 @@ async function main(): Promise<void> {
 
       const processPid = option(args, '--process')
       const timerMode = hasFlag(args, '--timer')
+      const agentId = option(args, '--agent')
+
+      // Standalone --agent <id> form: no positional run id (Q-008 disposition).
+      if (
+        agentId !== null &&
+        (args[0] === undefined || args[0].startsWith('--'))
+      ) {
+        const agentExclusive = [
+          '--targets',
+          '--invocation',
+          '--foreground-returned',
+          '--mark-background',
+          '--agent-state',
+          '--agent-state-evidence',
+          '--handle',
+          '--launched-at',
+          '--process',
+        ]
+
+        if (
+          hasFlag(args, '--timer') ||
+          agentExclusive.some(
+            (name) => option(args, name) !== null || hasFlag(args, name),
+          )
+        ) {
+          throw new PanError(
+            '--agent (standalone) is exclusive with --process, --timer, ' +
+              '--targets, --invocation, and delegation flags.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const agentCadence = parseCadenceSeconds(
+          option(args, '--cadence-seconds'),
+          option(args, '--cadence-directed-by-operator'),
+        )
+
+        const agentCadenceAuthority =
+          option(args, '--cadence-directed-by-operator')?.trim() || undefined
+        const result = await watchAgent(root, agentId, {
+          cadenceSeconds: agentCadence,
+          ...(agentCadenceAuthority
+            ? { cadenceAuthority: agentCadenceAuthority }
+            : {}),
+          timeoutSeconds: parseTimeoutSeconds(
+            option(args, '--timeout-seconds'),
+          ),
+          onSessionStart: (entry: WatchAgentSessionEntry) => {
+            const indexed = entry.agent_entry
+            process.stderr.write(
+              `[pan watch:agent:${entry.subject}] armed ` +
+                `${entry.cadence_seconds}s cadence, ` +
+                `${entry.timeout_seconds}s bound; ` +
+                (indexed
+                  ? `index: ${indexed.status}, last ${indexed.last_event_kind} ` +
+                    `at ${indexed.last_event_at}` +
+                    (entry.aliases.length > 0
+                      ? `, aliases ${entry.aliases.join(', ')}`
+                      : '')
+                  : 'index: not registered yet') +
+                `; attach: ./bin/pan watch --attach ${entry.record_path}\n`,
+            )
+          },
+          onWake: interactive
+            ? (info: WatchAgentWakeInfo) => {
+                const activity = info.agent_activity
+                const openTool = activity?.open_call?.tool ?? null
+                const age =
+                  activity?.last_event_age_seconds != null
+                    ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
+                    : ''
+                process.stderr.write(
+                  `[pan watch:agent:${info.subject}] wake ${info.wake}` +
+                    (activity ? '' : ' not registered') +
+                    (openTool ? ` open:${openTool}` : '') +
+                    (activity?.last_event_kind
+                      ? ` last:${activity.last_event_kind}${age}`
+                      : '') +
+                    (info.terminal_state ? ` -> ${info.terminal_state}` : '') +
+                    '\n',
+                )
+              }
+            : undefined,
+        })
+
+        print(
+          json
+            ? result
+            : `agent watch ${result.state}: '${result.agent_id}' after ` +
+                `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
+                `record ${result.record_path}`,
+          json,
+        )
+        process.exitCode =
+          result.state === 'completed'
+            ? 0
+            : result.state === 'failed'
+              ? 1
+              : result.state === 'stalled'
+                ? 2
+                : result.state === 'timed_out'
+                  ? 3
+                  : 130
+        return
+      }
 
       if (processPid !== null || timerMode) {
         if (processPid !== null && timerMode) {

@@ -13,66 +13,48 @@ import {
 } from '../../src/lib/engine.js'
 import {
   awayModeTrigger,
-  countAwayDecisions,
   readAwayDecisionLedger,
-  recordAwayApplyResult,
-  recordAwayEvaluation,
 } from '../../src/lib/away-mode.js'
+import { decideAwayAsSupervisor } from '../../src/lib/away-orchestration.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { createFixture, PLANNING_FIXTURE_SPECS } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
-import { AWAY, checkpoint, withFakeEvaluator } from './delivery-helpers.js'
+import { AWAY, checkpoint } from './delivery-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
-test('enabled away mode approves a ratified planning gate', () => {
-  const { root, runId, state } = checkpoint(
-    'planning@plan-awaiting-operator',
-    AWAY,
-  )
-  const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+test('enabled away mode approves a ratified planning gate via decideAwayAsSupervisor', () => {
+  const { root, state } = checkpoint('planning@plan-awaiting-operator', AWAY)
   const blocker = awayModeTrigger(state)
 
   assert.ok(blocker)
 
-  const decision = recordAwayEvaluation(root, state, blocker, {
-    ranked_options: [
-      {
-        rank: 1,
-        action: 'approve',
-        feasible: true,
-        rationale: 'Approve the ratified plan.',
-        evidence: [planOutputPath],
-        rollback_plan: {
-          steps: ['Start a later planning run from the same request.'],
-          verification: 'Confirm the later run starts at plan.',
-        },
-      },
-    ],
+  const { state: next, record } = decideAwayAsSupervisor(root, state, {
+    action: 'approve',
+    note: 'Approve the ratified plan.',
   })
-  const next = decideRunAsAway(
-    root,
-    runId,
-    'approve',
-    decision.selected_action?.rationale ?? '',
-  )
 
-  recordAwayApplyResult(root, decision, 'applied')
   assert.equal(next.status, 'succeeded')
   assert.equal(next.pending_action.type, 'none')
-  assert.equal(countAwayDecisions(root, runId), 1)
-  assert.deepEqual(
-    readAwayDecisionLedger(root).map((record) => record.decision_kind),
-    ['evaluated', 'evaluated'],
-  )
+  assert.equal(record.result, 'applied')
+  assert.equal(record.action, 'approve')
+  assert.equal(record.author, 'supervisor')
+
+  const ledger = readAwayDecisionLedger(root)
+
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.result, 'applied')
 })
 
-test('a routing failure after an away approval leaves one applied record and no failed one', () => {
+test('pan away decide approves a ratified plan via CLI', () => {
   const { root, runId, state } = checkpoint(
     'planning@plan-awaiting-operator',
     AWAY,
   )
-  const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
   const cli = (...args: string[]): Record<string, unknown> =>
     JSON.parse(
       execFileSync(process.execPath, [CLI, ...args, '--json'], {
@@ -81,58 +63,34 @@ test('a routing failure after an away approval leaves one applied record and no 
       }),
     ) as Record<string, unknown>
 
-  withFakeEvaluator(
-    root,
-    {
-      ranked_options: [
-        {
-          rank: 1,
-          action: 'approve',
-          feasible: true,
-          rationale: 'Approve the ratified plan.',
-          evidence: [planOutputPath],
-          rollback_plan: {
-            steps: ['Start a later planning run from the same request.'],
-            verification: 'Confirm the later run starts at plan.',
-          },
-        },
-      ],
-    },
-    () => {
-      const evaluated = cli('away', 'evaluate', runId) as {
-        decision_id: string
-        selected_action: { action: string } | null
-      }
+  // The child specification the plan names is gone, so the routing hook
+  // that follows the approval fails. The approval is durable before the
+  // hook runs, so the failure is reported beside it.
+  rmSync(path.join(root, PLANNING_FIXTURE_SPECS.child))
 
-      assert.equal(evaluated.selected_action?.action, 'approve')
+  const result = cli(
+    'away',
+    'decide',
+    runId,
+    '--action',
+    'approve',
+    '--note',
+    'Approve the ratified plan.',
+  ) as {
+    state: { status: string }
+    decision: { result: string; action: string }
+    autostart?: { status: string }
+  }
 
-      // The child specification the plan names is gone, so the routing hook
-      // that follows the approval fails. The approval is durable before the
-      // hook runs, so the failure is reported beside it and never recorded as
-      // a failed apply.
-      rmSync(path.join(root, PLANNING_FIXTURE_SPECS.child))
+  assert.equal(result.state.status, 'succeeded')
+  assert.equal(result.decision.result, 'applied')
+  assert.equal(result.decision.action, 'approve')
+  assert.equal(result.autostart?.status, 'failed')
 
-      const applied = cli(
-        'away',
-        'apply',
-        runId,
-        '--decision',
-        evaluated.decision_id,
-      ) as {
-        state: { status: string }
-        decision: { result: string }
-        autostart?: { status: string }
-      }
+  const ledger = readAwayDecisionLedger(root)
 
-      assert.equal(applied.state.status, 'succeeded')
-      assert.equal(applied.decision.result, 'applied')
-      assert.equal(applied.autostart?.status, 'failed')
-      assert.deepEqual(
-        readAwayDecisionLedger(root).map((record) => record.result),
-        ['accepted', 'applied'],
-      )
-    },
-  )
+  assert.equal(ledger.length, 1)
+  assert.equal(ledger[0]?.result, 'applied')
 })
 
 test('away resume cannot ratify workspace changes made during a pause', () => {

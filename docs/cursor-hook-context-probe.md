@@ -117,3 +117,45 @@ records the observations below. A workflow worker cannot perform it.
 
 - Result: Pending
 - Operator notes:
+
+## Subagent identity probe
+
+This probe records, from a live background-agent-index session, whether `subagentStart.subagent_id`, the child's `conversation_id` (from a `preToolUse`/`postToolUse` payload inside that subagent), and the `Task` handle returned by the parent's launch match each other. The index links them when they differ. The probe also captures the raw payload field names, so it shows fields the index does not read, such as a differently named parent or transcript field.
+
+### Procedure
+
+1. Open the worktree (`worktrees/operator/background-delegation-fixes`) as a Cursor workspace with the compiled CLI present (`npm run build`) and `.cursor/hooks.json` naming the projected hooks including `bin/pan-hook-agent-index`.
+2. Enable payload capture at the resolved harness root (the main checkout for a linked worktree):
+
+   ```sh
+   mkdir -p runtime/logs/agents && touch runtime/logs/agents/probe.enabled
+   ```
+
+   While the marker exists, each hook call appends one line to `runtime/logs/agents/probe-payloads.jsonl`: the event, the payload's field names, the `tool_input` field names, and the values of fields whose names end in `id`, `ids`, or `path`. No other value is written.
+
+3. Launch one background subagent (any type; a short task suffices) with `run_in_background: true`.
+4. Record the `Task` handle the platform returned.
+5. After the subagent finishes, disable capture and read both records:
+
+   ```sh
+   rm runtime/logs/agents/probe.enabled
+   cat runtime/logs/agents/probe-payloads.jsonl runtime/logs/agents/index.json
+   ```
+
+6. From `probe-payloads.jsonl`, record the field names of each of the five events (`preToolUse`, `postToolUse`, `postToolUseFailure`, `subagentStart`, `subagentStop`). Mark every field that `src/lib/agent-index.ts` does not read.
+7. Record whether the subagent's index entry shows all three ids equal, or which differ and which `aliases` entries bridge them.
+8. Fill in the observation table below.
+
+### Observations
+
+| Field                                            | Expected           | Observed | Date | Cursor version |
+| ------------------------------------------------ | ------------------ | -------- | ---- | -------------- |
+| `subagentStart.subagent_id` == `conversation_id` | Yes or noted alias |          |      |                |
+| `subagentStart.subagent_id` == `Task` handle     | Yes or noted alias |          |      |                |
+| Alias links bridging any mismatch                | Listed below       |          |      |                |
+| Payload fields the index does not read           | Listed below       |          |      |                |
+
+- Result: Pending
+- Raw field names per event:
+- Alias field observation (if ids differ):
+- Operator notes:

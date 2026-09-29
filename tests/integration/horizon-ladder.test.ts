@@ -184,7 +184,7 @@ test('a blocked release gate inside the contract stays an away-mode blocker', ()
   assert.equal(paused.status, 'paused')
   assert.equal(paused.pending_action.type, 'operator_decision')
   // HORIZON-001 names four hard blocks; a stage's `blocked` is not one of
-  // them, so the pause is not operator-only and the evaluator gets to test
+  // them, so the pause is not operator-only and the supervisor gets to test
   // the claim before the task can reach the deferral rung.
   assert.equal(
     paused.pending_action.type === 'operator_decision' &&

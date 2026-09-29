@@ -20,10 +20,7 @@ import {
   startHorizonSession,
 } from '../../src/lib/horizon.js'
 import { createFixture, read, writeJson } from '../helpers.js'
-import {
-  withFakeEvaluator,
-  withFakeEvaluatorAndArbiter,
-} from './delivery-helpers.js'
+import { withFakeArbiter } from './delivery-helpers.js'
 
 const PROMPT = 'Return one result.'
 
@@ -67,7 +64,7 @@ test('an authorized session runs a prompt task and records its outcome', () => {
     attestSupervisorCard: true,
   })
 
-  const executed = withFakeEvaluator(root, { ok: true }, () =>
+  const executed = withFakeArbiter(root, null, () =>
     nextHorizonTask(root, 'preflight-prompt'),
   )
 
@@ -170,7 +167,7 @@ test('an explicit named prompt-task grant widens only the recorded roots', () =>
     attestSupervisorCard: true,
   })
 
-  const executed = withFakeEvaluator(root, { ok: true }, () =>
+  const executed = withFakeArbiter(root, null, () =>
     nextHorizonTask(root, 'preflight-named-grant'),
   )
   const artifact = read(
@@ -456,9 +453,8 @@ test('an authorized session attests its first invocation without stopping', () =
   // The fixture has no worker, so the first delegation stops the run. The
   // arbiter names a hard block here so the run rests where the driver left
   // it; the prepared invocation below is this test's subject, not the stop.
-  withFakeEvaluatorAndArbiter(
+  withFakeArbiter(
     root,
-    { ok: true },
     {
       verdict: 'hard_block',
       hard_block: 'LH-H2',

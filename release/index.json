@@ -356,6 +356,14 @@
     {
       "version": "7.32.0",
       "commit": "f74231e7df8c58feb5aacebc475820fd9318120b"
+    },
+    {
+      "version": "7.33.0",
+      "commit": "61b2c1f2657a9f99dd5ecaa9a51addb0dd3f047c"
+    },
+    {
+      "version": "7.34.0",
+      "commit": "ad6d456c4d8ef7ae7659090b3c526f90ae204037"
     }
   ]
 }
