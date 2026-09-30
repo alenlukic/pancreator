@@ -1,0 +1,119 @@
+import assert from 'node:assert/strict'
+import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
+import test from 'node:test'
+
+const REPO_ROOT = process.cwd()
+
+/**
+ * Workers read source and tests in windows, and a file too long to hold in
+ * view is paged through and re-read. No TypeScript file under `src/` or
+ * `tests/` may exceed this many lines.
+ */
+const MAX_LINES = 1000
+
+/**
+ * Files still waiting for their split. An entry leaves the list in the change
+ * that splits it; a listed file that fits the limit fails this test, so the
+ * list only shrinks.
+ */
+const PENDING_SPLIT = new Set([
+  'src/cli.ts',
+  'src/lib/agent-index.ts',
+  'src/lib/best-of-n.ts',
+  'src/lib/briefs.ts',
+  'src/lib/cleanup.ts',
+  'src/lib/cohorts.ts',
+  'src/lib/context.ts',
+  'src/lib/cursor-handoff/driver.ts',
+  'src/lib/debloat/graph.ts',
+  'src/lib/debloat/usage.ts',
+  'src/lib/engine.ts',
+  'src/lib/evals/graders.ts',
+  'src/lib/git.ts',
+  'src/lib/governance-card.ts',
+  'src/lib/governance/prompt-context.ts',
+  'src/lib/horizon.ts',
+  'src/lib/project-config.ts',
+  'src/lib/release-landing.ts',
+  'src/lib/render.ts',
+  'src/lib/repository-checks.ts',
+  'src/lib/schedule.ts',
+  'src/lib/spend-sync.ts',
+  'src/lib/target-authoring.ts',
+  'src/lib/test-impact.ts',
+  'src/lib/test-tuning.ts',
+  'src/lib/token-spend.ts',
+  'src/lib/types.ts',
+  'src/lib/validation.ts',
+  'src/lib/validators/code-style.ts',
+  'src/lib/validators/refusals.ts',
+  'src/lib/validators/stage-validators.ts',
+  'src/lib/watch.ts',
+  'src/lib/worker-profile.ts',
+  'src/lib/workflow-artifacts.ts',
+  'src/lib/workflow.ts',
+  'src/lib/worktrees.ts',
+  'tests/helpers.ts',
+  'tests/integration/cli-build-wrappers.test.ts',
+  'tests/integration/cohorts.test.ts',
+  'tests/integration/eval-graders.test.ts',
+  'tests/integration/model-evidence.test.ts',
+  'tests/integration/policies.test.ts',
+  'tests/integration/release-landing.test.ts',
+  'tests/integration/release-preparation.test.ts',
+  'tests/integration/repository-checks.test.ts',
+  'tests/integration/validation.test.ts',
+  'tests/integration/validators-stage-validators.test.ts',
+  'tests/integration/watch-repair.test.ts',
+  'tests/integration/watch.test.ts',
+  'tests/integration/worktrees.test.ts',
+  'tests/unit/prototype-output-validator.test.ts',
+  'tests/unit/render.test.ts',
+  'tests/unit/test-impact.test.ts',
+  'tests/unit/workflow-artifacts.test.ts',
+])
+
+function typeScriptFiles(directory: string): string[] {
+  return readdirSync(path.join(REPO_ROOT, directory), {
+    recursive: true,
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+    .map((entry) =>
+      path
+        .relative(REPO_ROOT, path.join(entry.parentPath, entry.name))
+        .split(path.sep)
+        .join('/'),
+    )
+}
+
+function lineCount(relative: string): number {
+  const text = readFileSync(path.join(REPO_ROOT, relative), 'utf8')
+
+  return text.endsWith('\n')
+    ? text.split('\n').length - 1
+    : text.split('\n').length
+}
+
+test('no source or test file exceeds the line limit unless its split is pending', () => {
+  const counts = new Map(
+    [...typeScriptFiles('src'), ...typeScriptFiles('tests')].map((file) => [
+      file,
+      lineCount(file),
+    ]),
+  )
+  const oversized = [...counts]
+    .filter(([file, lines]) => lines > MAX_LINES && !PENDING_SPLIT.has(file))
+    .map(([file, lines]) => `${file} (${lines} lines)`)
+  const settled = [...PENDING_SPLIT].filter(
+    (file) => (counts.get(file) ?? 0) <= MAX_LINES,
+  )
+
+  assert.deepEqual(oversized, [], `Split these files below ${MAX_LINES} lines.`)
+  assert.deepEqual(
+    settled,
+    [],
+    'These files fit the limit now; remove them from PENDING_SPLIT.',
+  )
+})

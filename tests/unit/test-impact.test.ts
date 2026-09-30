@@ -20,6 +20,7 @@ import {
   parseImpactArgs,
   parseSpecifiersByRegex,
   resolveSpecifier,
+  isReExportFacade,
   reverseClosure,
   runTestsImpacted,
   selectImpactedTests,
@@ -297,6 +298,50 @@ test('reverseClosure reports the seed and hop depth and honors a depth bound', a
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('a re-export facade is transparent to the hop depth', async () => {
+  const root = createTestTempDirectory('pan-test-impact-facade-')
+  const write = (relative: string, content: string): void => {
+    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+    writeFileSync(path.join(root, relative), content)
+  }
+
+  try {
+    write('src/lib/split/part.ts', 'export const part = 1\n')
+    write(
+      'src/lib/split.ts',
+      "// Facade kept for importers.\nexport { part } from './split/part.js'\nexport type { Shape } from './split/part.js'\n",
+    )
+    write(
+      'tests/unit/split.test.ts',
+      "import { part } from '../../src/lib/split.js'\ntest(String(part))\n",
+    )
+
+    const graph = await buildModuleGraph(root)
+    const direct = reverseClosure(graph, ['src/lib/split/part.ts'], 1)
+
+    assert.ok(graph.facades?.has('src/lib/split.ts'))
+    assert.deepEqual(direct.get('tests/unit/split.test.ts'), {
+      seed: 'src/lib/split/part.ts',
+      depth: 1,
+    })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('only a module of nothing but re-exports is a facade', () => {
+  assert.equal(isReExportFacade("export * from './a.js'\n"), true)
+  assert.equal(
+    isReExportFacade("/** doc */\nexport { a, b } from './a.js'\n"),
+    true,
+  )
+  assert.equal(
+    isReExportFacade("export { a } from './a.js'\nexport const b = 1\n"),
+    false,
+  )
+  assert.equal(isReExportFacade('export const b = 1\n'), false)
 })
 
 test('selectImpactedTests selects the reverse closure, bin and fixture tests, and never the integration or secondary lane', async () => {

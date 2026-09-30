@@ -110,6 +110,11 @@ export interface ModuleGraph {
   dataReferences: Map<string, Set<string>>
   /** Files at least one module imports only for types. */
   typeOnlyTargets: Set<string>
+  /**
+   * Source files that only re-export other modules. A facade adds no
+   * behavior, so an import through one is not an extra hop.
+   */
+  facades?: Set<string>
   /** Parser that produced the specifiers. */
   parser: 'typescript' | 'regex'
   build_ms: number
@@ -571,6 +576,7 @@ function assembleModuleGraph(
   const dataReferences = new Map<string, Set<string>>()
 
   const typeOnlyTargets = new Set<string>()
+  const facades = new Set<string>()
   const specialReferences = new Map<string, SpecialReferences>()
   const cliSource = fileSet.has('src/cli.ts') ? 'src/cli.ts' : null
 
@@ -579,6 +585,10 @@ function assembleModuleGraph(
     const parsed = parse(file, source)
 
     imports.set(file, new Set())
+
+    if (file.startsWith('src/') && isReExportFacade(source)) {
+      facades.add(file)
+    }
 
     for (const specifier of parsed.runtime) {
       const resolved = resolveSpecifier(file, specifier, fileSet)
@@ -649,6 +659,7 @@ function assembleModuleGraph(
     fixtureReferences,
     dataReferences,
     typeOnlyTargets,
+    facades,
     parser,
     build_ms: Math.round(performance.now() - started),
   }
@@ -696,10 +707,31 @@ export interface Reach {
   depth: number
 }
 
+const RE_EXPORT_PATTERN =
+  /export\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"];?/gu
+
+/**
+ * Whether a module holds nothing but re-exports. Comments and blank lines are
+ * ignored, and at least one re-export must be present.
+ */
+export function isReExportFacade(source: string): boolean {
+  const code = source
+    .replace(/\/\*[\s\S]*?\*\//gu, '')
+    .replace(/^\s*\/\/.*$/gmu, '')
+
+  if (code.match(RE_EXPORT_PATTERN) === null) {
+    return false
+  }
+
+  return code.replace(RE_EXPORT_PATTERN, '').trim().length === 0
+}
+
 /**
  * Every file that transitively imports one of the seeds, plus the seeds.
  *
- * `maxDepth` bounds the hops. Depth 1 keeps only direct importers.
+ * `maxDepth` bounds the hops. Depth 1 keeps only direct importers. An import
+ * through a re-export facade costs no hop, so a test that imports a split
+ * module through its facade stays a direct importer of the sub-module.
  */
 export function reverseClosure(
   graph: ModuleGraph,
@@ -725,7 +757,16 @@ export function reverseClosure(
     }
 
     for (const dependent of graph.dependents.get(file) ?? []) {
-      if (!reached.has(dependent)) {
+      if (reached.has(dependent)) {
+        continue
+      }
+
+      // Zero-cost edges go to the front, so the walk stays breadth-first by
+      // hop count and every node keeps its shortest depth.
+      if (graph.facades?.has(dependent) === true) {
+        reached.set(dependent, { seed: reach.seed, depth: reach.depth })
+        queue.unshift(dependent)
+      } else {
         reached.set(dependent, { seed: reach.seed, depth: reach.depth + 1 })
         queue.push(dependent)
       }
