@@ -33,6 +33,7 @@ import {
   loadAgentStateEvidence,
   processStartIdentity,
 } from './process-evidence.js'
+import { stallEvidenceFrom } from './record.js'
 import { snapshotBlockedOutput } from './blocked-snapshot.js'
 import {
   completionEvidenceForObservation,
@@ -232,6 +233,7 @@ export async function watchInvocation(
       state: WatchTerminalState,
       armings: number,
       wakes: number,
+      lastObservation?: WatchObservation,
     ): WatchResult => {
       const endedMs = now()
       const cadenceDefaulted = cadenceSeconds === DEFAULT_WATCH_CADENCE_SECONDS
@@ -271,6 +273,16 @@ export async function watchInvocation(
                 (agentState ? ` --agent-state ${agentState}` : ''),
             }
           : {}),
+        ...(state === 'stalled' ||
+        state === 'unverified' ||
+        state === 'timed_out'
+          ? {
+              stall_evidence: stallEvidenceFrom(
+                lastObservation?.agent_activity,
+                endedMs,
+              ),
+            }
+          : {}),
       }
     }
     // An already-present output needs no timer. The wake record still proves
@@ -307,7 +319,7 @@ export async function watchInvocation(
         terminal_state: initialStop.terminal,
       })
 
-      return finish(initialStop.terminal, 0, 0)
+      return finish(initialStop.terminal, 0, 0, initial)
     }
 
     if (initialEvidence.strength === 'strong') {
@@ -511,7 +523,7 @@ export async function watchInvocation(
       options.onWake?.(entry)
 
       if (terminal) {
-        return finish(terminal, armings, wakes)
+        return finish(terminal, armings, wakes, observation)
       }
     }
   } finally {

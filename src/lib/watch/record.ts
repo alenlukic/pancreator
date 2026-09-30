@@ -27,6 +27,7 @@ import {
   type ForegroundReturnRecord,
   type ForegroundReturnSummary,
   type WatchRecordEntry,
+  type WatchStallEvidence,
 } from './types.js'
 import {
   backgroundMarkerPath,
@@ -173,6 +174,91 @@ export function formatWakeLine(entry: WatchRecordEntry): string {
     `${entry.changed ? 'changed' : `unchanged x${entry.unchanged_wakes ?? 0}`}` +
     suffix +
     formatOpenCallSuffix(observation?.agent_activity)
+  )
+}
+
+const EMPTY_STALL_EVIDENCE: WatchStallEvidence = {
+  agent_id: null,
+  last_event_kind: null,
+  last_event_at: null,
+  last_event_age_seconds: null,
+  open_call: null,
+  stall_suppressed: false,
+}
+
+export function stallEvidenceFrom(
+  activity: AgentActivity | null | undefined,
+  nowMs: number,
+): WatchStallEvidence {
+  if (!activity) {
+    return EMPTY_STALL_EVIDENCE
+  }
+
+  const openCall = activity.open_call
+  const openCallStartedMs = openCall ? Date.parse(openCall.started_at) : NaN
+  const openCallAgeSeconds = Number.isFinite(openCallStartedMs)
+    ? Math.max(0, (nowMs - openCallStartedMs) / 1000)
+    : 0
+
+  return {
+    agent_id: activity.agent_id,
+    last_event_kind: activity.last_event_kind,
+    last_event_at: activity.last_event_at,
+    last_event_age_seconds: activity.last_event_age_seconds,
+    open_call: openCall
+      ? {
+          tool: openCall.tool,
+          started_at: openCall.started_at,
+          age_seconds: openCallAgeSeconds,
+          ...(openCall.summary ? { summary: openCall.summary } : {}),
+          shell_heartbeat: openCall.shell_heartbeat,
+        }
+      : null,
+    stall_suppressed: activity.stall_suppressed,
+  }
+}
+
+/**
+ * One line naming the evidence behind a `stalled` or `unverified` verdict,
+ * so a supervisor cannot act on the verdict without also seeing the open
+ * call and linked `bin/pan-run` heartbeat it rests on.
+ */
+export function formatStallEvidenceLine(
+  evidence: WatchStallEvidence | undefined,
+): string {
+  if (!evidence || evidence.agent_id === null) {
+    return 'worker: not in the agent index'
+  }
+
+  const openCall = evidence.open_call
+
+  if (!openCall) {
+    const age =
+      evidence.last_event_age_seconds !== null
+        ? `${Math.floor(evidence.last_event_age_seconds)}s ago`
+        : 'unknown'
+
+    return `worker: no open call; last event ${evidence.last_event_kind ?? 'none'} ${age}`
+  }
+
+  const age = Math.floor(openCall.age_seconds)
+  const base = `worker: open ${openCall.tool} since ${openCall.started_at} (${age}s)`
+
+  if (!openCall.shell_heartbeat) {
+    return `${base}; no pan-run heartbeat linked`
+  }
+
+  const heartbeat = openCall.shell_heartbeat
+  const beatAge = Math.floor(heartbeat.age_seconds)
+  const label = heartbeat.label ?? 'cmd'
+  const pid = heartbeat.pid ?? '?'
+  const elapsed = heartbeat.elapsed_seconds ?? '?'
+  const last = heartbeat.recent_lines.at(-1)
+
+  return (
+    `${base}; pan-run ${label} pid=${pid} record ${heartbeat.record_path}, ` +
+    `heartbeat ${beatAge}s ago, ${elapsed}s elapsed` +
+    (last ? `; last: ${last}` : '')
   )
 }
 

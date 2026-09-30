@@ -33,6 +33,7 @@ import {
   formatGapLine,
   formatOpenCallSuffix,
   formatSessionStartLine,
+  formatStallEvidenceLine,
   formatWakeLine,
 } from '../lib/watch/record.js'
 import { watchTimer } from '../lib/watch/timer.js'
@@ -299,7 +300,10 @@ export async function watchCommand({
             `record ${result.record_path}`
           : `agent watch ${result.state}: '${result.agent_id}' after ` +
             `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
-            `record ${result.record_path}`,
+            `record ${result.record_path}` +
+            (result.state === 'stalled'
+              ? `\n${formatStallEvidenceLine(result.stall_evidence)}`
+              : ''),
       json,
     )
     process.exitCode =
@@ -629,6 +633,9 @@ export async function watchCommand({
           `${launchRecordPath(root, runId, result.invocation_id)}` +
           (result.rearm_command
             ? `; re-arm with: ${result.rearm_command}`
+            : '') +
+          (result.state === 'stalled' || result.state === 'unverified'
+            ? `\n${formatStallEvidenceLine(result.stall_evidence)}`
             : ''),
     json,
   )

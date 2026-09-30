@@ -22,8 +22,10 @@ import {
   DEFAULT_WATCH_CADENCE_SECONDS,
   DEFAULT_WATCH_TIMEOUT_SECONDS,
   WATCH_TIMEOUT_BELOW_CADENCE,
+  type WatchStallEvidence,
 } from './types.js'
 import { processStartIdentity } from './process-evidence.js'
+import { stallEvidenceFrom } from './record.js'
 import { defaultSleep, installInterruptionHandlers } from './session.js'
 
 export interface WatchAgentOptions {
@@ -105,6 +107,8 @@ export interface WatchAgentResult {
   elapsed_seconds: number
   watch_session_id: string
   record_path: string
+  /** Present for `stalled` and `timed_out`; see `WatchResult.stall_evidence`. */
+  stall_evidence?: WatchStallEvidence
 }
 
 /** The path where standalone agent-watch ledgers live. */
@@ -176,16 +180,23 @@ export async function watchAgent(
   const hooksProjection = agentIndexHooksStatus(root)
 
   const subject = (): string => activity?.agent_id ?? agentId
-  const finish = (state: AgentWatchVerdict): WatchAgentResult => ({
-    state,
-    agent_id: subject(),
-    wakes,
-    started_at: startedAt,
-    ended_at: new Date(now()).toISOString(),
-    elapsed_seconds: (now() - startedMs) / 1000,
-    watch_session_id: sessionId,
-    record_path: path.relative(root, recordPath),
-  })
+  const finish = (state: AgentWatchVerdict): WatchAgentResult => {
+    const endedMs = now()
+
+    return {
+      state,
+      agent_id: subject(),
+      wakes,
+      started_at: startedAt,
+      ended_at: new Date(endedMs).toISOString(),
+      elapsed_seconds: (endedMs - startedMs) / 1000,
+      watch_session_id: sessionId,
+      record_path: path.relative(root, recordPath),
+      ...(state === 'stalled' || state === 'timed_out'
+        ? { stall_evidence: stallEvidenceFrom(activity, endedMs) }
+        : {}),
+    }
+  }
   const record = (
     fields: Pick<WatchAgentWakeInfo, 'changed'> &
       Partial<

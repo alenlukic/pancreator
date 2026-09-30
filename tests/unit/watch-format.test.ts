@@ -8,10 +8,13 @@ import type {
 import {
   formatOpenCallSuffix,
   formatProcessWakeLines,
+  formatStallEvidenceLine,
   formatWakeLine,
+  stallEvidenceFrom,
   type GenericWatchRecordEntry,
   type WatchObservation,
   type WatchRecordEntry,
+  type WatchStallEvidence,
 } from '../../src/lib/watch.js'
 
 function baseEntry(
@@ -257,4 +260,105 @@ test('formatOpenCallSuffix omits the heartbeat bracket for a non-shell open call
 test('formatOpenCallSuffix is empty with no open call', () => {
   assert.equal(formatOpenCallSuffix(null), '')
   assert.equal(formatOpenCallSuffix(undefined), '')
+})
+
+// ── formatStallEvidenceLine / stallEvidenceFrom ─────────────────────────────
+
+function shellHeartbeatFixture(
+  overrides: Partial<ShellHeartbeat> = {},
+): ShellHeartbeat {
+  return {
+    record_path: 'runtime/logs/shell/x/record.json',
+    heartbeat_at: '2026-09-30T18:59:55.000Z',
+    age_seconds: 5,
+    label: 'npm',
+    pid: 4242,
+    elapsed_seconds: 65,
+    log_bytes: 128,
+    last_output_at: '2026-09-30T18:59:55.000Z',
+    recent_lines: ['compiling', 'done'],
+    ...overrides,
+  }
+}
+
+test('formatStallEvidenceLine names the open shell call and its linked heartbeat', () => {
+  const evidence: WatchStallEvidence = {
+    agent_id: 'agent-1',
+    last_event_kind: 'call_started',
+    last_event_at: '2026-09-30T18:59:50.000Z',
+    last_event_age_seconds: 10,
+    open_call: {
+      tool: 'Shell',
+      started_at: '2026-09-30T18:58:00.000Z',
+      age_seconds: 120,
+      shell_heartbeat: shellHeartbeatFixture(),
+    },
+    stall_suppressed: true,
+  }
+
+  assert.equal(
+    formatStallEvidenceLine(evidence),
+    'worker: open Shell since 2026-09-30T18:58:00.000Z (120s); pan-run npm ' +
+      'pid=4242 record runtime/logs/shell/x/record.json, heartbeat 5s ago, ' +
+      '65s elapsed; last: done',
+  )
+})
+
+test('formatStallEvidenceLine names an open shell call with no linked record', () => {
+  const evidence: WatchStallEvidence = {
+    agent_id: 'agent-1',
+    last_event_kind: 'call_started',
+    last_event_at: '2026-09-30T18:59:50.000Z',
+    last_event_age_seconds: 10,
+    open_call: {
+      tool: 'Shell',
+      started_at: '2026-09-30T18:58:00.000Z',
+      age_seconds: 120,
+      shell_heartbeat: null,
+    },
+    stall_suppressed: false,
+  }
+
+  assert.equal(
+    formatStallEvidenceLine(evidence),
+    'worker: open Shell since 2026-09-30T18:58:00.000Z (120s); no pan-run heartbeat linked',
+  )
+})
+
+test('formatStallEvidenceLine names the last event when there is no open call', () => {
+  const evidence: WatchStallEvidence = {
+    agent_id: 'agent-1',
+    last_event_kind: 'call_finished',
+    last_event_at: '2026-09-30T18:59:00.000Z',
+    last_event_age_seconds: 60,
+    open_call: null,
+    stall_suppressed: false,
+  }
+
+  assert.equal(
+    formatStallEvidenceLine(evidence),
+    'worker: no open call; last event call_finished 60s ago',
+  )
+})
+
+test('formatStallEvidenceLine reports an agent absent from the index', () => {
+  assert.equal(
+    formatStallEvidenceLine(undefined),
+    'worker: not in the agent index',
+  )
+  assert.equal(
+    formatStallEvidenceLine(stallEvidenceFrom(null, Date.now())),
+    'worker: not in the agent index',
+  )
+})
+
+test('stallEvidenceFrom carries the activity fields through, including the linked heartbeat', () => {
+  const activity = shellOpenCallActivity(shellHeartbeatFixture({ pid: 9 }))
+  const nowMs = Date.parse('2026-09-30T19:00:00.000Z')
+  const evidence = stallEvidenceFrom(activity, nowMs)
+
+  assert.equal(evidence.agent_id, 'agent-1')
+  assert.equal(evidence.open_call?.tool, 'Shell')
+  assert.equal(evidence.open_call?.shell_heartbeat?.pid, 9)
+  assert.ok(evidence.open_call && evidence.open_call.age_seconds > 0)
 })
