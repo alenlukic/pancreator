@@ -152,19 +152,20 @@ else
   exit 1
 fi
 
-# An ancestor run-built already built this root and holds its lock for this
-# process tree, so re-acquiring the same lock would wait on that live ancestor
-# forever. A ready value matching this root reuses the prepared build instead.
-# The legacy value '1' stays a run-mode escape hatch for operator use; it never
-# skips an explicit build because other roots may still need their own build.
+# A ready value matching this root records that an ancestor run-built already
+# built it when the process tree started, so a wrapped command reuses that
+# build instead of paying a fingerprint check per nested call. The value
+# vouches for nothing after that: a command can change sources, and the land
+# merges and finalizes a release before it verifies. --build-only is an
+# explicit request to make dist match the sources, so it always runs the
+# fingerprint check, which costs one stat pass when dist is already current.
+# The lock is released before the wrapped command runs, so a nested call never
+# waits on its own ancestor. The legacy value '1' stays a run-mode escape
+# hatch for operator use.
 ready="${PANCREATOR_BUILD_READY:-}"
 
 if [[ "$mode" == 'run' && ("$ready" == "$ROOT" || "$ready" == '1') ]]; then
   exec "$@"
-fi
-
-if [[ "$mode" == 'build' && "$ready" == "$ROOT" ]]; then
-  exit 0
 fi
 
 # The lock lives under the root it serializes rather than in the shared

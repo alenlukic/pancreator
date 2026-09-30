@@ -957,3 +957,186 @@ test('a land records the basis of every verify step it ran', () => {
   assert.equal(verifySteps[0]?.basis, 'default')
   assert.match(String(verifySteps[0]?.reason), /no --run/u)
 })
+
+/**
+ * A landing fixture whose candidates carry the build wrappers, with a fake
+ * compiler that mirrors `src/*.ts` into `dist/src/*.js`, so the compiled tree
+ * shows which sources it was built from. `src/broken.ts` makes it fail.
+ */
+function buildLandingFixture(): { root: string; tools: string } {
+  const root = landingFixture()
+  const tools = createTestTempDirectory('pancreator-land-tools-')
+
+  for (const script of ['build', 'pan-run', 'run-built', 'run-quiet']) {
+    const target = path.join(root, 'bin', script)
+
+    copyFileSync(path.join(REPO_ROOT, 'bin', script), target)
+    chmodSync(target, 0o755)
+  }
+
+  writeFileSync(path.join(root, 'src', 'gone.ts'), 'export const gone = true\n')
+  git(root, ['add', 'bin', 'src/gone.ts'])
+  git(root, [
+    'commit',
+    '-qm',
+    'test: build wrappers and a source the tip removes',
+  ])
+  git(root, ['branch', '-f', PAN_DEV, 'HEAD'])
+
+  writeFileSync(
+    path.join(tools, 'tsc'),
+    [
+      '#!/usr/bin/env bash',
+      'set -euo pipefail',
+      'out=dist; while [[ $# -gt 0 ]]; do if [[ "$1" == "--outDir" ]]; then out="$2"; shift; fi; shift; done',
+      'if [[ -e src/broken.ts ]]; then echo "error TS9999: broken source" >&2; exit 1; fi',
+      'mkdir -p "$out/src"',
+      'for f in src/*.ts; do : > "$out/${f%.ts}.js"; done',
+      '',
+    ].join('\n'),
+  )
+  chmodSync(path.join(tools, 'tsc'), 0o755)
+
+  return { root, tools }
+}
+
+/** Run `body` with the fake compiler first on PATH and a stale ready value. */
+function withBuildEnvironment(
+  tools: string,
+  readyRoot: string | null,
+  body: () => void,
+): void {
+  const saved = {
+    PATH: process.env.PATH,
+    ready: process.env.PANCREATOR_BUILD_READY,
+  }
+
+  process.env.PATH = `${tools}:${saved.PATH ?? ''}`
+
+  if (readyRoot === null) {
+    delete process.env.PANCREATOR_BUILD_READY
+  } else {
+    process.env.PANCREATOR_BUILD_READY = readyRoot
+  }
+
+  try {
+    body()
+  } finally {
+    process.env.PATH = saved.PATH
+
+    if (saved.ready === undefined) {
+      delete process.env.PANCREATOR_BUILD_READY
+    } else {
+      process.env.PANCREATOR_BUILD_READY = saved.ready
+    }
+  }
+}
+
+function compileCandidate(candidate: string): string {
+  const built = spawnSync(
+    path.join(candidate, 'bin', 'run-built'),
+    ['--build-only'],
+    {
+      cwd: candidate,
+      encoding: 'utf8',
+    },
+  )
+
+  assert.equal(built.status, 0, built.stderr)
+
+  return readFileSync(
+    path.join(candidate, 'dist', '.build-stamp'),
+    'utf8',
+  ).trim()
+}
+
+test('a landing that merges a tip removing a source verifies the rebuilt tree, not the pre-merge build', () => {
+  const { root, tools } = buildLandingFixture()
+  const checkout = path.join(root, 'tip-advance')
+
+  git(root, ['worktree', 'add', '-q', checkout, PAN_DEV])
+  git(checkout, ['rm', '-q', 'src/gone.ts'])
+  git(checkout, ['commit', '-qm', 'refactor: remove the gone source'])
+  commitReleasePair(
+    checkout,
+    nextSemanticVersion(
+      readFileSync(path.join(checkout, 'VERSION'), 'utf8').trim(),
+      'patch',
+    ) as string,
+  )
+  git(root, ['worktree', 'remove', checkout])
+
+  // The candidate branched before the tip removed `src/gone.ts`, so its
+  // compiled tree still holds `dist/src/gone.js`.
+  const candidate = makeCandidate(
+    root,
+    'stale-dist',
+    'This release lands on a tip that removed a source.\n\n### Fixed\n\n- Verify the integrated tree.',
+  )
+  const verifyCheck =
+    "const fs = require('node:fs'); process.exit(process.env.PANCREATOR_BUILD_READY || fs.existsSync('dist/src/gone.js') || !fs.existsSync('dist/src/base.js') ? 1 : 0)"
+
+  setFullProfileCommand(root, `node -e "${verifyCheck}"`)
+
+  withBuildEnvironment(tools, null, () => {
+    compileCandidate(candidate)
+    assert.equal(
+      existsSync(path.join(candidate, 'dist', 'src', 'gone.js')),
+      true,
+    )
+  })
+
+  // `bin/pan` exports the ready value for the tree it built before the merge.
+  withBuildEnvironment(tools, candidate, () => {
+    const result = landRelease(root, { worktree: 'stale-dist', bump: 'minor' })
+
+    assert.equal(result.status, 'landed', result.verification_output ?? '')
+    assert.deepEqual(result.verified_profiles, ['full'])
+
+    const stamp = readFileSync(
+      path.join(candidate, 'dist', '.build-stamp'),
+      'utf8',
+    ).trim()
+
+    assert.equal(result.build_stamp, stamp)
+    assert.equal(
+      existsSync(path.join(candidate, 'dist', 'src', 'gone.js')),
+      false,
+    )
+
+    const events = readLandingLog(root).filter(
+      (event) => event.event === 'step',
+    )
+    const build = events.find((event) => event.step === 'build')
+    const verify = events.find((event) => event.step === 'verify')
+
+    assert.equal(build?.outcome, 'built')
+    assert.equal(build?.build_stamp, stamp)
+    assert.equal(verify?.build_stamp, stamp)
+  })
+})
+
+test('a landing whose integrated tree does not compile fails before any profile runs and leaves pan-dev unchanged', () => {
+  const { root, tools } = buildLandingFixture()
+  const tipBefore = git(root, ['rev-parse', PAN_DEV])
+
+  makeCandidate(
+    root,
+    'broken',
+    'This release does not compile.\n\n### Added\n\n- Add the broken module.',
+  )
+  setFullProfileCommand(root, 'node -e "process.exit(0)"')
+
+  withBuildEnvironment(tools, null, () => {
+    const result = landRelease(root, { worktree: 'broken', bump: 'minor' })
+
+    assert.equal(result.status, 'verification_failed')
+    assert.match(result.verification_output ?? '', /broken source/u)
+    assert.equal(
+      result.steps.some((entry) => entry.step === 'verify'),
+      false,
+    )
+    assert.equal(git(root, ['rev-parse', PAN_DEV]), tipBefore)
+    assert.equal(landingLockExists(root), false)
+  })
+})

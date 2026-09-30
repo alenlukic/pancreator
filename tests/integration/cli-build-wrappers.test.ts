@@ -946,6 +946,48 @@ test('nested build-only reuses the prepared build in the same root', () => {
   }
 })
 
+test('build-only recompiles changed sources even when the root is marked ready', () => {
+  const fixture = createBuildScriptFixture()
+  const buildsLog = path.join(fixture.root, 'builds.log')
+  const runBuildOnly = (env: NodeJS.ProcessEnv) =>
+    spawnSync('/bin/bash', [fixture.runBuilt, '--build-only'], {
+      cwd: fixture.root,
+      encoding: 'utf8',
+      env,
+      timeout: 30_000,
+    })
+
+  try {
+    const first = runBuildOnly(fixture.env)
+
+    assert.equal(first.status, 0, first.stderr)
+
+    // A command that started after this build changed the sources, the way
+    // a land merges a tip that deletes a test, and left a compiled file the
+    // new sources no longer produce.
+    const staleOutput = path.join(fixture.root, 'dist', 'stale-test.js')
+
+    writeFileSync(staleOutput, '')
+    mkdirSync(path.join(fixture.root, 'src'), { recursive: true })
+    writeFileSync(path.join(fixture.root, 'src', 'merged.ts'), 'export {}\n')
+
+    const ready = { ...fixture.env, PANCREATOR_BUILD_READY: fixture.root }
+    const second = runBuildOnly(ready)
+
+    assert.equal(second.status, 0, second.stderr)
+    assert.equal(readFileSync(buildsLog, 'utf8'), 'build\nbuild\n')
+    assert.equal(existsSync(staleOutput), false)
+
+    // A tree that has not changed since its build pays no compile.
+    const third = runBuildOnly(ready)
+
+    assert.equal(third.status, 0, third.stderr)
+    assert.equal(readFileSync(buildsLog, 'utf8'), 'build\nbuild\n')
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 test('a long-lived wrapped command does not delay a rebuild on its root', async () => {
   const fixture = createBuildScriptFixture()
   const started = path.join(fixture.root, 'watcher-started')
