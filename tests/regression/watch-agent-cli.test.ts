@@ -130,10 +130,16 @@ test('a stalled run-scoped watch prints the open shell call and its linked pan-r
       'regression fixture',
       '--stall-wakes',
       '3',
+      // The stall itself needs only 3 real wake cycles (well under a second
+      // unloaded); this ceiling exists only so the process does not wait
+      // forever if it never stalls. A tight ceiling here flaked under the
+      // full suite's parallel test load, where a starved wake cycle can run
+      // far slower than its cadence — this is a safety bound, not the
+      // expected run time, so it costs nothing to leave it generous.
       '--timeout-seconds',
-      String(CADENCE_SECONDS * 30),
+      '60',
     ],
-    { cwd: root, encoding: 'utf8', timeout: 30_000 },
+    { cwd: root, encoding: 'utf8', timeout: 90_000 },
   )
 
   assert.equal(
