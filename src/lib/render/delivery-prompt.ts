@@ -61,6 +61,10 @@ export interface EvidenceReportState {
   cases: string[]
 }
 
+/**
+ * Reads an evidence report body and returns whether it carries the completion
+ * marker line and the heading text of each case it records so far, in order.
+ */
 export function readEvidenceReportState(body: string): EvidenceReportState {
   const lines = body.split('\n')
 
@@ -95,6 +99,13 @@ export function evidenceWorkerAttempts(
       ]
 }
 
+/**
+ * Returns the ordered launch plan for an invocation that declares evidence
+ * workers: one action per evidence worker with its agent, model, brief, and
+ * report path, followed by the stage worker, which may launch only after every
+ * report exists. Returns an empty list when the invocation declares no evidence
+ * workers.
+ */
 export function orderedWorkerActions(
   invocation: Invocation,
 ): InvocationWorkerAction[] {

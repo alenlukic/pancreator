@@ -35,6 +35,16 @@ import {
   resetAttemptsFrom,
 } from './recovery.js'
 
+/**
+ * Records the supervisor's assessment of the active invocation under the run's
+ * operation mutex. A pass or fail applies the stage transition; an escalation
+ * pauses the run for an operator decision and writes a decision record, except
+ * on a best-of-N candidate, where it counts as a failure. Writes the assessment
+ * to the pending output path, persists the run, and returns the new state with
+ * the parsed assessment. Throws `INVALID_RUN_ACTION` when the run is not
+ * awaiting an assessment and `INVALID_ASSESSMENT` when the assessment is
+ * malformed or names another invocation.
+ */
 export function assessStage(
   root: string,
   runId: string,
@@ -339,6 +349,19 @@ function decideRunWithActor(
   })
 }
 
+/**
+ * Applies an operator decision (`approve`, `reject`, `revise`, or `landed`) to
+ * a run awaiting operator approval, under the run's operation mutex, and
+ * persists the result. Approve takes the approved outcome's transition and
+ * records any note as a directive to the routed stage; revise reruns the same
+ * stage with the note as required input without spending its retry budget;
+ * reject routes to the failure target or to `targetStage`; landed closes a
+ * ship-stage run whose release reached pan-dev outside the stage.
+ *
+ * Throws `INVALID_RUN_ACTION` (naming the recovery route) when the run is not
+ * awaiting approval, `INVALID_DECISION` for another decision, and
+ * `REVISION_NOTE_REQUIRED` for a revise without a note.
+ */
 export function decideRun(
   root: string,
   runId: string,

@@ -71,6 +71,13 @@ export function invocationPolicyPointers(
   return pointers
 }
 
+/**
+ * Renders the worker card Markdown of an invocation: the operator view, task,
+ * inputs grouped by retrieval mode, policies in force, agent and harness
+ * validation requirements, rubric, gate overrides, output contract, boundaries,
+ * and technical appendix, plus the retry, involvement, and verification-level
+ * sections when they apply. Pure; it reads and writes no files.
+ */
 export function renderInvocationMarkdown(invocation: Invocation): string {
   const { stage } = invocation
   const requiredData = Object.entries(invocation.output.required_data)

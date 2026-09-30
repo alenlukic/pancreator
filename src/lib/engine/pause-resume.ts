@@ -138,6 +138,15 @@ export interface PauseRunOptions {
   actor?: PauseActor
 }
 
+/**
+ * Pauses a non-terminal run for an operator decision under the run's operation
+ * mutex, saving its prior status, pending action, and workspace snapshot so a
+ * later resume can restore them and detect edits made while paused. Writes a
+ * decision record and an `operator_pause` event; the actor defaults to the
+ * operator, and a supervisor that pauses to do stage work itself names itself.
+ * Throws `RUN_TERMINAL` for a finished run and `INVALID_RUN_ACTION` from any
+ * other non-pausable status.
+ */
 export function pauseRun(
   root: string,
   runId: string,
@@ -393,6 +402,16 @@ function resumeRunWithActor(
   })
 }
 
+/**
+ * Resumes a paused run as the operator, under the run's operation mutex.
+ * Without a stage it restores the status and pending action saved at pause; a
+ * note or workspace edits made while paused instead ratify those edits, record
+ * the note as feedback, and re-prepare the stage. With a stage it restarts the
+ * run at that stage with a fresh invocation. Persists a `run_resumed` event.
+ * Throws `INVALID_RUN_ACTION` (naming the recovery route) when the run is not
+ * paused and `RESUME_NOTE_TARGET_UNAVAILABLE` for a no-stage note with no
+ * active worker card.
+ */
 export function resumeRun(
   root: string,
   runId: string,

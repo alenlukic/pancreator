@@ -8,6 +8,12 @@ import { resolveTargetInstructionPaths } from '../target-instructions.js'
 import type { RunState, TargetInstructionInput } from '../types.js'
 import type { InvocationContextOptions } from './references.js'
 
+/**
+ * Returns the file paths the latest successful output of one stage declares:
+ * the planned files of a plan output, or the changed files of an implementation
+ * output for any other stage. Returns an empty list when the stage has no
+ * successful output or the output carries no such list.
+ */
 export function outputChangedPaths(
   root: string,
   state: RunState,
@@ -50,6 +56,13 @@ export function outputChangedPaths(
   return files.filter((item): item is string => typeof item === 'string')
 }
 
+/**
+ * Computes the changed paths and the target instruction files to read for an
+ * editing, review, test, or verify stage, and returns undefined for every other
+ * stage. Editing stages take the paths the plan and earlier implementation
+ * declared; review, test, and verify stages add the paths changed in the
+ * current workspace snapshot.
+ */
 export function targetInstructionInput(
   options: InvocationContextOptions,
 ): TargetInstructionInput | undefined {

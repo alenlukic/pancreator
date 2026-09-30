@@ -15,6 +15,11 @@ import { loadState, operationMutexPath, persist } from '../state.js'
 /** Snapshots of a `blocked` output, numbered from 1 beside their invocation. */
 export const BLOCKED_OUTPUT_SNAPSHOT_PATTERN = /\.blocked-\d+\.json$/u
 
+/**
+ * Returns the root-relative path of the numbered snapshot
+ * `<invocation>.blocked-<ordinal>.json` that preserves one `blocked` worker
+ * output beside its invocation.
+ */
 export function blockedOutputSnapshotPath(
   root: string,
   runId: string,

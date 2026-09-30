@@ -78,12 +78,22 @@ export function emitSuiteCostInboxItem(
   return relative
 }
 
+/**
+ * Returns the `invocation_id` string of a submitted output document, or null
+ * when the value is not a record or carries no string id.
+ */
 export function submittedInvocationId(value: unknown): string | null {
   return isRecord(value) && typeof value.invocation_id === 'string'
     ? value.invocation_id
     : null
 }
 
+/**
+ * Renders the operator brief the invocation's output contract declares from its
+ * source file to its rendered path. Returns a list of error messages instead of
+ * throwing: empty when the contract declares no brief or the render succeeded,
+ * and one message when the source is missing or the render failed.
+ */
 export function materializeOperatorBrief(
   root: string,
   invocation: Invocation,
@@ -108,6 +118,13 @@ export function materializeOperatorBrief(
   }
 }
 
+/**
+ * Decides a submission's stage outcome. Validation errors force failure (or
+ * blocked when a blocking validator routed there), then a validator's routed
+ * outcome wins, then the worker's own blocked or failure result; otherwise any
+ * failed hard self-evaluated criterion or failed hard deterministic check that
+ * is not disabled yields failure, and everything else yields success.
+ */
 export function effectiveOutcome(
   stage: StageDefinition,
   output: StageOutput,
@@ -152,6 +169,11 @@ export function effectiveOutcome(
   return 'success'
 }
 
+/**
+ * Returns the messages of the output validation issues that must block a
+ * submission because a criterion was left unevaluated or skipped on a
+ * successful outcome.
+ */
 export function blockingCriterionStateErrors(
   issues: StageOutputValidation['issues'],
 ): string[] {

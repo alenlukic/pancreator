@@ -151,6 +151,12 @@ function resolveInsideRuntimeLogs(
   return absolute
 }
 
+/**
+ * Returns the absolute and root-relative path of a generic watch ledger. A
+ * caller-supplied path must stay inside `runtime/logs` or the call throws
+ * `PATH_ESCAPE`; otherwise a unique timestamped file named from the sanitized
+ * label is chosen under `runtime/logs/watch`.
+ */
 export function genericWatchRecordPath(
   root: string,
   label: string,

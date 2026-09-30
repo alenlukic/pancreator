@@ -38,6 +38,11 @@ import {
 import { launchedMsFromRecord, readLaunchRecord } from './launch.js'
 import { BLOCKED_OUTPUT_SNAPSHOT_PATTERN } from './blocked-snapshot.js'
 
+/**
+ * Returns whether a root-relative path exists, with its size and modification
+ * time. A missing or unreadable path reports `exists: false` instead of
+ * throwing.
+ */
 export function observePath(
   root: string,
   relativePath: string,
@@ -323,6 +328,14 @@ export function agentStopVerdict(
     : { terminal: 'unverified', reason: 'agent_stopped_without_output' }
 }
 
+/**
+ * Takes one watch observation of an invocation: whether its output exists,
+ * parses, matches the invocation, is still the scaffold, or lacks required
+ * fields, plus the watched output and evidence paths, run-tree and workspace
+ * fingerprints, and the launched agent's activity. The combined `fingerprint`
+ * changes whenever the worker makes progress; the watch's own records and
+ * markers are excluded so a stall stays observable. Reads only.
+ */
 export function observeInvocation(
   root: string,
   invocation: Invocation,

@@ -37,6 +37,12 @@ function failAutonomousCandidate(
   return true
 }
 
+/**
+ * Stops the run at a circuit-breaker limit and writes a decision record. A
+ * best-of-N candidate fails outright and the function returns true; any other
+ * run pauses for an operator decision (resume from a chosen stage or abort) and
+ * the function returns false. Mutates the state without persisting it.
+ */
 export function pauseForLimit(
   root: string,
   state: RunState,
@@ -72,6 +78,10 @@ function sameReasonTrackers(state: RunState): SameReasonFailureTrackers {
   return (state.same_reason_failures ??= {})
 }
 
+/**
+ * Drops one stage's same-reason failure tracker from the run state, and removes
+ * the tracker map when it becomes empty.
+ */
 export function clearSameReasonTracker(
   state: RunState,
   stageSlug: string,
@@ -89,6 +99,9 @@ export function clearSameReasonTracker(
   }
 }
 
+/**
+ * Drops every same-reason failure tracker from the run state.
+ */
 export function clearAllSameReasonTrackers(state: RunState): void {
   if (!state.same_reason_failures) {
     return
@@ -97,6 +110,13 @@ export function clearAllSameReasonTrackers(state: RunState): void {
   delete state.same_reason_failures
 }
 
+/**
+ * Returns the sorted ids of the stage's hard criteria that failed in this
+ * attempt, from the self-assessment for judgment criteria and from
+ * deterministic results otherwise, ignoring disabled checks. When no hard
+ * criterion failed but validation errors exist, returns the `__validation__`
+ * sentinel signature instead.
+ */
 export function collectHardFailureSignature(
   stage: StageDefinition,
   selfCriteria: CriterionEvaluation[],
@@ -216,6 +236,13 @@ function horizonDependentTaskIds(root: string, state: RunState): string[] {
   return [...found].sort()
 }
 
+/**
+ * Pauses a long-horizon run whose failure ladder is exhausted: writes a
+ * `horizon-failure-<stage>-<n>.json` record (approaches tried, error class, and
+ * the session tasks that depend on this one), marks the ladder
+ * `ladder_exhausted`, clears the current invocation, and writes a decision
+ * record. Mutates the state without persisting it.
+ */
 export function pauseForHorizonLadder(
   root: string,
   state: RunState,
@@ -264,6 +291,14 @@ export function pauseForHorizonLadder(
   ])
 }
 
+/**
+ * Chooses the next long-horizon ladder rung for a failed stage and records it
+ * on the run's ladder: up to two retries while the failure signature changes
+ * (routed through the stage's declared repair stage when it has one), then one
+ * strategy switch to the failure route with a change-strategy directive, then
+ * exhaustion. Returns exhausted early when the stage has no repair route for
+ * the strategy switch.
+ */
 export function classifyHorizonFailure(
   state: RunState,
   stage: StageDefinition,
@@ -338,6 +373,11 @@ export function classifyHorizonFailure(
   }
 }
 
+/**
+ * Records a stage's failure signature in its same-reason tracker and returns
+ * true when this is the second consecutive failure whose signature covers every
+ * criterion of the previous one. A different signature restarts the count.
+ */
 export function recordSameReasonFailure(
   state: RunState,
   stageSlug: string,
@@ -365,6 +405,12 @@ export function recordSameReasonFailure(
   return false
 }
 
+/**
+ * Stops the run after a stage failed twice for the same deterministic reason
+ * and writes a decision record naming the signature and the resume, waive-gate,
+ * and abort options. A best-of-N candidate fails outright instead of pausing.
+ * Mutates the state without persisting it.
+ */
 export function pauseForSameReasonFailure(
   root: string,
   state: RunState,

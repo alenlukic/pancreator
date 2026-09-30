@@ -208,6 +208,11 @@ export type CohortContinuationResult =
       manual_commands: string[]
     }
 
+/**
+ * Returns the session directory `runtime/logs/cohorts/<cohortId>`. Throws
+ * `INVALID_COHORT_ID` when the id does not match the cohort id pattern, which
+ * keeps a caller-supplied id from escaping the directory.
+ */
 export function cohortDir(root: string, cohortId: string): string {
   invariant(
     COHORT_ID_PATTERN.test(cohortId),
@@ -220,6 +225,10 @@ export function cohortDir(root: string, cohortId: string): string {
   return path.join(root, 'runtime', 'logs', 'cohorts', cohortId)
 }
 
+/**
+ * Returns the path of one cohort session's `state.json`. Throws
+ * `INVALID_COHORT_ID` for a malformed id.
+ */
 export function cohortStatePath(root: string, cohortId: string): string {
   return path.join(cohortDir(root, cohortId), 'state.json')
 }
@@ -229,6 +238,12 @@ export function cohortMutexPath(root: string, cohortId: string): string {
   return path.join(cohortDir(root, cohortId), '.operation-mutex')
 }
 
+/**
+ * Reads and shape-checks one cohort session's state record. Throws
+ * `COHORT_NOT_FOUND` when the session has no state file and
+ * `INVALID_COHORT_STATE` when the record is not schema version 1 or lacks its
+ * chunks, cohorts, or satisfaction arrays.
+ */
 export function loadCohortState(
   root: string,
   cohortId: string,
@@ -257,6 +272,11 @@ export function loadCohortState(
   return value as unknown as CohortSessionState
 }
 
+/**
+ * Stamps `updated_at` and atomically writes the cohort session's state record,
+ * returning the record as written. It takes no lock; mutating callers hold the
+ * session mutex through `withCohortSession`.
+ */
 export function persistCohortState(
   root: string,
   state: CohortSessionState,
@@ -268,6 +288,12 @@ export function persistCohortState(
   return next
 }
 
+/**
+ * Runs an operation against a freshly loaded cohort session state while holding
+ * that session's operation mutex, and returns the operation's result. Throws
+ * `COHORT_NOT_FOUND` for an unknown session and `RUN_OPERATION_IN_PROGRESS`
+ * when another process holds the mutex.
+ */
 export function withCohortSession<T>(
   root: string,
   cohortId: string,

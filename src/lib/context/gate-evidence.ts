@@ -62,6 +62,12 @@ function classifyGateAcceptance(result: {
   }
 }
 
+/**
+ * Returns the human-readable acceptance label of passed gate evidence: `clean
+ * pass`, a baseline-relative acceptance label that carries the raw exit code
+ * and any carried failure, or a generic label when the acceptance mode is
+ * unknown.
+ */
 export function gateEvidenceLabel(
   evidence: Pick<
     PassedGateEvidence,
@@ -190,6 +196,14 @@ export function passedGateEvidence(
   return [...byProfile.values()]
 }
 
+/**
+ * Adds a conditional reference for the latest passed evidence of each
+ * repository-check profile when the stage's context requests gate evidence.
+ * Evidence at the current workspace fingerprint is offered for citation;
+ * evidence from a superseded fingerprint stays listed but its condition forbids
+ * citing it as current. Both conditions end with the run's agent-side profile
+ * execution allowance.
+ */
 export function selectGateEvidence(
   references: Map<string, InvocationReference>,
   root: string,

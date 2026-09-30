@@ -20,6 +20,13 @@ interface StatusOptions {
   json?: boolean
 }
 
+/**
+ * Cancels a non-terminal run under its operation mutex: moves its inbox request
+ * to canceled, clears the stage and invocation, records any uncommitted
+ * workspace changes it leaves behind as `dirty_exit`, persists `run_canceled`,
+ * and stops surviving prefetch processes. Throws `RUN_TERMINAL` when the run
+ * already finished.
+ */
 export function abortRun(root: string, runId: string, note = ''): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -65,6 +72,12 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
   })
 }
 
+/**
+ * Returns the run state augmented with agent registry health when `json` is
+ * set, and otherwise the rendered status text including the current
+ * invocation's validation status and the suite profile summary. Throws
+ * `RUN_NOT_FOUND` for an unknown run.
+ */
 export function getRunStatus(
   root: string,
   runId: string,
@@ -89,6 +102,10 @@ export function getRunStatus(
   )
 }
 
+/**
+ * Loads the persisted state of one run. Throws `RUN_NOT_FOUND` for an unknown
+ * run.
+ */
 export function getRunState(root: string, runId: string): RunState {
   return loadState(root, runId)
 }

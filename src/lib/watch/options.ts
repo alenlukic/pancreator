@@ -15,6 +15,12 @@ import {
   type WatchAgentState,
 } from './types.js'
 
+/**
+ * Parses `--cadence-seconds`, returning the default cadence when absent. Throws
+ * `INVALID_ARGUMENT` for a non-number, `WATCH_CADENCE_BELOW_MINIMUM` below the
+ * minimum, and `WATCH_CADENCE_UNAUTHORIZED` for any non-default cadence without
+ * a recorded operator direction.
+ */
 export function parseCadenceSeconds(
   value: string | null,
   authority?: string | null,
@@ -88,6 +94,10 @@ export function parseStallWakes(
   return parsed * cadenceSeconds
 }
 
+/**
+ * Parses `--agent-state` as `running` or `completed`, returning null when
+ * absent. Throws `INVALID_ARGUMENT` for any other value.
+ */
 export function parseAgentState(value: string | null): WatchAgentState | null {
   if (value === null) {
     return null
@@ -104,6 +114,10 @@ export function parseAgentState(value: string | null): WatchAgentState | null {
   return value
 }
 
+/**
+ * Parses a positive integer option, returning the fallback when absent. Throws
+ * `INVALID_ARGUMENT` naming the option for any other value.
+ */
 export function parsePositiveInteger(
   value: string | null,
   name: string,
@@ -124,6 +138,10 @@ export function parsePositiveInteger(
   return parsed
 }
 
+/**
+ * Parses `--timeout-seconds` as a positive finite number, returning the default
+ * bound when absent. Throws `INVALID_ARGUMENT` otherwise.
+ */
 export function parseTimeoutSeconds(value: string | null): number {
   if (value === null) {
     return DEFAULT_WATCH_TIMEOUT_SECONDS

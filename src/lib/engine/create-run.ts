@@ -252,6 +252,21 @@ function overriddenPipelineConfig(
  */
 export const DEFAULT_WORKFLOW_SLUG = 'planning'
 
+/**
+ * Creates a new workflow run (the `planning` workflow unless one is named):
+ * validates the options, persona mappings, executor preflights, Cursor agent
+ * projection, and brief system, then claims an inbox request, copies the
+ * request, writes the workflow and pipeline config snapshots, renders the
+ * supervisor card, and persists the run with a `run_created` event. Returns the
+ * new state, which starts at `prepare_invocation`.
+ *
+ * Every check that can fail runs before any run state exists, so a refusal
+ * leaves nothing behind; a failure after the inbox claim rolls the claim back.
+ * Throws `REQUEST_REQUIRED`, `REQUEST_NOT_FOUND`, `INVALID_ARGUMENT`,
+ * `INVALID_PIPELINE_CONFIG`, `MISSING_CURSOR_AGENT`,
+ * `EXECUTOR_PREFLIGHT_FAILED`, `PIPELINE_CONFIG_NOT_SYNCED`, or
+ * `INVALID_BRIEF_SYSTEM`, among others.
+ */
 export function createRun(root: string, options: CreateRunOptions): RunState {
   const workflowSlug = options.workflowSlug ?? DEFAULT_WORKFLOW_SLUG
   const requestPath = options.requestPath

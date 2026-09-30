@@ -185,14 +185,25 @@ export interface HorizonNextResult {
   prompt_result?: { ok: boolean; artifact_path: string; error?: string }
 }
 
+/**
+ * Returns the current time as an ISO 8601 string.
+ */
 export function now(): string {
   return new Date().toISOString()
 }
 
+/**
+ * Throws a `PanError` with code `INVALID_HORIZON_STATE` and the given message.
+ */
 export function fail(message: string): never {
   throw new PanError(message, { code: 'INVALID_HORIZON_STATE' })
 }
 
+/**
+ * Returns the directory of one horizon session under `runtime/logs/horizon`.
+ * Throws `INVALID_HORIZON_STATE` when the session id is not a safe path
+ * segment.
+ */
 export function horizonDir(root: string, sessionId: string): string {
   if (!HORIZON_ID.test(sessionId)) {
     fail(`Invalid horizon session id: ${sessionId}`)
@@ -201,14 +212,27 @@ export function horizonDir(root: string, sessionId: string): string {
   return path.join(root, HORIZON_ROOT, sessionId)
 }
 
+/**
+ * Returns the path of one horizon session's `session.json`. Throws
+ * `INVALID_HORIZON_STATE` for an invalid session id.
+ */
 export function sessionPath(root: string, sessionId: string): string {
   return path.join(horizonDir(root, sessionId), 'session.json')
 }
 
+/**
+ * Returns the path of the operation mutex that serializes mutating commands of
+ * one horizon session. Throws `INVALID_HORIZON_STATE` for an invalid session
+ * id.
+ */
 export function mutexPath(root: string, sessionId: string): string {
   return path.join(horizonDir(root, sessionId), '.operation-mutex')
 }
 
+/**
+ * Returns the value when it is a non-blank string, and otherwise throws
+ * `INVALID_HORIZON_STATE` naming `source`.
+ */
 export function requireString(value: unknown, source: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     fail(`${source} MUST be a non-empty string.`)
@@ -217,6 +241,10 @@ export function requireString(value: unknown, source: string): string {
   return value
 }
 
+/**
+ * Returns the value as a string array, or an empty array when it is undefined.
+ * Throws `INVALID_HORIZON_STATE` naming `source` for any other shape.
+ */
 export function parseStringArray(value: unknown, source: string): string[] {
   if (
     value === undefined ||
@@ -228,6 +256,11 @@ export function parseStringArray(value: unknown, source: string): string[] {
   fail(`${source} MUST be a string array.`)
 }
 
+/**
+ * Reads one horizon session's state record. Throws `INVALID_HORIZON_STATE` when
+ * the session does not exist or its record is not schema version 1 with a task
+ * list.
+ */
 export function loadHorizonSession(
   root: string,
   sessionId: string,
@@ -251,6 +284,12 @@ export function loadHorizonSession(
   return value as unknown as HorizonSessionState
 }
 
+/**
+ * Stamps `updated_at`, atomically writes the horizon session record, appends
+ * the named event with its details to the session's `events.jsonl`, and returns
+ * the record as written. It takes no lock; mutating callers hold the session
+ * mutex.
+ */
 export function persistHorizonSession(
   root: string,
   state: HorizonSessionState,
@@ -273,6 +312,12 @@ export function persistHorizonSession(
   return next
 }
 
+/**
+ * Writes the next numbered handoff for a horizon session as JSON and Markdown
+ * under its `handoffs` directory: the transition, last task, queue summary,
+ * open deferrals, and next action. Returns the state with the handoff sequence
+ * and latest handoff path advanced; the caller persists it.
+ */
 export function writeHandoff(
   root: string,
   state: HorizonSessionState,

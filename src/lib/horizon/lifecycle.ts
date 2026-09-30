@@ -49,6 +49,14 @@ function newTask(task: HorizonQueueTaskInput): HorizonTask {
   }
 }
 
+/**
+ * Creates a horizon session from a task queue file: validates the queue,
+ * requires an involvement profile that carries the `long_horizon` contract,
+ * applies a default workspace or worktree to tasks that name none, and writes
+ * the session record with a `session_created` event. The session starts
+ * `created` and is not armed. Throws `INVALID_HORIZON_STATE` when the queue is
+ * invalid, the profile lacks the contract, or the session id already exists.
+ */
 export function initHorizonSession(
   root: string,
   queuePath: string,
@@ -129,6 +137,12 @@ export function initHorizonSession(
   })
 }
 
+/**
+ * Appends one task to an existing horizon session under the session mutex,
+ * revalidating the whole queue with the new task, and persists a `task_added`
+ * event. Throws `INVALID_HORIZON_STATE` when the id already exists or the
+ * extended queue is invalid.
+ */
 export function addHorizonTask(
   root: string,
   sessionId: string,
@@ -152,6 +166,13 @@ export function addHorizonTask(
   })
 }
 
+/**
+ * Arms a created horizon session under the session mutex: sets it running with
+ * away mode armed and supervisor card attestation authorized, writes a
+ * `started` handoff, and persists `session_started`. Returns the session
+ * unchanged when it already left `created`. Throws `INVALID_HORIZON_STATE`
+ * unless `attestSupervisorCard` is set.
+ */
 export function startHorizonSession(
   root: string,
   sessionId: string,

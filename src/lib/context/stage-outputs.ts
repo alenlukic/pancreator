@@ -30,6 +30,11 @@ function stageOutputDescription(
   return `${effective}${item.stage} stage output (${item.outcome})`
 }
 
+/**
+ * Adds one stage-history attempt's output as a reference with the given
+ * retrieval mode, plus its execution record, when it has one, as a conditional
+ * provenance reference.
+ */
 export function addStageHistoryReference(
   references: Map<string, InvocationReference>,
   item: StageHistoryItem,
@@ -57,6 +62,13 @@ export function addStageHistoryReference(
   })
 }
 
+/**
+ * Lists every context record a run holds, each tagged with a category and
+ * deduplicated by path: the original request, every stage output and execution
+ * record, operator feedback, gate waivers and their spotfix cases, workspace
+ * ratifications, governance issues, and repository-check baselines. The context
+ * manifest reports the ones an invocation did not select from this list.
+ */
 export function availableReferences(state: RunState): AvailableReference[] {
   const references: AvailableReference[] = [
     {
@@ -158,6 +170,12 @@ export function availableReferences(state: RunState): AvailableReference[] {
   )
 }
 
+/**
+ * Adds the stage output each selector names (the latest attempt, or the latest
+ * successful one) with the given retrieval mode. A required selector with no
+ * matching output is appended to `missingRequired`, except the implement output
+ * of a cohort release run, which never runs implement.
+ */
 export function selectStageOutputs(
   references: Map<string, InvocationReference>,
   missingRequired: string[],

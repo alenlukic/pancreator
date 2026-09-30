@@ -238,6 +238,11 @@ export function cleanCohortSession(
   })
 }
 
+/**
+ * Lists the ids of every cohort session directory under `runtime/logs/cohorts`,
+ * sorted. Returns an empty list when the directory does not exist and skips
+ * entries that are not valid cohort ids.
+ */
 export function cohortSessionIds(root: string): string[] {
   const directory = path.join(root, 'runtime', 'logs', 'cohorts')
 

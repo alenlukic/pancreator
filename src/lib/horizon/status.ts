@@ -25,6 +25,12 @@ export interface HorizonStatusView extends HorizonSessionState {
   next_command: string | null
 }
 
+/**
+ * Builds the read-only status view of a horizon session: tasks with ladders
+ * synchronized from their runs, the active task's live runs and cohort route
+ * commands, and the next session command, which is null unless the session is
+ * running.
+ */
 export function horizonStatus(
   root: string,
   sessionId: string,
@@ -64,6 +70,10 @@ export function horizonStatus(
   }
 }
 
+/**
+ * Reads the latest handoff record of a horizon session, or returns null when
+ * the session has none. Throws `INVALID_HORIZON_STATE` for an unknown session.
+ */
 export function latestHorizonHandoff(
   root: string,
   sessionId: string,

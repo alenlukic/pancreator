@@ -398,6 +398,13 @@ export function updateChunk(
   })
 }
 
+/**
+ * Builds the read-only status view of one cohort session: each chunk's run
+ * status and stage, the active and blocked cohort indexes, the supervisor
+ * bootstrap for every live chunk run, and the next applicable `pan cohort`
+ * command (start, integrate, record abandonment, or release). Throws
+ * `COHORT_NOT_FOUND` for an unknown session.
+ */
 export function cohortStatus(root: string, cohortId: string): CohortStatusView {
   const state = loadCohortState(root, cohortId)
   const activeIndex = firstUnsatisfiedIndex(root, state)

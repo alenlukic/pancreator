@@ -179,6 +179,15 @@ function promptTaskWorkspace(
   return resolved
 }
 
+/**
+ * Runs one prompt task of a horizon session as a Cursor agent session under an
+ * unbound governance card, confined to the task's workspace, the session
+ * runtime directory, and its named grants. Where the operating system cannot
+ * enforce that boundary, a filesystem snapshot before and after fails the task
+ * on any change outside it. Writes the request, card, and a
+ * `<task>.result.json` record under the session directory, and returns the
+ * settled task, the result path, and any error.
+ */
 export function executePromptTask(
   root: string,
   state: HorizonSessionState,

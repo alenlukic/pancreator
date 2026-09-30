@@ -23,6 +23,10 @@ import { watchLockPath, watchRecordPath } from './paths.js'
 import { processStartIdentity } from './process-evidence.js'
 import { readWatchRecord } from './record.js'
 
+/**
+ * Resolves after the given number of milliseconds on a real timer. Watches use
+ * it unless a test injects its own sleep.
+ */
 export const defaultSleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds))
 

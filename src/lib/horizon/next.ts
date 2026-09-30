@@ -24,6 +24,11 @@ import { executePromptTask } from './prompt-task.js'
 import { advancingHorizonRun } from './routes.js'
 import { arbitrateTaskStop } from './driver.js'
 
+/**
+ * Marks every pending task that transitively depends on a deferred, excluded,
+ * or blocked task as blocked, and returns the updated session state without
+ * persisting it.
+ */
 export function skipBlockedDependents(
   state: HorizonSessionState,
 ): HorizonSessionState {
@@ -55,6 +60,11 @@ export function skipBlockedDependents(
   return { ...state, tasks }
 }
 
+/**
+ * Returns the session with a terminal status once no task is pending, running,
+ * or replanning: `succeeded` when every task succeeded, `empty` otherwise.
+ * Returns the state unchanged while work remains.
+ */
 export function sessionTerminalState(
   state: HorizonSessionState,
 ): HorizonSessionState {
@@ -74,6 +84,13 @@ export function sessionTerminalState(
   }
 }
 
+/**
+ * Creates the workflow run for a horizon task, or for its scoped re-plan when
+ * `role` is `replan`, in the task's managed worktree (created when missing) or
+ * declared workspace, carrying the task's ladder budget and the session's
+ * involvement profile. A re-plan always runs the `planning` workflow on the
+ * task's failure record and never autostarts delivery.
+ */
 export function startWorkflowTask(
   root: string,
   state: HorizonSessionState,
@@ -106,6 +123,15 @@ export function startWorkflowTask(
   })
 }
 
+/**
+ * Opens the first eligible task of a running horizon session under the session
+ * mutex. A workflow task gets a new run and holds the active slot; a prompt
+ * task runs synchronously through a Cursor agent and goes to the arbiter when
+ * it fails. With no eligible task it settles the session's terminal status.
+ * Writes a handoff and persists the session in every case. Throws
+ * `INVALID_HORIZON_STATE` when the session is not running, already holds an
+ * active task, or still has a task run in flight.
+ */
 export function nextHorizonTask(
   root: string,
   sessionId: string,
@@ -259,6 +285,11 @@ export function nextHorizonTask(
   })
 }
 
+/**
+ * Copies the run's long-horizon ladder counters and last failure signature onto
+ * the task. The task keeps the larger re-plan count, because the session owns
+ * that rung. Returns the task unchanged when the run has no ladder.
+ */
 export function synchronizeLadder(
   task: HorizonTask,
   run: RunState,

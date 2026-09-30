@@ -13,6 +13,10 @@ import type {
 import { DELEGATION_HEADING } from '../validation/artifacts.js'
 import { normalizeContractMarkdown } from '../validation/attestation.js'
 
+/**
+ * Returns the value as pretty-printed JSON inside a fenced Markdown `json` code
+ * block.
+ */
 export function fencedJson(value: unknown): string {
   return ['```json', JSON.stringify(value, null, 2), '```'].join('\n')
 }
