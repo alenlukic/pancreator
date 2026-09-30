@@ -12,13 +12,6 @@ const REPO_ROOT = process.cwd()
  */
 const MAX_LINES = 1000
 
-/**
- * Files still waiting for their split. An entry leaves the list in the change
- * that splits it; a listed file that fits the limit fails this test, so the
- * list only shrinks.
- */
-const PENDING_SPLIT = new Set(['src/cli.ts'])
-
 function typeScriptFiles(directory: string): string[] {
   return readdirSync(path.join(REPO_ROOT, directory), {
     recursive: true,
@@ -41,7 +34,7 @@ function lineCount(relative: string): number {
     : text.split('\n').length
 }
 
-test('no source or test file exceeds the line limit unless its split is pending', () => {
+test('no source or test file exceeds the line limit', () => {
   const counts = new Map(
     [...typeScriptFiles('src'), ...typeScriptFiles('tests')].map((file) => [
       file,
@@ -49,16 +42,8 @@ test('no source or test file exceeds the line limit unless its split is pending'
     ]),
   )
   const oversized = [...counts]
-    .filter(([file, lines]) => lines > MAX_LINES && !PENDING_SPLIT.has(file))
+    .filter(([, lines]) => lines > MAX_LINES)
     .map(([file, lines]) => `${file} (${lines} lines)`)
-  const settled = [...PENDING_SPLIT].filter(
-    (file) => (counts.get(file) ?? 0) <= MAX_LINES,
-  )
 
   assert.deepEqual(oversized, [], `Split these files below ${MAX_LINES} lines.`)
-  assert.deepEqual(
-    settled,
-    [],
-    'These files fit the limit now; remove them from PENDING_SPLIT.',
-  )
 })
