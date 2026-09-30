@@ -24,7 +24,7 @@ Schemas:
 - [`library/schemas/stage.schema.json`](../library/schemas/stage.schema.json) - one stage file.
 
 These schemas are documentation and tooling aids. The dependency-free enforcer
-is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate`.
+is the imperative validator in `src/lib/workflow/`, run by `./bin/pan validate`.
 
 ## Index fields (`workflow.json`)
 
@@ -340,7 +340,7 @@ governance through a harness-resolved card, or be listed as read-only in
   `workflow: standalone` lookup row MUST name a stage some mode declares.
 
 A new mode therefore needs three edits together: the `STANDALONE_MODES` entry in
-`src/lib/governance-card.ts`, its lookup row in
+`src/lib/governance-card/modes.ts`, its lookup row in
 `governance/registries/policy_lookup_table.json`, and the card step in the
 command file. Run `./bin/pan models --sync` afterwards.
 
@@ -452,3 +452,22 @@ Use `/pan-conform` for operator-timed Simplified Technical English repair, and
 `/pan-style` for code style repair.
 
 Run `./bin/pan validate` after editing any workflow file.
+
+### Pinned content digests
+
+`governance/registries/turn_reminder_profiles.json` pins content digests. A
+policy selector pins the SHA-256 of one policy instruction. A card selector
+pins the SHA-256 of one section of each mode's card: `AGENTS.md`,
+`library/templates/embedded-AGENTS.md`, and
+`library/templates/detached-AGENTS.md`. An edit to a pinned instruction or
+section makes `./bin/pan validate` report the selector as stale.
+
+Do not recompute these digests by hand. Run
+`./bin/pan governance refresh-digests` after the edit, and
+`./bin/pan governance refresh-digests --check` to list stale selectors without
+writing. The command recovers an edited instruction's old text from the
+policy file at `HEAD`, then from its earlier commits. It moves the selector to
+the current instruction of the same policy that clearly matches the old text.
+When the match is ambiguous or the old text cannot be found, it refuses, names
+the selector and its candidates, and writes nothing. Pin that selector by hand,
+then run the command again.

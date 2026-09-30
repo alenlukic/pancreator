@@ -330,6 +330,31 @@ records `data.verify.dimensions.review` and `data.verify.dimensions.qa`. The
 the reason. A design-composed verify never scopes, because its design roles
 are outside the declared dimensions.
 
+The QA worker runs only when QA can prove something the gates cannot. The
+planner tags each acceptance criterion with one `proof` type (`test`,
+`review`, `live`, or `observe`), and each child specification repeats the tag
+as `1. AC-001 [proof: live] <statement>`. The qa worker declares
+`run_when: live_criteria`, so prepare launches it only when a criterion is
+`live`, or when no criterion proof can be read from the run's plan output,
+the child specifications of a release run, or the request. It also launches
+QA when the change touches a user-facing surface: a path in the plan's
+`engineering_plan.files[]` or in an implementing stage's `changed_files` that
+ends in `.tsx`, `.jsx`, `.vue`, `.svelte`, `.html`, `.css`, or `.scss`. A
+skipped worker is recorded under `evidence_worker_skips` on the invocation,
+the verifier card states the reason, and that visit owes no
+`data.verify.qa_cases`. Without QA the verifier grades a `test` criterion
+from the test the implementation names for it plus the gate evidence, and a
+`test` criterion with no named test fails. An `observe` criterion records the
+result `observe` and does not block the verdict. The validator refuses
+`observe` for any other proof, and any other result for an `observe`
+criterion. On a return visit after remediation the reviewer runs under its
+`return_scope`: it reviews the remediation diff and confirms each prior
+finding fixed or still open, and a new finding in code the remediation did not
+change blocks only at `blocker` severity. The brief names the routing
+evidence: the failing verdict that sent the run to remediate, or the failed
+ship release gate's evidence when that gate routed it. When the remediation
+declared no changed path, the reviewer keeps its first-visit scope.
+
 `pan submit` accepts one of three records for every worker invocation an
 operator session delegated:
 
@@ -474,6 +499,8 @@ no entries.
 ## Build the target repository primer
 
 Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The command creates the primer when absent and regenerates it when present. The librarian inventories target-owned documentation, incorporates useful verified details into the appropriate sections, and reconciles those claims against representative code, setup/build/install/test scripts, manifests, and bounded Git history before writing the validated primer to `docs/target-repo-primer.md` (`.pancreator/docs/target-repo-primer.md` when embedded).
+
+In an embedded or detached installation the primer also carries an `## Observability` section. `pan technologies detect --json` reports an `observability` list of Sentry, Datadog, and OpenTelemetry evidence from Git-tracked config files and dependency manifests, and the librarian names each detected tool with the query that checks a signal, or states `None detected`. `TARGET-REPO-PRIMER-VALIDATE-001` refuses an external primer that omits the section (`primer.section_missing`) or leaves it empty (`primer.section_empty`).
 
 Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
 
@@ -1056,12 +1083,15 @@ Who runs which suite: the coder and the remediator iterate with
 `./bin/pan tests impacted` (the `impacted` profile — static import-graph
 analysis selects the test modules the change set reaches; it is an iteration
 profile, never a gate) plus the tests they added, and fall back to blast-radius
-judgment only for a target without an `impacted` profile. The two verify
-evidence workers (reviewer and QA) iterate on blast-radius tests. Each of the
-four then runs the `fast` profile once as validation; the remediator may run
-it earlier when the impacted selection is large or a failure reproduces only
-under the fast lane, and a repeat run after validation needs an exceptionally
-large blast radius. A retry that changed only claims or evidence runs no suite. The
+judgment only for a target without an `impacted` profile. They run neither
+`fast` nor the integration lane: once the impacted selection, their new tests,
+and the static checks pass, they submit, and the exit gate (plus verify's
+entry refresh after a remediation) runs every interior profile. A gate failure
+returns the stage with its log. `pan tests impacted` and
+`pan repository-check <profile>` print a pass line, or the failing tests with
+the path of the full log. The two verify evidence workers (reviewer and QA)
+iterate on blast-radius tests and may run the `fast` profile once as
+validation. A retry that changed only claims or evidence runs no suite. The
 evidence-worker brief names the harness root and asks for a `fast` run only
 when no gate has already passed `fast` at the current workspace fingerprint. A
 worker's check is recorded in the run's
@@ -1545,8 +1575,37 @@ Run a profile directly with:
 ```
 
 An empty profile is reported as `not_configured`; it is never silently replaced
-with an npm, Python, or other technology-specific command. Direct runs stream
-live subprocess output to stderr and print the final structured result to stdout.
+with an npm, Python, or other technology-specific command.
+
+A direct run prints one start line per probe and command on stderr, so a long
+wait is visible, and keeps the command output out of the terminal. When it
+finishes it prints one result line on stdout:
+
+```text
+[repository-check:fast] passed: 1 command in 42.3s (log: runtime/logs/repository-check/63279_Sep-30-0460_fast-1a2b3c4d.log)
+```
+
+A failure prints each failed probe or command with its exit, the failing test
+names and `file:line` locations it can parse from `node:test` output (the
+repository's failures-only reporter, TAP, or spec), or the last 40 output lines
+when no test name parses, and then the log path:
+
+```text
+[repository-check:fast] FAILED: 1 of 1 command failed in 63.1s
+failed command: npm test (exit 1)
+  failing tests (1):
+    adds numbers (dist/tests/unit/math.test.js:12)
+log: runtime/logs/repository-check/63279_Sep-30-0460_fast-1a2b3c4d.log
+```
+
+Every execution writes the complete output of every probe and command to
+`runtime/logs/repository-check/<temporal-prefix>_<profile>-<hex>.log`, whether
+it passed, failed, or ran outside any run. `pan cleanup` deletes these logs
+after the retention window (class `repository-check-logs`). A run's gate pass
+evidence stays in the run's own evidence directory. `--verbose`, or
+`PAN_VERBOSE=1`, streams the command output to stderr again. `--json` prints the
+structured result as before, plus `log_path` and `failing_tests` (the parsed
+failing tests of each failed entry).
 
 A profile may declare `"concurrent": true`, which runs its commands together
 under the profile's shared deadline instead of one after another. The recorded
@@ -1663,22 +1722,39 @@ never selected.
 ./bin/pan tests impacted --file src/lib/x.ts   # a hypothetical change
 ./bin/pan tests impacted --depth 1             # direct importers only
 ./bin/pan tests impacted --include 'tests/unit/naming*.test.ts'
+./bin/pan tests impacted --verbose             # stream the test output as well
 npm run test:impacted                          # the same command as an npm script
 ```
 
-The text output lists each selected test with the changed file that reached it
-and the import depth, then a per-depth count. `--json` emits `changed`,
+A run keeps the test output out of the terminal. It prints one start line on
+stderr with the log path, then one result line: a pass line with the selected
+file count and the reported test count, or `FAILED` with each failing test
+name and `file:line` (the last 40 output lines when no test name parses) and
+the log path. The full output is in
+`runtime/logs/repository-check/<temporal-prefix>_tests-impacted-<hex>.log`.
+Unreached changed files and the advisory still print. `--verbose`, or
+`PAN_VERBOSE=1`, also streams the output and prints the full selection.
+
+`--list` prints each selected test with the changed file that reached it and
+the import depth, then a per-depth count. `--json` emits `changed`,
 `selected`, `selected_count`, `lane_count`, `ratio`, `advisory`, `unreached`,
 `type_only`, `reasons`, `depths`, `by_depth`, `graph_build_ms`, `exit_code`,
-and `duration_ms`. The exit code follows `node --test`; `--list` exits 0.
+and `duration_ms`, plus `log_path` and `failing_tests` after a run. The exit
+code follows `node --test`; `--list` exits 0.
+
+When a repository-check profile runs the command (the `impacted` and
+`impacted-integration` profiles), the profile runner already logs and
+summarizes the output. The command then passes its output through unchanged
+and prints the full selection, so gate evidence and baseline diagnostics keep
+the complete transcript.
 
 The module graph of this repository is dense: `engine.ts` imports most of
 `src/lib`, and most tests import `engine.ts` or `tests/helpers.ts`. A change to
 a shared module can therefore reach half the lane or more. When the selection
 reaches 60% of the lane (`--advisory-ratio` changes the threshold) the command
 prints an advisory that the `fast` profile is the cheaper choice and names the
-direct-importer count. Iterate with `--depth 1` in that case, then run `fast`
-once.
+direct-importer count. Iterate with `--depth 1` in that case. The implement
+and remediate gates run `fast`, and an evidence worker may run it once.
 
 No changed file selects nothing and exits 0. A change that no lane test
 reaches also exits 0 and lists the changed files so you know to add a test; a
@@ -1807,6 +1883,31 @@ refresh keeps a ceiling only when `calibrated_at` shows the target measured it.
 Edit `ceiling_ms` in the harness `config.json` to change it later, or remove
 the `fast_wall` block to turn the advisory off.
 
+A source stage's worker also earns a suite-cost advisory. The implement and
+remediate exit gates run every gate profile, so a worker iterates on
+`pan tests impacted` and reads files with the file tools. `pan submit` of any
+stage whose `workspace_policy` is `source_allowed` counts two things for the
+submitting invocation:
+
+- worker-run gate profiles: the agent-run rows of
+  `agent/evidence/repository-check-runs.jsonl` for that invocation whose
+  profile is a suite the gate owns (anything but `impacted`, `static`, and
+  `configuration`), counted per profile. Harness-run rows do not count.
+- shell browsing calls: the Shell calls in that invocation's worker transcript
+  whose effective command starts with `cat`, `head`, `tail`, `sed`, `awk`,
+  `grep`, `rg`, `ls`, `find`, `wc`, or `nl`, as `pan worker profile` counts
+  them. The harness looks only at Cursor transcripts changed since the
+  invocation was prepared, opens at most the 64 newest, and matches the
+  delivery prompt that names the invocation card.
+
+When either count is nonzero, the submission records a `suite_cost` advisory
+and appends a `suite_cost_advisory` event to `events.jsonl` with
+`scope: "worker_invocation"`, `stage`, `invocation_id`,
+`worker_gate_profiles` (profile to count), `shell_browsing_calls`, and
+`transcript_found`. `shell_browsing_calls` is `null` when no transcript names
+the invocation. The advisory never blocks or fails a submission, and an error
+while counting skips it.
+
 The verify card of a `delivery` or `delivery-chunk` run carries the fast wall,
 the test count, and the marginal cost per test before and after the implement
 stage. The before point is the run's `fast` baseline record, selected by the
@@ -1882,6 +1983,39 @@ eligible set. `checkpoint` always inspects the complete set, returns `blocked`
 without writing while an editable file still has issues, and writes the
 checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
 status.
+
+## Profile stage worker efficiency
+
+Run `pan worker profile` to measure how stage workers spent their turns:
+
+```bash
+./bin/pan worker profile [--days <1..365>] [--json]
+```
+
+The command reads the local Cursor transcripts changed in the window (default
+7 days) from the same workspaces `pan spend` scans, and needs no credential or
+network access. It keeps each transcript whose opening delivery prompt names a
+run invocation. The stage comes from that invocation's record, or from the
+invocation id when the record is gone. Evidence workers report as
+`<stage>/<role>`, and the review role reports as `review`. For each stage it
+reports:
+
+| Field                    | Definition                                                                                                                                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workers`, `turns`       | transcripts profiled; one turn is one assistant record, with the total, mean, and maximum per worker                                                                                                                                                                                |
+| `tool_calls`             | tool calls by tool name                                                                                                                                                                                                                                                             |
+| `file_reads`             | Read calls; `partial` names an offset or a limit, and `re_reads` reads a path the same transcript already read                                                                                                                                                                      |
+| `most_re_read`           | the five most re-read paths, relative to their workspace with the worktree prefix removed; a path outside every workspace shows only its file name                                                                                                                                  |
+| `shell`                  | Shell calls; `browsing` starts with `cat`, `head`, `tail`, `sed`, `awk`, `grep`, `rg`, `ls`, `find`, `wc`, or `nl` after `cd <dir> &&`, environment assignments, and a `bin/pan-run` or `bash -c` wrapper are removed; `inline_python` runs `python3 -`, `python3 -c`, or a heredoc |
+| `self_run_checks`        | calls by kind: `npm run build`, `npm run lint`, `npm test`, `npm run test:<lane>`, `tsc`, `node --test`, `pan repository-check <profile>`, and `pan tests impacted`; a chained call counts once per kind                                                                            |
+| `unfiltered_test_output` | calls that run `npm test`, `npm run test:<lane>`, or `node --test` directly with no pipe into a filter, no stdout redirect to a file, and no `pan-run --quiet`                                                                                                                      |
+| `paperwork`              | `pan output scaffold`, `pan output validate`, and digest commands (`shasum`, `sha256sum`, `openssl dgst`, `pan context digest`, `createHash`)                                                                                                                                       |
+| `first_source_edit_turn` | the turn of the first Write, StrReplace, Edit, or MultiEdit to a path outside `runtime/`, as minimum, mean, and maximum over the workers that edited                                                                                                                                |
+
+The human form prints one table row per stage and a detail line for checks,
+paperwork, and re-reads. `--json` returns the structured report. The report
+holds counts and paths only: it never emits transcript content, credentials,
+email addresses, or conversation ids.
 
 ## Report Cursor token spend
 
@@ -2002,8 +2136,9 @@ commit. The command does not push, publish, or deploy.
 The ship packet is a proposal, but Pancreator self-development release metadata
 has already been updated by the release steward. Before approval, confirm:
 
-- review and QA passed against the current workspace, or any exceptions are
-  covered by explicit operator waiver directives
+- review, and QA when the verify invocation launched it, passed against the
+  current workspace, or any exceptions are covered by explicit operator waiver
+  directives
 - deferred acceptance criteria and any follow-up obligations required by the operator's waiver terms are disclosed
 - residual risks are acceptable
 - rollback guidance is credible
@@ -2045,6 +2180,30 @@ Use `--note-file <path>` for a note above that bound. `decide`, `pause`, `resume
 ```sh
 ./bin/pan decide <run-id> revise --note-file runtime/inbox/queue/revision-directive.md
 ```
+
+### Post-ship observations
+
+A criterion that only a signal after ship can prove carries the `observe` proof type, and verify records its result as `observe`. The ship packet then records one `data.release.observations[]` entry for each such criterion: `criterion`, `signal`, `source`, `window` (such as `7d`), and `check`, the command or query that checks the signal. `RELEASE-VALIDATE-001` refuses a packet that omits one. In self-development the source is a harness record: run `events.jsonl` advisories, `pan-run` shell records, friction intakes, or `pan spend`. In an embedded or detached installation it is the observability tool the primer's `## Observability` section names. Nothing queries that tool automatically.
+
+```sh
+./bin/pan observations [--all] [--json]
+./bin/pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>]
+```
+
+`pan observations` lists every unresolved item with its `shipped_at`, its `due_at` (`shipped_at` plus the window), and a status of `open` while the window runs or `due` once it elapses. `--all` adds resolved items. `/pan-repair` checks each due item against its source, files a refuted item as a regression finding, and resolves each item after its intakes validate. A refutation must cite that intake with `--intake`. Resolutions append to `runtime/observations/resolutions.jsonl`, which `pan cleanup` retains; a second resolution of one item is refused.
+
+## Function index for harness source
+
+In this self-development checkout, `docs/function-index/` holds a generated index of `src/`: `README.md` maps every module to its purpose and export count, `SYMBOLS.md` maps every exported symbol to its module page, and each module page gives every export's signature, the first paragraph of its JSDoc, and its `file:line`. `INDEX-001` tells implementing, reviewing, and planning workers to find functions there before they search `src/`, and to open source only at the lines they change. Plan file entries may name the `symbols` a change touches.
+
+The harness regenerates the index in the run workspace every time it prepares a stage, so a worker always reads an index of the tree it edits. The directory is gitignored and never ships in an installed payload. Outside a run, build or check it by hand:
+
+```sh
+./bin/pan docs index --write   # regenerate; removes pages of deleted modules
+./bin/pan docs index --check   # exit 1 when a page is stale, missing, or extra
+```
+
+An exported function without a leading JSDoc shows as undocumented in its entry. Give a new or changed export a JSDoc whose first paragraph states what it does, because that paragraph becomes the entry.
 
 ## Sync Cursor spend across instances
 

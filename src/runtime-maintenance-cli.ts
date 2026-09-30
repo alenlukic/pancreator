@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { PanError } from './lib/errors.js'
 import { resolveRetentionDays } from './lib/project-config.js'
-import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
+import { maintainWorkflowRuntime } from './lib/workflow-artifacts/maintenance.js'
 
 function option(name: string): string | null {
   const index = process.argv.indexOf(name)

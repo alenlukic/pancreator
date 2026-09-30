@@ -2,9 +2,9 @@ import path from 'node:path'
 
 import { invariant } from '../errors.js'
 import { PROTECTED_PATHS, type Facility } from './inventory.js'
-import type { Reference, ReferenceGraph, ReferrerClass } from './graph.js'
+import type { Reference, ReferenceGraph, ReferrerClass } from './graph/model.js'
 import type { SymbolIndex } from './symbols.js'
-import type { FacilityUsage } from './usage.js'
+import type { FacilityUsage } from './usage/model.js'
 
 export interface RemovalEntry {
   path: string

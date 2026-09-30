@@ -49,6 +49,8 @@ SELF_DEVELOPMENT_ONLY_PAYLOAD_PATHS=(
   governance/registries/cursor_model_catalog.json
   # The Pancreator review lineup has no meaning against a target repository.
   library/skills/review-squad-pancreator.md
+  # The generated function index describes Pancreator's own source.
+  docs/function-index
 )
 
 usage() {
@@ -1088,7 +1090,7 @@ prepare_staging_payload() {
 
   local self_development_only
   for self_development_only in "${SELF_DEVELOPMENT_ONLY_PAYLOAD_PATHS[@]}"; do
-    rm -f "$staging/$self_development_only"
+    rm -rf "$staging/$self_development_only"
   done
 
   # The harness test suite is not installed, so the staged package must not

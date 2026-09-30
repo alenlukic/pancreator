@@ -142,7 +142,7 @@ This probe records, from a live background-agent-index session, whether `subagen
    cat runtime/logs/agents/probe-payloads.jsonl runtime/logs/agents/index.json
    ```
 
-6. From `probe-payloads.jsonl`, record the field names of each of the five events (`preToolUse`, `postToolUse`, `postToolUseFailure`, `subagentStart`, `subagentStop`). Mark every field that `src/lib/agent-index.ts` does not read.
+6. From `probe-payloads.jsonl`, record the field names of each of the five events (`preToolUse`, `postToolUse`, `postToolUseFailure`, `subagentStart`, `subagentStop`). Mark every field that `src/lib/agent-index/` does not read.
 7. Record whether the subagent's index entry shows all three ids equal, or which differ and which `aliases` entries bridge them.
 8. Fill in the observation table below.
 

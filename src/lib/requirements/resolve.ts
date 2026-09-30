@@ -295,6 +295,12 @@ export function resolveRequirements(
   return manifest
 }
 
+/**
+ * Check every requirement the policies declare and return the error messages:
+ * duplicate requirement ids within a policy, unknown registry ids, invalid
+ * phase, executor, failure route, or target, and instructions that inline an
+ * executable path. Empty when all requirements are valid.
+ */
 export function validatePolicyRequirements(
   policies: Iterable<Policy>,
   catalog: RegistryCatalog,
@@ -311,6 +317,10 @@ export function validatePolicyRequirements(
   return errors
 }
 
+/**
+ * Return the requirement manifest recorded on an invocation, or undefined when
+ * the invocation has no `requirements` object. Performs no shape validation.
+ */
 export function readInvocationRequirements(
   invocation: Record<string, unknown>,
 ): RequirementManifest | undefined {

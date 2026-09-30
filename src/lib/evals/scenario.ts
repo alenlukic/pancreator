@@ -337,14 +337,17 @@ export function validateEvalScenarioDocument(
   return errors
 }
 
+/** Absolute path of a named scenario file under `evals/scenarios/`. Does not check that it exists. */
 export function scenarioPath(root: string, name: string): string {
   return path.join(root, EVAL_SCENARIOS_DIR, `${name}.json`)
 }
 
+/** Absolute path of a fixture directory under `evals/fixtures/`. Does not check that it exists. */
 export function fixturePath(root: string, fixture: string): string {
   return path.join(root, EVAL_FIXTURES_DIR, fixture)
 }
 
+/** Sorted scenario names (JSON file stems) under `evals/scenarios/`, or an empty list when the directory is absent. */
 export function listEvalScenarioNames(root: string): string[] {
   const directory = path.join(root, EVAL_SCENARIOS_DIR)
 
@@ -358,6 +361,12 @@ export function listEvalScenarioNames(root: string): string[] {
     .sort()
 }
 
+/**
+ * Reads and validates a named eval scenario, returning it with its relative
+ * path. Throws `INVALID_ARGUMENT` for a malformed name,
+ * `EVAL_SCENARIO_NOT_FOUND` (listing the available names) when no file
+ * exists, and `INVALID_EVAL_SCENARIO` when the document fails validation.
+ */
 export function loadEvalScenario(
   root: string,
   name: string,
@@ -395,6 +404,7 @@ export function loadEvalScenario(
   }
 }
 
+/** Loads every scenario under `evals/scenarios/`; throws like `loadEvalScenario` on the first invalid one. */
 export function listEvalScenarios(root: string): LoadedEvalScenario[] {
   return listEvalScenarioNames(root).map((name) => loadEvalScenario(root, name))
 }

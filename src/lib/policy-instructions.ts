@@ -14,12 +14,22 @@ function isPolicyAudience(value: string): value is PolicyAudience {
   return (POLICY_AUDIENCES as readonly string[]).includes(value)
 }
 
+/**
+ * Return the text of a policy instruction, accepting both the legacy string
+ * form and the object form.
+ */
 export function policyInstructionText(
   instruction: PolicyInstruction | string,
 ): string {
   return typeof instruction === 'string' ? instruction : instruction.text
 }
 
+/**
+ * Validate one policy instruction and return it in object form; a bare string
+ * becomes an `agent`-audience instruction. Throws `PanError` `INVALID_POLICY`
+ * for empty text, an empty, unknown, or duplicate audience, `harness` or
+ * `operator` combined with another audience, or a non-boolean `excerpt`.
+ */
 export function normalizePolicyInstruction(
   value: unknown,
   source: string,
@@ -96,6 +106,11 @@ export function normalizePolicyInstruction(
   }
 }
 
+/**
+ * Validate a policy's `instructions` array and return each entry in object form
+ * through `normalizePolicyInstruction`. Throws `PanError` `INVALID_POLICY` when
+ * the value is not an array or an entry is invalid.
+ */
 export function normalizePolicyInstructions(
   value: unknown,
   source: string,
@@ -117,6 +132,12 @@ function normalizedPolicyInstruction(
     : instruction
 }
 
+/**
+ * Report whether an instruction renders on a card for the given audience. A
+ * `harness` instruction never renders; an `operator` instruction renders only
+ * on an operator card; a supervisor card shows `agent` and `supervisor`
+ * instructions; an agent card shows only `agent` instructions.
+ */
 export function policyInstructionAppliesToCard(
   instruction: PolicyInstruction | string,
   audience: PolicyCardAudience,
@@ -146,6 +167,10 @@ export function policyInstructionAppliesToCard(
   return audiences.has('agent')
 }
 
+/**
+ * Return the instructions, in object form, that render on a card for the given
+ * audience, per `policyInstructionAppliesToCard`.
+ */
 export function filterPolicyInstructionsForCard(
   instructions: readonly (PolicyInstruction | string)[],
   audience: PolicyCardAudience,

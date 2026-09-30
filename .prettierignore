@@ -4,3 +4,4 @@ dist/
 node_modules/
 runtime/
 .claude/
+docs/function-index/

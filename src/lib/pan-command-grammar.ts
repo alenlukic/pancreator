@@ -40,6 +40,8 @@ export const HELP_BODY = `Usage:
       Record the identity the platform returned for one launched worker. The harness otherwise watches a worker only through the files it writes, so a worker that died before its first write is indistinguishable from one that was never launched.
   pan worker state <run-id> [--invocation <invocation-id>] [--role <evidence-role>] [--json]
       Report the last known state of every recorded worker: the handle, the launch time, how long ago that was, each declared path with its producer and its state on disk, and whether the worker has written anything at all. An evidence worker's brief is harness-written and never counts as the worker's own output, so a worker that wrote nothing reports that state rather than an error, and a path nobody has written is named rather than omitted.
+  pan worker profile [--days <1..365>] [--json]
+      Read-only per-stage worker efficiency from the local Cursor transcripts of the last --days days (default 7): workers, turns, tool calls by tool, file reads, partial reads and re-reads with the most re-read files, shell browsing calls, inline Python scripts, self-run checks by kind, unfiltered test output, paperwork calls (output scaffold and validate, digest commands), and the turn of the first source edit. It emits counts and repository-relative paths only, never transcript content, email addresses, or conversation ids.
   pan submit <run-id> <output-json> [--worktree <name>]
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject|revise|landed> [--note <text> | --note-file <path>] [--stage <stage-slug>] [--worktree <name>] [--json]
@@ -62,7 +64,8 @@ export const HELP_BODY = `Usage:
   pan away status|decide <run-id> [--action <action>] [--note <text>] [--note-file <path>] [--stage <stage>] [--worktree <name>] [--json]
       decide applies the named action for the supervisor. --action names the action (approve, reject, revise, set-stage, resume, waive-gate). --note or --note-file supplies the required supervisor rationale. --stage is required for set-stage. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--role <evidence-worker-role>] [--force-repeat] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--role <evidence-worker-role>] [--force-repeat] [--verbose] [--json]
+      Prints one start line per probe and command on stderr, then one pass line, or each failed entry with its failing tests (or its last 40 output lines) and the log path. Every execution writes its complete output to runtime/logs/repository-check/. --verbose or PAN_VERBOSE=1 streams command output to stderr. --json prints the structured result with log_path and failing_tests.
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
       A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
@@ -73,8 +76,9 @@ export const HELP_BODY = `Usage:
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
   pan style scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
       Select the workspace source a detected language owns that changed since the last checkpoint, and report the style handbook rules a scanner can decide. checkpoint inspects the complete eligible set, returns blocked without writing while an editable file still has issues, and writes runtime/cache/style.json once the set is clean. Both subcommands exit 1 on a non-passing status. npm run lint stays authoritative for mechanical style.
-  pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--lane <unit|regression|integration>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
+  pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--lane <unit|regression|integration>]... [--depth <n>] [--list] [--verbose] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate by itself.
+      A run logs its output under runtime/logs/repository-check/ and prints a pass line with the selected count, or the failing tests and the log path. --verbose or PAN_VERBOSE=1 also streams the output and lists the selection; inside a repository-check profile the output passes through unchanged.
       --lane replaces the default unit and regression lanes with the named lanes. The impacted-integration profile runs '--lane integration --changed pan-dev', so verify sees the integration tests a branch reaches before the ship gate runs them all.
       --worktree runs the command from the installation root and selects against that worktree's tree, the same workspace selection pan repository-check accepts. Without it the installation root is the workspace, as before. The run record stays at the installation root either way.
   pan tests benchmark --baseline-workspace <path> --candidate-workspace <path> --population-tolerance <count> [--profile <name>] [--output <path>] [--json]
@@ -122,6 +126,12 @@ export const HELP_BODY = `Usage:
       List every regular file directly under each runtime/inbox/ lifecycle directory, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status. Unreadable items remain visible with a reason.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
+  pan observations [--root <installation-root>] [--all] [--json]
+      List the post-ship observation items every run's latest successful ship output records in data.release.observations, with run id, criterion, signal, source, window, check, shipped_at, and due_at (shipped_at plus the window). An item is open while its window runs and due once it elapses or when the window does not parse. --all adds resolved items with their resolution. --root reads the runs and resolution ledger of that installation root, such as a path that pan installs list reports. Nothing queries the named source.
+  pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>] [--root <installation-root>]
+      Append one resolution to runtime/observations/resolutions.jsonl, or to that file under --root. refuted requires --intake naming the regression intake that was filed, and a relative --intake resolves against the invoking checkout. An unknown run or criterion, a confirmation before the window ends, and a second resolution of one item are refused.
+  pan docs index [--write | --check] [--json]
+      Self-development only. Render the function index of src/ under docs/function-index/: a module map, a symbol lookup, and one page per module with each export's signature, the first paragraph of its JSDoc, and its file:line. The harness regenerates it whenever it prepares a stage, and the directory is gitignored. --write rewrites stale pages and removes pages of deleted modules; the default and --check report drift and exit 1 when the index is not current.
   pan installs list [--json]
   pan installs archive <install-id> --intake <harness-relative-path> --item <install-relative-path> [--item <install-relative-path>] [--json]
       Archive only installation inbox items whose file names the source checkout's validated consolidated intake cites.
@@ -162,6 +172,8 @@ export const HELP_BODY = `Usage:
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance prompt-context
   pan governance audit-directives [--json]
+  pan governance refresh-digests [--check] [--json]
+      Self-development only. Rewrites the content digests governance/registries/turn_reminder_profiles.json pins after an edit to a pinned source, so nobody recomputes them by hand. A card selector takes the digest of its section under the pinned heading in each mode's card (AGENTS.md, then the embedded and detached templates). A policy selector whose digest matches no current instruction recovers the pinned text from the policy file at HEAD, then from its earlier commits, and moves to the current instruction of the same policy with the highest token similarity. That instruction must reach similarity 0.5 and lead every other by 0.1; the instruction at the old position breaks a tie. Otherwise the selector is refused with its candidates, and nothing is written. --check reports stale selectors without writing. Exit 1 when a selector is stale under --check or refused.
   pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--horizon <session-id>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
       --dimensions (review and shepherd modes) selects the review dimensions the squad runs, comma-separated. Without it a review runs the full lineup and a shepherd scopes the lineup to each batch. An unknown name is refused with the accepted list, and the card records the selection and the default dimensions it leaves out.

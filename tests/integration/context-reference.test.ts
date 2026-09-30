@@ -77,7 +77,7 @@ test('a context reference digests the trimmed source', () => {
   assert.equal(
     reference.content_sha256,
     sha256('# Parent\n\nOne requirement.'),
-    'the digest basis is the trimmed selection, so a reader recomputes it',
+    'the digest basis is the trimmed selection, as pan context digest reports it',
   )
   assert.equal(
     reference.content_sha256,
@@ -229,7 +229,7 @@ test('a missing parent is reported as missing required context', () => {
   assert.ok(inputs.missing_required?.includes('runtime/specs/absent.md'))
 })
 
-test('the context reference block carries path, digest, basis, and trigger', () => {
+test('the context reference block carries path, digest, ownership, and trigger', () => {
   const root = referenceRoot()
 
   writeParent(root, '# Parent\n\nOne requirement.\n')
@@ -241,6 +241,13 @@ test('the context reference block carries path, digest, basis, and trigger', () 
   assert.match(block, /- Read when: /u)
   assert.match(block, /- Selected range: the complete file\./u)
   assert.match(block, new RegExp(`sha256:${reference.content_sha256}`, 'u'))
-  assert.match(block, /- Digest basis: SHA-256 of the selected text/u)
+  // The harness owns the digest check and reports it through the status line,
+  // so the block tells the worker not to recompute it.
+  assert.doesNotMatch(block, /Digest basis/u)
+  assert.match(
+    block,
+    /- Digest check: The harness computed this digest and checks the source against it/u,
+  )
+  assert.match(block, /do not recompute the digest/u)
   assert.match(block, /- Reference status: current\./u)
 })

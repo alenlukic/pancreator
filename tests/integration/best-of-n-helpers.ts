@@ -12,7 +12,8 @@ import {
   initBestOfN,
 } from '../../src/lib/best-of-n.js'
 import type { BestOfNState } from '../../src/lib/best-of-n.js'
-import { assessStage, prepareInvocation } from '../../src/lib/engine.js'
+import { assessStage } from '../../src/lib/engine/decide.js'
+import { prepareInvocation } from '../../src/lib/engine/prepare.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'

@@ -32,8 +32,12 @@ test('self-development-only payload paths exist in the source checkout', () => {
   assert.ok(paths.length > 0)
 
   for (const relative of paths) {
-    // The catalog is operator-local and optional, so absence is expected.
-    if (relative === 'governance/registries/cursor_model_catalog.json') {
+    // The catalog is operator-local and optional, and the function index is
+    // generated and gitignored, so absence of either is expected.
+    if (
+      relative === 'governance/registries/cursor_model_catalog.json' ||
+      relative === 'docs/function-index'
+    ) {
       continue
     }
 
@@ -77,7 +81,9 @@ function selfDevelopmentRequiredPaths(validationSource: string): string[] {
 
 test('a file repository validation always requires ships to a target', () => {
   const paths = selfDevelopmentOnlyPaths()
-  const validationSource = readRepositoryFile('src/lib/validation.ts')
+  const validationSource = readRepositoryFile(
+    'src/lib/validation/repository.ts',
+  )
 
   // The launch agent template belongs to the base required list. Searching the
   // whole file would also match a path moved into the self-development branch.

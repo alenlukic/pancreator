@@ -6,12 +6,10 @@ import {
   openOperatorQuestion,
   type SupervisorDecisionRecord,
 } from './away-mode.js'
-import {
-  decideRunAsAway,
-  resumeRunAsAway,
-  setRunStageAsAway,
-  waiveGate,
-} from './engine.js'
+import { decideRunAsAway } from './engine/decide.js'
+import { resumeRunAsAway } from './engine/pause-resume.js'
+import { setRunStageAsAway } from './engine/set-stage.js'
+import { waiveGate } from './engine/waive-gate.js'
 import { errorMessage, invariant, PanError } from './errors.js'
 import { resolveRunLayout } from './run-layout.js'
 import type { AwayModeAction, RunState } from './types.js'

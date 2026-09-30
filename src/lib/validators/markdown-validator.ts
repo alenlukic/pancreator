@@ -11,6 +11,12 @@ function readInput(inputPath?: string): string {
   return inputPath ? readFileSync(inputPath, 'utf8') : readFileSync(0, 'utf8')
 }
 
+/**
+ * Check chat Markdown for code fence defects and return the issues with line
+ * numbers: a fence opened after a list marker or indented, an unusual info
+ * string, an unclosed or unbalanced fence, and an opening and closing fence on
+ * one line.
+ */
 export function validateChatMarkdown(
   markdown: string,
 ): MarkdownValidationIssue[] {
@@ -103,6 +109,11 @@ export function validateChatMarkdown(
   return issues
 }
 
+/**
+ * Validate chat Markdown read from `inputPath`, or from standard input when
+ * omitted, print the verdict and each issue, and return the process exit code:
+ * 0 on pass, 1 on failure.
+ */
 export function runMarkdownValidator(inputPath?: string): number {
   const issues = validateChatMarkdown(readInput(inputPath))
 

@@ -92,6 +92,12 @@ export function resolveRequirementTargetPath(
   return fallbackPath
 }
 
+/**
+ * Classify a requirement target path by its location and extension, such as
+ * `repository`, `stage-output-json`, `assessment-json`, `policy-json`,
+ * `invocation-markdown`, `markdown-artifact`, or `source-file`. Returns
+ * `unknown` when no rule matches.
+ */
 export function inferTargetKind(targetPath: string): string {
   if (targetPath === '.' || targetPath === 'repository') {
     return 'repository'
@@ -142,6 +148,10 @@ export function inferTargetKind(targetPath: string): string {
   return 'unknown'
 }
 
+/**
+ * Return the stage slugs a stage-specific validator registry id applies to, or
+ * an empty list when the registry is stage-neutral.
+ */
 export function registryStageSlugs(registryId: string): readonly string[] {
   const mapping: Record<string, readonly string[]> = {
     'INTAKE-VALIDATE-001': ['intake'],
@@ -394,6 +404,10 @@ function buildResult(
   }
 }
 
+/**
+ * Report whether a requirement target changed during validation: true only when
+ * a before checksum exists and differs from the after checksum.
+ */
 export function isStaleTarget(
   beforeChecksum: string | undefined,
   afterChecksum: string,
@@ -411,6 +425,10 @@ function satisfiedStatus(
   return status === 'passed' || status === 'not_applicable'
 }
 
+/**
+ * Report whether a requirement validation result satisfies its requirement:
+ * status `passed` or `not_applicable` with exit code 0.
+ */
 export function isPassingResult(result: RequirementValidationResult): boolean {
   return satisfiedStatus(result.status) && result.exit_code === 0
 }

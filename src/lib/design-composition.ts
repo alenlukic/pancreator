@@ -3,7 +3,8 @@ import path from 'node:path'
 import { invariant } from './errors.js'
 import { fileExists, readJson, resolveInside } from './io.js'
 import type { StageDefinition, WorkflowDefinition } from './types.js'
-import { parseStage, validateWorkflow } from './workflow.js'
+import { parseStage } from './workflow/stage.js'
+import { validateWorkflow } from './workflow/validate.js'
 
 /** True when the workflow declares an optional design augmentation. */
 export function workflowSupportsDesignComposition(

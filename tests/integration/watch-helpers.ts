@@ -8,14 +8,14 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
-import { setRunStage } from '../../src/lib/engine.js'
+import { setRunStage } from '../../src/lib/engine/set-stage.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation, RunState } from '../../src/lib/types.js'
+import { readLaunchRecord } from '../../src/lib/watch/launch.js'
 import {
   delegationUnobservedMessage,
-  readLaunchRecord,
   summarizeDelegationObservation,
-} from '../../src/lib/watch.js'
+} from '../../src/lib/watch/record.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import { makeOutput, read, writeCanonicalDelegation } from '../helpers.js'
 import { checkpoint, prepareCheckpointRun } from './delivery-helpers.js'

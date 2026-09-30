@@ -1,6 +1,7 @@
 import { renameSync, rmSync } from 'node:fs'
 
-import { renderBrief, writeOperatorBriefSource } from './briefs.js'
+import { writeOperatorBriefSource } from './briefs/parse.js'
+import { renderBrief } from './briefs/render.js'
 import { invariant, PanError } from './errors.js'
 import {
   fileExists,

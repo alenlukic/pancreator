@@ -183,6 +183,11 @@ function readProbeStreams(
   }
 }
 
+/**
+ * Display name of the Cursor variant the local model catalog predicts a
+ * bracketed model spec launches, or null when no catalog exists, the spec has
+ * no bracketed options, or the catalog does not know the model.
+ */
 export function expectedCursorModelForSpec(
   root: string,
   spec: string,

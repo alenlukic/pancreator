@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
-import { listWorkflowSlugs } from '../workflow.js'
+import { listWorkflowSlugs } from '../workflow/load.js'
 
 /**
  * A harness facility is a removable unit an operator recognizes by name. The
@@ -118,9 +118,36 @@ export const EDIT_ONLY_PATHS: readonly string[] = [
   'governance/registries/policy_lookup_table.json',
   'governance/registries/validation_registry.json',
   'src/cli.ts',
+  'src/cli/args.ts',
+  'src/cli/checks.ts',
+  'src/cli/context.ts',
+  'src/cli/diagnostics.ts',
+  'src/cli/docs.ts',
+  'src/cli/governance.ts',
+  'src/cli/orchestration.ts',
+  'src/cli/release.ts',
+  'src/cli/requirements.ts',
+  'src/cli/run-lifecycle.ts',
+  'src/cli/stage.ts',
+  'src/cli/supervision.ts',
+  'src/cli/watch.ts',
+  'src/cli/workspace.ts',
   'src/lib/governance-card.ts',
+  'src/lib/governance-card/build.ts',
+  'src/lib/governance-card/modes.ts',
+  'src/lib/governance-card/render.ts',
   'src/lib/pan-command-grammar.ts',
   'src/lib/validation.ts',
+  'src/lib/validation/artifacts.ts',
+  'src/lib/validation/attestation.ts',
+  'src/lib/validation/baselines.ts',
+  'src/lib/validation/deterministic-criteria.ts',
+  'src/lib/validation/governance.ts',
+  'src/lib/validation/invocation-markdown.ts',
+  'src/lib/validation/repository.ts',
+  'src/lib/validation/shell-check.ts',
+  'src/lib/validation/stage-output.ts',
+  'src/lib/validation/state-criteria.ts',
 ]
 
 function listFiles(
@@ -284,6 +311,25 @@ function topLevelPropertyNames(block: string): string[] {
 }
 
 /**
+ * Where a tree declares STANDALONE_MODES, newest layout first. The table left
+ * `governance-card.ts` for its own module, and a historical tree still keeps
+ * it in the original file.
+ */
+const STANDALONE_MODE_SOURCES = [
+  'src/lib/governance-card/modes.ts',
+  'src/lib/governance-card.ts',
+] as const
+
+/** The file of the scanned tree that declares its standalone modes. */
+export function standaloneModeRegistryPath(root: string): string {
+  return (
+    STANDALONE_MODE_SOURCES.find((relative) =>
+      isFile(path.join(root, relative)),
+    ) ?? STANDALONE_MODE_SOURCES[0]
+  )
+}
+
+/**
  * Standalone mode definitions from the scanned tree.
  *
  * Importing STANDALONE_MODES would inventory the running build when the
@@ -293,7 +339,7 @@ export function readStandaloneModes(root: string): StandaloneModeDefinition[] {
   return topLevelEntries(
     sourceBlock(
       root,
-      'src/lib/governance-card.ts',
+      standaloneModeRegistryPath(root),
       'export const STANDALONE_MODES',
     ),
   ).map((entry) => {
@@ -378,14 +424,30 @@ function modeFacilities(root: string): Facility[] {
     .map((mode) => facility('mode', mode, null))
 }
 
+/**
+ * Validator modules whose implementation lives in a directory under
+ * `src/lib/validators`. The module re-exports that directory, so the facility
+ * owns it too. The value is the directory name alone: spelling the full path
+ * here would make this file a referrer of the facility it describes.
+ */
+const VALIDATOR_MODULE_DIRECTORIES: ReadonlyMap<string, string> = new Map([
+  ['code-style', 'code-style'],
+  ['refusals', 'refusals'],
+  ['stage-validators', 'stage'],
+])
+
 function validatorFacilities(root: string): Facility[] {
-  return listFiles(root, 'src/lib/validators', '.ts').map((entry) =>
-    facility(
+  return listFiles(root, 'src/lib/validators', '.ts').map((entry) => {
+    const name = entry.slice(0, -'.ts'.length)
+    const directory = VALIDATOR_MODULE_DIRECTORIES.get(name)
+
+    return facility(
       'validator',
-      entry.slice(0, -'.ts'.length),
+      name,
       `src/lib/validators/${entry}`,
-    ),
-  )
+      directory === undefined ? [] : [`src/lib/validators/${directory}`],
+    )
+  })
 }
 
 function handbookFacilities(root: string): Facility[] {

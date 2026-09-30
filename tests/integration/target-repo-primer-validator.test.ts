@@ -122,6 +122,10 @@ const EXTERNAL_SECTIONS = `
 - **Input shape:** \`{ email: string, password: string }\`
 - **Logic excerpt:** \`validateCredentials(input)\`
 - **Output shape:** \`{ token: string }\`
+
+## Observability
+
+- Sentry (\`sentry.client.config.ts\`): search issues for the release tag.
 `
 
 const VALID_EXTERNAL_PRIMER = `${VALID_PRIMER}${EXTERNAL_SECTIONS}`
@@ -196,11 +200,28 @@ Not applicable — no client/frontend detected.
 ## Major workflows and data flows
 
 None identified.
+
+## Observability
+
+None detected.
 `,
     ),
   )
 
   assert.equal(notApplicable.status, 'passed')
+})
+
+test('an external primer requires a non-empty Observability section', () => {
+  const root = fixtureRoot({ installationMode: 'embedded' })
+  const codes = (content: string) =>
+    validateIn(root, content).issues.map((item) => item.code)
+  const withoutSection =
+    VALID_EXTERNAL_PRIMER.split('\n## Observability')[0] ?? ''
+
+  assert.deepEqual(codes(withoutSection), ['primer.section_missing'])
+  assert.deepEqual(codes(`${withoutSection}\n## Observability\n`), [
+    'primer.section_empty',
+  ])
 })
 
 test('target repository primer validator rejects malformed external flow steps', () => {

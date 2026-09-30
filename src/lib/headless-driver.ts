@@ -1,23 +1,22 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-import { maybeStartDelivery, type DeliveryAutostartResult } from './cohorts.js'
+import { maybeStartDelivery } from './cohorts/delivery.js'
+import type { DeliveryAutostartResult } from './cohorts/state.js'
 import { PanError } from './errors.js'
-import {
-  decideRun,
-  delegateEvidenceWorkers,
-  delegateInvocation,
-  getRunState,
-  prepareInvocation,
-  submitOutput,
-} from './engine.js'
+import { decideRun } from './engine/decide.js'
+import { delegateEvidenceWorkers } from './engine/evidence-workers.js'
+import { delegateInvocation } from './engine/delegate.js'
+import { getRunState } from './engine/run-status.js'
+import { prepareInvocation } from './engine/prepare.js'
+import { submitOutput } from './engine/submit.js'
 import { personaExecutorOf } from './executors/mapping.js'
 import {
   attestSupervisorCard,
   redlineCurrent,
 } from './governance/supervisor-card.js'
 import { readJson } from './io.js'
-import { writeRedlineRecord } from './watch.js'
+import { writeRedlineRecord } from './watch/redline.js'
 import type {
   Invocation,
   PendingAction,

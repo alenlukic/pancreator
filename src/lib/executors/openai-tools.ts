@@ -203,6 +203,7 @@ export const OPENAI_TOOL_NAMES: readonly string[] = OPENAI_TOOL_DEFINITIONS.map(
   (tool) => tool.name,
 )
 
+/** The OpenAI tool definitions the policy's `allowedTools` permits, in definition order. */
 export function openAiToolDefinitions(
   policy: OpenAiToolPolicy,
 ): OpenAiToolDefinition[] {

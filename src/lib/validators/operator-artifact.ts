@@ -78,6 +78,14 @@ function validateHtmlOperatorArtifact(
   return issues
 }
 
+/**
+ * Validate an operator-facing artifact against a profile. An HTML brief must
+ * use the Pancreator brief root with a brief type and open with an executive
+ * summary that states the lead; a Markdown artifact must lead with state,
+ * outcome, and next action. Both must carry every heading the profile requires.
+ * Raises `operator.*` and `profile.heading_missing`; fails with
+ * `artifact.missing` when the file does not exist.
+ */
 export function validateOperatorArtifact(
   input: HandlerInput,
   profile: OperatorArtifactProfile,
@@ -134,6 +142,13 @@ export function validateOperatorArtifact(
   }
 }
 
+/**
+ * Apply the strict stage output checks to a submitted output: with a `success`
+ * result, every passing hard rubric criterion needs evidence
+ * (`criteria.empty_evidence`) and no criterion may have failed
+ * (`result.contradiction`). Fails with `output.missing` when the file is
+ * absent; `invalid` when it is not an object.
+ */
 export function validateStageOutputStrict(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const absolute = path.join(input.root, input.targetPath)

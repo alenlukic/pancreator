@@ -95,6 +95,11 @@ function agentStateRoots(): string[] {
   ]
 }
 
+/**
+ * Renders a macOS `sandbox-exec` profile that allows everything except file
+ * writes, then re-allows writes under the given roots and the temporary,
+ * device, and per-user state directories the agent needs.
+ */
 export function writeSandboxProfile(writeRoots: string[]): string {
   const allowed = [...subpaths(writeRoots), ...subpaths(agentStateRoots())]
 

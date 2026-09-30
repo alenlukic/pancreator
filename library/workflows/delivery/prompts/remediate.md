@@ -9,7 +9,10 @@ evidence is your primary input.
 
 ## Steps
 
-1. Read the failure evidence first. After a verify verdict: the verdict, every
+1. Read the handoff artifact the card lists. It carries the previous
+   worker's notes and the files and lines it read and edited, so open those
+   files at those lines instead of exploring again. Then read the failure
+   evidence. After a verify verdict: the verdict, every
    blocking finding, every failed acceptance criterion or QA case, and the
    remediation guidance. After a release-gate failure: the failed gate's
    evidence log the card lists as required input, which carries the `full`
@@ -38,14 +41,18 @@ evidence is your primary input.
    from `runtime/repository-checks.json`. Only when no `impacted` profile is
    declared, pick the tests in the blast radius yourself. Derive every
    command from `runtime/repository-checks.json` or the target's documented
-   entry points. Static checks are cheap; run them freely.
+   entry points. Static checks are cheap. Run them freely.
 7. Run a repository-check profile only through the sanctioned path
    `./bin/pan repository-check <profile> --run <run-id>` so the execution is
-   recorded in the run ledger. When you believe the repairs are complete, run
-   the configured `fast` profile once, as the final validation. Fix each failure, then re-run only
-   the impacted selection, the failing tests, and the tests you added. Do not
-   run `fast` earlier and do not run it a second time. Never run the `full`
-   profile yourself: the ship release gate runs it when the run enters ship.
+   recorded in the run ledger. Follow the output and tool habits that
+   `REMED-001` on your card states. The gates own the suites. Do not run the
+   `fast` profile or the integration lane yourself, and never run the `full`
+   profile. When the impacted selection, your new tests, and the static checks
+   pass, submit. The remediate exit gate runs the stage's declared gate
+   profiles, which the card lists, and verify refreshes every interior gate
+   profile before it starts. A failure of either returns the run to you with
+   its log. The ship release gate runs `full` when the run enters ship. This
+   saves worker turns and context. The gates rerun every profile anyway.
 8. Map evidence to every acceptance criterion honestly, including the ones
    verify marked as failed.
 
@@ -66,7 +73,12 @@ override, or baseline-relative credit is never accepted this way.
 ## Output
 
 Populate `data.implementation` (`changed_files`, `tests_added`, `notes`,
-`remediation`) and `data.acceptance_results`. Each `tests_added` entry is
+`remediation`) and `data.acceptance_results`. Also populate `data.implementation.handoff` for whoever works on this change
+next: `start_here` (`{ path, symbol_or_lines, why }`, where a follow-up worker
+should begin), `symbols_changed` (`{ path, symbol, lines, note }`),
+`decisions` (one line each), and `untested` (what you did not prove). Keep it
+short. A retry or a remediation receives it together with the harness's
+reading map of your transcript. Each `tests_added` entry is
 `{ path, contract }`: the test file path and one sentence that names the
 contract the test proves. Every new test file and every net-positive test
 delta needs an entry. Each remediation entry states
@@ -101,6 +113,6 @@ When `data.landing.status` is `verification_failed`:
 ## Done when
 
 Every blocking verify finding is repaired or disputed with evidence, the
-static checks pass, the single validation run of the `fast` profile passed,
-and every acceptance criterion has an honest evidence-backed result ready for
+static checks, the impacted selection, and your new tests pass, and every
+acceptance criterion has an honest evidence-backed result ready for
 re-verification.

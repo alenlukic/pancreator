@@ -79,14 +79,17 @@ function hypervisorPath(root: string, name: string): string {
   return path.join(root, HYPERVISOR_DIRECTORY, name)
 }
 
+/** Absolute path of the hypervisor agent registry file under `runtime/logs/hypervisor/`. */
 export function agentRegistryPath(root: string): string {
   return hypervisorPath(root, REGISTRY_FILE)
 }
 
+/** Absolute path of the hypervisor event log (JSONL) under `runtime/logs/hypervisor/`. */
 export function hypervisorEventsPath(root: string): string {
   return hypervisorPath(root, EVENTS_FILE)
 }
 
+/** Absolute path of the hypervisor daemon's PID file under `runtime/logs/hypervisor/`. */
 export function hypervisorPidPath(root: string): string {
   return hypervisorPath(root, PID_FILE)
 }
@@ -810,6 +813,10 @@ function pidFromFile(root: string): number | null {
   return Number.isInteger(value) && value > 0 ? value : null
 }
 
+/**
+ * Reads the hypervisor PID file and reports that PID (null when the file is
+ * missing or invalid) and whether that process is alive.
+ */
 export function hypervisorProcessStatus(root: string): {
   running: boolean
   pid: number | null
@@ -862,6 +869,11 @@ export function startHypervisorProcess(
   )
 }
 
+/**
+ * Sends SIGTERM to the recorded hypervisor process when it is alive and
+ * removes the PID file either way. Reports whether a live process was
+ * signalled and the PID the file named.
+ */
 export function stopHypervisorProcess(root: string): {
   stopped: boolean
   pid: number | null

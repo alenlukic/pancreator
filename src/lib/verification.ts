@@ -3,7 +3,7 @@ import path from 'node:path'
 import { invariant } from './errors.js'
 import { fileExists, isRecord } from './io.js'
 import { harnessConfigName, readHarnessConfig } from './project-config.js'
-import { repositoryCheckProfileName } from './repository-checks.js'
+import { repositoryCheckProfileName } from './repository-checks/diagnostics.js'
 import type { Criterion, ResolvedVerification } from './types.js'
 
 const CONFIG_PATH = 'config.json'
@@ -30,7 +30,8 @@ export interface VerificationFile {
 
 /**
  * Built-in levels. Agents iterate on the impacted profile plus the tests they
- * added and run the fast profile once as final validation; the harness owns
+ * added. Implementing agents leave the fast profile to the gates, and an
+ * evidence worker may run it once as final validation; the harness owns
  * every heavier execution. The `full` profile runs only as the ship stage's
  * release gate, at stage entry before the release steward starts. No verify
  * or remediate gate runs it. A release-gate failure routes to remediate, whose
@@ -64,8 +65,9 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
       'the implement and remediate loops. The full profile runs only as the ship release gate when the run enters ' +
       'ship; a failure routes to remediate and a repaired run returns to ' +
       'ship for another full run, at most twice before the operator ' +
-      'decides. Agents run the fast profile once each as final validation ' +
-      'and never run full.',
+      'decides. Implementing agents leave fast to the gates, evidence ' +
+      'workers run the fast profile once each at most as final validation, ' +
+      'and agents never run full.',
     gates: {
       'test.full_suite': 'full',
       'verify.full_suite': false,
@@ -182,6 +184,11 @@ export function parseVerification(
   return { active, levels }
 }
 
+/**
+ * Reads the installation's harness config and parses its verification levels
+ * and active level. Throws `INVALID_VERIFICATION` when the config file is
+ * missing or the block is invalid.
+ */
 export function loadVerificationFile(root: string): VerificationFile {
   const configName = harnessConfigName(root) ?? CONFIG_PATH
   const filePath = path.join(root, configName)

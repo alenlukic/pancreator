@@ -58,6 +58,12 @@ function listRelative(root: string, directory: string): string[] {
     )
 }
 
+/**
+ * Reads one run's records for grading: state, parseable events, submitted
+ * outputs, and the relative paths of its evidence, validation, invocation,
+ * decision, and JSON artifact files. Unreadable event lines and outputs are
+ * skipped. Throws `RUN_NOT_FOUND` when the run has no state file.
+ */
 export function loadRunRecords(root: string, runId: string): RunRecords {
   const layout = resolveRunLayout(root, runId)
 

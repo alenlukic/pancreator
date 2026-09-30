@@ -241,3 +241,56 @@ test('a change inside the governance case of cli.ts is an instrument conflict', 
   )
   assert.equal(scope.closure_revision, head)
 })
+
+test('a change inside the governance handler under src/cli is an instrument conflict', () => {
+  const root = createFixture()
+  const handlerPath = path.join(root, 'src', 'cli', 'governance.ts')
+  const handler = [
+    'export function modelsCommand({ args }: CliContext): void {',
+    '  return list(args)',
+    '}',
+    '',
+    'export function governanceCommand({ args }: CliContext): void {',
+    "  if (args[0] === 'review-scope') {",
+    '    return scope()',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+
+  mkdirSync(path.dirname(handlerPath), { recursive: true })
+  writeFileSync(handlerPath, handler)
+
+  const base = commitAll(root, 'add a handler fixture')
+
+  writeFileSync(handlerPath, handler.replace('list(args)', 'list(args, 1)'))
+
+  const unrelated = commitAll(root, 'edit another handler')
+
+  assert.deepEqual(
+    resolveReviewScope(root, root, { head: unrelated, base }).conflicts.filter(
+      (item) => item.path === 'src/cli/governance.ts',
+    ),
+    [],
+  )
+
+  writeFileSync(
+    handlerPath,
+    handler.replace('return scope()', 'return scope(options)'),
+  )
+
+  const head = commitAll(root, 'edit the review-scope entry point')
+
+  assert.deepEqual(
+    resolveReviewScope(root, root, { head, base }).conflicts.filter(
+      (item) => item.path === 'src/cli/governance.ts',
+    ),
+    [
+      {
+        path: 'src/cli/governance.ts',
+        tier: 'instrument',
+        source: 'governance card or review-scope entry point changed',
+      },
+    ],
+  )
+})

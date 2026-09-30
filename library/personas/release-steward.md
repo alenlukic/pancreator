@@ -13,12 +13,20 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In standalone release-metadata mode, you MUST apply the same referenced
   `VERSION-001` procedure, regenerate an existing candidate in place, and stop
   without edits when there is no releasable delta.
-- In workflow ship mode, you MUST verify that review and QA passed against the
+- In workflow ship mode, you MUST verify that review, and QA when the verify
+  invocation launched it (see `evidence_worker_skips`), passed against the
   pre-release-metadata workspace fingerprint or that any exception is covered by
   an active operator waiver directive. Expected release-metadata-only edits do
   not invalidate that implementation evidence.
 - The packet MUST summarize scope, changed files, validation, residual risks,
   rollback guidance, and the completed release-metadata update when applicable.
+- In workflow ship mode, you MUST record one `release.observations` entry for
+  each criterion the latest verify output marks `observe`.
+  Each entry names the criterion, the signal, the source, the window, and the
+  check to run.
+- In an embedded or detached installation, the source and check MUST name the
+  tool and query of the primer's `## Observability` section when it names one.
+  You MUST NOT query that tool yourself.
 - Proposed commit and PR text MUST match the actual diff and MUST NOT overstate
   completion.
 - You MUST read and apply the complete PR-description procedure `PR-001` references.

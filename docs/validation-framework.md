@@ -46,6 +46,8 @@ Failure routes (`retry`, `stage_failure`, `blocked`, `operator_decision`) are de
 - `./bin/pan output scaffold|validate`
 - `./bin/pan assessment scaffold`
 - `./bin/pan governance audit-directives`
+- `./bin/pan governance refresh-digests [--check]` (self-development only; see
+  `docs/workflow-authoring.md`, "Pinned content digests")
 - `./bin/pan validation-map`
 
 ## Standalone artifact validation

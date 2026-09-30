@@ -1,10 +1,8 @@
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
-import {
-  STANDALONE_MODES,
-  renderGovernanceCardMarkdown,
-} from '../governance-card.js'
+import { STANDALONE_MODES } from '../governance-card/modes.js'
+import { renderGovernanceCardMarkdown } from '../governance-card/render.js'
 import {
   ensureDir,
   fileExists,
@@ -16,7 +14,7 @@ import {
 } from '../io.js'
 import { policySectionDigest } from '../policy-guidance.js'
 import { loadPolicySources, resolvePolicies } from '../policies.js'
-import { readRedlineRecord, redlineRecordPath } from '../watch.js'
+import { readRedlineRecord, redlineRecordPath } from '../watch/redline.js'
 import { readWorktreeIndex } from '../worktrees.js'
 import type { WorktreeRecord } from '../worktrees.js'
 import {
@@ -31,7 +29,7 @@ import {
   applyHandoffAccepted,
   checkHandoffFence,
 } from '../supervisor-handoff.js'
-import { loadWorkflowFile } from '../workflow.js'
+import { loadWorkflowFile } from '../workflow/load.js'
 import type {
   Policy,
   RunContract,

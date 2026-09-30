@@ -161,7 +161,8 @@ test('embedded preflight test gates resolve the target fast profile', () => {
   })
 
   // The local decision is the criterion-to-profile mapping; running the
-  // profile is the runner's contract, proven in repository-checks.test.ts.
+  // profile is the runner's contract, proven in
+  // repository-checks-execution.test.ts.
   const resolution = resolveShellCheck(
     root,
     preflightStage().criteria[0] as Criterion,

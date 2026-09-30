@@ -12,12 +12,10 @@ import path from 'node:path'
 
 import { sharedTemplate } from '../shared-template.js'
 
-import {
-  decideRun,
-  getRunState,
-  prepareInvocation,
-  setRunStage,
-} from '../../src/lib/engine.js'
+import { decideRun } from '../../src/lib/engine/decide.js'
+import { getRunState } from '../../src/lib/engine/run-status.js'
+import { prepareInvocation } from '../../src/lib/engine/prepare.js'
+import { setRunStage } from '../../src/lib/engine/set-stage.js'
 import { AWAY_MODE_ACTIONS } from '../../src/lib/project-config.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import type {

@@ -6,12 +6,13 @@
     {
       "persona": "reviewer",
       "role": "review",
-      "scope": "Independently review the implementation diff and resulting workspace against the ratified plan: acceptance-criteria coverage, test quality and honesty (weakened, deleted, gamed, or narrowed tests), scope control, maintainability, and security. Read code; do not execute the test plan — the parallel QA worker owns execution."
+      "scope": "Independently review the implementation diff and resulting workspace against the ratified plan: acceptance-criteria coverage, test quality and honesty (weakened, deleted, gamed, or narrowed tests), scope control, maintainability, and security. Prove each `review` criterion by reading the code. Read code. Do not execute the test plan — the QA worker owns execution when it runs, and gate evidence proves `test` criteria."
     },
     {
       "persona": "qa-tester",
       "role": "qa",
-      "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Record any profile execution your card allows in your evidence report, not as a QA case. For a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review architecture — the parallel review worker owns that. Do not review code style — no worker in the run owns it, and the operator-invoked `/pan-style` batch pass repairs it after delivery."
+      "run_when": "live_criteria",
+      "scope": "Execute the ratified test plan against the resulting workspace: every case of a `live` criterion, or every case when the criteria carry no proof type. When the change touches a user-facing surface, also exercise that surface as the change renders it. Run each case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Record any profile execution your card allows in your evidence report, not as a QA case. For a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review architecture — the parallel review worker owns that. Do not review code style — no worker in the run owns it, and the operator-invoked `/pan-style` batch pass repairs it after delivery."
     }
   ],
   "prompt_path": "library/workflows/metacritic/prompts/verify.md",
@@ -34,7 +35,6 @@
     "verify": "object",
     "verify.verdict": "string",
     "verify.findings": "array",
-    "verify.qa_cases": "array",
     "verify.acceptance_results": "array",
     "verify.gate_evidence_citations": "array"
   },
@@ -58,7 +58,7 @@
       "id": "verify.cases_executed",
       "type": "judgment",
       "hard": true,
-      "statement": "QA cases from the ratified test plan cover each acceptance criterion or explicitly justify why a case is not applicable."
+      "statement": "When QA runs, its cases from the ratified test plan cover each `live` criterion, or each criterion when the criteria carry no proof type, or explicitly justify why a case is not applicable. Gate evidence proves each `test` criterion, the review proves each `review` criterion, and each `observe` criterion records `observe`."
     }
   ],
   "transitions": {

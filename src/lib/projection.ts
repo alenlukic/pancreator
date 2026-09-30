@@ -566,6 +566,7 @@ export function cursorAgentName(
   return path.basename(cursorAgentPath, path.extname(cursorAgentPath))
 }
 
+/** Throws `INVALID_AGENT_SUFFIX` unless the variant suffix is lowercase alphanumerics joined by single hyphens. */
 export function assertVariantSuffix(suffix: string): void {
   invariant(
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(suffix),
@@ -691,6 +692,16 @@ export function removePersonaVariants(root: string, suffix: string): string[] {
   return removed.sort()
 }
 
+/**
+ * Renders every declared Cursor projection and compares it with the local
+ * `.cursor/` tree, returning one change per rendered file plus each explicit
+ * or orphaned removal, sorted by path. With `write`, it writes changed files
+ * and deletes removed ones; otherwise it only reports.
+ *
+ * Orphan sweeping of Pancreator-owned agents, commands, and rules runs only
+ * for a full render, never when `only` narrows it, and never touches
+ * run-scoped variant files.
+ */
 export function syncCursorProjection(
   root: string,
   options: { write?: boolean } & RenderProjectionsOptions = {},

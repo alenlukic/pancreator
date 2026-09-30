@@ -12,12 +12,4 @@ if ! "$ROOT/bin/build" --stamp-fresh; then
   npm run typecheck
 fi
 
-for script in "$ROOT/bin"/*; do
-  if [[ ! -f "$script" ]]; then
-    continue
-  fi
-
-  if head -1 "$script" | grep -q 'bash'; then
-    bash -n "$script"
-  fi
-done
+"$ROOT/bin/check-shell"

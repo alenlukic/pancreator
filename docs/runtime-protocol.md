@@ -115,8 +115,9 @@ requires `--apply` to mutate state. The class table covers workflow and
 standalone runs, best-of-N and cohort sessions, traces, evaluations, horizon,
 hypervisor, away mode, event logs, terminal inbox history, PR descriptions,
 research, benchmarks, scratch, and managed worktrees. Cache checkpoints,
-`runtime/release/allocations.jsonl`, and `runtime/repository-checks.json` are
-durable retained classes.
+`runtime/release/allocations.jsonl`, the observation resolution ledger under
+`runtime/observations/`, and `runtime/repository-checks.json` are durable
+retained classes.
 
 The plan lists every action the apply performs, and the apply performs no
 action the plan omitted. Deletion runs first and removes exactly the expired
@@ -487,10 +488,11 @@ third failure pauses the run with an `operator_decision` marked
 shares exactly one `static` and `fast` baseline under
 `runtime/logs/cohorts/<cohort-id>/baselines/`: the first run of the session
 that prepares a source-allowed stage captures it, every other chunk run and
-the release run adopts it (`DEV-001`). Agents never run `full`: the coder,
-remediator, reviewer, and QA worker iterate on the `impacted` profile plus the
-tests they added and run `fast` once each as final validation, and the
-consolidating verifier runs neither. A worker that runs
+the release run adopts it (`DEV-001`). Agents never run `full`. The coder and
+remediator iterate on the `impacted` profile plus the tests they added and
+leave `fast` and the integration lane to the gates. The reviewer and QA worker
+iterate the same way and may run `fast` once each as final validation, and
+the consolidating verifier runs neither. A worker that runs
 `pan repository-check <profile> --run <run-id>` or
 `pan repository-check <profile> --worktree <name>` leaves one line per
 execution in that run's `agent/evidence/repository-check-runs.jsonl`
@@ -500,11 +502,22 @@ ran it). The record is written only when the command names the run through
 `--run` or `--worktree`; a bare `pan repository-check <profile>` records
 nothing on any run. The command's JSON response carries `run_evidence_paths`,
 the repository-relative evidence path of each run it recorded against, and
-omits the key when it recorded against none. `pan output validate` reads those
+omits the key when it recorded against none. Every execution, recorded or
+bare, also writes its complete output to
+`runtime/logs/repository-check/<temporal-prefix>_<profile>-<hex>.log`; the
+default text response is one pass line, or the failing entries with their
+failing tests and that log path, and `--json` adds `log_path` and
+`failing_tests` to the structured result. `pan output validate` reads those
 records and reports the `repository_check_fast_repeated` advisory when one
 invocation ran `fast` more often than the stage's declared `evidence_workers`
 count allows, so the once-per-worker rule is judged from harness records rather
-than from the worker's narrative. The evidence-worker brief names the harness
+than from the worker's narrative. `pan submit` of a `source_allowed` stage
+counts the same records for the submitting invocation: every agent-run profile
+other than `impacted`, `static`, and `configuration` is a worker-run gate
+profile. When that count or the
+worker transcript's shell browsing count is nonzero, the submission records a
+`suite_cost` advisory and a `suite_cost_advisory` event with
+`scope: "worker_invocation"`. The evidence-worker brief names the harness
 root and asks for a `fast` run only when no gate has already passed `fast` at
 the current workspace fingerprint. `minimal` disables both `full` gates;
 `thorough` is an alias of `light`.
@@ -554,6 +567,14 @@ At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's decl
 `./bin/pan decide <run-id> landed --note "<directive>"` closes a run at the `ship` stage as `succeeded` after the operator landed its release on `pan-dev` outside the stage. It runs only for an operator, for a run that is `awaiting_operator` or `paused` at ship, and it needs a non-empty note. The command reads the run's landing from `runtime/release/landing.jsonl` (the newest session of this run and worktree that reached `fast_forward`) and refuses with `RELEASE_LANDING_NOT_FOUND` when none exists, and with `RELEASE_LANDING_NOT_ON_INTEGRATION` when the landed commit is not an ancestor of `pan-dev`.
 
 It stores `release_landing` on the run state (`version`, `release_commit`, `index_commit`, `tip_before`, `tip_after`, `verified_profiles`, `verification_basis`, `landed_at`, `landing_token`, `directive_note`, `recorded_at`), appends a `release_landed` event with the same fields, and then the usual `operator_decision_recorded` event with `decision: landed`. The run ends `succeeded`, so `pan status` no longer lists it as pending.
+
+## Post-ship observations
+
+A ship output records `data.release.observations[]`, one entry per acceptance criterion the run's latest successful verify output marks `result: observe`. Each entry is `{ criterion, signal, source, window, check }`, all non-empty strings, and `RELEASE-VALIDATE-001` refuses a missing or incomplete entry with `release.observation_missing` or `release.observation_shape`, and a `window` that is not a positive `<n>h`, `<n>d`, or `<n>w` span with `release.observation_window`. A run whose verify output defers nothing, including every run created before the `observe` proof type, needs no entry.
+
+`./bin/pan observations` reads the latest successful ship output of every run under `runtime/logs/workflows/`, or under that directory of the installation root `--root` names. Each item carries `run_id`, `criterion`, `signal`, `source`, `window`, `check`, `shipped_at` (that ship submission's `submitted_at`), `due_at` (`shipped_at` plus a `<n>h`, `<n>d`, or `<n>w` window, or null), and `status`: `open` before `due_at`, and `due` after it or when the window does not parse. `./bin/pan observations resolve` appends `{ schema_version: 1, run_id, criterion, status: confirmed|refuted, note, intake?, resolved_at }` to `runtime/observations/resolutions.jsonl` under a mutex. It refuses an unknown run (`RUN_NOT_FOUND`), an unknown criterion (`OBSERVATION_NOT_FOUND`), a confirmation while `due_at` is still ahead (`OBSERVATION_NOT_DUE`), a second resolution (`OBSERVATION_ALREADY_RESOLVED`), and a refutation without an existing `--intake` file (`OBSERVATION_INTAKE_REQUIRED`, `OBSERVATION_INTAKE_NOT_FOUND`). A refutation may close an open item. With `--root`, the ledger is the one under that installation root, and a relative `--intake` resolves against the invoking checkout. A resolved item appears only under `--all`.
+
+`pan archive` and `pan cleanup` keep a closed run in `runtime/logs/workflows/` past its retention window while it owes an unresolved observation, because both observation commands read only live runs. The archive summary lists each such run in `observation_held_run_ids`, and the cleanup plan records it as a skip.
 
 ## Operator stage repair
 

@@ -56,10 +56,16 @@ const PROTECTED_FILE_SUFFIXES = [
   '.whl',
 ] as const
 
+/** Slash-separated, normalized form of a path with any leading `./` removed. */
 export function normalizeProtectedPath(value: string): string {
   return path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//u, '')
 }
 
+/**
+ * True when a path lies in or is a compiled artifact, cache, virtual
+ * environment, or dependency directory, or has a compiled-file suffix: the
+ * paths agents must not read or change.
+ */
 export function isProtectedWorkspacePath(value: string): boolean {
   const normalized = normalizeProtectedPath(value)
   const segments = normalized.split('/').filter(Boolean)
@@ -80,6 +86,7 @@ export function isProtectedWorkspacePath(value: string): boolean {
 export const PROTECTED_PATH_RULE =
   'You MUST NOT read, edit, create, delete, index, validate, or report compiled artifacts, caches, virtual environments, or third-party dependency/package directories (including .venv, venv, .pyenv, site-packages, node_modules, vendor, dist, build, coverage, __pycache__, and tool caches). They are outside agent remit even when present or changed.'
 
+/** Git exclude pathspecs that drop every protected directory and compiled-file suffix from a Git command. */
 export function protectedGitPathspecs(): string[] {
   const directories = [...PROTECTED_DIRECTORY_NAMES].map(
     (name) => `:(exclude,glob)**/${name}/**`,

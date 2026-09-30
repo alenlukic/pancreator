@@ -70,6 +70,18 @@ otherwise the request the card delivers, which is the ratified specification.
    plan amendment recorded during remediation, warning the verify stage routed
    to the operator inbox, and linked follow-up case; do not describe waived
    evidence, an amended criterion, or a demoted warning as an ordinary pass.
+   Record one `data.release.observations[]` entry for each criterion the
+   latest verify output marks `result: observe`. Each entry carries
+   `criterion`, `signal` (what confirms or refutes it), `source` (where the
+   signal lives), `window` (such as `7d`), and `check` (the exact command or
+   query). In self-development, name a harness source: run `events.jsonl`
+   advisories, `pan-run` shell records under `runtime/logs/shell/`, friction
+   intakes under `runtime/inbox/`, or `pan spend`. In an embedded or detached
+   installation, name the tool and query the primer's `## Observability`
+   section records. When the primer records none, name the harness source or
+   the manual check the operator runs. Write an empty array when verify
+   deferred no criterion. `pan observations` lists these items after ship,
+   and the harness technician audit resolves them.
 9. Summarize scope, changed files, validation performed, residual risks, and
    rollback guidance.
    Read the `Suite profile` section of this card when it exists. Carry its
@@ -121,7 +133,7 @@ A `blocked` result owes no release packet. Populate
 release and pull-request validators report not applicable on that result.
 
 Populate `data.release` (`summary`, `change_list`, `validation`, `rollback`,
-`waivers`, `follow_up_cases`, `governance_artifact_review`). The governance review MUST include `summary`, `issues_reviewed` (issue ids), `repairs`, and `escalations`; every issue in the required diagnostics index must have a recorded disposition.
+`waivers`, `follow_up_cases`, `observations`, `governance_artifact_review`). The governance review MUST include `summary`, `issues_reviewed` (issue ids), `repairs`, and `escalations`; every issue in the required diagnostics index must have a recorded disposition.
 For Pancreator self-development, also populate `data.release.versioning`
 (`current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
 `rationale`, `compatibility`, `updated_files`, `release_index_action`).

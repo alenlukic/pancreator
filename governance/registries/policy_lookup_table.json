@@ -593,6 +593,13 @@
       "policies": ["PLAN-002"]
     },
     {
+      "persona": "planner",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "delivery-candidate",
       "stage": "implement",
@@ -623,10 +630,24 @@
       "policies": ["REMED-001"]
     },
     {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
       "persona": "remediator-severe",
       "workflow": "delivery-candidate",
       "stage": "remediate",
       "policies": ["REMED-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
     },
     {
       "persona": "*",
@@ -676,6 +697,13 @@
       "workflow": "metacritic",
       "stage": "verify",
       "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
     },
     {
       "persona": "reviewer",
@@ -790,6 +818,13 @@
       "policies": ["REPAIR-001"]
     },
     {
+      "persona": "harness-technician",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
@@ -868,6 +903,34 @@
       "workflow": "standalone",
       "stage": "unbound",
       "policies": ["DELEGATE-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
     },
     {
       "persona": "coder",

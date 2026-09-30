@@ -103,6 +103,12 @@ function assertToolPolicy(value: Partial<OpenAiToolPolicy>): void {
   }
 }
 
+/**
+ * Parses and validates the JSON agent request: model, prompt, session id,
+ * transcript path, and a tool policy with workspace, read and write roots,
+ * and a non-empty allowed tool list. Throws a plain `Error` naming the
+ * problem.
+ */
 export function parseRequest(raw: string): OpenAiAgentRequest {
   const parsed: unknown = JSON.parse(raw)
 

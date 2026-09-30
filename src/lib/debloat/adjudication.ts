@@ -1,5 +1,5 @@
 import type { Facility } from './inventory.js'
-import type { FacilityUsage } from './usage.js'
+import type { FacilityUsage } from './usage/model.js'
 
 export type DeterministicVerdict = 'unused' | 'unclear' | 'retained'
 export type AgenticVerdict = 'remove' | 'keep'
@@ -67,6 +67,11 @@ export function assessCandidate(
   }
 }
 
+/**
+ * True when a candidate may enter the operator's selection: never when the
+ * scan retained it, always when the scan found it unused, and for an unclear
+ * candidate only when an agent adjudicated it `remove`.
+ */
 export function adjudicationAllowsSelection(
   assessment: CandidateAssessment,
   adjudication: AgenticAdjudication | undefined,

@@ -32,6 +32,7 @@ export interface PanWalkUpMatch {
   rootDir: string
 }
 
+/** The zsh and bash rc files under the home directory that the `pan` shell function is installed into. */
 export function shellRcCandidates(homeDir: string): ShellRcCandidate[] {
   return [
     { shell: 'zsh', path: path.join(homeDir, '.zshrc') },
@@ -39,6 +40,12 @@ export function shellRcCandidates(homeDir: string): ShellRcCandidate[] {
   ]
 }
 
+/**
+ * Walks up from the start directory to the nearest embedded installation's
+ * `pan` or a self-development checkout's `pan`, the same search the shell
+ * function performs, and returns the match or null. File access goes through
+ * the injected dependencies.
+ */
 export function resolvePanWalkUp(
   startDir: string,
   deps: PanWalkUpDependencies,
@@ -84,6 +91,7 @@ export function resolvePanWalkUp(
   return null
 }
 
+/** The marked shell rc block defining a `pan` function that runs the nearest installation's `pan` from the current directory upward. */
 export function buildPanFunctionBlock(): string {
   return [
     PAN_FUNCTION_BEGIN,
@@ -110,6 +118,7 @@ export function buildPanFunctionBlock(): string {
   ].join('\n')
 }
 
+/** Removes every current and legacy Pancreator `pan` block from rc file content, collapsing extra blank lines. */
 export function removePanShellBlocks(content: string): string {
   const patterns = [
     new RegExp(
@@ -131,6 +140,7 @@ export function removePanShellBlocks(content: string): string {
   return next.replace(/\n{3,}/gu, '\n\n').trimEnd()
 }
 
+/** Rc file content with any existing Pancreator blocks replaced by one current `pan` function block at the end. */
 export function upsertPanFunctionBlock(content: string): string {
   const withoutBlocks = removePanShellBlocks(content)
   const block = buildPanFunctionBlock()
@@ -144,12 +154,19 @@ export function upsertPanFunctionBlock(content: string): string {
   return `${withoutBlocks}${separator}\n${block}\n`
 }
 
+/** Number of current-format `pan` function blocks in rc file content. */
 export function countPanFunctionBlocks(content: string): number {
   const pattern = new RegExp(escapeRegExp(PAN_FUNCTION_BEGIN), 'gu')
 
   return (content.match(pattern) ?? []).length
 }
 
+/**
+ * Installs or refreshes the `pan` shell function block in the user's zsh and
+ * bash rc files (creating a missing file), leaving an already current file
+ * untouched. Reports updated and skipped paths; a write failure skips that
+ * file with a message instead of throwing.
+ */
 export function configureShellAlias(
   options: ConfigureShellAliasOptions = {},
 ): ConfigureShellAliasResult {

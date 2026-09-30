@@ -2,12 +2,17 @@ import path from 'node:path'
 
 import { readJson } from '../io.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
-import { validateTuneRecordShape } from '../test-tuning.js'
+import { validateTuneRecordShape } from '../test-tuning/shape.js'
 
 function issue(code: string, message: string) {
   return { code, message }
 }
 
+/**
+ * Validate a test tuning record file against the tune record shape, reporting
+ * each shape error as `tune-record.invalid`. Throws when the file is not valid
+ * JSON.
+ */
 export function validateTuneRecord(input: HandlerInput): HandlerResult {
   const absolute = path.isAbsolute(input.targetPath)
     ? input.targetPath

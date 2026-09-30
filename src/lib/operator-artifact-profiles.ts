@@ -1,4 +1,4 @@
-import type { BriefSection, OperatorBrief } from './briefs.js'
+import type { BriefSection, OperatorBrief } from './briefs/types.js'
 
 export const OPERATOR_ARTIFACT_PROFILE_HEADINGS = {
   intake: ['approach', 'user stories', 'constraints'],
@@ -301,6 +301,12 @@ const PROTOTYPE_PROFILES: Record<string, WorkflowOperatorArtifactProfile> = {
   evaluate: 'prototype-evaluation',
 }
 
+/**
+ * The operator artifact profile a stage's output uses. Prototype workflow
+ * stages resolve to their prototype profiles first; otherwise known stage
+ * slugs map to their profile (test to `qa`, ship to `release`) and any other
+ * stage to `implementation`.
+ */
 export function operatorArtifactProfileForStage(
   stageSlug: string,
   workflowSlug?: string,

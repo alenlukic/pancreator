@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import path from 'node:path'
 
-import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
+import { getRunState } from '../../src/lib/engine/run-status.js'
+import { prepareInvocation } from '../../src/lib/engine/prepare.js'
 import { loadWorkflowFile } from '../../src/lib/workflow.js'
 import {
   makeOutput,

@@ -25,7 +25,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "The harness MUST exclude archived workflow directories from active run discovery, and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently (`tests/unit/workflow-artifacts.test.ts::workflow archive moves runs older than retention into archive directories`).",
+      "text": "The harness MUST exclude archived workflow directories from active run discovery, and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently (`tests/unit/workflow-artifacts-maintenance.test.ts::workflow archive moves runs older than retention into archive directories`).",
       "audience": ["harness"]
     },
     {
@@ -33,11 +33,11 @@
       "audience": ["harness"]
     },
     {
-      "text": "Worker-authored helper scripts under runtime/logs/workflows/<run-id>/scripts/ MUST survive the closing of their run, because a closed run is still being read. The pan archive retention pass MUST remove them, rather than finalization (`tests/unit/workflow-artifacts.test.ts::retention sweeps run-local worker scripts and finalization keeps them`).",
+      "text": "Worker-authored helper scripts under runtime/logs/workflows/<run-id>/scripts/ MUST survive the closing of their run, because a closed run is still being read. The pan archive retention pass MUST remove them, rather than finalization (`tests/unit/workflow-artifacts-maintenance.test.ts::retention sweeps run-local worker scripts and finalization keeps them`).",
       "audience": ["harness"]
     },
     {
-      "text": "Terminal renumbering of invocation prefixes MUST leave a resolvable alias under the run directory, from each superseded invocation id to the current one. A citation written while the run was live then still resolves after it closes (`tests/unit/workflow-artifacts.test.ts::finalization leaves an alias from every in-flight invocation prefix to its final one`).",
+      "text": "Terminal renumbering of invocation prefixes MUST leave a resolvable alias under the run directory, from each superseded invocation id to the current one. A citation written while the run was live then still resolves after it closes (`tests/unit/workflow-artifacts-finalization.test.ts::finalization leaves an alias from every in-flight invocation prefix to its final one`).",
       "audience": ["harness"]
     },
     {

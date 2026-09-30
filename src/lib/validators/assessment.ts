@@ -18,6 +18,14 @@ function expectedJudgmentCriterionIds(
   )
 }
 
+/**
+ * Validate a supervisor assessment file: each criterion needs a unique id, a
+ * non-empty explanation, and evidence; when the invocation's rubric has
+ * judgment criteria, the assessment must cover exactly those ids; and the
+ * verdict must agree with the criterion results (`pass` with no failure, `fail`
+ * or `escalate` with at least one). Raises `assessment.*` codes; `invalid` when
+ * the file is not an object.
+ */
 export function validateAssessment(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(`${input.root}/${input.targetPath}`) as Record<

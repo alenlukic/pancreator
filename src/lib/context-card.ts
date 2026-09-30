@@ -1,6 +1,6 @@
 import { invariant } from './errors.js'
 import { fileExists, isRecord, readJson, resolveInside } from './io.js'
-import { renderInvocationMarkdown } from './render.js'
+import { renderInvocationMarkdown } from './render/invocation-markdown.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadState } from './state.js'
 import type { Invocation } from './types.js'

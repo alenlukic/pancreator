@@ -26,8 +26,9 @@ the irreversible action. It makes the decision easy and safe.
 
 ## Checks before proposing
 
-- Review and QA passed against the current workspace fingerprint. If evidence is
-  stale, stop and report it.
+- Review, and QA when the verify invocation launched it (see
+  `evidence_worker_skips`), passed against the current workspace fingerprint.
+  If evidence is stale, stop and report it.
 - The proposed commit/PR text matches the actual change and does not overstate.
 
 ## Boundaries

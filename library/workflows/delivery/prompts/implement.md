@@ -17,6 +17,9 @@ acceptance criterion.
    ecosystem commands.
 3. Implement the plan within its declared scope. Prefer existing abstractions;
    do not add structure the plan did not call for.
+   When a plan file entry lists `symbols`, look them up in the function index
+   (`docs/function-index/`) when the repository carries one, and open the
+   source at the `file:line` each entry gives.
 4. Add or update tests that prove the changed behavior. Do not weaken, skip,
    or delete existing tests to make the change pass; a needed test change must
    be disclosed in the notes with its reason.
@@ -30,14 +33,21 @@ acceptance criterion.
    reaches). In a target installation, use the target's `impacted` profile
    from `runtime/repository-checks.json`. Only when no `impacted` profile is
    declared, pick the tests in the immediate blast radius yourself from the
-   target's documented entry points. Static checks are cheap; run them freely.
-6. When you believe the change is complete, run the configured `fast` profile
-   once, as the final validation. Fix each failure, then re-run only the
-   impacted selection, the failing tests, and the tests you added. Do not run
-   `fast` earlier and do not run it a second time; the verify stage catches
-   what slips.
-7. On a retry attempt that changed only output claims or evidence, do not run
-   any suite. Cite the prior run's evidence instead.
+   target's documented entry points. Run each profile through the compact
+   wrappers and follow the output and tool habits that `DEV-001` on your card
+   states. Static checks are cheap. Run them freely.
+6. The gates own the suites. Do not run the `fast` profile or the integration
+   lane yourself. When the impacted selection, your new tests, and the static
+   checks pass, submit. The implement exit gate runs the stage's declared gate
+   profiles, which the card lists, and a failure returns the stage to you with
+   its log. This saves worker turns and context. The gate reruns every
+   profile anyway.
+7. On a retry, read the handoff artifact the card lists first. It carries
+   the previous worker's notes and the files and lines it read and edited, so
+   open those files at those lines instead of exploring again. After a gate
+   failure, also start from the failing gate's log that the card lists. Fix the cause, re-run the impacted selection and the failing
+   tests, then submit. On a retry that changed only output claims or
+   evidence, do not run any suite. Cite the prior run's evidence instead.
 8. Map evidence to every acceptance criterion honestly. Report a criterion you
    could not satisfy as unmet; do not claim unsupported completion.
 
@@ -58,10 +68,16 @@ non-empty `evidence` (paths, commands, or observations) for the gap. Do not
 claim implementation fields for blocked work. When you edited tracked files
 before you stopped, list every such path in top-level `workspace_changes.paths`
 with `attribution: internal`; the claims validator reconciles that list against
-the Git delta. Follow the card's `output.operator_brief` contract.
+the Git delta. Also populate `data.implementation.handoff` for whoever works on this change
+next: `start_here` (`{ path, symbol_or_lines, why }`, where a follow-up worker
+should begin), `symbols_changed` (`{ path, symbol, lines, note }`),
+`decisions` (one line each), and `untested` (what you did not prove). Keep it
+short. A retry or a remediation receives it together with the harness's
+reading map of your transcript. Follow the card's `output.operator_brief`
+contract.
 
 ## Done when
 
-The plan is implemented within scope, the static checks pass, the single
-validation run of the `fast` profile passed, tests prove the changed behavior,
-and every acceptance criterion has an honest evidence-backed result.
+The plan is implemented within scope, the static checks, the impacted
+selection, and your new tests pass, tests prove the changed behavior, and
+every acceptance criterion has an honest evidence-backed result.

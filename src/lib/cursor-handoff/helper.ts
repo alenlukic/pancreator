@@ -45,6 +45,7 @@ export function helperBinaryRelative(sourceDigest: string): string {
 // Platform check
 // ---------------------------------------------------------------------------
 
+/** True when the platform (the current process's by default) is macOS. */
 export function isMacOS(platform = process.platform): boolean {
   return platform === 'darwin'
 }

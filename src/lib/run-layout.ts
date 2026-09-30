@@ -43,6 +43,7 @@ function joinRepoPath(root: string, ...segments: string[]): RunPath {
   return repoPath(root, path.posix.join(...segments))
 }
 
+/** Root-relative directory of a workflow run, `runtime/logs/workflows/<run-id>`. */
 export function runRootRelative(runId: string): string {
   return `runtime/logs/workflows/${runId}`
 }
@@ -119,6 +120,7 @@ export function prefetchRecordPath(
   )
 }
 
+/** First prefetch attempt ordinal for the profile whose marker file is not yet taken in the run's evidence directory. */
 export function nextPrefetchAttempt(
   root: string,
   runId: string,
@@ -219,6 +221,12 @@ export function evidenceWorkerAttemptPaths(
   }
 }
 
+/**
+ * Every path of one run's records, absolute and root-relative, for the given
+ * layout version (detected from the files on disk by default): the v2 split
+ * into agent and operator directories, or the flat v1 layout. Creates
+ * nothing.
+ */
 export function resolveRunLayout(
   root: string,
   runId: string,

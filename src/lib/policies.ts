@@ -47,6 +47,10 @@ interface PolicyContext {
   operator_artifacts?: 'requested' | 'suppressed'
 }
 
+/**
+ * Return the ids of the languages detected in the workspace at `root`, the
+ * technology set lookup rows with a `technology` field match against.
+ */
 export function detectWorkspaceTechnologies(root: string): Set<string> {
   return new Set(
     detectTechnologies(root).languages.map((language) => language.id),
@@ -791,6 +795,15 @@ export function loadPolicySources(root: string): LoadedPolicySources {
   }
 }
 
+/**
+ * Resolve the policies for one invocation context: union the policy ids of
+ * every lookup row whose persona, workflow, and stage match (with `*` as a
+ * wildcard) and whose installation scope, technology, contract,
+ * operator-artifact, and long-horizon filters hold, then return the policy
+ * objects sorted by id. Rows generated for a target are skipped in
+ * self-development. Throws `PanError` `MISSING_POLICY` when a row names a
+ * policy the catalog lacks.
+ */
 export function resolvePolicies(
   root: string,
   context: PolicyContext,
@@ -858,6 +871,13 @@ export function resolvePolicies(
   })
 }
 
+/**
+ * Read and validate the policy lookup table with its `policy_lookup.d`
+ * extensions. Throws `PanError` with an `INVALID_POLICY_LOOKUP`,
+ * `INVALID_POLICY_EXTENSION`, `DUPLICATE_*`, `STALE_POLICY_EXTENSION`, or
+ * `MISSING_POLICY` code when the table or an extension is malformed or
+ * inconsistent with the policy catalog.
+ */
 export function readPolicyLookupTable(root: string): PolicyLookupTable {
   return loadLookupTable(root)
 }

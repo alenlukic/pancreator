@@ -1,8 +1,6 @@
-import {
-  createRun as createEngineRun,
-  submitOutput,
-} from '../src/lib/engine.js'
-import type { OperationProgressOptions } from '../src/lib/engine.js'
+import { createRun as createEngineRun } from '../src/lib/engine/create-run.js'
+import { submitOutput } from '../src/lib/engine/submit.js'
+import type { OperationProgressOptions } from '../src/lib/engine/core.js'
 import { loadState } from '../src/lib/state.js'
 
 import { attestForegroundReturn, attestRunCard } from './helpers.js'

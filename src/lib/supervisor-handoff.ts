@@ -20,7 +20,7 @@ import {
 } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadState, now, operationMutexPath, persist } from './state.js'
-import { runHasLiveWatch } from './watch.js'
+import { runHasLiveWatch } from './watch/session.js'
 import type { RunState, RunStatus, SupervisorHandoffRecord } from './types.js'
 
 // ---------------------------------------------------------------------------
@@ -107,6 +107,7 @@ export function checkHandoffEligibility(
 // Record helpers
 // ---------------------------------------------------------------------------
 
+/** The run's most recent supervisor handoff record, or null when it has none. */
 export function latestHandoffRecord(
   state: RunState,
 ): SupervisorHandoffRecord | null {
@@ -510,6 +511,7 @@ export interface HandoffStatusEntry {
   aborted_code?: string
 }
 
+/** Status summary of the run's most recent supervisor handoff (ids, state, model, timestamps, and paths that are set), or null when it has none. */
 export function latestHandoffStatus(
   state: RunState,
 ): HandoffStatusEntry | null {

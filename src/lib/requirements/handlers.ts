@@ -1,13 +1,13 @@
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
+import { expectedDelegationSource } from '../validation/artifacts.js'
 import {
-  expectedDelegationSource,
   validateDelegationMarkdown,
-  validateInvocationAttestation,
   validateInvocationMarkdown,
-  validateQuestionToolAccess,
-} from '../validation.js'
+} from '../validation/invocation-markdown.js'
+import { validateInvocationAttestation } from '../validation/attestation.js'
+import { validateQuestionToolAccess } from '../validation/governance.js'
 import { loadRegistry, validateRegistry } from './registry.js'
 import { auditDirectives } from '../governance/audit-directives.js'
 import { validateProjectionDrift } from '../projection.js'
@@ -274,6 +274,10 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))
 
+/**
+ * Return the validator handler registered under a handler id, or undefined when
+ * the id is unknown.
+ */
 export function getHandler(handlerId: string): ValidatorHandler | undefined {
   return HANDLERS[handlerId]
 }

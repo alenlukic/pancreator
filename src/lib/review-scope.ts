@@ -40,6 +40,7 @@ export const REVIEW_MACHINERY_PATTERNS = [
   'src/lib/review-dimensions.ts',
   'src/lib/review-scope.ts',
   'src/lib/governance-card.ts',
+  'src/lib/governance-card/*',
   'src/lib/pan-command-grammar.ts',
   'src/lib/policies.ts',
   'src/lib/policy-guidance.ts',
@@ -57,22 +58,32 @@ export const MACHINERY_TEST_PATTERNS: readonly string[] =
 /** Paths the reviewer trusts when it verifies a finding or a green result. */
 export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
   'src/lib/validation.ts',
+  'src/lib/validation/*',
   'src/lib/validators/*',
   'src/lib/requirements/*',
   'src/lib/governance/*',
   'src/lib/gate-cache.ts',
   'src/lib/git.ts',
+  'src/lib/git/*',
   'src/lib/worktrees.ts',
+  'src/lib/worktree/*',
   'src/lib/projection.ts',
   'src/lib/cursor-content.ts',
   'tests/helpers.ts',
   'tests/*/*helpers.ts',
   ...MACHINERY_TEST_PATTERNS,
+  'src/lib/repository-checks.ts',
+  'src/lib/repository-checks/*',
+  'src/lib/check-output.ts',
+  'src/lib/test-impact.ts',
+  'src/lib/test-impact/*',
   'bin/run-quiet',
   'bin/run-built',
+  'bin/run-tests',
   'bin/check',
   'bin/build',
   'bin/lint',
+  'bin/check-shell',
   'bin/install',
   'library/templates/repository-checks*',
   'governance/registries/directive_exemptions.json',
@@ -82,8 +93,22 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
 ]
 
 /**
- * Return the review-mode entry points of `src/cli.ts`: the `governance` case,
- * the `commaSeparatedOption` helper that parses `--dimensions`, and the help
+ * The CLI files that hold review-mode entry points: the dispatcher routes the
+ * `governance` command, `src/cli/governance.ts` holds its handler, and
+ * `src/cli/args.ts` holds the `commaSeparatedOption` parser of `--dimensions`.
+ * `cliGovernanceBlock` slices each file the same way, so an entry point that
+ * moves between these files still reads as a change on both sides.
+ */
+export const CLI_GOVERNANCE_ENTRY_PATHS = [
+  'src/cli.ts',
+  'src/cli/governance.ts',
+  'src/cli/args.ts',
+] as const
+
+/**
+ * Return the review-mode entry points of one CLI source file: the
+ * `governance` case of the dispatcher, the `governanceCommand` handler, the
+ * `commaSeparatedOption` helper that parses `--dimensions`, and the help
  * stanzas that state the `governance card` and `governance review-scope`
  * contracts. The rest of the file is not review machinery.
  */
@@ -94,6 +119,7 @@ export function cliGovernanceBlock(text: string | null): string | null {
 
   const parts = [
     cliCaseBlock(text, 'governance'),
+    cliFunctionBlock(text, 'governanceCommand'),
     cliFunctionBlock(text, 'commaSeparatedOption'),
     cliHelpStanzas(text, [
       'pan governance card',
@@ -104,9 +130,9 @@ export function cliGovernanceBlock(text: string | null): string | null {
   return parts.length === 0 ? null : parts.join('\n')
 }
 
-/** One `case '<name>': {` block of the CLI dispatcher, up to the next case. */
+/** One `case '<name>':` clause of the CLI dispatcher, up to the next case. */
 function cliCaseBlock(text: string, name: string): string | null {
-  const start = text.indexOf(`case '${name}': {`)
+  const start = text.indexOf(`case '${name}':`)
 
   if (start === -1) {
     return null
@@ -117,11 +143,17 @@ function cliCaseBlock(text: string, name: string): string | null {
   return next === -1 ? text.slice(start) : text.slice(start, next)
 }
 
-/** One top-level `function <name>(` body, up to its closing brace. */
+/**
+ * One top-level `function <name>(` body, exported or async or not, up to its
+ * closing brace.
+ */
 function cliFunctionBlock(text: string, name: string): string | null {
-  const start = text.indexOf(`\nfunction ${name}(`)
+  const start = new RegExp(
+    `\\n(?:export )?(?:async )?function ${name}\\(`,
+    'u',
+  ).exec(text)?.index
 
-  if (start === -1) {
+  if (start === undefined) {
     return null
   }
 
@@ -162,7 +194,7 @@ function cliHelpStanzas(
   return selected.length === 0 ? null : selected.join('\n')
 }
 
-/** True when the change edits the governance entry points of `src/cli.ts`. */
+/** True when the change edits the governance entry points of a CLI file. */
 export function cliGovernanceBlocksChanged(
   baseText: string | null,
   headText: string | null,
@@ -234,6 +266,13 @@ export function reviewMachineryConflicts(changedPaths: string[]): string[] {
   return [...new Set(conflicts)].sort()
 }
 
+/**
+ * Build the governance closure a review card depends on: the policy files and
+ * guidance sources resolved for the reviewer and shepherd-reviewer personas in
+ * standalone review mode, the persona and projected agent files, and the lookup
+ * and projection registries. A change to any of these paths conflicts with an
+ * independent review.
+ */
 export function buildReviewClosure(root: string): ReviewClosure {
   const policies: Record<string, string> = {}
   const guidance: Record<string, string> = {}
@@ -269,6 +308,13 @@ export function buildReviewClosure(root: string): ReviewClosure {
   }
 }
 
+/**
+ * Classify changed paths against the review closure and return one conflict per
+ * path with its tier and source: `instrument` for review machinery and review
+ * personas, `conduct` for policies, guidance, and registries on the review
+ * card, and `substrate` for verification substrate. Paths outside every tier
+ * are omitted.
+ */
 export function classifyReviewPaths(
   changedPaths: string[],
   closure: ReviewClosure,
@@ -712,18 +758,20 @@ export function resolveReviewScope(
     buildReviewClosure(resolvedClosureRoot),
   )
 
-  if (
-    changedPaths.includes('src/cli.ts') &&
-    cliGovernanceBlocksChanged(
-      gitShowFile(resolvedTargetRoot, base, 'src/cli.ts'),
-      gitShowFile(resolvedTargetRoot, head, 'src/cli.ts'),
-    )
-  ) {
-    conflicts.push({
-      path: 'src/cli.ts',
-      tier: 'instrument',
-      source: 'governance card or review-scope entry point changed',
-    })
+  for (const cliPath of CLI_GOVERNANCE_ENTRY_PATHS) {
+    if (
+      changedPaths.includes(cliPath) &&
+      cliGovernanceBlocksChanged(
+        gitShowFile(resolvedTargetRoot, base, cliPath),
+        gitShowFile(resolvedTargetRoot, head, cliPath),
+      )
+    ) {
+      conflicts.push({
+        path: cliPath,
+        tier: 'instrument',
+        source: 'governance card or review-scope entry point changed',
+      })
+    }
   }
 
   if (
@@ -774,6 +822,10 @@ function tierRank(tier: ConflictTier): number {
   return tier === 'instrument' ? 0 : tier === 'conduct' ? 1 : 2
 }
 
+/**
+ * Group review conflicts by tier into `instrument`, `conduct`, and `substrate`
+ * lists, preserving input order.
+ */
 export function conflictsByTier(
   conflicts: ReviewConflict[],
 ): Record<ConflictTier, ReviewConflict[]> {

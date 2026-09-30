@@ -23,11 +23,21 @@ the whole artifact before any source changes.
    concerns, and validation methods.
 6. Write acceptance criteria with ids (`AC-*`). Map each criterion back to a
    user story and forward to a verification method with an expected result.
-7. Write the test plan: for each acceptance criterion, at least one concrete
-   verification case a later stage can execute against the workspace without
-   editing source. State the setup, the action, and the expected observation.
-   The verify stage executes these cases independently of the implementer, so
-   write them against observable behavior, not implementation internals.
+   Tag each criterion with exactly one `proof` type:
+   - `live`: the criterion changes a browser or app surface, so QA must check
+     it live.
+   - `observe`: it needs an operator's live observation or a production signal
+     after ship. Verify defers it.
+   - `test`: a gate lane can prove it. Prefer `test` whenever one can.
+   - `review`: reading the code proves it, such as structure, wording, or docs.
+7. Write the test plan for the `live` criteria only: for each one, at least one
+   concrete verification case a later stage can execute against the workspace
+   without editing source. State the setup, the action, and the expected
+   observation. QA runs only for `live` criteria and executes these cases
+   independently of the implementer, so write them against observable
+   behavior, not implementation internals. A `test`, `review`, or `observe`
+   criterion needs no case: gate evidence, the review, or a post-ship signal
+   proves it.
 
 ## Output
 
@@ -38,8 +48,12 @@ Populate `data.product_spec` (`summary`, `user_stories`, `constraints`,
 states the question `id`, a `disposition` of `resolved`, `deferred`, or
 `escalated`, an `answer` naming the answer or the decision still required, and
 `evidence`, which is required and must be non-empty for a resolved question.
-Each test-plan entry states `id`, the acceptance criterion it verifies
-(`criterion`), `setup`, `action`, and `expected`. A test-plan case must not run
+Each acceptance criterion states `id`, `maps_to`, `verification` (`method`,
+`expected`), and `proof`, and the validator rejects a criterion without a valid
+`proof` with `plan.proof_missing`. Each test-plan entry states `id`, the `live`
+acceptance criterion it verifies (`criterion`), `setup`, `action`, and
+`expected`, and the validator rejects a `live` criterion without a case with
+`plan.live_case_missing`. A test-plan case must not run
 a configured repository-check profile command or `pan repository-check
 <profile>`. The gates run those profiles, and the validator rejects such a case
 with `plan.case_reruns_profile`. Follow the card's `output.operator_brief` contract.
@@ -53,6 +67,6 @@ the change.
 
 The specification faithfully covers the request, every open question has a
 recorded disposition whose resolutions rest on cited evidence, every
-requirement maps to a testable acceptance criterion, every criterion has an
-executable test-plan case, the plan needs no further architectural decisions,
-and it minimizes new structure.
+requirement maps to a testable acceptance criterion with one proof type,
+every `live` criterion has an executable test-plan case, the plan needs no
+further architectural decisions, and it minimizes new structure.

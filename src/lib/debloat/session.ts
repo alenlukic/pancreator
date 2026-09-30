@@ -38,6 +38,11 @@ export function newSessionId(now = new Date()): string {
   return `${stamp}-${randomUUID().replace(/-/gu, '').slice(0, 6)}`
 }
 
+/**
+ * Absolute and repository-relative paths of every artifact in one debloat
+ * session directory. Creates nothing. Throws `DEBLOAT_SESSION_INVALID` when
+ * the session id does not match the session id pattern.
+ */
 export function sessionPaths(
   root: string,
   sessionId: string,

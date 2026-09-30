@@ -49,7 +49,8 @@ Work the phases in this order.
 
 ## Check ordering
 
-`DEV-001` on the active card permits exactly one `fast` run as final validation.
+`DEV-001` gives the suites to a stage exit gate, and this runless session has
+none. `DEV-001` therefore requires exactly one `fast` run as final validation.
 Iterate on the `impacted` selection after each fix cycle, run the `fast` profile
 once when the work looks complete, and after a failure of that run re-run only
 the impacted selection, the failing tests, and the tests the session added.

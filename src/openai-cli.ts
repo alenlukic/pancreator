@@ -181,6 +181,12 @@ export function readStdin(): string {
   }
 }
 
+/**
+ * Runs the OpenAI CLI: prints usage for `--help`, key readiness for
+ * `--doctor`, or sends the prompt (from `--prompt` or stdin) as one Responses
+ * API request and writes the output text, or the raw response with `--json`.
+ * Returns the process exit code; errors are written, not thrown.
+ */
 export async function runOpenAiCli(
   argv: string[],
   cwd: string,

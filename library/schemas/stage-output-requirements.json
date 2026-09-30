@@ -19,6 +19,7 @@
             "data.acceptance_criteria[].verification",
             "data.acceptance_criteria[].verification.method",
             "data.acceptance_criteria[].verification.expected",
+            "data.acceptance_criteria[].proof",
             "data.engineering_plan.files[]",
             "data.engineering_plan.files[].path",
             "data.engineering_plan.files[].status",
@@ -77,6 +78,12 @@
           "type": "string"
         },
         {
+          "path": "data.acceptance_criteria[].proof",
+          "type": "string",
+          "enum": ["test", "review", "live", "observe"],
+          "format": "how the criterion is proven: test (a gate lane), review (reading the code), live (a browser or app check QA runs), or observe (a signal after ship). A criterion that changes a browser or app surface is live; one that needs an operator's live observation or a production signal is observe; prefer test when a gate lane can prove it; use review for structure, wording, and docs"
+        },
+        {
           "path": "data.engineering_plan.files[]",
           "type": "object",
           "required": ["path", "status", "purpose"],
@@ -96,9 +103,14 @@
           "type": "string"
         },
         {
+          "path": "data.engineering_plan.files[].symbols[]",
+          "type": "string",
+          "format": "optional; each exported symbol the change touches or adds in this file, named as the function index names it"
+        },
+        {
           "path": "data.test_plan[]",
           "type": "object",
-          "format": "focused scenario; setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
+          "format": "focused scenario for a live criterion, naming it in criterion; every live criterion needs at least one case, and test, review, and observe criteria need none. Setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
         },
         {
           "path": "data.open_question_dispositions[].id",
@@ -156,7 +168,15 @@
             "data.blocked",
             "data.blocked.missing_precondition",
             "data.blocked.supplying_command",
-            "data.blocked.evidence[]"
+            "data.blocked.evidence[]",
+            "data.implementation.handoff",
+            "data.implementation.handoff.symbols_changed[]",
+            "data.implementation.handoff.symbols_changed[].path",
+            "data.implementation.handoff.symbols_changed[].symbol",
+            "data.implementation.handoff.start_here[]",
+            "data.implementation.handoff.start_here[].path",
+            "data.implementation.handoff.decisions[]",
+            "data.implementation.handoff.untested[]"
           ]
         }
       ],
@@ -254,6 +274,45 @@
           "path": "data.blocked.evidence[]",
           "type": "string",
           "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
+        },
+        {
+          "path": "data.implementation.handoff",
+          "type": "object",
+          "format": "optional notes for the next worker on this change: start_here, symbols_changed, decisions, untested"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[]",
+          "type": "object",
+          "required": ["path", "symbol"],
+          "format": "{ path, symbol, lines, note }: a symbol this attempt changed; path MUST be a changed_files entry"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[]",
+          "type": "object",
+          "required": ["path"],
+          "format": "{ path, symbol_or_lines, why }: where a follow-up worker should begin"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.decisions[]",
+          "type": "string",
+          "format": "one decision and its reason"
+        },
+        {
+          "path": "data.implementation.handoff.untested[]",
+          "type": "string",
+          "format": "one behavior this attempt did not prove"
         }
       ]
     },
@@ -329,7 +388,7 @@
         {
           "path": "data.verify.qa_cases[].id",
           "type": "string",
-          "format": "non-empty stable QA case identifier"
+          "format": "non-empty stable QA case identifier. data.verify.qa_cases is required and non-empty only on a visit that runs QA: the card lists a qa evidence worker or a scoped return assigns the qa dimension"
         },
         {
           "path": "data.verify.qa_cases[].expected",
@@ -373,7 +432,7 @@
         {
           "path": "data.verify.acceptance_results[].result",
           "type": "string",
-          "format": "non-empty result for the criterion, such as pass or fail"
+          "format": "non-empty result for the criterion, such as pass or fail. observe defers a criterion whose proof is observe to a signal after ship; it does not count as a failure and does not block the verdict, and it is refused for a criterion whose declared proof is another type"
         },
         {
           "path": "data.verify.gate_evidence_citations[]",
@@ -460,7 +519,15 @@
             "data.blocked",
             "data.blocked.missing_precondition",
             "data.blocked.supplying_command",
-            "data.blocked.evidence[]"
+            "data.blocked.evidence[]",
+            "data.implementation.handoff",
+            "data.implementation.handoff.symbols_changed[]",
+            "data.implementation.handoff.symbols_changed[].path",
+            "data.implementation.handoff.symbols_changed[].symbol",
+            "data.implementation.handoff.start_here[]",
+            "data.implementation.handoff.start_here[].path",
+            "data.implementation.handoff.decisions[]",
+            "data.implementation.handoff.untested[]"
           ]
         }
       ],
@@ -558,6 +625,45 @@
           "path": "data.blocked.evidence[]",
           "type": "string",
           "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
+        },
+        {
+          "path": "data.implementation.handoff",
+          "type": "object",
+          "format": "optional notes for the next worker on this change: start_here, symbols_changed, decisions, untested"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[]",
+          "type": "object",
+          "required": ["path", "symbol"],
+          "format": "{ path, symbol, lines, note }: a symbol this attempt changed; path MUST be a changed_files entry"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[]",
+          "type": "object",
+          "required": ["path"],
+          "format": "{ path, symbol_or_lines, why }: where a follow-up worker should begin"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.decisions[]",
+          "type": "string",
+          "format": "one decision and its reason"
+        },
+        {
+          "path": "data.implementation.handoff.untested[]",
+          "type": "string",
+          "format": "one behavior this attempt did not prove"
         }
       ]
     },
@@ -594,6 +700,12 @@
             "data.release.validation[].workspace_fingerprint",
             "data.release.validation[].evidence_path",
             "data.release.deferred_acceptance_criteria[]",
+            "data.release.observations[]",
+            "data.release.observations[].criterion",
+            "data.release.observations[].signal",
+            "data.release.observations[].source",
+            "data.release.observations[].window",
+            "data.release.observations[].check",
             "data.release.follow_up_cases[]",
             "data.release.follow_up_cases[].id",
             "data.release.follow_up_cases[].evidence[]",
@@ -762,6 +874,37 @@
           "path": "data.release.deferred_acceptance_criteria[]",
           "type": "string",
           "format": "acceptance criterion id deferred by the run; every criterion the run state defers MUST appear"
+        },
+        {
+          "path": "data.release.observations[]",
+          "type": "object",
+          "required": ["criterion", "signal", "source", "window", "check"],
+          "format": "one entry per acceptance criterion the latest verify output deferred to post-ship observation (result observe); an empty array or an absent field is valid when verify deferred none. `pan observations` lists these items and the harness technician audit resolves them"
+        },
+        {
+          "path": "data.release.observations[].criterion",
+          "type": "string",
+          "format": "acceptance criterion id the verify result deferred, such as AC-003"
+        },
+        {
+          "path": "data.release.observations[].signal",
+          "type": "string",
+          "format": "the observable signal that confirms or refutes the criterion after ship"
+        },
+        {
+          "path": "data.release.observations[].source",
+          "type": "string",
+          "format": "where the signal lives: in self-development, run events.jsonl advisories, pan-run shell records under runtime/logs/shell, friction intakes under runtime/inbox, or pan spend; in an embedded or detached installation, the observability tool the primer's Observability section names"
+        },
+        {
+          "path": "data.release.observations[].window",
+          "type": "string",
+          "format": "how long to watch after ship, as <n>h, <n>d, or <n>w, such as 7d"
+        },
+        {
+          "path": "data.release.observations[].check",
+          "type": "string",
+          "format": "the exact command or query an operator or agent runs against the source to check the signal"
         },
         {
           "path": "data.release.follow_up_cases[]",

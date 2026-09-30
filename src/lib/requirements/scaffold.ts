@@ -182,6 +182,13 @@ export interface StageOutputScaffoldResult {
   output: StageOutput
 }
 
+/**
+ * Write a stage output scaffold for an invocation to `outputPath`: empty
+ * summary, declared artifacts, one `unevaluated` entry per rubric criterion,
+ * required data slots, and a `pending` contract attestation, and return it.
+ * Returns `already_scaffolded` without writing when the file holds an untouched
+ * scaffold. Throws when the file already holds work and `force` is false.
+ */
 export function scaffoldStageOutput(
   root: string,
   invocation: Invocation,
@@ -315,6 +322,11 @@ export function scaffoldStageOutput(
   return { status: 'scaffolded', output: scaffold }
 }
 
+/**
+ * Write an assessment scaffold for an invocation to `assessmentPath` with a
+ * `pass` verdict and one `not_applicable` entry per judgment criterion, and
+ * return it. Throws when a non-empty file exists and `force` is false.
+ */
 export function scaffoldAssessment(
   root: string,
   invocationId: string,
@@ -354,6 +366,12 @@ export function scaffoldAssessment(
   return scaffold
 }
 
+/**
+ * Read the invocation JSON snapshot at a root-relative path. Throws `PanError`
+ * `INVOCATION_ARTIFACT_TYPE`, naming the sibling snapshot when one exists, for
+ * a path that does not end in `.json`, and an `Error` when the file is not a
+ * JSON object.
+ */
 export function readInvocationFromPath(
   root: string,
   invocationPath: string,

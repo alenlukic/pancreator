@@ -81,6 +81,18 @@ function normalizeRelativeStateRoot(stateRoot: string): string {
   return collapsed
 }
 
+/**
+ * Resolves the canonical installation, workspace, and state roots, the
+ * tracking include and exclude globs (auto-excluding VCS directories and the
+ * state and installation roots when they sit inside the workspace), the
+ * workspace id, and a scope hash. Creates the state root when missing.
+ *
+ * Throws `WORKSPACE_NOT_FOUND` when the workspace is not a directory,
+ * `PATH_ESCAPE` when a relative state root leaves the installation root, and
+ * `INVALID_STATE_ROOT` or a plain error when the state root is not a writable
+ * directory. The state root comes from the option, `PANCREATOR_STATE_ROOT`,
+ * the project config, or the default, in that order.
+ */
 export function resolveRoots(options: ResolveRootsOptions): ResolvedRoots {
   const installationRoot = canonicalize(options.installation_root)
   const workspaceRootCandidate = path.isAbsolute(options.workspace_root)
@@ -180,6 +192,11 @@ export function resolveRoots(options: ResolveRootsOptions): ResolvedRoots {
   }
 }
 
+/**
+ * Slash-separated, normalized form of a workspace-relative path. Throws
+ * `INVALID_PATH` when empty and `PATH_ESCAPE` when absolute, the workspace
+ * root itself, or above it.
+ */
 export function normalizeWorkspacePath(relativePath: string): string {
   const normalized = relativePath.split(path.sep).join('/')
 
@@ -206,6 +223,11 @@ export function normalizeWorkspacePath(relativePath: string): string {
   return collapsed
 }
 
+/**
+ * Absolute path of a workspace-relative path. Throws `PATH_ESCAPE` when the
+ * path, or the symlink-resolved location of its existing part, leaves the
+ * workspace root; a symlink itself is checked by its parent directory.
+ */
 export function resolveWorkspacePath(
   roots: ResolvedRoots,
   relativePath: string,
@@ -268,6 +290,7 @@ function pathSegments(relativePath: string): string[] {
   return relativePath.split('/').filter((segment) => segment.length > 0)
 }
 
+/** True when any segment of the path is a generated directory name (`node_modules`, `dist`, or `coverage`). */
 export function containsNestedGeneratedDirectory(
   workspaceRelativePath: string,
 ): boolean {
@@ -346,6 +369,12 @@ function matchGlobSegments(
   )
 }
 
+/**
+ * True when a workspace-relative path matches a tracking glob: an exact path,
+ * a `prefix/**` subtree, or segment-wise matching where `*` matches within a
+ * segment and `**` across segments. An empty pattern never matches; throws
+ * like `normalizeWorkspacePath` on an invalid path.
+ */
 export function matchWorkspaceGlob(
   pattern: string,
   workspaceRelativePath: string,
@@ -391,6 +420,7 @@ export function matchWorkspaceGlob(
   return matchGlobSegments(patternSegments, pathSegmentsList, 0, 0)
 }
 
+/** True when the path contains a generated directory or matches one of the roots' exclude globs. */
 export function isExcludedPath(
   roots: ResolvedRoots,
   workspaceRelativePath: string,

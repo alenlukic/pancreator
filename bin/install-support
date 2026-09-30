@@ -72,8 +72,11 @@ const CURSOR_PROJECTION_TOKENS = {
   cliPath: '{{PANCREATOR_CLI_PATH}}',
 }
 const UNRESOLVED_PROJECTION_TOKEN = /\{\{PANCREATOR_[A-Z_]+\}\}/gu
-const GUIDANCE_DIGEST_BASIS =
-  'SHA-256 of the selected text after leading and trailing whitespace is trimmed.'
+// Kept in sync with GUIDANCE_DIGEST_OWNERSHIP in src/lib/policy-guidance.ts.
+const GUIDANCE_DIGEST_OWNERSHIP =
+  'The harness computed this digest when it wrote the card. Read the source ' +
+  'file directly and do not recompute the digest. Read the selection from ' +
+  'the invocation JSON snapshot only when the source is missing or unreadable.'
 
 // Installer-time mirror of src/lib/cursor-content.ts. The installer runs before
 // the staged payload is built, so it cannot import the compiled module.
@@ -257,7 +260,7 @@ function renderPolicyCursorRule(policy) {
       `- Selected range: ${guidanceSelectedRange(guidance)}.`,
       `- Content digest: \`sha256:${guidance.content_sha256}\` — ` +
         `${guidance.line_count} lines, ${guidance.byte_length} bytes.`,
-      `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
+      `- Digest check: ${GUIDANCE_DIGEST_OWNERSHIP}`,
     ]),
     '',
   ].join('\n')

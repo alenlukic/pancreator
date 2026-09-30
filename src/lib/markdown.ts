@@ -64,6 +64,7 @@ export function parseMarkdown(content: string): ParsedMarkdown {
   return { headings, fences, links }
 }
 
+/** True when any parsed heading contains `text`, case-insensitively, at `level` when one is given. */
 export function hasHeading(
   parsed: ParsedMarkdown,
   text: string,
@@ -84,6 +85,7 @@ export function operatorLead(content: string): string {
   return content.split('\n').slice(0, 15).join('\n')
 }
 
+/** True when the document's operator lead names state, outcome, and next action fields (case-insensitive, bold or plain). */
 export function operatorLeadPresent(content: string): boolean {
   const firstLines = operatorLead(content).toLowerCase()
 

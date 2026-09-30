@@ -38,7 +38,7 @@ function buildFixture(): Fixture {
   mkdirSync(path.join(root, 'src'), { recursive: true })
   mkdirSync(stubBin, { recursive: true })
 
-  for (const script of ['build', 'lint']) {
+  for (const script of ['build', 'lint', 'check-shell']) {
     copyFileSync(
       path.join(REPO_ROOT, 'bin', script),
       path.join(root, 'bin', script),

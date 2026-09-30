@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Check every Bash script under bin/ and .githooks/ before review sees it.
+#
+# Usage: bin/check-shell [<script>...]
+#
+# With no arguments the script finds its targets by shebang. Named scripts are
+# checked as Bash whatever their first line says.
+#
+# Each script is parsed with `bash -n`. /bin/bash is preferred when it exists,
+# because macOS ships Bash 3.2 there and the harness targets that release, so
+# a construct only newer Bash accepts fails here rather than on an operator's
+# machine. When shellcheck is on PATH it then lints every script at error
+# severity, which catches defects a parse cannot see: a `${...}` that Bash
+# expands inside a double-quoted `node -e` program, for instance. Without
+# shellcheck the lint pass is skipped with one note, so a machine that lacks
+# it still gets the parse check.
+#
+# Output is only the failures and one summary line.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ -x /bin/bash ]]; then
+  BASH_BIN=/bin/bash
+else
+  BASH_BIN="$(command -v bash)"
+fi
+
+is_bash_script() {
+  local first=''
+
+  [[ -f "$1" ]] || return 1
+  IFS= read -r first <"$1" || true
+
+  case "$first" in
+    '#!'*bash*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+scripts=()
+
+if [[ $# -gt 0 ]]; then
+  scripts=("$@")
+else
+  for candidate in "$ROOT"/bin/* "$ROOT"/.githooks/*; do
+    if is_bash_script "$candidate"; then
+      scripts+=("$candidate")
+    fi
+  done
+fi
+
+if [[ ${#scripts[@]} -eq 0 ]]; then
+  echo 'check-shell: no Bash scripts found' >&2
+  exit 1
+fi
+
+display() {
+  local target="$1"
+
+  printf '%s' "${target#"$ROOT"/}"
+}
+
+failed=0
+
+for script in "${scripts[@]}"; do
+  if ! output="$("$BASH_BIN" -n "$script" 2>&1)"; then
+    failed=$((failed + 1))
+    printf 'check-shell: %s does not parse under %s\n' \
+      "$(display "$script")" "$BASH_BIN" >&2
+    printf '%s\n' "$output" >&2
+  fi
+done
+
+bash_version="$("$BASH_BIN" -c 'printf %s "$BASH_VERSION"')"
+lint_note='shellcheck skipped'
+
+if command -v shellcheck >/dev/null 2>&1; then
+  if lint_output="$(shellcheck --severity=error --shell=bash -- "${scripts[@]}" 2>&1)"; then
+    lint_note='shellcheck -S error clean'
+  else
+    failed=$((failed + 1))
+    lint_note='shellcheck -S error failed'
+    printf '%s\n' "$lint_output" >&2
+  fi
+else
+  echo 'check-shell: shellcheck is not on PATH; skipping the lint pass' >&2
+fi
+
+if [[ $failed -gt 0 ]]; then
+  printf 'check-shell: FAILED: %d problem(s) across %d Bash script(s) (bash %s, %s)\n' \
+    "$failed" "${#scripts[@]}" "$bash_version" "$lint_note" >&2
+  exit 1
+fi
+
+printf 'check-shell: %d Bash script(s) parse under bash %s (%s)\n' \
+  "${#scripts[@]}" "$bash_version" "$lint_note"

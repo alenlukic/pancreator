@@ -18,6 +18,10 @@ export class PanError extends Error {
   }
 }
 
+/**
+ * Asserts a condition, throwing a `PanError` with the message and options
+ * (code defaults to `PAN_ERROR`) when it is falsy.
+ */
 export function invariant(
   condition: unknown,
   message: string,
@@ -28,10 +32,12 @@ export function invariant(
   }
 }
 
+/** Message of an `Error`, or the value converted to a string. */
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** Type guard: true for an `Error` carrying a `code` property, as Node system errors do. */
 export function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error
 }

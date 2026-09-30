@@ -229,6 +229,10 @@ function parseDashboardUsagePage(value: unknown): {
   }
 }
 
+/**
+ * Directories whose `.env` files may hold Cursor credentials: the
+ * installation root, then the configured workspace root when it differs.
+ */
 export function credentialRoots(root: string): string[] {
   const installationRoot = path.resolve(root)
   const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))

@@ -52,3 +52,7 @@ Unavailable until the primer is built.
 ## Major workflows and data flows
 
 Unavailable until the primer is built.
+
+## Observability
+
+Unavailable until the primer is built.

@@ -3,12 +3,9 @@ import path from 'node:path'
 
 import { invariant } from '../errors.js'
 import { isDirectory, isFile, readText } from '../io.js'
-import {
-  buildModuleGraph,
-  loadTypeScript,
-  resolveSpecifier,
-  type ModuleGraph,
-} from '../test-impact.js'
+import { buildModuleGraph } from '../test-impact/graph.js'
+import type { ModuleGraph } from '../test-impact/model.js'
+import { loadTypeScript, resolveSpecifier } from '../test-impact/parse.js'
 import { facilitiesByPath, type Facility } from './inventory.js'
 
 export type ExportedSymbolKind =
@@ -99,9 +96,9 @@ function externalConsumerFiles(root: string): string[] {
  * Source file each unambiguous basename belongs to.
  *
  * A bare filename is the only shape a run-time path expression leaves behind:
- * `src/lib/engine.ts` holds `'openai-agent-cli.js'` and joins it to a
- * directory computed elsewhere. A basename two sources share proves nothing
- * about either, so only a unique one resolves.
+ * `src/lib/engine/executors.ts` holds `'openai-agent-cli.js'` and joins it
+ * to a directory computed elsewhere. A basename two sources share proves
+ * nothing about either, so only a unique one resolves.
  */
 function sourceByBasename(files: readonly string[]): Map<string, string> {
   const owners = new Map<string, string | null>()

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -138,7 +138,14 @@ const UNDOCUMENTED_INTERNAL_OPTIONS = new Set([
 ])
 
 test('every option the CLI reads is documented or declared internal', () => {
-  const source = readFileSync(path.join(process.cwd(), 'src/cli.ts'), 'utf8')
+  // The dispatcher is `src/cli.ts`; each command's handler lives under
+  // `src/cli/`, so the argument reads are spread across both.
+  const handlers = readdirSync(path.join(process.cwd(), 'src/cli'))
+    .filter((entry) => entry.endsWith('.ts'))
+    .map((entry) => `src/cli/${entry}`)
+  const source = ['src/cli.ts', ...handlers]
+    .map((relative) => readFileSync(path.join(process.cwd(), relative), 'utf8'))
+    .join('\n')
   const read = new Set<string>()
 
   for (const match of source.matchAll(

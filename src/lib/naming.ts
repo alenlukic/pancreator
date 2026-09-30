@@ -23,12 +23,17 @@ const MONTH_NAMES = [
   'Dec',
 ] as const
 
+/**
+ * Whole days from `at` until the 2200-01-01 UTC anchor, so later dates yield
+ * smaller numbers and temporal names sort newest first.
+ */
 export function daysToAnchor(at = new Date()): number {
   return Math.floor((DATETIME_ANCHOR_MS - at.getTime()) / MILLISECONDS_PER_DAY)
 }
 
 export const DAYS_TO_ANCHOR = daysToAnchor()
 
+/** Minutes remaining until the next UTC midnight, rounded up; later times in a day yield smaller numbers. */
 export function minutesToEndOfUtcDay(at = new Date()): number {
   const nextUtcDay = Date.UTC(
     at.getUTCFullYear(),
@@ -131,6 +136,11 @@ export function keywordRunSuffixFrom(
   return null
 }
 
+/**
+ * Builds a workflow run id from the temporal name prefix and a suffix (a
+ * random 8-hex fragment by default). Throws `INVALID_RUN_SUFFIX` when the
+ * suffix is not 1-12 lowercase alphanumerics or inner hyphens.
+ */
 export function makeWorkflowRunId(
   at = new Date(),
   suffix = randomUUID().slice(0, 8),
@@ -144,6 +154,11 @@ export function makeWorkflowRunId(
   return `${temporalNamePrefix(at)}_${suffix}`
 }
 
+/**
+ * Two-digit descending prefix for an in-flight stage artifact (`99` minus the
+ * sequence), so later stages sort first. Throws `INVALID_STAGE_SEQUENCE`
+ * outside 0-99.
+ */
 export function pipelineStepPrefix(stageSequence: number): string {
   invariant(
     Number.isInteger(stageSequence) &&
@@ -156,6 +171,11 @@ export function pipelineStepPrefix(stageSequence: number): string {
   return String(99 - stageSequence).padStart(2, '0')
 }
 
+/**
+ * Two-digit descending prefix for a stage artifact of a completed run, counted
+ * from the run's total stage count so the last stage is `00`. Throws
+ * `INVALID_STAGE_COUNT` or `INVALID_STAGE_SEQUENCE` when out of range.
+ */
 export function completedPipelineStepPrefix(
   stageSequence: number,
   totalStages: number,
@@ -176,6 +196,11 @@ export function completedPipelineStepPrefix(
   return String(totalStages - stageSequence - 1).padStart(2, '0')
 }
 
+/**
+ * Artifact id for a stage occurrence of a completed run: the completed-run
+ * prefix, the stage slug and iteration, and a short random suffix. Throws
+ * `INVALID_STAGE_SLUG` or `INVALID_STAGE_ITERATION` on bad input.
+ */
 export function makeCompletedStageArtifactId(
   stageSequence: number,
   totalStages: number,
@@ -197,6 +222,11 @@ export function makeCompletedStageArtifactId(
   return `${prefix}_${stageSlug}-${stageIteration}_${uuidSuffix}`
 }
 
+/**
+ * Artifact id for an in-flight stage occurrence: the descending step prefix,
+ * the stage slug and iteration, and a short random suffix. Throws
+ * `INVALID_STAGE_SLUG` or `INVALID_STAGE_ITERATION` on bad input.
+ */
 export function makeStageArtifactId(
   stageSequence: number,
   stageSlug: string,
