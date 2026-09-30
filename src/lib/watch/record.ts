@@ -3,6 +3,7 @@
  * observation summaries `pan submit` judges.
  */
 
+import { isShellTool, type AgentActivity } from '../agent-index/activity.js'
 import {
   fileExists,
   isRecord,
@@ -105,6 +106,49 @@ export function formatGapLine(entry: WatchRecordEntry): string {
   )
 }
 
+/**
+ * A worker's open call, and its linked `bin/pan-run` heartbeat when the open
+ * call is a shell call, as one trailing fragment for a wake line. Empty when
+ * there is no activity to report, so output with no agent_activity stays
+ * byte-identical to before this existed.
+ */
+export function formatOpenCallSuffix(
+  activity: AgentActivity | undefined | null,
+): string {
+  const openCall = activity?.open_call
+
+  if (!openCall) {
+    return ''
+  }
+
+  const startedMs = Date.parse(openCall.started_at)
+  const ageSeconds = Number.isFinite(startedMs)
+    ? Math.max(0, Math.floor((Date.now() - startedMs) / 1000))
+    : null
+  const base = ` open:${openCall.tool}${ageSeconds === null ? '' : ` ${ageSeconds}s`}`
+
+  if (!isShellTool(openCall.tool)) {
+    return base
+  }
+
+  const heartbeat = openCall.shell_heartbeat
+
+  if (!heartbeat) {
+    return `${base} [no pan-run heartbeat]`
+  }
+
+  const beatAge = Math.floor(heartbeat.age_seconds)
+  const label = heartbeat.label ?? 'cmd'
+  const pid = heartbeat.pid ?? '?'
+  const last = heartbeat.recent_lines.at(-1)
+
+  return (
+    `${base} [pan-run ${label} pid=${pid} beat ${beatAge}s ago` +
+    (last ? `: ${last}` : '') +
+    ']'
+  )
+}
+
 /** One line per wake for an interactive terminal. */
 export function formatWakeLine(entry: WatchRecordEntry): string {
   const observation = entry.observation
@@ -127,7 +171,8 @@ export function formatWakeLine(entry: WatchRecordEntry): string {
     `[pan watch:${entry.invocation_id}] wake ${entry.wake} at ` +
     `${entry.recorded_at}: ${output}, ` +
     `${entry.changed ? 'changed' : `unchanged x${entry.unchanged_wakes ?? 0}`}` +
-    suffix
+    suffix +
+    formatOpenCallSuffix(observation?.agent_activity)
   )
 }
 

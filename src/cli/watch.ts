@@ -31,6 +31,7 @@ import {
 } from '../lib/watch/process.js'
 import {
   formatGapLine,
+  formatOpenCallSuffix,
   formatSessionStartLine,
   formatWakeLine,
 } from '../lib/watch/record.js'
@@ -269,7 +270,6 @@ export async function watchCommand({
       onWake: interactive
         ? (info: WatchAgentWakeInfo) => {
             const activity = info.agent_activity
-            const openTool = activity?.open_call?.tool ?? null
             const age =
               activity?.last_event_age_seconds != null
                 ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
@@ -277,7 +277,7 @@ export async function watchCommand({
             process.stderr.write(
               `[pan watch:agent:${info.subject}] wake ${info.wake}` +
                 (activity ? '' : ' not registered') +
-                (openTool ? ` open:${openTool}` : '') +
+                formatOpenCallSuffix(activity) +
                 (activity?.last_event_kind
                   ? ` last:${activity.last_event_kind}${age}`
                   : '') +

@@ -58,6 +58,7 @@ export {
   getAgentEntry,
   getAgentByRunInvocation,
   readAgentIndex,
+  isShellTool,
   linkedShellHeartbeat,
   readAgentActivity,
   agentActivitySignature,

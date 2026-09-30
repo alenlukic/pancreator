@@ -137,6 +137,7 @@ export {
   readForegroundReturn,
   formatSessionStartLine,
   formatGapLine,
+  formatOpenCallSuffix,
   formatWakeLine,
   readWatchRecord,
   summarizeDelegationWatch,
