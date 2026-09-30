@@ -10,7 +10,10 @@ import {
   readText,
   resolveInside,
 } from '../io.js'
-import { runAcceptanceProofs } from '../acceptance-proof.js'
+import {
+  runAcceptanceProofs,
+  type AcceptanceProof,
+} from '../acceptance-proof.js'
 import { errorMessage, invariant } from '../errors.js'
 import {
   loadHarnessRepairCategories,
@@ -493,6 +496,12 @@ const VERIFY_UNOWNED_REFUSALS: readonly StageRefusal[] = [
     paths: [],
     unowned_reason:
       "The refusal compares an observe result against the criterion's proof in the plan or specification, which is a relation to another document.",
+  },
+  {
+    code: 'verify.acceptance_observe_required',
+    paths: [],
+    unowned_reason:
+      "The refusal compares an observe criterion's proof in the plan or specification against its result, which is a relation to another document.",
   },
   {
     code: 'verify.acceptance_unknown',
@@ -3369,9 +3378,14 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
   const reportedIds = new Set<string>()
   // An `observe` result defers the criterion to a signal after ship, so it is
-  // accepted only for a criterion whose proof is `observe`. A proof no source
-  // declares cannot be checked, and the result stands on the verifier's word.
-  let proofs: ReturnType<typeof runAcceptanceProofs> | null = null
+  // accepted only for a criterion whose proof is `observe`, and an `observe`
+  // criterion accepts no other result: ship owes an observation for each one,
+  // and a graded result would drop it silently. A proof no source declares
+  // cannot be checked, and the result stands on the verifier's word.
+  const proofs =
+    acceptanceResults.length > 0
+      ? runAcceptanceProofs(input.root, input.runState)
+      : new Map<string, AcceptanceProof | null>()
 
   for (const { item } of checkVerifyItems(
     acceptanceResults,
@@ -3389,19 +3403,32 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
     reportedIds.add(id)
 
-    if (item.result === 'observe') {
-      proofs ??= runAcceptanceProofs(input.root, input.runState)
-      const proof = proofs.get(id)
+    const proof = proofs.get(id)
 
-      if (proof !== undefined && proof !== null && proof !== 'observe') {
-        issues.push(
-          issue(
-            'verify.acceptance_observe_unproven',
-            `Acceptance ${id} has proof ${proof}, so its result MUST NOT be ` +
-              'observe; only an observe criterion defers to a signal after ship',
-          ),
-        )
-      }
+    if (
+      item.result === 'observe' &&
+      proof !== undefined &&
+      proof !== null &&
+      proof !== 'observe'
+    ) {
+      issues.push(
+        issue(
+          'verify.acceptance_observe_unproven',
+          `Acceptance ${id} has proof ${proof}, so its result MUST NOT be ` +
+            'observe. Only an observe criterion defers to a signal after ship',
+        ),
+      )
+    }
+
+    if (proof === 'observe' && item.result !== 'observe') {
+      issues.push(
+        issue(
+          'verify.acceptance_observe_required',
+          `Acceptance ${id} has proof observe, so its result MUST be ` +
+            `observe, not ${String(item.result)}. Ship records a post-ship ` +
+            'observation for it',
+        ),
+      )
     }
   }
 

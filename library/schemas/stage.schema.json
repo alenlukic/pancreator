@@ -90,7 +90,7 @@
           },
           "run_when": {
             "enum": ["live_criteria"],
-            "description": "Condition for launching the worker. live_criteria launches it only when an acceptance criterion of the run has proof live, or when no criterion proof can be read. The harness records a skipped worker on the invocation and renders the reason on the stage worker's card. Absent means the worker always runs."
+            "description": "Condition for launching the worker. live_criteria launches it only when an acceptance criterion of the run has proof live, when a plan file or implementation changed file is a user-facing surface (.tsx, .jsx, .vue, .svelte, .html, .css, or .scss), or when no criterion proof can be read. The harness records a skipped worker on the invocation and renders the reason on the stage worker's card. Absent means the worker always runs."
           }
         }
       }

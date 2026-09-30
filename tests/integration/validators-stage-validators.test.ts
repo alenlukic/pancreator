@@ -4040,4 +4040,17 @@ test('verify validator accepts an observe result only for an observe criterion',
     ['verify.acceptance_observe_unproven'],
   )
   assert.match(misused.issues[0].message, /AC-01 has proof test/u)
+
+  // An observe criterion owes a post-ship observation, so a graded result
+  // that would drop it from the ship packet is refused.
+  const graded = validate([
+    { id: 'AC-01', result: 'pass' },
+    { id: 'AC-02', result: 'pass' },
+  ])
+
+  assert.deepEqual(
+    graded.issues.map((item) => item.code),
+    ['verify.acceptance_observe_required'],
+  )
+  assert.match(graded.issues[0].message, /AC-02 has proof observe/u)
 })

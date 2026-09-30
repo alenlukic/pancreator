@@ -344,6 +344,33 @@ test('thorough verification runs full at the ship release gate on its own result
   assert.equal(remediated.state.current_stage, 'verify')
   assert.equal(fullRuns(root), 1)
 
+  // The passing verify routed nothing. The failed gate did, so the return
+  // visit names the gate evidence rather than the passing verdict.
+  const returning = prepareInvocation(root, runId).invocation
+
+  assert.ok(returning)
+
+  const returnVisit = returning.inputs.remediation_return
+
+  assert.equal(returnVisit?.routing_output_path, undefined)
+  assert.deepEqual(returnVisit?.routing_gate, {
+    stage: 'ship',
+    criterion_id: gate.criterion_id,
+    evidence_path: gate.last_result.evidence_path,
+  })
+
+  const review = returning.evidence_workers?.find(
+    (worker) => worker.role === 'review',
+  )
+
+  assert.ok(review)
+  assert.ok(
+    readFileSync(path.join(root, review.brief_path), 'utf8').includes(
+      `The failed release gate \`${gate.criterion_id}\` of stage 'ship' ` +
+        `routed it. Its evidence is \`${gate.last_result.evidence_path}\`.`,
+    ),
+  )
+
   const reverified = submitStageOutput(
     root,
     runId,

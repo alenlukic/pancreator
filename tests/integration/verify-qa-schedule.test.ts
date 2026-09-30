@@ -270,3 +270,51 @@ test('a scoped return without QA assigns only the review dimension, under its re
   assert.doesNotMatch(card, /#### qa dimension/u)
   assert.doesNotMatch(card, /record each in `data\.verify\.qa_cases`/u)
 })
+
+test('a return visit whose remediation declared no changed path keeps the first-visit scope', () => {
+  const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
+  const review = (stageBySlug(workflow, 'verify').evidence_workers ?? []).find(
+    (worker) => worker.role === 'review',
+  )
+
+  assert.ok(review?.return_scope)
+
+  remediate(root, runId, workflow, [])
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  assert.deepEqual(invocation.inputs.remediation_return?.blast_radius, [])
+  assert.equal(invocation.scoped_return, undefined)
+
+  const worker = (invocation.evidence_workers ?? []).find(
+    (item) => item.role === 'review',
+  )
+
+  // The brief says to execute the scope in full, so the scope it sits above
+  // is the whole-change scope rather than an empty remediation diff.
+  assert.equal(worker?.scope, review.scope)
+  assert.match(
+    readFileSync(path.join(root, worker?.brief_path ?? ''), 'utf8'),
+    /execute your scope in full/u,
+  )
+})
+
+test('a change that touches a user-facing surface launches QA without a live criterion', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    TEST_PROOF,
+  )
+
+  remediate(root, runId, workflow, ['src/view.tsx'])
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.evidence_worker_skips, undefined)
+  assert.deepEqual(
+    invocation.scoped_return?.dimensions.map((dimension) => dimension.role),
+    ['review', 'qa'],
+  )
+  assert.equal(invocation.output.required_data['verify.qa_cases'], 'array')
+})
