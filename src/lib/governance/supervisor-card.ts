@@ -1,10 +1,8 @@
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
-import {
-  STANDALONE_MODES,
-  renderGovernanceCardMarkdown,
-} from '../governance-card.js'
+import { STANDALONE_MODES } from '../governance-card/modes.js'
+import { renderGovernanceCardMarkdown } from '../governance-card/render.js'
 import {
   ensureDir,
   fileExists,

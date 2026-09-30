@@ -12,7 +12,7 @@ import {
   filterPolicyInstructionsForCard,
   policyInstructionAppliesToCard,
 } from '../policy-instructions.js'
-import { STANDALONE_MODES } from '../governance-card.js'
+import { STANDALONE_MODES } from '../governance-card/modes.js'
 import { resolvePolicies } from '../policies.js'
 import { collectAwaitShellBanIssues } from '../validators/await-shell-ban.js'
 import { collectShellMonitorIssues } from '../validators/shell-monitor.js'

@@ -119,6 +119,9 @@ export const EDIT_ONLY_PATHS: readonly string[] = [
   'governance/registries/validation_registry.json',
   'src/cli.ts',
   'src/lib/governance-card.ts',
+  'src/lib/governance-card/build.ts',
+  'src/lib/governance-card/modes.ts',
+  'src/lib/governance-card/render.ts',
   'src/lib/pan-command-grammar.ts',
   'src/lib/validation.ts',
   'src/lib/validation/artifacts.ts',
@@ -294,6 +297,25 @@ function topLevelPropertyNames(block: string): string[] {
 }
 
 /**
+ * Where a tree declares STANDALONE_MODES, newest layout first. The table left
+ * `governance-card.ts` for its own module, and a historical tree still keeps
+ * it in the original file.
+ */
+const STANDALONE_MODE_SOURCES = [
+  'src/lib/governance-card/modes.ts',
+  'src/lib/governance-card.ts',
+] as const
+
+/** The file of the scanned tree that declares its standalone modes. */
+export function standaloneModeRegistryPath(root: string): string {
+  return (
+    STANDALONE_MODE_SOURCES.find((relative) =>
+      isFile(path.join(root, relative)),
+    ) ?? STANDALONE_MODE_SOURCES[0]
+  )
+}
+
+/**
  * Standalone mode definitions from the scanned tree.
  *
  * Importing STANDALONE_MODES would inventory the running build when the
@@ -303,7 +325,7 @@ export function readStandaloneModes(root: string): StandaloneModeDefinition[] {
   return topLevelEntries(
     sourceBlock(
       root,
-      'src/lib/governance-card.ts',
+      standaloneModeRegistryPath(root),
       'export const STANDALONE_MODES',
     ),
   ).map((entry) => {

@@ -92,7 +92,7 @@ function createScannedFixture(): { root: string; transcripts: string } {
     force: true,
   })
   write(
-    path.join(root, 'src', 'lib', 'governance-card.ts'),
+    path.join(root, 'src', 'lib', 'governance-card', 'modes.ts'),
     [
       'export const STANDALONE_MODES = {',
       '  spotfix: {',

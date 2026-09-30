@@ -6,7 +6,7 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { STANDALONE_MODES } from '../../governance-card.js'
+import { STANDALONE_MODES } from '../../governance-card/modes.js'
 import {
   isRecord,
   fileExists,

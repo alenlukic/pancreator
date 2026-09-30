@@ -9,6 +9,7 @@ import {
   EDIT_ONLY_PATHS,
   facilitiesByPath,
   readStandaloneModes,
+  standaloneModeRegistryPath,
   type Facility,
 } from './inventory.js'
 
@@ -747,7 +748,7 @@ function typedReferences(
   }
 
   // A standalone mode names the persona and workflow its card binds.
-  const modeRegistry = 'src/lib/governance-card.ts'
+  const modeRegistry = standaloneModeRegistryPath(root)
 
   for (const definition of readStandaloneModes(root)) {
     back(modeRegistry, `mode:${definition.name}`, definition.name)
