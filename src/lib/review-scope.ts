@@ -91,8 +91,22 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
 ]
 
 /**
- * Return the review-mode entry points of `src/cli.ts`: the `governance` case,
- * the `commaSeparatedOption` helper that parses `--dimensions`, and the help
+ * The CLI files that hold review-mode entry points: the dispatcher routes the
+ * `governance` command, `src/cli/governance.ts` holds its handler, and
+ * `src/cli/args.ts` holds the `commaSeparatedOption` parser of `--dimensions`.
+ * `cliGovernanceBlock` slices each file the same way, so an entry point that
+ * moves between these files still reads as a change on both sides.
+ */
+export const CLI_GOVERNANCE_ENTRY_PATHS = [
+  'src/cli.ts',
+  'src/cli/governance.ts',
+  'src/cli/args.ts',
+] as const
+
+/**
+ * Return the review-mode entry points of one CLI source file: the
+ * `governance` case of the dispatcher, the `governanceCommand` handler, the
+ * `commaSeparatedOption` helper that parses `--dimensions`, and the help
  * stanzas that state the `governance card` and `governance review-scope`
  * contracts. The rest of the file is not review machinery.
  */
@@ -103,6 +117,7 @@ export function cliGovernanceBlock(text: string | null): string | null {
 
   const parts = [
     cliCaseBlock(text, 'governance'),
+    cliFunctionBlock(text, 'governanceCommand'),
     cliFunctionBlock(text, 'commaSeparatedOption'),
     cliHelpStanzas(text, [
       'pan governance card',
@@ -113,9 +128,9 @@ export function cliGovernanceBlock(text: string | null): string | null {
   return parts.length === 0 ? null : parts.join('\n')
 }
 
-/** One `case '<name>': {` block of the CLI dispatcher, up to the next case. */
+/** One `case '<name>':` clause of the CLI dispatcher, up to the next case. */
 function cliCaseBlock(text: string, name: string): string | null {
-  const start = text.indexOf(`case '${name}': {`)
+  const start = text.indexOf(`case '${name}':`)
 
   if (start === -1) {
     return null
@@ -126,11 +141,17 @@ function cliCaseBlock(text: string, name: string): string | null {
   return next === -1 ? text.slice(start) : text.slice(start, next)
 }
 
-/** One top-level `function <name>(` body, up to its closing brace. */
+/**
+ * One top-level `function <name>(` body, exported or async or not, up to its
+ * closing brace.
+ */
 function cliFunctionBlock(text: string, name: string): string | null {
-  const start = text.indexOf(`\nfunction ${name}(`)
+  const start = new RegExp(
+    `\\n(?:export )?(?:async )?function ${name}\\(`,
+    'u',
+  ).exec(text)?.index
 
-  if (start === -1) {
+  if (start === undefined) {
     return null
   }
 
@@ -171,7 +192,7 @@ function cliHelpStanzas(
   return selected.length === 0 ? null : selected.join('\n')
 }
 
-/** True when the change edits the governance entry points of `src/cli.ts`. */
+/** True when the change edits the governance entry points of a CLI file. */
 export function cliGovernanceBlocksChanged(
   baseText: string | null,
   headText: string | null,
@@ -721,18 +742,20 @@ export function resolveReviewScope(
     buildReviewClosure(resolvedClosureRoot),
   )
 
-  if (
-    changedPaths.includes('src/cli.ts') &&
-    cliGovernanceBlocksChanged(
-      gitShowFile(resolvedTargetRoot, base, 'src/cli.ts'),
-      gitShowFile(resolvedTargetRoot, head, 'src/cli.ts'),
-    )
-  ) {
-    conflicts.push({
-      path: 'src/cli.ts',
-      tier: 'instrument',
-      source: 'governance card or review-scope entry point changed',
-    })
+  for (const cliPath of CLI_GOVERNANCE_ENTRY_PATHS) {
+    if (
+      changedPaths.includes(cliPath) &&
+      cliGovernanceBlocksChanged(
+        gitShowFile(resolvedTargetRoot, base, cliPath),
+        gitShowFile(resolvedTargetRoot, head, cliPath),
+      )
+    ) {
+      conflicts.push({
+        path: cliPath,
+        tier: 'instrument',
+        source: 'governance card or review-scope entry point changed',
+      })
+    }
   }
 
   if (

@@ -4,6 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  CLI_GOVERNANCE_ENTRY_PATHS,
   MACHINERY_TEST_PATTERNS,
   classifyReviewPaths,
   cliGovernanceBlock,
@@ -313,18 +314,33 @@ test('the tests of each machinery module are derived substrate', () => {
 test('the governance machinery owns the CLI entry points and shared help', () => {
   // The synthetic fixture below proves the slicing rules; this proves they
   // still find the entry points in the file they are written for.
-  const block = cliGovernanceBlock(
-    readFileSync(path.join(process.cwd(), 'src', 'cli.ts'), 'utf8'),
+  const blocks = new Map(
+    CLI_GOVERNANCE_ENTRY_PATHS.map((relative) => [
+      relative,
+      cliGovernanceBlock(
+        readFileSync(path.join(process.cwd(), relative), 'utf8'),
+      ),
+    ]),
   )
   const help = readFileSync(
     path.join(process.cwd(), 'src', 'lib', 'pan-command-grammar.ts'),
     'utf8',
   )
+  const dispatch = blocks.get('src/cli.ts')
+  const handler = blocks.get('src/cli/governance.ts')
+  const parser = blocks.get('src/cli/args.ts')
 
-  assert.ok(block)
-  assert.ok(block.includes("case 'governance': {"))
-  assert.ok(block.includes('function commaSeparatedOption('))
-  assert.ok(!block.includes("case 'best-of-n': {"))
+  assert.ok(dispatch)
+  assert.ok(dispatch.startsWith("case 'governance':"))
+  assert.ok(dispatch.includes('governanceCommand('))
+  assert.ok(!dispatch.includes("case 'best-of-n':"))
+  assert.ok(handler)
+  assert.ok(handler.includes('export function governanceCommand('))
+  assert.ok(handler.includes("sub === 'review-scope'"))
+  assert.ok(!handler.includes('function modelsCommand('))
+  assert.ok(parser)
+  assert.ok(parser.includes('export function commaSeparatedOption('))
+  assert.ok(!parser.includes('function repeatedOption('))
   assert.ok(help.includes('pan governance card --mode <'))
   assert.ok(help.includes('pan governance review-scope --target <ref>'))
   assert.ok(help.includes('--base (review mode) renders'))
@@ -415,6 +431,64 @@ test('only a change inside the governance case of cli.ts is an entry-point chang
     true,
   )
   assert.equal(cliGovernanceBlocksChanged(before, attestHelpChanged), false)
+})
+
+test('the governance handler and the exported parser are entry points in their own files', () => {
+  const handlerFile = [
+    '',
+    'export function modelsCommand({ args }: CliContext): void {',
+    '  return list(args)',
+    '}',
+    '',
+    'export function governanceCommand({ args }: CliContext): void {',
+    "  if (args[0] === 'card') {",
+    '    return build()',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+  const argsFile = [
+    '',
+    'export function commaSeparatedOption(args, flag) {',
+    "  return args.split(',')",
+    '}',
+    '',
+    'export function repeatedOption(args, flag) {',
+    '  return args',
+    '}',
+    '',
+  ].join('\n')
+
+  assert.equal(
+    cliGovernanceBlocksChanged(
+      handlerFile,
+      handlerFile.replace('return build()', 'return build(opts)'),
+    ),
+    true,
+  )
+  assert.equal(
+    cliGovernanceBlocksChanged(
+      handlerFile,
+      handlerFile.replace('list(args)', 'list(args, 1)'),
+    ),
+    false,
+  )
+  assert.equal(
+    cliGovernanceBlocksChanged(
+      argsFile,
+      argsFile.replace("split(',')", "split(',').filter(Boolean)"),
+    ),
+    true,
+  )
+  assert.equal(
+    cliGovernanceBlocksChanged(
+      argsFile,
+      argsFile.replace('  return args\n', '  return [args]\n'),
+    ),
+    false,
+  )
+  // Moving the handler out of a file removes its entry point there.
+  assert.equal(cliGovernanceBlocksChanged(handlerFile, ''), true)
 })
 
 test('a policy row with no instruction or summary change is not a standards delta', () => {

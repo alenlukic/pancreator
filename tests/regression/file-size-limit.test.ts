@@ -18,7 +18,6 @@ const MAX_LINES = 1000
  * list only shrinks.
  */
 const PENDING_SPLIT = new Set([
-  'src/cli.ts',
   'src/lib/agent-index.ts',
   'src/lib/briefs.ts',
   'src/lib/cleanup.ts',
