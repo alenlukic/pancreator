@@ -25,6 +25,10 @@ gate ratifies the whole artifact before any source changes.
 4. Choose the smallest coherent architecture that satisfies the specification.
 5. Name the approach, components, likely files, dependencies, risks, migration
    concerns, and validation methods.
+   When the repository carries a function index (`docs/function-index/`),
+   give each `engineering_plan.files[]` entry a `symbols` list: the exported
+   symbols the change touches or adds in that file, named as the index names
+   them. The implementer starts from those entries.
 6. Write acceptance criteria with ids (`AC-*`). Map each criterion back to a
    user story and forward to a verification method with an expected result.
    Tag each criterion with exactly one `proof` type:

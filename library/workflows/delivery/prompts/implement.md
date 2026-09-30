@@ -17,6 +17,9 @@ acceptance criterion.
    ecosystem commands.
 3. Implement the plan within its declared scope. Prefer existing abstractions;
    do not add structure the plan did not call for.
+   When a plan file entry lists `symbols`, look them up in the function index
+   (`docs/function-index/`) when the repository carries one, and open the
+   source at the `file:line` each entry gives.
 4. Add or update tests that prove the changed behavior. Do not weaken, skip,
    or delete existing tests to make the change pass; a needed test change must
    be disclosed in the notes with its reason.

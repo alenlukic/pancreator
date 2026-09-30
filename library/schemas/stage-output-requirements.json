@@ -103,6 +103,11 @@
           "type": "string"
         },
         {
+          "path": "data.engineering_plan.files[].symbols[]",
+          "type": "string",
+          "format": "optional; each exported symbol the change touches or adds in this file, named as the function index names it"
+        },
+        {
           "path": "data.test_plan[]",
           "type": "object",
           "format": "focused scenario for a live criterion, naming it in criterion; every live criterion needs at least one case, and test, review, and observe criteria need none. Setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
