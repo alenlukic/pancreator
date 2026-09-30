@@ -3,7 +3,7 @@ import path from 'node:path'
 import { invariant } from './errors.js'
 import { fileExists, isRecord } from './io.js'
 import { harnessConfigName, readHarnessConfig } from './project-config.js'
-import { repositoryCheckProfileName } from './repository-checks.js'
+import { repositoryCheckProfileName } from './repository-checks/diagnostics.js'
 import type { Criterion, ResolvedVerification } from './types.js'
 
 const CONFIG_PATH = 'config.json'

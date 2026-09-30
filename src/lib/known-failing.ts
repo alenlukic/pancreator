@@ -1,8 +1,8 @@
-import {
-  commandFailureDiagnostics,
-  type RepositoryCheckCommandResult,
-  type RepositoryCheckResult,
-} from './repository-checks.js'
+import type {
+  RepositoryCheckCommandResult,
+  RepositoryCheckResult,
+} from './repository-checks/config.js'
+import { commandFailureDiagnostics } from './repository-checks/diagnostics.js'
 import type { KnownFailingTest } from './types.js'
 
 /** Heading that opens the declaration block in a run request. */

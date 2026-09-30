@@ -11,7 +11,7 @@ import path from 'node:path'
 import { invariant } from './errors.js'
 import { isRecord } from './io.js'
 import { readInstallationIdentity } from './project-config.js'
-import { agentGateProfileRuns } from './repository-checks.js'
+import { agentGateProfileRuns } from './repository-checks/ledger.js'
 import {
   attributionRoots,
   cursorProjectDirectory,

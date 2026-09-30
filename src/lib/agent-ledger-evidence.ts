@@ -1,5 +1,5 @@
 import { fileExists, isRecord, readText } from './io.js'
-import { AGENT_REPOSITORY_CHECK_RUNS_FILE } from './repository-checks.js'
+import { AGENT_REPOSITORY_CHECK_RUNS_FILE } from './repository-checks/ledger.js'
 import { resolveRunLayout } from './run-layout.js'
 
 /**

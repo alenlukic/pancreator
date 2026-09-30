@@ -34,7 +34,7 @@ import {
   TEST_PROFILE_ENV,
   type SuiteProfileTest,
 } from './suite-profile.js'
-import { runRepositoryCheck } from './repository-checks.js'
+import { runRepositoryCheck } from './repository-checks/runner.js'
 
 export const TUNE_ROOT = 'runtime/tune-harness'
 export const TUNE_WORK_DIR = `${TUNE_ROOT}/work`

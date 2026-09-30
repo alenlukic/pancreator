@@ -17,7 +17,7 @@ import {
   writeJsonAtomic,
 } from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
-import { repositoryCheckProfileName } from './repository-checks.js'
+import { repositoryCheckProfileName } from './repository-checks/diagnostics.js'
 import { resolveRunLayout } from './run-layout.js'
 import { writeWorkerHandoff } from './worker-handoff.js'
 import { loadState, statePath } from './state.js'

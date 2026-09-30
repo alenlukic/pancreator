@@ -22,12 +22,12 @@ import { isTargetInstallation, resolveRetentionDays } from './project-config.js'
 import { liveRunsBoundToWorktree, TERMINAL_RUN_STATUSES } from './state.js'
 import { DEFAULT_TEST_SCRATCH_PATH, testScratchRoot } from './test-scratch.js'
 import type { RunStatus } from './types.js'
+import { temporalNameDate } from './workflow-artifacts/run-ids.js'
 import {
   needsTemporalFileName,
   standardizeRuntimeFileNames,
   temporalFileDirectories,
-  temporalNameDate,
-} from './workflow-artifacts.js'
+} from './workflow-artifacts/temporal-names.js'
 import {
   listWorktrees,
   removeWorktree,

@@ -69,6 +69,7 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
   'tests/*/*helpers.ts',
   ...MACHINERY_TEST_PATTERNS,
   'src/lib/repository-checks.ts',
+  'src/lib/repository-checks/*',
   'src/lib/check-output.ts',
   'src/lib/test-impact.ts',
   'bin/run-quiet',

@@ -9,7 +9,7 @@ import {
   writeJsonAtomic,
 } from './io.js'
 
-import type { RepositoryCheckResult } from './repository-checks.js'
+import type { RepositoryCheckResult } from './repository-checks/config.js'
 import type { WorkspaceSnapshot } from './types.js'
 
 // Cache of clean deterministic gate passes (DEV-001). The key covers the
