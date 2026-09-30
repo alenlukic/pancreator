@@ -34,7 +34,11 @@
     "The harness technician MUST report each checked item as confirmed or refuted, with the command it ran and the result. It MUST NOT confirm an `open` item. It MAY refute an `open` item when the signal already shows the regression.",
     "A refuted item is a regression. The harness technician MUST file it as a finding in the intake of its category. That finding MUST cite the run id and the criterion id.",
     "The supervising repair session MUST resolve each reported item with `pan observations resolve`. It MUST resolve only after every collected intake passes its validator. A refuted item MUST cite the intake of its finding with `--intake`.",
-    "A check that cannot run is an evidence gap. The harness technician MUST report it, and the item MUST stay unresolved."
+    "A check that cannot run is an evidence gap. The harness technician MUST report it, and the item MUST stay unresolved.",
+    "An embedded-installation sweep MUST also run `pan observations --json --root <installation-root>` once for each selected installation root. The supervising repair session MUST resolve an installation item with the same `--root`.",
+    "The harness technician has no MCP access. It MUST report a due item whose check needs an MCP-backed tool, such as a Sentry, Datadog, or OpenTelemetry query, as a supervisor check. The report MUST carry the run id, the criterion id, the installation root when there is one, and the recorded check.",
+    "The supervising repair session MUST run each supervisor check itself with the MCP tools of its session. It MUST record the command, the result, and the verdict before it resolves the item.",
+    "When a check still cannot run, the supervising repair session MUST write one operator inbox item under `runtime/inbox/queue/`. The item MUST name each unresolved observation, its check, and the `pan observations resolve` command that closes it. Each such observation MUST stay unresolved."
   ],
   "guidance_sources": [
     {

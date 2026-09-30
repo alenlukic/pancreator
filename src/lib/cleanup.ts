@@ -17,6 +17,7 @@ import {
 } from './inbox.js'
 import type { InboxReconciliationMove } from './inbox.js'
 import { isRecord, readJson } from './io.js'
+import { unresolvedObservationHold } from './observations.js'
 import { isTargetInstallation, resolveRetentionDays } from './project-config.js'
 import { liveRunsBoundToWorktree, TERMINAL_RUN_STATUSES } from './state.js'
 import { DEFAULT_TEST_SCRATCH_PATH, testScratchRoot } from './test-scratch.js'
@@ -559,6 +560,7 @@ function planExpiredEntries(
   cutoff: number,
   skipNames: ReadonlySet<string>,
   reasonFor: (days: number) => string,
+  holdReason: (name: string) => string | null = () => null,
 ): void {
   for (const entry of readDirectoryEntries(plan, artifactClass.name, parent)) {
     if (skipNames.has(entry.name)) {
@@ -579,7 +581,8 @@ function planExpiredEntries(
     }
 
     const relative = toPosix(path.relative(plan.root, target))
-    const reason = livenessReason(target, stat.isDirectory())
+    const reason =
+      livenessReason(target, stat.isDirectory()) ?? holdReason(entry.name)
 
     if (reason) {
       plan.skipped.push({ class: artifactClass.name, path: relative, reason })
@@ -678,6 +681,13 @@ function planFileClasses(plan: PlanAccumulator): void {
       skipNames.add('archive')
       skipNames.add('.metadata_never_index')
 
+      // Archival keeps a run that owes a post-ship observation live, so the
+      // deletion tier keeps it too until an audit resolves the item.
+      const holdsObservation =
+        artifactClass.name === 'workflow-runs'
+          ? unresolvedObservationHold(root)
+          : null
+
       planExpiredEntries(
         plan,
         artifactClass,
@@ -686,6 +696,10 @@ function planFileClasses(plan: PlanAccumulator): void {
         cutoff,
         skipNames,
         (window) => `older than ${window} days`,
+        (name) =>
+          holdsObservation?.(name)
+            ? 'run owes an unresolved post-ship observation'
+            : null,
       )
 
       const archive = path.join(parent, 'archive')

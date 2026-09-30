@@ -126,10 +126,10 @@ export const HELP_BODY = `Usage:
       List every regular file directly under each runtime/inbox/ lifecycle directory, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status. Unreadable items remain visible with a reason.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
-  pan observations [--all] [--json]
-      List the post-ship observation items every run's latest successful ship output records in data.release.observations, with run id, criterion, signal, source, window, check, shipped_at, and due_at (shipped_at plus the window). An item is open while its window runs and due once it elapses or when the window does not parse. --all adds resolved items with their resolution. Nothing queries the named source.
-  pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>]
-      Append one resolution to runtime/observations/resolutions.jsonl. refuted requires --intake naming the regression intake that was filed. An unknown run or criterion and a second resolution of one item are refused.
+  pan observations [--root <installation-root>] [--all] [--json]
+      List the post-ship observation items every run's latest successful ship output records in data.release.observations, with run id, criterion, signal, source, window, check, shipped_at, and due_at (shipped_at plus the window). An item is open while its window runs and due once it elapses or when the window does not parse. --all adds resolved items with their resolution. --root reads the runs and resolution ledger of that installation root, such as a path that pan installs list reports. Nothing queries the named source.
+  pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>] [--root <installation-root>]
+      Append one resolution to runtime/observations/resolutions.jsonl, or to that file under --root. refuted requires --intake naming the regression intake that was filed, and a relative --intake resolves against the invoking checkout. An unknown run or criterion, a confirmation before the window ends, and a second resolution of one item are refused.
   pan installs list [--json]
   pan installs archive <install-id> --intake <harness-relative-path> --item <install-relative-path> [--item <install-relative-path>] [--json]
       Archive only installation inbox items whose file names the source checkout's validated consolidated intake cites.

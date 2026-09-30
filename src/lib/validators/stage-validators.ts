@@ -10,7 +10,11 @@ import {
   readText,
   resolveInside,
 } from '../io.js'
-import { runAcceptanceProofs } from '../acceptance-proof.js'
+import {
+  OBSERVATION_WINDOW_FORMS,
+  observationWindowMs,
+  runAcceptanceProofs,
+} from '../acceptance-proof.js'
 import { errorMessage, invariant } from '../errors.js'
 import {
   loadHarnessRepairCategories,
@@ -3716,9 +3720,25 @@ function releaseObservationIssues(
       continue
     }
 
-    observed.add(
-      ((entry as Record<string, unknown>).criterion as string).trim(),
-    )
+    const record = entry as Record<string, unknown>
+
+    // `pan observations` dates an item from this window, so a window it
+    // cannot parse would make the item due the moment it ships.
+    if (
+      typeof record.window === 'string' &&
+      observationWindowMs(record.window) === null
+    ) {
+      issues.push(
+        issue(
+          'release.observation_window',
+          `release.observations[${index}].window MUST be a positive ` +
+            `${OBSERVATION_WINDOW_FORMS} window, such as 7d; got ` +
+            `${JSON.stringify(record.window)}`,
+        ),
+      )
+    }
+
+    observed.add((record.criterion as string).trim())
   }
 
   for (const criterion of verifyObserveCriterionIds(root, runState)) {

@@ -3141,13 +3141,28 @@ async function main(): Promise<void> {
       return
     }
     case 'observations': {
+      // A `/pan-repair installs` sweep runs from the source checkout and reads
+      // each installation's runs and ledger through `--root`. Its intakes stay
+      // in the source checkout, so a relative `--intake` resolves there.
+      const rootOption = option(args, '--root')
+      const observationRoot =
+        rootOption === null ? root : path.resolve(rootOption)
+
+      if (rootOption !== null && harnessConfigName(observationRoot) === null) {
+        throw new PanError(
+          `--root does not name a Pancreator installation root: ${rootOption}`,
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
       if (args[0] === 'resolve') {
-        const resolution = resolveObservation(root, {
+        const resolution = resolveObservation(observationRoot, {
           runId: requiredPositional(args[1], 'run-id'),
           criterion: requiredPositional(args[2], 'criterion-id'),
           status: requiredArgument(option(args, '--status'), '--status'),
           note: requiredArgument(noteOption(root, args), '--note'),
           intake: option(args, '--intake'),
+          intakeRoot: root,
         })
 
         print({ status: 'resolved', resolution }, true)
@@ -3160,7 +3175,9 @@ async function main(): Promise<void> {
         })
       }
 
-      const items = listObservations(root, { all: hasFlag(args, '--all') })
+      const items = listObservations(observationRoot, {
+        all: hasFlag(args, '--all'),
+      })
 
       if (json) {
         print(items, true)

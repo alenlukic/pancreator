@@ -7,7 +7,14 @@
  */
 import assert from 'node:assert/strict'
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -19,8 +26,9 @@ const CHECK_SHELL = path.join(ROOT, 'bin', 'check-shell')
 function runCheckShell(
   args: string[] = [],
   env: NodeJS.ProcessEnv = process.env,
+  script = CHECK_SHELL,
 ): SpawnSyncReturns<string> {
-  return spawnSync(CHECK_SHELL, args, {
+  return spawnSync(script, args, {
     cwd: ROOT,
     env,
     encoding: 'utf8',
@@ -28,29 +36,49 @@ function runCheckShell(
   })
 }
 
-function trackedBashScripts(): string[] {
-  return ['bin', '.githooks'].flatMap((directory) =>
-    readdirSync(path.join(ROOT, directory))
-      .map((name) => path.join(ROOT, directory, name))
-      .filter((file) => {
-        const first = readFileSync(file, 'utf8').split('\n', 1)[0] ?? ''
+/**
+ * Two valid Bash scripts in a temporary directory. The static gate already
+ * sweeps every tracked script through `npm run lint`, so these tests run on
+ * this fixture and stay independent of the repository's script count.
+ */
+function validScripts(directory: string): string[] {
+  const scripts = [
+    path.join(directory, 'first'),
+    path.join(directory, 'second'),
+  ]
 
-        return first.startsWith('#!') && first.includes('bash')
-      }),
-  )
+  for (const script of scripts) {
+    writeFileSync(script, '#!/usr/bin/env bash\nset -euo pipefail\necho ok\n')
+  }
+
+  return scripts
 }
 
-test('bin/check-shell passes every tracked Bash script found by shebang', () => {
-  const result = runCheckShell()
+test('bin/check-shell finds Bash scripts under bin/ and .githooks/ by shebang', () => {
+  // The script finds its root from its own location, so a copy in a fixture
+  // tree sweeps only that tree: itself, one bin/ script, and one hook.
+  const root = createTestTempDirectory('check-shell-root-')
+  const copy = path.join(root, 'bin', 'check-shell')
+
+  mkdirSync(path.join(root, 'bin'))
+  mkdirSync(path.join(root, '.githooks'))
+  copyFileSync(CHECK_SHELL, copy)
+  chmodSync(copy, 0o755)
+  writeFileSync(
+    path.join(root, 'bin', 'tool'),
+    '#!/usr/bin/env bash\necho ok\n',
+  )
+  writeFileSync(path.join(root, '.githooks', 'pre-commit'), '#!/bin/bash\n:\n')
+  writeFileSync(path.join(root, 'bin', 'note'), 'not a script\n')
+  writeFileSync(path.join(root, 'bin', 'posix'), '#!/bin/sh\nif then\n')
+
+  const result = runCheckShell([], process.env, copy)
 
   assert.equal(result.status, 0, result.stderr)
   assert.doesNotMatch(result.stderr, /does not parse/u)
   assert.match(
     result.stdout,
-    new RegExp(
-      `^check-shell: ${trackedBashScripts().length} Bash script\\(s\\) parse under bash `,
-      'mu',
-    ),
+    /^check-shell: 3 Bash script\(s\) parse under bash /mu,
   )
 })
 
@@ -75,12 +103,19 @@ test('bin/check-shell notes a missing shellcheck once and still parses', (t) => 
     return
   }
 
-  const result = runCheckShell([], { ...process.env, PATH: '/usr/bin:/bin' })
+  const scripts = validScripts(createTestTempDirectory('check-shell-'))
+  const result = runCheckShell(scripts, {
+    ...process.env,
+    PATH: '/usr/bin:/bin',
+  })
   const notes = result.stderr.match(/shellcheck is not on PATH/gu) ?? []
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(notes.length, 1)
-  assert.match(result.stdout, /\(shellcheck skipped\)$/mu)
+  assert.match(
+    result.stdout,
+    /^check-shell: 2 Bash script\(s\) parse under bash .*\(shellcheck skipped\)$/mu,
+  )
 })
 
 test('bin/lint delegates its Bash check to bin/check-shell', () => {

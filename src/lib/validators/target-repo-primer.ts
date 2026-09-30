@@ -378,6 +378,7 @@ export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
     requiredSections.push(
       'Frontend visual inspection',
       'Major workflows and data flows',
+      'Observability',
     )
   }
 
@@ -406,21 +407,6 @@ export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
         ),
       )
     }
-  }
-
-  // Optional, so a primer built before the section existed stays valid. When
-  // present it names each detected tool and its query, or `None detected`.
-  if (
-    hasHeading(parsed, 'Observability', 2) &&
-    sectionBody(content, 'Observability').length === 0
-  ) {
-    issues.push(
-      issue(
-        'primer.observability_empty',
-        'Primer section Observability MUST name each detected tool and its ' +
-          'query, or state None detected',
-      ),
-    )
   }
 
   for (const subsection of ['Install', 'Build', 'Test', 'Other']) {

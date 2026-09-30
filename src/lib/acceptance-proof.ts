@@ -32,6 +32,34 @@ export function isAcceptanceProof(value: unknown): value is AcceptanceProof {
   )
 }
 
+const MILLISECONDS_PER_WINDOW_UNIT: Readonly<Record<string, number>> = {
+  h: 60 * 60 * 1_000,
+  d: 24 * 60 * 60 * 1_000,
+  w: 7 * 24 * 60 * 60 * 1_000,
+}
+
+/** The window forms an `observe` criterion's ship observation accepts. */
+export const OBSERVATION_WINDOW_FORMS = '<n>h, <n>d, or <n>w'
+
+/**
+ * Milliseconds a `<n>h`, `<n>d`, or `<n>w` observation window spans, or null.
+ * It lives here rather than in `observations.ts` so the ship validator can
+ * refuse an unparseable window without importing run-state loading.
+ */
+export function observationWindowMs(window: string): number | null {
+  const match = /^\s*(\d+)\s*(h|hours?|d|days?|w|weeks?)\s*$/iu.exec(window)
+
+  if (!match) {
+    return null
+  }
+
+  const amount = Number(match[1])
+  const unit =
+    MILLISECONDS_PER_WINDOW_UNIT[(match[2] as string)[0]!.toLowerCase()]
+
+  return unit === undefined || amount <= 0 ? null : amount * unit
+}
+
 /**
  * Proof of each criterion a run carries, keyed by criterion id. `null` marks
  * a criterion that declares no valid proof, such as one from a plan written

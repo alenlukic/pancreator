@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { observationWindowMs } from './acceptance-proof.js'
 import { PanError } from './errors.js'
 import {
   appendJsonLine,
@@ -12,6 +13,8 @@ import {
 } from './io.js'
 import { listRunStates, loadState } from './state.js'
 import type { RunState } from './types.js'
+
+export { observationWindowMs }
 
 /**
  * Post-ship observation items.
@@ -34,12 +37,6 @@ const RESOLUTIONS_MUTEX = path.join(
   'observations',
   'resolutions.lock',
 )
-
-const MILLISECONDS_PER_UNIT: Readonly<Record<string, number>> = {
-  h: 60 * 60 * 1_000,
-  d: 24 * 60 * 60 * 1_000,
-  w: 7 * 24 * 60 * 60 * 1_000,
-}
 
 export type ObservationResolutionStatus = 'confirmed' | 'refuted'
 
@@ -77,20 +74,6 @@ export interface ObservationItem {
 
 export function observationResolutionsPath(root: string): string {
   return resolveInside(root, RESOLUTIONS_PATH)
-}
-
-/** Milliseconds a `<n>h`, `<n>d`, or `<n>w` window spans, or null. */
-export function observationWindowMs(window: string): number | null {
-  const match = /^\s*(\d+)\s*(h|hours?|d|days?|w|weeks?)\s*$/iu.exec(window)
-
-  if (!match) {
-    return null
-  }
-
-  const amount = Number(match[1])
-  const unit = MILLISECONDS_PER_UNIT[(match[2] as string)[0]!.toLowerCase()]
-
-  return unit === undefined || amount <= 0 ? null : amount * unit
 }
 
 function nonEmptyText(value: unknown): string | null {
@@ -165,6 +148,23 @@ function resolutionKey(runId: string, criterion: string): string {
   return `${runId}\u0000${criterion}`
 }
 
+/**
+ * Epoch milliseconds an observation falls due: its ship time plus its window.
+ * Null when either does not parse, which the ship validator refuses for a new
+ * output, so a caller treats null as due.
+ */
+function observationDueMs(observation: {
+  window: string
+  shipped_at: string
+}): number | null {
+  const windowMs = observationWindowMs(observation.window)
+  const shippedMs = Date.parse(observation.shipped_at)
+
+  return windowMs === null || Number.isNaN(shippedMs)
+    ? null
+    : shippedMs + windowMs
+}
+
 /** Every resolution the ledger records, in append order. */
 export function readObservationResolutions(
   root: string,
@@ -232,12 +232,7 @@ export function listObservations(
         continue
       }
 
-      const windowMs = observationWindowMs(observation.window)
-      const shippedMs = Date.parse(observation.shipped_at)
-      const dueMs =
-        windowMs === null || Number.isNaN(shippedMs)
-          ? null
-          : shippedMs + windowMs
+      const dueMs = observationDueMs(observation)
 
       items.push({
         ...observation,
@@ -266,13 +261,19 @@ export interface ResolveObservationRequest {
   status: string
   note: string
   intake?: string | null
+  /**
+   * Root a relative `intake` resolves against, `root` by default. A sweep
+   * resolves an installation's item from the source checkout, where the
+   * audit filed its intake, so it passes that checkout here.
+   */
+  intakeRoot?: string
   now?: Date
 }
 
 /**
  * Append one resolution to the ledger. Refuses an unknown run or criterion,
- * a second resolution of the same item, and a refutation that names no
- * regression intake on disk.
+ * a confirmation before the item's window ends, a second resolution of the
+ * same item, and a refutation that names no regression intake on disk.
  */
 export function resolveObservation(
   root: string,
@@ -305,7 +306,11 @@ export function resolveObservation(
   // checkout, so an absolute path outside this root is accepted as given.
   if (
     intake.length > 0 &&
-    !fileExists(path.isAbsolute(intake) ? intake : resolveInside(root, intake))
+    !fileExists(
+      path.isAbsolute(intake)
+        ? intake
+        : resolveInside(request.intakeRoot ?? root, intake),
+    )
   ) {
     throw new PanError(`--intake does not name a file: ${intake}`, {
       code: 'OBSERVATION_INTAKE_NOT_FOUND',
@@ -321,6 +326,24 @@ export function resolveObservation(
     throw new PanError(
       `Run ${request.runId} records no ship observation for ${request.criterion}.`,
       { code: 'OBSERVATION_NOT_FOUND' },
+    )
+  }
+
+  const now = request.now ?? new Date()
+  const dueMs = observationDueMs(observation)
+
+  // REPAIR-001: the signal has not built up before the window ends, so only
+  // a refutation, which the signal can already show, may close an open item.
+  if (
+    request.status === 'confirmed' &&
+    dueMs !== null &&
+    dueMs > now.getTime()
+  ) {
+    throw new PanError(
+      `Observation ${request.criterion} of run ${request.runId} is open ` +
+        `until ${new Date(dueMs).toISOString()}. Confirm it after that time, ` +
+        'or refute it now if the signal already shows the regression.',
+      { code: 'OBSERVATION_NOT_DUE' },
     )
   }
 
@@ -346,13 +369,51 @@ export function resolveObservation(
       status: request.status as ObservationResolutionStatus,
       note,
       ...(intake.length > 0 ? { intake } : {}),
-      resolved_at: (request.now ?? new Date()).toISOString(),
+      resolved_at: now.toISOString(),
     }
 
     appendJsonLine(observationResolutionsPath(root), resolution)
 
     return resolution
   })
+}
+
+/**
+ * A predicate that says whether a run still owes an unresolved observation.
+ * Retention keeps such a run in the live tree, because `pan observations`
+ * and `pan observations resolve` read only live runs. The ledger is read
+ * once per predicate. A run whose state cannot load holds nothing.
+ */
+export function unresolvedObservationHold(
+  root: string,
+): (runId: string) => boolean {
+  let resolved: Set<string> | null = null
+
+  return (runId) => {
+    let observations: ReturnType<typeof shipObservations>
+
+    try {
+      observations = shipObservations(root, loadState(root, runId))
+    } catch {
+      return false
+    }
+
+    if (observations.length === 0) {
+      return false
+    }
+
+    resolved ??= new Set(
+      readObservationResolutions(root).map((resolution) =>
+        resolutionKey(resolution.run_id, resolution.criterion),
+      ),
+    )
+
+    const keys = resolved
+
+    return observations.some(
+      (item) => !keys.has(resolutionKey(item.run_id, item.criterion)),
+    )
+  }
 }
 
 /** Plain-text table of observation items for the terminal. */
