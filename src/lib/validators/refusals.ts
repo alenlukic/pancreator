@@ -14,7 +14,7 @@
  *
  * This module closes that by enumerating every validator the shared field
  * contract binds to a stage, rather than the one currently under review.
- * `tests/integration/validators-stage-validators.test.ts` reads each
+ * `tests/integration/validators-stage-validators-refusals.test.ts` reads each
  * handler's own source, and fails when a handler raises a refusal this
  * declaration does not carry or blocks on a path the stage contract does not
  * declare. A new refusal therefore fails a test rather than a worker.

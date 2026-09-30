@@ -334,7 +334,7 @@ const VERIFY_UNOWNED_REFUSALS: readonly StageRefusal[] = [
  * generated from the rules the handler itself iterates, so a refusal raised
  * through the rule mechanism cannot be missing from it. The remaining entries
  * are classified by hand, and
- * `tests/integration/validators-stage-validators.test.ts::every verify
+ * `tests/integration/validators-stage-validators-refusals.test.ts::every verify
  * refusal is classified in the canonical declaration` reads the handler's
  * source and fails when it raises an issue code this list does not carry.
  * A new refusal therefore fails a test rather than a worker.
