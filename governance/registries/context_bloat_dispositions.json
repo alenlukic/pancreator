@@ -40,7 +40,7 @@
       "evidence": [
         "tests/unit/cohort-plan-validator.test.ts: planner chunking rules are enforced against the planning stage output",
         "tests/integration/planning-workflow.test.ts: the planning stage resolves PLAN-002 and COHORT-001 while the standalone decomposition mode stays bound to DECOMP-001",
-        "tests/integration/policies.test.ts: the best-of-N candidate planner resolves PLAN-002 without the COHORT-001 hierarchy rules or their validators"
+        "tests/integration/policies-contexts.test.ts: the best-of-N candidate planner resolves PLAN-002 without the COHORT-001 hierarchy rules or their validators"
       ]
     },
     {
@@ -54,7 +54,7 @@
       "disposition": "retain",
       "rationale": "The mutually exclusive reviewer roles need the same verdict boundary in their independent judgment guidance.",
       "evidence": [
-        "tests/integration/policies.test.ts: representative review contexts resolve distinct review policy sets"
+        "tests/integration/policies-contexts.test.ts: representative review contexts resolve distinct review policy sets"
       ]
     },
     {
@@ -94,7 +94,7 @@
       "disposition": "retain",
       "rationale": "Each language policy independently guards its formatter-owned appendix and can be delivered without the other policy.",
       "evidence": [
-        "tests/integration/policies.test.ts: language guidance selection"
+        "tests/integration/policies-contexts.test.ts: language guidance selection"
       ]
     },
     {
@@ -134,8 +134,8 @@
       "disposition": "retain",
       "rationale": "The impacted mapping reaches no data path, so each implementation role needs the judgment-cohort recovery on its own card. The lookup table resolves DEV-001 for the coder and REMED-001 for the remediator, and neither policy reaches the other role. A shared owner would put plan-scoped implementation rules on a remediation card.",
       "evidence": [
-        "tests/unit/test-impact.test.ts: an unmapped change is reported as unreached and raises the advisory",
-        "tests/integration/policies.test.ts: policy structure and instruction coverage"
+        "tests/unit/test-impact-selection.test.ts: an unmapped change is reported as unreached and raises the advisory",
+        "tests/integration/policies-contexts.test.ts: policy structure and instruction coverage"
       ]
     },
     {
@@ -166,7 +166,7 @@
       "rationale": "The routing rule appears on six surfaces by design. The policy is the normative statement of the planning entry point, the single-unit versus multi-unit route, the `--no-autostart` opt-out, and the recorded route. The `--workflow delivery` escape hatch comes from the orchestrator brief, the `/pan-start` command, the primer, and the two operating cards, not from the policy. The brief is the supervisor procedure that applies the rule at init, and the command is the entry checklist a session reads before the brief. The primer is the repository summary, and the two template cards carry the target-facing copy. The command and the brief MUST stay in sync, because a session reads each without the other.",
       "evidence": [
         "tests/integration/planning-workflow.test.ts: a planning run routes on approval by default and --no-autostart opts out",
-        "tests/integration/cohorts.test.ts: the routing hook fires only for an approval of a routed planning run"
+        "tests/integration/cohorts-routing.test.ts: the routing hook fires only for an approval of a routed planning run"
       ]
     }
   ]
