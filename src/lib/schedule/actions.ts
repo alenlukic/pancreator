@@ -256,7 +256,7 @@ function runSessionAction(
     exit_status: command.status,
     reason: ok
       ? `Long-horizon session '${session.session_id}' succeeded.`
-      : `Long-horizon session '${session.session_id}' failed or deferred: ${command.error?.message ?? command.stderr.trim() ?? terminalStatus ?? `exit ${String(command.status)}`}`,
+      : `Long-horizon session '${session.session_id}' failed or deferred: ${command.error?.message ?? (command.stderr.trim() || null) ?? terminalStatus ?? `exit ${String(command.status)}`}`,
   }
 }
 
@@ -291,7 +291,7 @@ export function executeScheduleAction(
       exit_status: command.status,
       reason: ok
         ? 'Command completed successfully.'
-        : `Command failed: ${command.error?.message ?? command.stderr.trim() ?? `exit ${String(command.status)}`}`,
+        : `Command failed: ${command.error?.message ?? (command.stderr.trim() || null) ?? `exit ${String(command.status)}`}`,
     }
   }
 
