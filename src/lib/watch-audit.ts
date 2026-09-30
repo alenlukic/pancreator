@@ -21,7 +21,7 @@ import {
   resolveInside,
   writeJsonAtomic,
 } from './io.js'
-import { DEFAULT_WATCH_CADENCE_SECONDS } from './watch.js'
+import { DEFAULT_WATCH_CADENCE_SECONDS } from './watch/types.js'
 
 export interface WatchAuditOptions {
   /** Harness-relative path of the file listing the authorized roots. */

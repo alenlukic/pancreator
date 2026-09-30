@@ -36,7 +36,7 @@ import {
   resolveInside,
   withOperationMutex,
 } from './io.js'
-import { processStartIdentity } from './watch.js'
+import { processStartIdentity } from './watch/process-evidence.js'
 
 const LOCK_PATH = path.join('runtime', 'release', 'landing.lock')
 const LOG_PATH = path.join('runtime', 'release', 'landing.jsonl')

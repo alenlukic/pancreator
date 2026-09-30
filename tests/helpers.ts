@@ -8,7 +8,7 @@ import { sha256 } from '../src/lib/io.js'
 import { parsePersonaMapping } from '../src/lib/executors/mapping.js'
 import { parsePipelineConfig } from '../src/lib/pipeline-config.js'
 import { delegationExecutionPath } from '../src/lib/validation.js'
-import { writeRedlineRecord } from '../src/lib/watch.js'
+import { writeRedlineRecord } from '../src/lib/watch/redline.js'
 import {
   attestSupervisorCard as attestEngineSupervisorCard,
   buildSupervisorCard,
@@ -17,7 +17,7 @@ import { readHarnessConfig } from '../src/lib/project-config.js'
 import { resolveRunLayout } from '../src/lib/run-layout.js'
 import { loadState } from '../src/lib/state.js'
 import { nextSemanticVersion } from '../src/lib/versioning.js'
-import { recordForegroundReturn } from '../src/lib/watch.js'
+import { recordForegroundReturn } from '../src/lib/watch/completion.js'
 
 import type {
   Invocation,
