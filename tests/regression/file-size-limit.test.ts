@@ -17,9 +17,7 @@ const MAX_LINES = 1000
  * that splits it; a listed file that fits the limit fails this test, so the
  * list only shrinks.
  */
-const PENDING_SPLIT = new Set([
-  'src/cli.ts',
-])
+const PENDING_SPLIT = new Set(['src/cli.ts'])
 
 function typeScriptFiles(directory: string): string[] {
   return readdirSync(path.join(REPO_ROOT, directory), {

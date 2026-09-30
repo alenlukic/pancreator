@@ -329,8 +329,14 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   ]) {
     const source = path.join(REPO_ROOT, entry)
 
+    // The generated function index describes this checkout's source, not the
+    // fixture's, and the harness regenerates it at prepare.
     if (existsSync(source)) {
-      cpSync(source, path.join(root, entry), { recursive: true })
+      cpSync(source, path.join(root, entry), {
+        recursive: true,
+        filter: (from) =>
+          !from.startsWith(path.join(REPO_ROOT, 'docs', 'function-index')),
+      })
     }
   }
 

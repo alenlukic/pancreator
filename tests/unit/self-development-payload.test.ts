@@ -32,8 +32,12 @@ test('self-development-only payload paths exist in the source checkout', () => {
   assert.ok(paths.length > 0)
 
   for (const relative of paths) {
-    // The catalog is operator-local and optional, so absence is expected.
-    if (relative === 'governance/registries/cursor_model_catalog.json') {
+    // The catalog is operator-local and optional, and the function index is
+    // generated and gitignored, so absence of either is expected.
+    if (
+      relative === 'governance/registries/cursor_model_catalog.json' ||
+      relative === 'docs/function-index'
+    ) {
       continue
     }
 

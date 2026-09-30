@@ -73,6 +73,7 @@ import {
   workspaceDirectory,
   workspaceSnapshotForRun,
 } from './core.js'
+import { writeFunctionIndex } from '../function-index.js'
 import {
   ensureWorkflowRepositoryCheckBaselines,
   ensureWorkspaceProvisioned,
@@ -322,6 +323,18 @@ export function prepareInvocation(
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
       return { state, invocation: null, advisories }
+    }
+
+    // INDEX-001: a worker on Pancreator's own source reads the function index
+    // of the workspace it edits, so the harness regenerates it here rather
+    // than asking any worker to. The pages are gitignored, so the workspace
+    // fingerprint does not move, and a failure only leaves the index as it was.
+    if (isSelfDevelopmentInstallation(root)) {
+      try {
+        writeFunctionIndex(workspaceDirectory(root, state))
+      } catch {
+        // The index is orientation, never a precondition of the stage.
+      }
     }
 
     // The release gate runs here, on the workspace verify approved and before

@@ -541,7 +541,7 @@ function readmePages(modules: IndexModule[]): Map<string, string> {
     '- Find the module for a task in the map below, then open its page.',
     '- Look up a symbol by name in [SYMBOLS.md](SYMBOLS.md).',
     '- A page entry states the interface and behavior. Open the source only for the lines you change.',
-    '- Regenerate with `./bin/pan docs index --write`. `pan validate` warns when it is stale.',
+    '- The harness regenerates this index whenever it prepares a stage. Outside a run, regenerate it with `./bin/pan docs index --write`.',
     '',
     '## Module map',
     '',

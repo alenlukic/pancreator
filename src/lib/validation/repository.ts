@@ -1,6 +1,6 @@
 /** Repository validation (`pan validate`) and its guidance checks. */
 
-import { existsSync, readdirSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { errorMessage } from '../errors.js'
@@ -35,10 +35,6 @@ import { isSelfDevelopmentInstallation } from '../project-config.js'
 import { validateCommandGovernance } from '../governance/command-coverage.js'
 import { validateTargetAuthoring } from '../target-authoring.js'
 import { targetRepoPrimerFreshness } from '../validators/target-repo-primer.js'
-import {
-  checkFunctionIndex,
-  FUNCTION_INDEX_DIRECTORY,
-} from '../function-index.js'
 import {
   listWorkflowSlugs,
   loadWorkflow,
@@ -186,19 +182,6 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   if (selfDevelopment && primerFreshness?.message) {
     warnings.push(primerFreshness.message)
-  }
-
-  // The function index describes this checkout's own source, so its drift is
-  // a self-development warning and never an error: a stale index must not
-  // fail a gate or cost a worker a regeneration turn. A checkout without the
-  // index directory has nothing to compare.
-  const functionIndex =
-    selfDevelopment && existsSync(path.join(root, FUNCTION_INDEX_DIRECTORY))
-      ? checkFunctionIndex(root)
-      : null
-
-  if (functionIndex?.status === 'stale') {
-    warnings.push(functionIndex.message)
   }
 
   errors.push(...validateQuestionToolAccess(root))
@@ -582,7 +565,6 @@ export function validateRepository(root: string): RepositoryValidationResult {
     errors,
     warnings,
     ...(primerFreshness ? { target_repo_primer: primerFreshness } : {}),
-    ...(functionIndex ? { function_index: functionIndex } : {}),
     // The hash identifies the validation verdict. Primer freshness is an
     // advisory reading of a generated file and is deliberately outside it.
     report_hash: sha256({ errors, warnings }),
