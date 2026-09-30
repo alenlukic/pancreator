@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -587,5 +588,95 @@ test('a linked worktree logs to its main worktree', () => {
     existsSync(path.join(worktree, 'runtime')),
     false,
     'the linked worktree holds no shell log',
+  )
+})
+
+/**
+ * A `node` that kills itself when pan-run starts its `record-start` helper,
+ * the way the field reports show the helper dying with signal 9. With
+ * `onlyFirst` it kills the first attempt and runs later ones normally.
+ */
+function killingNodeShim(root: string, onlyFirst: boolean): NodeJS.ProcessEnv {
+  const shimDirectory = path.join(root, 'shim')
+  const firstMarker = path.join(root, 'first-attempt')
+
+  mkdirSync(shimDirectory, { recursive: true })
+  writeFileSync(
+    path.join(shimDirectory, 'node'),
+    [
+      '#!/usr/bin/env bash',
+      'if [[ "${2:-}" == record-start ]]; then',
+      onlyFirst
+        ? `  if [[ -e "${firstMarker}" ]]; then exec "${process.execPath}" "$@"; fi`
+        : '',
+      onlyFirst ? `  : > "${firstMarker}"` : '',
+      '  echo "helper killed for the test" >&2',
+      '  kill -KILL $$',
+      'fi',
+      `exec "${process.execPath}" "$@"`,
+      '',
+    ].join('\n'),
+  )
+  chmodSync(path.join(shimDirectory, 'node'), 0o755)
+
+  return { PATH: `${shimDirectory}:${process.env.PATH ?? ''}` }
+}
+
+test('AC-004: a start helper killed twice still prints the observe line and the record names the failure', () => {
+  const root = createTestTempDirectory('pan-run-start-killed-')
+  const result = runPanRun(['--label', 'killed', '--', 'echo', 'still runs'], {
+    root,
+    env: killingNodeShim(root, false),
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, 'still runs\n')
+  assert.match(result.stderr, BANNER)
+  assert.match(
+    result.stderr,
+    /record-start helper failed with status 137 \(KILL\)/u,
+  )
+
+  const record = readRecord(root)
+
+  assert.equal(record.label, 'killed')
+  assert.deepEqual(record.command, ['echo', 'still runs'])
+  assert.equal(record.exit_code, 0)
+  assert.ok(typeof record.started_at === 'string')
+  assert.deepEqual(record.record_start_failure, {
+    status: 137,
+    signal: 'KILL',
+    recovered: false,
+    stderr: 'helper killed for the test',
+  })
+})
+
+test('AC-004: a start helper killed once is retried, and the record keeps the first failure', () => {
+  const root = createTestTempDirectory('pan-run-start-retried-')
+  const result = runPanRun(['--label', 'retried', '--', 'echo', 'still runs'], {
+    root,
+    env: killingNodeShim(root, true),
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stderr, BANNER)
+
+  const record = readRecord(root)
+
+  assert.equal(record.exit_code, 0)
+  assert.ok(typeof record.started_at === 'string')
+  assert.deepEqual(record.record_start_failure, {
+    status: 137,
+    signal: 'KILL',
+    recovered: true,
+    stderr: 'helper killed for the test',
+  })
+  assert.ok(
+    isRecord(
+      readJsonFile(
+        path.join(findLatestLogDir(root) as string, 'heartbeat.json'),
+      ),
+    ),
+    'the retry writes the heartbeat file the first attempt did not',
   )
 })

@@ -272,12 +272,38 @@ function recordStart(commandArgv) {
   });
 }
 
-function recordEnd() {
+function recordEnd(commandArgv) {
   const file = path.join(env.PAN_RUN_RECORD_DIR, "record.json");
-  const record = readJson(file) || {};
+  const secrets = collectSecrets();
+  // A start helper that died twice wrote no record, so the end helper writes
+  // the fields the start would have written from what the shell passed.
+  const record = readJson(file) || {
+    schema_version: 1,
+    label: env.PAN_RUN_LABEL,
+    command: commandArgv.map((arg) => redact(arg, secrets)),
+    cwd: env.PAN_RUN_CWD,
+    pid: Number(env.PAN_RUN_PID),
+    wrapper_pid: Number(env.PAN_RUN_WRAPPER_PID),
+    started_at: env.PAN_RUN_STARTED_AT || null,
+    ended_at: null,
+    exit_code: null,
+    signal: null,
+    log_path: `${env.PAN_RUN_RECORD_REL}/output.log`,
+    heartbeat_path: `${env.PAN_RUN_RECORD_REL}/heartbeat.json`,
+    heartbeat_seconds: Number(env.PAN_RUN_CADENCE),
+  };
   record.ended_at = new Date().toISOString();
   record.exit_code = Number(env.PAN_RUN_EXIT_CODE);
   record.signal = env.PAN_RUN_SIGNAL || null;
+  const startStatus = Number(env.PAN_RUN_START_STATUS || 0);
+  if (startStatus !== 0) {
+    record.record_start_failure = {
+      status: startStatus,
+      signal: env.PAN_RUN_START_SIGNAL || null,
+      recovered: env.PAN_RUN_START_RECOVERED === "1",
+      stderr: redact((env.PAN_RUN_START_STDERR || "").slice(-2000), secrets),
+    };
+  }
   writeJson(file, record);
 }
 
@@ -314,7 +340,7 @@ const [mode, ...rest] = process.argv.slice(2);
 if (mode === "redact") process.stdout.write(redact(rest[0] || "", collectSecrets()));
 else if (mode === "filter") filter(rest[0]);
 else if (mode === "record-start") recordStart(rest.slice(1));
-else if (mode === "record-end") recordEnd();
+else if (mode === "record-end") recordEnd(rest.slice(1));
 else if (mode === "beat") beat();
 else { process.stderr.write(`pan-run helper: unknown mode ${mode}\n`); process.exit(2); }
 HELPER_JS_EOF
@@ -444,16 +470,44 @@ forward_signal() {
 trap 'forward_signal INT 2' INT
 trap 'forward_signal TERM 15' TERM
 
-PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_RECORD_REL="$RECORD_DIR_REL" \
-  PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" PAN_RUN_PID="$CMD_PID" \
-  PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
-  PAN_RUN_ENV_FILES="$ENV_FILES" \
-  node "$HELPER" record-start -- "${COMMAND_ARGV[@]}"
+START_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
+# The observe line needs only values this shell already holds, so it prints
+# before the helper runs. A helper that dies still leaves the agent a
+# `pan watch --process` command to observe the running command with.
 if [[ -n "$PROGRESS_FD" ]]; then
   printf '[pan-run] log: %s observe: ./bin/pan watch --process %s --label %s --output %s --exit-record %s\n' \
     "$RECORD_DIR_REL/output.log" "$CMD_PID" "$SAFE_LABEL" \
     "$RECORD_DIR_REL/output.log" "$RECORD_DIR_REL/record.json" >&"$PROGRESS_FD"
+fi
+
+run_record_start() {
+  PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_RECORD_REL="$RECORD_DIR_REL" \
+    PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" PAN_RUN_PID="$CMD_PID" \
+    PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
+    PAN_RUN_ENV_FILES="$ENV_FILES" \
+    node "$HELPER" record-start -- "${COMMAND_ARGV[@]}" 2>&1 >/dev/null
+}
+
+# A helper killed from outside (signal 9 in the field, cause unknown) must not
+# leave the command without a record. One retry usually writes it, and the
+# first failure stays in the record either way.
+START_STDERR="$(run_record_start)"
+START_STATUS=$?
+START_SIGNAL=""
+START_RECOVERED=0
+
+if (( START_STATUS != 0 )); then
+  if (( START_STATUS > 128 )); then
+    START_SIGNAL="$(kill -l $((START_STATUS - 128)) 2>/dev/null || true)"
+  fi
+  if run_record_start >/dev/null; then START_RECOVERED=1; fi
+  if [[ -n "$PROGRESS_FD" ]]; then
+    printf '[pan-run] record-start helper failed with status %s%s; %s\n' \
+      "$START_STATUS" "${START_SIGNAL:+ ($START_SIGNAL)}" \
+      "$([[ "$START_RECOVERED" -eq 1 ]] && echo 'the retry wrote the record' || echo 'record.json is written when the command ends')" \
+      >&"$PROGRESS_FD"
+  fi
 fi
 
 (
@@ -492,7 +546,12 @@ else
 fi
 
 PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_EXIT_CODE="$EXIT_CODE" PAN_RUN_SIGNAL="$SIGNAL_NAME" \
-  node "$HELPER" record-end
+  PAN_RUN_RECORD_REL="$RECORD_DIR_REL" PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" \
+  PAN_RUN_PID="$CMD_PID" PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
+  PAN_RUN_STARTED_AT="$START_AT" PAN_RUN_ENV_FILES="$ENV_FILES" \
+  PAN_RUN_START_STATUS="$START_STATUS" PAN_RUN_START_SIGNAL="$START_SIGNAL" \
+  PAN_RUN_START_RECOVERED="$START_RECOVERED" PAN_RUN_START_STDERR="$START_STDERR" \
+  node "$HELPER" record-end -- "${COMMAND_ARGV[@]}"
 
 if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -ne 0 ]]; then
   truncated=0
