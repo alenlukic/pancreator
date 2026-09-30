@@ -1728,8 +1728,8 @@ The module graph of this repository is dense: `engine.ts` imports most of
 a shared module can therefore reach half the lane or more. When the selection
 reaches 60% of the lane (`--advisory-ratio` changes the threshold) the command
 prints an advisory that the `fast` profile is the cheaper choice and names the
-direct-importer count. Iterate with `--depth 1` in that case, then run `fast`
-once.
+direct-importer count. Iterate with `--depth 1` in that case. The implement
+and remediate gates run `fast`, and an evidence worker may run it once.
 
 No changed file selects nothing and exits 0. A change that no lane test
 reaches also exits 0 and lists the changed files so you know to add a test; a
