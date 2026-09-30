@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.37.0] - 2026-09-30
+
+This release gives a failed ship a bounded repair path and a command that closes a run after an operator directed the landing. A stale test no longer needs a remediation round and a full verify round, and a run no longer stays at ship after its release reached `pan-dev`.
+
+### Changed
+
+- Let the release steward repair a failed land in the ship stage, and accept a ship head above the index commit when `data.release.ship_repair` declares it and the paths stay inside the bound.
+- State in the ship prompt and the orchestrator persona that the ship stage lands through `pan release land`, and that an operator landing outside the stage closes with `pan decide <run-id> landed`.
+
+### Added
+
+- Add `pan release land --run <run-id> --repair <note>`. When the run's last land failed after finalize, `pan-dev` has not moved, the tree is clean, and the commits above the failed release pair change at most three files under `tests/unit`, `tests/regression`, `tests/integration`, or `tests/secondary`, the land reuses that pair, verifies `static`, `configuration`, and the lane profile of each repaired path, and records the basis `bounded_repair` with the note and paths. Any other repair is refused with `LANDING_REPAIR_OUT_OF_BOUND` and routes to remediation.
+- Add `pan decide <run-id> landed --note <directive>`. It reads the run's landing from `runtime/release/landing.jsonl`, refuses when the landing is absent or not on `pan-dev`, and ends a run at ship as `succeeded`. The run carries `release_landing` (commit, verify profiles, directive note), and the event log carries `release_landed`.
+- Record the landing `token` and the `--run` id on every `step` event of `landing.jsonl`.
+
 ## [7.36.1] - 2026-09-30
 
 This release makes `pan release land` verify the tree it lands. The land merged the tip and finalized the release, then ran its profiles against the `dist/` built before the merge, so a correct merge could fail on a deleted test and a merge that does not compile could pass.
