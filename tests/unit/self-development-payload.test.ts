@@ -77,7 +77,9 @@ function selfDevelopmentRequiredPaths(validationSource: string): string[] {
 
 test('a file repository validation always requires ships to a target', () => {
   const paths = selfDevelopmentOnlyPaths()
-  const validationSource = readRepositoryFile('src/lib/validation.ts')
+  const validationSource = readRepositoryFile(
+    'src/lib/validation/repository.ts',
+  )
 
   // The launch agent template belongs to the base required list. Searching the
   // whole file would also match a path moved into the self-development branch.

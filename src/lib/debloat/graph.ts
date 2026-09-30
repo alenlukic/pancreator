@@ -553,8 +553,9 @@ function validatorResolutionReferences(
   // Harness code can name a handler id directly instead of resolving one
   // through a policy. That call is a real use, so it blocks like other code.
   // An enumerating module is not skipped here: naming a handler id is a
-  // resolution whatever else the file does, and `src/lib/validation.ts`
-  // synthesizes exactly one requirement this way.
+  // resolution whatever else the file does, and
+  // `src/lib/validation/repository.ts` synthesizes exactly one requirement
+  // this way.
   for (const relative of listTextFiles(root)) {
     if (path.extname(relative) !== '.ts' || relative.startsWith('tests/')) {
       continue

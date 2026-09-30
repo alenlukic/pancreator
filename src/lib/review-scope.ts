@@ -57,6 +57,7 @@ export const MACHINERY_TEST_PATTERNS: readonly string[] =
 /** Paths the reviewer trusts when it verifies a finding or a green result. */
 export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
   'src/lib/validation.ts',
+  'src/lib/validation/*',
   'src/lib/validators/*',
   'src/lib/requirements/*',
   'src/lib/governance/*',

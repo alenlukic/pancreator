@@ -1,13 +1,13 @@
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
+import { expectedDelegationSource } from '../validation/artifacts.js'
 import {
-  expectedDelegationSource,
   validateDelegationMarkdown,
-  validateInvocationAttestation,
   validateInvocationMarkdown,
-  validateQuestionToolAccess,
-} from '../validation.js'
+} from '../validation/invocation-markdown.js'
+import { validateInvocationAttestation } from '../validation/attestation.js'
+import { validateQuestionToolAccess } from '../validation/governance.js'
 import { loadRegistry, validateRegistry } from './registry.js'
 import { auditDirectives } from '../governance/audit-directives.js'
 import { validateProjectionDrift } from '../projection.js'
