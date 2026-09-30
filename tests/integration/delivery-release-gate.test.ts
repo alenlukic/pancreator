@@ -94,6 +94,7 @@ test('a remediate to verify return never runs full; the ship release gate runs i
       .map((item) => item.command),
     [
       'pan repository-check static',
+      'pan repository-check fast',
       'pan repository-check configuration',
       'pan repository-check impacted-integration',
     ],
@@ -104,13 +105,14 @@ test('a remediate to verify return never runs full; the ship release gate runs i
     undefined,
   )
 
-  // Preparing the return visit refreshes stale fast evidence before any
-  // evidence worker is delegated. Static is already current from remediation.
+  // The remediate exit gate already holds fast evidence at this fingerprint,
+  // here a cached pass of the unchanged workspace, so preparing the return
+  // visit refreshes nothing before the evidence workers are delegated.
   const verified = submitStageOutput(root, runId, verifyStage, 'success')
 
   assert.equal(
     readFileSync(path.join(root, 'runtime/fast-refresh.txt'), 'utf8').length,
-    fastBeforeRemediation + 1,
+    fastBeforeRemediation,
   )
   assert.equal(verified.record.outcome, 'success')
   assert.equal(verified.state.current_stage, 'ship')
@@ -402,8 +404,11 @@ test('delivery and delivery-chunk source stages gate configuration and impacted 
       'pan repository-check configuration',
       'pan repository-check impacted-integration',
     ],
+    // The remediator leaves fast to the gates (REMED-001), so its own exit
+    // gate runs it and a failure returns with its log.
     remediate: [
       'pan repository-check static',
+      'pan repository-check fast',
       'pan repository-check configuration',
       'pan repository-check impacted-integration',
     ],
