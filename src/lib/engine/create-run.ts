@@ -8,7 +8,7 @@ import path from 'node:path'
 
 import { COHORT_PLAN_WORKFLOW_SLUG } from '../cohorts/state.js'
 import { buildContextReference } from '../context.js'
-import { validateBriefSystem } from '../briefs.js'
+import { validateBriefSystem } from '../briefs/registry.js'
 import { invariant } from '../errors.js'
 import {
   ensureDir,

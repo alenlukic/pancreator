@@ -2,7 +2,7 @@
  * The delegation contract and the card artifacts of a prepared invocation.
  */
 
-import { scaffoldOperatorBrief } from '../briefs.js'
+import { scaffoldOperatorBrief } from '../briefs/scaffold.js'
 import { resolveInside, writeJsonAtomic, writeTextAtomic } from '../io.js'
 import { supervisorAttestCommand } from '../governance/supervisor-card.js'
 import { redlineRecordPath } from '../watch.js'

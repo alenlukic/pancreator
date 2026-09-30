@@ -1,4 +1,4 @@
-import type { BriefSection, OperatorBrief } from './briefs.js'
+import type { BriefSection, OperatorBrief } from './briefs/types.js'
 
 export const OPERATOR_ARTIFACT_PROFILE_HEADINGS = {
   intake: ['approach', 'user stories', 'constraints'],
