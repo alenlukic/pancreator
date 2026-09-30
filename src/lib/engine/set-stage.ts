@@ -233,6 +233,16 @@ function setRunStageWithActor(
   })
 }
 
+/**
+ * Moves a run to an operator-chosen stage outside the workflow's transitions,
+ * under the run's operation mutex. Writes the repair note as required operator
+ * feedback for that stage, resets attempts from the target onward, clears
+ * same-reason trackers, entry-gate routes, and the accepted workspace
+ * fingerprint, and persists `operator_stage_set` with the run running at
+ * `prepare_invocation`. Throws `REPAIR_NOTE_REQUIRED` for an empty note and
+ * `EVIDENCE_WORKERS_IN_FLIGHT` when launched evidence workers have not
+ * reported, unless `abandonWorkers` is set.
+ */
 export function setRunStage(
   root: string,
   runId: string,

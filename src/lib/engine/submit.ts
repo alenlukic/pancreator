@@ -109,6 +109,22 @@ export interface SubmitOutputResult {
   idempotent?: boolean
 }
 
+/**
+ * Accepts a worker's stage output for the active invocation under the run's
+ * operation mutex: checks the supervisor card attestation, model evidence,
+ * delegation evidence, and evidence reports, validates the output, reruns the
+ * stage's deterministic gates, decides the outcome, and appends stage history.
+ * Then routes the run: to supervisor assessment, operator approval, the next
+ * stage through the transition, or a pause for an environment block, a
+ * same-reason repeat, or an exhausted long-horizon ladder. Writes the task
+ * record and persists `stage_output_submitted`.
+ *
+ * Resubmitting an invocation that already has a task record returns that record
+ * unchanged with `idempotent` set. Throws `RUN_NOT_RUNNING`,
+ * `INVALID_RUN_ACTION`, `MODEL_EVIDENCE_MISMATCH`, `EVIDENCE_REPORT_MISSING`,
+ * or `INVALID_REVISION` without consuming an attempt. The agent registry update
+ * and any prefetch process start after the mutex is released.
+ */
 export function submitOutput(
   root: string,
   runId: string,

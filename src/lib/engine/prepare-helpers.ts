@@ -190,6 +190,12 @@ export function pendingVerificationRecommendation(
   return null
 }
 
+/**
+ * Pauses the run for an operator decision on a worker's recommendation to
+ * change the run's verification level, marks the recommendation as surfaced so
+ * it is raised once, and writes a decision record with the apply and keep
+ * commands. Mutates the state without persisting it.
+ */
 export function pauseForVerificationRecommendation(
   root: string,
   state: RunState,
@@ -213,6 +219,12 @@ export function pauseForVerificationRecommendation(
   ])
 }
 
+/**
+ * Pauses the run for an operator decision because a repository-check baseline
+ * cannot support the stage's gate, and writes a decision record pointing at the
+ * baseline evidence and the resume and abort commands. Mutates the state
+ * without persisting it.
+ */
 export function pauseForRepositoryCheckBaselineGaps(
   root: string,
   state: RunState,
@@ -241,6 +253,17 @@ export function pauseForRepositoryCheckBaselineGaps(
   )
 }
 
+/**
+ * Builds the output field contract of one stage from
+ * `library/schemas/stage-output-requirements.json`: the criterion result
+ * vocabulary, the stage's validators with their enforcement, and its required
+ * fields. A workflow-qualified entry wins over the bare stage slug, and the
+ * PR-description validator is dropped when operator artifacts were not
+ * requested. Returns undefined when the stage has no entry. Throws
+ * `INVALID_STAGE_OUTPUT_REQUIREMENTS` when the file is malformed, a validator
+ * is not resolved for the stage, or its declared enforcement disagrees with the
+ * resolved registry.
+ */
 export function stageFieldContract(
   root: string,
   workflowSlug: string,

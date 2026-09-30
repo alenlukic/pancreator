@@ -38,6 +38,11 @@ import {
   observePath,
 } from './observe.js'
 
+/**
+ * Reads an invocation's foreground-return record. Returns null when the file is
+ * missing, unparseable, not schema version 1, names another invocation, or
+ * lacks its launch and return times.
+ */
 export function readForegroundReturn(
   root: string,
   runId: string,
@@ -126,6 +131,11 @@ export function formatWakeLine(entry: WatchRecordEntry): string {
   )
 }
 
+/**
+ * Reads the schema version 1 entries of an invocation's watch ledger in append
+ * order, skipping blank or malformed lines. Returns an empty list when the
+ * ledger does not exist.
+ */
 export function readWatchRecord(
   root: string,
   runId: string,
@@ -432,6 +442,12 @@ export function summarizeDelegationWatch(
   }
 }
 
+/**
+ * Summarizes an invocation's foreground-return record for delegation evidence:
+ * its path, whether it exists, the launch and return times, the elapsed time
+ * and its plausibility, and whether the output was present at return. Fields
+ * are null when the record is absent.
+ */
 export function summarizeForegroundReturn(
   root: string,
   runId: string,

@@ -51,6 +51,10 @@ const TERMINAL_RUN_STATUSES: ReadonlySet<RunState['status']> = new Set([
   'canceled',
 ])
 
+/**
+ * Loads a run's state, or returns null when the id is empty or the run cannot
+ * be loaded.
+ */
 export function readRun(
   root: string,
   runId: string | null | undefined,

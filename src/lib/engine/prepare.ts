@@ -112,6 +112,20 @@ interface PreparedInvocationRegistration {
   model: string | null
 }
 
+/**
+ * Prepares the next worker invocation of a running run under its operation
+ * mutex: refreshes the supervisor card and requires its attestation, records
+ * pipeline-config advisories, spends a stage attempt, runs the workspace,
+ * baseline, and entry-gate preflights, then writes the invocation card and
+ * artifacts and persists `invocation_prepared`. Returns the already-prepared
+ * invocation when one is pending. Returns a null invocation when a limit,
+ * verification recommendation, baseline gap, or entry gate paused or rerouted
+ * the run.
+ *
+ * The agent registry entry is written after the mutex is released. Throws
+ * `RUN_NOT_RUNNING`, `INVALID_RUN_ACTION`, or `COHORT_PREDECESSOR_UNSATISFIED`,
+ * among others.
+ */
 export function prepareInvocation(
   root: string,
   runId: string,

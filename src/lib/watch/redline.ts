@@ -126,11 +126,19 @@ export interface RedlineRecord {
   declarations: RedlineDeclaration[]
 }
 
+/**
+ * Returns the root-relative path of a run's platform-guidance redline record in
+ * its evidence directory.
+ */
 export function redlineRecordPath(root: string, runId: string): string {
   return resolveRunLayout(root, runId).evidence(REDLINE_RECORD_FILENAME)
     .relative
 }
 
+/**
+ * Reads a run's platform-guidance redline record. Returns null when the file is
+ * missing or not schema version 1.
+ */
 export function readRedlineRecord(
   root: string,
   runId: string,

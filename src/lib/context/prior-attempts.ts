@@ -42,6 +42,12 @@ export function selectWorkerHandoff(
   }
 }
 
+/**
+ * Adds the outputs of the most recent earlier attempts of the same stage, up to
+ * the stage's `prior_attempts` context limit, as required references, together
+ * with each attempt's supervisor assessment when one was recorded. Adds nothing
+ * on a first attempt or when the limit is zero.
+ */
 export function selectPriorAttempts(
   references: Map<string, InvocationReference>,
   root: string,
@@ -88,6 +94,12 @@ export function selectPriorAttempts(
   }
 }
 
+/**
+ * Adds operator feedback artifacts addressed to this stage as required
+ * references, in timestamp order. Approval directives are always included;
+ * remediation and stage-repair notes are limited to the newest
+ * `operator_feedback` entries the stage's context allows.
+ */
 export function selectOperatorFeedback(
   references: Map<string, InvocationReference>,
   state: RunState,
@@ -125,6 +137,13 @@ export function selectOperatorFeedback(
   }
 }
 
+/**
+ * Adds the operator exceptions in force as required references: every gate
+ * waiver active at the workspace fingerprint with its linked spotfix case, the
+ * governance and artifact issues record on a ship stage, and the latest
+ * workspace ratification for this fingerprint when the stage's context asks for
+ * ratifications.
+ */
 export function selectExceptions(
   references: Map<string, InvocationReference>,
   state: RunState,

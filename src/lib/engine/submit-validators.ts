@@ -199,6 +199,15 @@ function blockedOutputExemption(
     : null
 }
 
+/**
+ * Runs every harness-authoritative validator resolved for the invocation
+ * against its target and persists each validator's result. Returns all failure
+ * messages, the subset from blocking (non-advisory) validators, and the outcome
+ * those blocking failures route to: blocked when any routes to blocked or an
+ * operator decision, failure otherwise, or null when none failed. An unresolved
+ * target is an error, and it blocks only when the invocation declared named
+ * artifacts.
+ */
 export function runHarnessAuthoritativeValidators(
   root: string,
   runId: string,

@@ -78,6 +78,13 @@ export type HorizonDeferralClassification =
   | { kind: 'harness_unrecoverable' }
   | { kind: 'operator' }
 
+/**
+ * Defers a horizon task: pauses its run when the run is still advancing,
+ * appends a classified record to the session's `deferred.jsonl`, writes a
+ * deferral notice to `runtime/inbox/queue`, marks the task deferred and its
+ * pending transitive dependents blocked, and frees the active slot when this
+ * task held it. Returns the updated session state without persisting it.
+ */
 export function writeDeferral(
   root: string,
   state: HorizonSessionState,
@@ -321,6 +328,14 @@ export function arbitrateTaskStop(
   }
 }
 
+/**
+ * Settles a horizon task after the headless driver stopped advancing its run,
+ * and returns the updated session state. A succeeded run settles the task or
+ * its route; an exhausted failure ladder with no re-plan spent starts the
+ * scoped re-plan; an operator-only pause, an exhausted ladder, or another
+ * terminal stop goes to the session arbiter, which may continue, restart, or
+ * defer the task. Any other stop returns the state unchanged.
+ */
 export function reconcileDrivenTask(
   root: string,
   state: HorizonSessionState,

@@ -676,6 +676,13 @@ export function settleSubmissionModelEvidence(
   return { advisories, mismatches }
 }
 
+/**
+ * Whether the run is bound by the model-evidence contract: true when the
+ * supervisor recorded its model evidence before the run's first stage
+ * submission. Runs whose supervisor never recorded, or recorded only after work
+ * was submitted, keep the older contract, so their stage cards do not demand
+ * model evidence.
+ */
 export function runUsesModelEvidenceContract(state: RunState): boolean {
   const supervisor = state.model_evidence?.find(
     (item) => item.role === 'supervisor' && item.result === 'recorded',

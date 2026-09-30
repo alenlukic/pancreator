@@ -598,6 +598,10 @@ function existingDeliveryRun(
   )
 }
 
+/**
+ * Returns the run with the latest `created_at` without reordering the input, or
+ * undefined for an empty list.
+ */
 export function newestRun(runs: RunState[]): RunState | undefined {
   return [...runs].sort((left, right) =>
     right.created_at.localeCompare(left.created_at),

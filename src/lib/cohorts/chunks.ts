@@ -20,6 +20,10 @@ import {
   loadCohortState,
 } from './state.js'
 
+/**
+ * Loads the run state of one chunk's run. Returns null when the chunk has no
+ * run id or its run record does not exist yet.
+ */
 export function chunkRunState(
   root: string,
   runId: string | undefined,
@@ -31,6 +35,10 @@ export function chunkRunState(
   return loadState(root, runId)
 }
 
+/**
+ * Returns the chunk records that belong to one cohort index of a session, in
+ * recorded order, including abandoned chunks.
+ */
 export function chunksOfCohort(
   state: CohortSessionState,
   cohortIndex: number,
@@ -154,12 +162,20 @@ export function cohortIsSatisfied(
   )
 }
 
+/**
+ * Returns every cohort index of a session in ascending order.
+ */
 export function cohortIndexes(state: CohortSessionState): number[] {
   return [...state.cohorts]
     .map((group) => group.index)
     .sort((left, right) => left - right)
 }
 
+/**
+ * Returns the lowest cohort index that is not yet satisfied (every chunk run
+ * succeeded and its merge was recorded), or null when every cohort is satisfied
+ * and the session is ready for its release run.
+ */
 export function firstUnsatisfiedIndex(
   root: string,
   state: CohortSessionState,
@@ -228,6 +244,10 @@ export function assertCohortRunUnblocked(root: string, state: RunState): void {
   )
 }
 
+/**
+ * Lowercases a chunk id and collapses every non-alphanumeric run into a single
+ * hyphen. Throws `INVALID_COHORT_PLAN` when nothing usable remains.
+ */
 export function chunkIdSlug(value: string): string {
   const slug = value
     .toLowerCase()
@@ -241,10 +261,20 @@ export function chunkIdSlug(value: string): string {
   return slug
 }
 
+/**
+ * Returns the managed worktree name of one chunk: `cohort-`, a six-character
+ * hash of the cohort id, and the chunk id slug. Throws `INVALID_COHORT_PLAN`
+ * when the chunk id has no usable slug.
+ */
 export function chunkWorktreeName(cohortId: string, chunkId: string): string {
   return `cohort-${sha256(cohortId).slice(0, 6)}-${chunkIdSlug(chunkId)}`
 }
 
+/**
+ * Returns the value when it is a non-blank string and otherwise throws a
+ * `PanError` naming `source`, with code `INVALID_COHORT_PLAN` unless the caller
+ * supplies another.
+ */
 export function requireString(
   value: unknown,
   source: string,

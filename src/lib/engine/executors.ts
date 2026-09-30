@@ -108,6 +108,11 @@ function ensureOpenAiReady(
   return { ok: true }
 }
 
+/**
+ * Checks that the `cursor-agent` binary is installed and a Cursor API key is
+ * available. Returns an error message instead of throwing when either is
+ * missing.
+ */
 export function ensureCursorReady(
   root: string,
 ): { ok: true } | { ok: false; error: string } {
@@ -124,6 +129,13 @@ export function ensureCursorReady(
     : { ok: false, error: authentication.advisories.join(' ') }
 }
 
+/**
+ * Runs the readiness preflight for one persona executor (Cursor, Claude Code,
+ * or OpenAI) and returns an error message instead of throwing when it fails.
+ * The Claude Code and OpenAI checks cache a successful result on the run state,
+ * which the caller persists. Throws `EXECUTOR_UNSUPPORTED` for an unknown
+ * executor kind.
+ */
 export function ensureExecutorReady(
   root: string,
   state: RunState,
@@ -158,6 +170,14 @@ function executorPreflightRemedy(executor: PersonaExecutorKind): string {
   return EXECUTOR_PREFLIGHT_REMEDY[executor]
 }
 
+/**
+ * Pauses the run for an operator decision because a stage's executor failed its
+ * preflight, and writes a decision record with the executor-specific remedy,
+ * resume, remap, and abort options. Mutates the state without persisting it.
+ *
+ * Pausing is deliberate: substituting another executor would falsify the run's
+ * model snapshot.
+ */
 export function pauseForExecutorPreflight(
   root: string,
   state: RunState,
@@ -546,6 +566,12 @@ export function createOpenAiAdapter(
   }
 }
 
+/**
+ * Returns an external executor adapter that runs a prompt through the Claude
+ * Code CLI in the stage workspace with the mapping's model and permission mode
+ * and the stage's tool policy, optionally resuming a session, and reports the
+ * process result. Each `run` call spawns one `claude` process synchronously.
+ */
 export function createClaudeCodeAdapter(context: {
   workspaceDir: string
   mapping: ParsedPersonaMapping

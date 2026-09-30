@@ -11,6 +11,13 @@ import type { InvocationReference, RunState } from '../types.js'
 import { addReference } from './references.js'
 import { addStageHistoryReference } from './stage-outputs.js'
 
+/**
+ * On a cohort release run, adds the implementation record that replaces an
+ * implement output: the cohort session's final integration record, each
+ * non-abandoned chunk's child specification, and each chunk run's latest verify
+ * output, all as required references. Appends each one that is absent to
+ * `missingRequired`. Does nothing on any other run.
+ */
 export function selectReleaseEvidence(
   references: Map<string, InvocationReference>,
   missingRequired: string[],

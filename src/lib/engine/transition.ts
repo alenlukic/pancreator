@@ -39,6 +39,20 @@ interface TransitionOptions {
   operatorDirected?: boolean
 }
 
+/**
+ * Moves the run along a stage outcome's transition, or to `overrideTarget`, and
+ * updates the transition and consecutive-failure counters. A success returns to
+ * the stage whose failed entry gate routed here; a terminal target closes the
+ * run (moving the inbox request, recording a dirty workspace exit, stopping
+ * prefetch processes); a `paused` target writes a decision record; any other
+ * stage resets the left stage's attempt budget and sets `prepare_invocation`.
+ * Pauses through the circuit breaker when the transition or consecutive-failure
+ * limit is exceeded, unless the move is operator-directed.
+ *
+ * Mutates the state and may write decision and inbox files, but persists only a
+ * `run_ended_dirty` event; the caller persists the transition. Throws
+ * `INVALID_TRANSITION` when the stage declares no transition for the outcome.
+ */
 export function applyTransition(
   root: string,
   state: RunState,

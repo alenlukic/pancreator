@@ -318,6 +318,16 @@ function entryGateVerifiedSource(
   return fingerprint ? { fingerprint, profile } : undefined
 }
 
+/**
+ * Runs the stage's entry-gate criterion before delegation and records the
+ * result on the run. Returns `pass` when the stage has no entry gate, a current
+ * pass is already recorded, an operator waiver covers it, or the criterion
+ * passes now. On failure it routes the run back to the gate's repair stage and
+ * returns `routed`, or pauses the run for an operator-only decision and returns
+ * `paused` when the repair-loop budget is spent or the repair route cannot
+ * restore the criterion. Persists the run and may write a decision record.
+ * Throws `INVALID_WORKFLOW` when the gate names an unknown criterion.
+ */
 export function runStageEntryGate(
   root: string,
   state: RunState,

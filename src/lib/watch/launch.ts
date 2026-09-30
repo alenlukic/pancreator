@@ -69,6 +69,10 @@ export interface LaunchRecordOptions {
   platformDetachedAt?: string
 }
 
+/**
+ * Returns the root-relative path of an invocation's launch record,
+ * `<invocation>-launch.json`, in the run's evidence directory.
+ */
 export function launchRecordPath(
   root: string,
   runId: string,
@@ -78,6 +82,11 @@ export function launchRecordPath(
     .relative
 }
 
+/**
+ * Reads an invocation's launch record. Returns null when the file is missing,
+ * unparseable, not schema version 1, names another invocation, or lacks a
+ * launch time.
+ */
 export function readLaunchRecord(
   root: string,
   runId: string,

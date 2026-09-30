@@ -46,6 +46,11 @@ export interface MultiplexedWatchTarget {
   invocationId: string
 }
 
+/**
+ * Parses a comma-separated `--targets` value of `<run-id>:<invocation-id>`
+ * pairs. Returns null when the option is absent. Throws `INVALID_ARGUMENT` for
+ * a malformed pair.
+ */
 export function parseMultiplexedWatchTargets(
   value: string | null,
 ): MultiplexedWatchTarget[] | null {

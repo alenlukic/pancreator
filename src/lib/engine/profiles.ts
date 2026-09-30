@@ -14,6 +14,13 @@ import { gitWorkspaceSnapshot, snapshotEntryPath } from '../git.js'
 
 export const FULL_PROFILE = 'full'
 
+/**
+ * Returns the repository-check profiles the workflow's shell criteria gate on,
+ * sorted by name and deduplicated with the first declared timeout, which are
+ * the profiles a run baselines before its first mutating stage. Under a
+ * verification level only source-allowed stages count, and the `full` release
+ * profile is never included.
+ */
 export function collectStageRepositoryCheckProfiles(
   stages: StageDefinition[],
   state: RunState,

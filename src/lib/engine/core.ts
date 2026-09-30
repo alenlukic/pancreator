@@ -43,6 +43,13 @@ import { loadWorkflowFile, workflowPersonaNames } from '../workflow.js'
 import { gitWorkspaceSnapshot } from '../git.js'
 import { resolveRoots } from '../workspace/roots.js'
 
+/**
+ * Appends each message to the run's governance and artifact issues with a
+ * sequential `GA-NNNN` id, rewrites the run's
+ * `governance-artifact-issues.json`, and records its path on the state, which
+ * the caller must still persist. Returns the recorded messages; with no
+ * messages it writes nothing and returns an empty list.
+ */
 export function recordGovernanceArtifactIssues(
   root: string,
   state: RunState,
@@ -89,6 +96,13 @@ export interface OperationProgressOptions {
   onProgress?: (message: string) => void
 }
 
+/**
+ * Persists the run state and appends one event of `eventType` to the run's
+ * event log. When the run is now closed, it also finalizes the run's workflow
+ * artifacts and appends a `workflow_artifacts_finalized` event. Throws
+ * `RESERVED_EVENT_KEY` or `STATE_SIZE_BUDGET_EXCEEDED` from the underlying
+ * persist.
+ */
 export function persistRun(
   root: string,
   state: RunState,
@@ -106,6 +120,10 @@ export function persistRun(
   persist(root, state, 'workflow_artifacts_finalized', { ...summary })
 }
 
+/**
+ * Loads the workflow definition from the snapshot the run recorded at creation,
+ * so a run keeps its original stages even after the live workflow file changes.
+ */
 export function loadRunWorkflow(
   root: string,
   state: RunState,
@@ -116,6 +134,11 @@ export function loadRunWorkflow(
   )
 }
 
+/**
+ * Returns the run's pipeline config snapshot, or a snapshot of the live
+ * pipeline config when the run predates snapshotting. Throws
+ * `INVALID_PIPELINE_CONFIG` when the recorded snapshot is malformed.
+ */
 export function loadRunPipelineConfig(root: string, state: RunState) {
   if (state.pipeline_config) {
     return loadPipelineConfigSnapshot(root, state.pipeline_config.path)
@@ -229,6 +252,11 @@ function initializeRunWorkspaceTracking(root: string, state: RunState) {
   return roots
 }
 
+/**
+ * Records the run's workspace, installation, and state roots and scope hash on
+ * the state before a source-allowed stage runs. Does nothing for a stage that
+ * may not edit source.
+ */
 export function ensureMutatingWorkflowInitialized(
   root: string,
   state: RunState,
@@ -239,6 +267,11 @@ export function ensureMutatingWorkflowInitialized(
   }
 }
 
+/**
+ * Returns the Git status snapshot of the run's bound workspace, and records the
+ * resolved workspace, installation, and state roots and scope hash on the state
+ * as a side effect.
+ */
 export function workspaceSnapshotForRun(root: string, state: RunState) {
   const roots = rootsForRun(root, state)
 
@@ -277,6 +310,11 @@ export function dirtyWorkspaceExit(
       }
 }
 
+/**
+ * Reads and shape-checks an invocation record at a root-relative path. Throws
+ * `INVALID_INVOCATION` when the file is not a schema version 1 invocation with
+ * an id.
+ */
 export function readInvocation(root: string, relativePath: string): Invocation {
   const value = readJson(resolveInside(root, relativePath))
 
@@ -292,6 +330,11 @@ export function readInvocation(root: string, relativePath: string): Invocation {
   return value as unknown as Invocation
 }
 
+/**
+ * Appends one advisory per message to the run state's advisories, stamped with
+ * the shared context and the current time, and returns the added entries. The
+ * caller persists the state.
+ */
 export function recordRunAdvisories(
   state: RunState,
   context: Omit<RunAdvisory, 'message' | 'recorded_at'>,
@@ -309,6 +352,11 @@ export function recordRunAdvisories(
   return added
 }
 
+/**
+ * Reads the task record at a root-relative path. Throws `INVALID_TASK_RECORD`
+ * when the file does not hold an object; the fields are not otherwise
+ * validated.
+ */
 export function readTaskRecord(root: string, relativePath: string): TaskRecord {
   const value = readJson(resolveInside(root, relativePath))
 
@@ -319,6 +367,11 @@ export function readTaskRecord(root: string, relativePath: string): TaskRecord {
   return value as unknown as TaskRecord
 }
 
+/**
+ * Validates a parsed supervisor assessment (schema version 1, ids, a pass,
+ * fail, or escalate verdict, criteria array, and summary) and returns it typed.
+ * Throws `INVALID_ASSESSMENT` naming `source` on the first violation.
+ */
 export function parseSupervisorAssessment(
   value: unknown,
   source: string,
@@ -364,6 +417,11 @@ export function parseSupervisorAssessment(
   return value as unknown as SupervisorAssessment
 }
 
+/**
+ * Returns the persona-to-model mapping restricted to the personas the workflow
+ * uses. Throws `INVALID_PIPELINE_CONFIG` when the workflow names a persona the
+ * mapping lacks.
+ */
 export function personaSubset(
   personas: Record<string, string>,
   workflow: WorkflowDefinition,
@@ -385,6 +443,11 @@ export function personaSubset(
   return subset
 }
 
+/**
+ * Loads one invocation of a run by id and returns it with its root-relative
+ * JSON path. Throws `INVOCATION_NOT_FOUND` when the record does not exist and
+ * `INVALID_INVOCATION` when it is malformed.
+ */
 export function readInvocationRecord(
   root: string,
   state: RunState,

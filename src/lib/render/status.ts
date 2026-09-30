@@ -102,7 +102,6 @@ function renderDeliveryHandoff(
   }
 }
 
-/** Render a one-screen status summary for `pan status`. */
 /** The latest supervisor handoff and the note the receiving session reads. */
 function renderSupervisorHandoff(state: RunState): string[] {
   const handoff = latestHandoffStatus(state)
@@ -118,6 +117,13 @@ function renderSupervisorHandoff(state: RunState): string[] {
   ]
 }
 
+/**
+ * Renders the one-screen `pan status` text of a run: status, workflow,
+ * workspace, stage and pending action, counters, involvement, agent health,
+ * pause reason, and suite profile, followed by sections for operator gate
+ * waivers, run gate overrides, granted revisions, gate evidence, advisories,
+ * and the current invocation's validation status, each only when it applies.
+ */
 export function renderStatus(
   state: RunState,
   validationStatus: InvocationValidationStatus | null = null,

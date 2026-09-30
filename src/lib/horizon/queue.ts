@@ -210,6 +210,10 @@ export function horizonCycle(
   return null
 }
 
+/**
+ * Returns the ids of every task that depends on the given task directly or
+ * transitively, in the session's declared task order.
+ */
 export function transitiveHorizonDependents(
   state: Pick<HorizonSessionState, 'tasks'>,
   taskId: string,

@@ -9,6 +9,10 @@ import { resolveRunLayout } from '../run-layout.js'
 import { loadState } from '../state.js'
 import type { Invocation } from '../types.js'
 
+/**
+ * Returns the root-relative path of an invocation's watch ledger,
+ * `<invocation>-watch.jsonl`, in the run's evidence directory.
+ */
 export function watchRecordPath(
   root: string,
   runId: string,
@@ -18,6 +22,11 @@ export function watchRecordPath(
     .relative
 }
 
+/**
+ * Returns the root-relative path of the marker
+ * `<invocation>-delegation-background.json`, which records that the platform
+ * turned the launch into a background subagent.
+ */
 export function backgroundMarkerPath(
   root: string,
   runId: string,
@@ -80,6 +89,11 @@ export function evidenceReadyPath(
   ).relative
 }
 
+/**
+ * Returns the root-relative path of an invocation's foreground-return record,
+ * `<invocation>-foreground-return.json`, which attests that a foreground launch
+ * returned control.
+ */
 export function foregroundReturnRecordPath(
   root: string,
   runId: string,

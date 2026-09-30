@@ -34,6 +34,14 @@ export type HorizonDeferralAuthority =
   | { kind: 'hard_block'; hard_block: HorizonHardBlock }
   | { kind: 'operator_directive' }
 
+/**
+ * Defers one horizon task under the session mutex on the operator's directive
+ * or on a supervisor-confirmed hard block, which is also recorded in the
+ * arbiter ledger. Pauses the task's run if it is still advancing, blocks its
+ * dependents, writes the
+ * deferral records and a handoff, and persists `task_deferred`. Throws
+ * `INVALID_HORIZON_STATE` for an unknown task or an empty reason.
+ */
 export function deferHorizonTask(
   root: string,
   sessionId: string,
@@ -206,6 +214,11 @@ export function reinstateHorizonTask(
   })
 }
 
+/**
+ * Marks a horizon session abandoned under the session mutex, clears its active
+ * task slot, writes an `abandoned` handoff, and persists `session_abandoned`
+ * with the reason. The active task's run is left as it is.
+ */
 export function abandonHorizonSession(
   root: string,
   sessionId: string,

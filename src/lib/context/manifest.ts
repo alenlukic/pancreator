@@ -11,6 +11,12 @@ import type {
   InvocationContextOptions,
 } from './references.js'
 
+/**
+ * Writes the invocation's `.context-manifest.json` (selected, omitted, and
+ * missing required references) under the run layout and returns an index-only
+ * reference to it. Returns null and writes nothing when no reference was
+ * omitted and no required input is missing.
+ */
 export function writeContextManifest(
   options: InvocationContextOptions,
   selected: InvocationReference[],

@@ -142,6 +142,11 @@ export function inspectContextReference(
   }
 }
 
+/**
+ * Adds a reference to the map keyed by path. When the path is already present,
+ * the entry with the stronger retrieval mode wins (`required` over
+ * `conditional` over `index_only`); on a tie the existing entry is kept.
+ */
 export function addReference(
   references: Map<string, InvocationReference>,
   reference: InvocationReference,

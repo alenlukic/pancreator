@@ -132,10 +132,19 @@ function bounded(text: string): string {
   return text.length <= TEXT_MAX ? text : `${text.slice(0, TEXT_MAX)}…`
 }
 
+/**
+ * Returns the absolute path of a horizon session's append-only arbiter ledger,
+ * `arbiter.jsonl`.
+ */
 export function arbiterLedgerPath(root: string, sessionId: string): string {
   return path.join(root, HORIZON_ROOT, sessionId, 'arbiter.jsonl')
 }
 
+/**
+ * Reads every record of a horizon session's arbiter ledger in append order.
+ * Returns an empty list when the ledger does not exist; a malformed line throws
+ * a JSON parse error.
+ */
 export function readArbiterLedger(
   root: string,
   sessionId: string,
@@ -413,6 +422,13 @@ function runContext(root: string, run: RunState | null): unknown {
   }
 }
 
+/**
+ * Builds the prompt the session arbiter receives for one stopped task: the
+ * operating principles, the four hard blocks and what never counts as one, the
+ * override actions available for the run's status, the required JSON reply
+ * shape, and a JSON context with the stop reason, prior rounds, override count,
+ * and a digest of the run.
+ */
 export function arbiterPrompt(
   root: string,
   input: {
@@ -494,6 +510,11 @@ function recordExchange(
   return relative
 }
 
+/**
+ * Stamps an arbiter decision with a record id and timestamp, defaults its actor
+ * to `arbiter`, appends it to the session's arbiter ledger, and returns the
+ * full record.
+ */
 export function appendArbiterRecord(
   root: string,
   record: Omit<ArbiterRecord, 'schema_version' | 'record_id' | 'recorded_at'>,
