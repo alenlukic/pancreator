@@ -1147,7 +1147,9 @@ export function scopedReturnForStage(
     .find((item) => item.stage === stage.slug && item.outcome !== 'blocked')
   let routing: ScopedReturnRouting | null = null
 
-  if (routingItem?.output_path) {
+  // A passing verify did not route this remediation (the ship release gate
+  // did), so its warnings are not routing findings.
+  if (routingItem?.output_path && routingItem.outcome === 'failure') {
     const value = readJson(resolveInside(root, routingItem.output_path))
     const verify =
       isRecord(value) && isRecord(value.data) && isRecord(value.data.verify)
