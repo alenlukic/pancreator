@@ -45,7 +45,7 @@ This handbook records conventions verified in this repository. It is not a gener
 
 `prettier.config.js` is authoritative and its output MUST be treated as correct: 80-column print width, two-space indentation, no tabs, no semicolons, single quotes, `quoteProps: 'as-needed'`, `trailingComma: 'all'`, bracket spacing, always-parenthesized arrow parameters, and LF line endings.
 
-Run `npm run lint` before completion. It runs `npm run format:check`, then `bash -n` over the scripts in `bin/`, and adds `npm run typecheck` only when `bin/build --stamp-fresh` reports a stale build stamp, because the emitting build type-checks the same program.
+Run `npm run lint` before completion. It runs `npm run format:check`, then `bin/check-shell` (`bash -n` under `/bin/bash` over every Bash script in `bin/` and `.githooks/`, plus `shellcheck -S error` when it is installed), and adds `npm run typecheck` only when `bin/build --stamp-fresh` reports a stale build stamp, because the emitting build type-checks the same program.
 
 ## Comments
 

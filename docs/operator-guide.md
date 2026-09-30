@@ -1550,8 +1550,37 @@ Run a profile directly with:
 ```
 
 An empty profile is reported as `not_configured`; it is never silently replaced
-with an npm, Python, or other technology-specific command. Direct runs stream
-live subprocess output to stderr and print the final structured result to stdout.
+with an npm, Python, or other technology-specific command.
+
+A direct run prints one start line per probe and command on stderr, so a long
+wait is visible, and keeps the command output out of the terminal. When it
+finishes it prints one result line on stdout:
+
+```text
+[repository-check:fast] passed: 1 command in 42.3s (log: runtime/logs/repository-check/63279_Sep-30-0460_fast-1a2b3c4d.log)
+```
+
+A failure prints each failed probe or command with its exit, the failing test
+names and `file:line` locations it can parse from `node:test` output (the
+repository's failures-only reporter, TAP, or spec), or the last 40 output lines
+when no test name parses, and then the log path:
+
+```text
+[repository-check:fast] FAILED: 1 of 1 command failed in 63.1s
+failed command: npm test (exit 1)
+  failing tests (1):
+    adds numbers (dist/tests/unit/math.test.js:12)
+log: runtime/logs/repository-check/63279_Sep-30-0460_fast-1a2b3c4d.log
+```
+
+Every execution writes the complete output of every probe and command to
+`runtime/logs/repository-check/<temporal-prefix>_<profile>-<hex>.log`, whether
+it passed, failed, or ran outside any run. `pan cleanup` deletes these logs
+after the retention window (class `repository-check-logs`). A run's gate pass
+evidence stays in the run's own evidence directory. `--verbose`, or
+`PAN_VERBOSE=1`, streams the command output to stderr again. `--json` prints the
+structured result as before, plus `log_path` and `failing_tests` (the parsed
+failing tests of each failed entry).
 
 A profile may declare `"concurrent": true`, which runs its commands together
 under the profile's shared deadline instead of one after another. The recorded
@@ -1668,14 +1697,31 @@ never selected.
 ./bin/pan tests impacted --file src/lib/x.ts   # a hypothetical change
 ./bin/pan tests impacted --depth 1             # direct importers only
 ./bin/pan tests impacted --include 'tests/unit/naming*.test.ts'
+./bin/pan tests impacted --verbose             # stream the test output as well
 npm run test:impacted                          # the same command as an npm script
 ```
 
-The text output lists each selected test with the changed file that reached it
-and the import depth, then a per-depth count. `--json` emits `changed`,
+A run keeps the test output out of the terminal. It prints one start line on
+stderr with the log path, then one result line: a pass line with the selected
+file count and the reported test count, or `FAILED` with each failing test
+name and `file:line` (the last 40 output lines when no test name parses) and
+the log path. The full output is in
+`runtime/logs/repository-check/<temporal-prefix>_tests-impacted-<hex>.log`.
+Unreached changed files and the advisory still print. `--verbose`, or
+`PAN_VERBOSE=1`, also streams the output and prints the full selection.
+
+`--list` prints each selected test with the changed file that reached it and
+the import depth, then a per-depth count. `--json` emits `changed`,
 `selected`, `selected_count`, `lane_count`, `ratio`, `advisory`, `unreached`,
 `type_only`, `reasons`, `depths`, `by_depth`, `graph_build_ms`, `exit_code`,
-and `duration_ms`. The exit code follows `node --test`; `--list` exits 0.
+and `duration_ms`, plus `log_path` and `failing_tests` after a run. The exit
+code follows `node --test`; `--list` exits 0.
+
+When a repository-check profile runs the command (the `impacted` and
+`impacted-integration` profiles), the profile runner already logs and
+summarizes the output. The command then passes its output through unchanged
+and prints the full selection, so gate evidence and baseline diagnostics keep
+the complete transcript.
 
 The module graph of this repository is dense: `engine.ts` imports most of
 `src/lib`, and most tests import `engine.ts` or `tests/helpers.ts`. A change to

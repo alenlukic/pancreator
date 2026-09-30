@@ -8,12 +8,29 @@
  * of the whole `fast` profile. It is a self-development iteration aid, never a
  * gate, and it refuses in embedded and detached installations.
  */
-import { spawnSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import {
+  checkLogPath,
+  checkOutputVerbose,
+  formatElapsed,
+  parseFailingTests,
+  renderFailureDetail,
+  runsInsideProfileCommand,
+  type FailingTest,
+} from './check-output.js'
 import { PanError } from './errors.js'
 import { gitChangedPathsBetween, gitHead, isGitRepository } from './git.js'
 import { appendJsonLine, sha256 } from './io.js'
@@ -128,6 +145,8 @@ export interface ImpactOptions {
   depth?: number
   list?: boolean
   json?: boolean
+  /** Stream the test run's output as well as logging it. */
+  verbose?: boolean
   advisoryRatio?: number
   /** Lane directories to select from; `TEST_LANES` when absent. */
   lanes?: string[]
@@ -142,7 +161,22 @@ export interface ImpactResult extends Selection {
   record_path: string
   /** Workspace the selection ran against, relative to the installation root. */
   workspace: string
+  /**
+   * Installation-relative log holding the run's complete output, or null when
+   * nothing ran or an enclosing profile runner owns the output.
+   */
+  log_path?: string | null
+  /** Failing tests the run's output names. */
+  failing_tests?: FailingTest[]
 }
+
+/**
+ * How a selected run reports. `summary` logs the output and prints a pass
+ * line or the failing tests; `verbose` also streams it; `passthrough` hands
+ * the output to the caller's streams untouched and prints the full selection,
+ * which is what an enclosing repository-check runner captures.
+ */
+export type ImpactOutputMode = 'summary' | 'verbose' | 'passthrough'
 
 export interface RunTestsImpactedOptions {
   /**
@@ -152,6 +186,14 @@ export interface RunTestsImpactedOptions {
    */
   workspace?: string
   write?: (text: string) => void
+  /** Progress lines written while the run is under way. */
+  progress?: (text: string) => void
+  /**
+   * Reporting mode. Absent, `--verbose` or `PAN_VERBOSE` selects `verbose`,
+   * a repository-check profile command selects `passthrough`, and anything
+   * else is `summary`.
+   */
+  output?: ImpactOutputMode
 }
 
 // --- Graph ------------------------------------------------------------------
@@ -1003,30 +1045,131 @@ export function testCommandArgs(selected: string[]): string[] {
   return ['node', '--test', ...TEST_REPORTER_ARGS, ...selected.map(distPath)]
 }
 
-function runSelected(root: string, selected: string[]): number {
+function testRunFailed(error: Error): PanError {
+  return new PanError(`Failed to start the test run: ${error.message}`, {
+    code: 'TEST_RUN_FAILED',
+  })
+}
+
+/**
+ * Run the selection, returning its exit code.
+ *
+ * With `logFd`, the child's stdout and stderr both land in that file in the
+ * order they were written; `echo` also copies each chunk to this process's
+ * streams. Without it the child inherits this process's streams.
+ */
+async function runSelected(
+  root: string,
+  selected: string[],
+  logFd: number | null = null,
+  echo = false,
+): Promise<number> {
   const runBuilt = path.join(root, 'bin', 'run-built')
   // run-tests gives the selection its own scratch directory under the root
   // and removes it afterwards, the same as every npm test script.
   const runTests = path.join(root, 'bin', 'run-tests')
-  const result = spawnSync(
-    runBuilt,
-    ['--', runTests, '--', ...testCommandArgs(selected)],
-    {
-      cwd: root,
-      stdio: 'inherit',
-    },
-  )
+  const args = ['--', runTests, '--', ...testCommandArgs(selected)]
 
-  if (result.error) {
-    throw new PanError(
-      `Failed to start the test run: ${result.error.message}`,
-      {
-        code: 'TEST_RUN_FAILED',
-      },
+  if (logFd === null || !echo) {
+    const result = spawnSync(runBuilt, args, {
+      cwd: root,
+      stdio: logFd === null ? 'inherit' : ['ignore', logFd, logFd],
+    })
+
+    if (result.error) {
+      throw testRunFailed(result.error)
+    }
+
+    return result.status ?? 1
+  }
+
+  return await new Promise<number>((resolve, reject) => {
+    const child = spawn(runBuilt, args, {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    const tee =
+      (stream: NodeJS.WriteStream) =>
+      (chunk: Buffer): void => {
+        writeSync(logFd, chunk)
+        stream.write(chunk)
+      }
+
+    child.stdout.on('data', tee(process.stdout))
+    child.stderr.on('data', tee(process.stderr))
+    child.on('error', (error) => reject(testRunFailed(error)))
+    child.on('close', (code) => resolve(code ?? 1))
+  })
+}
+
+/** The run's own `# tests <n>` count, or null when the output carries none. */
+function reportedTestCount(output: string): number | null {
+  const counts = [...output.matchAll(/^# tests (\d+)$/gmu)]
+  const last = counts.at(-1)
+
+  return last ? Number(last[1]) : null
+}
+
+/**
+ * The compact report of a selection that ran: one pass line, or the failing
+ * tests (or the output tail) with the log path, plus the unreached files and
+ * the advisory a caller still has to act on.
+ */
+function renderRunSummary(result: ImpactResult, output: string): string {
+  const tag = '[tests impacted]'
+  const selection = `${result.selected_count} of ${result.lane_count} lane test file(s)`
+  const elapsed = formatElapsed(result.duration_ms)
+  const lines: string[] = []
+
+  if (result.workspace !== '.') {
+    lines.push(`Workspace: ${result.workspace}`)
+  }
+
+  if (result.exit_code === 0) {
+    const tests = reportedTestCount(output)
+
+    lines.push(
+      `${tag} passed: ${selection}${tests === null ? '' : `, ${tests} tests`} in ${elapsed}` +
+        (result.log_path ? ` (log: ${result.log_path})` : ''),
+    )
+  } else {
+    lines.push(
+      `${tag} FAILED: ${selection} (exit ${result.exit_code}) in ${elapsed}`,
+    )
+    lines.push(...renderFailureDetail(output, result.failing_tests ?? []))
+
+    if (result.log_path) {
+      lines.push(`log: ${result.log_path}`)
+    }
+  }
+
+  if (result.unreached.length > 0) {
+    lines.push('Changed files no lane test reaches:')
+    lines.push(
+      ...result.unreached.map((file) => describeUnreached(result, file)),
     )
   }
 
-  return result.status ?? 1
+  if (result.advisory) {
+    lines.push(`Advisory: ${result.advisory}`)
+  }
+
+  return lines.join('\n')
+}
+
+function resolveOutputMode(
+  args: string[],
+  options: RunTestsImpactedOptions,
+): ImpactOutputMode {
+  if (options.output) {
+    return options.output
+  }
+
+  if (checkOutputVerbose(args)) {
+    return 'verbose'
+  }
+
+  return runsInsideProfileCommand() ? 'passthrough' : 'summary'
 }
 
 function readNumberOption(value: string | null, name: string): number | null {
@@ -1086,6 +1229,9 @@ export function parseImpactArgs(args: string[]): ImpactOptions {
         break
       case '--json':
         options.json = true
+        break
+      case '--verbose':
+        options.verbose = true
         break
       case '--depth': {
         const depth = Number(valueOf())
@@ -1234,6 +1380,9 @@ export async function runTestsImpacted(
 
   let status: ImpactResult['status']
   let exitCode = 0
+  const outputMode = resolveOutputMode(args, options)
+  let log: { absolute: string; relative: string } | null = null
+  let output = ''
 
   if (changed.length === 0 && selection.selected_count === 0) {
     status = 'nothing_changed'
@@ -1243,7 +1392,43 @@ export async function runTestsImpacted(
     status = 'listed'
   } else {
     status = 'ran'
-    exitCode = runSelected(workspace, selection.selected)
+
+    if (outputMode === 'passthrough') {
+      exitCode = await runSelected(workspace, selection.selected)
+    } else {
+      // The complete transcript goes to a log so the summary can stay short
+      // and still name where every line of a failure is.
+      log = checkLogPath(root, 'tests-impacted')
+      const progress =
+        options.progress ?? ((text: string) => void process.stderr.write(text))
+
+      progress(
+        `[tests impacted] running ${selection.selected_count} of ` +
+          `${selection.lane_count} lane test file(s) for ` +
+          `${selection.changed.length} changed file(s) (log: ${log.relative})\n`,
+      )
+
+      const logFd = openSync(log.absolute, 'w')
+
+      try {
+        writeSync(
+          logFd,
+          `$ ${IMPACTED_COMMAND} ${args.join(' ')}`.trimEnd() +
+            `\nworkspace=${workspaceLabel}\n` +
+            `selected=${selection.selected.join(' ')}\n\n`,
+        )
+        exitCode = await runSelected(
+          workspace,
+          selection.selected,
+          logFd,
+          outputMode === 'verbose',
+        )
+      } finally {
+        closeSync(logFd)
+      }
+
+      output = readFileSync(log.absolute, 'utf8')
+    }
   }
 
   const result: ImpactResult = {
@@ -1255,6 +1440,13 @@ export async function runTestsImpacted(
     duration_ms: Math.round(performance.now() - started),
     record_path: RECORD_RELATIVE_PATH,
     workspace: workspaceLabel,
+    ...(status === 'ran'
+      ? {
+          log_path: log?.relative ?? null,
+          failing_tests:
+            exitCode === 0 ? [] : parseFailingTests(output, workspace),
+        }
+      : {}),
   }
 
   appendJsonLine(recordPath, {
@@ -1276,10 +1468,18 @@ export async function runTestsImpacted(
     result: status === 'ran' ? (exitCode === 0 ? 'pass' : 'fail') : 'none',
   })
 
+  // A run that logged its output reports compactly; the full selection
+  // listing stays with `--list`, `--verbose`, and the passthrough a profile
+  // runner captures.
+  const text =
+    status === 'ran' && outputMode !== 'passthrough'
+      ? outputMode === 'verbose'
+        ? `${renderText(result)}\n${renderRunSummary(result, output)}`
+        : renderRunSummary(result, output)
+      : renderText(result)
+
   write(
-    impactOptions.json
-      ? `${JSON.stringify(result, null, 2)}\n`
-      : `${renderText(result)}\n`,
+    impactOptions.json ? `${JSON.stringify(result, null, 2)}\n` : `${text}\n`,
   )
 
   return result

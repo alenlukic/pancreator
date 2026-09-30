@@ -16,6 +16,9 @@ unset PAN_FAST_WALL_RUN_ID
 unset PAN_FAST_WALL_PHASE
 unset PAN_FAST_WALL_CALLER_CLASS
 unset npm_lifecycle_event
+# A profile runner marks its commands so `pan tests impacted` passes output
+# through. A test that spawns that command must see an ordinary caller.
+unset PAN_REPOSITORY_CHECK_PROFILE
 
 # bin/pan pins PANCREATOR_ROOT on the installation when PANCREATOR_EXEC_ROOT
 # selects another checkout's build. A test that spawns dist/src/cli.js inside a

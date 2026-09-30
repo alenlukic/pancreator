@@ -502,7 +502,12 @@ ran it). The record is written only when the command names the run through
 `--run` or `--worktree`; a bare `pan repository-check <profile>` records
 nothing on any run. The command's JSON response carries `run_evidence_paths`,
 the repository-relative evidence path of each run it recorded against, and
-omits the key when it recorded against none. `pan output validate` reads those
+omits the key when it recorded against none. Every execution, recorded or
+bare, also writes its complete output to
+`runtime/logs/repository-check/<temporal-prefix>_<profile>-<hex>.log`; the
+default text response is one pass line, or the failing entries with their
+failing tests and that log path, and `--json` adds `log_path` and
+`failing_tests` to the structured result. `pan output validate` reads those
 records and reports the `repository_check_fast_repeated` advisory when one
 invocation ran `fast` more often than the stage's declared `evidence_workers`
 count allows, so the once-per-worker rule is judged from harness records rather

@@ -12,7 +12,7 @@
       "commands": ["npm run validate"]
     },
     "static": {
-      "description": "Run Pancreator formatting, type, and lint checks.",
+      "description": "Run Pancreator formatting, type, and lint checks, including the Bash shell check (bin/check-shell: bash -n under /bin/bash over bin/ and .githooks/, plus shellcheck -S error when installed).",
       "probes": ["node --version", "npm --version"],
       "commands": ["npm run lint"]
     },
