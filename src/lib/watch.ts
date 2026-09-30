@@ -231,6 +231,17 @@ export interface AgentStateEvidenceReference {
   source: 'supervisor_assertion'
 }
 
+/** One evidence role's newest declared report, as a watch observed it. */
+export interface EvidenceRoleObservation {
+  role: string
+  attempt: number
+  path: string
+  exists: boolean
+  non_empty: boolean
+  /** The report carries the evidence-report completion marker. */
+  complete: boolean
+}
+
 export interface WatchRecordEntry {
   schema_version: 1
   event: 'session_started' | 'armed' | 'wake' | 'gap' | 'session_ended'
@@ -272,7 +283,16 @@ export interface WatchRecordEntry {
    * record says which of the two it was rather than presenting both as the
    * same fact.
    */
-  terminal_basis?: 'agent_state' | 'output_plausible' | 'confirming_wake'
+  terminal_basis?:
+    | 'agent_state'
+    | 'output_plausible'
+    | 'confirming_wake'
+    | 'evidence_complete'
+  /**
+   * The evidence reports an evidence-complete watch observed on this wake.
+   * Present only in the evidence watch ledger.
+   */
+  evidence_roles?: EvidenceRoleObservation[]
   /**
    * The observation looked finished but its evidence was weak, so the watch
    * held it for one more observation instead of completing. Present on the
@@ -558,6 +578,44 @@ export function watchLockPath(
     .relative
 }
 
+/**
+ * Ledger of the evidence-complete watch. It is separate from the stage
+ * watch ledger because the evidence workers and the stage worker share one
+ * invocation id: a completed evidence wake in the stage ledger would read as
+ * the stage worker's own completion.
+ */
+export function evidenceWatchRecordPath(
+  root: string,
+  runId: string,
+  invocationId: string,
+): string {
+  return resolveRunLayout(root, runId).evidence(
+    `${invocationId}-evidence-watch.jsonl`,
+  ).relative
+}
+
+/** Ownership lock of the evidence-complete watch. */
+export function evidenceWatchLockPath(
+  root: string,
+  runId: string,
+  invocationId: string,
+): string {
+  return resolveRunLayout(root, runId).evidence(
+    `${invocationId}-evidence-watch.lock`,
+  ).relative
+}
+
+/** Marker the evidence-complete watch writes when every report is complete. */
+export function evidenceReadyPath(
+  root: string,
+  runId: string,
+  invocationId: string,
+): string {
+  return resolveRunLayout(root, runId).evidence(
+    `${invocationId}-evidence-ready.json`,
+  ).relative
+}
+
 export function foregroundReturnRecordPath(
   root: string,
   runId: string,
@@ -646,6 +704,9 @@ export function invocationEvidencePaths(
     path.basename(backgroundMarkerPath(root, runId, invocationId)),
     path.basename(foregroundReturnRecordPath(root, runId, invocationId)),
     path.basename(watchLockPath(root, runId, invocationId)),
+    path.basename(evidenceWatchRecordPath(root, runId, invocationId)),
+    path.basename(evidenceWatchLockPath(root, runId, invocationId)),
+    path.basename(evidenceReadyPath(root, runId, invocationId)),
   ])
   const paths = new Set<string>()
 
@@ -951,6 +1012,7 @@ export function observeInvocation(
       name.endsWith('-watch.jsonl') ||
       name.endsWith('-watch.lock') ||
       name.endsWith('-delegation-background.json') ||
+      name.endsWith('-evidence-ready.json') ||
       name.endsWith('-launch.json') ||
       name.endsWith('.delegation.md') ||
       BLOCKED_OUTPUT_SNAPSHOT_PATTERN.test(name) ||
@@ -2165,8 +2227,12 @@ export function acquireWatchLock(
   runId: string,
   invocationId: string,
   sessionId: string,
+  paths: { lock: string; record: string } = {
+    lock: watchLockPath(root, runId, invocationId),
+    record: watchRecordPath(root, runId, invocationId),
+  },
 ): WatchLockAcquisition {
-  const absolute = resolveInside(root, watchLockPath(root, runId, invocationId))
+  const absolute = resolveInside(root, paths.lock)
   const record: WatchLockRecord = {
     schema_version: 1,
     run_id: runId,
@@ -2183,7 +2249,7 @@ export function acquireWatchLock(
 
     if (existing !== null) {
       if (watchLockOwnerAlive(existing)) {
-        const recordPath = watchRecordPath(root, runId, invocationId)
+        const recordPath = paths.record
         throw new PanError(
           `Invocation ${invocationId} already has a live watch: session ` +
             `${existing.watch_session_id} (pid ${existing.pid}, armed ` +
@@ -2230,7 +2296,7 @@ export function acquireWatchLock(
   const standing = readWatchLock(absolute)
 
   if (standing !== null && watchLockOwnerAlive(standing)) {
-    const recordPath = watchRecordPath(root, runId, invocationId)
+    const recordPath = paths.record
     throw new PanError(
       `Invocation ${invocationId} already has a live watch: session ` +
         `${standing.watch_session_id} (pid ${standing.pid}). ` +
@@ -3823,7 +3889,12 @@ export function summarizeDelegationWatch(
   runId: string,
   invocationId: string,
 ): DelegationWatchSummary {
-  const entries = readWatchRecord(root, runId, invocationId)
+  // An evidence-complete verdict says the evidence reports are done, never
+  // that the stage worker is, so it cannot count as this delegation's watch
+  // even when one lands in the stage ledger.
+  const entries = readWatchRecord(root, runId, invocationId).filter(
+    (entry) => entry.terminal_basis !== 'evidence_complete',
+  )
   const armings = entries.filter((entry) => entry.event === 'armed')
   const wakes = entries.filter((entry) => entry.event === 'wake')
   const terminal = [...wakes]
@@ -3939,7 +4010,11 @@ export function summarizeDelegationWatch(
     last_wake_completion_hold:
       terminal === undefined ? (wakes.at(-1)?.completion_hold ?? null) : null,
     terminal_state: terminal?.terminal_state ?? null,
-    terminal_basis: terminal?.terminal_basis ?? null,
+    // The entries exclude every evidence-complete wake above.
+    terminal_basis:
+      terminal?.terminal_basis === 'evidence_complete'
+        ? null
+        : (terminal?.terminal_basis ?? null),
     cadence_seconds: entries[0]?.cadence_seconds ?? null,
     cadence_exceptions: cadenceExceptions,
     raw_span_seconds: rawSpanSeconds,

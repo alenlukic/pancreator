@@ -42,6 +42,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - When the watch exits `unverified`, inspect the launched agent. Rerun the watch with `--agent-state running` or `--agent-state completed`.
 - Supply the recorded inspection through `--agent-state-evidence` for a `completed` report. Without that record, the watch spends one confirming wake.
 - Ask `./bin/pan worker state <run-id>` for a launched worker's last known state. A transcript's size and modification time are not liveness signals and MUST NOT be read as one.
+- For a stage with evidence workers, block on `./bin/pan watch <run-id> --invocation <invocation-id> --until-evidence-complete` in the turn that launches them. Never poll the reports with a timer or a script. When it exits `0`, launch the stage worker in that same turn and arm its ordinary watch. Exit `2` or `3` means an evidence worker stopped: inspect it and relaunch it with `./bin/pan worker record <run-id> --role <role> --new-attempt`.
 
 ## Cohort supervision
 

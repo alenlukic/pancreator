@@ -15,6 +15,7 @@ import {
   releaseCohortBaselineClaim,
 } from './cohorts.js'
 import { agentRecordedProfilePasses } from './agent-ledger-evidence.js'
+import { readEvidenceReady } from './watch-evidence.js'
 import {
   buildContextReference,
   buildInvocationInputs,
@@ -9359,6 +9360,11 @@ export interface DelegatedWorkerStateView {
   wrote_nothing: boolean
   /** Terminal state of the watch over the worker's invocation, when armed. */
   watch_terminal_state: string | null
+  /**
+   * The evidence-complete watch recorded this role's report as complete in
+   * the invocation's ready marker. Always false for the stage worker.
+   */
+  evidence_ready: boolean
 }
 
 /**
@@ -9430,6 +9436,10 @@ export function describeDelegatedWorkers(
         watch_terminal_state:
           summarizeDelegationWatch(root, runId, record.invocation_id)
             .terminal_state ?? null,
+        evidence_ready:
+          readEvidenceReady(root, runId, record.invocation_id)?.roles.some(
+            (role) => role.role === record.role,
+          ) ?? false,
       }
     })
 }

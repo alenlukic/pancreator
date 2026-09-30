@@ -299,6 +299,25 @@ launch itself. An elapsed time shorter than the watch record's own
 first-to-last wake span is labeled `elapsed_implausible` and names both
 numbers. `--foreground-returned` and `--mark-background` are exclusive.
 
+A verify stage launches its evidence workers before its stage worker. The
+supervisor blocks on the evidence-complete watch in the launch turn:
+
+```bash
+./bin/pan watch <run-id> --invocation <invocation-id> --until-evidence-complete [--json]
+```
+
+It exits `0` within one cadence of the moment every role's newest report
+carries the `<!-- evidence-report: complete -->` marker, writes
+`agent/evidence/<invocation-id>-evidence-ready.json`, and appends an
+`evidence_ready` run event. The supervisor then launches the stage worker in
+the same turn and arms its ordinary watch. Exit `2` means the reports and the
+workers stopped changing for the stall bound, and exit `3` means the bound
+passed. The evidence watch keeps its own ledger,
+`agent/evidence/<invocation-id>-evidence-watch.jsonl`, records no launch, and
+never counts as the stage worker's delegation evidence, because the evidence
+workers and the stage worker share one invocation id. `pan worker state`
+marks each role the ready marker names as `evidence ready`.
+
 `pan submit` accepts one of three records for every worker invocation an
 operator session delegated:
 

@@ -616,11 +616,29 @@ function renderSupervisorProcedureBody(
               `${item.role === 'evidence' ? 'evidence' : 'stage'} worker) — ` +
               `${item.action}`,
           ),
-          '1b. Await all evidence workers. Confirm each report exists and ' +
-            'is non-empty at its declared path; when a worker returned its ' +
-            'report in chat instead of writing the file, persist the ' +
-            'returned text there yourself verbatim. Submission rejects the ' +
-            'stage output while any report is missing.',
+          ...(delegation.watch_command
+            ? [
+                '1b. In the launch turn, block on ' +
+                  `\`${delegation.watch_command} --until-evidence-complete\` ` +
+                  'as a foreground shell call. Never poll the reports with a ' +
+                  'timer or a script. It exits 0 within one cadence of the ' +
+                  'moment every report carries its completion marker; launch ' +
+                  'the stage worker in that same turn. Exit 2 or 3 means an ' +
+                  'evidence worker stopped: inspect it, and relaunch it with ' +
+                  '`pan worker record --role <role> --new-attempt`. When a ' +
+                  'worker returned its report in chat instead of writing the ' +
+                  'file, persist the returned text there yourself verbatim, ' +
+                  'then rerun the watch. Submission rejects the stage output ' +
+                  'while any report is missing.',
+              ]
+            : [
+                '1b. Await all evidence workers. Confirm each report exists ' +
+                  'and is non-empty at its declared path; when a worker ' +
+                  'returned its report in chat instead of writing the file, ' +
+                  'persist the returned text there yourself verbatim. ' +
+                  'Submission rejects the stage output while any report is ' +
+                  'missing.',
+              ]),
         ]
       : []),
     ...deliverySteps,

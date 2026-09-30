@@ -321,6 +321,10 @@ import {
   type WatchAgentWakeInfo,
   type WatchRecordEntry,
 } from './lib/watch.js'
+import {
+  formatEvidenceWatchResult,
+  watchEvidenceCompletion,
+} from './lib/watch-evidence.js'
 import { runWatchAudit } from './lib/watch-audit.js'
 import {
   createWorktree,
@@ -4844,6 +4848,7 @@ async function main(): Promise<void> {
                       (worker.wrote_nothing
                         ? 'wrote nothing yet'
                         : 'has written') +
+                      (worker.evidence_ready ? ', evidence ready' : '') +
                       `: ${worker.declared_paths.map(declaredPathState).join('; ')}`,
                   )
                   .join('\n'),
@@ -4965,6 +4970,7 @@ async function main(): Promise<void> {
         (args[0] === undefined || args[0].startsWith('--'))
       ) {
         const agentExclusive = [
+          '--until-evidence-complete',
           '--targets',
           '--invocation',
           '--foreground-returned',
@@ -5085,6 +5091,7 @@ async function main(): Promise<void> {
         }
 
         const genericExclusive = [
+          '--until-evidence-complete',
           '--targets',
           '--invocation',
           '--foreground-returned',
@@ -5195,10 +5202,11 @@ async function main(): Promise<void> {
         if (
           (args[0] !== undefined && !args[0].startsWith('--')) ||
           hasFlag(args, '--foreground-returned') ||
+          hasFlag(args, '--until-evidence-complete') ||
           option(args, '--invocation') !== null
         ) {
           throw new PanError(
-            '--targets is exclusive with a positional run id, --invocation, and --foreground-returned.',
+            '--targets is exclusive with a positional run id, --invocation, --foreground-returned, and --until-evidence-complete.',
             { code: 'INVALID_ARGUMENT' },
           )
         }
@@ -5260,6 +5268,65 @@ async function main(): Promise<void> {
 
       const runId = requiredArgument(args[0], 'run-id')
       const invocationId = option(args, '--invocation')
+
+      if (hasFlag(args, '--until-evidence-complete')) {
+        // The evidence watch observes the evidence reports only. Every flag
+        // that records or reports the stage worker's own launch belongs to
+        // the stage watch the supervisor arms after this one returns.
+        const evidenceExclusive = [
+          '--foreground-returned',
+          '--mark-background',
+          '--agent-state',
+          '--agent-state-evidence',
+          '--handle',
+          '--launched-at',
+          '--platform-returned-at',
+          '--platform-detached-at',
+          '--agent',
+          '--model',
+        ]
+        const conflicting = evidenceExclusive.filter((name) =>
+          args.includes(name),
+        )
+
+        if (conflicting.length > 0) {
+          throw new PanError(
+            `--until-evidence-complete is exclusive with ${conflicting.join(', ')}: ` +
+              'it waits for the evidence reports and records no launch. Arm ' +
+              '`pan watch <run-id> --mark-background` for the stage worker ' +
+              'after it returns.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const evidenceCadenceAuthority = option(
+          args,
+          '--cadence-directed-by-operator',
+        )
+        const evidenceCadence = parseCadenceSeconds(
+          option(args, '--cadence-seconds'),
+          evidenceCadenceAuthority,
+        )
+        const result = await watchEvidenceCompletion(root, runId, {
+          ...(invocationId ? { invocationId } : {}),
+          cadenceSeconds: evidenceCadence,
+          ...(evidenceCadenceAuthority
+            ? { cadenceAuthority: evidenceCadenceAuthority.trim() }
+            : {}),
+          stallTimeoutSeconds: resolveStallTimeoutSeconds(
+            args,
+            evidenceCadence,
+          ),
+          timeoutSeconds: parseTimeoutSeconds(
+            option(args, '--timeout-seconds'),
+          ),
+          ...(watchCallbacks.onWake ? { onWake: watchCallbacks.onWake } : {}),
+        })
+
+        print(json ? result : formatEvidenceWatchResult(result), json)
+        process.exitCode = WATCH_EXIT_CODES[result.state]
+        return
+      }
 
       if (hasFlag(args, '--foreground-returned')) {
         if (hasFlag(args, '--mark-background')) {

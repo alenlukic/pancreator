@@ -1254,6 +1254,8 @@ test('a prepared verify stage orders every evidence worker before the stage work
   invocation.delegation = delegatedInvocation(root).delegation
   assert.ok(invocation.delegation)
   invocation.delegation.cursor_agent_path = '.cursor/agents/pan-verifier.md'
+  invocation.delegation.watch_command =
+    './bin/pan watch run-fixture --invocation inv-fixture'
   invocation.evidence_workers = [
     {
       persona: 'reviewer',
@@ -1300,6 +1302,16 @@ test('a prepared verify stage orders every evidence worker before the stage work
       procedure.indexOf('3. `pan-verifier`'),
     procedure,
   )
+
+  // The supervisor blocks on the harness evidence watch rather than a timer
+  // script, and launches the stage worker when it returns.
+  assert.ok(
+    procedure.includes(
+      '`./bin/pan watch run-fixture --invocation inv-fixture --until-evidence-complete`',
+    ),
+    procedure,
+  )
+  assert.match(procedure, /Never poll the reports with a timer or a script/u)
 })
 
 // A stage with no evidence worker has nothing to order, so its procedure is
