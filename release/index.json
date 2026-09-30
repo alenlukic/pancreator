@@ -388,6 +388,10 @@
     {
       "version": "7.37.0",
       "commit": "464655c51fc5a34056b16bf0aa3e508dd19c190a"
+    },
+    {
+      "version": "8.0.0",
+      "commit": "9c637ed9af3571a5a5126b55460bdf8e741cb6be"
     }
   ]
 }
