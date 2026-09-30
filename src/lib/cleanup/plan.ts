@@ -716,6 +716,14 @@ function planTemporalRenames(plan: PlanAccumulator): void {
   }
 }
 
+/**
+ * Build the report-first cleanup plan for the selected artifact classes:
+ * expired deletions, removable worktrees and their branches, inbox moves,
+ * host metadata, temporal renames, and every skip with its reason. Reads the
+ * filesystem and Git only and changes nothing. Throws `PanError`
+ * `INVALID_RETENTION_DAYS` for a non-positive `days` and
+ * `UNKNOWN_CLEANUP_CLASS` for an unknown class.
+ */
 export function planCleanup(
   root: string,
   options: CleanupOptions = {},

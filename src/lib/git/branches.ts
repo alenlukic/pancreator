@@ -101,6 +101,7 @@ export function gitDeleteBranch(
     : { deleted: false, reason: result.stderr.trim() || 'git branch -d failed' }
 }
 
+/** True when `git check-ref-format --branch` accepts the branch name. */
 export function gitBranchNameIsValid(root: string, branch: string): boolean {
   const result = runGit(root, ['check-ref-format', '--branch', branch], {
     allowFailure: true,

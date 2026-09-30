@@ -164,6 +164,13 @@ function parseField(
   }
 }
 
+/**
+ * Validate a raw operator brief source against the merged primitive and
+ * project vocabularies and return the normalized brief with every error
+ * found. The brief is null when any error exists; checks include unsafe HTML,
+ * disallowed link schemes, required card fields, and an `executive-summary`
+ * first section. Errors name paths under `source`.
+ */
 export function parseBrief(
   value: unknown,
   registries: { common: BriefRegistry; project: ProjectBriefRegistry },

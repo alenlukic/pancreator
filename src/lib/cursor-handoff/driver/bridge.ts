@@ -86,10 +86,15 @@ export const COMPOSER_POLL_MS = 200
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Milliseconds from the start timestamp to now. */
 export function elapsed(start: number): number {
   return Date.now() - start
 }
 
+/**
+ * A step record carrying the time elapsed since `startMs`, with the error and
+ * code included only when given.
+ */
 export function step(
   name: string,
   startMs: number,
@@ -106,6 +111,7 @@ export function step(
   }
 }
 
+/** Resolve after the given number of milliseconds. */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -156,6 +162,11 @@ export interface DriverProgress {
   frontmostAfter: number | null
 }
 
+/**
+ * The `aborted` handoff result for the given code and message, carrying the
+ * steps recorded so far, the elapsed sequence time, and whether the frontmost
+ * application changed. The verified label is always null.
+ */
 export function abortedResult(
   options: DriverOptions,
   progress: DriverProgress,
@@ -191,6 +202,11 @@ export function abortedResult(
 // that category, e.g. the model names under the "Model" menu item).
 // ---------------------------------------------------------------------------
 
+/**
+ * The option items for one picker menu item within the snapshot scope: its
+ * `AXMenuItem` children, else its `AXMenuItem` siblings for a flat menu, else
+ * every `AXMenuItem` descendant of the scope root except the item itself.
+ */
 export function collectMenuOptions(
   nodes: SnapNode[],
   scope: SnapNode[],

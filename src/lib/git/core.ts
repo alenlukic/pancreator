@@ -15,6 +15,11 @@ interface RunGitOptions {
   env?: NodeJS.ProcessEnv
 }
 
+/**
+ * Run `git` synchronously in `root` with a 20 MiB output buffer and return the
+ * spawn result. Throws `PanError` `GIT_FAILED` on a non-zero exit unless
+ * `allowFailure` is set, in which case the caller reads the status.
+ */
 export function runGit(
   root: string,
   args: string[],
@@ -106,6 +111,10 @@ export function gitSourceContentFingerprint(
 // negative check, but a repository never stops being one in a live process.
 const gitRepositoryCache = new Map<string, true>()
 
+/**
+ * True when the path lies inside a Git work tree. A positive answer is cached
+ * for the life of the process; a negative one is rechecked on each call.
+ */
 export function isGitRepository(root: string): boolean {
   const resolved = path.resolve(root)
 
@@ -124,6 +133,7 @@ export function isGitRepository(root: string): boolean {
   return result.status === 0
 }
 
+/** The full commit id of HEAD, or null when it cannot be resolved. */
 export function gitHead(root: string): string | null {
   const result = runGit(root, ['rev-parse', 'HEAD'], { allowFailure: true })
 
@@ -274,6 +284,7 @@ export function gitPathCommits(
     : []
 }
 
+/** True when a local branch of this name exists under `refs/heads/`. */
 export function gitBranchExists(root: string, branch: string): boolean {
   const result = runGit(
     root,

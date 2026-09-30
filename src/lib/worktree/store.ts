@@ -137,6 +137,10 @@ export interface ReconcileWorktreesResult {
   evidence_path: string
 }
 
+/**
+ * True when the name is lowercase alphanumeric words joined by single
+ * hyphens.
+ */
 export function isWorktreeName(value: string): boolean {
   return WORKTREE_NAME_PATTERN.test(value)
 }
@@ -198,14 +202,31 @@ function resolveOperatorWorktreeStore(root: string): OperatorWorktreeStore {
   }
 }
 
+/**
+ * Path of the operator worktree index: under the configured worktree root, or
+ * the legacy default root when only its index exists, else the current
+ * default. Throws `PanError` `WORKTREE_INDEX_CONFLICT` when both default
+ * indexes exist.
+ */
 export function worktreeIndexPath(root: string): string {
   return resolveOperatorWorktreeStore(root).indexPath
 }
 
+/**
+ * Path of the operation mutex that serializes worktree index changes, beside
+ * the resolved index. Throws `PanError` `WORKTREE_INDEX_CONFLICT` when both
+ * default indexes exist.
+ */
 export function worktreeMutexPath(root: string): string {
   return resolveOperatorWorktreeStore(root).mutexPath
 }
 
+/**
+ * Harness-relative directory new worktrees are created under: the configured
+ * worktree root, else the current default even while a legacy index is in
+ * use. Throws `PanError` `WORKTREE_INDEX_CONFLICT` when both default indexes
+ * exist.
+ */
 export function newWorktreeRoot(root: string): string {
   return resolveOperatorWorktreeStore(root).newWorktreeRoot
 }

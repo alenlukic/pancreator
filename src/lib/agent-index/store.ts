@@ -203,10 +203,15 @@ export type HookPayload =
 // Path helpers
 // ---------------------------------------------------------------------------
 
+/** Absolute path of the agent index directory under the harness root. */
 export function agentsDir(root: string): string {
   return path.join(root, AGENTS_DIR)
 }
 
+/**
+ * Path of one agent's JSONL event file. The id is sanitized to a bounded,
+ * filename-safe form, so distinct ids can share a file.
+ */
 export function agentEventFile(root: string, agentId: string): string {
   return path.join(agentsDir(root), `${sanitizeId(agentId)}.jsonl`)
 }
@@ -215,6 +220,7 @@ function indexPath(root: string): string {
   return path.join(agentsDir(root), INDEX_FILE)
 }
 
+/** Path of the index mutex file that `withLock` takes. */
 export function lockPath(root: string): string {
   return path.join(agentsDir(root), LOCK_FILE)
 }
@@ -223,10 +229,12 @@ function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, MAX_ID_CHARS)
 }
 
+/** True when the value is a non-null, non-array object. */
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
+/** The value when it is a non-empty string, otherwise null. */
 export function nonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
@@ -284,6 +292,10 @@ export function collectSecrets(root: string): string[] {
   return [...secrets].sort((a, b) => b.length - a.length)
 }
 
+/**
+ * Replace each known secret value in the text with `[REDACTED]`, then redact
+ * the values of secret-named inline assignments and secret-named flags.
+ */
 export function redact(text: string, secrets: string[]): string {
   let result = text
 
@@ -304,6 +316,10 @@ export function redact(text: string, secrets: string[]): string {
   )
 }
 
+/**
+ * Redact the text and truncate it to the summary character bound, marking a
+ * cut with an ellipsis.
+ */
 export function boundedSummary(text: string, secrets: string[]): string {
   const redacted = redact(text, secrets)
 
@@ -312,6 +328,10 @@ export function boundedSummary(text: string, secrets: string[]): string {
     : redacted
 }
 
+/**
+ * Normalize a hook's tool input to an object: an object passes through and a
+ * JSON string is parsed. Returns null for anything else or unparsable JSON.
+ */
 export function parseToolInput(
   toolInput: unknown,
 ): Record<string, unknown> | null {
@@ -394,6 +414,10 @@ export function promptDigest(text: string | null | undefined): string | null {
 const RUN_INVOCATION_PATTERN =
   /runtime\/logs\/workflows\/([^/\s]+)\/agent\/invocations\/([^/.\s]+)\.(?:md|json|delegation\.md)\b/u
 
+/**
+ * Extract the run id and invocation id from the first workflow invocation
+ * path the text mentions, or null when it names none.
+ */
 export function parseRunInvocation(
   text: string,
 ): { run_id: string; invocation_id: string } | null {
@@ -500,6 +524,10 @@ function emptyIndex(): AgentIndex {
   }
 }
 
+/**
+ * Read the agent index. Returns a fresh empty index when the file is missing,
+ * unparsable, or carries another schema version.
+ */
 export function readIndex(root: string): AgentIndex {
   try {
     const raw = JSON.parse(readFileSync(indexPath(root), 'utf8')) as unknown
@@ -520,6 +548,12 @@ export function readIndex(root: string): AgentIndex {
   return emptyIndex()
 }
 
+/**
+ * Prune terminal agents and stale pending launches past the retention window,
+ * stamp `updated_at`, and atomically replace the index file. Mutates the
+ * passed index; a failed rename drops the write silently. Callers hold the
+ * index lock.
+ */
 export function writeIndex(
   root: string,
   index: AgentIndex,
@@ -587,6 +621,10 @@ function pruneIndex(index: AgentIndex, nowMs: number): void {
 // Alias resolution
 // ---------------------------------------------------------------------------
 
+/**
+ * The canonical agent id for an id or alias, or null when neither maps to a
+ * registered agent.
+ */
 export function resolveCanonicalId(
   index: AgentIndex,
   id: string,
@@ -603,6 +641,7 @@ export function resolveCanonicalId(
     : null
 }
 
+/** The index entry with this canonical id, or null. */
 export function findAgent(
   index: AgentIndex,
   canonical: string,
@@ -610,6 +649,11 @@ export function findAgent(
   return index.agents.find((a) => a.agent_id === canonical) ?? null
 }
 
+/**
+ * Record an alias for a canonical agent in the index and on its entry.
+ * Mutates the index; does nothing when the alias equals the canonical id, is
+ * already mapped, or is itself a registered agent id.
+ */
 export function linkAlias(
   index: AgentIndex,
   alias: string,
@@ -631,6 +675,10 @@ export function linkAlias(
   }
 }
 
+/**
+ * A new `running` agent entry registered at the given time, with every link
+ * field null and no aliases. The caller adds it to the index.
+ */
 export function newAgentEntry(agentId: string, nowIso: string): AgentEntry {
   return {
     agent_id: agentId,
@@ -686,10 +734,16 @@ export function resolveActor(
 // Event appending
 // ---------------------------------------------------------------------------
 
+/** Create the agent index directory when it does not exist. */
 export function ensureAgentsDir(root: string): void {
   mkdirSync(agentsDir(root), { recursive: true })
 }
 
+/**
+ * Append one event as a JSONL line to the agent's event file, dropping the
+ * summary when the line would exceed the event line byte bound. Runs outside
+ * the index lock.
+ */
 export function appendEvent(
   root: string,
   fileId: string,
@@ -704,6 +758,7 @@ export function appendEvent(
   appendFileSync(agentEventFile(root, fileId), line + '\n')
 }
 
+/** Stamp the entry's last event time and kind in place. */
 export function touch(
   entry: AgentEntry,
   nowIso: string,
@@ -713,6 +768,10 @@ export function touch(
   entry.last_event_kind = kind
 }
 
+/**
+ * True when the entry's last event is older than the heartbeat throttle or
+ * its timestamp is unparsable.
+ */
 export function heartbeatDue(entry: AgentEntry, nowIso: string): boolean {
   const lastMs = Date.parse(entry.last_event_at)
 
