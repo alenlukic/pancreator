@@ -19,13 +19,6 @@ const MAX_LINES = 1000
  */
 const PENDING_SPLIT = new Set([
   'src/cli.ts',
-  'src/lib/agent-index.ts',
-  'src/lib/cleanup.ts',
-  'src/lib/cursor-handoff/driver.ts',
-  'src/lib/git.ts',
-  'src/lib/release-landing.ts',
-  'src/lib/schedule.ts',
-  'src/lib/worktrees.ts',
 ])
 
 function typeScriptFiles(directory: string): string[] {

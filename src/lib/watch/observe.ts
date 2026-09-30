@@ -14,7 +14,7 @@ import {
   getAgentByRunInvocation,
   readAgentActivity,
   type AgentActivity,
-} from '../agent-index.js'
+} from '../agent-index/activity.js'
 import { fileExists, isRecord, readText, resolveInside, sha256 } from '../io.js'
 import { isUntouchedScaffold } from '../requirements/scaffold.js'
 import { resolveRunLayout } from '../run-layout.js'
