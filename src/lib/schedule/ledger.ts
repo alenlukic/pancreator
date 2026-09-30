@@ -162,6 +162,10 @@ export function mostRecentScheduleOccurrence(
   )
 }
 
+/**
+ * The project's schedule configuration with defaults applied: disabled, no
+ * jobs, and the default catch-up and grace windows when unset.
+ */
 export function resolveScheduleConfig(root: string): Required<
   Pick<ScheduleConfig, 'enabled' | 'jobs'>
 > & {
@@ -184,10 +188,12 @@ function jobLedgerPath(root: string, jobId: string): string {
   return resolveInside(root, path.posix.join(SCHEDULE_ROOT, `${jobId}.jsonl`))
 }
 
+/** Path of the current schedule alerts file. */
 export function alertsPath(root: string): string {
   return resolveInside(root, path.posix.join(SCHEDULE_ROOT, 'alerts.json'))
 }
 
+/** Path of the append-only schedule alert history log. */
 export function alertHistoryPath(root: string): string {
   return resolveInside(root, path.posix.join(SCHEDULE_ROOT, 'alerts.jsonl'))
 }
@@ -228,6 +234,10 @@ export function readScheduleLedger(
   return { records, damaged }
 }
 
+/**
+ * A job's parsed ledger decisions in file order, silently skipping damaged
+ * lines. Returns an empty list when the job has no ledger.
+ */
 export function readScheduleHistory(
   root: string,
   jobId: string,
@@ -235,6 +245,10 @@ export function readScheduleHistory(
   return readScheduleLedger(root, jobId).records
 }
 
+/**
+ * Append the decision record to its job's ledger file and return it
+ * unchanged.
+ */
 export function recordDecision(
   root: string,
   record: ScheduleDecisionRecord,

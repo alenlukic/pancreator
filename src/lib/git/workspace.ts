@@ -73,6 +73,12 @@ function gitIndexToken(workspaceDir: string): string {
   }
 }
 
+/**
+ * Sorted Git-tracked paths under the workspace directory, relative to it,
+ * excluding `runtime/` and protected workspace paths. Returns an empty list
+ * outside a repository. The result is cached per directory until the Git index
+ * changes; throws `PanError` `GIT_FAILED` when `git ls-files` fails.
+ */
 export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
   if (!isGitRepository(workspaceDir)) {
     return []
@@ -584,6 +590,7 @@ export function workspaceAbsorbedPathsFromSnapshots(
   )
 }
 
+/** True when the two workspace snapshots carry different fingerprints. */
 export function snapshotChanged(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
@@ -591,6 +598,11 @@ export function snapshotChanged(
   return before.fingerprint !== after.fingerprint
 }
 
+/**
+ * Status entries present only in the later snapshot (`added`) and only in the
+ * earlier one (`removed`). Entries are compared as whole status-prefixed
+ * strings, so a status code change shows as one removal and one addition.
+ */
 export function workspaceDelta(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,

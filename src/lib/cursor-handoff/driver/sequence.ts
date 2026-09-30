@@ -33,6 +33,14 @@ import {
   type HandoffResult,
 } from './bridge.js'
 
+/**
+ * Drive the Cursor Agents window through the bridge: open a new chat, pick the
+ * model and effort, insert the prompt, verify the picker label and focus, run
+ * the pre-Send callback, and press Send. Returns `sent`, `drafted` for a dry
+ * run that stops before Send, or `aborted` with a `HANDOFF_*` or callback
+ * code; records each step and the frontmost pids on `progress`. Throws
+ * `DeadlineExceeded` when the sequence passes its deadline.
+ */
 export async function driveSequence(
   options: DriverOptions,
   progress: DriverProgress,

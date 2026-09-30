@@ -302,6 +302,13 @@ function alertReason(
   }
 }
 
+/**
+ * Recompute the per-job alerts: open one when a job's latest decision failed
+ * or its last success is overdue, and clear one only after a later success,
+ * when the job is disabled, or when it is no longer configured. Appends each
+ * opened and cleared event to the alert history and atomically rewrites the
+ * alerts file. A job whose ledger cannot be evaluated keeps its current alert.
+ */
 export function refreshScheduleAlerts(
   root: string,
   now = new Date(),
@@ -404,6 +411,13 @@ export function refreshScheduleAlerts(
   return result
 }
 
+/**
+ * Evaluate every configured job for its most recent occurrence: skip, drop
+ * past the catch-up window, defer when a live run holds the workspace, or run
+ * the action synchronously. Appends each new decision to the job's ledger,
+ * records a job that throws as `failed` without stopping its peers, then
+ * refreshes the alerts.
+ */
 export function scheduleTick(
   root: string,
   runtime: ScheduleRuntime = {},
@@ -441,6 +455,12 @@ export function scheduleTick(
   return { decisions, alerts: refreshScheduleAlerts(root, now) }
 }
 
+/**
+ * Run one job now, bypassing the enabled, installation, already-handled, and
+ * catch-up checks but still deferring when a live run holds its workspace.
+ * Records the decision and refreshes the alerts. Throws `PanError`
+ * `SCHEDULE_JOB_NOT_FOUND` for an unknown job id.
+ */
 export function runScheduledJob(
   root: string,
   jobId: string,
@@ -456,10 +476,20 @@ export function runScheduledJob(
   return { decision: result, alerts: refreshScheduleAlerts(root, now) }
 }
 
+/**
+ * The current schedule alerts file, or an empty alert set when none has been
+ * written.
+ */
 export function scheduleStatus(root: string): ScheduleAlertFile {
   return readAlerts(root)
 }
 
+/**
+ * Check every configured job without running it: its target resolves, its
+ * workflow and persona mappings load, and its request files exist; a session
+ * job's queue tasks must target the job's workspace. Throws `PanError`
+ * (`INVALID_SCHEDULE` among others) at the first invalid job.
+ */
 export function validateSchedule(root: string): {
   status: 'passed'
   jobs: number
@@ -538,6 +568,12 @@ function xmlEscape(value: string): string {
     .replaceAll('>', '&gt;')
 }
 
+/**
+ * Render the launchd plist that runs `pan schedule tick` into
+ * `~/Library/LaunchAgents` and load it with `launchctl`. Throws `PanError`
+ * `SCHEDULE_AGENT_UNSUPPORTED` off macOS and `SCHEDULE_AGENT_INSTALL_FAILED`
+ * when the load fails, after removing the rendered plist.
+ */
 export function installScheduleAgent(
   root: string,
   options: {
@@ -605,6 +641,12 @@ export function installScheduleAgent(
   }
 }
 
+/**
+ * Unload and delete the schedule launch agent plist when it exists; succeeds
+ * without action when it does not. Throws `PanError`
+ * `SCHEDULE_AGENT_UNSUPPORTED` off macOS and `SCHEDULE_AGENT_UNINSTALL_FAILED`
+ * when `launchctl unload` fails, leaving the plist in place.
+ */
 export function uninstallScheduleAgent(
   _root: string,
   options: {

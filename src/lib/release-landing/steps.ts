@@ -139,6 +139,10 @@ export type TipIntegration =
   | { outcome: 'merged'; merge_commit: string }
   | { outcome: 'conflict'; source_conflicts: string[] }
 
+/**
+ * Append one timestamped event line to the release landing log at
+ * `runtime/release/landing.jsonl`, creating its directory when needed.
+ */
 export function appendLandingEvent(
   root: string,
   event: Record<string, unknown>,
@@ -149,6 +153,11 @@ export function appendLandingEvent(
   })
 }
 
+/**
+ * The trimmed `VERSION` file content at the given `pan-dev` tip commit. Throws
+ * `PanError` `LANDING_TIP_VERSION_MISSING` when the commit has no `VERSION`
+ * file and `LANDING_TIP_VERSION_INVALID` when it is not a semantic version.
+ */
 export function tipVersion(repositoryRoot: string, tipCommit: string): string {
   const content = gitShowFile(repositoryRoot, tipCommit, 'VERSION')
 

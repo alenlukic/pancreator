@@ -35,6 +35,10 @@ const PROJECT_REGISTRY_TEMPLATE =
   'library/templates/operator-briefs/project.json'
 const PROJECT_CSS_TEMPLATE = 'library/templates/operator-briefs/project.css'
 
+/**
+ * The trimmed string when the value is a string with non-blank content,
+ * otherwise null.
+ */
 export function stringValue(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
@@ -276,6 +280,11 @@ function collisionErrors(
   return errors
 }
 
+/**
+ * Validate the brief system, then load the Pancreator primitive registry and
+ * the project registry. Throws `PanError` `INVALID_BRIEF_SYSTEM` when
+ * validation fails.
+ */
 export function readRegistries(root: string): {
   common: BriefRegistry
   project: ProjectBriefRegistry
@@ -325,6 +334,12 @@ function projectIdentity(root: string): { id: string; title: string } {
   return { id: slugifyProjectId(title), title }
 }
 
+/**
+ * Write the project brief registry and project CSS from their templates, each
+ * only when missing unless `force` is set. The registry takes its id and title
+ * from the configured workspace directory name. Reports `built` with the
+ * created paths, or `unchanged`.
+ */
 export function buildBriefSystem(
   root: string,
   options: { force?: boolean } = {},
@@ -359,6 +374,13 @@ export function buildBriefSystem(
   }
 }
 
+/**
+ * Check that both brief registries and both stylesheets exist, that the
+ * registries parse without collisions or unknown field semantics, and that
+ * the project CSS defines a `:root` token block and holds no markup. Returns
+ * the collected errors; throws `PanError` `INVALID_JSON` when a registry file
+ * is not valid JSON.
+ */
 export function validateBriefSystem(root: string): BriefSystemValidationResult {
   const errors: string[] = []
   const commonPath = path.join(root, COMMON_REGISTRY_PATH)

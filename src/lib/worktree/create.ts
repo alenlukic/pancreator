@@ -103,6 +103,15 @@ function sourceCommit(
   return gitRevParse(repositoryRoot, from)
 }
 
+/**
+ * Under the worktree index mutex, add a Git worktree on a new branch named
+ * after it (from `from` or the repository HEAD), or adopt an existing
+ * registered checkout already on that branch. Records it in the index before
+ * handing off local configuration, carrying attributed inputs, and running the
+ * configured setup commands. Throws `PanError` `INVALID_WORKTREE_NAME`,
+ * `WORKTREE_EXISTS`, `WORKTREE_PATH_EXISTS`, `WORKTREE_BRANCH_EXISTS`, or
+ * `WORKTREE_SETUP_FAILED`, among others.
+ */
 export function createWorktree(
   root: string,
   name: string,
@@ -250,6 +259,11 @@ function adoptableWorktree(
   return gitCurrentBranch(worktreePath) === branch
 }
 
+/**
+ * Every indexed worktree with its live state: whether Git still registers it,
+ * whether its record resolves to no repository (orphaned), and, when
+ * registered, its HEAD commit and whether it has uncommitted work. Read-only.
+ */
 export function listWorktrees(root: string): ListedWorktree[] {
   const registrations = new Map<string, Set<string>>()
   const registeredFor = (repositoryRoot: string): Set<string> => {

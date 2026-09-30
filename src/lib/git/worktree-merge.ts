@@ -124,6 +124,11 @@ export function gitWorktreePaths(root: string): string[] {
     .sort()
 }
 
+/**
+ * Run `git worktree remove` for the path, deleting its checkout and
+ * registration; `force` also discards uncommitted changes. Throws `PanError`
+ * `GIT_FAILED` when Git refuses.
+ */
 export function gitWorktreeRemove(
   root: string,
   worktreePath: string,

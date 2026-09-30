@@ -68,6 +68,10 @@ export function loadAgentEvents(root: string, agentId: string): AgentEvent[] {
   return agent ? loadEventsForEntry(root, agent) : []
 }
 
+/**
+ * The newest event recorded for an agent across its alias event files, or null
+ * when the agent is unknown or has no events.
+ */
 export function getLatestEvent(
   root: string,
   agentId: string,
@@ -100,6 +104,7 @@ export function getOpenCall(root: string, agentId: string): AgentEvent | null {
   return openCallIn(loadAgentEvents(root, agentId))
 }
 
+/** The agent's recorded stop, or null when it is unknown or has not stopped. */
 export function getStopRecord(
   root: string,
   agentId: string,
@@ -107,6 +112,10 @@ export function getStopRecord(
   return getAgentEntry(root, agentId)?.stop ?? null
 }
 
+/**
+ * Look up an agent's index entry by its canonical id or any alias. Returns null
+ * when the index holds no matching agent.
+ */
 export function getAgentEntry(
   root: string,
   agentId: string,
@@ -132,6 +141,10 @@ export function getAgentByRunInvocation(
   )
 }
 
+/**
+ * Read the agent index, returning an empty index when the file is missing or
+ * unreadable.
+ */
 export function readAgentIndex(root: string): AgentIndex {
   return readIndex(root)
 }

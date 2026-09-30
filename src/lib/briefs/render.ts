@@ -203,6 +203,13 @@ ${sections}
 `
 }
 
+/**
+ * Parse a brief JSON source and atomically write it as a self-contained HTML
+ * page with the base and project CSS inlined, returning section and card
+ * counts. Throws `PanError` `INVALID_OPERATOR_BRIEF` for an invalid brief,
+ * `INVALID_ARGUMENT` when the output path does not end in `.html`, and
+ * `INVALID_BRIEF_SYSTEM` when the registries fail validation.
+ */
 export function renderBrief(
   root: string,
   inputPath: string,

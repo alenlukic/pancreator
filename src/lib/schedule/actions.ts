@@ -27,6 +27,11 @@ import type {
   ScheduleRuntime,
 } from './ledger.js'
 
+/**
+ * Resolve a scheduled job's target: its managed worktree when it names one,
+ * otherwise its workspace path resolved against the harness root. Throws
+ * `PanError` `INVALID_SCHEDULE` for an unregistered worktree name.
+ */
 export function targetForJob(
   root: string,
   job: ScheduleJob,
@@ -60,6 +65,10 @@ export function targetForJob(
   }
 }
 
+/**
+ * The id of a live run bound to the job's target workspace, or null when no
+ * live run occupies it.
+ */
 export function occupyingRun(root: string, job: ScheduleJob): string | null {
   const target = targetForJob(root, job).absolute
   // The workspace binding never moves through the write-ahead log, so the
@@ -142,6 +151,11 @@ function runWorkflowAction(
   }
 }
 
+/**
+ * Check that every task in a session job's horizon queue that names a
+ * workspace or worktree targets the job's own workspace. Throws `PanError`
+ * `INVALID_SCHEDULE` for a mismatch and `INVALID_JSON` for an unreadable queue.
+ */
 export function validateSessionTarget(
   root: string,
   job: ScheduleJob,
@@ -246,6 +260,14 @@ function runSessionAction(
   }
 }
 
+/**
+ * Perform one scheduled occurrence and report whether it succeeded. A
+ * `command` action runs through the shell in the target directory; a
+ * `session` action starts a headless long-horizon session through `bin/pan`;
+ * a `workflow` or `prompt` action creates a run (writing the prompt request
+ * into the inbox queue first) and drives it headless. Subprocesses time out
+ * after 24 hours.
+ */
 export function executeScheduleAction(
   root: string,
   job: ScheduleJob,
@@ -280,6 +302,11 @@ export function executeScheduleAction(
   return runWorkflowAction(root, job, occurrence, action, runtime)
 }
 
+/**
+ * Build the schedule decision record for one occurrence, carrying the run id,
+ * session id, and exit status from the action result when present and the
+ * damaged ledger line count when non-zero.
+ */
 export function decision(
   job: ScheduleJob,
   occurrence: Date,

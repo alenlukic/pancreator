@@ -150,6 +150,12 @@ function parseWorktreeRecord(value: unknown, source: string): WorktreeRecord {
   return value as unknown as WorktreeRecord
 }
 
+/**
+ * Validate a raw worktree index: schema version 1, every record carrying its
+ * required non-empty fields and a valid worktree name, and no duplicate names.
+ * Throws `PanError` `INVALID_WORKTREE_INDEX` naming the offending path under
+ * `source`.
+ */
 export function parseWorktreeIndex(
   value: unknown,
   source = 'worktree index',
@@ -199,6 +205,11 @@ export function readWorktreeIndex(root: string): WorktreeIndex {
   )
 }
 
+/**
+ * Validate the index and atomically write it with its records sorted by name.
+ * Takes no lock: the caller holds the worktree mutex. Throws `PanError`
+ * `INVALID_WORKTREE_INDEX` for an invalid index.
+ */
 export function persistWorktreeIndex(root: string, index: WorktreeIndex): void {
   const parsed = parseWorktreeIndex(index)
 
@@ -210,6 +221,10 @@ export function persistWorktreeIndex(root: string, index: WorktreeIndex): void {
   })
 }
 
+/**
+ * Validate and atomically write the worktree index under the worktree mutex.
+ * A caller that already holds the mutex uses `persistWorktreeIndex` instead.
+ */
 export function writeWorktreeIndex(root: string, index: WorktreeIndex): void {
   withOperationMutex(worktreeMutexPath(root), () => {
     persistWorktreeIndex(root, index)
@@ -329,6 +344,10 @@ export function resolveBranchCheckout(
   return held
 }
 
+/**
+ * The indexed worktree record with this name. Throws `PanError`
+ * `WORKTREE_NOT_FOUND` when none is recorded.
+ */
 export function recordByName(
   index: WorktreeIndex,
   name: string,
@@ -345,6 +364,10 @@ export function recordByName(
   return record
 }
 
+/**
+ * Absolute path of a recorded worktree, resolved from its harness-relative
+ * path. Throws `PanError` `PATH_ESCAPE` when the path leaves the harness root.
+ */
 export function absoluteWorktreePath(
   root: string,
   record: WorktreeRecord,
@@ -352,6 +375,11 @@ export function absoluteWorktreePath(
   return resolveInside(root, record.path)
 }
 
+/**
+ * Resolved absolute paths of every worktree Git registers for the
+ * repository, including ones whose directory is gone. Empty when
+ * `git worktree list` fails.
+ */
 export function registeredWorktreePaths(repositoryRoot: string): Set<string> {
   return new Set(
     gitWorktreePaths(repositoryRoot).map((entry) => path.resolve(entry)),
