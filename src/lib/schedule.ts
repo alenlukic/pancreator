@@ -6,7 +6,8 @@ import path from 'node:path'
 import { createRun } from './engine.js'
 import { PanError, errorMessage, invariant } from './errors.js'
 import { driveRun } from './headless-driver.js'
-import { initHorizonSession, parseHorizonQueue } from './horizon.js'
+import { initHorizonSession } from './horizon/lifecycle.js'
+import { parseHorizonQueue } from './horizon/queue.js'
 import {
   appendJsonLine,
   ensureDir,

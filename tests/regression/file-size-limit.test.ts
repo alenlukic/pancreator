@@ -32,7 +32,6 @@ const PENDING_SPLIT = new Set([
   'src/lib/git.ts',
   'src/lib/governance-card.ts',
   'src/lib/governance/prompt-context.ts',
-  'src/lib/horizon.ts',
   'src/lib/project-config.ts',
   'src/lib/release-landing.ts',
   'src/lib/render.ts',
