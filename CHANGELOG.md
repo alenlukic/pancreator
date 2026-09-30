@@ -1,5 +1,37 @@
 # Changelog
 
+## [8.0.0] - 2026-09-30
+
+This release cuts what a stage worker spends to orient itself and to prove its work. Implementing agents leave the suites to the gates, a retry or remediation starts from the previous worker's notes and reading map, every source and test file is at most 1,000 lines, and a generated function index states each export's interface and behavior. Verify converges faster: QA runs only for live criteria, and a return visit reviews the remediation. Post-ship observations replace acceptance criteria that no stage could prove. The module layout under `src/` changed throughout, so this is a major release.
+
+### Changed
+
+- Leave the `fast` profile and the integration lane to the gates in implement and remediate. The coder and remediators iterate on `pan tests impacted`, their new tests, and the static checks, then submit, and the remediate exit gate now runs `fast` so a regression returns with its gate log ([03684918](https://github.com/alenlukic/pancreator/commit/03684918), [ebf72671](https://github.com/alenlukic/pancreator/commit/ebf72671)).
+- Print a pass line, or the failing command, the failing tests, and the log path, from `pan repository-check` and `pan tests impacted`. The full output stays in `runtime/logs/repository-check/`, and `--verbose` or `PAN_VERBOSE=1` streams it ([258cfc8d](https://github.com/alenlukic/pancreator/commit/258cfc8d)).
+- Stop asking workers to recompute digests. The harness writes the contract and its digest together and re-hashes the contract at submission ([28a374e4](https://github.com/alenlukic/pancreator/commit/28a374e4)).
+- Tag every acceptance criterion with one proof type (`test`, `review`, `live`, or `observe`). The test plan needs cases only for `live` criteria, QA runs only when a criterion is `live` or the change touches a user-facing file, and `verify.qa_cases` is required only when QA ran ([06592dc5](https://github.com/alenlukic/pancreator/commit/06592dc5), [233493ee](https://github.com/alenlukic/pancreator/commit/233493ee)).
+- Scope a verify return visit to the remediation and the prior findings. A new finding in code the remediation did not change blocks only at `blocker` severity ([06592dc5](https://github.com/alenlukic/pancreator/commit/06592dc5)).
+- Split every file under `src/` and `tests/` to at most 1,000 lines. Each former module keeps a re-export facade with its exact export surface, `pan tests impacted` counts an import through a facade as no extra hop, and a regression test holds the limit ([d53573b2](https://github.com/alenlukic/pancreator/commit/d53573b2), [ddce3212](https://github.com/alenlukic/pancreator/commit/ddce3212), [eedf4afa](https://github.com/alenlukic/pancreator/commit/eedf4afa)).
+- Run `bin/check-shell` from `npm run lint`: `bash -n` under the system Bash 3.2 over `bin/` and `.githooks/`, plus `shellcheck -S error` when it is installed ([258cfc8d](https://github.com/alenlukic/pancreator/commit/258cfc8d)).
+- Count only gate-owned suites in the worker-invocation suite-cost advisory; the impacted, static, and configuration profiles are sanctioned ([ebf72671](https://github.com/alenlukic/pancreator/commit/ebf72671)).
+
+### Added
+
+- Hand a source-editing worker that follows an earlier source attempt a required `<invocation>.handoff.md`: the previous output's `implementation.handoff` notes, its changed files, and a reading map of the files, line ranges, edits, and searches in the previous worker's transcript ([b3ba0a58](https://github.com/alenlukic/pancreator/commit/b3ba0a58), [bbca18ba](https://github.com/alenlukic/pancreator/commit/bbca18ba)).
+- Add the function index: `pan docs index [--write | --check]` renders a module map, a symbol lookup, and one page per module with each export's signature, behavior, and `file:line` under the gitignored `docs/function-index/`. The harness regenerates it at every stage prepare in a self-development checkout, `INDEX-001` points implementing, reviewing, and planning workers at it, and plan file entries may name the `symbols` a change touches ([5ff91750](https://github.com/alenlukic/pancreator/commit/5ff91750), [0f38bb6b](https://github.com/alenlukic/pancreator/commit/0f38bb6b), [fcb8991d](https://github.com/alenlukic/pancreator/commit/fcb8991d), [d6b6f978](https://github.com/alenlukic/pancreator/commit/d6b6f978)).
+- Give every exported function under `src/` a JSDoc behavior summary, so each index entry states what the function does ([bb0fca1d](https://github.com/alenlukic/pancreator/commit/bb0fca1d), [b980eded](https://github.com/alenlukic/pancreator/commit/b980eded), [04cb09e5](https://github.com/alenlukic/pancreator/commit/04cb09e5), [09c55dfe](https://github.com/alenlukic/pancreator/commit/09c55dfe)).
+- Add `pan worker profile --days <n>`: per-stage turns, re-reads, shell browsing, self-run checks, suite calls, paperwork calls, and first-edit turn from worker transcripts, plus a `suite_cost_advisory` event when a source-stage worker runs a gate-owned suite or browses files through the shell ([0394dd5b](https://github.com/alenlukic/pancreator/commit/0394dd5b)).
+- Add `pan governance refresh-digests [--check]`, which rewrites the turn-reminder registry digests after a pinned policy instruction or card section changes ([28a374e4](https://github.com/alenlukic/pancreator/commit/28a374e4)).
+- Record post-ship observations: ship writes `data.release.observations[]` for each `observe` criterion, `pan observations [--root] [--all]` lists open and due items, `pan observations resolve` records a confirmation or a refutation with its regression intake, and the technician audit checks each due item ([97d22831](https://github.com/alenlukic/pancreator/commit/97d22831), [9ca248e4](https://github.com/alenlukic/pancreator/commit/9ca248e4)).
+- Detect Sentry, Datadog, and OpenTelemetry in `pan technologies detect`, and require an `## Observability` primer section in embedded and detached installations ([97d22831](https://github.com/alenlukic/pancreator/commit/97d22831)).
+
+### Fixed
+
+- Classify a Cursor usage event with no matching transcript as unattributed in `pan spend`, not governed ([94a37f43](https://github.com/alenlukic/pancreator/commit/94a37f43)).
+- Fall back to the exit or session status in a schedule failure reason when stderr is empty ([dd89417f](https://github.com/alenlukic/pancreator/commit/dd89417f)).
+- Read a scoped return visit's routing findings only from a failed verify, never from the passing verify before a ship-gate failure ([b96e210a](https://github.com/alenlukic/pancreator/commit/b96e210a)).
+- Keep the librarian's generated language rows last in the policy lookup table, so an installer refresh leaves the table unchanged ([08718e91](https://github.com/alenlukic/pancreator/commit/08718e91)).
+
 ## [7.37.0] - 2026-09-30
 
 This release gives a failed ship a bounded repair path and a command that closes a run after an operator directed the landing. A stale test no longer needs a remediation round and a full verify round, and a run no longer stays at ship after its release reached `pan-dev`.
