@@ -1,5 +1,5 @@
 import type { Facility, FacilityCategory } from './inventory.js'
-import type { FacilityUsage, UsageScanSources } from './usage.js'
+import type { FacilityUsage, UsageScanSources } from './usage/model.js'
 import type { CandidateAssessment } from './adjudication.js'
 import type { CandidatePreview } from './closure.js'
 import type { OrphanFinding } from './orphans.js'

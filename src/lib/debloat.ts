@@ -31,11 +31,8 @@ import {
   sessionPaths,
   type DebloatSessionPaths,
 } from './debloat/session.js'
-import {
-  scanUsage,
-  type FacilityUsage,
-  type UsageScanSources,
-} from './debloat/usage.js'
+import type { FacilityUsage, UsageScanSources } from './debloat/usage/model.js'
+import { scanUsage } from './debloat/usage/scan.js'
 import {
   buildSymbolIndex,
   sourceSymbolFacilities,
@@ -98,12 +95,9 @@ export {
   type FacilityCategory,
 } from './debloat/inventory.js'
 export { DEBLOAT_ROOT, sessionPaths } from './debloat/session.js'
-export {
-  defaultTranscriptsRoot,
-  scanUsage,
-  type EvidenceTier,
-  type FacilityUsage,
-} from './debloat/usage.js'
+export type { EvidenceTier, FacilityUsage } from './debloat/usage/model.js'
+export { scanUsage } from './debloat/usage/scan.js'
+export { defaultTranscriptsRoot } from './debloat/usage/transcripts.js'
 export {
   buildSymbolIndex,
   sourceSymbolFacilities,
