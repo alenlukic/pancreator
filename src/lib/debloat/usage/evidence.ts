@@ -50,6 +50,10 @@ interface FacilityLookup {
   pathOwners: ReadonlyMap<string, string>
 }
 
+/**
+ * Indexes the facility inventory for transcript matching: the facility ids,
+ * command and persona names, and the owning facility of each owned path.
+ */
 export function facilityLookup(
   facilities: readonly Facility[],
 ): FacilityLookup {
@@ -112,6 +116,7 @@ interface ScoredLines {
   incidental: Map<string, number>
 }
 
+/** Adds each count in `from` into the matching key of `into`, in place. */
 export function addCounts(
   into: Map<string, number>,
   from: ReadonlyMap<string, number>,
@@ -121,6 +126,7 @@ export function addCounts(
   }
 }
 
+/** Sum of every count in the map. */
 export function totalCount(counts: ReadonlyMap<string, number>): number {
   let total = 0
 
@@ -317,6 +323,13 @@ function editedOwners(content: string, lookup: FacilityLookup): Set<string> {
   return owners
 }
 
+/**
+ * Reads the transcript corpus into usage evidence: execution hits from command
+ * markers, operator slash lines, and agent tool invocations; direction hits
+ * from scored operator prose and from agent lookups of facility files during a
+ * work turn that the agent did not then edit; incidental mentions; and counts
+ * of files, invocations, and unread or excluded transcripts.
+ */
 export function scanTranscripts(
   corpus: TranscriptCorpus,
   scorer: LineClassifier,

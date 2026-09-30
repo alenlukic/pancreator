@@ -159,6 +159,7 @@ export function resolveSpecifier(
   return null
 }
 
+/** Sorted root-relative TypeScript source files (excluding declaration files and `node_modules`) under a directory, or an empty list when it is absent. */
 export function listTypeScriptFiles(root: string, directory: string): string[] {
   const absolute = path.join(root, directory)
 
@@ -188,6 +189,7 @@ export function listTypeScriptFiles(root: string, directory: string): string[] {
   return found.sort()
 }
 
+/** Sorted names of the regular files in the root's `bin/` directory, or an empty list when it is absent. */
 export function listBinScripts(root: string): string[] {
   const binDir = path.join(root, 'bin')
 
@@ -200,6 +202,7 @@ export function listBinScripts(root: string): string[] {
     .sort()
 }
 
+/** Sorted entry names under `tests/fixtures/`, or an empty list when it is absent. */
 export function listFixtureDirectories(root: string): string[] {
   const fixturesDir = path.join(root, 'tests', 'fixtures')
 
@@ -212,6 +215,7 @@ export function listFixtureDirectories(root: string): string[] {
     .sort()
 }
 
+/** Escapes regular expression metacharacters so the value matches literally. */
 export function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
@@ -236,6 +240,7 @@ export function referencesFixture(source: string, name: string): boolean {
   return pattern.test(source)
 }
 
+/** True for a `.test.ts` file under one of the given lane directories. */
 export function isLaneTest(file: string, lanes = TEST_LANES): boolean {
   return (
     file.endsWith('.test.ts') &&

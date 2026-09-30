@@ -49,6 +49,7 @@ function awayPath(root: string, name: string): string {
   return path.join(root, AWAY_DIRECTORY, name)
 }
 
+/** Absolute path of the append-only supervisor decision ledger under `runtime/logs/away-mode/`. */
 export function awayDecisionLedgerPath(root: string): string {
   return awayPath(root, SUPERVISOR_DECISION_LEDGER)
 }
@@ -98,6 +99,10 @@ export function readAwayDecisionLedger(
   return records
 }
 
+/**
+ * Appends one supervisor decision record to the away-mode ledger while
+ * holding the ledger's operation mutex, so concurrent writers never interleave.
+ */
 export function appendSupervisorDecision(
   root: string,
   record: SupervisorDecisionRecord,
@@ -182,6 +187,15 @@ export function openOperatorQuestion(
   return null
 }
 
+/**
+ * Classifies why an away-mode run needs a supervisor decision, or returns null
+ * when away mode is off or nothing blocks. Checks, in order: an unanswered
+ * operator question in stage outputs (only when `root` is given), a pending
+ * operator approval, a paused blocked stage, and a non-operator-only decision.
+ *
+ * Operator-only decisions never count as a blocker, so away mode cannot answer
+ * a question reserved for the human.
+ */
 export function awayModeTrigger(
   state: RunState,
   root?: string,

@@ -328,6 +328,11 @@ function assertPersonaKeysKnown(
   }
 }
 
+/**
+ * Builds the persona-to-model map for `personas`, taking each model from
+ * `overrides` first and `defaults` second. Throws `INVALID_PIPELINE_CONFIG`
+ * when a persona has no model in either.
+ */
 export function personaMapFor(
   defaults: Record<string, string>,
   overrides: Record<string, string>,

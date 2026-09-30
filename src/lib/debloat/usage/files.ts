@@ -12,6 +12,7 @@ const MAX_SCAN_FILE_BYTES = 32 * 1024 * 1024
 
 const STREAM_CHUNK_BYTES = 1024 * 1024
 
+/** File modification time in milliseconds, or null when the file cannot be stat'd. */
 export function safeStatMs(absolute: string): number | null {
   try {
     return statSync(absolute).mtimeMs
@@ -20,6 +21,7 @@ export function safeStatMs(absolute: string): number | null {
   }
 }
 
+/** Epoch milliseconds of a date string, or null for a non-string or unparseable value. */
 export function parseTimestamp(value: unknown): number | null {
   if (typeof value !== 'string') {
     return null
@@ -30,6 +32,7 @@ export function parseTimestamp(value: unknown): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
+/** Reads a JSON object file, returning null when it is missing, unparseable, or not an object. */
 export function readJsonRecord(
   absolute: string,
 ): Record<string, unknown> | null {
@@ -43,6 +46,7 @@ export function readJsonRecord(
   }
 }
 
+/** Sorted names of the immediate subdirectories, or an empty list when the path is not a directory. */
 export function listDirectories(absolute: string): string[] {
   if (!isDirectory(absolute)) {
     return []
@@ -59,6 +63,11 @@ interface FileEnumeration {
   unread: string[]
 }
 
+/**
+ * Recursively lists files under the roots that carry one of the extensions
+ * and were modified at or after the window start, both sorted. Directories or
+ * files that cannot be read are returned in `unread` instead of throwing.
+ */
 export function listFilesInWindow(
   roots: readonly string[],
   windowStartMs: number,
@@ -118,6 +127,10 @@ export function listFilesInWindow(
   }
 }
 
+/**
+ * Reads a file as UTF-8, or returns null when it cannot be read. A file above
+ * the direct-read size bound is read in fixed-size chunks instead.
+ */
 export function readEvidenceText(absolute: string): string | null {
   let size: number
 

@@ -85,6 +85,11 @@ export interface TranscriptBlock {
   input?: Record<string, unknown>
 }
 
+/**
+ * Content blocks of one JSONL transcript line's message, keeping only the
+ * type, text, tool name, and tool input. Returns an empty list for a line
+ * that does not parse or carries no message content array.
+ */
 export function parseBlocks(line: string): TranscriptBlock[] {
   let record: unknown
 
@@ -122,6 +127,7 @@ export function parseBlocks(line: string): TranscriptBlock[] {
   return blocks
 }
 
+/** Collapses every whitespace run to one space and trims both ends. */
 export function normalizeLine(line: string): string {
   return line.split(/\s+/u).filter(Boolean).join(' ')
 }

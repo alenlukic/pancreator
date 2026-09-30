@@ -76,6 +76,7 @@ function tuneRecordSchemaConstraints(
   }
 }
 
+/** Type guard: true for a record whose parseable `started_at` is not after its `ended_at`. */
 export function isPassInterval(value: unknown): value is PassInterval {
   if (!isRecord(value)) {
     return false
@@ -253,6 +254,13 @@ function validateSurvivingProof(
   }
 }
 
+/**
+ * Validation errors for a tune record: metadata, pass intervals and overlap,
+ * inventories, comparison, benchmark, and verdicts (known principle, one per
+ * current identity, a survivor for MERGE, a permitted reason for DELETE, a
+ * destination for DEMOTE, and no survivor another verdict removes). Returns
+ * an empty list when valid. Reads the tune schema constraints under `root`.
+ */
 export function validateTuneRecordShape(
   record: unknown,
   root = process.cwd(),

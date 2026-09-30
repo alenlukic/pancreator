@@ -184,6 +184,11 @@ export function parseVerification(
   return { active, levels }
 }
 
+/**
+ * Reads the installation's harness config and parses its verification levels
+ * and active level. Throws `INVALID_VERIFICATION` when the config file is
+ * missing or the block is invalid.
+ */
 export function loadVerificationFile(root: string): VerificationFile {
   const configName = harnessConfigName(root) ?? CONFIG_PATH
   const filePath = path.join(root, configName)

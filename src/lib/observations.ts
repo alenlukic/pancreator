@@ -72,6 +72,11 @@ export interface ObservationItem {
   resolution?: ObservationResolution
 }
 
+/**
+ * Absolute path of the observation resolutions ledger,
+ * `runtime/observations/resolutions.jsonl`. Throws `PATH_ESCAPE` when it would
+ * resolve outside the root.
+ */
 export function observationResolutionsPath(root: string): string {
   return resolveInside(root, RESOLUTIONS_PATH)
 }

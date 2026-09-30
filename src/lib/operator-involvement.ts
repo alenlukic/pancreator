@@ -184,6 +184,12 @@ function parseProfile(
   }
 }
 
+/**
+ * Validates the `operator_involvement` block of a harness config and returns
+ * its profiles and active profile name. A config without the block yields the
+ * default standard profile. Throws `INVALID_OPERATOR_INVOLVEMENT` on a bad
+ * shape or an active name no profile defines.
+ */
 export function parseOperatorInvolvement(
   value: unknown,
   source = CONFIG_PATH,
@@ -235,6 +241,11 @@ export function parseOperatorInvolvement(
   return { active: block.active, profiles }
 }
 
+/**
+ * Reads the installation's harness config and parses its operator-involvement
+ * block. Throws `INVALID_OPERATOR_INVOLVEMENT` when the config file is missing
+ * or the block is invalid.
+ */
 export function loadOperatorInvolvementFile(
   root: string,
 ): OperatorInvolvementFile {
@@ -248,6 +259,11 @@ export function loadOperatorInvolvementFile(
   return parseOperatorInvolvement(readHarnessConfig(root, filePath), configName)
 }
 
+/**
+ * The named involvement profile, or the file's active one when no name is
+ * given. Throws `INVALID_OPERATOR_INVOLVEMENT`, listing the defined names,
+ * when the profile is not defined.
+ */
 export function selectInvolvementProfile(
   file: OperatorInvolvementFile,
   name?: string | null,
@@ -348,6 +364,7 @@ export function applyOperatorInvolvement(
   }
 }
 
+/** True when the run's resolved involvement includes the given run contract. */
 export function runHasContract(
   involvement: ResolvedOperatorInvolvement | undefined,
   contract: RunContract,

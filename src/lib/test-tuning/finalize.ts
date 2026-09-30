@@ -32,6 +32,13 @@ function roundMs(value: number): number {
   return Math.round(value * 1000) / 1000
 }
 
+/**
+ * Builds a tune record's benchmark from the fast and optional secondary suite
+ * profiles: lane walls, summed file time, fixture costs, per-file and per-test
+ * durations annotated with the prior record's figures, the 15 slowest tests,
+ * and deltas against the prior record. Throws `TUNE_BENCHMARK_MISSING` when
+ * the fast profile cannot be read.
+ */
 export function buildBenchmarkFromProfiles(
   root: string,
   fastProfilePath: string,
@@ -161,6 +168,14 @@ export interface FinalizeTuneSessionResult {
   latest_path: string
 }
 
+/**
+ * Validates and writes a tune session's record and ranked Markdown report
+ * under `runtime/tune-harness/`, then points the latest-record pointer at
+ * them, returning the three relative paths. Throws
+ * `TUNE_SELF_DEVELOPMENT_ONLY`, `TUNE_PASS_OVERLAP` when the passes do not
+ * overlap, `TUNE_RECORD_INVALID` on a bad shape, and `TUNE_SESSION_FINALIZED`
+ * when the session was already finalized.
+ */
 export function finalizeTuneSession(
   root: string,
   input: FinalizeTuneSessionInput,
@@ -285,6 +300,12 @@ export function finalizeTuneSession(
   }
 }
 
+/**
+ * Finalizes a prepared tune session from the pass, verdict, provenance, and
+ * suite profile files in its work directory, via `finalizeTuneSession`.
+ * Throws `TUNE_SESSION_NOT_FOUND` when the session was not prepared and
+ * `TUNE_SESSION_INPUT_INVALID` when its input files have the wrong shape.
+ */
 export function finalizePreparedTuneSession(
   root: string,
   sessionId: string,

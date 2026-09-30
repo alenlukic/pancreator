@@ -82,6 +82,11 @@ export const TARGET_GOVERNED_FAST_LANE: GovernedFastLane = {
   invoker: TARGET_FAST_INVOKER,
 }
 
+/**
+ * The fast lane and invoker whose runs the fast-wall average counts: the
+ * target lane for an embedded or detached installation, otherwise the
+ * self-development lane.
+ */
 export function governedFastLane(root: string): GovernedFastLane {
   const mode = readProjectConfig(root)?.installation_mode
 
@@ -267,10 +272,15 @@ function readUnknownJson(target: string): unknown {
   }
 }
 
+/** Absolute path of the fast-wall series file, `runtime/fast-wall-series.jsonl`. */
 export function fastWallSeriesPath(root: string): string {
   return path.join(root, FAST_WALL_SERIES_PATH)
 }
 
+/**
+ * Reads the fast-wall series JSONL, returning the parseable entries and a
+ * count of malformed lines. A missing file reads as an empty series.
+ */
 export function readFastWallSeries(
   root: string,
   target = fastWallSeriesPath(root),
@@ -607,6 +617,7 @@ function mean(values: number[]): number | null {
     : values.reduce((total, value) => total + value, 0) / values.length
 }
 
+/** Mean wall-clock time of the entries recorded in the 24 hours ending at `at`, or null when none fall inside. */
 export function rollingFastWallAverage(
   records: FastWallSeriesEntry[],
   at: Date,
@@ -750,6 +761,11 @@ function seconds(value: number): string {
   return `${(value / 1000).toFixed(1)}s`
 }
 
+/**
+ * One-line operator summary of a fast-wall report: the rolling average,
+ * permitted ceiling, marginal per-test cost, and a PASS, advisory, or
+ * insufficient-samples verdict with the tuning action for this installation.
+ */
 export function formatFastWallReport(report: FastWallReport): string {
   if (report.status === 'not_applicable') {
     return 'Fast wall: not applicable; this installation configures no fast_wall block; PASS.'

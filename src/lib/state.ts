@@ -28,10 +28,16 @@ const MAX_EVENT_LINE_BYTES = 64 * 1024
 const PERSISTED_DELTA_PREVIEW_LIMIT = 10
 export const DEFAULT_STAGE_LIVENESS_MS = 30 * 60 * 1000
 
+/** Current time as an ISO 8601 UTC string. */
 export function now(): string {
   return new Date().toISOString()
 }
 
+/**
+ * New workflow run id whose suffix is keywords derived from the seed, or a
+ * random fragment when there is no seed or it yields no keywords. Not checked
+ * for collisions; see `makeUniqueRunId`.
+ */
 export function makeRunId(seed?: string): string {
   const suffix = seed === undefined ? null : keywordRunSuffix(seed)
 
@@ -107,18 +113,26 @@ export function invocationLiveness(
   }
 }
 
+/** Absolute directory holding a run's agent records (its layout-dependent agent root). */
 export function runDir(root: string, runId: string): string {
   return resolveRunLayout(root, runId).agent.absolute
 }
 
+/** Absolute path of a run's `state.json` for its detected layout. */
 export function statePath(root: string, runId: string): string {
   return resolveRunLayout(root, runId).state.absolute
 }
 
+/** Absolute path of a run's `events.jsonl` for its detected layout. */
 export function eventPath(root: string, runId: string): string {
   return resolveRunLayout(root, runId).events.absolute
 }
 
+/**
+ * Zero-based sequence number of the run's next stage occurrence: the count of
+ * prepared-invocation and harness-executed-stage events so far, or 0 when the
+ * run has no event log. Throws on a malformed event line.
+ */
 export function nextStageSequence(root: string, runId: string): number {
   const eventsFile = eventPath(root, runId)
 
@@ -274,6 +288,7 @@ function claimTransferredAway(state: RunState, worktreeName: string): boolean {
   )
 }
 
+/** Absolute path of a run's operation mutex. Throws `RUN_NOT_FOUND` when the run has no state file. */
 export function operationMutexPath(root: string, runId: string): string {
   invariant(fileExists(statePath(root, runId)), `Unknown run: ${runId}`, {
     code: 'RUN_NOT_FOUND',
@@ -570,6 +585,17 @@ const RESERVED_EVENT_KEYS = [
   'payload_ref',
 ] as const
 
+/**
+ * Commits a state transition: bumps the revision and timestamps, compacts
+ * repository-check deltas, writes a state reference and the state file,
+ * appends the typed event to the run's event log (moving an oversized payload
+ * to a separate artifact), and appends a summary line to the orchestrator
+ * event log. Mutates `state` in place.
+ *
+ * Throws `RESERVED_EVENT_KEY` when the payload sets an envelope key and
+ * `STATE_SIZE_BUDGET_EXCEEDED` when the compacted state exceeds the
+ * configured size budget.
+ */
 export function persist(
   root: string,
   state: RunState,

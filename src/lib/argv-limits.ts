@@ -19,10 +19,16 @@ export interface OversizedArgvElement {
   byteLength: number
 }
 
+/** UTF-8 byte length of one argv element, the unit the exec-time limit counts. */
 export function argvElementByteLength(value: string): number {
   return Buffer.byteLength(value, 'utf8')
 }
 
+/**
+ * Returns the first argv element whose UTF-8 size reaches `limit`, with the
+ * preceding `--option` it belongs to (or null for a positional), or null when
+ * every element fits.
+ */
 export function findOversizedArgvElement(
   args: readonly string[],
   limit: number = ARGV_ELEMENT_BYTE_LIMIT,

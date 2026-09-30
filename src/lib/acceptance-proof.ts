@@ -25,6 +25,7 @@ export const ACCEPTANCE_PROOF_TYPES = [
 
 export type AcceptanceProof = (typeof ACCEPTANCE_PROOF_TYPES)[number]
 
+/** Type guard: true when the value is one of `ACCEPTANCE_PROOF_TYPES`. */
 export function isAcceptanceProof(value: unknown): value is AcceptanceProof {
   return (
     typeof value === 'string' &&

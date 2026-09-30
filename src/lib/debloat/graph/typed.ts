@@ -202,6 +202,15 @@ export function validatorResolutionReferences(
   return references
 }
 
+/**
+ * Functional edges read from structured harness data rather than literal
+ * text: policy requirements and guidance, policy lookup rows, command card
+ * modes, standalone mode bindings, workflow stage personas, stage artifact
+ * profiles and criteria, command subcommands, and source-symbol owners. Only
+ * edges whose target is a known facility are kept, and registry rows that
+ * name a facility by bare name are recorded as non-functional back edges so a
+ * removal repairs them.
+ */
 export function typedReferences(
   root: string,
   facilities: readonly Facility[],

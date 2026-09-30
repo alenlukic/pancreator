@@ -311,6 +311,11 @@ function fastMode(modelSpec: string | null): EventAttribution['fast_mode'] {
   return 'unknown'
 }
 
+/**
+ * The supervisor command names from the command governance registry, or null
+ * when the registry is unreadable or its list is not all strings. Null means
+ * any command may be a supervisor.
+ */
 export function readSupervisorCommands(root: string): Set<string> | null {
   const registry = safeReadJson(
     path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH),
@@ -334,6 +339,13 @@ function mayBeSupervisor(
   )
 }
 
+/**
+ * Attributes one Cursor usage event to a command, persona and model, stage,
+ * workflow role, governance class, fast mode, remediation class, and tool
+ * list. The event's conversation or cloud agent id is matched to a worker
+ * identity first, else to a transcript that may be a supervisor and the run
+ * it names; unmatched dimensions read `Unattributed`.
+ */
 export function attributionForEvent(
   event: CursorUsageEvent,
   transcripts: Map<string, TranscriptEvidence>,

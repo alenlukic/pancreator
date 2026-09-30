@@ -551,6 +551,13 @@ export function repositoryCheckWorkspaceRoot(
   return path.resolve(root, workspace ?? configuredWorkspaceRoot(root))
 }
 
+/**
+ * Runs a repository-check profile synchronously in the workspace: environment
+ * probes and probes first, stopping at the first failure, then every command
+ * even after one fails, stopping only on a timeout, all under one profile
+ * deadline. Returns `not_configured` when the profile is missing or has no
+ * commands.
+ */
 export function runRepositoryCheck(
   root: string,
   profileName: string,
@@ -650,6 +657,12 @@ export function runRepositoryCheck(
   )
 }
 
+/**
+ * Streaming form of `runRepositoryCheck` that reports each command's start,
+ * output chunks, and close through the callbacks. A profile marked
+ * `concurrent` runs its commands in parallel against the shared deadline and
+ * records every result in declared order.
+ */
 export async function runRepositoryCheckStreaming(
   root: string,
   profileName: string,

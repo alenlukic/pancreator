@@ -43,6 +43,7 @@ export function dirtyPaths(root: string): string[] {
     .filter((entry) => entry.length > 0 && !entry.endsWith('/'))
 }
 
+/** Paths staged in the index relative to HEAD, or an empty list outside a Git repository. Runs `git diff --cached`. */
 export function stagedPaths(root: string): string[] {
   if (!isGitRepository(root)) {
     return []

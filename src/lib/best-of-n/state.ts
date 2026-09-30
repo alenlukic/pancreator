@@ -166,6 +166,13 @@ function parsePersonaSet(value: unknown, source: string): BestOfNPersonaSet {
   return { name, personas }
 }
 
+/**
+ * Validates a best-of-N configs file and returns it normalized: unnamed
+ * candidates become `candidate-<n>`, an unnamed consolidation becomes
+ * `consolidation`, and `setup` defaults to empty. Throws
+ * `INVALID_BEST_OF_N_CONFIGS` on a bad shape, too few candidates, or a
+ * duplicate slot name; `source` labels the messages.
+ */
 export function parseBestOfNConfigs(
   value: unknown,
   source: string,
@@ -242,6 +249,11 @@ export function parseBestOfNConfigs(
   }
 }
 
+/**
+ * Session directory under `runtime/logs/best-of-n/`. Throws
+ * `INVALID_BEST_OF_N_ID` when the id does not match the session id pattern,
+ * which keeps the path inside that directory.
+ */
 export function bestOfNDir(root: string, bonId: string): string {
   invariant(
     BEST_OF_N_ID_PATTERN.test(bonId),
@@ -252,6 +264,7 @@ export function bestOfNDir(root: string, bonId: string): string {
   return path.join(root, 'runtime', 'logs', 'best-of-n', bonId)
 }
 
+/** Path of a session's `state.json`; validates the id like `bestOfNDir`. */
 export function bestOfNStatePath(root: string, bonId: string): string {
   return path.join(bestOfNDir(root, bonId), 'state.json')
 }
@@ -261,6 +274,11 @@ export function bestOfNMutexPath(root: string, bonId: string): string {
   return path.join(bestOfNDir(root, bonId), '.operation-mutex')
 }
 
+/**
+ * Reads a session's state record. Throws `BEST_OF_N_NOT_FOUND` when the file
+ * is missing and `INVALID_BEST_OF_N_STATE` when it is not a schema-1 record in
+ * status `initializing` or `ready`.
+ */
 export function loadBestOfNState(root: string, bonId: string): BestOfNState {
   const filePath = bestOfNStatePath(root, bonId)
 
@@ -284,6 +302,10 @@ export function loadBestOfNState(root: string, bonId: string): BestOfNState {
   return value as unknown as BestOfNState
 }
 
+/**
+ * Stamps `updated_at` and atomically writes the session state file, returning
+ * the record as written. Callers hold the session mutex.
+ */
 export function persistBestOfNState(
   root: string,
   state: BestOfNState,
@@ -304,14 +326,17 @@ export function sessionKey(bonId: string): string {
   return `bon${sha256(bonId).slice(0, 8)}`
 }
 
+/** Name suffix for one candidate slot's run-scoped agent variants: the session key plus the slot. */
 export function agentSuffix(bonId: string, slot: string): string {
   return `${sessionKey(bonId)}-${slot}`
 }
 
+/** True when the directory has no entries; throws when it cannot be read. */
 export function isEmptyDirectory(directory: string): boolean {
   return readdirSync(directory).length === 0
 }
 
+/** Loads a workflow run's state, or returns null when the run has no state file. */
 export function candidateRunState(
   root: string,
   runId: string,

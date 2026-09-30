@@ -125,12 +125,14 @@ export function inboxStatusOf(
   return null
 }
 
+/** Creates every inbox status directory and the archive directory under `runtime/inbox/` when missing. */
 export function ensureInboxStatusDirectories(root: string): void {
   for (const status of [...INBOX_WORK_STATUSES, 'archive'] as const) {
     ensureDir(resolveInside(root, statusDirectoryRelative(status)))
   }
 }
 
+/** Relative path a file of this name takes in the inbox queue directory. Touches no file. */
 export function queueInboxRelativePath(fileName: string): string {
   return path.join(statusDirectoryRelative('queue'), fileName)
 }
@@ -271,6 +273,13 @@ export function claimInboxRequest(root: string, relativePath: string): string {
   return moveInboxFile(root, normalized, 'active')
 }
 
+/**
+ * Moves a claimed inbox item from the active directory back to the path it
+ * was claimed from and returns that path. Throws `INVALID_INBOX_TRANSITION`
+ * unless the original path was a queue, canceled, or legacy location,
+ * `INBOX_ITEM_NOT_FOUND` when the active file is gone, and
+ * `INBOX_MOVE_COLLISION` when the original path is occupied.
+ */
 export function rollbackInboxClaim(
   root: string,
   activePath: string,
@@ -871,6 +880,7 @@ export function renderInbox(items: InboxItem[]): string {
   return `${lines.join('\n')}\n`
 }
 
+/** Relative inbox directories (queue, active, canceled, complete, archive) whose file names the temporal-name checks scan. */
 export function inboxTemporalScanDirectories(): string[] {
   return [
     statusDirectoryRelative('queue'),

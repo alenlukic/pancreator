@@ -247,6 +247,15 @@ function everyConfiguredSlotHasRun(root: string, state: BestOfNState): boolean {
   return configs.candidates.every((candidate) => claimed.has(candidate.name))
 }
 
+/**
+ * Reports a best-of-N session's status: each candidate's run status and resume
+ * command, success and unresolved counts, whether consolidation may start, and
+ * the clean command when initialization never finished. A candidate whose run
+ * state is missing reports as `failed`.
+ *
+ * Read-only: it reconciles the session view in memory without taking the
+ * session mutex or persisting the repair.
+ */
 export function bestOfNStatus(root: string, bonId: string): BestOfNStatus {
   // Status holds no mutex, so the adopted view is reported without being
   // persisted; the next mutating command durably repairs the record.

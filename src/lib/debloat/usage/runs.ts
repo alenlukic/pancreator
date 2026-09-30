@@ -71,6 +71,13 @@ function sessionMode(absolute: string): string | null {
   return suffix.replace(/-\d+$/u, '')
 }
 
+/**
+ * Walks workflow runs and standalone sessions active since the window start
+ * and reports each facility they used through `record`: the run's workflow,
+ * each invocation's persona, workflow, policies, and guidance owners, and each
+ * session's mode and matching command. Returns how many runs and sessions fell
+ * inside the window. Unreadable records are skipped.
+ */
 export function collectRunHits(
   root: string,
   facilities: readonly Facility[],

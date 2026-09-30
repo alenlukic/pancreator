@@ -6,6 +6,11 @@ import { loadRunRecords } from './run-records.js'
 import { loadEvalScenario } from './scenario.js'
 import type { EvalReport, LoadedEvalScenario } from './types.js'
 
+/**
+ * Loads a run's records and runs every grader the loaded scenario declares,
+ * returning an eval report that passes only when every grader passes. Writes
+ * nothing.
+ */
 export function gradeRunRecords(
   root: string,
   runId: string,
@@ -30,6 +35,7 @@ export function gradeRunRecords(
   }
 }
 
+/** Loads the named eval scenario and grades the run against it via `gradeRunRecords`. */
 export function gradeEvalRun(
   root: string,
   runId: string,
@@ -117,6 +123,11 @@ export interface WrittenEvalReport {
   markdown_path: string
 }
 
+/**
+ * Writes the report as `report.json` and rendered `report.md` into the
+ * directory (resolved against `root`, created if missing) and returns both
+ * repository-relative paths.
+ */
 export function writeEvalReport(
   root: string,
   directory: string,

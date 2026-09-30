@@ -237,13 +237,6 @@ function deliveryAutostartSteps(
 }
 
 /**
- * What the run did to the harness checkout that graded it. An eval works in
- * its own workspace, so any tracked harness-root change outside `runtime/` is
- * a write the run had no authority to make. Eval run 63310_Aug-30-1404 edited
- * `VERSION`, `CHANGELOG.md`, and four more files in the real working tree and
- * graded as a pass, because no check looked here.
- */
-/**
  * Whether the eval runner delegates a stage itself. Every external executor
  * runs through the same path as `pan delegate`; only a cursor persona needs
  * the operator's own supervisor session, so only cursor is handed back.
@@ -252,6 +245,16 @@ export function evalDrivesExecutor(executor: PersonaExecutorKind): boolean {
   return executor !== 'cursor'
 }
 
+/**
+ * Driver check that fails when the eval run changed any tracked harness-root
+ * file outside `runtime/` since the `before` snapshot, listing those paths as
+ * evidence.
+ *
+ * An eval works in its own workspace, so any such change is a write the run
+ * had no authority to make. Eval run 63310_Aug-30-1404 edited `VERSION`,
+ * `CHANGELOG.md`, and four more files in the real working tree and graded as
+ * a pass, because no check looked here.
+ */
 export function harnessRootUntouched(
   root: string,
   before: WorkspaceSnapshot,

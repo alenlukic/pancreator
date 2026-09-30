@@ -226,6 +226,11 @@ function parseNamedConfig(
   }
 }
 
+/**
+ * Persona-to-model map of a named config: the file's `defaults` overlaid by
+ * that config's personas. Throws `INVALID_PIPELINE_CONFIG` when the name is
+ * not defined.
+ */
 export function resolveConfigPersonas(
   file: PipelineConfigFile,
   configName: string,
@@ -244,6 +249,13 @@ export function resolveConfigPersonas(
   }
 }
 
+/**
+ * Validates a pipeline config document and returns it normalized, with model
+ * alias tiers checked and persona aliases expanded to explicit specs. Throws
+ * `INVALID_PIPELINE_CONFIG` on a bad shape, an unsupported or recursive
+ * alias, a non-cursor alias executor, an empty `configs`, or an undefined
+ * `active_config`.
+ */
 export function parsePipelineConfig(
   value: unknown,
   source = CONFIG_PATH,
@@ -369,6 +381,16 @@ export function parsePipelineConfig(
   }
 }
 
+/**
+ * Loads the effective harness config (with local overrides merged), parses
+ * it, and returns the named config (the active one by default) with resolved
+ * personas and a digest of the effective config. Throws
+ * `INVALID_PIPELINE_CONFIG` when the file is missing or the config is
+ * undefined or invalid.
+ *
+ * When a local Cursor model catalog exists, every cursor persona of every
+ * named config is also checked against it; `skipCatalog` bypasses that check.
+ */
 export function loadPipelineConfig(
   root: string,
   name?: string,
@@ -452,6 +474,11 @@ export function pipelineConfigPersonaMappings(
   return mappings
 }
 
+/**
+ * Freezes a loaded config into the run snapshot record: its name, source path
+ * and digest, summary, a copy of the persona models, and each persona's
+ * executor kind.
+ */
 export function makePipelineConfigSnapshot(
   loaded: LoadedPipelineConfig,
 ): PipelineConfigSnapshot {
@@ -472,6 +499,11 @@ export function makePipelineConfigSnapshot(
   }
 }
 
+/**
+ * Reads a run's pipeline config snapshot from a root-relative path. Throws
+ * `INVALID_PIPELINE_CONFIG` when it is not a schema-1 snapshot with non-empty
+ * persona models, and `PATH_ESCAPE` when the path leaves the root.
+ */
 export function loadPipelineConfigSnapshot(
   root: string,
   relativePath: string,
@@ -502,6 +534,11 @@ export function loadPipelineConfigSnapshot(
   return value as unknown as PipelineConfigSnapshot
 }
 
+/**
+ * Parses the model string a config or snapshot maps to a persona, verbatim,
+ * checking a cursor model's slug. Throws `INVALID_PIPELINE_CONFIG` when the
+ * persona has no model.
+ */
 export function resolvePersonaMapping(
   config: NamedPipelineConfig | PipelineConfigSnapshot,
   persona: string,

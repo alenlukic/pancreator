@@ -297,6 +297,14 @@ function isProfileLimit(value: unknown): value is ProfileExecutionLimit {
   )
 }
 
+/**
+ * Grader that counts repository-check profile executions from baselines,
+ * harness gates, the agent run ledger (or, without a ledger, output text) and
+ * fails when a count breaks a configured `limits` entry. The default limits
+ * allow one agent fast and static run per attempt, no agent or baseline full
+ * run, and exactly one harness full run for a run that reached ship with the
+ * release gate enabled; minimums apply only to a succeeded run.
+ */
 export const profileExecutions: Grader = (context) => {
   const { records } = context
   const { executions, profile_commands } = collectProfileExecutions(records)

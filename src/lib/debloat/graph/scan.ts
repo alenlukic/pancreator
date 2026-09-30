@@ -88,6 +88,10 @@ export function lineStartOffsets(content: string): number[] {
   return starts
 }
 
+/**
+ * Zero-based line that holds a character offset, found by binary search over
+ * the line start offsets.
+ */
 export function lineIndexOf(starts: readonly number[], offset: number): number {
   let low = 0
   let high = starts.length - 1
@@ -105,6 +109,11 @@ export function lineIndexOf(starts: readonly number[], offset: number): number {
   return low
 }
 
+/**
+ * Classifies a referring file: a facility registry, a file some facility owns,
+ * a test, executable code under the source or script roots, or otherwise a
+ * document. Only a code referrer blocks a removal; the others are repaired.
+ */
 export function referrerClass(relative: string, owned: boolean): ReferrerClass {
   if (isRegistryPath(relative)) {
     return 'registry'
@@ -150,6 +159,11 @@ export function withoutComments(content: string): string {
     .replace(LINE_COMMENT, (_match, prefix: string) => prefix)
 }
 
+/**
+ * Sorted repository-relative paths of every scannable text file: files with a
+ * scanned extension or no extension under the scan roots, plus the top-level
+ * agent and readme documents when present.
+ */
 export function listTextFiles(root: string): string[] {
   const found: string[] = []
 
@@ -188,6 +202,7 @@ export function listTextFiles(root: string): string[] {
   return found.sort()
 }
 
+/** Escapes regular expression metacharacters so the value matches literally. */
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
@@ -212,6 +227,12 @@ export interface RelativeTarget {
   line: number
 }
 
+/**
+ * Repository-relative targets a file names through self-relative specifiers:
+ * relative imports in TypeScript and non-URL link targets in Markdown, each
+ * with the line that carried it. An imported JavaScript specifier resolves to
+ * its TypeScript source.
+ */
 export function relativeTargets(
   relative: string,
   content: string,
@@ -323,6 +344,11 @@ export function referenceTokens(entry: Facility): string[] {
   return [...new Set(tokens)]
 }
 
+/**
+ * The facility that owns a repository-relative path, or null. An exact owned
+ * path wins; otherwise a facility whose owned path is an extensionless
+ * directory owns everything beneath it.
+ */
 export function ownerOf(
   byPath: Map<string, Facility>,
   relative: string,

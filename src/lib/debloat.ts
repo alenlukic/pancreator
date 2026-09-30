@@ -405,6 +405,11 @@ export async function scanDebloat(
   }
 }
 
+/**
+ * Reads the session's scan record (candidates and assessments). Throws
+ * `DEBLOAT_SESSION_INCOMPLETE`, naming the scan command, when the scan has
+ * not run.
+ */
 export function readScanRecord(paths: DebloatSessionPaths): DebloatScanRecord {
   return readSessionArtifact<DebloatScanRecord>(
     paths.candidates,
@@ -424,6 +429,10 @@ export interface DebloatAdjudicationSummary {
   adjudications: AgenticAdjudication[]
 }
 
+/**
+ * Reads the session's agentic adjudication record, or returns an empty record
+ * when none has been written yet.
+ */
 export function readAdjudicationRecord(
   paths: DebloatSessionPaths,
 ): DebloatAdjudicationRecord {
@@ -441,6 +450,13 @@ export function readAdjudicationRecord(
   )
 }
 
+/**
+ * Records an agent's `remove` or `keep` verdict for one candidate the scan
+ * marked unclear, replacing any earlier verdict for that facility, and
+ * atomically rewrites the session's adjudication record. Throws
+ * `DEBLOAT_ADJUDICATION_INVALID` for a candidate that is not unclear or an
+ * unknown verdict, and `INVALID_ARGUMENT` when reasoning or evidence is empty.
+ */
 export function recordDebloatAdjudication(
   root: string,
   sessionId: string,
@@ -588,6 +604,10 @@ export function selectDebloatFacilities(
   }
 }
 
+/**
+ * Reads the operator's recorded facility selection for the session. Throws
+ * `DEBLOAT_SESSION_INCOMPLETE` when nothing has been selected yet.
+ */
 export function readSelectionRecord(
   paths: DebloatSessionPaths,
 ): DebloatSelectionRecord {
@@ -655,6 +675,10 @@ export async function computeDebloatImpact(
   }
 }
 
+/**
+ * Reads the session's removal closure computed by the impact step. Throws
+ * `DEBLOAT_SESSION_INCOMPLETE` when impact has not run.
+ */
 export function readClosureRecord(paths: DebloatSessionPaths): ClosureRecord {
   return readSessionArtifact<ClosureRecord>(
     paths.closure,

@@ -19,10 +19,12 @@ function instanceFilePath(root: string): string {
   return path.join(root, 'runtime', 'spend', 'instance.json')
 }
 
+/** Absolute path of the local spend ledger, `runtime/spend/ledger.json`. */
 export function ledgerFilePath(root: string): string {
   return path.join(root, 'runtime', 'spend', 'ledger.json')
 }
 
+/** Absolute path of the mutex file that serializes spend ledger writes. */
 export function ledgerLockPath(root: string): string {
   return path.join(root, 'runtime', 'spend', 'ledger.lock')
 }
@@ -64,6 +66,11 @@ export function resolveInstanceId(root: string): {
   return { instance_id, label: os.hostname().slice(0, 64) }
 }
 
+/**
+ * Reads the local spend ledger, keeping only well-formed records and tool-call
+ * counts. A missing or corrupt ledger reads as an empty one for this
+ * instance; nothing is written.
+ */
 export function readLedger(root: string, instanceId: string): SpendLedger {
   const filePath = ledgerFilePath(root)
 

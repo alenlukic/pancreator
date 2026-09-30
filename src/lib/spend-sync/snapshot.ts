@@ -104,6 +104,11 @@ export function parseSpendRecords(values: unknown[]): SpendRecord[] {
   )
 }
 
+/**
+ * Per-conversation tool-call counts from an untrusted value, keeping only
+ * 64-hex conversation keys and finite numeric counts. Returns an empty map
+ * for a non-object.
+ */
 export function parseToolCalls(value: unknown): SpendSnapshot['tool_calls'] {
   const toolCalls: SpendSnapshot['tool_calls'] = {}
 

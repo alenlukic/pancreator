@@ -25,6 +25,7 @@ import {
   tuneSessionWorkDir,
 } from './record.js'
 
+/** Throws `TUNE_SELF_DEVELOPMENT_ONLY` in a target installation, whose payload carries no harness tests. */
 export function assertSelfDevelopment(root: string): void {
   if (isTargetInstallation(root)) {
     throw new PanError(
@@ -34,6 +35,7 @@ export function assertSelfDevelopment(root: string): void {
   }
 }
 
+/** Trimmed contents of the `VERSION` file, or `unknown` when it cannot be read. */
 export function harnessVersion(root: string): string {
   try {
     return readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
@@ -181,6 +183,12 @@ function runInventoryCollection(options: {
   return identities
 }
 
+/**
+ * Lists every test identity in the compiled test lanes of this checkout by
+ * running each lane with the inventory reporter and no matching tests.
+ * Writes the merged inventory file under the tune work directory. Throws
+ * `TUNE_INVENTORY_FAILED` when collection fails or no compiled tests exist.
+ */
 export function collectCurrentInventory(root: string): TestIdentity[] {
   const out = path.join(root, TUNE_WORK_DIR, '.inventory-current.json')
   mkdirSync(path.dirname(out), { recursive: true })
@@ -194,6 +202,13 @@ export function collectCurrentInventory(root: string): TestIdentity[] {
   })
 }
 
+/**
+ * Lists the test identities at a Git ref by checking it out in a temporary
+ * detached worktree under the session's work directory, running `npm ci` and
+ * a build there, and collecting its inventory. The worktree is always
+ * removed. Throws `TUNE_BASELINE_BUILD_FAILED` when collection fails; a
+ * failing checkout, install, or build throws its process error.
+ */
 export function collectBaselineInventory(
   root: string,
   baselineRef: string,
@@ -260,6 +275,13 @@ export interface PreparedTuneSession {
   prior_record: TuneRecord | null
 }
 
+/**
+ * Starts a tune session: collects the current test inventory, picks the
+ * retained set (from `baselineRef`, else the latest tune record, else the
+ * current inventory), and writes the inventories and baseline source into a
+ * new session work directory. Throws `TUNE_SELF_DEVELOPMENT_ONLY` or
+ * `TUNE_GIT_REQUIRED`.
+ */
 export function prepareTuneSession(
   root: string,
   options: PrepareTuneSessionOptions = {},
@@ -315,6 +337,12 @@ export function prepareTuneSession(
   }
 }
 
+/**
+ * Reloads a prepared tune session from its work directory, with the latest
+ * tune record as the prior. Throws `TUNE_SESSION_NOT_FOUND` when its
+ * inventory files are missing and `TUNE_INVENTORY_INVALID` when one is
+ * malformed.
+ */
 export function loadPreparedSession(
   root: string,
   sessionId: string,
