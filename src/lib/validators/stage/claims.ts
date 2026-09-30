@@ -159,6 +159,8 @@ export function validateImplementationClaims(
     }
   }
 
+  issues.push(...handoffIssues(implementation))
+
   const invocationAttempt =
     typeof input.invocation?.attempt === 'number' ? input.invocation.attempt : 1
 
@@ -521,4 +523,105 @@ export function validateImplementationClaims(
     status: issues.length === 0 ? 'passed' : 'failed',
     issues,
   }
+}
+
+/**
+ * The `implementation.handoff` notes are optional, but a present field has
+ * to be usable by the next worker: each changed symbol and each start point
+ * names a path, and changed symbols name a claimed file.
+ */
+function handoffIssues(
+  implementation: Record<string, unknown>,
+): HandlerResult['issues'] {
+  const handoff = implementation.handoff
+
+  if (handoff === undefined) {
+    return []
+  }
+
+  if (!isRecord(handoff)) {
+    return [
+      issue(
+        'implementation.handoff_shape',
+        'implementation.handoff MUST be an object',
+      ),
+    ]
+  }
+
+  const issues: HandlerResult['issues'] = []
+  const changedFiles = new Set(
+    Array.isArray(implementation.changed_files)
+      ? implementation.changed_files.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : [],
+  )
+  const text = (value: unknown): boolean =>
+    typeof value === 'string' && value.trim().length > 0
+
+  for (const key of ['decisions', 'untested'] as const) {
+    const value = handoff[key]
+
+    if (
+      value !== undefined &&
+      (!Array.isArray(value) || !value.every((entry) => text(entry)))
+    ) {
+      issues.push(
+        issue(
+          'implementation.handoff_shape',
+          `implementation.handoff.${key} MUST be an array of non-empty strings`,
+        ),
+      )
+    }
+  }
+
+  for (const [key, required] of [
+    ['symbols_changed', ['path', 'symbol']],
+    ['start_here', ['path']],
+  ] as const) {
+    const value = handoff[key]
+
+    if (value === undefined) {
+      continue
+    }
+
+    if (!Array.isArray(value)) {
+      issues.push(
+        issue(
+          'implementation.handoff_shape',
+          `implementation.handoff.${key} MUST be an array`,
+        ),
+      )
+      continue
+    }
+
+    for (const [index, entry] of value.entries()) {
+      const missing = isRecord(entry)
+        ? required.filter((field) => !text(entry[field]))
+        : [...required]
+
+      if (missing.length > 0) {
+        issues.push(
+          issue(
+            'implementation.handoff_shape',
+            `implementation.handoff.${key}[${index}] MUST name ${missing.join(' and ')}`,
+          ),
+        )
+      } else if (
+        key === 'symbols_changed' &&
+        isRecord(entry) &&
+        !changedFiles.has(entry.path as string)
+      ) {
+        issues.push(
+          issue(
+            'implementation.handoff_unclaimed',
+            `implementation.handoff.symbols_changed[${index}].path ` +
+              `${String(entry.path)} is not in implementation.changed_files`,
+          ),
+        )
+      }
+    }
+  }
+
+  return issues
 }

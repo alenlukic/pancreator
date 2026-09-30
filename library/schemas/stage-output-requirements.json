@@ -163,7 +163,15 @@
             "data.blocked",
             "data.blocked.missing_precondition",
             "data.blocked.supplying_command",
-            "data.blocked.evidence[]"
+            "data.blocked.evidence[]",
+            "data.implementation.handoff",
+            "data.implementation.handoff.symbols_changed[]",
+            "data.implementation.handoff.symbols_changed[].path",
+            "data.implementation.handoff.symbols_changed[].symbol",
+            "data.implementation.handoff.start_here[]",
+            "data.implementation.handoff.start_here[].path",
+            "data.implementation.handoff.decisions[]",
+            "data.implementation.handoff.untested[]"
           ]
         }
       ],
@@ -261,6 +269,45 @@
           "path": "data.blocked.evidence[]",
           "type": "string",
           "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
+        },
+        {
+          "path": "data.implementation.handoff",
+          "type": "object",
+          "format": "optional notes for the next worker on this change: start_here, symbols_changed, decisions, untested"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[]",
+          "type": "object",
+          "required": ["path", "symbol"],
+          "format": "{ path, symbol, lines, note }: a symbol this attempt changed; path MUST be a changed_files entry"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[]",
+          "type": "object",
+          "required": ["path"],
+          "format": "{ path, symbol_or_lines, why }: where a follow-up worker should begin"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.decisions[]",
+          "type": "string",
+          "format": "one decision and its reason"
+        },
+        {
+          "path": "data.implementation.handoff.untested[]",
+          "type": "string",
+          "format": "one behavior this attempt did not prove"
         }
       ]
     },
@@ -467,7 +514,15 @@
             "data.blocked",
             "data.blocked.missing_precondition",
             "data.blocked.supplying_command",
-            "data.blocked.evidence[]"
+            "data.blocked.evidence[]",
+            "data.implementation.handoff",
+            "data.implementation.handoff.symbols_changed[]",
+            "data.implementation.handoff.symbols_changed[].path",
+            "data.implementation.handoff.symbols_changed[].symbol",
+            "data.implementation.handoff.start_here[]",
+            "data.implementation.handoff.start_here[].path",
+            "data.implementation.handoff.decisions[]",
+            "data.implementation.handoff.untested[]"
           ]
         }
       ],
@@ -565,6 +620,45 @@
           "path": "data.blocked.evidence[]",
           "type": "string",
           "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
+        },
+        {
+          "path": "data.implementation.handoff",
+          "type": "object",
+          "format": "optional notes for the next worker on this change: start_here, symbols_changed, decisions, untested"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[]",
+          "type": "object",
+          "required": ["path", "symbol"],
+          "format": "{ path, symbol, lines, note }: a symbol this attempt changed; path MUST be a changed_files entry"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[]",
+          "type": "object",
+          "required": ["path"],
+          "format": "{ path, symbol_or_lines, why }: where a follow-up worker should begin"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.decisions[]",
+          "type": "string",
+          "format": "one decision and its reason"
+        },
+        {
+          "path": "data.implementation.handoff.untested[]",
+          "type": "string",
+          "format": "one behavior this attempt did not prove"
         }
       ]
     },

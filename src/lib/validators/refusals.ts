@@ -170,6 +170,25 @@ export const CLAIMS_REFUSALS: readonly StageRefusal[] = [
     ],
   },
   {
+    code: 'implementation.handoff_shape',
+    paths: [
+      'data.implementation.handoff',
+      'data.implementation.handoff.symbols_changed[]',
+      'data.implementation.handoff.symbols_changed[].path',
+      'data.implementation.handoff.symbols_changed[].symbol',
+      'data.implementation.handoff.start_here[]',
+      'data.implementation.handoff.start_here[].path',
+      'data.implementation.handoff.decisions[]',
+      'data.implementation.handoff.untested[]',
+    ],
+  },
+  {
+    code: 'implementation.handoff_unclaimed',
+    paths: [],
+    unowned_reason:
+      'The refusal relates a handoff symbol path to the changed_files collection.',
+  },
+  {
     code: 'claim.entry_shape',
     paths: [
       'data.implementation.changed_files[]',
@@ -1077,7 +1096,10 @@ export function stageValidatorRefusals(
       registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
       stage: 'implement',
       sources: [
-        { file: CLAIMS_MODULE, functions: ['validateImplementationClaims'] },
+        {
+          file: CLAIMS_MODULE,
+          functions: ['validateImplementationClaims', 'handoffIssues'],
+        },
         GIT_UNAVAILABLE_SOURCE,
       ],
       refusals: CLAIMS_REFUSALS,
@@ -1086,7 +1108,10 @@ export function stageValidatorRefusals(
       registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
       stage: 'remediate',
       sources: [
-        { file: CLAIMS_MODULE, functions: ['validateImplementationClaims'] },
+        {
+          file: CLAIMS_MODULE,
+          functions: ['validateImplementationClaims', 'handoffIssues'],
+        },
         GIT_UNAVAILABLE_SOURCE,
       ],
       refusals: CLAIMS_REFUSALS,
