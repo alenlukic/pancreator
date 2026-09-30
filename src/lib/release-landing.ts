@@ -34,6 +34,7 @@ import {
   readText,
   resolveInside,
 } from './io.js'
+import { latestFailedSession } from './landing-log.js'
 import {
   acquireLandingMutex,
   type LandingMutexHolder,
@@ -44,6 +45,11 @@ import {
 } from './release-allocation.js'
 import { finalizeLocalRelease } from './release-preparation.js'
 import { BUILD_READY_ENV, runRepositoryCheck } from './repository-checks.js'
+import {
+  judgeShipRepair,
+  shipRepairLaneProfiles,
+  shipRepairPaths,
+} from './ship-repair.js'
 import { loadState } from './state.js'
 import {
   isSemanticVersion,
@@ -77,6 +83,7 @@ export type LandingStatus =
 export type LandingStepName =
   | 'tip_read'
   | 'integrate'
+  | 'repair'
   | 'allocate'
   | 'metadata_regenerated'
   | 'finalize'
@@ -113,6 +120,15 @@ export interface LandingResult {
   verification_output?: string
   /** Refused reason when status is 'landing_refused'. */
   refused_reason?: string
+  /** The bounded repair this land carried, when `--repair` named one. */
+  repair?: LandingRepair
+}
+
+export interface LandingRepair {
+  note: string
+  paths: string[]
+  /** The index commit of the release pair whose land failed and is reused. */
+  repaired_from: string
 }
 
 export interface LandReleaseOptions {
@@ -121,6 +137,8 @@ export interface LandReleaseOptions {
   runId?: string | null
   verifyProfiles?: string[]
   waitSeconds?: number
+  /** Why the failed land is relanded as a bounded repair. Requires `runId`. */
+  repairNote?: string
 }
 
 /**
@@ -131,11 +149,14 @@ export interface LandReleaseOptions {
  *   source content, outside the release metadata paths, equals the tree the
  *   run's ship entry gate verified on `full`. The release commit changed only
  *   metadata, so `static` and `configuration` check what it did change.
+ * - `bounded_repair`: a ship repair of at most three lane test files on top of
+ *   a finalized release. `static`, `configuration`, and the lane profile of
+ *   each repaired path run.
  * - `default`: anything else runs `full`, with the reason recorded.
  */
 export interface LandingVerification {
   profiles: string[]
-  basis: 'operator' | 'entry_gate_fingerprint' | 'default'
+  basis: 'operator' | 'entry_gate_fingerprint' | 'bounded_repair' | 'default'
   reason: string
   source_fingerprint?: string
 }
@@ -729,7 +750,14 @@ export function landRelease(
     const at = new Date().toISOString()
 
     steps.push({ step, at })
-    appendLandingEvent(root, { event: 'step', step, at, ...fields })
+    appendLandingEvent(root, {
+      event: 'step',
+      step,
+      at,
+      token: mutex.token,
+      run_id: runId,
+      ...fields,
+    })
   }
   const finish = (
     result: Omit<
@@ -763,101 +791,168 @@ export function landRelease(
       { code: 'LANDING_NO_HEAD' },
     )
 
-    // Resolved before integration, so a candidate without notes fails with
-    // no merge commit on its branch and no landing allocation in the ledger.
-    const releaseNotes = candidateReleaseNotes(worktreePath, tipCommit)
+    const repair =
+      options.repairNote !== undefined
+        ? prepareRepair(root, worktreeName, worktreePath, runId, tipCommit)
+        : null
 
-    // ── Step 2: Integrate. ───────────────────────────────────────────────────
-    const integration = integrateCandidate(
-      repositoryRoot,
-      worktreePath,
-      tipCommit,
-    )
-
-    if (integration.outcome === 'conflict') {
-      recordStep('integrate', {
-        outcome: 'conflict',
-        source_conflicts: integration.source_conflicts,
+    if (repair !== null && 'refused' in repair) {
+      recordStep('repair', {
+        outcome: 'refused',
+        reason: repair.refused,
+        ...(options.repairNote ? { note: options.repairNote } : {}),
       })
 
       return finish({
-        status: 'conflict',
+        status: 'landing_refused',
         tip_before: tipCommit,
-        source_conflicts: integration.source_conflicts,
+        refused_reason: repair.refused,
       })
     }
 
-    const mergeCommit =
-      integration.outcome === 'merged' ? integration.merge_commit : undefined
+    let integrationOutcome: TipIntegration['outcome']
+    let version: string
+    let released: {
+      version: string
+      tip_before: string
+      release_commit: string
+      index_commit: string
+      merge_commit?: string
+      repair?: LandingRepair
+    }
+    let finalHead: string
 
-    recordStep('integrate', {
-      outcome: integration.outcome,
-      ...(mergeCommit ? { merge_commit: mergeCommit } : {}),
-    })
+    if (repair !== null) {
+      // The finalized release pair below the repair commits is reused as it
+      // stands. A test-only change above the indexed release commit adds no
+      // installable input, so `bin/check-landing` accepts it without a new
+      // release pair.
+      const head = gitHead(worktreePath)
 
-    // ── Step 4: Allocate. ────────────────────────────────────────────────────
-    const bump = resolveBump(root, worktreePath, options.bump)
-    const allocation = allocateLandingVersion(
-      root,
-      worktreeName,
-      tipVersionStr,
-      bump,
-      { runId, repositoryRoot },
-    )
+      invariant(head !== null, 'Candidate worktree has no HEAD commit.', {
+        code: 'LANDING_NO_HEAD',
+      })
+      integrationOutcome = 'already_current'
+      version = repair.version
+      finalHead = head
+      released = {
+        version,
+        tip_before: tipCommit,
+        release_commit: repair.release_commit,
+        index_commit: repair.index_commit,
+        repair: {
+          note: options.repairNote ?? '',
+          paths: repair.paths,
+          repaired_from: repair.index_commit,
+        },
+      }
+      recordStep('repair', {
+        outcome: 'accepted',
+        note: options.repairNote,
+        paths: repair.paths,
+        repaired_from: repair.index_commit,
+        version,
+      })
+    } else {
+      // Resolved before integration, so a candidate without notes fails with
+      // no merge commit on its branch and no landing allocation in the ledger.
+      const releaseNotes = candidateReleaseNotes(worktreePath, tipCommit)
 
-    recordStep('allocate', {
-      version: allocation.version,
-      bump,
-      tip_version: tipVersionStr,
-    })
-
-    // ── Step 3: Regenerate metadata. ─────────────────────────────────────────
-    // Logical step 3 runs after allocation because it needs the new version.
-    // A head that already is this version's release pair is a retry after
-    // finalize, and finalize reuses that pair unchanged.
-    if (!headIsReleasePair(worktreePath, allocation.version)) {
-      const tipChangelogContent =
-        gitShowFile(repositoryRoot, tipCommit, 'CHANGELOG.md') ?? ''
-
-      regenerateMetadata(
+      // ── Step 2: Integrate. ─────────────────────────────────────────────────
+      const integration = integrateCandidate(
         repositoryRoot,
         worktreePath,
         tipCommit,
-        allocation.version,
-        releaseNotes,
-        tipChangelogContent,
       )
-      recordStep('metadata_regenerated', { version: allocation.version })
-    }
 
-    // ── Step 5: Finalize. ────────────────────────────────────────────────────
-    // The tip is the ancestry anchor (`fetchedMain` in finalizeLocalRelease).
-    const finalizeResult = finalizeLocalRelease(
-      root,
-      worktreeName,
-      tipCommit,
-      runId ?? undefined,
-    )
+      if (integration.outcome === 'conflict') {
+        recordStep('integrate', {
+          outcome: 'conflict',
+          source_conflicts: integration.source_conflicts,
+        })
 
-    recordStep('finalize', {
-      release_commit: finalizeResult.release_commit,
-      index_commit: finalizeResult.index_commit,
-    })
+        return finish({
+          status: 'conflict',
+          tip_before: tipCommit,
+          source_conflicts: integration.source_conflicts,
+        })
+      }
 
-    const finalHead = gitHead(worktreePath)
+      integrationOutcome = integration.outcome
 
-    invariant(
-      finalHead !== null,
-      'Candidate worktree has no HEAD after finalize.',
-      { code: 'LANDING_NO_HEAD' },
-    )
+      const mergeCommit =
+        integration.outcome === 'merged' ? integration.merge_commit : undefined
 
-    const released = {
-      version: allocation.version,
-      tip_before: tipCommit,
-      release_commit: finalizeResult.release_commit,
-      index_commit: finalizeResult.index_commit,
-      ...(mergeCommit ? { merge_commit: mergeCommit } : {}),
+      recordStep('integrate', {
+        outcome: integration.outcome,
+        ...(mergeCommit ? { merge_commit: mergeCommit } : {}),
+      })
+
+      // ── Step 4: Allocate. ──────────────────────────────────────────────────
+      const bump = resolveBump(root, worktreePath, options.bump)
+      const allocation = allocateLandingVersion(
+        root,
+        worktreeName,
+        tipVersionStr,
+        bump,
+        { runId, repositoryRoot },
+      )
+
+      version = allocation.version
+      recordStep('allocate', {
+        version,
+        bump,
+        tip_version: tipVersionStr,
+      })
+
+      // ── Step 3: Regenerate metadata. ───────────────────────────────────────
+      // Logical step 3 runs after allocation because it needs the new version.
+      // A head that already is this version's release pair is a retry after
+      // finalize, and finalize reuses that pair unchanged.
+      if (!headIsReleasePair(worktreePath, version)) {
+        const tipChangelogContent =
+          gitShowFile(repositoryRoot, tipCommit, 'CHANGELOG.md') ?? ''
+
+        regenerateMetadata(
+          repositoryRoot,
+          worktreePath,
+          tipCommit,
+          version,
+          releaseNotes,
+          tipChangelogContent,
+        )
+        recordStep('metadata_regenerated', { version })
+      }
+
+      // ── Step 5: Finalize. ──────────────────────────────────────────────────
+      // The tip is the ancestry anchor (`fetchedMain` in finalizeLocalRelease).
+      const finalizeResult = finalizeLocalRelease(
+        root,
+        worktreeName,
+        tipCommit,
+        runId ?? undefined,
+      )
+
+      recordStep('finalize', {
+        release_commit: finalizeResult.release_commit,
+        index_commit: finalizeResult.index_commit,
+      })
+
+      const head = gitHead(worktreePath)
+
+      invariant(
+        head !== null,
+        'Candidate worktree has no HEAD after finalize.',
+        { code: 'LANDING_NO_HEAD' },
+      )
+      finalHead = head
+      released = {
+        version,
+        tip_before: tipCommit,
+        release_commit: finalizeResult.release_commit,
+        index_commit: finalizeResult.index_commit,
+        ...(mergeCommit ? { merge_commit: mergeCommit } : {}),
+      }
     }
 
     // ── Step 6: Verify. ──────────────────────────────────────────────────────
@@ -866,14 +961,17 @@ export function landRelease(
     const verification = resolveLandingVerification(
       root,
       worktreePath,
-      integration.outcome,
+      integrationOutcome,
       runId,
       options.verifyProfiles,
+      undefined,
+      repair !== null ? repair.paths : undefined,
     )
     const verifyProfiles = verification.profiles
     const basisFields = {
       basis: verification.basis,
       reason: verification.reason,
+      ...(released.repair ? { repair_note: released.repair.note } : {}),
       ...(verification.source_fingerprint
         ? { source_fingerprint: verification.source_fingerprint }
         : {}),
@@ -976,7 +1074,7 @@ export function landRelease(
     recordStep('fast_forward', {
       tip_before: tipCommit,
       tip_after: tipAfter,
-      version: allocation.version,
+      version,
     })
 
     return finish({
@@ -994,6 +1092,87 @@ export function landRelease(
       message: errorMessage(error),
     })
     throw error
+  }
+}
+
+interface PreparedRepair {
+  version: string
+  release_commit: string
+  index_commit: string
+  paths: string[]
+}
+
+/**
+ * Check that the candidate can be relanded as a bounded repair, before any
+ * merge, allocation, or commit: the run's last land failed after finalize, the
+ * tip has not moved, the tree is clean, and the commits above the failed
+ * release pair change at most three lane test files.
+ */
+function prepareRepair(
+  root: string,
+  worktreeName: string,
+  worktreePath: string,
+  runId: string | null,
+  tipCommit: string,
+): PreparedRepair | { refused: string } {
+  if (!runId) {
+    return {
+      refused:
+        'LANDING_REPAIR_REQUIRES_RUN: --repair needs --run, which names the failed land it repairs.',
+    }
+  }
+
+  const failed = latestFailedSession(root, runId, worktreeName)
+
+  if (!failed) {
+    return {
+      refused: `LANDING_REPAIR_NO_FAILURE: the landing log holds no failed land of run ${runId} on worktree '${worktreeName}'.`,
+    }
+  }
+
+  if (!gitIsAncestor(worktreePath, tipCommit)) {
+    return {
+      refused:
+        'LANDING_REPAIR_TIP_MOVED: pan-dev holds commits the candidate lacks, so the release pair is stale. Return failure for the remediate stage.',
+    }
+  }
+
+  if (!gitIsAncestor(worktreePath, failed.index_commit)) {
+    return {
+      refused: `LANDING_REPAIR_PAIR_MISSING: the failed land's index commit ${failed.index_commit} is not on the candidate branch.`,
+    }
+  }
+
+  if (gitWorktreeIsDirty(worktreePath)) {
+    return {
+      refused:
+        'LANDING_REPAIR_DIRTY: commit the repair before relanding; the land reads the committed tree.',
+    }
+  }
+
+  const bound = judgeShipRepair(
+    shipRepairPaths(worktreePath, failed.index_commit),
+  )
+
+  if (!bound.within) {
+    return {
+      refused: `LANDING_REPAIR_OUT_OF_BOUND: ${bound.reason}. Return failure for the remediate stage.`,
+    }
+  }
+
+  const version = gitShowFile(worktreePath, failed.index_commit, 'VERSION')
+
+  if (version === null) {
+    return {
+      refused: `LANDING_REPAIR_PAIR_MISSING: ${failed.index_commit} has no VERSION file.`,
+    }
+  }
+
+  return {
+    version: version.trim(),
+    release_commit: failed.release_commit,
+    index_commit: failed.index_commit,
+    paths: bound.paths,
   }
 }
 
@@ -1075,7 +1254,9 @@ export function landingBuildIsCurrent(
 /**
  * Decide the land's verify profiles.
  *
- * A land that merged commits, or names no run, or whose run has no executed
+ * A bounded ship repair of lane tests runs `static`, `configuration`, and the
+ * lane profile of each repaired path. A land that merged commits, or names no
+ * run, or whose run has no executed
  * `full` entry-gate pass, keeps `full`. A no-op integrate on a tree whose
  * source content matches the one the entry gate verified runs `static` and
  * `configuration`. An operator-named profile list always wins.
@@ -1092,12 +1273,30 @@ export function resolveLandingVerification(
     Object.values(loadState(root, id).entry_gates ?? {}).find(
       (record) => record.verified_source?.profile === 'full',
     )?.verified_source,
+  repairPaths?: string[],
 ): LandingVerification {
   if (requested && requested.length > 0) {
     return {
       profiles: requested,
       basis: 'operator',
       reason: 'the caller named the profiles with --verify-profile',
+    }
+  }
+
+  if (
+    repairPaths &&
+    repairPaths.length > 0 &&
+    integration === 'already_current'
+  ) {
+    return {
+      profiles: [
+        ...VERIFIED_TREE_LAND_PROFILES,
+        ...shipRepairLaneProfiles(repairPaths),
+      ],
+      basis: 'bounded_repair',
+      reason:
+        `a bounded ship repair changed ${repairPaths.join(', ')} above a ` +
+        'finalized release, so the land runs static, configuration, and the lanes of those paths',
     }
   }
 

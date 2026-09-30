@@ -277,6 +277,7 @@ import type {
   OperatorWorkspaceRatification,
   PersonaExecutorKind,
   RepositoryCheckBaselinePointer,
+  ReleaseLandingRecord,
   RunActionActor,
   RunAdvisory,
   RunModelEvidence,
@@ -331,8 +332,10 @@ import {
   workflowPersonaNames,
 } from './workflow.js'
 import {
+  gitIsAncestor,
   gitSourceContentFingerprint,
   gitStatusPaths,
+  INTEGRATION_BRANCH,
   gitWorkspaceSnapshot,
   isGitRepository,
   snapshotEntryPath,
@@ -346,7 +349,8 @@ import {
   isProtectedWorkspacePath,
   PROTECTED_PATH_RULE,
 } from './workspace/protected-paths.js'
-import { worktreeReadiness } from './worktrees.js'
+import { worktreeReadiness, workspaceRepositoryRoot } from './worktrees.js'
+import { latestLandedSession } from './landing-log.js'
 import {
   DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION,
   recordWorkspaceAttribution,
@@ -8409,6 +8413,89 @@ function recoveryRouteFor(
   )
 }
 
+/**
+ * Close a run at ship as succeeded after an operator directed its release onto
+ * pan-dev outside the stage. The landing is read from the landing log, never
+ * from the operator's words, and must sit on pan-dev.
+ */
+function recordLandedDecision(
+  root: string,
+  state: RunState,
+  note: string,
+  actor: RunActionActor,
+): RunState {
+  invariant(actor === 'operator', 'Away mode cannot record a landing.', {
+    code: 'AWAY_ACTION_FORBIDDEN',
+  })
+
+  const workflow = loadRunWorkflow(root, state)
+  const stage = stageBySlug(workflow, state.current_stage)
+
+  invariant(
+    stage.slug === 'ship',
+    `A landing closes a run only at ship; this run is at '${stage.slug}'.`,
+    { code: 'LANDED_STAGE_INVALID' },
+  )
+  invariant(
+    note.trim().length > 0,
+    'A landed decision MUST carry the operator directive in --note.',
+    { code: 'LANDED_NOTE_REQUIRED' },
+  )
+
+  const landed = state.managed_worktree
+    ? latestLandedSession(root, state.run_id, state.managed_worktree.name)
+    : null
+
+  invariant(
+    landed !== null,
+    `runtime/release/landing.jsonl holds no landed release for run ${state.run_id}` +
+      (state.managed_worktree
+        ? ` on worktree '${state.managed_worktree.name}'.`
+        : ', and the run has no managed worktree.'),
+    { code: 'RELEASE_LANDING_NOT_FOUND' },
+  )
+  invariant(
+    gitIsAncestor(
+      workspaceRepositoryRoot(root),
+      landed.tip_after,
+      INTEGRATION_BRANCH,
+    ),
+    `The landed commit ${landed.tip_after} is not on ${INTEGRATION_BRANCH}.`,
+    { code: 'RELEASE_LANDING_NOT_ON_INTEGRATION' },
+  )
+
+  const record: ReleaseLandingRecord = {
+    version: landed.version,
+    release_commit: landed.release_commit,
+    index_commit: landed.index_commit,
+    tip_before: landed.tip_before,
+    tip_after: landed.tip_after,
+    verified_profiles: landed.verified_profiles,
+    verification_basis: landed.verification_basis,
+    landed_at: landed.landed_at,
+    landing_token: landed.token,
+    directive_note: note,
+    recorded_at: new Date().toISOString(),
+  }
+
+  state.release_landing = record
+  persistRun(root, state, 'release_landed', { stage: stage.slug, ...record })
+  state.status = 'running'
+  applyTransition(root, state, stage, 'success', {
+    overrideTarget: 'succeeded',
+    operatorDirected: true,
+  })
+  persistRun(root, state, 'operator_decision_recorded', {
+    stage: stage.slug,
+    decision: 'landed',
+    note,
+    actor,
+    target_stage: null,
+  })
+
+  return state
+}
+
 function decideRunWithActor(
   root: string,
   runId: string,
@@ -8420,20 +8507,35 @@ function decideRunWithActor(
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
+    // A landing outside the stage also closes a run that paused at ship, for
+    // example on a landing mutex timeout the operator then resolved by hand.
+    const landedAtShip =
+      decision === 'landed' &&
+      state.current_stage === 'ship' &&
+      state.status === 'paused'
+
     // A refusal that names only the precondition leaves the operator to infer
     // the route from a status it cannot see, so it names both.
     invariant(
-      state.status === 'awaiting_operator' &&
-        state.pending_action.type === 'operator_approval',
+      landedAtShip ||
+        (state.status === 'awaiting_operator' &&
+          state.pending_action.type === 'operator_approval'),
       `Run is not awaiting operator approval: its status is '${state.status}'. ` +
         recoveryRouteFor(root, state, 'decide'),
       { code: 'INVALID_RUN_ACTION', details: { status: state.status } },
     )
     invariant(
-      decision === 'approve' || decision === 'reject' || decision === 'revise',
-      'Decision MUST be approve, reject, or revise.',
+      decision === 'approve' ||
+        decision === 'reject' ||
+        decision === 'revise' ||
+        decision === 'landed',
+      'Decision MUST be approve, reject, revise, or landed.',
       { code: 'INVALID_DECISION' },
     )
+
+    if (decision === 'landed') {
+      return recordLandedDecision(root, state, note, actor)
+    }
 
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)

@@ -1140,3 +1140,169 @@ test('a landing whose integrated tree does not compile fails before any profile 
     assert.equal(landingLockExists(root), false)
   })
 })
+
+const REPAIR_RUN = 'run-ship-repair'
+
+/** A candidate whose first land failed `full` after finalize, plus that result. */
+function failedCandidate(
+  root: string,
+  name: string,
+): { candidate: string; failed: LandingResult } {
+  const candidate = makeCandidate(
+    root,
+    name,
+    `This release is repaired in place.\n\n### Added\n\n- Add the ${name} marker module.`,
+  )
+
+  setFullProfileCommand(root, 'node -e "process.exit(1)"')
+
+  const failed = landRelease(root, {
+    worktree: name,
+    bump: 'minor',
+    runId: REPAIR_RUN,
+  })
+
+  assert.equal(failed.status, 'verification_failed')
+
+  return { candidate, failed }
+}
+
+function commitTestFile(candidate: string, relativePath: string): void {
+  mkdirSync(path.dirname(path.join(candidate, relativePath)), {
+    recursive: true,
+  })
+  writeFileSync(path.join(candidate, relativePath), 'export {}\n')
+  git(candidate, ['add', relativePath])
+  git(candidate, ['commit', '-qm', `test: repair ${relativePath}`])
+}
+
+test('a bounded repair of one lane test relands on the failed release pair and verifies only the lanes it changed', () => {
+  const root = landingFixture()
+  const { candidate, failed } = failedCandidate(root, 'repair-ok')
+
+  commitTestFile(candidate, 'tests/unit/stale.test.ts')
+
+  const repaired = landRelease(root, {
+    worktree: 'repair-ok',
+    runId: REPAIR_RUN,
+    repairNote: 'A stale compiled test failed the full profile.',
+  })
+
+  assert.equal(repaired.status, 'landed')
+  assert.equal(repaired.verification_basis, 'bounded_repair')
+  assert.deepEqual(repaired.verified_profiles, [
+    'static',
+    'configuration',
+    'fast',
+  ])
+  assert.equal(repaired.release_commit, failed.release_commit)
+  assert.equal(repaired.index_commit, failed.index_commit)
+  assert.deepEqual(repaired.repair?.paths, ['tests/unit/stale.test.ts'])
+  assert.equal(
+    repaired.steps.some(
+      (entry) => entry.step === 'finalize' || entry.step === 'allocate',
+    ),
+    false,
+    'a repair reuses the finalized pair and allocates nothing',
+  )
+  assert.equal(
+    git(root, ['rev-parse', PAN_DEV]),
+    git(candidate, ['rev-parse', 'HEAD']),
+  )
+  assert.notEqual(git(root, ['rev-parse', PAN_DEV]), failed.index_commit)
+  assert.equal(versionAt(root, PAN_DEV), failed.version)
+  assert.equal(landingLockExists(root), false)
+
+  const verifyStep = readLandingLog(root)
+    .filter((entry) => entry.event === 'step' && entry.step === 'verify')
+    .at(-1)
+
+  assert.equal(verifyStep?.basis, 'bounded_repair')
+  assert.equal(
+    verifyStep?.repair_note,
+    'A stale compiled test failed the full profile.',
+  )
+  assert.equal(verifyStep?.run_id, REPAIR_RUN)
+  assert.equal(typeof verifyStep?.token, 'string')
+})
+
+test('a repair that changes source or more than three test files is refused and changes nothing', () => {
+  const root = landingFixture()
+  const { candidate } = failedCandidate(root, 'repair-wide')
+  const tipBefore = git(root, ['rev-parse', PAN_DEV])
+
+  writeFileSync(
+    path.join(candidate, 'src', 'repair-wide.ts'),
+    'export const x = 1\n',
+  )
+  git(candidate, ['add', 'src/repair-wide.ts'])
+  git(candidate, ['commit', '-qm', 'fix: change source'])
+
+  const headBefore = git(candidate, ['rev-parse', 'HEAD'])
+  const source = landRelease(root, {
+    worktree: 'repair-wide',
+    runId: REPAIR_RUN,
+    repairNote: 'Source change.',
+  })
+
+  assert.equal(source.status, 'landing_refused')
+  assert.match(source.refused_reason ?? '', /LANDING_REPAIR_OUT_OF_BOUND/u)
+
+  git(candidate, ['reset', '-q', '--hard', 'HEAD~1'])
+
+  for (const name of ['a', 'b', 'c', 'd']) {
+    commitTestFile(candidate, `tests/unit/${name}.test.ts`)
+  }
+
+  const headWide = git(candidate, ['rev-parse', 'HEAD'])
+  const wide = landRelease(root, {
+    worktree: 'repair-wide',
+    runId: REPAIR_RUN,
+    repairNote: 'Four tests.',
+  })
+
+  assert.equal(wide.status, 'landing_refused')
+  assert.match(wide.refused_reason ?? '', /LANDING_REPAIR_OUT_OF_BOUND/u)
+  assert.match(wide.refused_reason ?? '', /4 paths/u)
+  assert.equal(git(candidate, ['rev-parse', 'HEAD']), headWide)
+  assert.notEqual(headWide, headBefore)
+  assert.equal(git(root, ['rev-parse', PAN_DEV]), tipBefore)
+  assert.equal(landingLockExists(root), false)
+})
+
+test('a repair without a run, a prior failure, or a current tip is refused', () => {
+  const root = landingFixture()
+
+  makeCandidate(
+    root,
+    'repair-none',
+    'This release has no failed land.\n\n### Added\n\n- Add the repair-none marker module.',
+  )
+
+  const noRun = landRelease(root, {
+    worktree: 'repair-none',
+    repairNote: 'No run.',
+  })
+  const noFailure = landRelease(root, {
+    worktree: 'repair-none',
+    runId: REPAIR_RUN,
+    repairNote: 'No failure.',
+  })
+
+  assert.match(noRun.refused_reason ?? '', /LANDING_REPAIR_REQUIRES_RUN/u)
+  assert.match(noFailure.refused_reason ?? '', /LANDING_REPAIR_NO_FAILURE/u)
+
+  const stale = failedCandidate(root, 'repair-stale')
+
+  commitTestFile(stale.candidate, 'tests/unit/stale.test.ts')
+  advanceTip(root)
+
+  const moved = landRelease(root, {
+    worktree: 'repair-stale',
+    runId: REPAIR_RUN,
+    repairNote: 'The tip moved.',
+  })
+
+  assert.equal(moved.status, 'landing_refused')
+  assert.match(moved.refused_reason ?? '', /LANDING_REPAIR_TIP_MOVED/u)
+})

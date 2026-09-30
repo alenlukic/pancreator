@@ -549,6 +549,12 @@ Governance, invocation, delegation, path-resolution, and operator-artifact diagn
 
 At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (ship pauses for operator-directed remediation; intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `agent/decisions/operator-feedback-<n>.md` (`decisions/` in a legacy-layout run). The most recent feedback targeting the remediation stage is attached as a required input; older feedback remains discoverable through the context manifest.
 
+## Landing outside the ship stage
+
+`./bin/pan decide <run-id> landed --note "<directive>"` closes a run at the `ship` stage as `succeeded` after the operator landed its release on `pan-dev` outside the stage. It runs only for an operator, for a run that is `awaiting_operator` or `paused` at ship, and it needs a non-empty note. The command reads the run's landing from `runtime/release/landing.jsonl` (the newest session of this run and worktree that reached `fast_forward`) and refuses with `RELEASE_LANDING_NOT_FOUND` when none exists, and with `RELEASE_LANDING_NOT_ON_INTEGRATION` when the landed commit is not an ancestor of `pan-dev`.
+
+It stores `release_landing` on the run state (`version`, `release_commit`, `index_commit`, `tip_before`, `tip_after`, `verified_profiles`, `verification_basis`, `landed_at`, `landing_token`, `directive_note`, `recorded_at`), appends a `release_landed` event with the same fields, and then the usual `operator_decision_recorded` event with `decision: landed`. The run ends `succeeded`, so `pan status` no longer lists it as pending.
+
 ## Operator stage repair
 
 `./bin/pan set-stage <run-id> --stage <stage> --note "<reason>"` is an
