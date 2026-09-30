@@ -417,6 +417,7 @@ function modeFacilities(root: string): Facility[] {
  * here would make this file a referrer of the facility it describes.
  */
 const VALIDATOR_MODULE_DIRECTORIES: ReadonlyMap<string, string> = new Map([
+  ['refusals', 'refusals'],
   ['stage-validators', 'stage'],
 ])
 
