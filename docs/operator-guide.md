@@ -1881,8 +1881,8 @@ submitting invocation:
 
 - worker-run gate profiles: the agent-run rows of
   `agent/evidence/repository-check-runs.jsonl` for that invocation whose
-  profile is not `impacted`, counted per profile. Harness-run rows do not
-  count.
+  profile is a suite the gate owns (anything but `impacted`, `static`, and
+  `configuration`), counted per profile. Harness-run rows do not count.
 - shell browsing calls: the Shell calls in that invocation's worker transcript
   whose effective command starts with `cat`, `head`, `tail`, `sed`, `awk`,
   `grep`, `rg`, `ls`, `find`, `wc`, or `nl`, as `pan worker profile` counts

@@ -1990,10 +1990,21 @@ export function agentRepositoryCheckAdvisories(
 }
 
 /**
- * Agent-run executions of gate profiles recorded for one invocation, counted
- * per profile. `impacted` is the iteration profile agents are meant to run,
- * so it is excluded; every other profile duplicates a harness gate. Harness
- * executions, such as the release-profile prefetch, are excluded too.
+ * Profiles an implementing worker may run itself under `DEV-001` and
+ * `REMED-001`: the iteration profile and the cheap static and configuration
+ * checks. Every other profile is a suite the exit gate owns.
+ */
+const WORKER_SANCTIONED_PROFILES = new Set([
+  'impacted',
+  'static',
+  'configuration',
+])
+
+/**
+ * Agent-run executions of gate-owned suite profiles recorded for one
+ * invocation, counted per profile. The sanctioned profiles above are
+ * excluded, and so are harness executions such as the release-profile
+ * prefetch.
  */
 export function agentGateProfileRuns(
   root: string,
@@ -2025,7 +2036,7 @@ export function agentGateProfileRuns(
     if (
       isRecord(record) &&
       typeof record.profile === 'string' &&
-      record.profile !== 'impacted' &&
+      !WORKER_SANCTIONED_PROFILES.has(record.profile) &&
       record.invocation_id === invocationId &&
       record.invoked_by !== 'harness'
     ) {

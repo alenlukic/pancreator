@@ -247,6 +247,9 @@ test('the profile report groups worker transcripts by stage and emits no content
   assert.deepEqual(implement.personas, ['coder'])
   assert.deepEqual(implement.turns, { total: 12, mean: 12, max: 12 })
   assert.deepEqual(implement.shell, { total: 8, browsing: 2, inline_python: 1 })
+  // `npm test` and the `fast` profile are gate-owned suites; the build and
+  // lint calls are not.
+  assert.deepEqual(implement.suite_calls, { total: 2, per_worker: 2 })
   assert.deepEqual(implement.most_re_read, [
     { path: '(outside workspace)/engine.ts', re_reads: 2 },
   ])
@@ -358,10 +361,9 @@ test('the worker suite cost counts gate profiles and browsing, and is null at ze
       Date.now() - 1_000,
     )
 
-    assert.deepEqual(withoutTranscript?.worker_gate_profiles, {
-      fast: 2,
-      static: 1,
-    })
+    // `static` and `impacted` are sanctioned, and the harness row is not the
+    // worker's, so only the two `fast` runs count.
+    assert.deepEqual(withoutTranscript?.worker_gate_profiles, { fast: 2 })
     assert.equal(withoutTranscript?.shell_browsing_calls, null)
     assert.equal(withoutTranscript?.transcript_found, false)
     assert.match(withoutTranscript?.message ?? '', /unavailable/u)

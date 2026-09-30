@@ -77,6 +77,28 @@ const SELF_RUN_CHECKS: Array<{
   },
   { pattern: /\bpan\s+tests\s+impacted\b/gu, kind: () => 'pan tests impacted' },
 ]
+/**
+ * Repository-check profiles an implementing worker may run itself. Every other
+ * profile, and every direct suite runner, is a suite call the gates own.
+ */
+const SANCTIONED_PROFILE_KINDS = new Set([
+  'pan repository-check impacted',
+  'pan repository-check static',
+  'pan repository-check configuration',
+])
+
+/** Self-run check kinds that run a whole suite lane the gates own. */
+function isSuiteCall(kind: string): boolean {
+  if (kind === 'npm test' || kind.startsWith('npm run test:')) {
+    return true
+  }
+
+  return (
+    kind.startsWith('pan repository-check ') &&
+    !SANCTIONED_PROFILE_KINDS.has(kind)
+  )
+}
+
 const PAPERWORK: Array<{ pattern: RegExp; kind: string }> = [
   { pattern: /\bpan\s+output\s+scaffold\b/gu, kind: 'pan output scaffold' },
   { pattern: /\bpan\s+output\s+validate\b/gu, kind: 'pan output validate' },
@@ -133,6 +155,8 @@ export interface WorkerProfileStage {
   most_re_read: Array<{ path: string; re_reads: number }>
   shell: { total: number; browsing: number; inline_python: number }
   self_run_checks: Record<string, number>
+  /** Self-run checks that ran a suite the gates own, total and per worker. */
+  suite_calls: { total: number; per_worker: number }
   unfiltered_test_output: number
   paperwork: Record<string, number>
   first_source_edit_turn: {
@@ -714,6 +738,7 @@ function stageRow(
   let browsing = 0
   let python = 0
   let unfiltered = 0
+  let suiteCalls = 0
 
   for (const profile of profiles) {
     turns += profile.turns
@@ -732,6 +757,10 @@ function stageRow(
 
     for (const [kind, count] of profile.self_run_checks) {
       increment(checks, kind, count)
+
+      if (isSuiteCall(kind)) {
+        suiteCalls += count
+      }
     }
 
     for (const [kind, count] of profile.paperwork) {
@@ -759,6 +788,10 @@ function stageRow(
       .map(([target, count]) => ({ path: target, re_reads: count })),
     shell: { total: shell, browsing, inline_python: python },
     self_run_checks: sortedRecord(checks),
+    suite_calls: {
+      total: suiteCalls,
+      per_worker: mean(suiteCalls, profiles.length),
+    },
     unfiltered_test_output: unfiltered,
     paperwork: sortedRecord(paperwork),
     first_source_edit_turn:
@@ -837,6 +870,7 @@ export function formatWorkerProfileReport(report: WorkerProfileReport): string {
       'browse',
       'python',
       'checks',
+      'suites',
       'unfiltered',
       'paperwork',
       'first edit',
@@ -854,6 +888,7 @@ export function formatWorkerProfileReport(report: WorkerProfileReport): string {
       String(stage.shell.browsing),
       String(stage.shell.inline_python),
       String(sum(stage.self_run_checks)),
+      String(stage.suite_calls.total),
       String(stage.unfiltered_test_output),
       String(sum(stage.paperwork)),
       stage.first_source_edit_turn === null
@@ -1060,9 +1095,9 @@ export function workerInvocationSuiteCost(
       transcript_found: browsing.transcripts > 0,
       message:
         `Worker invocation ${invocationId} ran ${profileText} itself and ` +
-        `made ${browsingText}. The exit gate runs every gate profile, so ` +
-        `iterate on the impacted profile, and read files with Read, Grep, ` +
-        `and Glob.`,
+        `made ${browsingText}. The exit gate runs the suites, so iterate on ` +
+        `the impacted, static, and configuration profiles, and read files ` +
+        `with Read, Grep, and Glob.`,
     }
   } catch {
     return null

@@ -513,7 +513,8 @@ invocation ran `fast` more often than the stage's declared `evidence_workers`
 count allows, so the once-per-worker rule is judged from harness records rather
 than from the worker's narrative. `pan submit` of a `source_allowed` stage
 counts the same records for the submitting invocation: every agent-run profile
-other than `impacted` is a worker-run gate profile. When that count or the
+other than `impacted`, `static`, and `configuration` is a worker-run gate
+profile. When that count or the
 worker transcript's shell browsing count is nonzero, the submission records a
 `suite_cost` advisory and a `suite_cost_advisory` event with
 `scope: "worker_invocation"`. The evidence-worker brief names the harness

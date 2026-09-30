@@ -118,7 +118,8 @@ test('an implement submission records worker-run gate profiles and shell browsin
       (item) =>
         item.kind === 'suite_cost' &&
         item.invocation_id === invocationId &&
-        /fast 2x, static 1x/u.test(item.message),
+        /ran fast 2x itself/u.test(item.message) &&
+        !/static \d+x/u.test(item.message),
     ),
     JSON.stringify(submitted.advisories),
   )
@@ -129,7 +130,7 @@ test('an implement submission records worker-run gate profiles and shell browsin
   assert.ok(event)
   assert.equal(event.stage, 'implement')
   assert.equal(event.invocation_id, invocationId)
-  assert.deepEqual(event.worker_gate_profiles, { fast: 2, static: 1 })
+  assert.deepEqual(event.worker_gate_profiles, { fast: 2 })
   assert.equal(event.shell_browsing_calls, 2)
   assert.equal(event.transcript_found, true)
 })

@@ -927,7 +927,7 @@ export function selectImpactedTests(
       ? `The change reaches ${selected.length} of ${lane.length} lane tests ` +
         `(${Math.round(ratio * 100)}%). The fast profile is the cheaper choice. ` +
         `Iterate on the ${directCount} direct tests with --depth 1. The implement ` +
-        'and remediate gates run fast; an evidence worker may run it once.'
+        'and remediate gates run fast, and an evidence worker may run it once.'
       : unreached.length > 0
         ? `${unreached.length} of ${normalizedChanged.length} changed files ` +
           `reach no test: ${unreached.slice(0, 5).join(', ')}` +

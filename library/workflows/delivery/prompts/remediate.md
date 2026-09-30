@@ -38,21 +38,18 @@ evidence is your primary input.
    from `runtime/repository-checks.json`. Only when no `impacted` profile is
    declared, pick the tests in the blast radius yourself. Derive every
    command from `runtime/repository-checks.json` or the target's documented
-   entry points. Static checks are cheap; run them freely.
+   entry points. Static checks are cheap. Run them freely.
 7. Run a repository-check profile only through the sanctioned path
    `./bin/pan repository-check <profile> --run <run-id>` so the execution is
-   recorded in the run ledger. It and `./bin/pan tests impacted` print a pass
-   line, or the failing tests with the path of the full log. Open that log
-   only to diagnose a failure, and do not pipe raw suite output such as
-   `npm test 2>&1` into your context. The gates own the suites: do not run
-   the `fast` profile or the integration lane yourself, and never run the
-   `full` profile. When the impacted selection, your new tests, and the
-   static checks pass, submit. The remediate exit gate runs the static,
-   configuration, and affected integration checks, and verify refreshes
-   every interior gate profile before it starts. A failure of either returns
-   the run to you with its log. The ship release gate runs `full` when the
-   run enters ship. This saves worker turns and context; the gates rerun
-   every profile anyway.
+   recorded in the run ledger. Follow the output and tool habits that
+   `REMED-001` on your card states. The gates own the suites. Do not run the
+   `fast` profile or the integration lane yourself, and never run the `full`
+   profile. When the impacted selection, your new tests, and the static checks
+   pass, submit. The remediate exit gate runs the stage's declared gate
+   profiles, which the card lists, and verify refreshes every interior gate
+   profile before it starts. A failure of either returns the run to you with
+   its log. The ship release gate runs `full` when the run enters ship. This
+   saves worker turns and context. The gates rerun every profile anyway.
 8. Map evidence to every acceptance criterion honestly, including the ones
    verify marked as failed.
 
@@ -69,14 +66,6 @@ run baseline, and its evidence log carries that original captured output.
 Treat it as evidence of the same strength as a pass the harness executed just
 now, and do not order a rerun to replace it. A failure, timeout, skip,
 override, or baseline-relative credit is never accepted this way.
-
-## Tool habits
-
-- Read files with the Read and Grep tools, and batch independent reads in
-  parallel.
-- Do not browse files through the shell (`cat`, `sed`, `grep`, `ls`).
-- Edit the stage output with the file-editing tools, never with `python3` or
-  another inline script.
 
 ## Output
 

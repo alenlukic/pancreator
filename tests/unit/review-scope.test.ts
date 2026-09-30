@@ -174,6 +174,21 @@ test('verification substrate is its own tier and helpers match one lane deep', (
   assert.equal(tiers.conduct.length, 0)
 })
 
+test('the check wrappers and their compact reporter are verification substrate', () => {
+  const paths = [
+    'bin/run-tests',
+    'src/lib/check-output.ts',
+    'src/lib/test-impact.ts',
+    'src/lib/repository-checks.ts',
+  ]
+  const tiers = conflictsByTier(classifyReviewPaths(paths, CLOSURE))
+
+  assert.deepEqual(
+    tiers.substrate.map((item) => item.path).sort(),
+    [...paths].sort(),
+  )
+})
+
 test('the standards delta names removed and added instructions', () => {
   const base = JSON.stringify({
     id: 'X-001',

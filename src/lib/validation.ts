@@ -1177,7 +1177,9 @@ function guidanceAttestationChecks(
               ? `Guidance ${entry.source_path} (${entry.policy_id}) is attested as read with matching final-line evidence`
               : declaredFinalLine.trim().length === 0
                 ? `A read guidance entry MUST quote the selection's last content line (skipping trailing dividers) as final_line for ${entry.source_path}`
-                : `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last content line (trailing divider lines are skipped)`,
+                : // The source can move after the card was written, so the
+                  // repair names the snapshot that holds the attested bytes.
+                  `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last content line (trailing divider lines are skipped). When the source file changed after the card was written, quote the last content line of this selection from the invocation JSON snapshot instead`,
         })
         break
       }

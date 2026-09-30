@@ -2562,7 +2562,10 @@ async function main(): Promise<void> {
               log_path: logPath,
               failing_tests: repositoryCheckFailingTests(result),
             }
-          : renderRepositoryCheckSummary(result, logPath),
+          : // The gate-pass evidence is the durable record a worker cites;
+            // the summary log is retention-bound scratch.
+            renderRepositoryCheckSummary(result, logPath) +
+              (gatePass ? `\nevidence: ${gatePass.evidence_path}` : ''),
         asJson,
       )
 
