@@ -3,11 +3,8 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
-import {
-  alwaysReadTargets,
-  reachableFrom,
-  type ReferenceGraph,
-} from './graph.js'
+import { alwaysReadTargets, reachableFrom } from './graph/build.js'
+import type { ReferenceGraph } from './graph/model.js'
 import { isInformationRequest, type IntentClassifier } from './intent.js'
 import type { Facility } from './inventory.js'
 

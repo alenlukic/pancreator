@@ -6,7 +6,7 @@ import {
   type CandidatePreview,
   type ClosureRecord,
 } from './debloat/closure.js'
-import { buildReferenceGraph, findReferences } from './debloat/graph.js'
+import { buildReferenceGraph, findReferences } from './debloat/graph/build.js'
 import {
   loadIntentClassifier,
   type IntentClassifier,
@@ -72,10 +72,12 @@ export {
   buildReferenceGraph,
   findReferences,
   reachableFrom,
-  type Reference,
-  type ReferenceGraph,
-  type ReferrerClass,
-} from './debloat/graph.js'
+} from './debloat/graph/build.js'
+export type {
+  Reference,
+  ReferenceGraph,
+  ReferrerClass,
+} from './debloat/graph/model.js'
 export {
   INTENT_CORPUS_PATH,
   intentFeatures,
