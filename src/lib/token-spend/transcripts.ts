@@ -38,6 +38,7 @@ const BRIEF_ROLE_PATTERNS = [
   /invocations\/[^/`\s.]+\.([a-z-]+)-brief\.md/u,
 ]
 
+/** Reads a JSON object file, returning null when it is missing, unparseable, or not an object. */
 export function safeReadJson(absolute: string): Record<string, unknown> | null {
   try {
     const value = readJson(absolute)
@@ -71,6 +72,11 @@ function listRecursively(
   return files
 }
 
+/**
+ * Cursor's per-project directory for a workspace: its absolute path segments
+ * joined with hyphens under the projects root (`~/.cursor/projects` by
+ * default). Does not check that it exists.
+ */
 export function cursorProjectDirectory(
   workspaceRoot: string,
   projectsRoot = path.join(os.homedir(), '.cursor', 'projects'),
@@ -125,6 +131,11 @@ function openingText(content: string): string {
     .join('\n')
 }
 
+/**
+ * The run id, invocation id, and role a worker transcript's opening message
+ * names through a brief reference, or null when it names none. The role
+ * defaults to `worker`.
+ */
 export function transcriptBrief(content: string): WorkerBrief | null {
   const opening = openingText(content)
 
@@ -195,6 +206,12 @@ function transcriptTimestamp(content: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+/**
+ * Harness and workspace roots whose records and transcripts spend is
+ * attributed to: this installation, plus each registered embedded
+ * installation when this is a self-development checkout. An installation
+ * whose identity cannot be read is skipped and named in `warnings`.
+ */
 export function attributionRoots(root: string): {
   roots: AttributionRoot[]
   warnings: string[]
@@ -273,6 +290,13 @@ export function attributionRoots(root: string): {
   return { roots, warnings }
 }
 
+/**
+ * Reads the Cursor agent transcripts modified since the window start, keyed
+ * by transcript id, with each one's command (inherited from the parent for a
+ * subagent), worker brief, tool-use counts, content, and timestamp. Reads the
+ * roots' project transcript directories, or only `override` when given (none
+ * when it is null). Unreadable files are skipped.
+ */
 export function readTranscripts(
   roots: AttributionRoot[],
   windowStartMs: number,

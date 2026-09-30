@@ -276,6 +276,7 @@ export function reverseClosure(
   return reached
 }
 
+/** Graph files that are test files in one of the given lanes (the default unit and regression lanes). */
 export function laneTests(graph: ModuleGraph, lanes = TEST_LANES): string[] {
   return graph.files.filter((file) => isLaneTest(file, lanes))
 }

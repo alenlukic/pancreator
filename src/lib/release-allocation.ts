@@ -72,10 +72,12 @@ export interface ReleaseAllocationResult {
   ledger_path: string
 }
 
+/** Absolute path of the release version allocation ledger, `runtime/release/allocations.jsonl`. */
 export function releaseAllocationLedgerPath(root: string): string {
   return resolveInside(root, ALLOCATIONS_PATH)
 }
 
+/** Type guard: true for `major`, `minor`, or `patch`. */
 export function isReleaseBump(value: string): value is ReleaseBump {
   return RELEASE_BUMPS.has(value)
 }

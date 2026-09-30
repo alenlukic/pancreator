@@ -5,6 +5,7 @@ import type { SpendMetrics, SpendSliceRow } from './model.js'
 
 export const MAX_SLICE_ROWS = 10
 
+/** A spend metrics record with every counter at zero. */
 export function emptyMetrics(): SpendMetrics {
   return {
     events: 0,
@@ -19,6 +20,7 @@ export function emptyMetrics(): SpendMetrics {
   }
 }
 
+/** Spend metrics of one usage event: one event, its request units, token counts (missing usage counts as zero), charge, and Cursor fee. */
 export function eventMetrics(event: CursorUsageEvent): SpendMetrics {
   const usage = event.token_usage
 
@@ -40,6 +42,7 @@ export function eventMetrics(event: CursorUsageEvent): SpendMetrics {
   }
 }
 
+/** Adds every counter of `addition` into `target`, in place. */
 export function addMetrics(target: SpendMetrics, addition: SpendMetrics): void {
   target.events += addition.events
   target.request_units += addition.request_units
@@ -52,6 +55,7 @@ export function addMetrics(target: SpendMetrics, addition: SpendMetrics): void {
   target.cursor_fee_cents += addition.cursor_fee_cents
 }
 
+/** Adds the metrics into the group under `key`, creating a zeroed group first when absent. Mutates `groups`. */
 export function metricsMapRow(
   groups: Map<string, SpendMetrics>,
   key: string,
@@ -63,6 +67,7 @@ export function metricsMapRow(
   groups.set(key, aggregate)
 }
 
+/** Slice rows of the groups ranked by total tokens, then cost, descending, then key. */
 export function sortedRows(groups: Map<string, SpendMetrics>): SpendSliceRow[] {
   return [...groups.entries()]
     .map(([key, metrics]) => ({ key, metrics }))
@@ -74,6 +79,10 @@ export function sortedRows(groups: Map<string, SpendMetrics>): SpendSliceRow[] {
     )
 }
 
+/**
+ * Ranked slice rows capped at `limit`: when there are more groups, the top
+ * `limit - 1` are kept and the rest are summed into one `Other` row.
+ */
 export function foldedRows(
   groups: Map<string, SpendMetrics>,
   limit = MAX_SLICE_ROWS,
@@ -94,6 +103,7 @@ export function foldedRows(
   return [...retained, { key: 'Other', metrics: other }]
 }
 
+/** Copy of the metrics with request units rounded to 4 decimals and cost and fee cents to 6. */
 export function roundedMetrics(metrics: SpendMetrics): SpendMetrics {
   return {
     ...metrics,
@@ -103,6 +113,7 @@ export function roundedMetrics(metrics: SpendMetrics): SpendMetrics {
   }
 }
 
+/** Copies of the rows with their metrics rounded by `roundedMetrics`. */
 export function roundRows(rows: SpendSliceRow[]): SpendSliceRow[] {
   return rows.map((row) => ({
     ...row,

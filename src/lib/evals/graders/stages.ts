@@ -33,6 +33,12 @@ function validationRecordsFor(
   )
 }
 
+/**
+ * Grader that counts failed stage attempts lost only to pre-submit validation
+ * (the worker claimed success, hard gates and self-criteria passed, yet
+ * validation errors failed it) and fails when the count exceeds config
+ * `max_mechanical_attempts`, default 0.
+ */
 export const attemptsNotSpentOnMechanics: Grader = (context) => {
   const { records } = context
   const maxMechanical = config<number>(context, 'max_mechanical_attempts', 0)
@@ -118,6 +124,12 @@ export const attemptsNotSpentOnMechanics: Grader = (context) => {
 // stage-order-and-terminal-state
 // ---------------------------------------------------------------------------
 
+/**
+ * Grader that compares the run's status, current stage, pending action, and
+ * stage history prefix with the scenario expectation (overridable by grader
+ * config), plus each output assertion against the latest submitted output of
+ * its stage.
+ */
 export const stageOrderAndTerminalState: Grader = (context) => {
   const { records, scenario } = context
   const expected: EvalExpectedState = {

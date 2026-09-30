@@ -269,6 +269,14 @@ function captureBenchmarkSample(
   }
 }
 
+/**
+ * Benchmarks the baseline and candidate workspaces by running the
+ * repository-check profile (fast by default) a fixed number of times on each
+ * side, compares their test populations and average wall clock, and writes
+ * the session record under `runtime/benchmarks/` (or `output_path`). A side
+ * whose runs produce no stable suite profile is recorded with its reason
+ * instead of a sample.
+ */
 export function runBenchmarkSession(options: {
   root: string
   baseline_workspace: string

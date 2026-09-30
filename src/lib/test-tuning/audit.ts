@@ -90,6 +90,16 @@ function parseAuditMarkdown(content: string): AuditRow[] {
   return rows
 }
 
+/**
+ * Checks that an audit Markdown record has exactly one row per test added
+ * between the baseline and target refs, reporting missing, unexpected, and
+ * duplicate rows and whether the audit is complete. Throws
+ * `TUNE_SELF_DEVELOPMENT_ONLY` outside self-development.
+ *
+ * Slow and side-effecting: each ref's inventory is collected in a temporary
+ * detached Git worktree that runs `npm ci` and a build, and both session work
+ * directories are deleted afterwards.
+ */
 export function validateAudit(
   root: string,
   options: ValidateAuditOptions,

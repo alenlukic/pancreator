@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileExists } from '../io.js'
 import { isSelfDevelopmentInstallation } from '../project-config.js'
 
+/** Absolute path of this installation's `runtime/repository-checks.json`, whether or not it exists. */
 export function repositoryChecksPath(root: string): string {
   return path.join(root, 'runtime', 'repository-checks.json')
 }
@@ -39,6 +40,13 @@ function owningInstallationRoot(root: string): string | null {
   return segments.slice(0, index).join(path.sep) || path.sep
 }
 
+/**
+ * The repository-check configuration file to read: this installation's
+ * runtime file when present, else the owning installation's file for a
+ * harness-managed linked worktree, else the self-development template in a
+ * self-development checkout. A target without any file resolves to its own
+ * (missing) runtime path.
+ */
 export function repositoryChecksSourcePath(root: string): string {
   const runtimePath = repositoryChecksPath(root)
 

@@ -42,6 +42,7 @@ export interface ReleaseMetadataValidation {
   errors: string[]
 }
 
+/** True when the string is a complete Semantic Versioning version. */
 export function isSemanticVersion(value: string): boolean {
   return SEMVER_PATTERN.test(value)
 }
@@ -290,6 +291,14 @@ function validateVersionBearingDocuments(
   return errors
 }
 
+/**
+ * Checks that the release metadata agrees: `VERSION` is valid SemVer and
+ * matches `package.json` and the lockfile, the changelog and version-bearing
+ * documents agree with it, and `release/index.json` has valid, unique
+ * versions with full commit hashes. Returns the error messages; returns none
+ * when any of the version, package, lock, changelog, or index files is
+ * missing.
+ */
 export function validateReleaseMetadata(
   root: string,
 ): ReleaseMetadataValidation {

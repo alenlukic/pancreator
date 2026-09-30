@@ -99,6 +99,7 @@ export interface WorkerTranscriptProfile {
   first_source_edit_turn: number | null
 }
 
+/** Adds `by` (default 1) to the count under `key`, in place. */
 export function increment(
   counts: Map<string, number>,
   key: string,
@@ -107,6 +108,7 @@ export function increment(
   counts.set(key, (counts.get(key) ?? 0) + by)
 }
 
+/** Tool uses of each assistant turn in a JSONL transcript, one list per assistant record in order; unparseable lines are skipped. */
 export function assistantTurns(content: string): ToolUse[][] {
   const turns: ToolUse[][] = []
 
@@ -304,6 +306,7 @@ function shellCommand(tool: ToolUse): string | null {
   return typeof tool.input.command === 'string' ? tool.input.command : null
 }
 
+/** The file path a tool call targets, from its `path`, `file_path`, or `target_file` input, or null when none is set. */
 export function toolPath(tool: ToolUse): string | null {
   for (const key of ['path', 'file_path', 'target_file']) {
     const value = tool.input[key]

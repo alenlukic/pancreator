@@ -92,6 +92,11 @@ function parseSuiteProfileTest(value: unknown): SuiteProfileTest | null {
     : null
 }
 
+/**
+ * Reads a suite profile JSON file from a root-relative path, keeping only
+ * well-formed file, test, and fixture-cost entries. Returns null when the
+ * file is missing, unreadable, or not a schema-1 profile.
+ */
 export function loadSuiteProfile(
   root: string,
   relativePath: string,

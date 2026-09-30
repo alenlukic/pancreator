@@ -65,6 +65,13 @@ function staleVersion(
   return installed !== null && harness !== null ? installed !== harness : null
 }
 
+/**
+ * Describes each registered target installation: whether its harness config
+ * exists, its installation mode, installed version against this harness's
+ * version (and whether it is stale), queued inbox items, and any identity or
+ * config-schema error as a diagnostic. A config that fails the current schema
+ * still reports version and queue depth.
+ */
 export function describeInstallations(root: string): InstallationDescription[] {
   const harnessVersion = installationVersion(root)
 
@@ -157,6 +164,14 @@ function intakeCitesFileName(intake: string, fileName: string): boolean {
   return false
 }
 
+/**
+ * Archives inbox items of a registered installation into that installation's
+ * inbox archive, after checking that each item exists, is in queue, complete,
+ * canceled, or legacy status, and is cited by name in the given intake.
+ * Throws `INSTALLATION_NOT_FOUND`, `INTAKE_NOT_FOUND`, `INVALID_ARGUMENT`,
+ * `INVALID_INBOX_TRANSITION`, `INBOX_ITEM_NOT_FOUND`, or
+ * `INTAKE_DOES_NOT_CITE_ITEM` before moving anything.
+ */
 export function archiveInstallationInboxItems(
   root: string,
   options: ArchiveInstallationInboxItemsOptions,

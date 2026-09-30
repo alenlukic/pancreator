@@ -197,6 +197,13 @@ function scanTrackedSources(
   }
 }
 
+/**
+ * Detects the supported languages of the workspace (the configured one by
+ * default) from manifests and source file extensions, scanning tracked files
+ * in a Git repository and a bounded directory walk otherwise. Returns each
+ * language with its sorted evidence paths, plus source files of unsupported
+ * languages.
+ */
 export function detectWorkspaceTechnologies(
   root: string,
   options: { workspace?: string } = {},
@@ -229,6 +236,7 @@ export function detectWorkspaceTechnologies(
   }
 }
 
+/** Ids of every technology the harness supports. */
 export function supportedTechnologyIds(): Set<string> {
   return new Set(TECHNOLOGIES.map((technology) => technology.id))
 }

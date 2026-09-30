@@ -24,12 +24,17 @@ export type Grader = (
   context: GraderContext,
 ) => Omit<EvalGraderVerdict, 'id' | 'policy'>
 
+/**
+ * A grader's configured value for `key` from the scenario's grader spec, or
+ * the fallback when unset. The value is cast, not validated.
+ */
 export function config<T>(context: GraderContext, key: string, fallback: T): T {
   const value = context.spec.config?.[key]
 
   return value === undefined ? fallback : (value as T)
 }
 
+/** Repository-relative, slash-separated path of a file under the run's agent directory, for citing as evidence. */
 export function relativeEvidence(
   records: RunRecords,
   ...segments: string[]
@@ -43,6 +48,7 @@ export function relativeEvidence(
     .join('/')
 }
 
+/** The stage history entry recorded for an invocation id, or undefined when none matches. */
 export function historyForInvocation(
   records: RunRecords,
   invocationId: string,

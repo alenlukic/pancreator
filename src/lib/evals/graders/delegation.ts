@@ -20,6 +20,13 @@ import {
 
 const BACKGROUND_EVENT = /background|watch/iu
 
+/**
+ * Grader that fails when a delegation lacks harness proof it was observed: a
+ * watch record ending in a completed wake (for a submitted stage), a
+ * foreground-return attestation, or an external-executor execution record.
+ * By default only delegations with background evidence are checked; config
+ * `require_for: all` checks every delegation.
+ */
 export const delegationWatchRecord: Grader = (context) => {
   const { records } = context
   const requireFor = config<'background' | 'all'>(
@@ -254,6 +261,12 @@ const GUIDANCE_MENTION =
 
 const REDLINE_FILE = 'platform-guidance-redline.json'
 
+/**
+ * Grader that fails when a stage output or decision record mentions platform
+ * guidance without a recorded conflict (an output entry, advisory, or event),
+ * or when the run records fewer conflicts than config `min_recorded`. A
+ * redline record is cited but never counts as a conflict.
+ */
 export const platformGuidanceConflictRecorded: Grader = (context) => {
   const { records } = context
   const minRecorded = config<number>(context, 'min_recorded', 0)

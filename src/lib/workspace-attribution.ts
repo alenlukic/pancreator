@@ -44,6 +44,7 @@ export const DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION: WorkspaceAttributionDisp
 
 const STORE_RELATIVE_PATH = 'runtime/logs/workspace-attributions.json'
 
+/** Type guard: true for one of the known workspace attribution dispositions. */
 export function isWorkspaceAttributionDisposition(
   value: unknown,
 ): value is WorkspaceAttributionDisposition {

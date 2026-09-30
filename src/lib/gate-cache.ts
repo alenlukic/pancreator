@@ -120,6 +120,7 @@ function cachePath(root: string): string {
   return path.join(root, CACHE_RELATIVE_PATH)
 }
 
+/** True unless the `PAN_GATE_CACHE` environment variable is `0`. */
 export function gateCacheEnabled(): boolean {
   return process.env[GATE_CACHE_ENV] !== '0'
 }
@@ -147,10 +148,16 @@ export function repositoryCheckGateCommand(profileName: string): string {
   return `pan repository-check ${profileName}`
 }
 
+/** True when the workspace snapshot is Git-based, the only kind whose fingerprint can key the gate cache. */
 export function gateCacheableSnapshot(snapshot: WorkspaceSnapshot): boolean {
   return snapshot.kind === 'git'
 }
 
+/**
+ * Cache key for one gate result: a digest of the workspace fingerprint, the
+ * gate command, and the repository-check configuration digest, so a config
+ * change invalidates every earlier pass.
+ */
 export function gateCacheKey(
   root: string,
   workspaceFingerprint: string,
@@ -202,6 +209,11 @@ function freshEntries(
   })
 }
 
+/**
+ * The cached clean pass under `key` recorded within the last 24 hours, or null
+ * when the cache is disabled, holds no fresh entry, or the entry's evidence
+ * file is gone. A corrupt cache file reads as a miss.
+ */
 export function gateCacheLookup(
   root: string,
   key: string,
@@ -301,6 +313,11 @@ export function gateCachePassAtFingerprint(
   )
 }
 
+/**
+ * Stores a gate result entry in `runtime/cache/gate-results.json`, replacing an
+ * entry with the same key, dropping entries older than 24 hours, and keeping
+ * at most the newest 100. Does nothing when the cache is disabled.
+ */
 export function gateCacheStore(root: string, entry: GateCacheEntry): void {
   if (!gateCacheEnabled()) {
     return
@@ -319,6 +336,7 @@ export function gateCacheStore(root: string, entry: GateCacheEntry): void {
   })
 }
 
+/** Reports whether the gate cache is enabled, its relative path, and its total and fresh entry counts. */
 export function gateCacheStatus(root: string): GateCacheStatus {
   const entries = loadEntries(root)
 

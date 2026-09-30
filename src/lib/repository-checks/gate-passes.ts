@@ -125,6 +125,7 @@ export function agentGatePassArtifactStem(
   return `agent-repository-check-${profileName}-${fingerprint.slice(0, 12)}`
 }
 
+/** Artifact id of an agent-run profile execution: the gate-pass stem, stamped with the attempt when it is above 1. */
 export function agentGatePassArtifactId(
   profileName: string,
   fingerprint: string,

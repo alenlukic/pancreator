@@ -36,6 +36,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/**
+ * Validates an untrusted per-file test duration record, keeping only file
+ * entries with a finite, non-negative duration. Returns null when the
+ * envelope is not a schema-1 record.
+ */
 export function parseFileDurationRecord(
   value: unknown,
 ): FileDurationRecord | null {

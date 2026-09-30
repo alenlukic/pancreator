@@ -150,6 +150,10 @@ function normalizedCommands(commands: string[]): string[] {
   return commands.map((command) => command.trim().replaceAll(/\s+/gu, ' '))
 }
 
+/**
+ * True when `left` is non-empty and every one of its commands, compared with
+ * whitespace collapsed, also appears in `right`.
+ */
 export function commandSetIsSubset(left: string[], right: string[]): boolean {
   if (left.length === 0) {
     return false
@@ -211,6 +215,14 @@ function validateProfileSemantics(
   }
 }
 
+/**
+ * Reads and validates the repository-check configuration from its resolved
+ * source path, returning normalized profiles (with template isolation
+ * commands filled in for unchanged template profiles). A missing file yields
+ * an empty profile map. Throws `INVALID_REPOSITORY_CHECKS` on a bad shape, a
+ * fast profile that duplicates full, or a superset profile with a shorter
+ * timeout than its subset.
+ */
 export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
   const filePath = repositoryChecksSourcePath(root)
 
@@ -324,6 +336,10 @@ export interface RepositorySetupResult {
   total_duration_ms: number
 }
 
+/**
+ * Loads the repository-check configuration, rethrowing any non-`PanError`
+ * failure as `INVALID_REPOSITORY_CHECKS`.
+ */
 export function assertRepositoryChecksValid(
   root: string,
 ): RepositoryChecksConfig {

@@ -55,6 +55,7 @@ export function summarizeRepositoryCheckResult(result: RepositoryCheckResult): {
   return { summary: { ...result, results }, elided }
 }
 
+/** Profile name a `pan repository-check <profile>` command runs, or null for any other command. */
 export function repositoryCheckProfileName(command: string): string | null {
   const match = /^pan repository-check ([a-z0-9][a-z0-9_-]*)$/u.exec(
     command.trim(),
@@ -384,6 +385,7 @@ export function failureStatuses(
   return statuses
 }
 
+/** Copy of the diagnostics sorted by command, then diagnostic text. */
 export function sortDiagnostics(
   entries: RepositoryCheckDiagnostic[],
 ): RepositoryCheckDiagnostic[] {

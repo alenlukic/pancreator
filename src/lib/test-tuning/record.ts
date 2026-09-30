@@ -119,12 +119,18 @@ export interface TuneRecord {
   }
 }
 
+/** Stable key of a test identity: file, name, and occurrence (default 1), NUL-separated. */
 export function identityKey(identity: TestIdentity): string {
   const occurrence = identity.occurrence ?? 1
 
   return `${identity.file}\0${identity.name}\0${occurrence}`
 }
 
+/**
+ * Splits current and retained test identities into those retained and still
+ * present, those added since the retained set, and those retained but since
+ * removed, each sorted by identity key.
+ */
 export function partitionRetainedSet(
   current: TestIdentity[],
   retained: TestIdentity[],
@@ -162,6 +168,7 @@ export function partitionRetainedSet(
   }
 }
 
+/** True when two pass intervals share at least one instant, endpoints included. */
 export function intervalsOverlap(
   left: PassInterval,
   right: PassInterval,
@@ -174,6 +181,7 @@ export function intervalsOverlap(
   return leftStart <= rightEnd && rightStart <= leftEnd
 }
 
+/** Error messages for each pair of the record's benchmark, comparison, and judgment passes that does not overlap; empty when all overlap. */
 export function validatePassOverlap(record: TuneRecord): string[] {
   const errors: string[] = []
   const { benchmark, comparison, judgment } = record.passes
@@ -193,10 +201,16 @@ export function validatePassOverlap(record: TuneRecord): string[] {
   return errors
 }
 
+/** Absolute work directory of a tune session under the tune work root. Creates nothing. */
 export function tuneSessionWorkDir(root: string, sessionId: string): string {
   return path.join(root, TUNE_WORK_DIR, sessionId)
 }
 
+/**
+ * The tune record the latest-record pointer names, or null when the pointer
+ * or the record file is missing. Throws `INVALID_JSON` when either file is
+ * unreadable.
+ */
 export function loadLatestRecord(root: string): TuneRecord | null {
   const latestPath = path.join(root, TUNE_LATEST_PATH)
 

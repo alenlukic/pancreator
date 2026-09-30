@@ -66,6 +66,12 @@ export function isPancreatorRoot(candidate: string): boolean {
   }
 }
 
+/**
+ * The Pancreator installation root: `PANCREATOR_ROOT` when set, otherwise the
+ * nearest ancestor of `start` that is an installation root. Throws
+ * `ROOT_NOT_FOUND` when the override is not an installation or no ancestor
+ * qualifies.
+ */
 export function findProjectRoot(start = process.cwd()): string {
   // A detached installation lives outside the target tree, so walking up from
   // the working directory can never reach it. PANCREATOR_ROOT is the explicit
@@ -106,10 +112,12 @@ export function findProjectRoot(start = process.cwd()): string {
   }
 }
 
+/** Creates the directory and any missing parents; a no-op when it exists. */
 export function ensureDir(dirPath: string): void {
   mkdirSync(dirPath, { recursive: true })
 }
 
+/** Reads and parses a JSON file. Throws `INVALID_JSON` when it cannot be read or parsed. */
 export function readJson(filePath: string): unknown {
   try {
     return JSON.parse(readFileSync(filePath, 'utf8')) as unknown
@@ -121,6 +129,7 @@ export function readJson(filePath: string): unknown {
   }
 }
 
+/** Reads a file as UTF-8. Throws `READ_FAILED` when it cannot be read. */
 export function readText(filePath: string): string {
   try {
     return readFileSync(filePath, 'utf8')
@@ -132,6 +141,10 @@ export function readText(filePath: string): string {
   }
 }
 
+/**
+ * Writes pretty-printed JSON with a trailing newline through a temporary file
+ * and rename, so readers never see a partial file. Creates parent directories.
+ */
 export function writeJsonAtomic(filePath: string, value: unknown): void {
   ensureDir(path.dirname(filePath))
 
@@ -140,6 +153,10 @@ export function writeJsonAtomic(filePath: string, value: unknown): void {
   renameSync(tempPath, filePath)
 }
 
+/**
+ * Writes text, adding a trailing newline when missing, through a temporary
+ * file and rename. Creates parent directories.
+ */
 export function writeTextAtomic(filePath: string, value: string): void {
   ensureDir(path.dirname(filePath))
 
@@ -148,11 +165,16 @@ export function writeTextAtomic(filePath: string, value: string): void {
   renameSync(tempPath, filePath)
 }
 
+/** Appends one compact JSON line to a file, creating the file and its parent directories when missing. Not atomic across writers. */
 export function appendJsonLine(filePath: string, value: unknown): void {
   ensureDir(path.dirname(filePath))
   appendFileSync(filePath, `${JSON.stringify(value)}\n`, 'utf8')
 }
 
+/**
+ * Hex SHA-256 digest. Strings and bytes are hashed as-is; any other value is
+ * hashed through `stableStringify`, so key order never changes the digest.
+ */
 export function sha256(value: unknown): string {
   const input =
     typeof value === 'string' || value instanceof Uint8Array
@@ -173,6 +195,10 @@ export function referenceContentSha256(text: string): string {
   return sha256(text.trim())
 }
 
+/**
+ * Compact JSON with object keys sorted at every depth, for deterministic
+ * hashing. Returns `undefined` as text for a value JSON cannot represent.
+ */
 export function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`
@@ -188,6 +214,12 @@ export function stableStringify(value: unknown): string {
   return JSON.stringify(value) ?? 'undefined'
 }
 
+/**
+ * Converts an absolute or root-relative path to a slash-separated path
+ * relative to the canonical root. Throws `PATH_ESCAPE` when the path, after
+ * resolving symlinks of its existing part, is the root itself or lies outside
+ * it.
+ */
 export function toRepoRelative(
   root: string,
   absoluteOrRelativePath: string,
@@ -215,6 +247,11 @@ export function toRepoRelative(
   return relative.split(path.sep).join('/')
 }
 
+/**
+ * Resolves a relative path against the canonical root and returns the
+ * absolute path. Throws `INVALID_PATH` for an empty path and `PATH_ESCAPE`
+ * when the path or its symlink-resolved existing part leaves the root.
+ */
 export function resolveInside(root: string, relativePath: string): string {
   const canonicalRoot = canonicalize(root)
 
@@ -241,6 +278,7 @@ export function resolveInside(root: string, relativePath: string): string {
   return absolute
 }
 
+/** Absolute, symlink-resolved form of an existing path. Throws `PATH_NOT_FOUND` when it does not exist. */
 export function canonicalize(filePath: string): string {
   const resolved = path.resolve(filePath)
 
@@ -254,6 +292,11 @@ export function canonicalize(filePath: string): string {
   }
 }
 
+/**
+ * True when a process with this PID exists, probed with signal 0. A process
+ * owned by another user (EPERM) counts as alive; a non-positive or
+ * non-integer PID does not.
+ */
 export function processIsAlive(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 0) {
     return false
@@ -267,6 +310,11 @@ export function processIsAlive(pid: number): boolean {
   }
 }
 
+/**
+ * Deletes a mutex file whose recorded owner PID is not alive (or is
+ * unreadable) and returns true; returns false when the file is absent or its
+ * owner is alive.
+ */
 export function clearStaleOperationMutex(mutexPath: string): boolean {
   if (!existsSync(mutexPath)) {
     return false
@@ -305,6 +353,14 @@ export interface OperationMutexOptions {
   readonly waitForHolderMs?: number
 }
 
+/**
+ * Runs the callback while holding a PID-stamped mutex file at `mutexPath`,
+ * removing the mutex afterwards. A stale mutex is cleared once. A live holder
+ * makes it throw `RUN_OPERATION_IN_PROGRESS` immediately, or after
+ * `waitForHolderMs` of polling when that option is set.
+ *
+ * The wait blocks the thread synchronously, and the mutex is not reentrant.
+ */
 export function withOperationMutex<T>(
   mutexPath: string,
   callback: () => T,
@@ -374,18 +430,22 @@ export function withOperationMutex<T>(
   }
 }
 
+/** True when anything exists at the path, including a directory. */
 export function fileExists(filePath: string): boolean {
   return existsSync(filePath)
 }
 
+/** True when the path exists and is a regular file (following symlinks). */
 export function isFile(filePath: string): boolean {
   return existsSync(filePath) && statSync(filePath).isFile()
 }
 
+/** True when the path exists and is a directory (following symlinks). */
 export function isDirectory(filePath: string): boolean {
   return existsSync(filePath) && statSync(filePath).isDirectory()
 }
 
+/** Type guard: true for a non-null, non-array object. */
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

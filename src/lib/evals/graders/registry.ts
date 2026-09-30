@@ -24,6 +24,7 @@ export const GRADERS: Record<EvalGraderId, Grader> = {
   'cohort-fanout': cohortFanout,
 }
 
+/** Runs the grader the spec's id selects and returns its verdict tagged with that id and the spec's policy. */
 export function runGrader(context: GraderContext): EvalGraderVerdict {
   const grader = GRADERS[context.spec.id]
   const verdict = grader(context)

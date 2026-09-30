@@ -11,6 +11,7 @@ import { isLoopbackHostname } from '../project-config.js'
 
 const SYNC_TIMEOUT_MS = 60_000
 
+/** Serializes the value to JSON and resolves with its gzip-compressed bytes. */
 export function gzipJson(value: unknown): Promise<Buffer> {
   const json = JSON.stringify(value)
   const input = Buffer.from(json, 'utf8')
@@ -26,6 +27,7 @@ export function gzipJson(value: unknown): Promise<Buffer> {
   })
 }
 
+/** Resolves with the decompressed bytes of a gzip buffer; rejects on corrupt input. */
 export function gunzipBuffer(compressed: Buffer): Promise<Buffer> {
   const chunks: Buffer[] = []
 
@@ -96,6 +98,7 @@ export function assertSecureUrl(url: string, context: string): void {
   )
 }
 
+/** Calls the fetch implementation with the request, aborting it after the 60-second sync timeout. */
 export async function timedFetch(
   fetchImpl: typeof fetch,
   url: string,
@@ -107,6 +110,12 @@ export async function timedFetch(
   })
 }
 
+/**
+ * Parses a spend service response body as JSON. Throws
+ * `SPEND_SYNC_UNAUTHORIZED` on 401 or 403, `SPEND_SYNC_REQUEST_FAILED` on any
+ * other non-OK status, and `SPEND_SYNC_INVALID_RESPONSE` when the body is
+ * not JSON; `context` prefixes each message.
+ */
 export async function expectJson(
   response: Response,
   context: string,
@@ -136,6 +145,7 @@ export async function expectJson(
   }
 }
 
+/** Trimmed contents of the installation's `VERSION` file, or `unknown` when it is absent. */
 export function readVersion(root: string): string {
   const versionPath = path.join(root, 'VERSION')
 
