@@ -1294,7 +1294,10 @@ test('the finalization rewrite reaches a run-owned inbox item in every lifecycle
 // AC-025. The standardizer scanned two directory sets through two copies of
 // the same loop, and a fix applied to one copy silently skipped the other.
 test('the runtime name standardizer holds one traversal helper', () => {
-  const source = readFileSync('src/lib/workflow-artifacts.ts', 'utf8')
+  const source = readFileSync(
+    'src/lib/workflow-artifacts/temporal-names.ts',
+    'utf8',
+  )
   const standardizer = source.slice(
     source.indexOf('function standardizeTemporalFileNamesIn'),
     source.indexOf('export interface RunSuffixMigrationSummary'),
