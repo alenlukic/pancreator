@@ -18,6 +18,7 @@ import { agentRecordedProfilePasses } from './agent-ledger-evidence.js'
 import {
   liveCriteriaDecision,
   runAcceptanceProofs,
+  runDeclaredChangePaths,
 } from './acceptance-proof.js'
 import { readEvidenceReady } from './watch-evidence.js'
 import {
@@ -5339,8 +5340,12 @@ export function prepareInvocation(
             return {
               persona: worker.persona,
               role: worker.role,
+              // An empty blast radius bounds nothing, so the brief says to
+              // execute the scope in full and the first-visit scope stays.
               scope:
-                returnVisit && worker.return_scope
+                returnVisit &&
+                returnVisit.blast_radius.length > 0 &&
+                worker.return_scope
                   ? worker.return_scope
                   : worker.scope,
               agent: (agentTarget.split('/').pop() ?? worker.persona).replace(
@@ -9133,7 +9138,8 @@ function invalidatePausedInvocation(state: RunState): void {
  * `live_criteria` reads the run's criterion proofs: its own plan output, the
  * child specifications of a release run, or the request specification. QA
  * runs for a `live` criterion and whenever no proof can be read, so a legacy
- * or unplanned request keeps the full topology.
+ * or unplanned request keeps the full topology. It also runs when the plan's
+ * files or an implementation's changed files touch a user-facing surface.
  */
 function scheduleEvidenceWorkers(
   root: string,
@@ -9150,9 +9156,11 @@ function scheduleEvidenceWorkers(
   const conditional = stage.evidence_workers.some(
     (worker) => worker.run_when === 'live_criteria',
   )
+  const record = state as unknown as Record<string, unknown>
   const decision = conditional
     ? liveCriteriaDecision(
-        runAcceptanceProofs(root, state as unknown as Record<string, unknown>),
+        runAcceptanceProofs(root, record),
+        runDeclaredChangePaths(root, record),
       )
     : null
   const skips: EvidenceWorkerSkip[] = []

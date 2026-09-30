@@ -708,13 +708,18 @@ function renderRemediationReturn(invocation: Invocation): string[] {
     return []
   }
 
+  const gate = returnVisit.routing_gate
   const opening =
     'This is a return visit after remediation ' +
     `\`${returnVisit.remediation_invocation_id}\`.` +
     (returnVisit.routing_output_path
       ? ' The verdict that routed it, with the prior findings, is ' +
         `\`${returnVisit.routing_output_path}\`.`
-      : '')
+      : gate
+        ? ` The failed release gate \`${gate.criterion_id}\` of stage ` +
+          `'${gate.stage}' routed it. Its evidence is ` +
+          `\`${gate.evidence_path}\`. Confirm that failure is repaired.`
+        : '')
 
   if (returnVisit.blast_radius.length === 0) {
     return [
@@ -830,10 +835,13 @@ function renderEvidenceWorkerSkips(invocation: Invocation): string[] {
     ...(skips.some((skip) => skip.role === 'qa')
       ? [
           'QA did not run on this visit. `data.verify.qa_cases` is not ' +
-            'owed. Grade each `test` criterion from the gate evidence, each ' +
-            '`review` criterion from the review evidence and your spot ' +
-            'checks, and record `observe` as the result of each `observe` ' +
-            'criterion.',
+            'owed. Grade each `test` criterion from the test that the ' +
+            "implementation's `acceptance_results` evidence or " +
+            '`tests_added` names for it, plus the gate evidence that the ' +
+            'test ran and passed. A `test` criterion with no named test ' +
+            'fails. Grade each `review` criterion from the review evidence ' +
+            'and your spot checks, and record `observe` as the result of ' +
+            'each `observe` criterion.',
           '',
         ]
       : []),

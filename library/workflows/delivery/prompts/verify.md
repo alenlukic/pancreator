@@ -4,7 +4,8 @@ Consolidate the parallel evidence reports into one independent, read-only
 verification with a single graded verdict. The supervisor already ran every
 evidence worker top-level and in parallel — always a reviewer on the code
 dimension, a QA tester on the execution dimension when an acceptance criterion
-has proof `live` or the criteria carry no proof type, and a design reviewer
+has proof `live`, the change touches a user-facing surface, or the criteria
+carry no proof type, and a design reviewer
 plus a design QA tester when the run composes design — so each ran on its
 mapped model. The card's required inputs name every report that ran, and that
 list is authoritative over any count stated here. You own the joint verdict;
@@ -18,16 +19,19 @@ the cases the blast radius reaches yourself for each dimension the section
 assigns, and record each dimension under `data.verify.dimensions` as the
 Output section states. For the review dimension, confirm each prior finding
 of the routing verdict as fixed or still open. A new finding in code the
-remediation did not change blocks only at `blocker` severity; record a lower
+remediation did not change blocks only at `blocker` severity. Record a lower
 one as a warning. Every other step applies unchanged.
 
 When the card carries an `Evidence workers not launched` section, the harness
 kept that worker off this visit and states why. QA runs only for a `live`
-criterion. Without QA, read no QA report and owe no `qa_cases`: grade each
-`test` criterion from the card's gate evidence, and each `review` criterion
-from the review report and your spot checks. Record `observe` as the result of
-each `observe` criterion. It defers the criterion to a signal after ship and
-does not block the verdict.
+criterion or a change that touches a user-facing surface. Without QA, read no
+QA report and owe no `qa_cases`. Grade each `test` criterion from the test that
+the implementation's `acceptance_results` evidence or `tests_added` names for
+it, plus the card's gate evidence that the test ran and passed. A `test`
+criterion with no named test fails. Grade each `review` criterion from the
+review report and your spot checks. Record `observe` as the result of each
+`observe` criterion. It defers the criterion to a signal after ship and does
+not block the verdict.
 
 1. Read the card, the ratified plan, the implementation record, and every
    parallel evidence report listed under the card's inputs. The plan is the
@@ -116,8 +120,9 @@ verification instead of executed again also states `carried_from` with the
 prior `invocation_id` and its `workspace_fingerprint`. That bound applies to
 case coverage only; it changes no profile allowance.
 Each acceptance result states the criterion `id`, a `result`, and evidence.
-The result of an `observe` criterion is `observe`; the validator refuses
-`observe` for a criterion whose declared proof is another type.
+The result of an `observe` criterion is `observe`. The validator refuses
+`observe` for a criterion whose declared proof is another type, and any other
+result for an `observe` criterion.
 On a scoped return visit, also write `data.verify.dimensions.<role>` for each
 dimension the card assigns, with a non-empty `summary` and a non-empty
 `evidence[]`, and set each finding's `source` to the dimension that raised it.

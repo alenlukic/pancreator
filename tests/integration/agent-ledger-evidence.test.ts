@@ -418,6 +418,15 @@ test('a returning verification bounds execution by the remediation blast radius'
     routing_output_path: verify.output_path,
   })
 
+  // A passing visit routed nothing: the run left it for ship. With no failed
+  // gate either, the marker names no routing evidence at all.
+  verify.outcome = 'success'
+  assert.deepEqual(scopeOf([implement, verify, remediate]), {
+    remediation_invocation_id: 'remediate-1',
+    blast_radius: [],
+  })
+  verify.outcome = 'failure'
+
   writeJson(path.join(root, remediate.output_path), {
     data: { implementation: { changed_files: ['src/lib/narrow.ts'] } },
   })

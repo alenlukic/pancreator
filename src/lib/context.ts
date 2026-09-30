@@ -948,21 +948,57 @@ export function remediationReturn(
     return undefined
   }
 
-  // The visit whose verdict routed this remediation holds the findings a
-  // return visit confirms fixed or still open.
+  // The visit whose failing verdict routed this remediation holds the
+  // findings a return visit confirms fixed or still open. A passing visit
+  // routed nothing: the run left it for ship, and a failed release gate
+  // there sent it to remediate, so that gate's evidence is what routed it.
   const remediationIndex = state.stage_history.lastIndexOf(remediation)
   const routing = state.stage_history
     .slice(0, remediationIndex)
     .reverse()
     .find((item) => item.stage === stage.slug && item.outcome !== 'blocked')
+  const routingVerdict =
+    routing?.outcome === 'failure' && routing.output_path
+      ? routing.output_path
+      : undefined
+  const routingGate = routingVerdict
+    ? undefined
+    : failedRepairGate(state, remediation.stage)
 
   return {
     remediation_invocation_id: remediation.invocation_id,
     blast_radius: outputChangedPaths(root, state, 'remediate'),
-    ...(routing?.output_path
-      ? { routing_output_path: routing.output_path }
-      : {}),
+    ...(routingVerdict ? { routing_output_path: routingVerdict } : {}),
+    ...(routingGate ? { routing_gate: routingGate } : {}),
   }
+}
+
+/**
+ * The failed entry gate whose open repair loop sent the run to `repairStage`,
+ * with its evidence. A gate that passed or was disabled since routes nothing.
+ */
+function failedRepairGate(
+  state: RunState,
+  repairStage: string,
+): RemediationReturn['routing_gate'] {
+  for (const [gateStage, record] of Object.entries(state.entry_gates ?? {})) {
+    const result = record.last_result
+
+    if (
+      record.repair_stage === repairStage &&
+      !result.passed &&
+      !result.disabled &&
+      result.evidence_path
+    ) {
+      return {
+        stage: gateStage,
+        criterion_id: record.criterion_id,
+        evidence_path: result.evidence_path,
+      }
+    }
+  }
+
+  return undefined
 }
 
 /** The verdict that sent the run to the remediation a return visit serves. */

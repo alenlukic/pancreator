@@ -319,14 +319,16 @@ export interface StageEvidenceWorkerDefinition {
   /** One-paragraph scope statement rendered into the worker's brief. */
   scope: string
   /**
-   * Scope used instead of `scope` on a return visit after remediation, and
-   * as the dimension scope of a scoped return. Absent means `scope`.
+   * Scope used instead of `scope` on a return visit after remediation whose
+   * blast radius names a path, and as the dimension scope of a scoped return.
+   * Absent means `scope`.
    */
   return_scope?: string
   /**
    * Condition for launching the worker. `live_criteria` launches it only
-   * when a criterion of the run has proof `live`, or when no proof can be
-   * read. Absent means the worker always runs.
+   * when a criterion of the run has proof `live`, when the change touches a
+   * user-facing surface, or when no proof can be read. Absent means the
+   * worker always runs.
    */
   run_when?: EvidenceWorkerRunCondition
 }
@@ -1165,8 +1167,20 @@ export interface TargetInstructionInput {
 export interface RemediationReturn {
   remediation_invocation_id: string
   blast_radius: string[]
-  /** Output of the visit whose verdict routed the remediation, when one did. */
+  /**
+   * Output of the visit whose failing verdict routed the remediation, when
+   * one did. A passing visit routed nothing, so it is never named here.
+   */
   routing_output_path?: string
+  /**
+   * The failed release gate that routed the remediation instead of a verdict,
+   * with the evidence the return visit confirms repaired.
+   */
+  routing_gate?: {
+    stage: string
+    criterion_id: string
+    evidence_path: string
+  }
 }
 
 export interface PrDescriptionContext {

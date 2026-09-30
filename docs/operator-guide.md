@@ -336,14 +336,24 @@ planner tags each acceptance criterion with one `proof` type (`test`,
 as `1. AC-001 [proof: live] <statement>`. The qa worker declares
 `run_when: live_criteria`, so prepare launches it only when a criterion is
 `live`, or when no criterion proof can be read from the run's plan output,
-the child specifications of a release run, or the request. A skipped worker
-is recorded under `evidence_worker_skips` on the invocation, the verifier card
-states the reason, and that visit owes no `data.verify.qa_cases`. An
-`observe` criterion records the result `observe` and does not block the
-verdict. On a return visit after remediation the reviewer runs under its
+the child specifications of a release run, or the request. It also launches
+QA when the change touches a user-facing surface: a path in the plan's
+`engineering_plan.files[]` or in an implementing stage's `changed_files` that
+ends in `.tsx`, `.jsx`, `.vue`, `.svelte`, `.html`, `.css`, or `.scss`. A
+skipped worker is recorded under `evidence_worker_skips` on the invocation,
+the verifier card states the reason, and that visit owes no
+`data.verify.qa_cases`. Without QA the verifier grades a `test` criterion
+from the test the implementation names for it plus the gate evidence, and a
+`test` criterion with no named test fails. An `observe` criterion records the
+result `observe` and does not block the verdict. The validator refuses
+`observe` for any other proof, and any other result for an `observe`
+criterion. On a return visit after remediation the reviewer runs under its
 `return_scope`: it reviews the remediation diff and confirms each prior
 finding fixed or still open, and a new finding in code the remediation did not
-change blocks only at `blocker` severity.
+change blocks only at `blocker` severity. The brief names the routing
+evidence: the failing verdict that sent the run to remediate, or the failed
+ship release gate's evidence when that gate routed it. When the remediation
+declared no changed path, the reviewer keeps its first-visit scope.
 
 `pan submit` accepts one of three records for every worker invocation an
 operator session delegated:
@@ -2126,8 +2136,9 @@ commit. The command does not push, publish, or deploy.
 The ship packet is a proposal, but Pancreator self-development release metadata
 has already been updated by the release steward. Before approval, confirm:
 
-- review and QA passed against the current workspace, or any exceptions are
-  covered by explicit operator waiver directives
+- review, and QA when the verify invocation launched it, passed against the
+  current workspace, or any exceptions are covered by explicit operator waiver
+  directives
 - deferred acceptance criteria and any follow-up obligations required by the operator's waiver terms are disclosed
 - residual risks are acceptable
 - rollback guidance is credible

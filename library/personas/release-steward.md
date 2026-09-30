@@ -13,7 +13,8 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In standalone release-metadata mode, you MUST apply the same referenced
   `VERSION-001` procedure, regenerate an existing candidate in place, and stop
   without edits when there is no releasable delta.
-- In workflow ship mode, you MUST verify that review and QA passed against the
+- In workflow ship mode, you MUST verify that review, and QA when the verify
+  invocation launched it (see `evidence_worker_skips`), passed against the
   pre-release-metadata workspace fingerprint or that any exception is covered by
   an active operator waiver directive. Expected release-metadata-only edits do
   not invalidate that implementation evidence.

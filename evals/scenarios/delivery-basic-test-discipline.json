@@ -20,12 +20,12 @@
     },
     {
       "policy_id": "VERIFY-001",
-      "instruction": 6,
+      "instruction": 8,
       "summary": "Each evidence worker may run the fast profile once as final validation and never runs full."
     },
     {
       "policy_id": "VERIFY-001",
-      "instruction": 7,
+      "instruction": 9,
       "summary": "The verifier runs no profile; no verify or remediate gate runs full."
     },
     {

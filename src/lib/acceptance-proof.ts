@@ -236,20 +236,116 @@ export function runAcceptanceProofs(
   return content ? acceptanceProofsFromMarkdown(content) : new Map()
 }
 
+/**
+ * File extensions of a user-facing surface: markup, styles, and the component
+ * formats of the common web frameworks. A change that touches one launches QA
+ * even when no criterion is `live`, so a rendered surface never ships without
+ * a browser check (`VERIFY-001`, `BROWSER-001`).
+ */
+export const USER_FACING_EXTENSIONS = [
+  '.tsx',
+  '.jsx',
+  '.vue',
+  '.svelte',
+  '.html',
+  '.css',
+  '.scss',
+] as const
+
+/** Whether a workspace path names a user-facing surface file. */
+export function isUserFacingPath(relativePath: string): boolean {
+  const extension = path.extname(relativePath).toLowerCase()
+
+  return (USER_FACING_EXTENSIONS as readonly string[]).includes(extension)
+}
+
+/** Stages whose output records the paths an implementation changed. */
+const IMPLEMENTATION_STAGES = new Set(['implement', 'consolidate', 'remediate'])
+
+/** The paths one plan or implementation output declares. */
+function declaredOutputPaths(stage: string, value: unknown): unknown[] {
+  const data = isRecord(value) && isRecord(value.data) ? value.data : null
+
+  if (stage === 'plan') {
+    const plan = isRecord(data?.engineering_plan) ? data.engineering_plan : null
+
+    return plan && Array.isArray(plan.files)
+      ? plan.files.map((file) => (isRecord(file) ? file.path : null))
+      : []
+  }
+
+  const implementation = isRecord(data?.implementation)
+    ? data.implementation
+    : null
+
+  return implementation && Array.isArray(implementation.changed_files)
+    ? implementation.changed_files
+    : []
+}
+
+/**
+ * The paths a run's change touches, as its records declare them: the files of
+ * the latest successful plan's `engineering_plan`, and the `changed_files` of
+ * the latest successful output of each implementing stage. A stage without a
+ * readable output contributes nothing.
+ *
+ * The state is read loosely because the stage validators receive it as an
+ * untyped record.
+ */
+export function runDeclaredChangePaths(
+  root: string,
+  state: Record<string, unknown> | undefined,
+): string[] {
+  const history = Array.isArray(state?.stage_history) ? state.stage_history : []
+  const latest = new Map<string, string>()
+
+  for (const item of history) {
+    if (
+      isRecord(item) &&
+      typeof item.stage === 'string' &&
+      (item.stage === 'plan' || IMPLEMENTATION_STAGES.has(item.stage)) &&
+      item.outcome === 'success' &&
+      typeof item.output_path === 'string'
+    ) {
+      latest.set(item.stage, item.output_path)
+    }
+  }
+
+  const paths = new Set<string>()
+
+  for (const [stage, outputPath] of latest) {
+    for (const entry of declaredOutputPaths(
+      stage,
+      readRelativeJson(root, outputPath),
+    )) {
+      if (typeof entry === 'string' && entry.length > 0) {
+        paths.add(entry)
+      }
+    }
+  }
+
+  return [...paths]
+}
+
 /** Why QA runs or not on this visit, from the run's criterion proofs. */
 export type LiveCriteriaDecision =
   | { run: true; reason: string }
   | { run: false; reason: string }
 
+/** At most this many paths are named in a decision reason. */
+const REASON_PATH_LIMIT = 5
+
 /**
- * Whether the run carries a criterion only QA can prove (`VERIFY-001`).
+ * Whether the run needs QA on this visit (`VERIFY-001`).
  *
- * QA runs for any `live` criterion. It also runs when the proofs are unknown:
- * no criterion found, or one without a valid proof. That keeps a legacy or
+ * QA runs for any `live` criterion, and for a change whose declared paths
+ * touch a user-facing surface. It also runs when the proofs are unknown: no
+ * criterion found, or one without a valid proof. That keeps a legacy or
  * unplanned request on the full topology rather than silently dropping QA.
  */
 export function liveCriteriaDecision(
   proofs: AcceptanceProofs,
+  changePaths: readonly string[] = [],
 ): LiveCriteriaDecision {
   if (proofs.size === 0) {
     return {
@@ -280,6 +376,21 @@ export function liveCriteriaDecision(
     }
   }
 
+  const surfaces = changePaths.filter(isUserFacingPath)
+
+  if (surfaces.length > 0) {
+    const named = surfaces.slice(0, REASON_PATH_LIMIT).join(', ')
+    const more =
+      surfaces.length > REASON_PATH_LIMIT
+        ? ` and ${surfaces.length - REASON_PATH_LIMIT} more`
+        : ''
+
+    return {
+      run: true,
+      reason: `the change touches a user-facing surface: ${named}${more}`,
+    }
+  }
+
   const counts = ACCEPTANCE_PROOF_TYPES.flatMap((type) => {
     const count = [...proofs.values()].filter((proof) => proof === type).length
 
@@ -289,8 +400,9 @@ export function liveCriteriaDecision(
   return {
     run: false,
     reason:
-      `no acceptance criterion has proof \`live\` (${counts.join(', ')}); ` +
-      'gate evidence proves `test` criteria, the reviewer proves `review` ' +
-      'criteria, and `observe` criteria wait for a signal after ship',
+      `no acceptance criterion has proof \`live\` (${counts.join(', ')}) ` +
+      'and the change touches no user-facing surface. The test each `test` ' +
+      'criterion names and the gate evidence prove it, the reviewer proves ' +
+      '`review` criteria, and `observe` criteria wait for a signal after ship',
   }
 }
