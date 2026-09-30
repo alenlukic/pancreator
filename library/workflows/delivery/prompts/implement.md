@@ -30,16 +30,32 @@ acceptance criterion.
    reaches). In a target installation, use the target's `impacted` profile
    from `runtime/repository-checks.json`. Only when no `impacted` profile is
    declared, pick the tests in the immediate blast radius yourself from the
-   target's documented entry points. Static checks are cheap; run them freely.
-6. When you believe the change is complete, run the configured `fast` profile
-   once, as the final validation. Fix each failure, then re-run only the
-   impacted selection, the failing tests, and the tests you added. Do not run
-   `fast` earlier and do not run it a second time; the verify stage catches
-   what slips.
-7. On a retry attempt that changed only output claims or evidence, do not run
-   any suite. Cite the prior run's evidence instead.
+   target's documented entry points. Run a profile through
+   `./bin/pan repository-check <profile> --run <run-id>` or
+   `./bin/pan tests impacted`: each prints a pass line, or the failing tests
+   with the path of the full log. Open that log only to diagnose a failure,
+   and do not pipe raw suite output such as `npm test 2>&1` into your context.
+   Static checks are cheap; run them freely.
+6. The gates own the suites. Do not run the `fast` profile or the integration
+   lane yourself. When the impacted selection, your new tests, and the static
+   checks pass, submit. The implement exit gate runs the static, fast,
+   configuration, and affected integration checks, and a failure returns the
+   stage to you with its log. This saves worker turns and context; the gate
+   reruns every profile anyway.
+7. On a retry after a gate failure, start from the failing gate's log that the
+   card lists. Fix the cause, re-run the impacted selection and the failing
+   tests, then submit. On a retry that changed only output claims or
+   evidence, do not run any suite. Cite the prior run's evidence instead.
 8. Map evidence to every acceptance criterion honestly. Report a criterion you
    could not satisfy as unmet; do not claim unsupported completion.
+
+## Tool habits
+
+- Read files with the Read and Grep tools, and batch independent reads in
+  parallel.
+- Do not browse files through the shell (`cat`, `sed`, `grep`, `ls`).
+- Edit the stage output with the file-editing tools, never with `python3` or
+  another inline script.
 
 ## Output
 
@@ -62,6 +78,6 @@ the Git delta. Follow the card's `output.operator_brief` contract.
 
 ## Done when
 
-The plan is implemented within scope, the static checks pass, the single
-validation run of the `fast` profile passed, tests prove the changed behavior,
-and every acceptance criterion has an honest evidence-backed result.
+The plan is implemented within scope, the static checks, the impacted
+selection, and your new tests pass, tests prove the changed behavior, and
+every acceptance criterion has an honest evidence-backed result.

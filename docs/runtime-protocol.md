@@ -487,10 +487,11 @@ third failure pauses the run with an `operator_decision` marked
 shares exactly one `static` and `fast` baseline under
 `runtime/logs/cohorts/<cohort-id>/baselines/`: the first run of the session
 that prepares a source-allowed stage captures it, every other chunk run and
-the release run adopts it (`DEV-001`). Agents never run `full`: the coder,
-remediator, reviewer, and QA worker iterate on the `impacted` profile plus the
-tests they added and run `fast` once each as final validation, and the
-consolidating verifier runs neither. A worker that runs
+the release run adopts it (`DEV-001`). Agents never run `full`. The coder and
+remediator iterate on the `impacted` profile plus the tests they added and
+leave `fast` and the integration lane to the gates. The reviewer and QA worker
+iterate the same way and may run `fast` once each as final validation, and
+the consolidating verifier runs neither. A worker that runs
 `pan repository-check <profile> --run <run-id>` or
 `pan repository-check <profile> --worktree <name>` leaves one line per
 execution in that run's `agent/evidence/repository-check-runs.jsonl`

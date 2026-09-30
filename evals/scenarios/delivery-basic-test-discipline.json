@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "delivery-basic-test-discipline",
-  "description": "A toy delivery run adds one function and one test. Grades repository-check profile discipline (baseline once per interior profile, one live gate per attempt, at most one agent-side fast run per attempt, the full profile only as the ship release gate), stage order, and that no stage attempt is consumed by a pre-submit validator.",
+  "description": "A toy delivery run adds one function and one test. Grades repository-check profile discipline (baseline once per interior profile, one live gate per attempt, no agent-side fast run in implement, at most one per evidence-worker attempt, the full profile only as the ship release gate), stage order, and that no stage attempt is consumed by a pre-submit validator.",
   "policy_instructions": [
     {
       "policy_id": "DEV-001",
@@ -11,7 +11,7 @@
     {
       "policy_id": "DEV-001",
       "instruction": 10,
-      "summary": "The coder runs the fast profile once, as the final validation, and iterates on the impacted profile plus its added tests."
+      "summary": "The gates own the suites: the coder iterates on the impacted profile plus its added tests and runs no fast profile itself."
     },
     {
       "policy_id": "DEV-001",
@@ -140,8 +140,7 @@
             "source": "agent",
             "scope": "stage",
             "stage": "implement",
-            "min": 1,
-            "max": 1
+            "max": 0
           }
         ]
       }

@@ -1056,12 +1056,15 @@ Who runs which suite: the coder and the remediator iterate with
 `./bin/pan tests impacted` (the `impacted` profile — static import-graph
 analysis selects the test modules the change set reaches; it is an iteration
 profile, never a gate) plus the tests they added, and fall back to blast-radius
-judgment only for a target without an `impacted` profile. The two verify
-evidence workers (reviewer and QA) iterate on blast-radius tests. Each of the
-four then runs the `fast` profile once as validation; the remediator may run
-it earlier when the impacted selection is large or a failure reproduces only
-under the fast lane, and a repeat run after validation needs an exceptionally
-large blast radius. A retry that changed only claims or evidence runs no suite. The
+judgment only for a target without an `impacted` profile. They run neither
+`fast` nor the integration lane: once the impacted selection, their new tests,
+and the static checks pass, they submit, and the exit gate (plus verify's
+entry refresh after a remediation) runs every interior profile. A gate failure
+returns the stage with its log. `pan tests impacted` and
+`pan repository-check <profile>` print a pass line, or the failing tests with
+the path of the full log. The two verify evidence workers (reviewer and QA)
+iterate on blast-radius tests and may run the `fast` profile once as
+validation. A retry that changed only claims or evidence runs no suite. The
 evidence-worker brief names the harness root and asks for a `fast` run only
 when no gate has already passed `fast` at the current workspace fingerprint. A
 worker's check is recorded in the run's
