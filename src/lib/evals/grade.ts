@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { ensureDir, writeJsonAtomic, writeTextAtomic } from '../io.js'
-import { runGrader } from './graders.js'
+import { runGrader } from './graders/registry.js'
 import { loadRunRecords } from './run-records.js'
 import { loadEvalScenario } from './scenario.js'
 import type { EvalReport, LoadedEvalScenario } from './types.js'
