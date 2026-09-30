@@ -17,7 +17,7 @@ import {
 import type { LoadedPipelineConfig } from '../pipeline-config.js'
 import { auditDirectives } from '../governance/audit-directives.js'
 import { harnessRepairCategoryErrors } from '../governance/harness-repair-categories.js'
-import { validateTurnReminderProfiles } from '../governance/prompt-context.js'
+import { validateTurnReminderProfiles } from '../governance/prompt-context/reminders.js'
 import { HANDLER_IDS, getHandler } from '../requirements/handlers.js'
 import { auditTestScratchDirectories } from '../test-scratch-audit.js'
 import { loadRegistry, validateRegistry } from '../requirements/registry.js'
