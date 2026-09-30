@@ -475,6 +475,8 @@ no entries.
 
 Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The command creates the primer when absent and regenerates it when present. The librarian inventories target-owned documentation, incorporates useful verified details into the appropriate sections, and reconciles those claims against representative code, setup/build/install/test scripts, manifests, and bounded Git history before writing the validated primer to `docs/target-repo-primer.md` (`.pancreator/docs/target-repo-primer.md` when embedded).
 
+In an embedded or detached installation the primer also carries an `## Observability` section. `pan technologies detect --json` reports an `observability` list of Sentry, Datadog, and OpenTelemetry evidence from Git-tracked config files and dependency manifests, and the librarian names each detected tool with the query that checks a signal, or states `None detected`. A primer without the section stays valid.
+
 Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
 
 ## Build the operator brief system
@@ -2088,6 +2090,17 @@ applies the same test to a clean checkout. Landing work on `main` is your promot
 ### Rejecting a release packet
 
 Rejection routes remediation to the stage that owns the fix and carries your feedback forward to that stage's worker as a required input.
+
+### Post-ship observations
+
+A criterion that only a signal after ship can prove carries the `observe` proof type, and verify records its result as `observe`. The ship packet then records one `data.release.observations[]` entry for each such criterion: `criterion`, `signal`, `source`, `window` (such as `7d`), and `check`, the command or query that checks the signal. `RELEASE-VALIDATE-001` refuses a packet that omits one. In self-development the source is a harness record: run `events.jsonl` advisories, `pan-run` shell records, friction intakes, or `pan spend`. In an embedded or detached installation it is the observability tool the primer's `## Observability` section names. Nothing queries that tool automatically.
+
+```sh
+./bin/pan observations [--all] [--json]
+./bin/pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>]
+```
+
+`pan observations` lists every unresolved item with its `shipped_at`, its `due_at` (`shipped_at` plus the window), and a status of `open` while the window runs or `due` once it elapses. `--all` adds resolved items. `/pan-repair` checks each due item against its source, files a refuted item as a regression finding, and resolves each item after its intakes validate. A refutation must cite that intake with `--intake`. Resolutions append to `runtime/observations/resolutions.jsonl`, which `pan cleanup` retains; a second resolution of one item is refused.
 
 - `./bin/pan decide <run-id> reject --note "<what is wrong>"` sends the run back to implementation by default, then naturally re-runs review, QA, and ship.
 - `./bin/pan decide <run-id> reject --stage plan --note "<what is wrong>"` sends it back to planning when the defect is architectural rather than a coding error.

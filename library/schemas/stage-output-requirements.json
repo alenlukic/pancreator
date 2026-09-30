@@ -594,6 +594,12 @@
             "data.release.validation[].workspace_fingerprint",
             "data.release.validation[].evidence_path",
             "data.release.deferred_acceptance_criteria[]",
+            "data.release.observations[]",
+            "data.release.observations[].criterion",
+            "data.release.observations[].signal",
+            "data.release.observations[].source",
+            "data.release.observations[].window",
+            "data.release.observations[].check",
             "data.release.follow_up_cases[]",
             "data.release.follow_up_cases[].id",
             "data.release.follow_up_cases[].evidence[]",
@@ -762,6 +768,37 @@
           "path": "data.release.deferred_acceptance_criteria[]",
           "type": "string",
           "format": "acceptance criterion id deferred by the run; every criterion the run state defers MUST appear"
+        },
+        {
+          "path": "data.release.observations[]",
+          "type": "object",
+          "required": ["criterion", "signal", "source", "window", "check"],
+          "format": "one entry per acceptance criterion the latest verify output deferred to post-ship observation (result observe); an empty array or an absent field is valid when verify deferred none. `pan observations` lists these items and the harness technician audit resolves them"
+        },
+        {
+          "path": "data.release.observations[].criterion",
+          "type": "string",
+          "format": "acceptance criterion id the verify result deferred, such as AC-003"
+        },
+        {
+          "path": "data.release.observations[].signal",
+          "type": "string",
+          "format": "the observable signal that confirms or refutes the criterion after ship"
+        },
+        {
+          "path": "data.release.observations[].source",
+          "type": "string",
+          "format": "where the signal lives: in self-development, run events.jsonl advisories, pan-run shell records under runtime/logs/shell, friction intakes under runtime/inbox, or pan spend; in an embedded or detached installation, the observability tool the primer's Observability section names"
+        },
+        {
+          "path": "data.release.observations[].window",
+          "type": "string",
+          "format": "how long to watch after ship, as <n>h, <n>d, or <n>w, such as 7d"
+        },
+        {
+          "path": "data.release.observations[].check",
+          "type": "string",
+          "format": "the exact command or query an operator or agent runs against the source to check the signal"
         },
         {
           "path": "data.release.follow_up_cases[]",

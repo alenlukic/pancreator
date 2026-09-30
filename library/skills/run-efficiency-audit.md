@@ -68,6 +68,37 @@ work it served, and file it only when a trigger fires.
 7. Put the efficiency profile table inside `## Execution timeline` of the
    intake, and list each triggered signal for each run in the audit report.
 
+## Post-ship observations
+
+A ship output records `release.observations` for each acceptance criterion
+that verify deferred to a signal after ship. Each audit checks the items whose
+window ended.
+
+1. Run `pan observations --json`. Check each item whose `status` is `due`.
+   An `open` item is still inside its window.
+   Refute it early only when its signal already shows the regression.
+2. Run the item's `check` against its `source`.
+   In self-development, the source is run `events.jsonl` advisories,
+   `pan-run` shell records under `runtime/logs/shell/`, friction intakes
+   under `runtime/inbox/`, or `pan spend`.
+   In a target installation, the source is the tool the primer names.
+   Record the exact command, the window it covered, and the result.
+3. Report the item as `confirmed` when the signal holds for the window.
+   Report it as `refuted` when the signal shows the regression.
+   File that regression as a finding in the intake of its category.
+   Cite the run id and the criterion id in the finding.
+4. Report each checked item with its verdict, its evidence, and the intake
+   path of a refutation. The supervising repair session resolves it after
+   every intake passes its validator:
+
+   ```sh
+   pan observations resolve <run-id> <criterion-id> --status confirmed --note "<evidence>"
+   pan observations resolve <run-id> <criterion-id> --status refuted --note "<evidence>" --intake <intake-path>
+   ```
+
+5. A check that cannot run is an evidence gap. Report it, and leave the item
+   unresolved.
+
 ## Category boundaries
 
 - Failure categories: something breaks. Inefficiency requires every step to

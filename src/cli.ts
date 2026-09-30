@@ -157,6 +157,11 @@ import {
 } from './lib/state.js'
 import { listInbox, renderInbox, restoreInboxRequest } from './lib/inbox.js'
 import {
+  listObservations,
+  renderObservations,
+  resolveObservation,
+} from './lib/observations.js'
+import {
   archiveInstallationInboxItems,
   describeInstallations,
 } from './lib/installations.js'
@@ -282,7 +287,10 @@ import {
   FAST_WALL_STANDALONE_PHASE,
   formatFastWallReport,
 } from './lib/fast-wall-series.js'
-import { detectWorkspaceTechnologies } from './lib/technologies.js'
+import {
+  detectObservabilityTools,
+  detectWorkspaceTechnologies,
+} from './lib/technologies.js'
 import { resolveRunLayout } from './lib/run-layout.js'
 import {
   buildBriefSystem,
@@ -684,6 +692,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'horizon',
   'inbox',
   'installs',
+  'observations',
   'output',
   'quality',
   'release',
@@ -2063,12 +2072,15 @@ async function main(): Promise<void> {
       }
 
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+      const detectOptions = worktreeWorkspace
+        ? { workspace: worktreeWorkspace.path }
+        : {}
 
       print(
-        detectWorkspaceTechnologies(
-          root,
-          worktreeWorkspace ? { workspace: worktreeWorkspace.path } : {},
-        ),
+        {
+          ...detectWorkspaceTechnologies(root, detectOptions),
+          observability: detectObservabilityTools(root, detectOptions),
+        },
         true,
       )
       return
@@ -3089,6 +3101,36 @@ async function main(): Promise<void> {
         print(items, true)
       } else {
         print(renderInbox(items))
+      }
+
+      return
+    }
+    case 'observations': {
+      if (args[0] === 'resolve') {
+        const resolution = resolveObservation(root, {
+          runId: requiredPositional(args[1], 'run-id'),
+          criterion: requiredPositional(args[2], 'criterion-id'),
+          status: requiredArgument(option(args, '--status'), '--status'),
+          note: requiredArgument(noteOption(root, args), '--note'),
+          intake: option(args, '--intake'),
+        })
+
+        print({ status: 'resolved', resolution }, true)
+        return
+      }
+
+      if (args[0] !== undefined && !args[0].startsWith('--')) {
+        throw new PanError(`Unknown observations subcommand: ${args[0]}`, {
+          code: 'UNKNOWN_COMMAND',
+        })
+      }
+
+      const items = listObservations(root, { all: hasFlag(args, '--all') })
+
+      if (json) {
+        print(items, true)
+      } else {
+        print(renderObservations(items))
       }
 
       return

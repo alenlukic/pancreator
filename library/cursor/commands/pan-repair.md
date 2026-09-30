@@ -21,6 +21,7 @@ self-development intake without implementing the repair.
    - Require the technician to consolidate harness-directed findings across installations within the category partition. Require it to name each originating installation and item. Require it to report the cited harness-directed item paths per intake without archiving them.
    - Require it to audit every registry category for harness bugs, compliance issues, governance misses, agent execution errors, target-repository defects, and unresolved hypotheses.
    - Require it to build the efficiency profile of every workflow run the audit covers, and to run `{{PANCREATOR_PAN_COMMAND}} spend --days 7 --json` and join that report to the workflow and transcript records of the same window. Both apply without an operator prompt. A window the operator names replaces the 7 days.
+   - Require it to run `{{PANCREATOR_PAN_COMMAND}} observations --json`, check each `due` item against its named source, and report each verdict with its evidence. A refuted item is a regression finding in the intake of its category, and the report names that intake path.
    - Require it to write one intake for each category that produced a confirmed finding, and none for a category that produced no finding.
    - Require it to report the path of each intake it wrote together with the categories it cleared.
 7. Run this command once for each intake path the subagent reported: `{{PANCREATOR_PAN_COMMAND}} requirements run --persona harness-technician --workflow standalone --stage repair --kind repair --registry HARNESS-REPAIR-VALIDATE-001 --target <harness-relative-output-path> --json`.
@@ -30,11 +31,13 @@ self-development intake without implementing the repair.
    fails. Repeat this loop for each failing intake independently and report each
    intake result separately.
 9. For an embedded-installation sweep, archive nothing until every intake collected in this invocation passes `HARNESS-REPAIR-VALIDATE-001`. Then, for each selected installation, run `{{PANCREATOR_PAN_COMMAND}} installs archive <install-id> --intake <validated-intake-path> --item <reported-install-relative-path> [--item <reported-install-relative-path>] --json` for only the harness-directed items that validated intake cites. Never archive a target-owned or uncited item.
-10. Do not change source, governance, workflow state, the investigated run, or
+10. After every intake passes `HARNESS-REPAIR-VALIDATE-001`, resolve each observation verdict the technician reported. Run `{{PANCREATOR_PAN_COMMAND}} observations resolve <run-id> <criterion-id> --status confirmed --note "<evidence>"` for a confirmed item. Run `{{PANCREATOR_PAN_COMMAND}} observations resolve <run-id> <criterion-id> --status refuted --note "<evidence>" --intake <validated-intake-path>` for a refuted item. Leave an item without a verdict unresolved.
+11. Do not change source, governance, workflow state, the investigated run, or
     target application files. Do not push, publish, or deploy.
-11. Report every category the registry declares. Use these reporting rules:
+12. Report every category the registry declares. Use these reporting rules:
     - For a category with an intake, give the validated path, its complete contents, and the findings it covers. Also give the next action its category contract names.
     - The operator can pass a category routed to `/pan-start` directly to that command in the Pancreator self-development repository. The out-of-band category names supervised execution outside the harness.
     - For a category with no confirmed finding, state that result explicitly.
     - List the triggered efficiency signals for each run, and the spend window total, labeled cost, and lowest attribution coverage.
+    - List each checked observation item with its resolution, and each item left unresolved with the reason.
     - State any required remediation order across the intakes.
