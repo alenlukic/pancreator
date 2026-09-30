@@ -13,7 +13,7 @@ import {
   scopedReturnForStage,
   summarizePriorFailure,
 } from '../context.js'
-import { resolveBriefVocabulary } from '../briefs.js'
+import { resolveBriefVocabulary } from '../briefs/scaffold.js'
 import { invariant } from '../errors.js'
 import { withOperationMutex } from '../io.js'
 import {

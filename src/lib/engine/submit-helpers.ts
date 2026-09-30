@@ -6,7 +6,7 @@
 
 import path from 'node:path'
 
-import { renderBrief } from '../briefs.js'
+import { renderBrief } from '../briefs/render.js'
 import { errorMessage, invariant } from '../errors.js'
 import {
   ensureDir,
