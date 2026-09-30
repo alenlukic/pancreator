@@ -241,6 +241,10 @@ The command is safe to await in the foreground and safe to re-run. It returns
 `completed` at once when the output already exists. Wake lines print to
 stderr only on an interactive terminal.
 
+Only `stalled` is a stall signal. `unverified` means the watch could not
+settle a completion, and `timed_out` means the bound passed; neither says the
+worker stopped.
+
 The first arming writes the launch record
 `agent/evidence/<invocation-id>-launch.json`, and every launch-relative
 number the harness reports reads it. `--launched-at` supplies the time the
@@ -257,9 +261,18 @@ the launched agent itself.
 Each wake also records the worker's activity from the hook-fed agent index:
 its latest tool event, any open call, and its stop. A new event counts as
 progress, and an open call holds off a stall (a shell call only while its
-`bin/pan-run` heartbeat stays fresh). A completed stop with the output present
-completes the watch on `agent_state`. An error, abort, or completed stop
-without output ends it `unverified` (exit 4) and names the reason.
+`bin/pan-run` heartbeat stays fresh, younger than two cadences). A `stalled`
+or `unverified` verdict names the worker's open shell call, the linked
+`runtime/logs/shell/` record, its heartbeat age, and its last output line.
+Before any recovery the supervisor reads that record's `heartbeat.json`: a
+fresh heartbeat or a growing `log_bytes` means the worker is inside a live
+command, so the supervisor re-arms with `--agent-state running` and does not
+interrupt. `DELEGATE-001` names the only three conditions under which a
+supervisor may interrupt a worker or a wrapped command, and requires the
+record path, heartbeat age, and tail it read in the report. A completed stop
+with the output present completes the watch on `agent_state`. An error,
+abort, or completed stop without output ends it `unverified` (exit 4) and
+names the reason.
 
 A subagent launched outside a run is watched by its agent id:
 
@@ -2459,7 +2472,7 @@ When `pan release land` returns `conflict`:
 Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the exact `pan watch` command to observe the process:
 
 ```
-[pan-run] log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+[pan-run] <label> started pid=<pid> log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
 ```
 
 Run the command directly when you want to observe a wrapped agent command:
@@ -2470,7 +2483,17 @@ Run the command directly when you want to observe a wrapped agent command:
   --exit-record runtime/logs/shell/.../record.json
 ```
 
-`--exit-record` supplies the wrapper's `record.json`, and the path must stay inside `runtime/logs`; any other path is refused with `PATH_ESCAPE` when the watch arms. When the process has exited and the record holds a numeric `exit_code`, `pan watch` reports `exit_status` as that code instead of `unknown`, and the terminal wake entry records it. A timed-out watch prints a re-arm command that keeps `--output` and `--exit-record`.
+`--exit-record` supplies the wrapper's `record.json`, and the path must stay inside `runtime/logs`; any other path is refused with `PATH_ESCAPE` when the watch arms. When the process has exited and the record holds a numeric `exit_code`, `pan watch` reports `exit_status` as that code instead of `unknown`, and the terminal wake entry records it. A timed-out watch prints a re-arm command that keeps `--output` and `--exit-record`. Each interactive wake also prints the output's growth since the previous wake with an indented tail, or `no new output for <n>s` once the output has been silent for two cadences; when a `heartbeat.json` sits beside the exit record, the wake names its age and elapsed time too.
+
+### Reading a wrapped command's record
+
+`runtime/logs/shell/latest` links to the newest record directory. Inside it:
+
+- `record.json`: `ended_at` null means the command is still running; a numeric `exit_code` means it finished. `wrapper_pid` and `pid` name the wrapper and the command.
+- `heartbeat.json`: rewritten every beat (30 seconds by default, never more than 60). A file younger than two cadences means the wrapper is alive. `log_bytes` and `last_output_at` grow with output; `recent_lines` holds the last five non-empty output lines, which is the tail to read before any interruption.
+- `output.log`: the full redacted output.
+
+Silence in `output.log` is not a hang while `heartbeat.json` stays fresh: a long test or build is the ordinary cause. `pan watch --process` has no stall state; `timed_out` is its bound and prints a re-arm command. A heartbeat older than two cadences with `ended_at` null means the wrapper died (a crash or a host suspend). `DELEGATE-001` states when a supervisor may interrupt a wrapped command and what evidence it records.
 
 ### Shell hook
 
