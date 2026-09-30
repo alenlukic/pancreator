@@ -12,7 +12,7 @@ import { makeUniqueRunId } from '../state.js'
 import { resolvePolicies } from '../policies.js'
 import { isTargetInstallation, harnessPathPrefix } from '../project-config.js'
 import { resolveRequirements } from '../requirements/resolve.js'
-import { readTargetExtensionManifest } from '../target-authoring.js'
+import { readTargetExtensionManifest } from '../target-authoring/manifest.js'
 import {
   resolveOrCreateWorktree,
   workspaceRepositoryRoot,
