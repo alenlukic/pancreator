@@ -49,7 +49,6 @@ const PENDING_SPLIT = new Set([
   'src/lib/validators/code-style.ts',
   'src/lib/validators/refusals.ts',
   'src/lib/validators/stage-validators.ts',
-  'src/lib/watch.ts',
   'src/lib/worker-profile.ts',
   'src/lib/workflow-artifacts.ts',
   'src/lib/workflow.ts',
