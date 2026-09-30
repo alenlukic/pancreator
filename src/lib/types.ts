@@ -320,6 +320,40 @@ export interface StageEvidenceWorkerDefinition {
   scope: string
 }
 
+/**
+ * When a return visit of an evidence stage runs one agent instead of its
+ * evidence workers plus the stage worker. The harness decides; the stage
+ * worker never declares one.
+ */
+export interface StageScopedReturn {
+  /** Most paths the preceding remediation may have changed. */
+  max_paths: number
+  /** Most findings the verdict that routed the remediation may carry. */
+  max_findings: number
+  /** A changed path matching one of these keeps the full topology. */
+  excluded_path_globs: string[]
+  /**
+   * Evidence roles the stage worker takes over. A stage whose declared roles
+   * reach beyond this list, such as a design-composed verify, never scopes.
+   */
+  dimensions: string[]
+}
+
+/** The scoped return visit an invocation runs, with the facts that allowed it. */
+export interface InvocationScopedReturn {
+  remediation_invocation_id: string
+  /** The verify visit whose verdict routed the remediation, when one did. */
+  routing_invocation_id: string | null
+  blast_radius: string[]
+  findings: Array<{ id: string; severity: string; source: string }>
+  /** Each evidence dimension the stage worker covers, with its scope text. */
+  dimensions: Array<{ role: string; persona: string; scope: string }>
+  limits: Pick<
+    StageScopedReturn,
+    'max_paths' | 'max_findings' | 'excluded_path_globs'
+  >
+}
+
 /** Additive changes one optional design composition applies to a stage. */
 export interface DesignCompositionStageOverride {
   required_stage_outputs?: StageContextStageSelector[]
@@ -344,6 +378,7 @@ export interface StageDefinition {
   persona: string
   persona_by_verdict?: StagePersonaByVerdict
   evidence_workers?: StageEvidenceWorkerDefinition[]
+  scoped_return?: StageScopedReturn
   executor?: StageExecutor
   prompt?: string
   prompt_path?: string
@@ -1433,6 +1468,11 @@ export interface Invocation {
    * evidence report is missing.
    */
   evidence_workers?: InvocationEvidenceWorker[]
+  /**
+   * Present on a scoped return visit: no evidence worker runs, and the stage
+   * worker records every listed dimension in its own output.
+   */
+  scoped_return?: InvocationScopedReturn
   /**
    * Advisory suite profile section data, present when the stage context asks
    * for it and the run recorded a profile. Never a gate.

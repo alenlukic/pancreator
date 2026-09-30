@@ -273,6 +273,7 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
   assert.deepEqual(Object.keys(recorded).sort(), [
     'configuration',
     'fast',
+    'impacted-integration',
     'static',
   ])
   assert.equal(recorded.fast?.captured_by_run_id, alpha)
@@ -327,7 +328,7 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
 
   assert.deepEqual(
     adoption.map((advisory) => advisory.source),
-    ['prepare', 'prepare', 'prepare'],
+    ['prepare', 'prepare', 'prepare', 'prepare'],
     'one advisory per adopted interior gate profile',
   )
 
@@ -369,7 +370,12 @@ test('a baseline artifact that names no capture workspace is adopted without one
   const alphaWorkspace = loadState(root, alpha).workspace_root
   const legacyDirectory = 'runtime/logs/cohorts/cohort-legacy/baselines'
 
-  for (const profile of ['configuration', 'fast', 'static']) {
+  for (const profile of [
+    'configuration',
+    'fast',
+    'impacted-integration',
+    'static',
+  ]) {
     writeJson(
       path.join(root, legacyDirectory, `pre-implementation-${profile}.json`),
       {

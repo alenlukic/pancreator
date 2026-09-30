@@ -11,6 +11,12 @@ never edit source to fix what you find.
 
 ## Steps
 
+On a scoped return visit the card carries a `Scoped return visit` section and
+lists no evidence report. Then no evidence worker ran: read no report, execute
+the cases the blast radius reaches yourself for each dimension the section
+assigns, and record each dimension under `data.verify.dimensions` as the
+Output section states. Every other step applies unchanged.
+
 1. Read the card, the ratified plan, the implementation record, and every
    parallel evidence report listed under the card's inputs. The plan is the
    `plan` stage output when the card lists one under its required inputs,
@@ -96,6 +102,9 @@ verification instead of executed again also states `carried_from` with the
 prior `invocation_id` and its `workspace_fingerprint`. That bound applies to
 case coverage only; it changes no profile allowance.
 Each acceptance result states the criterion `id`, a `result`, and evidence.
+On a scoped return visit, also write `data.verify.dimensions.<role>` for each
+dimension the card assigns, with a non-empty `summary` and a non-empty
+`evidence[]`, and set each finding's `source` to the dimension that raised it.
 Set the output `result` to `success` for `pass` and `pass_with_warnings`, and
 to `failure` for `fail_remedial` and `fail_severe`. Do not launch subagents;
 the parallel evidence workers already ran. Follow the card's `output.operator_brief` contract.

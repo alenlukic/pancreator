@@ -21,6 +21,7 @@ import {
   buildInvocationInputs,
   operatorStageRepairContext,
   remediationReturn,
+  scopedReturnForStage,
   summarizePriorFailure,
 } from './context.js'
 import {
@@ -5272,11 +5273,28 @@ export function prepareInvocation(
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
 
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
+    const workspace = workspaceSnapshotForRun(root, state)
+    // A return visit that serves a small repair runs the stage worker alone;
+    // the stage declares the limits and the harness decides from the record.
+    const scopedDecision =
+      stage.persona !== 'orchestrator'
+        ? scopedReturnForStage(
+            root,
+            state,
+            stage,
+            workspace.entries
+              .filter((entry) => entry.slice(0, 2).includes('D'))
+              .map(snapshotEntryPath),
+          )
+        : undefined
+    const scopedReturn = scopedDecision?.scoped ?? undefined
     // Parallel evidence workers run as top-level named agents so their
     // persona-model mappings hold. Resolving them at prepare time makes a
     // missing mapping fail here rather than silently downgrade at launch.
     const evidenceWorkers =
-      stage.evidence_workers && stage.persona !== 'orchestrator'
+      stage.evidence_workers &&
+      stage.persona !== 'orchestrator' &&
+      !scopedReturn
         ? stage.evidence_workers.map((worker) => {
             const workerMapping = resolvePersonaMapping(
               pipelineConfig,
@@ -5310,7 +5328,6 @@ export function prepareInvocation(
           })
         : undefined
 
-    const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
     const policies = resolvePolicies(root, {
       persona: stage.persona,
@@ -5366,7 +5383,14 @@ export function prepareInvocation(
                   .join(', ') +
                 ` — and confirm every report exists and is non-empty. Only ` +
                 `then launch `
-              : 'Launch ') +
+              : scopedReturn
+                ? `Scoped return visit: no evidence worker runs, and the ` +
+                  `stage worker records the ` +
+                  scopedReturn.dimensions
+                    .map((item) => item.role)
+                    .join(' and ') +
+                  ` dimensions itself. Launch `
+                : 'Launch ') +
             `the named Cursor agent for persona '${stage.persona}' ` +
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
@@ -5598,6 +5622,7 @@ export function prepareInvocation(
         ...(prDescription ? { prDescription } : {}),
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
+      ...(scopedReturn ? { scoped_return: scopedReturn } : {}),
       ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       ...(fastWall ? { fast_wall: fastWall } : {}),
       policies,
@@ -5836,6 +5861,15 @@ export function prepareInvocation(
       invocation_id: invocationId,
       stage: stage.slug,
       attempt,
+      // Audits count scoped and declined return visits from this record.
+      ...(scopedDecision
+        ? {
+            scoped_return: scopedDecision.scoped !== null,
+            ...(scopedDecision.scoped === null
+              ? { scoped_return_declined: scopedDecision.reason }
+              : {}),
+          }
+        : {}),
     })
     recordDefaultModelEvidence(root, state, invocation)
     deferred.registration = {

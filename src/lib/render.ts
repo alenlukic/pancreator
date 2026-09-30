@@ -640,7 +640,13 @@ function renderSupervisorProcedureBody(
                   'missing.',
               ]),
         ]
-      : []),
+      : invocation.scoped_return
+        ? [
+            '1a. Scoped return visit: no evidence worker runs. Launch the ' +
+              'stage worker directly; its card assigns it every evidence ' +
+              'dimension.',
+          ]
+        : []),
     ...deliverySteps,
     ...(!externalDelegation && delegation.watch_command
       ? [
@@ -728,6 +734,70 @@ function renderRemediationReturn(invocation: Invocation): string[] {
       'executing it again, and record `carried_from` on that case with the ' +
       'prior invocation id and the workspace fingerprint it was observed ' +
       'at. This caps case coverage only; it changes no profile allowance.',
+  ]
+}
+
+/**
+ * The section a scoped return visit carries in place of the evidence
+ * reports: why the harness scoped it, the repair it serves, and each
+ * dimension's scope with the output section that records it.
+ */
+function renderScopedReturn(invocation: Invocation): string[] {
+  const scoped = invocation.scoped_return
+
+  if (!scoped) {
+    return []
+  }
+
+  const { limits } = scoped
+  const excluded =
+    limits.excluded_path_globs.length > 0
+      ? `, none under ${limits.excluded_path_globs.map((glob) => `\`${glob}\``).join(', ')}`
+      : ''
+
+  return [
+    '### Scoped return visit',
+    '',
+    'No evidence worker runs on this visit. The harness scoped it because ' +
+      `remediation \`${scoped.remediation_invocation_id}\` changed ` +
+      `${scoped.blast_radius.length} path(s) and the routing verdict carried ` +
+      `${scoped.findings.length} finding(s), within this stage's limits: at ` +
+      `most ${limits.max_paths} paths and ${limits.max_findings} findings` +
+      `${excluded}, no deleted test, and no fail_severe verdict.`,
+    '',
+    'You cover every evidence dimension below yourself, each as its own ' +
+      'section of `data.verify.dimensions`, and you stay independent of the ' +
+      'remediation. `VERIFY-001` treats each section as the report its ' +
+      'evidence worker would have written.',
+    '',
+    'Blast radius:',
+    '',
+    ...scoped.blast_radius.map((changedPath) => `- \`${changedPath}\``),
+    '',
+    'Findings of the routing verdict:',
+    '',
+    ...(scoped.findings.length > 0
+      ? scoped.findings.map(
+          (finding) =>
+            `- \`${finding.id}\` (${finding.severity}, from ${finding.source})`,
+        )
+      : ['- None.']),
+    '',
+    ...scoped.dimensions.flatMap((dimension) => [
+      `#### ${dimension.role} dimension`,
+      '',
+      dimension.scope,
+      '',
+      `Record it in \`data.verify.dimensions.${dimension.role}\` with a ` +
+        'non-empty `summary` and a non-empty `evidence[]` of paths, ' +
+        'commands, or observations. Cite this dimension as the `source` of ' +
+        'each finding it raises.',
+      '',
+    ]),
+    'Execute the cases the blast radius reaches, record each in ' +
+      '`data.verify.qa_cases`, and carry every other case forward with ' +
+      '`carried_from`, as a return-visit evidence worker would.',
+    '',
   ]
 }
 
@@ -1343,6 +1413,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           '',
         ]
       : []),
+    ...renderScopedReturn(invocation),
     ...(contextReferenceLines.length > 0 ? [...contextReferenceLines, ''] : []),
     ...(conditionalReferences.length > 0
       ? ['### Conditional references', '', ...conditionalReferences, '']

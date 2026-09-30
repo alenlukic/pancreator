@@ -402,6 +402,15 @@ const VERIFY_FIELD_REFUSALS: readonly StageRefusal[] = [
     code: 'verify.severity_rationale',
     paths: ['data.verify.severity_rationale'],
   },
+  {
+    code: 'verify.dimension_field',
+    paths: [
+      'data.verify.dimensions.review.summary',
+      'data.verify.dimensions.review.evidence[]',
+      'data.verify.dimensions.qa.summary',
+      'data.verify.dimensions.qa.evidence[]',
+    ],
+  },
 ]
 
 /**
@@ -410,6 +419,18 @@ const VERIFY_FIELD_REFUSALS: readonly StageRefusal[] = [
  * declaration the whole mechanism rests on.
  */
 const VERIFY_UNOWNED_REFUSALS: readonly StageRefusal[] = [
+  {
+    code: 'verify.dimension_missing',
+    paths: [],
+    unowned_reason:
+      'A scoped return visit lacks the whole section of a dimension its card assigns, a presence rule over the object the declared fields sit in.',
+  },
+  {
+    code: 'verify.dimension_source',
+    paths: [],
+    unowned_reason:
+      "The refusal compares each finding's declared source against the dimensions the card assigns, which is a relation rather than a field.",
+  },
   {
     code: 'verify.missing',
     paths: [],
@@ -3314,6 +3335,81 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
           issue(
             'verify.acceptance_unknown',
             `Unknown acceptance id not in plan: ${id}`,
+          ),
+        )
+      }
+    }
+  }
+
+  // A scoped return visit ran no evidence worker, so each dimension the card
+  // assigned is a section of this output instead of a separate report.
+  const scoped = isRecord(input.invocation?.scoped_return)
+    ? input.invocation.scoped_return
+    : null
+
+  if (scoped) {
+    const roles = (
+      Array.isArray(scoped.dimensions) ? scoped.dimensions : []
+    ).flatMap((dimension) =>
+      isRecord(dimension) && typeof dimension.role === 'string'
+        ? [dimension.role]
+        : [],
+    )
+    const dimensions = isRecord(verify.dimensions) ? verify.dimensions : {}
+
+    for (const role of roles) {
+      const section = dimensions[role]
+
+      if (!isRecord(section)) {
+        issues.push(
+          issue(
+            'verify.dimension_missing',
+            `scoped return visit MUST record data.verify.dimensions.${role}`,
+          ),
+        )
+        continue
+      }
+
+      if (
+        typeof section.summary !== 'string' ||
+        section.summary.trim().length === 0
+      ) {
+        issues.push(
+          issue(
+            'verify.dimension_field',
+            `data.verify.dimensions.${role}.summary MUST be a non-empty string`,
+          ),
+        )
+      }
+
+      if (
+        !Array.isArray(section.evidence) ||
+        section.evidence.length === 0 ||
+        !section.evidence.every(
+          (entry) => typeof entry === 'string' && entry.trim().length > 0,
+        )
+      ) {
+        issues.push(
+          issue(
+            'verify.dimension_field',
+            `data.verify.dimensions.${role}.evidence MUST be a non-empty ` +
+              'array of non-empty strings',
+          ),
+        )
+      }
+    }
+
+    for (const finding of findings) {
+      if (
+        isRecord(finding) &&
+        typeof finding.source === 'string' &&
+        !roles.includes(finding.source)
+      ) {
+        issues.push(
+          issue(
+            'verify.dimension_source',
+            `finding ${String(finding.id)} names source '${finding.source}', ` +
+              `which this scoped visit does not cover (${roles.join(', ')})`,
           ),
         )
       }

@@ -24,6 +24,7 @@ import type {
   StageEntryGate,
   StageGate,
   StageEvidenceWorkerDefinition,
+  StageScopedReturn,
   StagePersonaByVerdict,
   StageTransitions,
   WorkflowDefinition,
@@ -356,6 +357,58 @@ function parseEvidenceWorkers(
   return workers
 }
 
+function parseScopedReturn(
+  value: unknown,
+  source: string,
+  workers: StageEvidenceWorkerDefinition[] | undefined,
+): StageScopedReturn | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(isRecord(value), `${source} MUST be an object.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+
+  for (const key of ['max_paths', 'max_findings'] as const) {
+    invariant(
+      Number.isInteger(value[key]) && (value[key] as number) >= 1,
+      `${source}.${key} MUST be a positive integer.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+
+  const globs = value.excluded_path_globs ?? []
+
+  invariant(
+    Array.isArray(globs) &&
+      globs.every((glob) => typeof glob === 'string' && glob.length > 0),
+    `${source}.excluded_path_globs MUST be an array of non-empty strings.`,
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  const dimensions = value.dimensions
+  const declared = new Set((workers ?? []).map((worker) => worker.role))
+
+  invariant(
+    Array.isArray(dimensions) &&
+      dimensions.length > 0 &&
+      dimensions.every(
+        (role) => typeof role === 'string' && declared.has(role),
+      ),
+    `${source}.dimensions MUST be a non-empty array of evidence roles the ` +
+      'stage declares.',
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  return {
+    max_paths: value.max_paths as number,
+    max_findings: value.max_findings as number,
+    excluded_path_globs: globs as string[],
+    dimensions: dimensions as string[],
+  }
+}
+
 function parseEntryGate(
   value: unknown,
   source: string,
@@ -562,6 +615,16 @@ export function parseStage(
 
   if (evidenceWorkers) {
     stage.evidence_workers = evidenceWorkers
+  }
+
+  const scopedReturn = parseScopedReturn(
+    value.scoped_return,
+    `${source}.scoped_return`,
+    evidenceWorkers,
+  )
+
+  if (scopedReturn) {
+    stage.scoped_return = scopedReturn
   }
 
   const entryGate = parseEntryGate(value.entry_gate, `${source}.entry_gate`)

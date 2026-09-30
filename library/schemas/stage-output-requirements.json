@@ -286,7 +286,11 @@
             "data.verify.remediation_guidance",
             "data.verify.severity_rationale",
             "data.verify.blocking_reason",
-            "data.verify.missing_evidence_paths"
+            "data.verify.missing_evidence_paths",
+            "data.verify.dimensions.review.summary",
+            "data.verify.dimensions.review.evidence[]",
+            "data.verify.dimensions.qa.summary",
+            "data.verify.dimensions.qa.evidence[]"
           ]
         }
       ],
@@ -411,6 +415,26 @@
           "path": "data.verify.missing_evidence_paths",
           "type": "array",
           "format": "required when top-level result is blocked; non-empty string array of missing evidence paths"
+        },
+        {
+          "path": "data.verify.dimensions.review.summary",
+          "type": "string",
+          "format": "required on a scoped return visit the card declares: one non-empty paragraph stating the review dimension's verdict; absent otherwise"
+        },
+        {
+          "path": "data.verify.dimensions.review.evidence[]",
+          "type": "string",
+          "format": "required on a scoped return visit: non-empty string array of paths, commands, or observations behind the review dimension"
+        },
+        {
+          "path": "data.verify.dimensions.qa.summary",
+          "type": "string",
+          "format": "required on a scoped return visit the card declares: one non-empty paragraph stating the qa dimension's verdict; absent otherwise"
+        },
+        {
+          "path": "data.verify.dimensions.qa.evidence[]",
+          "type": "string",
+          "format": "required on a scoped return visit: non-empty string array of paths, commands, or observations behind the qa dimension"
         }
       ]
     },

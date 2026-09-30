@@ -86,6 +86,40 @@
         }
       }
     },
+    "scoped_return": {
+      "type": "object",
+      "description": "A return visit that serves a small remediation runs the stage worker alone, covering each listed evidence dimension in its own output. The harness decides from the preceding remediation's changed paths and the verdict that routed it; a first visit, a fail_severe return, a path matching excluded_path_globs, a deleted test, or a stage declaring evidence roles beyond dimensions keeps the full topology.",
+      "required": ["max_paths", "max_findings", "dimensions"],
+      "additionalProperties": false,
+      "properties": {
+        "max_paths": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Most paths the preceding remediation may have changed."
+        },
+        "max_findings": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Most findings the routing verdict may carry."
+        },
+        "excluded_path_globs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "A changed path matching one of these keeps the full topology."
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "Evidence roles the stage worker covers on a scoped visit. Each MUST be a role evidence_workers declares."
+        }
+      }
+    },
     "executor": {
       "enum": ["agent", "harness"],
       "description": "Execution mode. agent delegates to a worker persona. harness runs deterministic runtime logic without delegation."

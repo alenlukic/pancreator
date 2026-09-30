@@ -318,6 +318,18 @@ never counts as the stage worker's delegation evidence, because the evidence
 workers and the stage worker share one invocation id. `pan worker state`
 marks each role the ready marker names as `evidence ready`.
 
+A return visit that serves a small repair runs the verifier alone. The
+delivery and delivery-chunk verify stages declare the limits under
+`scoped_return`: the remediation changed one to three paths, none under
+`governance/**`, the workspace deletes no test, and the verdict that routed the
+remediation carried at most two findings and was not `fail_severe`. The card
+then carries a `Scoped return visit` section in place of the evidence reports,
+the supervisor procedure launches the verifier directly, and the verify output
+records `data.verify.dimensions.review` and `data.verify.dimensions.qa`. The
+`invocation_prepared` event records `scoped_return` and, for a declined visit,
+the reason. A design-composed verify never scopes, because its design roles
+are outside the declared dimensions.
+
 `pan submit` accepts one of three records for every worker invocation an
 operator session delegated:
 
