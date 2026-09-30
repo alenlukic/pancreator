@@ -6,7 +6,7 @@ import {
   type CandidatePreview,
   type ClosureRecord,
 } from './debloat/closure.js'
-import { buildReferenceGraph, findReferences } from './debloat/graph.js'
+import { buildReferenceGraph, findReferences } from './debloat/graph/build.js'
 import {
   loadIntentClassifier,
   type IntentClassifier,
@@ -31,11 +31,8 @@ import {
   sessionPaths,
   type DebloatSessionPaths,
 } from './debloat/session.js'
-import {
-  scanUsage,
-  type FacilityUsage,
-  type UsageScanSources,
-} from './debloat/usage.js'
+import type { FacilityUsage, UsageScanSources } from './debloat/usage/model.js'
+import { scanUsage } from './debloat/usage/scan.js'
 import {
   buildSymbolIndex,
   sourceSymbolFacilities,
@@ -72,10 +69,12 @@ export {
   buildReferenceGraph,
   findReferences,
   reachableFrom,
-  type Reference,
-  type ReferenceGraph,
-  type ReferrerClass,
-} from './debloat/graph.js'
+} from './debloat/graph/build.js'
+export type {
+  Reference,
+  ReferenceGraph,
+  ReferrerClass,
+} from './debloat/graph/model.js'
 export {
   INTENT_CORPUS_PATH,
   intentFeatures,
@@ -96,12 +95,9 @@ export {
   type FacilityCategory,
 } from './debloat/inventory.js'
 export { DEBLOAT_ROOT, sessionPaths } from './debloat/session.js'
-export {
-  defaultTranscriptsRoot,
-  scanUsage,
-  type EvidenceTier,
-  type FacilityUsage,
-} from './debloat/usage.js'
+export type { EvidenceTier, FacilityUsage } from './debloat/usage/model.js'
+export { scanUsage } from './debloat/usage/scan.js'
+export { defaultTranscriptsRoot } from './debloat/usage/transcripts.js'
 export {
   buildSymbolIndex,
   sourceSymbolFacilities,

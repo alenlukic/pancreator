@@ -179,6 +179,7 @@ test('the check wrappers and their compact reporter are verification substrate',
     'bin/run-tests',
     'src/lib/check-output.ts',
     'src/lib/test-impact.ts',
+    'src/lib/test-impact/select.ts',
     'src/lib/repository-checks.ts',
     'src/lib/repository-checks/runner.ts',
   ]

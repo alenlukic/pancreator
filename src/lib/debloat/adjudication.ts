@@ -1,5 +1,5 @@
 import type { Facility } from './inventory.js'
-import type { FacilityUsage } from './usage.js'
+import type { FacilityUsage } from './usage/model.js'
 
 export type DeterministicVerdict = 'unused' | 'unclear' | 'retained'
 export type AgenticVerdict = 'remove' | 'keep'

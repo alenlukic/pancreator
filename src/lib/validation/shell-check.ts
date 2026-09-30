@@ -34,7 +34,8 @@ import {
   appendTargetFastWallRun,
   FAST_WALL_CRITERION_ID,
 } from '../fast-wall-series.js'
-import { buildModuleGraphByRegex, selectImpactedTests } from '../test-impact.js'
+import { buildModuleGraphByRegex } from '../test-impact/graph.js'
+import { selectImpactedTests } from '../test-impact/select.js'
 import {
   repositoryCheckGateCommand,
   gateCacheableSnapshot,

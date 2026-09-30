@@ -3,12 +3,9 @@ import path from 'node:path'
 
 import { invariant } from '../errors.js'
 import { isDirectory, isFile, readText } from '../io.js'
-import {
-  buildModuleGraph,
-  loadTypeScript,
-  resolveSpecifier,
-  type ModuleGraph,
-} from '../test-impact.js'
+import { buildModuleGraph } from '../test-impact/graph.js'
+import type { ModuleGraph } from '../test-impact/model.js'
+import { loadTypeScript, resolveSpecifier } from '../test-impact/parse.js'
 import { facilitiesByPath, type Facility } from './inventory.js'
 
 export type ExportedSymbolKind =

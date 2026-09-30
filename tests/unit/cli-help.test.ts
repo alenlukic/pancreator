@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
@@ -38,7 +38,12 @@ test('every option the help documents is one an argv parser reads', () => {
 
   // The help body never quotes a flag, so a quoted occurrence in a parser
   // source is a literal the dispatcher compares against, never help prose.
-  const parsers = ['src/cli.ts', 'src/lib/test-impact.ts']
+  const testImpactModules = readdirSync(
+    path.join(process.cwd(), 'src/lib/test-impact'),
+  )
+    .filter((entry) => entry.endsWith('.ts'))
+    .map((entry) => `src/lib/test-impact/${entry}`)
+  const parsers = ['src/cli.ts', 'src/lib/test-impact.ts', ...testImpactModules]
     .map((relative) => readFileSync(path.join(process.cwd(), relative), 'utf8'))
     .join('\n')
 
