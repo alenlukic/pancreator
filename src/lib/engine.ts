@@ -330,6 +330,7 @@ import {
   workflowPersonaNames,
 } from './workflow.js'
 import {
+  gitSourceContentFingerprint,
   gitStatusPaths,
   gitWorkspaceSnapshot,
   isGitRepository,
@@ -337,6 +338,7 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { buildCurrency, buildCurrencyAdvisory } from './build-identity.js'
+import { RELEASE_LANDING_METADATA_PATHS } from './versioning.js'
 import { entryGateWaiver, waiverCoversCriterion } from './waivers.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
@@ -2223,6 +2225,44 @@ function entryGateLaneGap(
     : undefined
 }
 
+/**
+ * The source content an executed, passing entry gate verified, or undefined
+ * when the gate proved nothing about the tree: waived, disabled by the
+ * verification level, skipped, or not a repository-check profile.
+ */
+function entryGateVerifiedSource(
+  root: string,
+  state: RunState,
+  criterion: StageDefinition['criteria'][number],
+  result: DeterministicResult,
+): StageEntryGateRecord['verified_source'] {
+  if (
+    !result.passed ||
+    result.waived ||
+    result.disabled ||
+    result.skipped ||
+    result.overridden
+  ) {
+    return undefined
+  }
+
+  const { profile } = effectiveRepositoryCheckProfile(
+    state.verification,
+    criterion,
+  )
+
+  if (!profile) {
+    return undefined
+  }
+
+  const fingerprint = gitSourceContentFingerprint(
+    workspaceDirectory(root, state),
+    RELEASE_LANDING_METADATA_PATHS,
+  )
+
+  return fingerprint ? { fingerprint, profile } : undefined
+}
+
 function runStageEntryGate(
   root: string,
   state: RunState,
@@ -2305,17 +2345,31 @@ function runStageEntryGate(
   )
 
   if (entryGateSatisfied(result)) {
+    const verifiedSource = entryGateVerifiedSource(
+      root,
+      state,
+      criterion,
+      result,
+    )
+
     records[stage.slug] = {
       criterion_id: criterion.id,
       executions,
       failures: 0,
       last_result: result,
       passed_at_history_length: state.stage_history.length,
+      ...(verifiedSource ? { verified_source: verifiedSource } : {}),
     }
     persistRun(root, state, 'entry_gate_passed', {
       stage: stage.slug,
       criterion: criterion.id,
       ...(result.evidence_path ? { evidence_path: result.evidence_path } : {}),
+      ...(verifiedSource
+        ? {
+            verified_source_fingerprint: verifiedSource.fingerprint,
+            verified_profile: verifiedSource.profile,
+          }
+        : {}),
     })
 
     return 'pass'

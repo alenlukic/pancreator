@@ -1832,6 +1832,15 @@ export interface StageEntryGateRecord {
    */
   lane_gap?: { lanes: string[]; verified_profiles: string[] }
   /**
+   * Source content digest of the workspace the last pass verified, outside
+   * `runtime/` and the release landing metadata paths, with the profile that
+   * pass ran. Present only when the gate executed its profile and passed; a
+   * waived or level-disabled gate proved nothing and records none. `pan
+   * release land` reads it to tell a no-op integrate on this tree from one
+   * on a tree nobody verified.
+   */
+  verified_source?: { fingerprint: string; profile: string }
+  /**
    * Length of `stage_history` when the current visit passed. The pass stands
    * while no other stage submits after it; leaving the stage closes the visit.
    */

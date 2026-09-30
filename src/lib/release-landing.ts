@@ -21,6 +21,7 @@ import {
   gitMergeAbort,
   gitRevParse,
   gitShowFile,
+  gitSourceContentFingerprint,
   gitStagePaths,
   gitWorktreeForBranch,
   gitWorktreeIsDirty,
@@ -37,7 +38,12 @@ import {
 } from './release-allocation.js'
 import { finalizeLocalRelease } from './release-preparation.js'
 import { runRepositoryCheck } from './repository-checks.js'
-import { isSemanticVersion, type ReleaseBump } from './versioning.js'
+import { loadState } from './state.js'
+import {
+  isSemanticVersion,
+  RELEASE_LANDING_METADATA_PATHS,
+  type ReleaseBump,
+} from './versioning.js'
 import {
   resolveWorktreeWorkspace,
   workspaceRepositoryRoot,
@@ -51,14 +57,7 @@ const GIT_MAX_BUFFER = 20 * 1024 * 1024
 const OBJECT_NAME_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u
 
 /** Metadata file paths that are resolved to the tip's content on integration. */
-const METADATA_PATHS = new Set([
-  'VERSION',
-  'CHANGELOG.md',
-  'package.json',
-  'package-lock.json',
-  'release/index.json',
-  'docs/embedded-installation.md',
-])
+const METADATA_PATHS = RELEASE_LANDING_METADATA_PATHS
 
 const RELEASE_HEADING_PATTERN = /^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}/mu
 
@@ -94,6 +93,8 @@ export interface LandingResult {
   index_commit?: string
   merge_commit?: string
   verified_profiles?: string[]
+  /** Why the verify step ran the profiles it ran. */
+  verification_basis?: LandingVerification['basis']
   lock_wait_seconds?: number
   lock_hold_seconds?: number
   /** Source conflict paths when status is 'conflict'. */
@@ -111,6 +112,26 @@ export interface LandReleaseOptions {
   verifyProfiles?: string[]
   waitSeconds?: number
 }
+
+/**
+ * The profiles a land verifies with, and why.
+ *
+ * - `operator`: the caller named the profiles with `--verify-profile`.
+ * - `entry_gate_fingerprint`: integration merged nothing, and the worktree's
+ *   source content, outside the release metadata paths, equals the tree the
+ *   run's ship entry gate verified on `full`. The release commit changed only
+ *   metadata, so `static` and `configuration` check what it did change.
+ * - `default`: anything else runs `full`, with the reason recorded.
+ */
+export interface LandingVerification {
+  profiles: string[]
+  basis: 'operator' | 'entry_gate_fingerprint' | 'default'
+  reason: string
+  source_fingerprint?: string
+}
+
+/** The profiles a land after a matching verified tree runs. */
+export const VERIFIED_TREE_LAND_PROFILES = ['static', 'configuration']
 
 export type TipIntegration =
   | { outcome: 'already_current' }
@@ -671,7 +692,6 @@ export function landRelease(
   options: LandReleaseOptions,
 ): LandingResult {
   const { worktree: worktreeName, runId = null, waitSeconds } = options
-  const verifyProfiles = options.verifyProfiles ?? ['full']
 
   const worktreeRelative = resolveWorktreeWorkspace(root, worktreeName)
   const worktreePath = path.resolve(root, worktreeRelative)
@@ -831,23 +851,42 @@ export function landRelease(
     }
 
     // ── Step 6: Verify. ──────────────────────────────────────────────────────
+    // Resolved after finalize, so the fingerprint reads the tree the release
+    // commit left, which is the tree that lands.
+    const verification = resolveLandingVerification(
+      root,
+      worktreePath,
+      integration.outcome,
+      runId,
+      options.verifyProfiles,
+    )
+    const verifyProfiles = verification.profiles
+    const basisFields = {
+      basis: verification.basis,
+      reason: verification.reason,
+      ...(verification.source_fingerprint
+        ? { source_fingerprint: verification.source_fingerprint }
+        : {}),
+    }
+
     for (const profile of verifyProfiles) {
       const checkResult = runRepositoryCheck(root, profile, {
         workspace: worktreePath,
       })
 
       if (checkResult.status !== 'passed') {
-        recordStep('verify', { profile, outcome: 'failed' })
+        recordStep('verify', { profile, outcome: 'failed', ...basisFields })
 
         return finish({
           status: 'verification_failed',
           ...released,
           verified_profiles: [],
+          verification_basis: verification.basis,
           verification_output: JSON.stringify(checkResult, null, 2),
         })
       }
 
-      recordStep('verify', { profile, outcome: 'passed' })
+      recordStep('verify', { profile, outcome: 'passed', ...basisFields })
     }
 
     // ── Step 7: Check. ───────────────────────────────────────────────────────
@@ -881,6 +920,7 @@ export function landRelease(
       ...released,
       tip_after: tipAfter,
       verified_profiles: verifyProfiles,
+      verification_basis: verification.basis,
     })
   } catch (error) {
     mutex.release()
@@ -889,6 +929,82 @@ export function landRelease(
       message: errorMessage(error),
     })
     throw error
+  }
+}
+
+/**
+ * Decide the land's verify profiles.
+ *
+ * A land that merged commits, or names no run, or whose run has no executed
+ * `full` entry-gate pass, keeps `full`. A no-op integrate on a tree whose
+ * source content matches the one the entry gate verified runs `static` and
+ * `configuration`. An operator-named profile list always wins.
+ */
+export function resolveLandingVerification(
+  root: string,
+  worktreePath: string,
+  integration: TipIntegration['outcome'],
+  runId: string | null,
+  requested: string[] | undefined,
+  readVerifiedSource: (
+    runId: string,
+  ) => { fingerprint: string; profile: string } | undefined = (id) =>
+    Object.values(loadState(root, id).entry_gates ?? {}).find(
+      (record) => record.verified_source?.profile === 'full',
+    )?.verified_source,
+): LandingVerification {
+  if (requested && requested.length > 0) {
+    return {
+      profiles: requested,
+      basis: 'operator',
+      reason: 'the caller named the profiles with --verify-profile',
+    }
+  }
+
+  const full = (reason: string): LandingVerification => ({
+    profiles: ['full'],
+    basis: 'default',
+    reason,
+  })
+
+  if (integration !== 'already_current') {
+    return full('integration merged commits, so the landing tree is new')
+  }
+
+  if (!runId) {
+    return full('no --run names an entry gate that verified this tree')
+  }
+
+  let verified: { fingerprint: string; profile: string } | undefined
+
+  try {
+    verified = readVerifiedSource(runId)
+  } catch {
+    return full(`run ${runId} could not be read`)
+  }
+
+  if (verified?.profile !== 'full') {
+    return full(`run ${runId} records no executed full entry-gate pass`)
+  }
+
+  const current = gitSourceContentFingerprint(
+    worktreePath,
+    RELEASE_LANDING_METADATA_PATHS,
+  )
+
+  if (current !== verified.fingerprint) {
+    return full(
+      'the worktree source differs from the tree the entry gate verified',
+    )
+  }
+
+  return {
+    profiles: VERIFIED_TREE_LAND_PROFILES,
+    basis: 'entry_gate_fingerprint',
+    reason:
+      'integration merged nothing and the source matches the tree the ' +
+      'entry gate verified on full; only release metadata changed',
+    source_fingerprint: current,
   }
 }
 

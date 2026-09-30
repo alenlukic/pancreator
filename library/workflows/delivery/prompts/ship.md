@@ -77,7 +77,10 @@ otherwise the request the card delivers, which is the ratified specification.
    text. The profile gates nothing. A card without the section records no
    profile; state that and continue.
 10. After finalize, run `pan release land --worktree <name> --run <run-id> --json`
-    to integrate, verify, and fast-forward pan-dev.
+    to integrate, verify, and fast-forward pan-dev. Always pass `--run`. When
+    the integrate step merges nothing and the source still matches the tree
+    the entry gate verified, the land runs `static` and `configuration` instead
+    of `full`, and records that basis.
     - On `landed`: record the landed version, tip before and after, release
       commit, and index commit in `data.release.versioning`. Continue to step 11.
     - On `conflict`: return `failure` with the land result in `data.landing`.

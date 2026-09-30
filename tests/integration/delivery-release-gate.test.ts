@@ -8,6 +8,8 @@ import {
   prepareInvocation,
   resumeRun,
 } from '../../src/lib/engine.js'
+import { gitSourceContentFingerprint } from '../../src/lib/git.js'
+import { RELEASE_LANDING_METADATA_PATHS } from '../../src/lib/versioning.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   assertNoShellGate,
@@ -135,6 +137,15 @@ test('a remediate to verify return never runs full; the ship release gate runs i
 
   assert.ok(gate)
   assert.equal(gate.last_result.passed, true)
+  // The executed full pass records the source it verified, so a land that
+  // integrates nothing can reuse the proof.
+  assert.deepEqual(gate.verified_source, {
+    fingerprint: gitSourceContentFingerprint(
+      root,
+      RELEASE_LANDING_METADATA_PATHS,
+    ),
+    profile: 'full',
+  })
   assert.ok(profilePath)
   assert.ok(existsSync(path.join(root, profilePath)))
   assert.equal(ship.suite_profile?.profile_path, profilePath)

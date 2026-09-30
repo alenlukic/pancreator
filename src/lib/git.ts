@@ -43,6 +43,71 @@ function runGit(
   return result
 }
 
+/**
+ * Digest of the workspace's source content: every tracked and untracked
+ * non-ignored file, by path and blob hash, outside `runtime/` and the
+ * `excluded` paths. Staging and commit state do not enter it, so a tree the
+ * release steward only committed or checkpointed keeps its digest. Returns
+ * null when Git cannot list or hash the tree.
+ */
+export function gitSourceContentFingerprint(
+  root: string,
+  excluded: ReadonlySet<string>,
+): string | null {
+  const listed = runGit(
+    root,
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    { allowFailure: true },
+  )
+
+  if (listed.status !== 0) {
+    return null
+  }
+
+  const files = [...new Set(listed.stdout.split('\0').filter(Boolean))]
+    .filter(
+      (file) =>
+        !excluded.has(file) &&
+        !file.startsWith('runtime/') &&
+        !file.includes('\n'),
+    )
+    .filter((file) => {
+      try {
+        return statSync(path.join(root, file)).isFile()
+      } catch {
+        // A deleted tracked file is absent from the content, which is how
+        // its deletion enters the digest.
+        return false
+      }
+    })
+    .sort()
+
+  if (files.length === 0) {
+    return sha256('')
+  }
+
+  const hashed = spawnSync('git', ['hash-object', '--stdin-paths'], {
+    cwd: root,
+    encoding: 'utf8',
+    input: `${files.join('\n')}\n`,
+    maxBuffer: 64 * 1024 * 1024,
+  })
+
+  if (hashed.status !== 0) {
+    return null
+  }
+
+  const blobs = hashed.stdout.trim().split('\n')
+
+  if (blobs.length !== files.length) {
+    return null
+  }
+
+  return sha256(
+    files.map((file, index) => `${file}\0${blobs[index]}`).join('\n'),
+  )
+}
+
 // Cache a positive answer only. A directory can become a repository after a
 // negative check, but a repository never stops being one in a live process.
 const gitRepositoryCache = new Map<string, true>()
