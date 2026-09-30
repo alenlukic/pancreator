@@ -15,7 +15,10 @@ import path from 'node:path'
 
 import { readInstallationIdentity } from '../project-config.js'
 import { agentGateProfileRuns } from '../repository-checks/ledger.js'
-import { cursorProjectDirectory, transcriptBrief } from '../token-spend.js'
+import {
+  cursorProjectDirectory,
+  transcriptBrief,
+} from '../token-spend/transcripts.js'
 import { shellBrowsingCalls } from './transcript.js'
 
 /** The hypervisor's override for the Cursor transcript directory. */

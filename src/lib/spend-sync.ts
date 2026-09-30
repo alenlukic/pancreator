@@ -34,13 +34,15 @@ import {
   readProjectConfig,
   resolveSpendSyncOrigin,
 } from './project-config.js'
+import type {
+  AggregateSpendRecordsResult,
+  CollectSpendRecordsOptions,
+  SpendRecord,
+} from './token-spend/model.js'
 import {
   aggregateSpendRecords,
   collectSpendRecords,
-  type AggregateSpendRecordsResult,
-  type CollectSpendRecordsOptions,
-  type SpendRecord,
-} from './token-spend.js'
+} from './token-spend/report.js'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 const MAX_LEDGER_DAYS = 365

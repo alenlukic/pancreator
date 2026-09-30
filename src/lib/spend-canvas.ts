@@ -11,7 +11,7 @@ import { executingSourceRoot } from './build-identity.js'
 import { invariant } from './errors.js'
 import { readText, writeTextAtomic } from './io.js'
 import type { MultiInstanceSpendReport } from './spend-sync.js'
-import type { SpendCoverage, TokenSpendReport } from './token-spend.js'
+import type { SpendCoverage, TokenSpendReport } from './token-spend/model.js'
 
 export const SPEND_CANVAS_TEMPLATE = 'library/templates/spend-report.canvas.tsx'
 const REPORT_PLACEHOLDER = '__SPEND_REPORT__'

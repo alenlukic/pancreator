@@ -3,12 +3,12 @@
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
+import { resolveTranscriptWorkflow } from '../token-spend/attribution.js'
+import type { TranscriptEvidence } from '../token-spend/model.js'
 import {
   attributionRoots,
   readTranscripts,
-  resolveTranscriptWorkflow,
-  type TranscriptEvidence,
-} from '../token-spend.js'
+} from '../token-spend/transcripts.js'
 import {
   increment,
   profileWorkerTranscript,
