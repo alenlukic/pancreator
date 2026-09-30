@@ -25,8 +25,9 @@ import type {
   RunState,
   SuiteProfileSummary,
 } from './types.js'
-import { DELEGATION_HEADING, normalizeContractMarkdown } from './validation.js'
-import type { InvocationValidationStatus } from './validation.js'
+import { DELEGATION_HEADING } from './validation/artifacts.js'
+import type { InvocationValidationStatus } from './validation/artifacts.js'
+import { normalizeContractMarkdown } from './validation/attestation.js'
 import { DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION } from './workspace-attribution.js'
 import { latestHandoffStatus } from './supervisor-handoff.js'
 

@@ -121,6 +121,16 @@ export const EDIT_ONLY_PATHS: readonly string[] = [
   'src/lib/governance-card.ts',
   'src/lib/pan-command-grammar.ts',
   'src/lib/validation.ts',
+  'src/lib/validation/artifacts.ts',
+  'src/lib/validation/attestation.ts',
+  'src/lib/validation/baselines.ts',
+  'src/lib/validation/deterministic-criteria.ts',
+  'src/lib/validation/governance.ts',
+  'src/lib/validation/invocation-markdown.ts',
+  'src/lib/validation/repository.ts',
+  'src/lib/validation/shell-check.ts',
+  'src/lib/validation/stage-output.ts',
+  'src/lib/validation/state-criteria.ts',
 ]
 
 function listFiles(
@@ -378,14 +388,28 @@ function modeFacilities(root: string): Facility[] {
     .map((mode) => facility('mode', mode, null))
 }
 
+/**
+ * Validator modules whose implementation lives in a directory under
+ * `src/lib/validators`. The module re-exports that directory, so the facility
+ * owns it too. The value is the directory name alone: spelling the full path
+ * here would make this file a referrer of the facility it describes.
+ */
+const VALIDATOR_MODULE_DIRECTORIES: ReadonlyMap<string, string> = new Map([
+  ['stage-validators', 'stage'],
+])
+
 function validatorFacilities(root: string): Facility[] {
-  return listFiles(root, 'src/lib/validators', '.ts').map((entry) =>
-    facility(
+  return listFiles(root, 'src/lib/validators', '.ts').map((entry) => {
+    const name = entry.slice(0, -'.ts'.length)
+    const directory = VALIDATOR_MODULE_DIRECTORIES.get(name)
+
+    return facility(
       'validator',
-      entry.slice(0, -'.ts'.length),
+      name,
       `src/lib/validators/${entry}`,
-    ),
-  )
+      directory === undefined ? [] : [`src/lib/validators/${directory}`],
+    )
+  })
 }
 
 function handbookFacilities(root: string): Facility[] {

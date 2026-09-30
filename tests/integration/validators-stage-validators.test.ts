@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 import {
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   statSync,
   utimesSync,
@@ -3498,7 +3499,19 @@ test('every refusal in the validator modules belongs to a declared validator', (
     )
   }
 
-  for (const file of new Set(covered.keys())) {
+  // The stage validators live one module each under one directory, and the
+  // whole directory is scanned as the single module it replaced was, so a
+  // refusal in a module no declaration names still fails here.
+  const stageDirectory = 'src/lib/validators/stage'
+  const scanned = new Set([
+    ...covered.keys(),
+    ...UNCOVERED_REFUSAL_SOURCES.map((uncovered) => uncovered.file),
+    ...readdirSync(path.join(process.cwd(), stageDirectory))
+      .filter((name) => name.endsWith('.ts'))
+      .map((name) => `${stageDirectory}/${name}`),
+  ])
+
+  for (const file of scanned) {
     const excused = new Set(
       UNCOVERED_REFUSAL_SOURCES.filter(
         (uncovered) => uncovered.file === file,
