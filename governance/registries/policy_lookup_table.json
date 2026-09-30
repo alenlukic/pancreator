@@ -908,20 +908,34 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "policies": ["LANG-001"],
-      "generated_by": "pancreator-target-language-handbooks"
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["INDEX-001"]
     },
     {
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["INDEX-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "*",
-      "stage": "*",
       "policies": ["LANG-001"],
       "generated_by": "pancreator-target-language-handbooks"
     },
@@ -929,8 +943,8 @@
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["INDEX-001"]
+      "policies": ["LANG-001"],
+      "generated_by": "pancreator-target-language-handbooks"
     },
     {
       "persona": "qa-tester",
@@ -940,25 +954,11 @@
       "generated_by": "pancreator-target-language-handbooks"
     },
     {
-      "persona": "qa-tester",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["INDEX-001"]
-    },
-    {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
       "policies": ["LANG-001"],
       "generated_by": "pancreator-target-language-handbooks"
-    },
-    {
-      "persona": "spotfixer",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["INDEX-001"]
     },
     {
       "persona": "librarian",
