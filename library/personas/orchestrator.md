@@ -42,6 +42,8 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - When the watch exits `unverified`, inspect the launched agent. Rerun the watch with `--agent-state running` or `--agent-state completed`.
 - Supply the recorded inspection through `--agent-state-evidence` for a `completed` report. Without that record, the watch spends one confirming wake.
 - Ask `./bin/pan worker state <run-id>` for a launched worker's last known state. A transcript's size and modification time are not liveness signals and MUST NOT be read as one.
+- A stall has one signal: the watch verdict `stalled` (exit `2`). `unverified` and `timed_out` are not stalls, and a file's age is not one. Before you act on any verdict, read the tail. The verdict line names the worker's open shell call, its linked `bin/pan-run` record, the heartbeat age, and the last output line.
+- Open that record's `heartbeat.json` and read `recent_lines`. A heartbeat younger than two cadences means the worker is inside a live command, however quiet. Rearm with `--agent-state running` and do not interrupt. Interrupt only under the `DELEGATE-001` interruption conditions, and put the record path, heartbeat age, and tail you read in your report.
 - For a stage with evidence workers, block on `./bin/pan watch <run-id> --invocation <invocation-id> --until-evidence-complete` in the turn that launches them. Never poll the reports with a timer or a script. When it exits `0`, launch the stage worker in that same turn and arm its ordinary watch. Exit `2` or `3` means an evidence worker stopped: inspect it and relaunch it with `./bin/pan worker record <run-id> --role <role> --new-attempt`.
 
 ## Cohort supervision
@@ -54,7 +56,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - The command writes each ordinary invocation ledger. It records routine sibling progress on every cadence without a return.
 - It returns when the first target completes, stalls, becomes unverifiable, or reaches the bound. Advance that run and promptly rearm the remainder.
 - Without `--until-terminal`, the command returns when the first target changes.
-- Exit `2` names targets that reached the stall bound. Stop rearming those targets and apply recovery.
+- Exit `2` names targets that reached the stall bound. Apply the stall procedure in **Worker delivery** to each target before you rearm or recover.
 - A stall in one run does not stop sibling runs.
 - Each return closes the other sessions with a recorded sibling handoff. The next arming records the gap.
 - Never claim continuous sibling observation across a handoff. Reattach to an existing watch because a second watch is refused.

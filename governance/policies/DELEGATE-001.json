@@ -12,7 +12,7 @@
     "The agent MUST set every observation timer through `pan watch`. The agent MUST NOT use shell sleeps, scheduled ticks, or unawaited background commands as timers. These rules apply inside and outside a harness run. The focused form watches one run, and the multiplexed form watches several runs. The process form watches a process, and the timer form watches an opaque platform handle. The agent form, `pan watch --agent <id>` with no run id, watches one subagent by its agent index id outside a run. A timer wake names the required inspection and never satisfies delegation completion.",
     "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
     "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), and the first arming line prints it. The starting agent MUST run it as a foreground blocking shell call whose block bound exceeds the watch timeout.",
-    "A stall is five minutes of unchanged agent state and no new output. The stall duration does not depend on cadence, and a recorded `running` state is not stalled. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
+    "A stall is five minutes of unchanged agent state and no new output. The stall duration does not depend on cadence, and a recorded `running` state is not stalled. A worker inside a wrapped command with a fresh `bin/pan-run` heartbeat is not stalled. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
     "An agent id the agent index has never registered ends `pan watch --agent`'s wait with `unregistered`, never `stalled`. An index that has never seen the id supplies no evidence of unchanged state, so it MUST NOT count toward a stall. On `unregistered`, the starting agent MUST check whether the projected `.cursor/hooks.json` still carries the agent-index hooks, and MUST run `pan models --sync` when it does not, before it rearms the watch.",
     "The starting agent MUST run `pan watch` as a foreground blocking shell call. The `AwaitShell` platform tool and every platform await mechanism MUST NOT be used as a timer or a wait mechanism. `await-shell-ban-validate` bans them.",
     "When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately to rejoin that session and block again. The `<ledger>` argument names the watch session record the watch wrote. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
@@ -95,6 +95,31 @@
     {
       "text": "The wrapper's heartbeat cadence MUST NOT exceed 60 seconds.",
       "audience": ["agent"]
+    },
+    {
+      "text": "`bin/pan-run` writes one record directory per command under `runtime/logs/shell/`. `runtime/logs/shell/latest` names the newest record. An agent MUST read the record files as the evidence of a wrapped command. `record.json.ended_at` null means the command still runs, and a numeric `exit_code` means it finished. A `heartbeat.json` younger than two heartbeat cadences means the wrapper is alive. Growth in `log_bytes` or a newer `last_output_at` means output progress, and `recent_lines` is the tail.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "`pan watch --process` has no `stalled` state. It reports `exited`, `elapsed`, `timed_out`, `unverified`, or `interrupted`. At its bound it prints a rearm command, and the agent MUST rearm it on the same cadence. A `timed_out` process watch is a bound, not a verdict on the command.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "An agent that runs a long wrapped command MUST read `heartbeat.json` and its `recent_lines` on each watch wake. It MUST NOT stop its own command because the command is silent while the heartbeat is fresh. It MAY stop the command when the heartbeat is older than two cadences and `record.json.ended_at` is null. An operator directive is the only other reason.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
+    {
+      "text": "Only a watch verdict `stalled` (exit 2) is a stall signal. A supervisor MUST NOT treat `unverified` (exit 4) or `timed_out` (exit 3) as a stall. A file modification time is not a stall signal, and a quiet transcript is not one. On `unverified` or `timed_out`, the supervisor MUST inspect the worker before any recovery. A worker inside a live wrapped command gets a rearmed watch with `--agent-state running`.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "Before any recovery on a `stalled` verdict, the supervisor MUST inspect the worker's open call and linked `bin/pan-run` record. The verdict line names the open shell call, the linked record, the heartbeat age, and the last line. The supervisor MUST read that record's `heartbeat.json` and `pan worker state` before it acts. A `heartbeat.json` younger than two cadences or a growing `log_bytes` means the worker is inside a live command. The supervisor MUST then rearm the watch with `--agent-state running` and MUST NOT interrupt the worker or the command. No output for minutes with a fresh heartbeat is a silent command, such as a long test or build, and not a stall.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "A supervisor MUST NOT interrupt a worker or a wrapped command except under one of three conditions. (1) The wrapper crashed, with `record.json.ended_at` null, `heartbeat.json` older than two cadences, and `wrapper_pid` dead. (2) The watch verdict is `stalled`, no linked record runs, and the agent index shows no new event. (3) An operator directive names the interruption. The interrupting agent MUST record the record path, the heartbeat age, and the tail it read. That record goes in its report or stage output.",
+      "audience": ["supervisor"]
     },
     {
       "text": "The `shell-monitor-validate` requirement MUST confirm that `library/cursor/hooks.json` declares a fail-closed `beforeShellExecution` entry whose command contains `pan-hook-shell-monitor`, that `bin/pan-hook-shell-monitor` and `bin/pan-run` exist and are executable, and that the hook's embedded allowlist equals the allowlist this policy states. Coverage: `tests/unit/shell-monitor-validator.test.ts`.",
