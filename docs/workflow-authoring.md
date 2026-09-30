@@ -24,7 +24,7 @@ Schemas:
 - [`library/schemas/stage.schema.json`](../library/schemas/stage.schema.json) - one stage file.
 
 These schemas are documentation and tooling aids. The dependency-free enforcer
-is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate`.
+is the imperative validator in `src/lib/workflow/`, run by `./bin/pan validate`.
 
 ## Index fields (`workflow.json`)
 

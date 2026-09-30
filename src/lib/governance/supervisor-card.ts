@@ -29,7 +29,7 @@ import {
   applyHandoffAccepted,
   checkHandoffFence,
 } from '../supervisor-handoff.js'
-import { loadWorkflowFile } from '../workflow.js'
+import { loadWorkflowFile } from '../workflow/load.js'
 import type {
   Policy,
   RunContract,

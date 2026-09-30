@@ -35,11 +35,8 @@ import { isSelfDevelopmentInstallation } from '../project-config.js'
 import { validateCommandGovernance } from '../governance/command-coverage.js'
 import { validateTargetAuthoring } from '../target-authoring.js'
 import { targetRepoPrimerFreshness } from '../validators/target-repo-primer.js'
-import {
-  listWorkflowSlugs,
-  loadWorkflow,
-  stagePersonaCandidates,
-} from '../workflow.js'
+import { listWorkflowSlugs, loadWorkflow } from '../workflow/load.js'
+import { stagePersonaCandidates } from '../workflow/lookup.js'
 import {
   workflowSupportsDesignComposition,
   composeDesignWorkflow,

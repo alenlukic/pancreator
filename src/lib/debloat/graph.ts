@@ -3,7 +3,8 @@ import path from 'node:path'
 
 import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
-import { loadWorkflow, workflowPersonaNames } from '../workflow.js'
+import { loadWorkflow } from '../workflow/load.js'
+import { workflowPersonaNames } from '../workflow/lookup.js'
 import type { IntentClassifier } from './intent.js'
 import {
   EDIT_ONLY_PATHS,

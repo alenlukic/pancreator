@@ -29,7 +29,8 @@ import type {
   ScheduleConfig,
   ScheduleJob,
 } from './types.js'
-import { loadWorkflow, workflowPersonaNames } from './workflow.js'
+import { loadWorkflow } from './workflow/load.js'
+import { workflowPersonaNames } from './workflow/lookup.js'
 import { readWorktreeIndex, resolveWorktreeWorkspace } from './worktrees.js'
 
 const SCHEDULE_ROOT = path.posix.join('runtime', 'logs', 'schedule')

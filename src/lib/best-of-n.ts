@@ -39,11 +39,8 @@ import { runSetupCommands } from './setup-commands.js'
 import { keywordRunSuffixFrom } from './naming.js'
 import { loadState, makeUniqueRunId, now, statePath } from './state.js'
 import type { RunState, RunStatus } from './types.js'
-import {
-  loadWorkflow,
-  loadWorkflowFile,
-  workflowPersonaNames,
-} from './workflow.js'
+import { loadWorkflow, loadWorkflowFile } from './workflow/load.js'
+import { workflowPersonaNames } from './workflow/lookup.js'
 import {
   cleanTreeRefusal,
   workspaceCleanliness,

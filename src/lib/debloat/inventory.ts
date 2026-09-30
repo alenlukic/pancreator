@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { isDirectory, isFile, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
-import { listWorkflowSlugs } from '../workflow.js'
+import { listWorkflowSlugs } from '../workflow/load.js'
 
 /**
  * A harness facility is a removable unit an operator recognizes by name. The
