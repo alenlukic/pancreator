@@ -388,8 +388,11 @@ export function attributionForEvent(
         : `${persona} · ${event.model}`,
     tools: transcript === undefined ? [] : [...transcript.tools.keys()],
     fast_mode: fastMode(identity?.model_spec ?? null),
+    // An event with no transcript has no command to govern it, so it is
+    // unattributed; `transcript?.command` is undefined there, not null.
     governance:
-      identity !== null || transcript?.command !== null
+      identity !== null ||
+      (transcript !== undefined && transcript.command !== null)
         ? 'governed'
         : transcript === undefined
           ? 'unattributed'
