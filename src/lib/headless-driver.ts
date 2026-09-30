@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-import { maybeStartDelivery, type DeliveryAutostartResult } from './cohorts.js'
+import { maybeStartDelivery } from './cohorts/delivery.js'
+import type { DeliveryAutostartResult } from './cohorts/state.js'
 import { PanError } from './errors.js'
 import {
   decideRun,
