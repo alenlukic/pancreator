@@ -33,23 +33,27 @@ import {
 } from './render.js'
 import { loadState, operationMutexPath, persist } from './state.js'
 import type { Invocation } from './types.js'
+import { observeInvocation } from './watch/observe.js'
+import {
+  evidenceReadyPath,
+  evidenceWatchLockPath,
+  evidenceWatchRecordPath,
+  resolveWatchedInvocation,
+} from './watch/paths.js'
+import { processStartIdentity } from './watch/process-evidence.js'
+import {
+  acquireWatchLock,
+  installInterruptionHandlers,
+} from './watch/session.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   DEFAULT_WATCH_CADENCE_SECONDS,
   DEFAULT_WATCH_TIMEOUT_SECONDS,
   WATCH_TIMEOUT_BELOW_CADENCE,
-  acquireWatchLock,
-  evidenceReadyPath,
-  evidenceWatchLockPath,
-  evidenceWatchRecordPath,
-  installInterruptionHandlers,
-  observeInvocation,
-  processStartIdentity,
-  resolveWatchedInvocation,
   type EvidenceRoleObservation,
   type WatchRecordEntry,
   type WatchTerminalState,
-} from './watch.js'
+} from './watch/types.js'
 
 export const WATCH_NO_EVIDENCE_WORKERS = 'WATCH_NO_EVIDENCE_WORKERS'
 

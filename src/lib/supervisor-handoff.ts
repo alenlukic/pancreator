@@ -20,7 +20,7 @@ import {
 } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadState, now, operationMutexPath, persist } from './state.js'
-import { runHasLiveWatch } from './watch.js'
+import { runHasLiveWatch } from './watch/session.js'
 import type { RunState, RunStatus, SupervisorHandoffRecord } from './types.js'
 
 // ---------------------------------------------------------------------------

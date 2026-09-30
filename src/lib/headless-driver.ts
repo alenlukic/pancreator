@@ -17,7 +17,7 @@ import {
   redlineCurrent,
 } from './governance/supervisor-card.js'
 import { readJson } from './io.js'
-import { writeRedlineRecord } from './watch.js'
+import { writeRedlineRecord } from './watch/redline.js'
 import type {
   Invocation,
   PendingAction,

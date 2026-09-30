@@ -16,7 +16,7 @@ import {
 } from '../io.js'
 import { policySectionDigest } from '../policy-guidance.js'
 import { loadPolicySources, resolvePolicies } from '../policies.js'
-import { readRedlineRecord, redlineRecordPath } from '../watch.js'
+import { readRedlineRecord, redlineRecordPath } from '../watch/redline.js'
 import { readWorktreeIndex } from '../worktrees.js'
 import type { WorktreeRecord } from '../worktrees.js'
 import {
