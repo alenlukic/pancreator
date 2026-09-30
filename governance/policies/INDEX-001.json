@@ -1,0 +1,13 @@
+{
+  "id": "INDEX-001",
+  "title": "Function index for harness source",
+  "severity": "hard",
+  "summary": "Agents working on Pancreator's own source SHOULD find functions through the generated function index before they search or read `src/`, and SHOULD open source only for the lines they change or verify.",
+  "instructions": [
+    "An agent MAY rely on `docs/function-index/README.md`, which maps every `src/` module to its purpose and export count, and on `docs/function-index/SYMBOLS.md`, which maps every exported symbol to its module page. Each module page states each export's signature, its behavior, and its `file:line`.",
+    "Before an agent searches `src/` for a function or a module, it SHOULD read the module map and open the module pages that bear on its task. It SHOULD take a function's interface and behavior from its index entry instead of reading the function body.",
+    "An agent SHOULD open a source file only at the lines it changes or verifies, starting from the `file:line` the index gives. When a plan names the symbols a change touches, the agent SHOULD start from those entries.",
+    "An entry marked undocumented has no behavior summary. An agent that adds or changes an exported function SHOULD give it a leading JSDoc whose first paragraph states what it does, because that paragraph becomes the index entry.",
+    "These habits save worker turns and context. An agent MAY read source directly when the index is stale or does not answer its question."
+  ]
+}

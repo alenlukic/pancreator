@@ -1,3 +1,4 @@
+import type { FunctionIndexCheck } from '../function-index.js'
 import type { TargetRepoPrimerFreshness } from '../validators/target-repo-primer.js'
 import type {
   DelegationObservationSource,
@@ -129,6 +130,11 @@ export interface RepositoryValidationResult {
    * fresh embedded install must validate with no warnings.
    */
   target_repo_primer?: TargetRepoPrimerFreshness
+  /**
+   * Drift of the generated function index against `src/`, in a
+   * self-development checkout that carries `docs/function-index/`.
+   */
+  function_index?: FunctionIndexCheck
   report_hash: string
 }
 

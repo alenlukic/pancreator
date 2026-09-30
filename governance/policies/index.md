@@ -19,6 +19,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `AUTO-001` — deterministic automation authority
 - `VALID-001` — policy-bound artifact validation
 - `CONTRACT-001` — deterministic contract coverage
+- `INDEX-001` — generated function index for Pancreator's own source
 - `ACTION-001` — safe source-control actions
 - `ASK-001` — Cursor-native operator questions and question-method access
 - `PAUSE-001` — operator pause authority and workspace edits while paused
