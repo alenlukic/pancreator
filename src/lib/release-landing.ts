@@ -44,7 +44,10 @@ import {
   readReleaseAllocations,
 } from './release-allocation.js'
 import { finalizeLocalRelease } from './release-preparation.js'
-import { BUILD_READY_ENV, runRepositoryCheck } from './repository-checks.js'
+import {
+  BUILD_READY_ENV,
+  runRepositoryCheck,
+} from './repository-checks/runner.js'
 import {
   judgeShipRepair,
   shipRepairLaneProfiles,

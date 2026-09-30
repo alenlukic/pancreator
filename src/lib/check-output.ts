@@ -18,7 +18,7 @@ import { temporalNamePrefix } from './naming.js'
 import type {
   RepositoryCheckCommandResult,
   RepositoryCheckResult,
-} from './repository-checks.js'
+} from './repository-checks/config.js'
 
 /** Installation-relative directory holding one full-output log per execution. */
 export const CHECK_LOG_DIRECTORY = 'runtime/logs/repository-check'

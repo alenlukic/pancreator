@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { recordedProfileRuns } from '../agent-ledger-evidence.js'
 import { fileExists, isRecord, readJson, readText } from '../io.js'
-import { loadRepositoryChecks } from '../repository-checks.js'
+import { loadRepositoryChecks } from '../repository-checks/config.js'
 import type { DeterministicResult, StageHistoryItem } from '../types.js'
 import {
   latestHistoryForStage,

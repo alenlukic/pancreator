@@ -180,6 +180,7 @@ test('the check wrappers and their compact reporter are verification substrate',
     'src/lib/check-output.ts',
     'src/lib/test-impact.ts',
     'src/lib/repository-checks.ts',
+    'src/lib/repository-checks/runner.ts',
   ]
   const tiers = conflictsByTier(classifyReviewPaths(paths, CLOSURE))
 
