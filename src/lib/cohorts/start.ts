@@ -2,7 +2,7 @@
 
 import path from 'node:path'
 
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import { invariant } from '../errors.js'
 import { supervisorBootstrap } from '../governance/supervisor-card.js'
 import { isGitRepository, gitCurrentBranch } from '../git.js'

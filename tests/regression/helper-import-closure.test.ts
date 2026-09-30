@@ -11,6 +11,10 @@ import type { ModuleGraph } from '../../src/lib/test-impact.js'
  * for a change to any engine dependency. The two functions that drive a run
  * moved to `tests/run-helpers.ts`.
  *
+ * The engine is a facade over `src/lib/engine/`, and a helper can import a
+ * module there directly, so every file under that directory counts as the
+ * engine too.
+ *
  * The closure is measured against the real repository rather than a fixture,
  * because the claim is about this repository's own suite.
  */
@@ -18,6 +22,11 @@ import type { ModuleGraph } from '../../src/lib/test-impact.js'
 const SHARED_HELPER = 'tests/helpers.ts'
 const RUN_HELPER = 'tests/run-helpers.ts'
 const ENGINE = 'src/lib/engine.ts'
+const ENGINE_DIRECTORY = 'src/lib/engine/'
+
+function isEngine(file: string): boolean {
+  return file === ENGINE || file.startsWith(ENGINE_DIRECTORY)
+}
 
 /** Every file reachable from `entry` by following static imports. */
 function importClosure(graph: ModuleGraph, entry: string): Set<string> {
@@ -50,16 +59,17 @@ test('the shared test helper does not reach the engine', async () => {
   assert.ok(graph.files.includes(ENGINE), 'the graph covers the engine')
 
   const shared = importClosure(graph, SHARED_HELPER)
+  const reached = [...shared].filter(isEngine)
 
-  assert.equal(
-    shared.has(ENGINE),
-    false,
-    `${SHARED_HELPER} still reaches ${ENGINE} through ${[...shared]
-      .filter((file) => (graph.imports.get(file) ?? new Set()).has(ENGINE))
+  assert.deepEqual(
+    reached,
+    [],
+    `${SHARED_HELPER} still reaches ${reached.join(', ')} through ${[...shared]
+      .filter((file) => [...(graph.imports.get(file) ?? [])].some(isEngine))
       .join(', ')}`,
   )
 
   // The engine did not vanish; it moved to the surface a run-driving test
   // imports on purpose.
-  assert.equal(importClosure(graph, RUN_HELPER).has(ENGINE), true)
+  assert.equal([...importClosure(graph, RUN_HELPER)].some(isEngine), true)
 })

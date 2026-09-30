@@ -3,7 +3,7 @@
 import { errorMessage } from '../errors.js'
 import { type HeadlessDriverResult, driveRun } from '../headless-driver.js'
 import { withOperationMutex } from '../io.js'
-import { getRunState } from '../engine.js'
+import { getRunState } from '../engine/run-status.js'
 import type { ArbitrateOptions } from '../horizon-arbiter.js'
 import {
   fail,

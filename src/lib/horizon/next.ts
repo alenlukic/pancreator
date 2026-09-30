@@ -4,7 +4,7 @@
  */
 
 import { withOperationMutex } from '../io.js'
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import type { ArbitrateOptions } from '../horizon-arbiter.js'
 import { resolveOrCreateWorktree } from '../worktrees.js'
 import type { RunState } from '../types.js'

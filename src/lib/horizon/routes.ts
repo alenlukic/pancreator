@@ -4,7 +4,7 @@
  */
 
 import { errorMessage } from '../errors.js'
-import { getRunState } from '../engine.js'
+import { getRunState } from '../engine/run-status.js'
 import { cohortSessionForPlanRun } from '../cohorts/delivery.js'
 import { integrateCohort, releaseCohort } from '../cohorts/integration.js'
 import { cohortStatus, startCohort } from '../cohorts/start.js'

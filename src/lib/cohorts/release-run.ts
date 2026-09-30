@@ -2,7 +2,7 @@
 
 import path from 'node:path'
 
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import { fileExists, sha256 } from '../io.js'
 import {
   statePath,

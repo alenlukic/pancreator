@@ -3,7 +3,7 @@
 import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import { errorMessage, invariant, PanError } from '../errors.js'
 import { gitHead, gitWorktreeAdd, isGitRepository } from '../git.js'
 import {

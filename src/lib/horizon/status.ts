@@ -1,7 +1,7 @@
 /** Session status and the latest handoff. */
 
 import { readJson, resolveInside } from '../io.js'
-import { getRunState } from '../engine.js'
+import { getRunState } from '../engine/run-status.js'
 import { panCommand } from '../project-config.js'
 import {
   loadHorizonSession,

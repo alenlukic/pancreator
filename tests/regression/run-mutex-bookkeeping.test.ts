@@ -13,22 +13,24 @@ import {
 } from '../integration/delivery-helpers.js'
 
 const REPO_ROOT = process.cwd()
-const ENGINE_SOURCE = path.join('src', 'lib', 'engine.ts')
+const PREPARE_SOURCE = path.join('src', 'lib', 'engine', 'prepare.ts')
+const SUBMIT_SOURCE = path.join('src', 'lib', 'engine', 'submit.ts')
 
 /**
  * The source of one exported top-level function, from its declaration to the
  * closing brace at column zero.
  */
-function functionSource(source: string, name: string): string {
+function functionSource(file: string, name: string): string {
+  const source = readFileSync(path.join(REPO_ROOT, file), 'utf8')
   const start = source.indexOf(`export function ${name}(`)
 
-  assert.ok(start >= 0, `${ENGINE_SOURCE} declares no ${name}`)
+  assert.ok(start >= 0, `${file} declares no ${name}`)
 
   const end = source.indexOf('\n}\n', start)
 
   assert.ok(
     end > start,
-    `${name} has no closing brace at column zero in ${ENGINE_SOURCE}`,
+    `${name} has no closing brace at column zero in ${file}`,
   )
 
   return source.slice(start, end)
@@ -60,11 +62,11 @@ function callSites(body: string, name: string): number[] {
  * closing at the function's own indentation, which Prettier fixes.
  */
 function assertBookkeepingLeavesTheMutex(
-  source: string,
+  file: string,
   name: string,
   call: string,
 ): void {
-  const body = functionSource(source, name)
+  const body = functionSource(file, name)
   const mutexStart = body.indexOf(
     'withOperationMutex(operationMutexPath(root, runId)',
   )
@@ -97,15 +99,13 @@ function assertBookkeepingLeavesTheMutex(
 }
 
 test('prepare and submit write the agent registry after the run mutex closes', () => {
-  const source = readFileSync(path.join(REPO_ROOT, ENGINE_SOURCE), 'utf8')
-
   assertBookkeepingLeavesTheMutex(
-    source,
+    PREPARE_SOURCE,
     'prepareInvocation',
     'registerPreparedInvocation',
   )
   assertBookkeepingLeavesTheMutex(
-    source,
+    SUBMIT_SOURCE,
     'submitOutput',
     'completeInvocationAgent',
   )

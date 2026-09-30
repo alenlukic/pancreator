@@ -3,7 +3,7 @@ import { homedir } from 'node:os'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
-import { createRun } from './engine.js'
+import { createRun } from './engine/create-run.js'
 import { PanError, errorMessage, invariant } from './errors.js'
 import { driveRun } from './headless-driver.js'
 import { initHorizonSession } from './horizon/lifecycle.js'

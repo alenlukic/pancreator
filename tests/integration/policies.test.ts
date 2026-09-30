@@ -1960,7 +1960,7 @@ test('governance validation binds the output-last rule to its owning policy', ()
   // The mechanism DELEGATE-001 names for AC-008 is a live error code rather
   // than prose, so the policy cannot drift from the failure it promises.
   assert.match(
-    readFileSync(path.join(process.cwd(), 'src/lib/engine.ts'), 'utf8'),
+    readFileSync(path.join(process.cwd(), 'src/lib/engine/submit.ts'), 'utf8'),
     /code: 'MODEL_EVIDENCE_MISMATCH'/u,
   )
 })

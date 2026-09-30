@@ -5,7 +5,7 @@
 
 import path from 'node:path'
 
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import { invariant, errorMessage, PanError } from '../errors.js'
 import { isGitRepository, gitCurrentBranch } from '../git.js'
 import {

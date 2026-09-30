@@ -2,7 +2,7 @@
 
 import path from 'node:path'
 
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import { invariant } from '../errors.js'
 import { readText, resolveInside, sha256, writeTextAtomic } from '../io.js'
 import { loadPipelineConfig } from '../pipeline-config.js'

@@ -23,7 +23,6 @@ const PENDING_SPLIT = new Set([
   'src/lib/briefs.ts',
   'src/lib/cleanup.ts',
   'src/lib/cursor-handoff/driver.ts',
-  'src/lib/engine.ts',
   'src/lib/git.ts',
   'src/lib/governance-card.ts',
   'src/lib/governance/prompt-context.ts',

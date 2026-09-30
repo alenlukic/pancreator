@@ -8,7 +8,8 @@ import path from 'node:path'
 import { errorMessage } from '../errors.js'
 import type { HeadlessDriverResult } from '../headless-driver.js'
 import { appendJsonLine, writeTextAtomic, resolveInside } from '../io.js'
-import { pauseRun, recordHorizonReplan } from '../engine.js'
+import { pauseRun } from '../engine/pause-resume.js'
+import { recordHorizonReplan } from '../engine/run-status.js'
 import {
   type HorizonHardBlock,
   type ArbitrateOptions,
