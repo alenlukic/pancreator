@@ -33,7 +33,6 @@ const PENDING_SPLIT = new Set([
   'src/lib/governance/prompt-context.ts',
   'src/lib/project-config.ts',
   'src/lib/release-landing.ts',
-  'src/lib/render.ts',
   'src/lib/schedule.ts',
   'src/lib/spend-sync.ts',
   'src/lib/target-authoring.ts',

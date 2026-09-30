@@ -30,7 +30,7 @@ import {
   EVIDENCE_REPORT_COMPLETE_MARKER,
   evidenceWorkerAttempts,
   readEvidenceReportState,
-} from './render.js'
+} from './render/delivery-prompt.js'
 import { loadState, operationMutexPath, persist } from './state.js'
 import type { Invocation } from './types.js'
 import { observeInvocation } from './watch/observe.js'
