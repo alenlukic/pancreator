@@ -1,7 +1,7 @@
 /** Generic process watch for waits outside a workflow run. */
 
 import { randomUUID } from 'node:crypto'
-import { readFileSync, statSync } from 'node:fs'
+import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
@@ -54,6 +54,23 @@ export interface GenericWatchRecordEntry {
     exists: boolean
     size: number | null
     mtime_ms: number | null
+    /** Bytes added since the previous wake; null on the first wake or when the file is absent. */
+    growth_bytes: number | null
+    /** Seconds since the file last grew (now - mtime); null when absent. */
+    silent_seconds: number | null
+    /** Last non-empty lines, each capped, present only when the file grew (or on the first wake). */
+    tail?: string[]
+  }
+  /**
+   * The `bin/pan-run` heartbeat sibling of `--exit-record`, when the exit
+   * record path is readable and a heartbeat.json sits beside it.
+   */
+  heartbeat?: {
+    elapsed_seconds: number | null
+    log_bytes: number | null
+    last_output_at: string | null
+    /** Seconds since heartbeat.json was last written. */
+    beat_age_seconds: number
   }
   /**
    * A timer wake carries the inspection the caller owes. A generic record
@@ -96,6 +113,80 @@ export interface GenericWatchResult {
 const EXIT_RECORD_SETTLE_ATTEMPTS = 10
 
 const EXIT_RECORD_SETTLE_INTERVAL_MS = 200
+const WATCH_OUTPUT_TAIL_LINES = 5
+const WATCH_OUTPUT_LINE_CHARS = 160
+const WATCH_OUTPUT_TAIL_BYTES = 64 * 1024
+
+/** The last non-empty lines of a file, each capped, read from at most the final 64 KiB. */
+function readOutputTail(absolute: string, size: number): string[] {
+  if (size <= 0) {
+    return []
+  }
+
+  const length = Math.min(size, WATCH_OUTPUT_TAIL_BYTES)
+  const buffer = Buffer.alloc(length)
+  let fd: number | null = null
+
+  try {
+    fd = openSync(absolute, 'r')
+    readSync(fd, buffer, 0, length, size - length)
+  } catch {
+    return []
+  } finally {
+    if (fd !== null) {
+      try {
+        closeSync(fd)
+      } catch {
+        // The file may have been removed between the stat and the read.
+      }
+    }
+  }
+
+  return buffer
+    .toString('utf8')
+    .split(/\r?\n/u)
+    .filter((line) => line.length > 0)
+    .slice(-WATCH_OUTPUT_TAIL_LINES)
+    .map((line) => line.slice(0, WATCH_OUTPUT_LINE_CHARS))
+}
+
+/**
+ * The `bin/pan-run` heartbeat sitting beside an `--exit-record` path, when
+ * both the exit record path and its heartbeat.json sibling are readable.
+ */
+function readSiblingHeartbeat(
+  exitRecordAbsolute: string | null,
+  nowMs: number,
+): GenericWatchRecordEntry['heartbeat'] {
+  if (exitRecordAbsolute === null) {
+    return undefined
+  }
+
+  const heartbeatPath = path.join(
+    path.dirname(exitRecordAbsolute),
+    'heartbeat.json',
+  )
+
+  try {
+    const stats = statSync(heartbeatPath)
+    const raw: unknown = JSON.parse(readFileSync(heartbeatPath, 'utf8'))
+
+    if (!isRecord(raw)) {
+      return undefined
+    }
+
+    return {
+      elapsed_seconds:
+        typeof raw.elapsed_seconds === 'number' ? raw.elapsed_seconds : null,
+      log_bytes: typeof raw.log_bytes === 'number' ? raw.log_bytes : null,
+      last_output_at:
+        typeof raw.last_output_at === 'string' ? raw.last_output_at : null,
+      beat_age_seconds: Math.max(0, (nowMs - stats.mtimeMs) / 1000),
+    }
+  } catch {
+    return undefined
+  }
+}
 
 export interface ProcessWatchOptions {
   /** The process to observe. */
@@ -366,25 +457,60 @@ export async function watchProcess(
       timeout_seconds: timeoutSeconds,
     })
 
-    const observeOutput = (): GenericWatchRecordEntry['output'] =>
-      outputAbsolute === null
-        ? undefined
-        : {
-            path: options.outputPath as string,
-            ...(() => {
-              try {
-                const stats = statSync(outputAbsolute)
+    // Tracked across wakes so a wake can report bytes added since the last
+    // one, rather than only the size at this instant.
+    let lastObservedSize: number | null = null
 
-                return {
-                  exists: true,
-                  size: stats.size,
-                  mtime_ms: stats.mtimeMs,
-                }
-              } catch {
-                return { exists: false, size: null, mtime_ms: null }
-              }
-            })(),
-          }
+    const observeOutput = (
+      nowMs: number,
+    ): GenericWatchRecordEntry['output'] => {
+      if (outputAbsolute === null) {
+        return undefined
+      }
+
+      let stats: { size: number; mtimeMs: number } | null = null
+
+      try {
+        const raw = statSync(outputAbsolute)
+
+        stats = { size: raw.size, mtimeMs: raw.mtimeMs }
+      } catch {
+        stats = null
+      }
+
+      if (stats === null) {
+        lastObservedSize = null
+
+        return {
+          path: options.outputPath as string,
+          exists: false,
+          size: null,
+          mtime_ms: null,
+          growth_bytes: null,
+          silent_seconds: null,
+        }
+      }
+
+      const previousSize = lastObservedSize
+      // The first wake always counts as "grown": there is nothing earlier to
+      // compare against, and its tail is the whole bounded window so far.
+      const grown = previousSize === null || stats.size > previousSize
+      const growthBytes =
+        previousSize === null ? null : Math.max(0, stats.size - previousSize)
+      const silentSeconds = Math.max(0, (nowMs - stats.mtimeMs) / 1000)
+
+      lastObservedSize = stats.size
+
+      return {
+        path: options.outputPath as string,
+        exists: true,
+        size: stats.size,
+        mtime_ms: stats.mtimeMs,
+        growth_bytes: growthBytes,
+        silent_seconds: silentSeconds,
+        ...(grown ? { tail: readOutputTail(outputAbsolute, stats.size) } : {}),
+      }
+    }
 
     if (!aliveAtArm) {
       // The process was already gone when the watch armed. When the caller
@@ -402,7 +528,9 @@ export async function watchProcess(
       }
 
       wakes += 1
-      const output = observeOutput()
+      const armWakeMs = now()
+      const output = observeOutput(armWakeMs)
+      const heartbeat = readSiblingHeartbeat(exitRecordAbsolute, armWakeMs)
       const terminalState: GenericWatchTerminalState =
         deadAtArmExitStatus !== null ? 'exited' : 'unverified'
       const entry: GenericWatchRecordEntry = {
@@ -410,13 +538,14 @@ export async function watchProcess(
         event: 'wake',
         subject,
         label: options.label,
-        recorded_at: new Date(now()).toISOString(),
+        recorded_at: new Date(armWakeMs).toISOString(),
         cadence_seconds: cadenceSeconds,
         wake: wakes,
         watch_session_id: sessionId,
         process_alive: false,
         process_identity_match: false,
         ...(output ? { output } : {}),
+        ...(heartbeat ? { heartbeat } : {}),
         terminal_state: terminalState,
         ...(deadAtArmExitStatus !== null
           ? { exit_status: deadAtArmExitStatus }
@@ -480,19 +609,22 @@ export async function watchProcess(
 
       const exitStatus =
         terminal === 'exited' ? await settleExitStatus() : undefined
-      const output = observeOutput()
+      const wakeMs = now()
+      const output = observeOutput(wakeMs)
+      const heartbeat = readSiblingHeartbeat(exitRecordAbsolute, wakeMs)
       const entry: GenericWatchRecordEntry = {
         schema_version: 1,
         event: 'wake',
         subject,
         label: options.label,
-        recorded_at: new Date(now()).toISOString(),
+        recorded_at: new Date(wakeMs).toISOString(),
         cadence_seconds: cadenceSeconds,
         wake: wakes,
         watch_session_id: sessionId,
         process_alive: alive,
         process_identity_match: identityMatch,
         ...(output ? { output } : {}),
+        ...(heartbeat ? { heartbeat } : {}),
         ...(terminal ? { terminal_state: terminal } : {}),
         ...(exitStatus !== undefined ? { exit_status: exitStatus } : {}),
       }
@@ -507,4 +639,51 @@ export async function watchProcess(
   } finally {
     disposeInterruptionHandlers()
   }
+}
+
+/**
+ * Renders one `pan watch --process` wake as the operator-visible lines
+ * DELEGATE-001 requires: growth or silence, the tail that justifies it, and
+ * the linked `bin/pan-run` heartbeat when one was read.
+ */
+export function formatProcessWakeLines(entry: GenericWatchRecordEntry): string {
+  const header = [
+    `[pan watch:${entry.label}] wake ${entry.wake} at ${entry.recorded_at}`,
+  ]
+  const { output, heartbeat, cadence_seconds: cadenceSeconds } = entry
+
+  // growth_bytes is 0, not null, on a wake with a known previous size that
+  // simply did not grow: only a positive delta counts as "growth" here, so a
+  // silent wake falls through to the no-new-output branch instead of
+  // printing "+0B" forever.
+  if (output?.growth_bytes !== undefined && (output.growth_bytes ?? 0) > 0) {
+    header.push(`+${output.growth_bytes}B`)
+  } else if (
+    output?.silent_seconds !== undefined &&
+    output.silent_seconds !== null &&
+    output.silent_seconds >= 2 * cadenceSeconds
+  ) {
+    header.push(`no new output for ${Math.floor(output.silent_seconds)}s`)
+  }
+
+  if (entry.terminal_state) {
+    header.push(`-> ${entry.terminal_state}`)
+  }
+
+  const lines = [header.join(' ')]
+
+  if (output?.tail) {
+    for (const line of output.tail) {
+      lines.push(`  ${line}`)
+    }
+  }
+
+  if (heartbeat) {
+    lines.push(
+      `  (pan-run beat ${Math.floor(heartbeat.beat_age_seconds)}s ago, ` +
+        `${heartbeat.elapsed_seconds ?? '?'}s elapsed)`,
+    )
+  }
+
+  return lines.join('\n')
 }

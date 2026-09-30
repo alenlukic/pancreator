@@ -147,6 +147,7 @@ export {
 export {
   GENERIC_WATCH_RECORD_DIRECTORY,
   watchProcess,
+  formatProcessWakeLines,
 } from './watch/process.js'
 export type {
   GenericWatchTerminalState,

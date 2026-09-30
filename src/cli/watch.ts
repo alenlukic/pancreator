@@ -26,6 +26,7 @@ import {
 import { foregroundReturnRecordPath } from '../lib/watch/paths.js'
 import {
   watchProcess,
+  formatProcessWakeLines,
   type GenericWatchRecordEntry,
 } from '../lib/watch/process.js'
 import {
@@ -355,11 +356,7 @@ export async function watchCommand({
     const genericRecord = option(args, '--record') ?? undefined
     const genericOnWake = interactive
       ? (entry: GenericWatchRecordEntry) =>
-          process.stderr.write(
-            `[pan watch:${entry.label}] wake ${entry.wake} at ` +
-              `${entry.recorded_at}` +
-              `${entry.terminal_state ? ` -> ${entry.terminal_state}` : ''}\n`,
-          )
+          process.stderr.write(`${formatProcessWakeLines(entry)}\n`)
       : undefined
 
     if (timerMode) {
