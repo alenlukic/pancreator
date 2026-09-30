@@ -1,5 +1,16 @@
 # Changelog
 
+## [7.36.1] - 2026-09-30
+
+This release makes `pan release land` verify the tree it lands. The land merged the tip and finalized the release, then ran its profiles against the `dist/` built before the merge, so a correct merge could fail on a deleted test and a merge that does not compile could pass.
+
+### Fixed
+
+- Compile the integrated tree before the land verifies it, record its build stamp on the `build` and `verify` steps of `landing.jsonl`, refuse a tree that does not compile, and fail the land when the sources change while the profiles run ([538bec97](https://github.com/alenlukic/pancreator/commit/538bec97)).
+- Drop the inherited `PANCREATOR_BUILD_READY` from every repository-check profile command, and make `bin/run-built --build-only` always run the source fingerprint check ([538bec97](https://github.com/alenlukic/pancreator/commit/538bec97)).
+- Print the `bin/pan-run` observe line before the `record-start` helper runs, retry a helper that dies, and keep its status, signal, and stderr in `record.json` under `record_start_failure`. The cause of the signal 9 stays unknown ([f16c6e18](https://github.com/alenlukic/pancreator/commit/f16c6e18)).
+- Read an absolute `--target` in `pan requirements run` ([39070d36](https://github.com/alenlukic/pancreator/commit/39070d36)).
+
 ## [7.36.0] - 2026-09-30
 
 This release cuts the fixed cost of verify and land. Verify now runs every lane the ship gate can fail on. A small return visit runs one agent, and a land skips `full` on a tree the ship gate verified.
