@@ -445,7 +445,7 @@ test('an attestation that recorded no output present does not satisfy submit', (
  * The ledger an abandoned watch leaves: its verdict is dropped, and the wake
  * before it keeps its observation without a completion hold. A record from
  * before weak-evidence holds existed has that shape. A still-pending hold is
- * refused instead (`watch-repair.test.ts`, AC-026).
+ * refused instead (`watch-repair-sessions.test.ts`, AC-026).
  */
 function abandonedHoldFreeRecord(ledger: string): string {
   const kept = ledger
