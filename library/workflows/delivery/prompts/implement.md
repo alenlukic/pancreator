@@ -39,8 +39,10 @@ acceptance criterion.
    profiles, which the card lists, and a failure returns the stage to you with
    its log. This saves worker turns and context. The gate reruns every
    profile anyway.
-7. On a retry after a gate failure, start from the failing gate's log that the
-   card lists. Fix the cause, re-run the impacted selection and the failing
+7. On a retry, read the handoff artifact the card lists first. It carries
+   the previous worker's notes and the files and lines it read and edited, so
+   open those files at those lines instead of exploring again. After a gate
+   failure, also start from the failing gate's log that the card lists. Fix the cause, re-run the impacted selection and the failing
    tests, then submit. On a retry that changed only output claims or
    evidence, do not run any suite. Cite the prior run's evidence instead.
 8. Map evidence to every acceptance criterion honestly. Report a criterion you
@@ -63,7 +65,13 @@ non-empty `evidence` (paths, commands, or observations) for the gap. Do not
 claim implementation fields for blocked work. When you edited tracked files
 before you stopped, list every such path in top-level `workspace_changes.paths`
 with `attribution: internal`; the claims validator reconciles that list against
-the Git delta. Follow the card's `output.operator_brief` contract.
+the Git delta. Also populate `data.implementation.handoff` for whoever works on this change
+next: `start_here` (`{ path, symbol_or_lines, why }`, where a follow-up worker
+should begin), `symbols_changed` (`{ path, symbol, lines, note }`),
+`decisions` (one line each), and `untested` (what you did not prove). Keep it
+short. A retry or a remediation receives it together with the harness's
+reading map of your transcript. Follow the card's `output.operator_brief`
+contract.
 
 ## Done when
 

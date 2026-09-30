@@ -9,7 +9,10 @@ evidence is your primary input.
 
 ## Steps
 
-1. Read the failure evidence first. After a verify verdict: the verdict, every
+1. Read the handoff artifact the card lists. It carries the previous
+   worker's notes and the files and lines it read and edited, so open those
+   files at those lines instead of exploring again. Then read the failure
+   evidence. After a verify verdict: the verdict, every
    blocking finding, every failed acceptance criterion or QA case, and the
    remediation guidance. After a release-gate failure: the failed gate's
    evidence log the card lists as required input, which carries the `full`
@@ -70,7 +73,12 @@ override, or baseline-relative credit is never accepted this way.
 ## Output
 
 Populate `data.implementation` (`changed_files`, `tests_added`, `notes`,
-`remediation`) and `data.acceptance_results`. Each `tests_added` entry is
+`remediation`) and `data.acceptance_results`. Also populate `data.implementation.handoff` for whoever works on this change
+next: `start_here` (`{ path, symbol_or_lines, why }`, where a follow-up worker
+should begin), `symbols_changed` (`{ path, symbol, lines, note }`),
+`decisions` (one line each), and `untested` (what you did not prove). Keep it
+short. A retry or a remediation receives it together with the harness's
+reading map of your transcript. Each `tests_added` entry is
 `{ path, contract }`: the test file path and one sentence that names the
 contract the test proves. Every new test file and every net-positive test
 delta needs an entry. Each remediation entry states

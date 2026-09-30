@@ -119,7 +119,7 @@ const INVOCATION_OPENING_BYTES = 64 * 1024
 const INVOCATION_TRANSCRIPT_MAX_BYTES = 32 * 1024 * 1024
 
 /** One tool call an assistant record made. */
-interface ToolUse {
+export interface ToolUse {
   name: string
   input: Record<string, unknown>
 }
@@ -195,7 +195,7 @@ function increment(counts: Map<string, number>, key: string, by = 1): void {
   counts.set(key, (counts.get(key) ?? 0) + by)
 }
 
-function assistantTurns(content: string): ToolUse[][] {
+export function assistantTurns(content: string): ToolUse[][] {
   const turns: ToolUse[][] = []
 
   for (const line of content.split('\n')) {
@@ -392,7 +392,7 @@ function shellCommand(tool: ToolUse): string | null {
   return typeof tool.input.command === 'string' ? tool.input.command : null
 }
 
-function toolPath(tool: ToolUse): string | null {
+export function toolPath(tool: ToolUse): string | null {
   for (const key of ['path', 'file_path', 'target_file']) {
     const value = tool.input[key]
 

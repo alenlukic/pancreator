@@ -19,6 +19,7 @@ import {
 import { isSelfDevelopmentInstallation } from './project-config.js'
 import { repositoryCheckProfileName } from './repository-checks.js'
 import { resolveRunLayout } from './run-layout.js'
+import { writeWorkerHandoff } from './worker-handoff.js'
 import { loadState, statePath } from './state.js'
 import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
@@ -550,6 +551,33 @@ function cohortChunks(
   }
 
   return chunks
+}
+
+/**
+ * A source-editing worker that follows an earlier source attempt, whether a
+ * retry, a remediation, or a return to implement, receives that attempt's
+ * notes and reading map as a required input.
+ */
+function selectWorkerHandoff(
+  references: Map<string, InvocationReference>,
+  options: InvocationContextOptions,
+  stage: StageDefinition,
+): void {
+  const handoffPath = writeWorkerHandoff(
+    options.root,
+    options.state,
+    stage.slug,
+    options.invocationId,
+  )
+
+  if (handoffPath) {
+    addReference(references, {
+      path: handoffPath,
+      description:
+        'Handoff from the previous source-editing worker: its notes and the files and lines it read and edited',
+      retrieval: 'required',
+    })
+  }
 }
 
 function selectPriorAttempts(
@@ -1537,6 +1565,7 @@ export function buildInvocationInputs(
   selectReleaseEvidence(references, missingRequired, options.root, state)
   selectEntryGateFailureEvidence(references, missingRequired, options, stage)
   selectPriorAttempts(references, options.root, state, stage, options.attempt)
+  selectWorkerHandoff(references, options, stage)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
   selectGateEvidence(
