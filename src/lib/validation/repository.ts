@@ -73,6 +73,14 @@ import {
   validateShellMonitor,
 } from './governance.js'
 
+/**
+ * Run the full repository validation behind `pan validate`: required files,
+ * release metadata, policy catalog and lookup coverage, requirement registry,
+ * projections, turn reminder profiles, directive audit, command governance, and
+ * target extensions. Returns `ok`, errors, warnings, and a digest of both.
+ * Self-development adds warnings for a stale target repository primer or
+ * function index, which never fail validation.
+ */
 export function validateRepository(root: string): RepositoryValidationResult {
   const errors: string[] = []
   const warnings: string[] = []

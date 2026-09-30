@@ -224,6 +224,13 @@ export function intakeProductSpecFromRun(
   return null
 }
 
+/**
+ * Return the sorted acceptance criterion ids of the run's accepted plan output,
+ * where the run is the one whose `runtime/logs/workflows/<run-id>/` directory
+ * holds `targetPath`. Prefers the latest successful plan with a passing
+ * assessment, then the latest successful plan, then the newest plan output on
+ * disk. Returns an empty list when no plan output is found.
+ */
 export function planAcceptanceCriterionIds(
   root: string,
   targetPath: string,

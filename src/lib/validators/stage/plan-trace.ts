@@ -56,6 +56,14 @@ export function verificationRecommendationIssues(
   return []
 }
 
+/**
+ * Validate a plan stage output's traceability: each acceptance criterion has an
+ * id, a known proof type, and maps to intake user stories or constraints; every
+ * intake story is covered; each planned file and case is well-formed and
+ * producible; and the verification recommendation is present when expected.
+ * Reads the intake product spec from the run's intake output. Raises `plan.*`
+ * codes.
+ */
 export function validatePlanTrace(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<

@@ -31,12 +31,22 @@ import {
   type WorkflowArtifactSequenceMode,
 } from './identity.js'
 
+/**
+ * Report whether a path names a content-addressed artifact (a state revision,
+ * event payload, or repository-check delta named by its digest). These files
+ * are immutable history and are never rewritten.
+ */
 export function isContentAddressedArtifact(filePath: string): boolean {
   return /(?:^|[/\\])(?:state-revision-\d+-[a-f0-9]{64}|event-payload-[a-f0-9]{64}|repository-check-delta-[a-f0-9]{64})\.json$/u.test(
     filePath,
   )
 }
 
+/**
+ * Apply the string mappings to each text file in place, skipping binary files,
+ * and add each file it changes to `updatedFiles`. Does nothing when `mappings`
+ * is empty.
+ */
 export function updateFiles(
   files: string[],
   mappings: ReadonlyMap<string, string>,
@@ -371,6 +381,14 @@ function replaceRunStateObject(
   Object.assign(state, rewritten)
 }
 
+/**
+ * Renumber a run's invocation ids to sequenced artifact ids and consolidate its
+ * artifact layout: rewrites references in the run's log, state, and inbox files
+ * (never content-addressed artifacts), renames artifact files, and records
+ * invocation aliases. With `state`, updates it in memory and writes it to the
+ * run's `state.json`. Throws `PanError` `RUN_NOT_FOUND` when the run directory
+ * does not exist.
+ */
 export function rewriteWorkflowArtifacts(
   root: string,
   runId: string,
@@ -450,6 +468,11 @@ export function rewriteWorkflowArtifacts(
   }
 }
 
+/**
+ * Apply the completed-mode artifact renumbering to a closed run, using
+ * `activeState` or the run's stored state. Throws `PanError` `RUN_NOT_TERMINAL`
+ * when the run is not closed.
+ */
 export function finalizeWorkflowArtifacts(
   root: string,
   runId: string,

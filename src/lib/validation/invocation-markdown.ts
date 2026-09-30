@@ -165,6 +165,14 @@ function guidanceChecks(options: {
 const WORKER_LIFECYCLE_COMMAND_PATTERN =
   /pan\s+(submit|decide|set-stage|waive-gate|delegate|abort)\b/u
 
+/**
+ * Check that an invocation's delivered Markdown carries its contract and return
+ * the verdict with each check: the policies heading, each policy's header,
+ * summary or current pointer, and agent instructions, guidance references
+ * without inline bodies, prior-failure reasons, the delegation procedure, and
+ * agent and harness requirement tables. With `supervisorProcedureMarkdown`,
+ * also rejects worker-visible lifecycle commands such as `pan submit`.
+ */
 export function validateInvocationMarkdown(
   invocation: Invocation,
   markdown: string,

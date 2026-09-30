@@ -177,6 +177,11 @@ export const PYTHON_RULES: readonly LineRule[] = [
 const MUTABLE_DEFAULT_PATTERN =
   /=\s*(?:\[|\{|list\s*\(\s*\)|dict\s*\(\s*\)|set\s*\(\s*\))/u
 
+/**
+ * Append an issue to `issues` for every match of every line rule on every line,
+ * skipping rules excluded for the file's extension and matches the rule's
+ * `permitted` predicate accepts. Line numbers are 1-based.
+ */
 export function matchLineRules(
   lines: readonly string[],
   rules: readonly LineRule[],

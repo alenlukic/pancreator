@@ -76,6 +76,10 @@ const VALID_HANDLER_STATUSES = new Set([
   'not_applicable',
 ])
 
+/**
+ * Report whether a value is one of the validator handler statuses: `passed`,
+ * `failed`, `blocked`, `invalid`, or `not_applicable`.
+ */
 export function isValidHandlerStatus(
   value: unknown,
 ): value is HandlerResult['status'] {
@@ -115,6 +119,12 @@ export const VALID_FAILURE_ROUTES = new Set([
   'operator_decision',
 ])
 
+/**
+ * Report whether a value has the shape of a policy requirement: string ids,
+ * target, failure route, and evidence class, a known phase, executor, and
+ * enforcement, and an optional string-valued `applicability` map. Does not
+ * check the registry id or failure route value.
+ */
 export function isValidPolicyRequirement(
   value: unknown,
 ): value is PolicyRequirement {

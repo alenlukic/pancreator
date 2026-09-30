@@ -359,6 +359,14 @@ function validateFlowSteps(body: string): HandlerResult['issues'] {
   return issues
 }
 
+/**
+ * Validate a target repository primer: the title, required sections with
+ * content (target installations add frontend inspection, major flows, and
+ * observability), administrative command subsections, an architecture Mermaid
+ * diagram, a project structure that names paths or states they are unavailable,
+ * well-formed flow steps, and generation metadata that is ready and current.
+ * Raises `primer.*` codes.
+ */
 export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const content = readText(path.join(input.root, input.targetPath))

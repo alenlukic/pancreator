@@ -321,6 +321,16 @@ function scanSummary(files: StyleScanFile[]): StyleScanSummary {
   }
 }
 
+/**
+ * Scan eligible workspace source files for code style issues and return
+ * per-file entries with a summary; status is `failed` when any editable file
+ * has an issue. Selects files changed since the `runtime/cache/style.json`
+ * checkpoint (or since `since_ref`), every eligible tracked file with `all` or
+ * when no checkpoint exists, and checkpointed files since deleted. Reads the
+ * checkpoint but never writes it. Throws `PanError` `INVALID_ARGUMENT` when the
+ * workspace is not a Git repository, when `since_ref` and `all` are both set,
+ * or when `since_ref` does not resolve to a commit.
+ */
 export function scanStyleArtifacts(
   harnessRoot: string,
   options: StyleScanOptions,
@@ -408,6 +418,13 @@ export function scanStyleArtifacts(
   }
 }
 
+/**
+ * Scan every eligible workspace source file and, when no editable file has a
+ * style issue, write the content digests to `runtime/cache/style.json` so later
+ * scans report only changes. Returns `blocked` without writing when an editable
+ * file still has an issue. Throws `PanError` `INVALID_ARGUMENT` on the same
+ * conditions as `scanStyleArtifacts`.
+ */
 export function checkpointStyleArtifacts(
   harnessRoot: string,
   options: StyleScanOptions,

@@ -9,6 +9,13 @@ import { issue } from './evidence.js'
 
 const WORK_MODES = new Set(['systematic', 'lightweight'])
 
+/**
+ * Validate an investigation Markdown artifact: the required sections, one
+ * declared work mode (`systematic` or `lightweight`), numbered acceptance
+ * criteria, an evaluation of the WORK-001 lightweight thresholds, and the
+ * `systematic` route whenever the text states uncertainty. Raises
+ * `investigation.*` codes.
+ */
 export function validateInvestigationArtifact(
   input: HandlerInput,
 ): HandlerResult {

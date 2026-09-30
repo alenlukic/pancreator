@@ -55,6 +55,13 @@ function resolveConfigPath(root: string): string | null {
   return name ? path.join(root, name) : null
 }
 
+/**
+ * Read `config.json` (or its legacy name) with `config_overrides.json` merged
+ * over it, validate every top-level field and block, and return it typed.
+ * Returns null when no configuration file exists. Throws `PanError`
+ * `INVALID_PROJECT_CONFIG` on a schema violation, including a detached
+ * installation without an absolute `workspace_root`.
+ */
 export function readProjectConfig(root: string): ProjectConfig | null {
   const configPath = resolveConfigPath(root)
 
@@ -139,6 +146,10 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   return value as unknown as ProjectConfig
 }
 
+/**
+ * Return the validated project configuration, like `readProjectConfig`, but
+ * throw `PanError` `INVALID_PROJECT_CONFIG` when no configuration file exists.
+ */
 export function loadProjectConfig(root: string): ProjectConfig {
   const config = readProjectConfig(root)
 
@@ -196,10 +207,18 @@ export function readInstallationIdentity(root: string): {
   return { installation_mode: mode, workspace_root: workspaceRoot }
 }
 
+/**
+ * Return the configured `workspace_root`, or `.` when the configuration
+ * declares none. Throws as `loadProjectConfig` does.
+ */
 export function configuredWorkspaceRoot(root: string): string {
   return loadProjectConfig(root).workspace_root ?? '.'
 }
 
+/**
+ * Return the `installations` registry of `config.json` as id and path pairs,
+ * empty when none are registered.
+ */
 export function registeredInstallations(
   root: string,
 ): RegisteredInstallation[] {
@@ -209,6 +228,10 @@ export function registeredInstallations(
   }))
 }
 
+/**
+ * Return the registered installation with the given id. Throws `PanError`
+ * `UNKNOWN_INSTALLATION`, listing the registered ids, when none matches.
+ */
 export function resolveRegisteredInstallation(
   root: string,
   id: string,
@@ -281,14 +304,27 @@ export function resolveAwayModeConfig(
   }
 }
 
+/**
+ * Report whether the harness at `root` is the Pancreator self-development
+ * checkout. Throws as `loadProjectConfig` does.
+ */
 export function isSelfDevelopmentInstallation(root: string): boolean {
   return loadProjectConfig(root).installation_mode === 'self_development'
 }
 
+/**
+ * Report whether the harness at `root` is installed inside its target
+ * repository. Use it only for location-specific behavior;
+ * `isTargetInstallation` covers behavior shared with detached installations.
+ */
 export function isEmbeddedInstallation(root: string): boolean {
   return loadProjectConfig(root).installation_mode === 'embedded'
 }
 
+/**
+ * Report whether the harness at `root` lives outside the target repository it
+ * governs. Throws as `loadProjectConfig` does.
+ */
 export function isDetachedInstallation(root: string): boolean {
   return loadProjectConfig(root).installation_mode === 'detached'
 }
@@ -314,6 +350,11 @@ export function harnessPathPrefix(root: string): string {
   return isDetachedInstallation(root) ? root : EMBEDDED_HARNESS_PREFIX
 }
 
+/**
+ * Return the command an agent in the workspace runs to invoke `pan`:
+ * `./bin/pan` for self-development, `./.pancreator/bin/pan` for an embedded
+ * harness, and the absolute `bin/pan` path for a detached one.
+ */
 export function panCommand(root: string): string {
   if (isDetachedInstallation(root)) {
     return path.join(root, 'bin', 'pan')

@@ -41,6 +41,11 @@ export interface RenderedTurnReminder {
   byte_length: number
 }
 
+/**
+ * Return the trimmed text of a Markdown section in a card file, from the exact
+ * `heading` line up to the next heading of the same or higher level. Throws
+ * through `invalid` when the heading is absent.
+ */
 export function cardSection(
   root: string,
   cardPath: string,
@@ -132,12 +137,23 @@ function resolveSelector(
   }
 }
 
+/**
+ * Return the card mode for reminder card selectors from the project config:
+ * `embedded`, `detached`, or `self_development` for every other installation
+ * mode.
+ */
 export function installationCardMode(root: string): TurnReminderCardMode {
   const mode = loadProjectConfig(root).installation_mode
 
   return mode === 'embedded' || mode === 'detached' ? mode : 'self_development'
 }
 
+/**
+ * Resolve every selector of a profile to its reminder line: the pinned policy
+ * instruction or card section text with its source label. Throws through
+ * `invalid` when a referenced policy is missing or a pinned digest no longer
+ * matches, naming `pan governance refresh-digests` as the repair.
+ */
 export function resolveTurnReminderLines(
   root: string,
   profileId: string,
@@ -181,6 +197,12 @@ function renderReminderContent(
   ].join('\n')
 }
 
+/**
+ * Render the governance reminder text for a role: its profile's resolved lines
+ * grouped by source, followed by the active card path and digest. Throws
+ * through `invalid` when the role has no profile, a selector is stale, or the
+ * rendered bytes exceed the registry's `byte_budget`.
+ */
 export function renderTurnReminder(
   root: string,
   role: Exclude<TurnReminderRole, 'none'>,
@@ -261,6 +283,11 @@ function validateCardModeTemplates(
   return errors
 }
 
+/**
+ * Check that every role's reminder renders within budget and that every card
+ * selector matches each installer card template present. Returns the distinct
+ * error messages, empty when all profiles are valid; never throws.
+ */
 export function validateTurnReminderProfiles(root: string): string[] {
   try {
     const registry = loadTurnReminderRegistry(root)

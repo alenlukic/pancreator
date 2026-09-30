@@ -134,6 +134,15 @@ function failureKey(file: string, testCase: string): string {
   return `${sourceTestPath(file)}\u0000${testCase}`
 }
 
+/**
+ * Classify each new test failure of a failing repository-check gate that is
+ * absent from the baseline: `in_change_closure` when the stage's changed paths
+ * import the test, else one isolated rerun with the profile's isolation command
+ * that yields `reproduced`, `environment_or_flake`, or `isolation_unproven`, or
+ * `isolation_unavailable` with a reason. Returns `reclassifiedPass` only when
+ * every new diagnostic passed its rerun. Spawns rerun processes in the
+ * workspace.
+ */
 export function classifyGateTestFailures(options: {
   root: string
   workspace: WorkspaceSnapshot
@@ -340,6 +349,15 @@ export function classifyGateTestFailures(options: {
   return { classifications, reclassifiedPass, advisory }
 }
 
+/**
+ * Run one shell gate criterion and return its deterministic result. Resolves
+ * the command and repository-check profile (the verification level may remap
+ * the profile), reuses a matching gate-cache entry for the same workspace
+ * fingerprint, else executes the command and writes a bounded and a full
+ * evidence log to the run directory. A profile gate passes on diagnostic delta
+ * against the run's baseline, with isolated reruns for new test failures; a
+ * passing uncached result is stored in the gate cache.
+ */
 export function runShellCheck(
   root: string,
   runDirectory: string,

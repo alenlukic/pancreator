@@ -6,6 +6,14 @@ import type { WorkflowDefinition, StageCheckpoint } from '../types.js'
 import { TERMINALS } from './stage.js'
 import { stageBySlug } from './lookup.js'
 
+/**
+ * Check a parsed workflow's cross-stage consistency and return it unchanged:
+ * unique stage slugs, checkpoints, and criterion ids, existing prompt files,
+ * entry gates on a shell criterion that route failure elsewhere, context
+ * selectors and persona mappings that name other known stages, valid
+ * transitions, and every stage reachable from `start_stage`. Throws `PanError`
+ * `INVALID_WORKFLOW` on the first violation.
+ */
 export function validateWorkflow(
   root: string,
   workflow: WorkflowDefinition,

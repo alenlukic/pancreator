@@ -7,6 +7,13 @@ import type { HandlerInput, HandlerResult } from '../../requirements/types.js'
 import { issue } from './evidence.js'
 import { verificationRecommendationIssues } from './plan-trace.js'
 
+/**
+ * Validate an intake stage output's `data.product_spec`: a summary, user
+ * stories with ids and statements, non-empty constraints, out-of-scope and
+ * open-question arrays, a well-formed verification recommendation when present,
+ * and artifacts that exist and cite at least one user story id. Raises
+ * `intake.*` codes.
+ */
 export function validateIntakeOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<

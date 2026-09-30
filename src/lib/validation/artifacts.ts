@@ -29,6 +29,11 @@ export const PRIOR_FAILURE_HEADING = '## ⛔ Why the previous attempt failed'
 const EVIDENCE_STREAM_HEAD_BYTES = 64 * 1024
 const EVIDENCE_STREAM_TAIL_BYTES = 16 * 1024
 
+/**
+ * Bound one output stream for a deterministic-gate evidence log: return it
+ * unchanged when it fits, else keep the first 65,536 and last 16,384 characters
+ * with a marker naming the elided count and pointing at the full log beside it.
+ */
 export function boundEvidenceStream(value: string): string {
   const budget = EVIDENCE_STREAM_HEAD_BYTES + EVIDENCE_STREAM_TAIL_BYTES
 
@@ -77,10 +82,18 @@ export interface InvocationValidationStatus {
   delegation_path: string
 }
 
+/**
+ * Convert CRLF and lone CR line endings to LF.
+ */
 export function normalizeMarkdownContent(content: string): string {
   return content.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
 }
 
+/**
+ * Normalize delegation Markdown for comparison: LF line endings, trailing
+ * spaces and tabs stripped from each line, trailing blank lines removed, and
+ * exactly one final newline.
+ */
 export function normalizeDelegationContent(content: string): string {
   const normalized = normalizeMarkdownContent(content)
     .split('\n')
@@ -113,6 +126,12 @@ function invocationValidationArtifactPath(
     : layout.invocation(invocationId, extension).relative
 }
 
+/**
+ * Return the root-relative path of an invocation's
+ * `.invocation-validation.json` artifact: under the run's `validations/`
+ * directory for a layout v2 run, else beside the invocation. Without `root`,
+ * returns the layout v1 path.
+ */
 export function invocationValidationPath(
   runId: string,
   invocationId: string,
@@ -126,6 +145,10 @@ export function invocationValidationPath(
   )
 }
 
+/**
+ * Return the root-relative path of an invocation's `.delegation.md` artifact in
+ * the run layout, or the layout v1 path when `root` is omitted.
+ */
 export function delegationPath(
   runId: string,
   invocationId: string,
@@ -180,6 +203,11 @@ export function relocateMisplacedDelegationArtifact(
   return true
 }
 
+/**
+ * Return the root-relative path of an invocation's
+ * `.delegation-validation.json` artifact, placed as `invocationValidationPath`
+ * places its artifact.
+ */
 export function delegationValidationPath(
   runId: string,
   invocationId: string,
@@ -222,6 +250,11 @@ export function sessionRecordPath(
     : `runtime/logs/workflows/${runId}/invocations/${invocationId}.session.json`
 }
 
+/**
+ * Read the harness-authored execution record of an external-executor
+ * delegation. Returns null when the file is absent or is not a schema version 1
+ * object; throws when it is not valid JSON.
+ */
 export function loadDelegationExecutionRecord(
   root: string,
   runId: string,
@@ -284,6 +317,11 @@ export function expectedDelegationSource(
   return { path: canonicalPath, mode: 'verbatim' }
 }
 
+/**
+ * Return the root-relative path of an invocation's
+ * `.attestation-validation.json` artifact, placed as `invocationValidationPath`
+ * places its artifact.
+ */
 export function attestationValidationPath(
   runId: string,
   invocationId: string,
@@ -297,6 +335,11 @@ export function attestationValidationPath(
   )
 }
 
+/**
+ * Build a validation result artifact from its checks, with a summary that
+ * states the pass count or names the failed check ids. `validated_at` defaults
+ * to now. Pure; the caller writes it.
+ */
 export function buildValidationArtifact(options: {
   run_id: string
   invocation_id: string

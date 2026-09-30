@@ -30,6 +30,14 @@ interface ShellCheckResolution {
   removed_reason?: string
 }
 
+/**
+ * Resolve the command a shell gate criterion runs and the repository-check
+ * profile it judges by. The fast-wall criterion runs `pan tests wall`; an
+ * operator override or self-development runs the requested command; a target
+ * installation maps legacy harness commands to its repository-check profiles or
+ * to `pan validate`. Returns `removed_reason` for the retired standalone
+ * coverage gate.
+ */
 export function resolveShellCheck(
   root: string,
   criterion: Criterion,

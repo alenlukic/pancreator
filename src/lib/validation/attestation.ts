@@ -431,6 +431,15 @@ function contractFileDigestCheck(
       }
 }
 
+/**
+ * Check a stage output's `invocation_attestation` against the invocation's
+ * contract manifest and return the verdict, the attestation status, and each
+ * check. Requires status `read` with matching invocation id, model, contract
+ * path, and contract digest, plus guidance and context-reference read evidence;
+ * `reference_failed` must carry an error and a `blocked` result. Passes
+ * trivially when the invocation has no contract manifest. With `root`, also
+ * re-hashes the contract file on disk.
+ */
 export function validateInvocationAttestation(
   invocation: Invocation,
   output: unknown,
@@ -634,6 +643,12 @@ export function validateInvocationAttestation(
   }
 }
 
+/**
+ * Read an invocation or delegation validation artifact. Returns `{ state:
+ * 'missing' }` when the file is absent and `{ state: 'malformed', reason }`
+ * when it cannot be parsed, has the wrong shape, or has kind `attestation`;
+ * never throws.
+ */
 export function loadValidationArtifact(
   root: string,
   relativePath: string,
@@ -671,6 +686,11 @@ export function loadValidationArtifact(
   }
 }
 
+/**
+ * Load an invocation's invocation and delegation validation artifacts together
+ * with their paths and the delegation Markdown path. Never throws; each
+ * artifact reports `missing` or `malformed` as `loadValidationArtifact` does.
+ */
 export function loadInvocationValidationStatus(
   root: string,
   runId: string,

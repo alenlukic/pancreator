@@ -11,6 +11,13 @@ import { isRecord } from '../io.js'
 import type { AwayModeAction, ProjectConfig, SpendConfig } from '../types.js'
 import { AWAY_MODE_ACTIONS, PROJECT_CONFIG_PATH } from './files.js'
 
+/**
+ * Validate the optional `worktrees` block of `config.json`: a
+ * repository-relative `root`, a whitespace-free `branch_prefix`,
+ * worktree-relative `readiness_paths`, and non-empty `setup` commands. Throws
+ * `PanError` `INVALID_PROJECT_CONFIG` on the first violation; an absent block
+ * passes.
+ */
 export function assertWorktreesBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -86,6 +93,12 @@ function assertWorktreeReadinessPaths(value: unknown): void {
   }
 }
 
+/**
+ * Validate the optional `retention` block of `config.json`: a positive integer
+ * `default_days` and a `classes` map of positive integer day counts. Throws
+ * `PanError` `INVALID_RETENTION_DAYS` on the first violation; an absent block
+ * passes.
+ */
 export function assertRetentionBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -124,6 +137,12 @@ export function assertRetentionBlock(value: unknown): void {
   }
 }
 
+/**
+ * Validate the optional `away_mode` block of `config.json`: a boolean `enabled`
+ * and `guardrails.allowed_actions` drawn only from the known away mode actions.
+ * Throws `PanError` `INVALID_PROJECT_CONFIG` on the first violation; an absent
+ * block passes.
+ */
 export function assertAwayModeBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -266,6 +285,12 @@ function assertScheduleAction(value: unknown, source: string): void {
 
 const INSTALLATION_ID = /^[a-z0-9][a-z0-9-]*$/u
 
+/**
+ * Validate the optional `installations` registry of `config.json`: each entry
+ * needs a unique lowercase hyphenated `id` and an absolute `path`. Throws
+ * `PanError` `INVALID_PROJECT_CONFIG` on the first violation; an absent block
+ * passes.
+ */
 export function assertInstallationsBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -302,6 +327,14 @@ export function assertInstallationsBlock(value: unknown): void {
   }
 }
 
+/**
+ * Validate the optional `schedule` block of `config.json`: a boolean `enabled`,
+ * non-negative window minutes, and jobs with unique ids, a valid hour, minute,
+ * weekdays, and IANA timezone, exactly one of `workspace` or `worktree`, and an
+ * action whose fields fit its kind (`command`, `workflow`, `session`, or
+ * `prompt`). Throws `PanError` `INVALID_PROJECT_CONFIG` on the first violation;
+ * an absent block passes.
+ */
 export function assertScheduleBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -510,6 +543,11 @@ function normalizeSpendSyncHost(host: string): string {
 export const DEFAULT_HANDOFF_MODEL = 'Claude Opus 5.5'
 export const DEFAULT_HANDOFF_EFFORT = 'High'
 
+/**
+ * Validate the optional `handoff` block of `config.json`: `model` and `effort`
+ * must be non-empty strings when present. Throws `PanError`
+ * `INVALID_PROJECT_CONFIG` on the first violation; an absent block passes.
+ */
 export function assertHandoffBlock(value: unknown): void {
   if (value === undefined) {
     return
@@ -534,6 +572,13 @@ export function assertHandoffBlock(value: unknown): void {
   )
 }
 
+/**
+ * Validate the optional `spend` block of `config.json` and narrow it to
+ * `SpendConfig`: `vercel_host` must normalize to an https origin, or http for a
+ * loopback host, with no path, query, fragment, or credentials. Throws
+ * `PanError` `INVALID_PROJECT_CONFIG` on the first violation; an absent block
+ * passes.
+ */
 export function assertSpendBlock(
   value: unknown,
 ): asserts value is SpendConfig | undefined {
@@ -557,6 +602,13 @@ export function assertSpendBlock(
   }
 }
 
+/**
+ * Validate the optional `fast_wall` block of `config.json`: a positive
+ * `ceiling_ms` or null, an ISO `calibrated_at`, a `YYYY-MM-DD` `anchor_date`, a
+ * non-negative weekly allowance, a positive load-average ceiling, and a
+ * positive minimum sample count. Throws `PanError` `INVALID_PROJECT_CONFIG` on
+ * the first violation; an absent block passes.
+ */
 export function assertFastWallBlock(value: unknown): void {
   if (value === undefined) {
     return

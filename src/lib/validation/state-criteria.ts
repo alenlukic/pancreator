@@ -37,6 +37,13 @@ export const FINGERPRINT_BOUND_STATE_CRITERIA: ReadonlySet<string> = new Set([
   'ship.prior_gates_current',
 ])
 
+/**
+ * Evaluate a state criterion against run history. Only
+ * `ship.prior_gates_current` has an evaluator: it passes when review and QA (or
+ * a joint verify stage) succeeded or are operator-waived, and the QA evidence
+ * matches the current or operator-accepted workspace fingerprint. Any other
+ * criterion passes.
+ */
 export function evaluateStateCriterion(
   state: RunState,
   criterion: Criterion,
@@ -255,6 +262,13 @@ export function shipHeadMatchesRelease(
   )
 }
 
+/**
+ * Return the workspace fingerprint `ship.prior_gates_current` is judged against
+ * for a ship attempt. For a release-metadata-only stage, this is the passing QA
+ * fingerprint when the workspace still matches it or when every recorded window
+ * since QA chains back to it; otherwise the before snapshot's fingerprint.
+ * Other stages use the after snapshot.
+ */
 export function resolveShipPriorGatesEvidenceFingerprint(options: {
   state: RunState
   stage: StageDefinition
@@ -317,6 +331,10 @@ export function resolveShipPriorGatesEvidenceFingerprint(options: {
   }
 }
 
+/**
+ * Return the snapshot entries added and removed between two workspace
+ * snapshots.
+ */
 export function workspaceDelta(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
@@ -471,6 +489,11 @@ export function absorbedRunAttributionNote(
  */
 const SCOPE_DELTA_PREVIEW_LIMIT = 200
 
+/**
+ * Join paths with commas for a durable explanation, keeping the first 200 and
+ * naming how many more were cut, so a large delta cannot exceed the state size
+ * budget.
+ */
 export function boundedPathList(paths: string[]): string {
   if (paths.length <= SCOPE_DELTA_PREVIEW_LIMIT) {
     return paths.join(', ')
@@ -482,6 +505,10 @@ export function boundedPathList(paths: string[]): string {
   )
 }
 
+/**
+ * Cap each side of a workspace delta at 200 entries, replacing the rest with
+ * one entry naming the elided count.
+ */
 export function boundedWorkspaceDelta(delta: {
   added: string[]
   removed: string[]

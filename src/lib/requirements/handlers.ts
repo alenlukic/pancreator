@@ -274,6 +274,10 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))
 
+/**
+ * Return the validator handler registered under a handler id, or undefined when
+ * the id is unknown.
+ */
 export function getHandler(handlerId: string): ValidatorHandler | undefined {
   return HANDLERS[handlerId]
 }

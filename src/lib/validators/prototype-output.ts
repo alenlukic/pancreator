@@ -880,6 +880,11 @@ function validateEvaluateOutput(
   return issues
 }
 
+/**
+ * Validate a prototype workflow stage output with the check for its stage:
+ * intake, approach, build, or evaluate. Passes without checks for any other
+ * workflow or stage. Raises `prototype.*` codes.
+ */
 export function validatePrototypeOutput(input: HandlerInput): HandlerResult {
   if (workflowSlug(input) !== 'prototype') {
     return { status: 'passed', issues: [] }
