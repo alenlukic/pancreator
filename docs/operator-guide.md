@@ -2163,17 +2163,6 @@ applies the same test to a clean checkout. Landing work on `main` is your promot
 
 Rejection routes remediation to the stage that owns the fix and carries your feedback forward to that stage's worker as a required input.
 
-### Post-ship observations
-
-A criterion that only a signal after ship can prove carries the `observe` proof type, and verify records its result as `observe`. The ship packet then records one `data.release.observations[]` entry for each such criterion: `criterion`, `signal`, `source`, `window` (such as `7d`), and `check`, the command or query that checks the signal. `RELEASE-VALIDATE-001` refuses a packet that omits one. In self-development the source is a harness record: run `events.jsonl` advisories, `pan-run` shell records, friction intakes, or `pan spend`. In an embedded or detached installation it is the observability tool the primer's `## Observability` section names. Nothing queries that tool automatically.
-
-```sh
-./bin/pan observations [--all] [--json]
-./bin/pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>]
-```
-
-`pan observations` lists every unresolved item with its `shipped_at`, its `due_at` (`shipped_at` plus the window), and a status of `open` while the window runs or `due` once it elapses. `--all` adds resolved items. `/pan-repair` checks each due item against its source, files a refuted item as a regression finding, and resolves each item after its intakes validate. A refutation must cite that intake with `--intake`. Resolutions append to `runtime/observations/resolutions.jsonl`, which `pan cleanup` retains; a second resolution of one item is refused.
-
 - `./bin/pan decide <run-id> reject --note "<what is wrong>"` sends the run back to implementation by default, then naturally re-runs review, QA, and ship.
 - `./bin/pan decide <run-id> reject --stage plan --note "<what is wrong>"` sends it back to planning when the defect is architectural rather than a coding error.
 - `--stage <slug>` may target any stage in the workflow. The chosen stage and every stage after it restart with fresh attempt budgets, since you are deliberately reworking that segment.
@@ -2191,6 +2180,30 @@ Use `--note-file <path>` for a note above that bound. `decide`, `pause`, `resume
 ```sh
 ./bin/pan decide <run-id> revise --note-file runtime/inbox/queue/revision-directive.md
 ```
+
+### Post-ship observations
+
+A criterion that only a signal after ship can prove carries the `observe` proof type, and verify records its result as `observe`. The ship packet then records one `data.release.observations[]` entry for each such criterion: `criterion`, `signal`, `source`, `window` (such as `7d`), and `check`, the command or query that checks the signal. `RELEASE-VALIDATE-001` refuses a packet that omits one. In self-development the source is a harness record: run `events.jsonl` advisories, `pan-run` shell records, friction intakes, or `pan spend`. In an embedded or detached installation it is the observability tool the primer's `## Observability` section names. Nothing queries that tool automatically.
+
+```sh
+./bin/pan observations [--all] [--json]
+./bin/pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>]
+```
+
+`pan observations` lists every unresolved item with its `shipped_at`, its `due_at` (`shipped_at` plus the window), and a status of `open` while the window runs or `due` once it elapses. `--all` adds resolved items. `/pan-repair` checks each due item against its source, files a refuted item as a regression finding, and resolves each item after its intakes validate. A refutation must cite that intake with `--intake`. Resolutions append to `runtime/observations/resolutions.jsonl`, which `pan cleanup` retains; a second resolution of one item is refused.
+
+## Function index for harness source
+
+In this self-development checkout, `docs/function-index/` holds a generated index of `src/`: `README.md` maps every module to its purpose and export count, `SYMBOLS.md` maps every exported symbol to its module page, and each module page gives every export's signature, the first paragraph of its JSDoc, and its `file:line`. `INDEX-001` tells implementing, reviewing, and planning workers to find functions there before they search `src/`, and to open source only at the lines they change. Plan file entries may name the `symbols` a change touches.
+
+The harness regenerates the index in the run workspace every time it prepares a stage, so a worker always reads an index of the tree it edits. The directory is gitignored and never ships in an installed payload. Outside a run, build or check it by hand:
+
+```sh
+./bin/pan docs index --write   # regenerate; removes pages of deleted modules
+./bin/pan docs index --check   # exit 1 when a page is stale, missing, or extra
+```
+
+An exported function without a leading JSDoc shows as undocumented in its entry. Give a new or changed export a JSDoc whose first paragraph states what it does, because that paragraph becomes the entry.
 
 ## Sync Cursor spend across instances
 
