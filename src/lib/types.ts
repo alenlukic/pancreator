@@ -2139,7 +2139,11 @@ export interface RunAdvisory {
     | 'build_currency'
     /** A returning verify stage whose interior profile refresh failed. */
     | 'verify_profile_refresh'
-    /** A non-blocking suite-cost observation recorded at release time. */
+    /**
+     * A non-blocking suite-cost observation: the fast wall over its ceiling
+     * at release, or a source-stage worker that ran gate profiles itself or
+     * browsed files through the shell.
+     */
     | 'suite_cost'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string

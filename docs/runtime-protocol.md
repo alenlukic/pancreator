@@ -504,7 +504,12 @@ omits the key when it recorded against none. `pan output validate` reads those
 records and reports the `repository_check_fast_repeated` advisory when one
 invocation ran `fast` more often than the stage's declared `evidence_workers`
 count allows, so the once-per-worker rule is judged from harness records rather
-than from the worker's narrative. The evidence-worker brief names the harness
+than from the worker's narrative. `pan submit` of a `source_allowed` stage
+counts the same records for the submitting invocation: every agent-run profile
+other than `impacted` is a worker-run gate profile. When that count or the
+worker transcript's shell browsing count is nonzero, the submission records a
+`suite_cost` advisory and a `suite_cost_advisory` event with
+`scope: "worker_invocation"`. The evidence-worker brief names the harness
 root and asks for a `fast` run only when no gate has already passed `fast` at
 the current workspace fingerprint. `minimal` disables both `full` gates;
 `thorough` is an alias of `light`.

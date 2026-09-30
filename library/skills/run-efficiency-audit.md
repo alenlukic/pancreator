@@ -32,10 +32,16 @@ work it served, and file it only when a trigger fires.
    | Retry loops               | stage sequence in `events.jsonl`, verify outputs                                                                                     | verify-to-remediate cycles, and findings per cycle                                                          |
    | Change size served        | `outputs/*.json` `workspace_changes.paths`, finding ids of the preceding verify                                                      | paths and findings, and lines when commits exist                                                            |
 
-3. Add the transcript signals from the transcripts the audit already inspects:
-   tool calls per worker by tool, repeated reads of the same path and offset,
-   an evidence worker that reads the stage card, two roles that run the same
-   check or reproduction, and reads of guidance the role never applies.
+3. Add the transcript signals. `pan worker profile --days <n> --json` is the
+   durable source for per-stage turns, tool calls by tool, partial reads and
+   re-reads, shell browsing, inline Python, self-run checks, unfiltered test
+   output, paperwork calls, and the turn of the first source edit. Cite it
+   rather than an ad hoc transcript script. The `suite_cost_advisory` events
+   with `scope: "worker_invocation"` in `events.jsonl` give the same gate
+   profile and shell browsing counts per invocation. From the transcripts the
+   audit already inspects, add an evidence worker that reads the stage card,
+   two roles that run the same check or reproduction, and reads of guidance
+   the role never applies.
 4. Apply the proportionality test to every stage visit. A finding needs all
    three conditions:
    - a cost signal measured from at least two independent sources;

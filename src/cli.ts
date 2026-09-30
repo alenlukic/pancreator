@@ -292,6 +292,10 @@ import {
 } from './lib/workflow-artifacts.js'
 import { applyCleanup, planCleanup } from './lib/cleanup.js'
 import { generateTokenSpendReport } from './lib/token-spend.js'
+import {
+  formatWorkerProfileReport,
+  generateWorkerProfileReport,
+} from './lib/worker-profile.js'
 import { reportMultiInstanceSpend, syncSpend } from './lib/spend-sync.js'
 import { runDailyQuality } from './lib/daily-quality.js'
 import { writeSpendCanvas } from './lib/spend-canvas.js'
@@ -4805,6 +4809,17 @@ async function main(): Promise<void> {
     }
     case 'worker': {
       const subcommand = requiredArgument(args[0], 'worker subcommand')
+
+      if (subcommand === 'profile') {
+        const days = integerOption(args, '--days')
+        const report = generateWorkerProfileReport(root, {
+          ...(days === null ? {} : { days }),
+        })
+
+        print(json ? report : formatWorkerProfileReport(report), json)
+        return
+      }
+
       const runId = requiredArgument(args[1], 'run-id')
       const invocationId = option(args, '--invocation')
       const role = option(args, '--role')

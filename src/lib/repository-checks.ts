@@ -1983,6 +1983,53 @@ export function agentRepositoryCheckAdvisories(
 }
 
 /**
+ * Agent-run executions of gate profiles recorded for one invocation, counted
+ * per profile. `impacted` is the iteration profile agents are meant to run,
+ * so it is excluded; every other profile duplicates a harness gate. Harness
+ * executions, such as the release-profile prefetch, are excluded too.
+ */
+export function agentGateProfileRuns(
+  root: string,
+  runId: string,
+  invocationId: string,
+): Record<string, number> {
+  const evidence = resolveRunLayout(root, runId).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+  const counts: Record<string, number> = {}
+
+  if (!fileExists(evidence.absolute)) {
+    return counts
+  }
+
+  for (const line of readText(evidence.absolute).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let record: unknown
+
+    try {
+      record = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      isRecord(record) &&
+      typeof record.profile === 'string' &&
+      record.profile !== 'impacted' &&
+      record.invocation_id === invocationId &&
+      record.invoked_by !== 'harness'
+    ) {
+      counts[record.profile] = (counts[record.profile] ?? 0) + 1
+    }
+  }
+
+  return counts
+}
+
+/**
  * Run the target-declared workspace setup commands (dependency install,
  * build) in the given workspace, stopping at the first failure.
  */

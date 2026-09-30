@@ -1807,6 +1807,31 @@ refresh keeps a ceiling only when `calibrated_at` shows the target measured it.
 Edit `ceiling_ms` in the harness `config.json` to change it later, or remove
 the `fast_wall` block to turn the advisory off.
 
+A source stage's worker also earns a suite-cost advisory. The implement and
+remediate exit gates run every gate profile, so a worker iterates on
+`pan tests impacted` and reads files with the file tools. `pan submit` of any
+stage whose `workspace_policy` is `source_allowed` counts two things for the
+submitting invocation:
+
+- worker-run gate profiles: the agent-run rows of
+  `agent/evidence/repository-check-runs.jsonl` for that invocation whose
+  profile is not `impacted`, counted per profile. Harness-run rows do not
+  count.
+- shell browsing calls: the Shell calls in that invocation's worker transcript
+  whose effective command starts with `cat`, `head`, `tail`, `sed`, `awk`,
+  `grep`, `rg`, `ls`, `find`, `wc`, or `nl`, as `pan worker profile` counts
+  them. The harness looks only at Cursor transcripts changed since the
+  invocation was prepared, opens at most the 64 newest, and matches the
+  delivery prompt that names the invocation card.
+
+When either count is nonzero, the submission records a `suite_cost` advisory
+and appends a `suite_cost_advisory` event to `events.jsonl` with
+`scope: "worker_invocation"`, `stage`, `invocation_id`,
+`worker_gate_profiles` (profile to count), `shell_browsing_calls`, and
+`transcript_found`. `shell_browsing_calls` is `null` when no transcript names
+the invocation. The advisory never blocks or fails a submission, and an error
+while counting skips it.
+
 The verify card of a `delivery` or `delivery-chunk` run carries the fast wall,
 the test count, and the marginal cost per test before and after the implement
 stage. The before point is the run's `fast` baseline record, selected by the
@@ -1882,6 +1907,39 @@ eligible set. `checkpoint` always inspects the complete set, returns `blocked`
 without writing while an editable file still has issues, and writes the
 checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
 status.
+
+## Profile stage worker efficiency
+
+Run `pan worker profile` to measure how stage workers spent their turns:
+
+```bash
+./bin/pan worker profile [--days <1..365>] [--json]
+```
+
+The command reads the local Cursor transcripts changed in the window (default
+7 days) from the same workspaces `pan spend` scans, and needs no credential or
+network access. It keeps each transcript whose opening delivery prompt names a
+run invocation. The stage comes from that invocation's record, or from the
+invocation id when the record is gone. Evidence workers report as
+`<stage>/<role>`, and the review role reports as `review`. For each stage it
+reports:
+
+| Field                    | Definition                                                                                                                                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workers`, `turns`       | transcripts profiled; one turn is one assistant record, with the total, mean, and maximum per worker                                                                                                                                                                                |
+| `tool_calls`             | tool calls by tool name                                                                                                                                                                                                                                                             |
+| `file_reads`             | Read calls; `partial` names an offset or a limit, and `re_reads` reads a path the same transcript already read                                                                                                                                                                      |
+| `most_re_read`           | the five most re-read paths, relative to their workspace with the worktree prefix removed; a path outside every workspace shows only its file name                                                                                                                                  |
+| `shell`                  | Shell calls; `browsing` starts with `cat`, `head`, `tail`, `sed`, `awk`, `grep`, `rg`, `ls`, `find`, `wc`, or `nl` after `cd <dir> &&`, environment assignments, and a `bin/pan-run` or `bash -c` wrapper are removed; `inline_python` runs `python3 -`, `python3 -c`, or a heredoc |
+| `self_run_checks`        | calls by kind: `npm run build`, `npm run lint`, `npm test`, `npm run test:<lane>`, `tsc`, `node --test`, `pan repository-check <profile>`, and `pan tests impacted`; a chained call counts once per kind                                                                            |
+| `unfiltered_test_output` | calls that run `npm test`, `npm run test:<lane>`, or `node --test` directly with no pipe into a filter, no stdout redirect to a file, and no `pan-run --quiet`                                                                                                                      |
+| `paperwork`              | `pan output scaffold`, `pan output validate`, and digest commands (`shasum`, `sha256sum`, `openssl dgst`, `pan context digest`, `createHash`)                                                                                                                                       |
+| `first_source_edit_turn` | the turn of the first Write, StrReplace, Edit, or MultiEdit to a path outside `runtime/`, as minimum, mean, and maximum over the workers that edited                                                                                                                                |
+
+The human form prints one table row per stage and a detail line for checks,
+paperwork, and re-reads. `--json` returns the structured report. The report
+holds counts and paths only: it never emits transcript content, credentials,
+email addresses, or conversation ids.
 
 ## Report Cursor token spend
 
