@@ -52,10 +52,10 @@ otherwise the request the card delivers, which is the ratified specification.
    Finalize reuses a complete same-version release/index pair already at the
    branch head, including a pair from an earlier attempt.
    In embedded mode, do not modify release metadata or create local commits.
-   Stop there. Landing this release on the harness root's local default
-   branch is an operator step after submit, so you MUST NOT fast-forward,
-   merge, switch, or check out a branch in the harness root during this
-   stage. `scope.no_unapproved_changes` reads any harness-root change as
+   Stop there, apart from the `pan release land` of step 10. Landing this
+   release on the harness root's local default branch by any other means is an
+   operator step after submit, so you MUST NOT fast-forward, merge, switch, or
+   check out a branch in the harness root during this stage. `scope.no_unapproved_changes` reads any harness-root change as
    contamination, and no `workspace_changes` declaration attributes a
    checkout the run is not working in.
 6. Attribute every tracked file this stage changed, including the release
@@ -86,7 +86,19 @@ otherwise the request the card delivers, which is the ratified specification.
     - On `conflict`: return `failure` with the land result in `data.landing`.
       Record each conflicted source path. The remediate stage resolves the
       conflict on the candidate branch.
-    - On `verification_failed`: return `failure` with the land result in
+    - On `verification_failed`: read the failing checks. When a change to at
+      most three files under `tests/unit/`, `tests/regression/`,
+      `tests/integration/`, or `tests/secondary/` fixes them, and nothing else
+      changes, repair in place. Commit the fix on the release branch. Attribute
+      it in `workspace_changes`, and reland once with
+      `pan release land --worktree <name> --run <run-id> --repair "<why>" --json`.
+      The land reuses the finalized release pair and runs `static`,
+      `configuration`, and the lane profile of each repaired path. Record
+      `data.release.ship_repair` with `failure`, `paths`, `commit` (the new
+      head), `reland_profiles`, and `basis`. Carry the landed result into
+      `data.release.versioning` and continue to step 11. For any other fix, a
+      second failure, or a refusal that names `LANDING_REPAIR_OUT_OF_BOUND` or
+      `LANDING_REPAIR_TIP_MOVED`, return `failure` with the land result in
       `data.landing`. The remediate stage repairs the failing checks.
     - On `landing_refused` or `LANDING_MUTEX_TIMEOUT`: return `blocked` with
       the `pan release land` command as `data.blocked.supplying_command` and

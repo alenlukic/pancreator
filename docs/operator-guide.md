@@ -1097,6 +1097,14 @@ You have three responses:
 ./bin/pan decide <run-id> reject --note "Wrong subsystem entirely."
 ```
 
+When you landed a run's release outside its ship stage, close the run with
+`./bin/pan decide <run-id> landed --note "<your directive>"`. The command reads
+that run's landing from `runtime/release/landing.jsonl`, refuses when it finds
+none or when the landed commit is not on `pan-dev`, and ends the run as
+`succeeded`. The run record then carries the landed commit, the verify profiles,
+and your note in `release_landing`, and the event log carries a `release_landed`
+event. `landed` works only at the `ship` stage, for an awaiting or paused run.
+
 `revise` is the refinement path: it re-runs the same stage with your directive as
 required input, tells the worker to keep everything you did not ask it to change,
 and does **not** consume the stage's failure retry budget — each revision raises
@@ -2223,7 +2231,7 @@ Root cause: allocation, finalize, and merge ran without serialization. Two branc
 
 ```sh
 pan release land --worktree <name> [--bump <major|minor|patch>] [--run <run-id>] \
-  [--verify-profile <name>]... [--wait-seconds <n>] [--json]
+  [--verify-profile <name>]... [--repair <note>] [--wait-seconds <n>] [--json]
 ```
 
 The command holds the landing mutex at `runtime/release/landing.lock` from tip read to fast-forward and runs these steps in order:
@@ -2233,11 +2241,24 @@ The command holds the landing mutex at `runtime/release/landing.lock` from tip r
 3. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
 4. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
 5. **Finalize** — calls `pan release finalize` to create the release and index commits.
-6. **Verify** — first compiles the candidate worktree through its own `bin/run-built --build-only`, without the `PANCREATOR_BUILD_READY` value the launching `bin/pan` exported for the earlier tree. A tree that does not compile returns `verification_failed` before any profile runs. The `build` step and every `verify` step in `landing.jsonl` record the build stamp of the tree they tested, and the land fails if the sources change while the profiles run. A worktree without `bin/run-built` skips the build. No profile command inherits `PANCREATOR_BUILD_READY`. The step runs each `--verify-profile` against the candidate worktree. Without `--verify-profile`, the land runs `full`, with one exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
+6. **Verify** — first compiles the candidate worktree through its own `bin/run-built --build-only`, without the `PANCREATOR_BUILD_READY` value the launching `bin/pan` exported for the earlier tree. A tree that does not compile returns `verification_failed` before any profile runs. The `build` step and every `verify` step in `landing.jsonl` record the build stamp of the tree they tested, and the land fails if the sources change while the profiles run. A worktree without `bin/run-built` skips the build. No profile command inherits `PANCREATOR_BUILD_READY`. The step runs each `--verify-profile` against the candidate worktree. Without `--verify-profile`, the land runs `full`, with one exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, `bounded_repair`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
 7. **Check** — runs `bin/check-landing branch <head> pan-dev`.
 8. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
 
+Every `step` event in `landing.jsonl` also carries the landing's `token` and the `--run` id. Only the `acquired` event of an older log names the run, and readers then attribute the steps by the block from `acquired` to `released`.
+
 The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `verification_basis`, `build_stamp`, `lock_wait_seconds`, and `lock_hold_seconds`.
+
+### Bounded ship repair
+
+A land that fails `verify` leaves its release pair on the candidate branch. When the fix is small, the release steward repairs it in the ship stage without a remediate round:
+
+1. Commit the fix on the release branch. It MUST change at most three files under `tests/unit/`, `tests/regression/`, `tests/integration/`, or `tests/secondary/`, and nothing else.
+2. Run `pan release land --worktree <name> --run <run-id> --repair "<why>"`.
+
+The land checks the bound before it merges, allocates, or commits anything, and it refuses with `LANDING_REPAIR_OUT_OF_BOUND` (too many paths, or a path outside those directories), `LANDING_REPAIR_NO_FAILURE` (the run has no failed land on this worktree), `LANDING_REPAIR_TIP_MOVED` (pan-dev holds commits the candidate lacks), `LANDING_REPAIR_DIRTY`, `LANDING_REPAIR_PAIR_MISSING`, or `LANDING_REPAIR_REQUIRES_RUN`. A refused repair returns `landing_refused`, and the steward returns `failure`, which routes to remediation as before.
+
+An accepted repair reuses the finalized release and index commits and creates no new pair, because a test-only commit above the indexed release commit adds no installable input that `bin/check-landing` counts. It verifies `static`, `configuration`, and the profile of each repaired lane (`fast` for unit and regression, `impacted-integration`, or `secondary`), records the basis `bounded_repair`, and adds the note and paths to the `verify` step and to the result as `repair`. The ship criterion `ship.local_release_complete` accepts a head above the index commit only when `data.release.ship_repair.commit` names that head and the paths between the two commits stay inside the bound.
 
 ### Statuses
 

@@ -2723,6 +2723,13 @@ async function main(): Promise<void> {
         const bump = bumpArg !== null ? bumpArg : undefined
         const waitSecondsArg = option(args, '--wait-seconds')
         const verifyProfileArgs = options(args, '--verify-profile')
+        const repairNote = option(args, '--repair')
+
+        if (repairNote !== null && repairNote.trim().length === 0) {
+          throw new PanError('--repair needs a non-empty note.', {
+            code: 'LANDING_REPAIR_NOTE_REQUIRED',
+          })
+        }
 
         if (bump !== undefined && !isReleaseBump(bump)) {
           throw new PanError(
@@ -2745,6 +2752,7 @@ async function main(): Promise<void> {
           ...(verifyProfileArgs.length > 0
             ? { verifyProfiles: verifyProfileArgs }
             : {}),
+          ...(repairNote !== null ? { repairNote } : {}),
           ...(waitSecondsArg !== null
             ? { waitSeconds: Number(waitSecondsArg) }
             : {}),

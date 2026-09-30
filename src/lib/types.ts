@@ -858,6 +858,21 @@ export type AwayModeAction =
 
 export type RunActionActor = 'operator' | 'away'
 
+/** A release that landed on pan-dev outside the ship stage, read from the landing log. */
+export interface ReleaseLandingRecord {
+  version: string
+  release_commit: string | null
+  index_commit: string | null
+  tip_before: string
+  tip_after: string
+  verified_profiles: string[]
+  verification_basis: string
+  landed_at: string
+  landing_token: string
+  directive_note: string
+  recorded_at: string
+}
+
 export interface AwayModeGuardrails {
   allowed_actions?: AwayModeAction[]
 }
@@ -2726,6 +2741,8 @@ export interface RunState {
   delegated_workers?: DelegatedWorkerRecord[]
   /** Uncommitted work the run left behind when it reached a terminal state. */
   dirty_exit?: DirtyWorkspaceExit
+  /** The landing an operator directive closed this run on (`decide landed`). */
+  release_landing?: ReleaseLandingRecord
   operator_gate_waivers?: OperatorGateWaiver[]
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null

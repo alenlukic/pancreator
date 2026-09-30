@@ -131,6 +131,7 @@ import { collectAwaitShellBanIssues } from './validators/await-shell-ban.js'
 import { collectShellMonitorIssues } from './validators/shell-monitor.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import { isReleaseMetadataPath, validateReleaseMetadata } from './versioning.js'
+import { judgeShipRepair, shipRepairPaths } from './ship-repair.js'
 import type {
   ArtifactReference,
   Criterion,
@@ -3521,6 +3522,31 @@ function shipCurrencyChain(
     : broken
 }
 
+/**
+ * The ship worktree's head is the release's index commit, or a bounded ship
+ * repair the output declares above it: a test-only commit the land reuses the
+ * finalized release pair under.
+ */
+export function shipHeadMatchesRelease(
+  workspaceDir: string,
+  indexCommit: string,
+  shipRepair: unknown,
+): boolean {
+  const head = gitHead(workspaceDir)
+
+  if (head === indexCommit) {
+    return true
+  }
+
+  return (
+    head !== null &&
+    isRecord(shipRepair) &&
+    shipRepair.commit === head &&
+    gitIsAncestor(workspaceDir, indexCommit, head) &&
+    judgeShipRepair(shipRepairPaths(workspaceDir, indexCommit, head)).within
+  )
+}
+
 function resolveShipPriorGatesEvidenceFingerprint(options: {
   state: RunState
   stage: StageDefinition
@@ -4125,7 +4151,11 @@ export function evaluateDeterministicCriteria(
             : /^[0-9a-f]{40}$/u.test(releaseCommit) &&
               /^[0-9a-f]{40}$/u.test(indexCommit) &&
               /^[0-9a-f]{40}$/u.test(fetchedMain) &&
-              gitHead(workspaceDir) === indexCommit &&
+              shipHeadMatchesRelease(
+                workspaceDir,
+                indexCommit,
+                release?.ship_repair,
+              ) &&
               gitIsAncestor(workspaceDir, releaseCommit, indexCommit) &&
               gitIsAncestor(workspaceDir, fetchedMain, releaseCommit) &&
               afterSnapshot.entries.length === 0

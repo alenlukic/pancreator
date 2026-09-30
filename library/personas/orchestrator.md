@@ -92,7 +92,9 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - The redirection is read from the harness root's own `bin/pan`, so it is inactive on the release that introduces it. Confirm that the harness root's `bin/pan` accepts `PANCREATOR_EXEC_ROOT` before you rely on it. Use the harness root's build when it does not.
 - Before you rely on any other release-lane behavior this release introduces, read the harness root's `VERSION`. Confirm the behavior exists there. An entry-gate waiver and a `release sync` guard are examples.
 - State in your report which release-lane repairs in this release are inactive on this run, and carry any `build_currency` advisory the ship submission recorded.
-- The ship stage stops after `pan release finalize`. Landing the release on the harness root's local default branch is an operator step after submit. You MUST NOT fast-forward, merge, switch, or check out a branch in the harness root while the ship stage runs.
+- The ship stage lands the release on `pan-dev` through `pan release land --run <run-id>` after `pan release finalize`. Landing the release on the harness root's local default branch by any other means is an operator step after submit. You MUST NOT fast-forward, merge, switch, or check out a branch in the harness root while the ship stage runs.
+- A ship `failure` after a land means the failure was out of the bounded repair: more than three lane test files, any other path, or a tip that moved. Route it to remediation.
+- When the operator directs a release onto `pan-dev` outside the stage and the run stays at ship, close it with `pan decide <run-id> landed --note "<operator directive>"`. The command reads the landing from `runtime/release/landing.jsonl` and ends the run as `succeeded`. Do not edit run state.
 
 ## Decision packet
 

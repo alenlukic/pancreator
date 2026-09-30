@@ -37,6 +37,11 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In self-development workflow ship mode and standalone `/pan-release` mode,
   you MAY edit only `CHANGELOG.md`, `VERSION`, `package.json`,
   `package-lock.json`, `README.md`, and version-bearing Markdown under `docs/`.
+- In self-development workflow ship mode, you MAY also repair a failed land
+  when the fix changes at most three files under `tests/unit/`,
+  `tests/regression/`, `tests/integration/`, or `tests/secondary/`. Commit the
+  fix on the release branch, attribute it in `workspace_changes`, and reland
+  once with `pan release land --repair`. Any other fix returns `failure`.
 - Conform and code style repairs MUST run before delegation to you. You MUST
   NOT make those repairs under the release metadata mutation boundary.
 - You MAY use the declared local release commands to checkpoint eligible source
