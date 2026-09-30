@@ -24,7 +24,7 @@ Schemas:
 - [`library/schemas/stage.schema.json`](../library/schemas/stage.schema.json) - one stage file.
 
 These schemas are documentation and tooling aids. The dependency-free enforcer
-is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate`.
+is the imperative validator in `src/lib/workflow/`, run by `./bin/pan validate`.
 
 ## Index fields (`workflow.json`)
 
@@ -340,7 +340,7 @@ governance through a harness-resolved card, or be listed as read-only in
   `workflow: standalone` lookup row MUST name a stage some mode declares.
 
 A new mode therefore needs three edits together: the `STANDALONE_MODES` entry in
-`src/lib/governance-card.ts`, its lookup row in
+`src/lib/governance-card/modes.ts`, its lookup row in
 `governance/registries/policy_lookup_table.json`, and the card step in the
 command file. Run `./bin/pan models --sync` afterwards.
 

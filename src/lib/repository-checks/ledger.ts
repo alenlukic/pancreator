@@ -11,7 +11,7 @@ import {
 import { panCommand } from '../project-config.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { liveRunsBoundToWorktree, loadState } from '../state.js'
-import { loadWorkflowFile } from '../workflow.js'
+import { loadWorkflowFile } from '../workflow/load.js'
 import { loadRepositoryChecks, type RepositoryCheckResult } from './config.js'
 import type { RepositoryCheckInitiator } from './launch.js'
 

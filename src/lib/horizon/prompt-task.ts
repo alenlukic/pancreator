@@ -6,7 +6,7 @@
 import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-import { buildGovernanceCard } from '../governance-card.js'
+import { buildGovernanceCard } from '../governance-card/build.js'
 import {
   writeTextAtomic,
   resolveInside,

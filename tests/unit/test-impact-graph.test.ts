@@ -331,7 +331,8 @@ test('self-test: the fixture helper reaches no engine module', async () => {
       (file) =>
         engineModules.includes(file) ||
         file.startsWith('src/lib/engine/') ||
-        file.startsWith('src/lib/validators/'),
+        file.startsWith('src/lib/validators/') ||
+        file.startsWith('src/lib/workflow/'),
     )
     .sort()
 

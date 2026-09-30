@@ -8,7 +8,11 @@ import path from 'node:path'
 import { isFile, isRecord, readJson, readText } from '../../io.js'
 import { loadPolicyCatalog } from '../../policies.js'
 import { loadWorkflow, workflowPersonaNames } from '../../workflow.js'
-import { readStandaloneModes, type Facility } from '../inventory.js'
+import {
+  readStandaloneModes,
+  standaloneModeRegistryPath,
+  type Facility,
+} from '../inventory.js'
 import type { Reference } from './model.js'
 import { DISPATCH_TABLE_PATHS, listTextFiles, withoutComments } from './scan.js'
 
@@ -355,7 +359,7 @@ export function typedReferences(
   }
 
   // A standalone mode names the persona and workflow its card binds.
-  const modeRegistry = 'src/lib/governance-card.ts'
+  const modeRegistry = standaloneModeRegistryPath(root)
 
   for (const definition of readStandaloneModes(root)) {
     back(modeRegistry, `mode:${definition.name}`, definition.name)

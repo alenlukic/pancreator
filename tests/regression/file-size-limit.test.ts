@@ -24,15 +24,8 @@ const PENDING_SPLIT = new Set([
   'src/lib/cleanup.ts',
   'src/lib/cursor-handoff/driver.ts',
   'src/lib/git.ts',
-  'src/lib/governance-card.ts',
-  'src/lib/governance/prompt-context.ts',
-  'src/lib/project-config.ts',
   'src/lib/release-landing.ts',
   'src/lib/schedule.ts',
-  'src/lib/target-authoring.ts',
-  'src/lib/validators/code-style.ts',
-  'src/lib/validators/refusals.ts',
-  'src/lib/workflow.ts',
   'src/lib/worktrees.ts',
 ])
 

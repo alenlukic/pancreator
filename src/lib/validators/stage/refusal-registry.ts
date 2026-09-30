@@ -356,7 +356,7 @@ export const VERIFY_REFUSALS: readonly StageRefusal[] = [
  *
  * The verify entry is composed here because that handler generates its item
  * refusals from the rule tables above, which the handler in `./verify.ts`
- * iterates. Every other enumeration lives in `../refusals.ts`.
+ * iterates. Every other enumeration lives in `../refusals/`.
  */
 export const STAGE_VALIDATOR_REFUSALS: readonly StageValidatorRefusals[] =
   stageValidatorRefusals(VERIFY_REFUSALS, [
