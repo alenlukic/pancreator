@@ -122,6 +122,10 @@ const EXTERNAL_SECTIONS = `
 - **Input shape:** \`{ email: string, password: string }\`
 - **Logic excerpt:** \`validateCredentials(input)\`
 - **Output shape:** \`{ token: string }\`
+
+## Observability
+
+- Sentry (\`sentry.client.config.ts\`): search issues for the release tag.
 `
 
 const VALID_EXTERNAL_PRIMER = `${VALID_PRIMER}${EXTERNAL_SECTIONS}`
@@ -196,6 +200,10 @@ Not applicable — no client/frontend detected.
 ## Major workflows and data flows
 
 None identified.
+
+## Observability
+
+None detected.
 `,
     ),
   )
@@ -203,26 +211,17 @@ None identified.
   assert.equal(notApplicable.status, 'passed')
 })
 
-test('the Observability primer section is optional but never empty', () => {
+test('an external primer requires a non-empty Observability section', () => {
   const root = fixtureRoot({ installationMode: 'embedded' })
+  const codes = (content: string) =>
+    validateIn(root, content).issues.map((item) => item.code)
+  const withoutSection =
+    VALID_EXTERNAL_PRIMER.split('\n## Observability')[0] ?? ''
 
-  // A primer built before the section existed stays valid.
-  assert.equal(validateIn(root, VALID_EXTERNAL_PRIMER).status, 'passed')
-  assert.equal(
-    validateIn(
-      root,
-      `${VALID_EXTERNAL_PRIMER}\n## Observability\n\nNone detected.\n`,
-    ).status,
-    'passed',
-  )
-
-  const empty = validateIn(root, `${VALID_EXTERNAL_PRIMER}\n## Observability\n`)
-
-  assert.equal(empty.status, 'failed')
-  assert.deepEqual(
-    empty.issues.map((item) => item.code),
-    ['primer.observability_empty'],
-  )
+  assert.deepEqual(codes(withoutSection), ['primer.section_missing'])
+  assert.deepEqual(codes(`${withoutSection}\n## Observability\n`), [
+    'primer.section_empty',
+  ])
 })
 
 test('target repository primer validator rejects malformed external flow steps', () => {

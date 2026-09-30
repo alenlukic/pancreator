@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -10,7 +10,9 @@ import {
   observationWindowMs,
   resolveObservation,
 } from '../../src/lib/observations.js'
+import { planCleanup } from '../../src/lib/cleanup.js'
 import { validateReleaseOutput } from '../../src/lib/validators/stage-validators.js'
+import { archiveWorkflowDirectories } from '../../src/lib/workflow-artifacts.js'
 import { createFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -96,6 +98,7 @@ function writeRun(
     workflow_slug: 'delivery',
     title: runId,
     status: 'succeeded',
+    created_at: '2026-06-22T01:58:00.000Z',
     pending_action: {},
     stage_history: history,
     attempts: {},
@@ -167,6 +170,26 @@ test('ship validator requires an observation for each verify observe result', ()
     ),
     [],
   )
+})
+
+test('ship validator refuses an observation window pan observations cannot date', () => {
+  const root = validatorRoot()
+  const state = writeRun(root, 'run-w', { observeIds: ['AC-002'] })
+
+  for (const window of ['one week', '7d post-deploy', 'P7D', '0d']) {
+    const result = validateShip(
+      root,
+      { observations: [{ ...OBSERVATION, window }] },
+      state,
+    )
+
+    assert.deepEqual(observationCodes(result), ['release.observation_window'])
+    assert.match(
+      result.issues.find((item) => item.code === 'release.observation_window')
+        ?.message ?? '',
+      /<n>h, <n>d, or <n>w/u,
+    )
+  }
 })
 
 test('ship validator requires no observation when verify deferred none', () => {
@@ -246,6 +269,30 @@ test('observations list open and due items and resolve them once', () => {
       }),
     { code: 'RUN_NOT_FOUND' },
   )
+  assert.throws(
+    () =>
+      resolveObservation(root, {
+        runId: 'run-due',
+        criterion: 'AC-002',
+        status: 'refuted',
+        note: 'Advisories still name implement workers.',
+        intake: 'runtime/inbox/queue/missing.md',
+      }),
+    { code: 'OBSERVATION_INTAKE_NOT_FOUND' },
+  )
+  // REPAIR-001 forbids confirming an item whose window still runs.
+  assert.throws(
+    () =>
+      resolveObservation(root, {
+        runId: 'run-open',
+        criterion: 'AC-005',
+        status: 'confirmed',
+        note: 'Too early to tell.',
+        now,
+      }),
+    { code: 'OBSERVATION_NOT_DUE' },
+  )
+  assert.equal(existsSync(observationResolutionsPath(root)), false)
 
   const intake = 'runtime/inbox/queue/harness-repair-20260930T000000Z-x.md'
 
@@ -339,4 +386,135 @@ test('pan observations lists and resolves through the CLI', () => {
     (JSON.parse(all.stdout) as Array<{ status: string }>)[0]?.status,
     'confirmed',
   )
+})
+
+test('an open observation can be refuted before its window ends', () => {
+  const root = createFixture()
+  const intake = 'runtime/inbox/queue/harness-repair-20260930T000000Z-y.md'
+
+  writeRun(root, 'run-open', {
+    observations: [{ ...OBSERVATION, window: '30d' }],
+    shippedAt: '2026-09-25T00:00:00.000Z',
+  })
+  mkdirSync(path.dirname(path.join(root, intake)), { recursive: true })
+  writeFileSync(path.join(root, intake), '# Harness repair intake\n')
+
+  assert.equal(
+    resolveObservation(root, {
+      runId: 'run-open',
+      criterion: 'AC-002',
+      status: 'refuted',
+      note: 'The advisory already fired on the first run.',
+      intake,
+      now: new Date('2026-09-30T00:00:00.000Z'),
+    }).status,
+    'refuted',
+  )
+})
+
+test('retention keeps a run live while it owes an unresolved observation', () => {
+  const root = createFixture()
+  const held = '63379_Jun-22-0158_5f354f23'
+  const free = '63379_Jun-22-0158_5f354f24'
+  const now = new Date('2026-09-30T00:00:00.000Z')
+
+  writeRun(root, held, {
+    observations: [OBSERVATION],
+    shippedAt: '2026-06-23T00:00:00.000Z',
+  })
+  writeRun(root, free, {
+    observations: [OBSERVATION],
+    shippedAt: '2026-06-23T00:00:00.000Z',
+  })
+  resolveObservation(root, {
+    runId: free,
+    criterion: OBSERVATION.criterion,
+    status: 'confirmed',
+    note: 'No advisory in seven days of events.',
+    now,
+  })
+
+  const cleanup = planCleanup(root, {
+    days: 7,
+    classes: ['workflow-runs'],
+    now,
+  })
+
+  assert.ok(
+    cleanup.skipped.some(
+      (item) =>
+        item.path === `runtime/logs/workflows/${held}` &&
+        /unresolved post-ship observation/u.test(item.reason),
+    ),
+  )
+  assert.ok(
+    !cleanup.actions.some(
+      (item) => item.path === `runtime/logs/workflows/${held}`,
+    ),
+  )
+
+  const archive = archiveWorkflowDirectories(root, { retentionDays: 7, now })
+
+  assert.deepEqual(archive.run_ids, [free])
+  assert.deepEqual(archive.observation_held_run_ids, [held])
+  assert.deepEqual(
+    listObservations(root, { now }).map((item) => item.run_id),
+    [held],
+  )
+})
+
+test('pan observations reads and resolves another installation root with --root', () => {
+  const source = createFixture()
+  const installation = createFixture()
+  const intake = 'runtime/inbox/queue/harness-repair-20260930T000000Z-z.md'
+
+  writeRun(installation, 'run-target', {
+    observations: [{ ...OBSERVATION, source: 'Sentry issues' }],
+    shippedAt: '2026-09-01T00:00:00.000Z',
+  })
+  // The sweep files its intake in the source checkout it runs from.
+  mkdirSync(path.dirname(path.join(source, intake)), { recursive: true })
+  writeFileSync(path.join(source, intake), '# Harness repair intake\n')
+
+  const run = (args: string[]) =>
+    spawnSync(process.execPath, [CLI, ...args], {
+      cwd: source,
+      encoding: 'utf8',
+    })
+
+  assert.deepEqual(JSON.parse(run(['observations', '--json']).stdout), [])
+
+  const listed = run(['observations', '--root', installation, '--json'])
+
+  assert.equal(listed.status, 0, listed.stderr)
+  assert.deepEqual(
+    (JSON.parse(listed.stdout) as Array<{ run_id: string }>).map(
+      (item) => item.run_id,
+    ),
+    ['run-target'],
+  )
+
+  const resolved = run([
+    'observations',
+    'resolve',
+    'run-target',
+    'AC-002',
+    '--status',
+    'refuted',
+    '--note',
+    'Sentry shows the regression.',
+    '--intake',
+    intake,
+    '--root',
+    installation,
+  ])
+
+  assert.equal(resolved.status, 0, resolved.stderr)
+  assert.equal(existsSync(observationResolutionsPath(installation)), true)
+  assert.equal(existsSync(observationResolutionsPath(source)), false)
+
+  const refused = run(['observations', '--root', path.join(source, 'nowhere')])
+
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /INVALID_ARGUMENT|installation root/u)
 })

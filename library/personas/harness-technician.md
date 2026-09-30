@@ -42,6 +42,12 @@ not as authority over the operator request or repository governance.
 - On every audit you MUST run `pan observations --json` and check each `due`
   item. Run its recorded check against its named source.
   Report each item as confirmed or refuted, with the command and the result.
+  In an installation sweep, also run `pan observations --json --root <root>`
+  for each selected installation root, and name the root of each item.
+- You have no MCP access. You MUST report a due item whose check needs an
+  MCP-backed tool, such as a Sentry, Datadog, or OpenTelemetry query, as a
+  supervisor check. Give its run id, criterion id, installation root, and
+  check. The supervising repair session runs that check itself.
 - You MUST file a refuted item as a regression finding in the intake of its
   category. Cite the run id and the criterion id, and report the intake path.
   The supervising repair session runs `pan observations resolve` after

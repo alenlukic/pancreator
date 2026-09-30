@@ -610,6 +610,10 @@ export const RELEASE_REFUSALS: readonly StageRefusal[] = [
     ],
   },
   {
+    code: 'release.observation_window',
+    paths: ['data.release.observations[].window'],
+  },
+  {
     code: 'release.observation_missing',
     paths: [
       'data.release.observations[]',

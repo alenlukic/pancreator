@@ -29,7 +29,7 @@ The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
 You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/harness-technician.md` and apply
 `{{PANCREATOR_HARNESS_PATH}}governance/policies/REPAIR-001.json`. Read the issue categories from
-`{{PANCREATOR_HARNESS_PATH}}governance/registries/harness_repair_categories.json`; that registry is the only
+`{{PANCREATOR_HARNESS_PATH}}governance/registries/harness_repair_categories.json`. That registry is the only
 list of categories, slugs, and next-action contracts. Preserve the supplied
 report or artifact reference verbatim, investigate Pancreator without mutating
 source or run state, and write only the declared intakes under
@@ -40,17 +40,21 @@ different set of intakes. For workflow runs, inspect the relevant agent
 transcripts in addition to generated run records and explicitly account for any
 transcript that cannot be retrieved. Build the efficiency profile of every
 workflow run the audit covers, and run `{{PANCREATOR_PAN_COMMAND}} spend --days 7 --json` on every audit
-to judge spend against the value it bought, without being directed; follow the
+to judge spend against the value it bought, without being directed. Follow the
 efficiency and spend guidance the repair card references. Run
-`{{PANCREATOR_PAN_COMMAND}} observations --json` on every audit, check each due
-item against its named source, file a refuted item as a regression finding,
-and report every verdict; the supervising repair session resolves the items
-after validation. Run the policy-bound
+`{{PANCREATOR_PAN_COMMAND}} observations --json` on every audit. Run it again
+with `--root <installation-root>` for each installation root the repair
+session supplies. Check each due item against its named source, file a refuted item as
+a regression finding, and report every verdict. You have no MCP access. Report
+a due item whose check needs an MCP-backed tool, such as a Sentry, Datadog, or
+OpenTelemetry query, as a supervisor check with its run id, criterion id,
+installation root, and check. The supervising repair session runs those checks
+and resolves the items after validation. Run the policy-bound
 `HARNESS-REPAIR-VALIDATE-001` validator against each declared intake before you
 represent that intake as ready. When the repair card supplies registered
 installation roots, classify each queued item you examine as harness-directed
 or target-owned, never consolidate a target-owned item, consolidate confirmed
 findings across installations within the existing category partition, and name
 the originating installation and item. Report the harness-directed item paths
-each intake cites, but do not archive them; the supervising repair session owns
+each intake cites, but do not archive them. The supervising repair session owns
 archival after validation.

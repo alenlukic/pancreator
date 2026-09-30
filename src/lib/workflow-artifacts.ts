@@ -32,6 +32,7 @@ import {
   makeWorkflowRunId,
   temporalNamePrefix,
 } from './naming.js'
+import { unresolvedObservationHold } from './observations.js'
 import { resolveRetentionDays } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadState } from './state.js'
@@ -1362,6 +1363,11 @@ export interface WorkflowArchiveSummary {
   pr_description_files: string[]
   /** Runs whose worker-authored helper scripts this pass removed. */
   swept_script_run_ids: string[]
+  /**
+   * Aged closed runs this pass kept live because they still owe an
+   * unresolved post-ship observation.
+   */
+  observation_held_run_ids: string[]
 }
 
 export interface InboxArchiveSelection {
@@ -2647,6 +2653,8 @@ export function archiveWorkflowDirectories(
   const cutoff = new Date(now.getTime() - retentionDays * MILLISECONDS_PER_DAY)
   const logRoot = path.join(root, 'runtime', 'logs', 'workflows')
   const stateRoot = path.join(root, 'runtime', 'workflows')
+  const holdsObservation = unresolvedObservationHold(root)
+  const observationHeldRunIds: string[] = []
   const runIds = [
     ...new Set([
       ...activeWorkflowDirectoryNames(logRoot),
@@ -2673,7 +2681,18 @@ export function archiveWorkflowDirectories(
       },
     )
 
-    return createdAt.getTime() < cutoff.getTime()
+    if (createdAt.getTime() >= cutoff.getTime()) {
+      return false
+    }
+
+    // `pan observations` reads only live runs, so archiving a run that still
+    // owes an observation would drop the item before an audit resolves it.
+    if (holdsObservation(runId)) {
+      observationHeldRunIds.push(runId)
+      return false
+    }
+
+    return true
   })
 
   let updatedFiles = 0
@@ -2899,6 +2918,7 @@ export function archiveWorkflowDirectories(
     inbox_files: archivedFiles.get('runtime/inbox') ?? [],
     pr_description_files: archivedFiles.get('runtime/pr-descriptions') ?? [],
     swept_script_run_ids: sweptScriptRunIds,
+    observation_held_run_ids: observationHeldRunIds,
   }
 }
 
