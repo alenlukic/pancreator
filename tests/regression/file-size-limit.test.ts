@@ -23,7 +23,6 @@ const PENDING_SPLIT = new Set([
   'src/lib/best-of-n.ts',
   'src/lib/briefs.ts',
   'src/lib/cleanup.ts',
-  'src/lib/cohorts.ts',
   'src/lib/context.ts',
   'src/lib/cursor-handoff/driver.ts',
   'src/lib/debloat/graph.ts',

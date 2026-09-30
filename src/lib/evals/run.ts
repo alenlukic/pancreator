@@ -3,7 +3,7 @@ import { cpSync, existsSync, readdirSync, renameSync } from 'node:fs'
 import path from 'node:path'
 
 import { createRun } from '../engine.js'
-import type { DeliveryAutostartResult } from '../cohorts.js'
+import type { DeliveryAutostartResult } from '../cohorts/state.js'
 import { driveRun } from '../headless-driver.js'
 import { PanError } from '../errors.js'
 import {
