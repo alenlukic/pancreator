@@ -212,6 +212,10 @@ import {
   scaffoldStageOutput,
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
+import {
+  refreshGovernanceDigests,
+  renderRefreshDigestsReport,
+} from './lib/governance/refresh-digests.js'
 import { cursorHandoffReadiness } from './lib/cursor-handoff/readiness.js'
 import {
   checkHandoffEligibility,
@@ -3536,6 +3540,22 @@ async function main(): Promise<void> {
 
       if (sub === 'audit-directives') {
         print(auditDirectives(root), hasFlag(args, '--json'))
+        return
+      }
+
+      if (sub === 'refresh-digests') {
+        const report = refreshGovernanceDigests(root, {
+          check: hasFlag(args, '--check'),
+        })
+
+        print(
+          hasFlag(args, '--json') ? report : renderRefreshDigestsReport(report),
+          hasFlag(args, '--json'),
+        )
+
+        if (report.status === 'stale' || report.status === 'refused') {
+          process.exitCode = 1
+        }
         return
       }
 

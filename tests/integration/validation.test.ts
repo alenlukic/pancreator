@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -700,6 +700,77 @@ test('attestation validator passes a complete in-order declaration', () => {
       attestedOutput(undefined),
     ).passed,
     true,
+  )
+})
+
+test('submission re-hashes the delivered contract file against the manifest digest', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+
+  const contractFile = path.join(root, manifest.contract_path)
+  const contract = renderInvocationMarkdown(invocation)
+  const validate = () =>
+    validateInvocationAttestation(invocation, attestedOutput(attestation), {
+      root,
+    })
+  const fileCheck = (
+    result: ReturnType<typeof validateInvocationAttestation>,
+  ) =>
+    result.checks.find(
+      (check) => check.id === 'attestation.contract_file_digest',
+    )
+
+  mkdirSync(path.dirname(contractFile), { recursive: true })
+  writeFileSync(contractFile, contract)
+  assert.equal(validate().passed, true)
+  assert.equal(fileCheck(validate())?.passed, true)
+
+  // CRLF line endings are the same contract under the digest basis.
+  writeFileSync(contractFile, contract.replaceAll('\n', '\r\n'))
+  assert.equal(validate().passed, true)
+
+  // An edit after delivery fails the attestation even though the worker
+  // copied the delivered digest exactly, and the message says to re-read.
+  writeFileSync(contractFile, `${contract}\nAn appended instruction.\n`)
+
+  const changed = validate()
+
+  assert.equal(changed.passed, false)
+  assert.equal(fileCheck(changed)?.passed, false)
+  assert.match(
+    fileCheck(changed)?.message ?? '',
+    /contract changed after delivery.*Re-read the complete contract/su,
+  )
+
+  rmSync(contractFile)
+
+  const missing = validate()
+
+  assert.equal(missing.passed, false)
+  assert.match(fileCheck(missing)?.message ?? '', /is missing at submission/u)
+
+  // Without a root (a pure record check), the file is not consulted, and a
+  // reference_failed attestation never reaches the file check.
+  assert.equal(
+    validateInvocationAttestation(invocation, attestedOutput(attestation))
+      .passed,
+    true,
+  )
+  assert.equal(
+    fileCheck(
+      validateInvocationAttestation(
+        invocation,
+        attestedOutput(
+          { ...attestation, status: 'reference_failed', error: 'unreadable' },
+          'blocked',
+        ),
+        { root },
+      ),
+    ),
+    undefined,
   )
 })
 

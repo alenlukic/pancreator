@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import { sha256 } from '../../src/lib/io.js'
 import {
+  GUIDANCE_DIGEST_OWNERSHIP,
   guidanceSelectedRange,
   policySectionDigest,
   renderGuidanceBlock,
@@ -619,18 +620,27 @@ test('invocation validation fails when a guidance reference is omitted', () => {
     }
   }
 
-  // A card rendered before the digest-basis line is still accepted.
-  const legacyMarkdown = markdown.replaceAll(
+  // The card tells the worker the harness owns the digest, and a card
+  // rendered before that line existed (with no line, or with the older
+  // digest-basis line) is still accepted.
+  const ownershipLine = `\n- Digest check: ${GUIDANCE_DIGEST_OWNERSHIP}`
+
+  assert.ok(markdown.includes(ownershipLine))
+  assert.ok(!markdown.includes('Digest basis'))
+
+  for (const legacyLine of [
+    '',
     '\n- Digest basis: SHA-256 of the selected text after leading and ' +
       'trailing whitespace is trimmed.',
-    '',
-  )
+  ]) {
+    const legacyMarkdown = markdown.replaceAll(ownershipLine, legacyLine)
 
-  assert.notEqual(legacyMarkdown, markdown)
-  assert.equal(
-    validateInvocationMarkdown(invocation, legacyMarkdown).passed,
-    true,
-  )
+    assert.notEqual(legacyMarkdown, markdown)
+    assert.equal(
+      validateInvocationMarkdown(invocation, legacyMarkdown).passed,
+      true,
+    )
+  }
 
   const staleDigest = structuredClone(invocation)
   const staleDigestGuidance = engineeringGuidance(staleDigest)
@@ -971,8 +981,18 @@ test('the delivery prompt references the contract without reproducing it', () =>
   assert.ok(!prompt.includes(invocation.prompt))
   assert.ok(prompt.length < manifest.byte_length)
 
+  // The harness owns the digest check: the prompt says so and never asks the
+  // worker to compare or recompute a digest itself.
+  assert.match(prompt, /re-hashes the contract file when you submit/u)
+  assert.match(prompt, /Do not recompute the\s+digest/u)
+  assert.doesNotMatch(prompt, /Compare the digest/u)
+  assert.doesNotMatch(prompt, /digest differs/u)
+  assert.doesNotMatch(prompt, /no\s+longer matches its digest/u)
+  assert.match(prompt, /When the file is unreadable, stop and report/u)
+
   assert.ok(manifest.guidance?.length)
   assert.match(prompt, /## Referenced guidance/u)
+  assert.match(prompt, /only when the source file is missing\s+or unreadable/u)
 
   for (const entry of manifest.guidance) {
     assert.ok(prompt.includes(entry.source_path))

@@ -86,9 +86,9 @@ export const DEFAULT_CONTEXT_REFERENCE_READ_TRIGGER =
 /**
  * Build an audited pointer to one harness-relative document.
  *
- * The digest covers the trimmed file through `referenceContentSha256`, which
- * is the basis `GUIDANCE_DIGEST_BASIS` states, so a reader who recomputes it
- * from the same rule gets the same value.
+ * The digest covers the trimmed file through `referenceContentSha256`, the
+ * same basis `pan context digest` reports, so a digest a planner recorded with
+ * that command agrees with the one the harness checks.
  */
 export function buildContextReference(
   root: string,

@@ -60,14 +60,26 @@ export function guidanceDigestToken(
 }
 
 /**
- * How a reader recomputes a guidance digest. The harness hashes the selection
- * after it trims surrounding whitespace, and a reader who hashes the raw range
- * (with a trailing newline) gets a different digest for identical content.
- * Stating the basis on the reference is what keeps an honest verification from
- * reporting false drift.
+ * Who owns a guidance digest. The harness selects the range and hashes it when
+ * it writes the card, and the snapshot keeps the exact selected bytes, so a
+ * reader who recomputes the digest spends turns re-proving a harness fact. The
+ * line says so, and names the only case the snapshot copy exists for.
  */
-export const GUIDANCE_DIGEST_BASIS =
-  'SHA-256 of the selected text after leading and trailing whitespace is trimmed.'
+export const GUIDANCE_DIGEST_OWNERSHIP =
+  'The harness computed this digest when it wrote the card. Read the source ' +
+  'file directly and do not recompute the digest. Read the selection from ' +
+  'the invocation JSON snapshot only when the source is missing or unreadable.'
+
+/**
+ * Who owns a context-reference digest. The harness hashes the source when it
+ * records the reference and inspects it again when it prepares each
+ * invocation, and `Reference status` carries that result, so a reader never
+ * recomputes it.
+ */
+export const CONTEXT_REFERENCE_DIGEST_OWNERSHIP =
+  'The harness computed this digest and checks the source against it; ' +
+  '`Reference status` reports the result. Read the source file directly and ' +
+  'do not recompute the digest.'
 
 export function guidanceSelectedRange(
   reference: PolicyGuidanceReference,
@@ -120,7 +132,7 @@ export function renderGuidanceBlock(
     `- Selected range: ${guidanceSelectedRange(reference)}.`,
     `- Content digest: \`${guidanceDigestToken(reference)}\` — ` +
       `${reference.line_count} lines, ${reference.byte_length} bytes.`,
-    `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
+    `- Digest check: ${GUIDANCE_DIGEST_OWNERSHIP}`,
   ]
 }
 
@@ -135,7 +147,7 @@ export function contextReferenceDigestToken(
  *
  * A context reference points at a document the run must read and never copies,
  * so the block carries the source path, the digest of the exact selected bytes,
- * the basis a reader recomputes the digest from, and the condition that makes
+ * the statement that the harness owns that digest, and the condition that makes
  * the document apply. `status` reports drift the harness already detected, so a
  * reader meets a stale parent as a stated fact rather than as a silent
  * mismatch.
@@ -154,7 +166,7 @@ export function renderContextReferenceBlock(
     '- Selected range: the complete file.',
     `- Content digest: \`${contextReferenceDigestToken(reference)}\` — ` +
       `${reference.line_count} lines, ${reference.byte_length} bytes.`,
-    `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
+    `- Digest check: ${CONTEXT_REFERENCE_DIGEST_OWNERSHIP}`,
     ...(status ? [`- Reference status: ${status}.`] : []),
     ...(status && status !== 'current'
       ? renderContextReferenceFailure(reference, status, actualContentSha256)

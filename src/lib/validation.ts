@@ -1382,9 +1382,85 @@ export function attestationModelMatches(
     : attested === declared
 }
 
+/**
+ * The byte basis of `contract_sha256`: LF line endings and exactly one final
+ * newline. The renderer hashes this form, and the submission check re-hashes
+ * the file on disk in the same form, so the two agree on identical content.
+ */
+export function normalizeContractMarkdown(markdown: string): string {
+  const normalized = normalizeMarkdownContent(markdown)
+
+  return normalized.endsWith('\n') ? normalized : `${normalized}\n`
+}
+
+/**
+ * Re-hash the delivered contract file and compare it with the manifest digest.
+ *
+ * The harness writes the card and its manifest together, so the worker never
+ * recomputes the digest. This check is what keeps that promise: a card edited
+ * on disk after delivery no longer matches what the worker was told it read.
+ */
+function contractFileDigestCheck(
+  root: string,
+  manifest: InvocationContractManifest,
+): ValidationCheck {
+  const id = 'attestation.contract_file_digest'
+  let actual: string
+
+  try {
+    const absolute = resolveInside(root, manifest.contract_path)
+
+    if (!fileExists(absolute)) {
+      return {
+        id,
+        passed: false,
+        message:
+          `Contract file ${manifest.contract_path} is missing at submission, ` +
+          'so the harness cannot confirm the delivered contract. Set the ' +
+          'attestation status to reference_failed with this message as the error.',
+      }
+    }
+
+    actual = sha256(normalizeContractMarkdown(readText(absolute)))
+  } catch (error) {
+    return {
+      id,
+      passed: false,
+      message:
+        `Contract file ${manifest.contract_path} is unreadable at submission ` +
+        `(${errorMessage(error)}). Set the attestation status to ` +
+        'reference_failed with this message as the error.',
+    }
+  }
+
+  return actual === manifest.contract_sha256
+    ? {
+        id,
+        passed: true,
+        message: 'Contract file on disk matches the delivered contract digest',
+      }
+    : {
+        id,
+        passed: false,
+        message:
+          `The contract changed after delivery: ${manifest.contract_path} ` +
+          `now hashes to sha256:${actual}, not the delivered ` +
+          `sha256:${manifest.contract_sha256}. Re-read the complete contract ` +
+          'before you submit; when it still differs, set the attestation ' +
+          'status to reference_failed with this message as the error.',
+      }
+}
+
 export function validateInvocationAttestation(
   invocation: Invocation,
   output: unknown,
+  options: {
+    /**
+     * Harness root the contract path resolves against. When present, the
+     * contract file on disk is re-hashed and compared with the manifest.
+     */
+    root?: string
+  } = {},
 ): {
   passed: boolean
   status: 'read' | 'reference_failed' | 'pending' | 'missing' | 'malformed'
@@ -1519,6 +1595,10 @@ export function validateInvocationAttestation(
         ? 'Attestation matches the contract digest'
         : `Attestation contract_sha256 MUST equal '${manifest.contract_sha256}'`,
   })
+
+  if (options.root !== undefined) {
+    checks.push(contractFileDigestCheck(options.root, manifest))
+  }
 
   // The whole contract digest above already proves the worker held the exact
   // card. A per-section digest echo re-proves the same thing at ~19 lines of

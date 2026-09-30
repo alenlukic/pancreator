@@ -40,7 +40,7 @@ export const TURN_REMINDER_ROLES = [
 
 export type TurnReminderRole = (typeof TURN_REMINDER_ROLES)[number]
 
-interface PolicySelector {
+export interface PolicySelector {
   id: string
   type: 'policy'
   policy_id: string
@@ -59,12 +59,12 @@ export const TURN_REMINDER_CARD_MODES = [
 
 export type TurnReminderCardMode = (typeof TURN_REMINDER_CARD_MODES)[number]
 
-interface CardSection {
+export interface CardSection {
   heading: string
   content_sha256: string
 }
 
-interface CardSelector {
+export interface CardSelector {
   id: string
   type: 'card'
   sections: Record<TurnReminderCardMode, CardSection>
@@ -154,6 +154,22 @@ const CARD_PATH = 'AGENTS.md'
 const CARD_MODE_TEMPLATES: Partial<Record<TurnReminderCardMode, string>> = {
   embedded: 'library/templates/embedded-AGENTS.md',
   detached: 'library/templates/detached-AGENTS.md',
+}
+
+/**
+ * The command that rewrites a stale pinned digest. Every stale-selector error
+ * names it, so an edit to a pinned instruction or card section is repaired by
+ * the harness rather than by a digest recomputed by hand.
+ */
+export const REFRESH_DIGESTS_COMMAND = 'pan governance refresh-digests'
+
+/**
+ * The file a card selector's section resolves against for one mode in the
+ * self-development source: the live card for self-development, and the
+ * installer's card template for each target mode.
+ */
+export function turnReminderCardPath(mode: TurnReminderCardMode): string {
+  return CARD_MODE_TEMPLATES[mode] ?? CARD_PATH
 }
 
 const SUPERVISOR_COMMAND_ROLES: Record<string, TurnReminderRole> = {
@@ -483,7 +499,11 @@ export function resolveProfileSelectors(
   return selectors
 }
 
-function cardSection(root: string, cardPath: string, heading: string): string {
+export function cardSection(
+  root: string,
+  cardPath: string,
+  heading: string,
+): string {
   const lines = readText(path.join(root, cardPath)).trim().split('\n')
   const start = lines.findIndex((line) => line.trimEnd() === heading)
 
@@ -520,7 +540,8 @@ function resolveCardSelector(
     invalid(
       `card selector '${selector.id}' for '${section.heading}' in ` +
         `${cardPath} is stale: expected ${section.content_sha256}, ` +
-        `received ${digest}.`,
+        `received ${digest}. Run \`${REFRESH_DIGESTS_COMMAND}\` to rewrite ` +
+        'the pinned digest.',
     )
   }
 
@@ -557,7 +578,8 @@ function resolveSelector(
   if (!instruction) {
     invalid(
       `policy selector '${selector.id}' for '${selector.policy_id}' is stale: ` +
-        `no instruction has digest ${selector.instruction_sha256}.`,
+        `no instruction has digest ${selector.instruction_sha256}. Run ` +
+        `\`${REFRESH_DIGESTS_COMMAND}\` to rewrite the pinned digest.`,
     )
   }
 

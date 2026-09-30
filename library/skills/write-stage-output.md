@@ -30,9 +30,11 @@ harness checks.
    Submission rejects `pending`.
 8. Do not transcribe per-section or per-guidance digest tables into the
    attestation — the single `contract_sha256` is the whole requirement.
-   Read every referenced guidance selection the card lists.
-   When a source file no longer matches its digest, read the exact selected
-   bytes from the invocation JSON snapshot.
+   Do not recompute any digest. The harness wrote each digest with the card
+   and checks it at submission.
+   Read every referenced guidance selection the card lists from its source
+   file. Read the exact selected bytes from the invocation JSON snapshot only
+   when the source file is missing or unreadable.
 9. On a retry, you may submit a revision rather than the whole document.
    A revision is a JSON file of the form
    `{ "revises": "<prior-invocation-id>", "patch": { ... } }`, where `patch` is
