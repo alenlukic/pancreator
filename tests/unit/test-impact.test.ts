@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -1115,4 +1121,94 @@ test('a selected workspace is where the impact runs, and the default is unchange
     rmSync(root, { recursive: true, force: true })
     rmSync(workspace, { recursive: true, force: true })
   }
+})
+
+test('a selection that runs reports a pass line or its failing tests and keeps the output in a log', async () => {
+  const root = createSyntheticTree()
+
+  // A stand-in for bin/run-built that answers like the failures-only
+  // reporter, so the report is judged without compiling or running a suite.
+  writeFileSync(
+    path.join(root, 'bin', 'run-built'),
+    [
+      '#!/usr/bin/env bash',
+      "echo 'build chatter'",
+      'if [[ -f "$PWD/fail" ]]; then',
+      "  echo 'not ok - feature adds one (dist/tests/unit/feature.test.js:3)'",
+      "  echo '    AssertionError: 2 !== 3'",
+      "  echo '# tests 3'",
+      '  exit 1',
+      'fi',
+      "echo '# tests 3'",
+      '',
+    ].join('\n'),
+  )
+  chmodSync(path.join(root, 'bin', 'run-built'), 0o755)
+
+  const run = async () => {
+    let written = ''
+    let progress = ''
+    const result = await runTestsImpacted(
+      root,
+      ['--file', 'src/lib/feature.ts'],
+      {
+        output: 'summary',
+        write: (text) => {
+          written += text
+        },
+        progress: (text) => {
+          progress += text
+        },
+      },
+    )
+
+    return { result, written, progress }
+  }
+
+  try {
+    const passed = await run()
+
+    assert.equal(passed.result.exit_code, 0)
+    assert.match(
+      passed.progress,
+      /^\[tests impacted\] running 3 of 9 lane test file\(s\) for 1 changed file\(s\) \(log: runtime\/logs\/repository-check\/\S+\.log\)\n$/u,
+    )
+    assert.match(
+      passed.written,
+      /^\[tests impacted\] passed: 3 of 9 lane test file\(s\), 3 tests in \d+\.\ds \(log: \S+\)$/mu,
+    )
+    assert.doesNotMatch(passed.written, /build chatter|<- /u)
+    assert.deepEqual(passed.result.failing_tests, [])
+    assert.match(
+      readFileSync(path.join(root, passed.result.log_path ?? ''), 'utf8'),
+      /build chatter/u,
+    )
+
+    writeFileSync(path.join(root, 'fail'), '')
+
+    const failed = await run()
+
+    assert.equal(failed.result.exit_code, 1)
+    assert.match(
+      failed.written,
+      /^\[tests impacted\] FAILED: 3 of 9 lane test file\(s\) \(exit 1\) in /mu,
+    )
+    assert.match(
+      failed.written,
+      /^ {4}feature adds one \(dist\/tests\/unit\/feature\.test\.js:3\)$/mu,
+    )
+    assert.match(failed.written, /^log: runtime\/logs\/repository-check\//mu)
+    assert.deepEqual(failed.result.failing_tests, [
+      {
+        name: 'feature adds one',
+        location: 'dist/tests/unit/feature.test.js:3',
+      },
+    ])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('parseImpactArgs accepts --verbose', () => {
+  assert.equal(parseImpactArgs(['--verbose']).verbose, true)
 })

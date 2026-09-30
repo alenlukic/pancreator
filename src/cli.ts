@@ -266,6 +266,12 @@ import {
   reusableProfileExecution,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
+import {
+  checkOutputVerbose,
+  renderRepositoryCheckSummary,
+  repositoryCheckFailingTests,
+  writeRepositoryCheckLog,
+} from './lib/check-output.js'
 import { TEST_PROFILE_ENV } from './lib/suite-profile.js'
 import {
   appendFastWallRun,
@@ -2375,6 +2381,8 @@ async function main(): Promise<void> {
             )
           : null
 
+      const asJson = hasFlag(args, '--json')
+
       if (reusable) {
         process.stderr.write(
           `[repository-check:${profile}] reusing the pass recorded at ` +
@@ -2383,12 +2391,17 @@ async function main(): Promise<void> {
             'execute the profile again.\n',
         )
         print(
-          {
-            profile,
-            status: 'passed',
-            reused_execution: reusable,
-          },
-          hasFlag(args, '--json'),
+          asJson
+            ? {
+                profile,
+                status: 'passed',
+                reused_execution: reusable,
+              }
+            : `[repository-check:${profile}] passed: reused the recorded pass` +
+                (reusable.evidence_log
+                  ? ` (log: ${reusable.evidence_log})`
+                  : ''),
+          asJson,
         )
         return
       }
@@ -2434,6 +2447,8 @@ async function main(): Promise<void> {
             ? { [TEST_PROFILE_ENV]: gatePassSuiteProfile.absolute }
             : {}),
         },
+        // The start line keeps a long wait visible. Command output stays in
+        // the log this execution writes unless the caller asks to stream it.
         ...(harnessInitiated
           ? {}
           : {
@@ -2442,14 +2457,30 @@ async function main(): Promise<void> {
                   `[repository-check:${profile}] ${kind}: ${commandText}\n`,
                 )
               },
-              on_stdout: (chunk) => process.stderr.write(chunk),
-              on_stderr: (chunk) => process.stderr.write(chunk),
+              ...(checkOutputVerbose(args)
+                ? {
+                    on_stdout: (chunk: string) => process.stderr.write(chunk),
+                    on_stderr: (chunk: string) => process.stderr.write(chunk),
+                  }
+                : {}),
             }),
       })
 
       if (result.status === 'not_configured') {
         process.stderr.write('PANCREATOR_CHECK_SKIPPED=1\n')
       }
+
+      // Every execution keeps its complete output, so a summary that shows
+      // only the failing tests always names where the rest is.
+      const logPath =
+        result.status === 'not_configured'
+          ? null
+          : writeRepositoryCheckLog(
+              root,
+              result,
+              startedAt,
+              `pan repository-check ${profile}`,
+            )
 
       // A worker runs a profile inside its run's worktree, and the run is the
       // only place a supervisor can audit that execution from harness records.
@@ -2499,16 +2530,20 @@ async function main(): Promise<void> {
           : []
 
       print(
-        {
-          ...result,
-          ...(runEvidence.length > 0
-            ? { run_evidence_paths: runEvidence }
-            : {}),
-          ...(gatePass
-            ? { gate_pass_evidence_path: gatePass.evidence_path }
-            : {}),
-        },
-        hasFlag(args, '--json'),
+        asJson || harnessInitiated
+          ? {
+              ...result,
+              ...(runEvidence.length > 0
+                ? { run_evidence_paths: runEvidence }
+                : {}),
+              ...(gatePass
+                ? { gate_pass_evidence_path: gatePass.evidence_path }
+                : {}),
+              log_path: logPath,
+              failing_tests: repositoryCheckFailingTests(result),
+            }
+          : renderRepositoryCheckSummary(result, logPath),
+        asJson,
       )
 
       if (result.status === 'failed') {

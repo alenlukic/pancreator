@@ -73,6 +73,7 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
   'bin/check',
   'bin/build',
   'bin/lint',
+  'bin/check-shell',
   'bin/install',
   'library/templates/repository-checks*',
   'governance/registries/directive_exemptions.json',

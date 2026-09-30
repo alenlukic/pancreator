@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { PROFILE_COMMAND_ENV } from './check-output.js'
 import { PanError, invariant } from './errors.js'
 import {
   buildGateCacheEntry,
@@ -82,6 +83,11 @@ export const BUILD_READY_ENV = 'PANCREATOR_BUILD_READY'
  * changed sources before the profile ran (a land that merged and finalized a
  * release) would otherwise reach a wrapper that skips the compile and tests
  * the earlier `dist/`. A caller that names the variable in `env` keeps it.
+ *
+ * `PAN_REPOSITORY_CHECK_PROFILE` tells a wrapper command such as
+ * `pan tests impacted` that this runner captures and logs its output, so the
+ * wrapper passes its transcript through rather than summarizing it a second
+ * time. Gate evidence and baseline diagnostics keep the full transcript.
  */
 export function profileCommandEnv(
   workspaceRoot: string,
@@ -89,6 +95,7 @@ export function profileCommandEnv(
 ): Record<string, string | undefined> {
   const merged: Record<string, string | undefined> = {
     ...process.env,
+    [PROFILE_COMMAND_ENV]: '1',
     ...env,
   }
 

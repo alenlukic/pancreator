@@ -224,6 +224,15 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     age_source: 'mtime',
     disposal: 'archive_then_delete',
   },
+  // One full-output log per `pan repository-check` or `pan tests impacted`
+  // execution. A run's durable evidence lives in its own evidence directory,
+  // so these are diagnostic copies with no archive tier.
+  {
+    name: 'repository-check-logs',
+    paths: ['runtime/logs/repository-check'],
+    age_source: 'mtime',
+    disposal: 'delete',
+  },
   {
     name: 'agent-index',
     paths: ['runtime/logs/agents'],
