@@ -6,11 +6,10 @@ import { isRecord, readJson, resolveInside, writeTextAtomic } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
 import type { RunState, StageHistoryItem } from './types.js'
 import {
-  assistantTurns,
   findInvocationTranscripts,
   invocationTranscriptsRoot,
-  toolPath,
-} from './worker-profile.js'
+} from './worker-profile/invocations.js'
+import { assistantTurns, toolPath } from './worker-profile/transcript.js'
 
 /**
  * The handoff a source-editing worker receives from the one before it: the
