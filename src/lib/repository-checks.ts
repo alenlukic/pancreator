@@ -58,6 +58,9 @@ import {
 } from './suite-profile.js'
 import { loadWorkflowFile } from './workflow.js'
 
+/** Set by `bin/run-built` for a process tree whose build is current. */
+export const BUILD_READY_ENV = 'PANCREATOR_BUILD_READY'
+
 /**
  * The environment a profile command runs in. The harness process environment
  * is the base. `PAN_TEST_PROFILE` never leaks from an outer test run: a gate
@@ -72,8 +75,15 @@ import { loadWorkflowFile } from './workflow.js'
  * from the installation instead of the workspace the gate targets. A target
  * installation keeps the inherited value, because its workspace is the target
  * repository and the harness lives elsewhere by design.
+ *
+ * `PANCREATOR_BUILD_READY` never leaks in either. `bin/run-built` exports it
+ * to assert that the build was current when the process tree started, and a
+ * profile command exists to check the sources as they are now. A command that
+ * changed sources before the profile ran (a land that merged and finalized a
+ * release) would otherwise reach a wrapper that skips the compile and tests
+ * the earlier `dist/`. A caller that names the variable in `env` keeps it.
  */
-function profileCommandEnv(
+export function profileCommandEnv(
   workspaceRoot: string,
   env: Record<string, string>,
 ): Record<string, string | undefined> {
@@ -84,6 +94,10 @@ function profileCommandEnv(
 
   if (!(TEST_PROFILE_ENV in env)) {
     delete merged[TEST_PROFILE_ENV]
+  }
+
+  if (!(BUILD_READY_ENV in env)) {
+    delete merged[BUILD_READY_ENV]
   }
 
   if (!('PANCREATOR_ROOT' in env) && isPancreatorRoot(workspaceRoot)) {

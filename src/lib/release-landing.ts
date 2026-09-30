@@ -27,7 +27,13 @@ import {
   gitWorktreeIsDirty,
   INTEGRATION_BRANCH,
 } from './git.js'
-import { appendJsonLine, isRecord, resolveInside } from './io.js'
+import {
+  appendJsonLine,
+  fileExists,
+  isRecord,
+  readText,
+  resolveInside,
+} from './io.js'
 import {
   acquireLandingMutex,
   type LandingMutexHolder,
@@ -37,7 +43,7 @@ import {
   readReleaseAllocations,
 } from './release-allocation.js'
 import { finalizeLocalRelease } from './release-preparation.js'
-import { runRepositoryCheck } from './repository-checks.js'
+import { BUILD_READY_ENV, runRepositoryCheck } from './repository-checks.js'
 import { loadState } from './state.js'
 import {
   isSemanticVersion,
@@ -52,6 +58,7 @@ import {
 const LANDING_LOG_PATH = path.join('runtime', 'release', 'landing.jsonl')
 const GIT_TIMEOUT_MS = 120_000
 const GIT_MAX_BUFFER = 20 * 1024 * 1024
+const BUILD_TIMEOUT_MS = 600_000
 
 /** A full SHA-1 or SHA-256 object name, the first field merge-tree prints. */
 const OBJECT_NAME_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u
@@ -73,6 +80,7 @@ export type LandingStepName =
   | 'allocate'
   | 'metadata_regenerated'
   | 'finalize'
+  | 'build'
   | 'verify'
   | 'check'
   | 'fast_forward'
@@ -93,6 +101,8 @@ export interface LandingResult {
   index_commit?: string
   merge_commit?: string
   verified_profiles?: string[]
+  /** Build stamp of the integrated tree the verify step tested. */
+  build_stamp?: string
   /** Why the verify step ran the profiles it ran. */
   verification_basis?: LandingVerification['basis']
   lock_wait_seconds?: number
@@ -869,24 +879,78 @@ export function landRelease(
         : {}),
     }
 
+    // The candidate's own `dist/` predates the merge and the release commit,
+    // so every profile would test an earlier tree. Compile the tree that
+    // lands first, and refuse a tree that does not compile.
+    const build = buildLandingTree(worktreePath)
+
+    if (build.outcome !== 'not_applicable') {
+      recordStep('build', {
+        outcome: build.outcome,
+        ...(build.build_stamp ? { build_stamp: build.build_stamp } : {}),
+      })
+    }
+
+    if (build.outcome === 'failed') {
+      return finish({
+        status: 'verification_failed',
+        ...released,
+        verified_profiles: [],
+        verification_basis: verification.basis,
+        verification_output: build.output,
+      })
+    }
+
+    const stampFields = build.build_stamp
+      ? { build_stamp: build.build_stamp }
+      : {}
+
     for (const profile of verifyProfiles) {
       const checkResult = runRepositoryCheck(root, profile, {
         workspace: worktreePath,
       })
 
       if (checkResult.status !== 'passed') {
-        recordStep('verify', { profile, outcome: 'failed', ...basisFields })
+        recordStep('verify', {
+          profile,
+          outcome: 'failed',
+          ...basisFields,
+          ...stampFields,
+        })
 
         return finish({
           status: 'verification_failed',
           ...released,
           verified_profiles: [],
           verification_basis: verification.basis,
+          ...stampFields,
           verification_output: JSON.stringify(checkResult, null, 2),
         })
       }
 
-      recordStep('verify', { profile, outcome: 'passed', ...basisFields })
+      recordStep('verify', {
+        profile,
+        outcome: 'passed',
+        ...basisFields,
+        ...stampFields,
+      })
+    }
+
+    if (
+      build.outcome === 'built' &&
+      !landingBuildIsCurrent(worktreePath, build.build_stamp)
+    ) {
+      recordStep('build', { outcome: 'changed_during_verify', ...stampFields })
+
+      return finish({
+        status: 'verification_failed',
+        ...released,
+        verified_profiles: [],
+        verification_basis: verification.basis,
+        ...stampFields,
+        verification_output:
+          'The candidate sources changed while the verify profiles ran, so the profiles did not test the tree that lands. Run the land again.',
+      })
     }
 
     // ── Step 7: Check. ───────────────────────────────────────────────────────
@@ -921,6 +985,7 @@ export function landRelease(
       tip_after: tipAfter,
       verified_profiles: verifyProfiles,
       verification_basis: verification.basis,
+      ...stampFields,
     })
   } catch (error) {
     mutex.release()
@@ -930,6 +995,81 @@ export function landRelease(
     })
     throw error
   }
+}
+
+interface LandingBuild {
+  outcome: 'built' | 'failed' | 'not_applicable'
+  build_stamp?: string
+  output?: string
+}
+
+function readBuildStamp(worktreePath: string): string | undefined {
+  const stampPath = path.join(worktreePath, 'dist', '.build-stamp')
+
+  return fileExists(stampPath)
+    ? readText(stampPath).trim() || undefined
+    : undefined
+}
+
+/**
+ * Compile the candidate worktree's tree through its own `bin/run-built`.
+ *
+ * `bin/pan` exports `PANCREATOR_BUILD_READY` for the process tree, and this
+ * command then merges and finalizes the release, so the inherited value
+ * describes an earlier tree. The build runs without it, and `bin/build` swaps
+ * `dist/` wholesale when the source fingerprint moved. A worktree without
+ * the wrapper (a target installation) has no compiled tree to refresh.
+ */
+export function buildLandingTree(worktreePath: string): LandingBuild {
+  const runBuilt = path.join(worktreePath, 'bin', 'run-built')
+
+  if (!fileExists(runBuilt)) {
+    return { outcome: 'not_applicable' }
+  }
+
+  const env = { ...process.env }
+
+  delete env[BUILD_READY_ENV]
+
+  const result = spawnSync(runBuilt, ['--build-only'], {
+    cwd: worktreePath,
+    env,
+    encoding: 'utf8',
+    maxBuffer: GIT_MAX_BUFFER,
+    timeout: BUILD_TIMEOUT_MS,
+  })
+
+  if (result.status !== 0) {
+    return {
+      outcome: 'failed',
+      output:
+        result.stderr ||
+        result.stdout ||
+        result.error?.message ||
+        'The build of the integrated tree failed.',
+    }
+  }
+
+  const buildStamp = readBuildStamp(worktreePath)
+
+  return {
+    outcome: 'built',
+    ...(buildStamp ? { build_stamp: buildStamp } : {}),
+  }
+}
+
+/** Whether `dist/` still matches the sources and the stamp the land verified. */
+export function landingBuildIsCurrent(
+  worktreePath: string,
+  buildStamp: string | undefined,
+): boolean {
+  const result = spawnSync(
+    path.join(worktreePath, 'bin', 'build'),
+    ['--stamp-fresh'],
+    { cwd: worktreePath, timeout: GIT_TIMEOUT_MS },
+  )
+
+  return result.status === 0 && readBuildStamp(worktreePath) === buildStamp
 }
 
 /**
