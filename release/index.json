@@ -380,6 +380,10 @@
     {
       "version": "7.36.0",
       "commit": "ed1ecf33a7c8da610884532a948ba891cddfd63a"
+    },
+    {
+      "version": "7.36.1",
+      "commit": "f188147d0bb87d99216b8d4f6c36e6427d07040f"
     }
   ]
 }
