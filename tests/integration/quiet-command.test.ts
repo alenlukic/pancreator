@@ -96,6 +96,20 @@ test('quiet command suppresses successful stdout and stderr', () => {
   assert.equal(result.stdout, '')
   assert.equal(result.stderr, '')
   assertRecordFiles(result.root, 0)
+
+  const [dir] = recordDirectories(result.root)
+
+  assert.ok(dir, 'a shell record directory must exist')
+  assert.equal(
+    existsSync(path.join(dir, 'stdout.log')),
+    false,
+    'a successful quiet run removes the duplicate stdout capture',
+  )
+  assert.equal(
+    existsSync(path.join(dir, 'stderr.log')),
+    false,
+    'a successful quiet run removes the duplicate stderr capture',
+  )
 })
 
 test('quiet command preserves captured output when the command fails', () => {
@@ -144,15 +158,15 @@ test('progress ticks mark intervals in which the command produced output', () =>
   assert.equal(result.status, 0)
   assert.equal(result.stdout, '')
   assert.equal(result.stderr, '')
-  assert.match(result.progress, /\[pan-run\] log: \S+ observe: /u)
   assert.match(
     result.progress,
-    /\[pan-run\] node running \d+s pid=\d+ last: first\n/u,
+    /\[pan-run\] \S+ started pid=\d+ log: \S+ observe: /u,
   )
   assert.match(
     result.progress,
-    /\[pan-run\] node running \d+s pid=\d+ last: second\n/u,
+    /\[pan-run\] node running \d+s pid=\d+ \+\d+B\n {2}first\n/u,
   )
+  assert.match(result.progress, /\+\d+B\n(?: {2}first\n)? {2}second\n/u)
 })
 
 test('a nested quiet wrapper beats to the sink the outer wrapper exported', () => {
@@ -166,7 +180,7 @@ test('a nested quiet wrapper beats to the sink the outer wrapper exported', () =
   assert.equal(result.stderr, '')
   assert.match(
     result.progress,
-    /\[pan-run\] node running \d+s pid=\d+ last: inner/u,
+    /\[pan-run\] node running \d+s pid=\d+ (\+\d+B\n {2}inner|no new output for \d+s \(last: inner\))/u,
     'the inner wrapper reached the outer sink',
   )
   assert.match(result.progress, /\[pan-run\] run-quiet running /u)

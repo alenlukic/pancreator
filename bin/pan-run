@@ -17,6 +17,15 @@
 #   PAN_RUN_HEARTBEAT_SECONDS     heartbeat cadence
 #   PAN_VERBOSE                   stream output when set to 1/true/yes
 #   PAN_PROGRESS_FD               heartbeat line sink fd in quiet mode
+#   PAN_RUN_TAIL_LINES            heartbeat tail lines printed to the sink (default 5)
+#   PAN_RUN_KEEP_HOURS            finished-record age bound for compaction (default 24, 0 disables)
+#   PAN_RUN_KEEP_RECORDS          finished-record count bound for compaction (default 1000, 0 disables)
+#
+# Each run compacts runtime/logs/shell at exit: a finished record older than
+# PAN_RUN_KEEP_HOURS, or past the newest PAN_RUN_KEEP_RECORDS, is removed once
+# it is at least ten minutes past its end. A running record, or one still
+# within that grace, is never removed. runtime/logs/shell/latest always links
+# to the newest record directory.
 #
 # The script targets Bash 3.2, the macOS system shell.
 set -euo pipefail
@@ -141,6 +150,14 @@ const MIN_SECRET_LENGTH = 8;
 const IDLE_FLUSH_MS = 500;
 const TAIL_LINES = 5;
 const LAST_LINE_CHARS = 160;
+const RECORD_NAME_RE = /^\d{8}T\d{6}Z-/;
+const HELPER_MARKER = ".pan-run.cjs";
+const COMPACT_GRACE_MS = 10 * 60 * 1000;
+const COMPACT_DEFAULT_KEEP_HOURS = 24;
+const COMPACT_DEFAULT_KEEP_RECORDS = 1000;
+const COMPACT_MAX_REMOVALS = 50;
+const COMPACT_BUDGET_MS = 300;
+const COMPACT_LOCK_STALE_MS = 60 * 1000;
 const env = process.env;
 
 function collectSecrets() {
@@ -202,6 +219,143 @@ function writeJson(file, value) {
 
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
+}
+
+function nonNegativeIntEnv(name, fallback) {
+  const raw = env[name];
+  if (raw === undefined || raw === "") return fallback;
+  if (!/^\d+$/.test(raw)) return fallback;
+  return Number(raw);
+}
+
+function processAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM means a process with that pid exists but is owned by someone
+    // else, which still counts as alive. Any other error (ESRCH) does not.
+    return error && error.code === "EPERM";
+  }
+}
+
+// mkdir is atomic across processes, so it doubles as the compaction lock. A
+// lock directory older than the stale bound is reclaimed from a wrapper that
+// died mid-compaction.
+function withCompactLock(logsRoot, fn) {
+  const lockDir = path.join(logsRoot, ".shell-compact.lock");
+  const tryAcquire = () => {
+    try {
+      fs.mkdirSync(lockDir);
+      return true;
+    } catch (error) {
+      if (error && error.code === "EEXIST") return false;
+      throw error;
+    }
+  };
+  if (!tryAcquire()) {
+    let stale = false;
+    try { stale = Date.now() - fs.statSync(lockDir).mtimeMs > COMPACT_LOCK_STALE_MS; } catch { stale = false; }
+    if (!stale || !(() => { try { fs.rmdirSync(lockDir); return true; } catch { return false; } })()) {
+      return { locked: true };
+    }
+    if (!tryAcquire()) return { locked: true };
+  }
+  try {
+    return fn();
+  } finally {
+    try { fs.rmdirSync(lockDir); } catch {}
+  }
+}
+
+// Called only for a record the caller already decided is a compaction
+// candidate (by age or by count), so this function does not re-judge
+// candidacy. It answers one question: is removing this one safe right now?
+// A running wrapper or one that finished inside the grace window is never
+// removed; an unreadable record with no live marker is treated as abandoned.
+function recordDisposition(dir, nowMs) {
+  let record = null;
+  try { record = JSON.parse(fs.readFileSync(path.join(dir, "record.json"), "utf8")); } catch {}
+  if (record && typeof record === "object") {
+    if (record.ended_at === null || record.ended_at === undefined) {
+      return processAlive(Number(record.wrapper_pid)) ? "keep_running" : "remove";
+    }
+    const endedMs = Date.parse(record.ended_at);
+    const age = Number.isFinite(endedMs) ? nowMs - endedMs : Infinity;
+    return age < COMPACT_GRACE_MS ? "keep_grace" : "remove";
+  }
+  let hasMarker = false;
+  try { hasMarker = fs.existsSync(path.join(dir, HELPER_MARKER)); } catch {}
+  return hasMarker ? "keep_running" : "remove";
+}
+
+function recordDirectoryMs(name) {
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z-/.exec(name);
+  if (!match) return null;
+  const [, y, mo, d, h, mi, s] = match;
+  return Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
+}
+
+// Cheap on every run: only the directory names are read for the bounds, and
+// record.json is opened only for the candidates a bound already selected.
+function compactShellLogs(shellDir, nowMs) {
+  const keepHours = nonNegativeIntEnv("PAN_RUN_KEEP_HOURS", COMPACT_DEFAULT_KEEP_HOURS);
+  const keepRecords = nonNegativeIntEnv("PAN_RUN_KEEP_RECORDS", COMPACT_DEFAULT_KEEP_RECORDS);
+  if (keepHours === 0 || keepRecords === 0) return { skipped: true };
+
+  // The lock lives one level up, beside shellDir rather than inside it: a
+  // dotfile inside shellDir would sort before every timestamp-named record
+  // directory and break a consumer that takes the first readdir entry as the
+  // newest or oldest record.
+  return withCompactLock(path.dirname(shellDir), () => {
+    const ownName = env.PAN_RUN_RECORD_DIR ? path.basename(env.PAN_RUN_RECORD_DIR) : null;
+    let entries = [];
+    try { entries = fs.readdirSync(shellDir, { withFileTypes: true }); } catch { return { skipped: true }; }
+
+    const records = entries
+      .filter((entry) => entry.isDirectory() && entry.name !== ownName && RECORD_NAME_RE.test(entry.name))
+      .map((entry) => ({ name: entry.name, ms: recordDirectoryMs(entry.name) }))
+      .filter((item) => item.ms !== null)
+      .sort((a, b) => b.ms - a.ms);
+
+    const keepMs = keepHours * 3600 * 1000;
+    const ageCutoff = nowMs - keepMs;
+    const candidates = records.filter((item, index) => index >= keepRecords || item.ms < ageCutoff);
+
+    let removed = 0;
+    let keptRunning = 0;
+    let keptGrace = 0;
+    const start = Date.now();
+
+    // Oldest first, so a capped run always clears the longest-lived backlog.
+    const ordered = candidates.slice().sort((a, b) => a.ms - b.ms);
+
+    for (const item of ordered) {
+      if (removed >= COMPACT_MAX_REMOVALS || Date.now() - start > COMPACT_BUDGET_MS) break;
+      const dir = path.join(shellDir, item.name);
+      const disposition = recordDisposition(dir, nowMs);
+      if (disposition === "remove") {
+        try {
+          fs.rmSync(dir, { recursive: true, force: true });
+          removed += 1;
+        } catch {}
+      } else if (disposition === "keep_grace") {
+        keptGrace += 1;
+      } else {
+        keptRunning += 1;
+      }
+    }
+
+    return {
+      scanned: records.length,
+      candidates: candidates.length,
+      removed,
+      kept_running: keptRunning,
+      kept_grace: keptGrace,
+      locked: false,
+    };
+  });
 }
 
 function filter(logPath) {
@@ -295,6 +449,7 @@ function recordEnd(commandArgv) {
   record.ended_at = new Date().toISOString();
   record.exit_code = Number(env.PAN_RUN_EXIT_CODE);
   record.signal = env.PAN_RUN_SIGNAL || null;
+  record.quiet = env.PAN_RUN_QUIET === "1";
   const startStatus = Number(env.PAN_RUN_START_STATUS || 0);
   if (startStatus !== 0) {
     record.record_start_failure = {
@@ -305,35 +460,60 @@ function recordEnd(commandArgv) {
     };
   }
   writeJson(file, record);
+  try { compactShellLogs(path.dirname(env.PAN_RUN_RECORD_DIR), Date.now()); } catch {}
 }
 
-function tailLines(logPath, size) {
+function tailLines(logPath, size, count) {
   if (size === 0) return [];
   const length = Math.min(size, 64 * 1024);
   const buffer = Buffer.alloc(length);
   const fd = fs.openSync(logPath, "r");
   try { fs.readSync(fd, buffer, 0, length, size - length); } finally { fs.closeSync(fd); }
-  return buffer.toString("utf8").split(/\r?\n/).filter((line) => line.length > 0).slice(-TAIL_LINES);
+  return buffer.toString("utf8").split(/\r?\n/).filter((line) => line.length > 0).slice(-count);
 }
 
 function beat() {
   const dir = env.PAN_RUN_RECORD_DIR;
   const logPath = path.join(dir, "output.log");
   const record = readJson(path.join(dir, "record.json")) || {};
+  const previous = readJson(path.join(dir, "heartbeat.json")) || {};
+  const previousBytes = typeof previous.log_bytes === "number" ? previous.log_bytes : 0;
   const startedMs = Date.parse(record.started_at || "") || Date.now();
   const elapsed = Math.floor((Date.now() - startedMs) / 1000);
+  const printLines = Math.min(20, Math.max(1, nonNegativeIntEnv("PAN_RUN_TAIL_LINES", TAIL_LINES)));
   let stats = null;
   try { stats = fs.statSync(logPath); } catch {}
   const size = stats ? stats.size : 0;
-  const recent = stats ? tailLines(logPath, size) : [];
+  const recent = stats ? tailLines(logPath, size, TAIL_LINES) : [];
   writeJson(path.join(dir, "heartbeat.json"), {
     elapsed_seconds: elapsed,
     log_bytes: size,
+    last_beat_bytes: previousBytes,
+    beat_at: new Date().toISOString(),
     last_output_at: size > 0 ? stats.mtime.toISOString() : null,
     recent_lines: recent,
   });
-  const last = (recent[recent.length - 1] || "").slice(0, LAST_LINE_CHARS);
-  fs.writeSync(1, `[pan-run] ${env.PAN_RUN_LABEL} running ${elapsed}s pid=${env.PAN_RUN_PID} last: ${last}\n`);
+
+  const grown = size > previousBytes;
+  const label = env.PAN_RUN_LABEL;
+  const pid = env.PAN_RUN_PID;
+  if (grown) {
+    const delta = size - previousBytes;
+    const printed = stats ? tailLines(logPath, size, printLines) : [];
+    const lines = printed
+      .map((line) => `  ${line.slice(0, LAST_LINE_CHARS)}`)
+      .join("\n");
+    fs.writeSync(1, `[pan-run] ${label} running ${elapsed}s pid=${pid} +${delta}B\n${lines ? `${lines}\n` : ""}`);
+  } else if (size === 0) {
+    fs.writeSync(1, `[pan-run] ${label} running ${elapsed}s pid=${pid} no output yet\n`);
+  } else {
+    const silentSeconds = stats ? Math.max(0, Math.floor((Date.now() - stats.mtimeMs) / 1000)) : elapsed;
+    const last = (recent[recent.length - 1] || "").slice(0, LAST_LINE_CHARS);
+    fs.writeSync(
+      1,
+      `[pan-run] ${label} running ${elapsed}s pid=${pid} no new output for ${silentSeconds}s (last: ${last})\n`,
+    );
+  }
 }
 
 const [mode, ...rest] = process.argv.slice(2);
@@ -342,6 +522,7 @@ else if (mode === "filter") filter(rest[0]);
 else if (mode === "record-start") recordStart(rest.slice(1));
 else if (mode === "record-end") recordEnd(rest.slice(1));
 else if (mode === "beat") beat();
+else if (mode === "compact") process.stdout.write(`${JSON.stringify(compactShellLogs(rest[0] || env.PAN_RUN_SHELL_LOG_DIR, Date.now()))}\n`);
 else { process.stderr.write(`pan-run helper: unknown mode ${mode}\n`); process.exit(2); }
 HELPER_JS_EOF
 
@@ -385,6 +566,14 @@ mkdir -p "$RECORD_DIR"
 : >"$LOG_PATH"
 mv "$HELPER" "$RECORD_DIR/.pan-run.cjs"
 HELPER="$RECORD_DIR/.pan-run.cjs"
+
+# `-n` treats an existing `latest` as the link itself rather than following
+# it into a directory: plain `mv`/`ln -sf` silently write inside the target
+# directory instead of replacing the link, because `latest` resolves (via
+# stat) to a directory. This is not atomic (a brief unlink precedes the new
+# link), which is acceptable for a best-effort navigation convenience that
+# nothing load-bearing reads.
+ln -sfn "${RECORD_DIR_REL##*/}" "$SHELL_LOG_DIR/latest" 2>/dev/null || true
 
 HB_PID=""
 stop_heartbeat() {
@@ -476,8 +665,8 @@ START_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 # before the helper runs. A helper that dies still leaves the agent a
 # `pan watch --process` command to observe the running command with.
 if [[ -n "$PROGRESS_FD" ]]; then
-  printf '[pan-run] log: %s observe: ./bin/pan watch --process %s --label %s --output %s --exit-record %s\n' \
-    "$RECORD_DIR_REL/output.log" "$CMD_PID" "$SAFE_LABEL" \
+  printf '[pan-run] %s started pid=%s log: %s observe: ./bin/pan watch --process %s --label %s --output %s --exit-record %s\n' \
+    "$SAFE_LABEL" "$CMD_PID" "$RECORD_DIR_REL/output.log" "$CMD_PID" "$SAFE_LABEL" \
     "$RECORD_DIR_REL/output.log" "$RECORD_DIR_REL/record.json" >&"$PROGRESS_FD"
 fi
 
@@ -548,10 +737,14 @@ fi
 PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_EXIT_CODE="$EXIT_CODE" PAN_RUN_SIGNAL="$SIGNAL_NAME" \
   PAN_RUN_RECORD_REL="$RECORD_DIR_REL" PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" \
   PAN_RUN_PID="$CMD_PID" PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
-  PAN_RUN_STARTED_AT="$START_AT" PAN_RUN_ENV_FILES="$ENV_FILES" \
+  PAN_RUN_STARTED_AT="$START_AT" PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_QUIET="$QUIET" \
   PAN_RUN_START_STATUS="$START_STATUS" PAN_RUN_START_SIGNAL="$START_SIGNAL" \
   PAN_RUN_START_RECOVERED="$START_RECOVERED" PAN_RUN_START_STDERR="$START_STDERR" \
   node "$HELPER" record-end -- "${COMMAND_ARGV[@]}"
+
+if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -eq 0 ]]; then
+  rm -f "$STDOUT_LOG" "$STDERR_LOG" 2>/dev/null || true
+fi
 
 if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -ne 0 ]]; then
   truncated=0
