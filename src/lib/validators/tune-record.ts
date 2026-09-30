@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { readJson } from '../io.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
-import { validateTuneRecordShape } from '../test-tuning.js'
+import { validateTuneRecordShape } from '../test-tuning/shape.js'
 
 function issue(code: string, message: string) {
   return { code, message }
