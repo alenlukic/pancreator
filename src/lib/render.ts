@@ -10,6 +10,7 @@ import { cursorAgentName } from './projection.js'
 import {
   renderContextReferenceBlock,
   renderPolicyBlocks,
+  type PolicyRulePointer,
 } from './policy-guidance.js'
 import { effectiveRepositoryCheckProfile } from './verification.js'
 import type {
@@ -615,13 +616,37 @@ function renderSupervisorProcedureBody(
               `${item.role === 'evidence' ? 'evidence' : 'stage'} worker) — ` +
               `${item.action}`,
           ),
-          '1b. Await all evidence workers. Confirm each report exists and ' +
-            'is non-empty at its declared path; when a worker returned its ' +
-            'report in chat instead of writing the file, persist the ' +
-            'returned text there yourself verbatim. Submission rejects the ' +
-            'stage output while any report is missing.',
+          ...(delegation.watch_command
+            ? [
+                '1b. In the launch turn, block on ' +
+                  `\`${delegation.watch_command} --until-evidence-complete\` ` +
+                  'as a foreground shell call. Never poll the reports with a ' +
+                  'timer or a script. It exits 0 within one cadence of the ' +
+                  'moment every report carries its completion marker; launch ' +
+                  'the stage worker in that same turn. Exit 2 or 3 means an ' +
+                  'evidence worker stopped: inspect it, and relaunch it with ' +
+                  '`pan worker record --role <role> --new-attempt`. When a ' +
+                  'worker returned its report in chat instead of writing the ' +
+                  'file, persist the returned text there yourself verbatim, ' +
+                  'then rerun the watch. Submission rejects the stage output ' +
+                  'while any report is missing.',
+              ]
+            : [
+                '1b. Await all evidence workers. Confirm each report exists ' +
+                  'and is non-empty at its declared path; when a worker ' +
+                  'returned its report in chat instead of writing the file, ' +
+                  'persist the returned text there yourself verbatim. ' +
+                  'Submission rejects the stage output while any report is ' +
+                  'missing.',
+              ]),
         ]
-      : []),
+      : invocation.scoped_return
+        ? [
+            '1a. Scoped return visit: no evidence worker runs. Launch the ' +
+              'stage worker directly; its card assigns it every evidence ' +
+              'dimension.',
+          ]
+        : []),
     ...deliverySteps,
     ...(!externalDelegation && delegation.watch_command
       ? [
@@ -709,6 +734,70 @@ function renderRemediationReturn(invocation: Invocation): string[] {
       'executing it again, and record `carried_from` on that case with the ' +
       'prior invocation id and the workspace fingerprint it was observed ' +
       'at. This caps case coverage only; it changes no profile allowance.',
+  ]
+}
+
+/**
+ * The section a scoped return visit carries in place of the evidence
+ * reports: why the harness scoped it, the repair it serves, and each
+ * dimension's scope with the output section that records it.
+ */
+function renderScopedReturn(invocation: Invocation): string[] {
+  const scoped = invocation.scoped_return
+
+  if (!scoped) {
+    return []
+  }
+
+  const { limits } = scoped
+  const excluded =
+    limits.excluded_path_globs.length > 0
+      ? `, none under ${limits.excluded_path_globs.map((glob) => `\`${glob}\``).join(', ')}`
+      : ''
+
+  return [
+    '### Scoped return visit',
+    '',
+    'No evidence worker runs on this visit. The harness scoped it because ' +
+      `remediation \`${scoped.remediation_invocation_id}\` changed ` +
+      `${scoped.blast_radius.length} path(s) and the routing verdict carried ` +
+      `${scoped.findings.length} finding(s), within this stage's limits: at ` +
+      `most ${limits.max_paths} paths and ${limits.max_findings} findings` +
+      `${excluded}, no deleted test, and no fail_severe verdict.`,
+    '',
+    'You cover every evidence dimension below yourself, each as its own ' +
+      'section of `data.verify.dimensions`, and you stay independent of the ' +
+      'remediation. `VERIFY-001` treats each section as the report its ' +
+      'evidence worker would have written.',
+    '',
+    'Blast radius:',
+    '',
+    ...scoped.blast_radius.map((changedPath) => `- \`${changedPath}\``),
+    '',
+    'Findings of the routing verdict:',
+    '',
+    ...(scoped.findings.length > 0
+      ? scoped.findings.map(
+          (finding) =>
+            `- \`${finding.id}\` (${finding.severity}, from ${finding.source})`,
+        )
+      : ['- None.']),
+    '',
+    ...scoped.dimensions.flatMap((dimension) => [
+      `#### ${dimension.role} dimension`,
+      '',
+      dimension.scope,
+      '',
+      `Record it in \`data.verify.dimensions.${dimension.role}\` with a ` +
+        'non-empty `summary` and a non-empty `evidence[]` of paths, ' +
+        'commands, or observations. Cite this dimension as the `source` of ' +
+        'each finding it raises.',
+      '',
+    ]),
+    'Execute the cases the blast radius reaches, record each in ' +
+      '`data.verify.qa_cases`, and carry every other case forward with ' +
+      '`carried_from`, as a return-visit evidence worker would.',
+    '',
   ]
 }
 
@@ -874,6 +963,26 @@ function renderResolvedGateBound(
 }
 
 /** Render an invocation card for both the operator and the assigned worker. */
+/** The pointer-delivered policies of a worker card, keyed by policy id. */
+export function invocationPolicyPointers(
+  invocation: Pick<Invocation, 'policy_delivery'>,
+): Map<string, PolicyRulePointer> {
+  const pointers = new Map<string, PolicyRulePointer>()
+
+  for (const [policyId, delivery] of Object.entries(
+    invocation.policy_delivery ?? {},
+  )) {
+    if (delivery.mode === 'pointer') {
+      pointers.set(policyId, {
+        target: delivery.target,
+        sha256: delivery.sha256,
+      })
+    }
+  }
+
+  return pointers
+}
+
 export function renderInvocationMarkdown(invocation: Invocation): string {
   const { stage } = invocation
   const requiredData = Object.entries(invocation.output.required_data)
@@ -902,7 +1011,14 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ).slice(1)
     : []
 
-  const policies = renderPolicyBlocks(invocation.policies, 3, 'agent')
+  const policies = renderPolicyBlocks(
+    invocation.policies,
+    3,
+    'agent',
+    new Set(),
+    new Set(),
+    invocationPolicyPointers(invocation),
+  )
   const requirements = invocation.requirements
     ? [
         ...invocation.requirements.automation_requirements,
@@ -1297,6 +1413,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           '',
         ]
       : []),
+    ...renderScopedReturn(invocation),
     ...(contextReferenceLines.length > 0 ? [...contextReferenceLines, ''] : []),
     ...(conditionalReferences.length > 0
       ? ['### Conditional references', '', ...conditionalReferences, '']

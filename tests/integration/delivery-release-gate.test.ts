@@ -8,6 +8,8 @@ import {
   prepareInvocation,
   resumeRun,
 } from '../../src/lib/engine.js'
+import { gitSourceContentFingerprint } from '../../src/lib/git.js'
+import { RELEASE_LANDING_METADATA_PATHS } from '../../src/lib/versioning.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   assertNoShellGate,
@@ -52,11 +54,12 @@ test('a remediate to verify return never runs full; the ship release gate runs i
 
   assert.equal(state.verification?.level, 'light')
 
-  // The implement loop baselines the interior profiles only.
+  // The implement loop baselines the interior profiles only. Configuration is
+  // one of them, so a governance break fails the loop rather than ship.
   assert.ok(state.repository_check_baselines?.fast)
   assert.ok(state.repository_check_baselines?.static)
+  assert.ok(state.repository_check_baselines?.configuration)
   assert.equal(state.repository_check_baselines?.full, undefined)
-  assert.equal(state.repository_check_baselines?.configuration, undefined)
   assert.equal(fullRuns(root), 0)
   assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
   const fastBeforeRemediation = readFileSync(
@@ -80,7 +83,7 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   assert.equal(fullRuns(root), 0)
 
   // A remediation that a verify verdict routed returns to verify. Its
-  // submission gate runs static only, never full.
+  // submission gates run the interior profiles, never full.
   const remediated = submitStageOutput(root, runId, remediateStage, 'success')
 
   assert.equal(remediated.record.outcome, 'success')
@@ -89,7 +92,11 @@ test('a remediate to verify return never runs full; the ship release gate runs i
     remediated.record.evaluation.deterministic
       .filter((item) => item.type === 'shell')
       .map((item) => item.command),
-    ['pan repository-check static'],
+    [
+      'pan repository-check static',
+      'pan repository-check configuration',
+      'pan repository-check impacted-integration',
+    ],
   )
   assert.equal(fullRuns(root), 0)
   assert.equal(
@@ -130,6 +137,15 @@ test('a remediate to verify return never runs full; the ship release gate runs i
 
   assert.ok(gate)
   assert.equal(gate.last_result.passed, true)
+  // The executed full pass records the source it verified, so a land that
+  // integrates nothing can reuse the proof.
+  assert.deepEqual(gate.verified_source, {
+    fingerprint: gitSourceContentFingerprint(
+      root,
+      RELEASE_LANDING_METADATA_PATHS,
+    ),
+    profile: 'full',
+  })
   assert.ok(profilePath)
   assert.ok(existsSync(path.join(root, profilePath)))
   assert.equal(ship.suite_profile?.profile_path, profilePath)
@@ -347,17 +363,88 @@ test('thorough verification runs full at the ship release gate on its own result
   assert.equal(ship.state.entry_gates?.ship?.last_result.passed, true)
 })
 
-test('delivery-chunk remediation gates configuration', () => {
-  const remediate = stageBySlug(
-    loadWorkflow(process.cwd(), 'delivery-chunk'),
-    'remediate',
-  )
-  const commands = remediate.criteria
-    .filter((criterion) => criterion.type === 'shell')
-    .map((criterion) => criterion.command)
+// The ship entry gate failed five times in one week on lanes verify never
+// ran. Every source stage of both delivery workflows now gates the
+// configuration lane and the integration tests its change reaches, so a
+// passed verify rests on every lane the ship gate can fail on.
+test('delivery and delivery-chunk source stages gate configuration and impacted integration tests', () => {
+  const expected: Record<string, string[]> = {
+    implement: [
+      'pan repository-check static',
+      'pan repository-check fast',
+      'pan repository-check configuration',
+      'pan repository-check impacted-integration',
+    ],
+    remediate: [
+      'pan repository-check static',
+      'pan repository-check configuration',
+      'pan repository-check impacted-integration',
+    ],
+  }
 
-  assert.deepEqual(commands, [
-    'pan repository-check static',
-    'pan repository-check configuration',
+  for (const workflowName of ['delivery', 'delivery-chunk']) {
+    const workflow = loadWorkflow(process.cwd(), workflowName)
+
+    for (const [slug, commands] of Object.entries(expected)) {
+      assert.deepEqual(
+        stageBySlug(workflow, slug)
+          .criteria.filter((criterion) => criterion.type === 'shell')
+          .map((criterion) => criterion.command),
+        commands,
+        `${workflowName} ${slug}`,
+      )
+    }
+  }
+
+  const template = JSON.parse(
+    readFileSync(
+      path.join(
+        process.cwd(),
+        'library/templates/repository-checks.self-development.json',
+      ),
+      'utf8',
+    ),
+  ) as { profiles: Record<string, { commands: string[] }> }
+
+  assert.deepEqual(template.profiles['impacted-integration']?.commands, [
+    './bin/pan tests impacted --lane integration --changed pan-dev',
   ])
+})
+
+test('a verify visit reads configuration and impacted integration evidence from its source stage', () => {
+  const { root, runId } = checkpoint(
+    'delivery@verify-prepared',
+    checksVariant('checks=verify-lanes', {
+      static: { probes: [], commands: [PASS] },
+      fast: { probes: [], commands: [PASS] },
+      configuration: { probes: [], commands: [PASS] },
+      'impacted-integration': { probes: [], commands: [PASS] },
+      full: { probes: [], commands: [`node -e "process.exitCode=0"`] },
+    }),
+  )
+  const pointer = getRunState(root, runId).current_invocation
+
+  assert.ok(pointer)
+
+  const invocation = JSON.parse(
+    readFileSync(path.join(root, pointer.json_path), 'utf8'),
+  ) as {
+    inputs: { references: Array<{ gate_evidence?: { profile?: string } }> }
+    policy_delivery?: Record<string, { mode: string; target?: string }>
+  }
+
+  // A prepared Cursor card points at the projected always-apply policies.
+  for (const policyId of ['PRINCIPLES-001', 'DELEGATE-001', 'COMMS-001']) {
+    assert.equal(invocation.policy_delivery?.[policyId]?.mode, 'pointer')
+  }
+
+  assert.equal(invocation.policy_delivery?.['GLOBAL-001']?.mode, 'inline')
+  const profiles = new Set(
+    invocation.inputs.references
+      .map((reference) => reference.gate_evidence?.profile)
+      .filter((profile): profile is string => typeof profile === 'string'),
+  )
+
+  assert.ok(profiles.has('configuration'), [...profiles].join(', '))
+  assert.ok(profiles.has('impacted-integration'), [...profiles].join(', '))
 })

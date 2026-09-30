@@ -1035,6 +1035,61 @@ function templateIsolationCommands(
   return adopted
 }
 
+/**
+ * Profiles the tracked self-development template declares that the live
+ * repository-check file lacks.
+ *
+ * The self-development runtime file is untracked per-installation state that
+ * nothing regenerates. A stage gate that names a profile the file lacks is
+ * skipped as `not_configured`, so a profile added to the tracked template
+ * would silently never run. `pan validate` reports each gap as a warning so
+ * the operator copies the profile from the template. An operator who wants a
+ * profile off keeps it declared with an empty `commands` list.
+ */
+export function repositoryCheckTemplateGaps(root: string): string[] {
+  const filePath = repositoryChecksSourcePath(root)
+  const templatePath = path.join(
+    root,
+    'library',
+    'templates',
+    'repository-checks.self-development.json',
+  )
+
+  if (
+    path.resolve(templatePath) === path.resolve(filePath) ||
+    !fileExists(filePath) ||
+    !fileExists(templatePath) ||
+    !isSelfDevelopmentInstallation(root)
+  ) {
+    return []
+  }
+
+  const template = readJson(templatePath)
+  const live = readJson(filePath)
+
+  if (
+    !isRecord(template) ||
+    !isRecord(template.profiles) ||
+    !isRecord(live) ||
+    !isRecord(live.profiles)
+  ) {
+    return []
+  }
+
+  const liveProfiles = live.profiles
+
+  return Object.keys(template.profiles)
+    .filter((name) => !(name in liveProfiles))
+    .map(
+      (name) =>
+        `${path.relative(root, filePath) || filePath} lacks profile '${name}' ` +
+        'that library/templates/repository-checks.self-development.json ' +
+        'declares, so every stage gate naming it is skipped as ' +
+        'not_configured. Copy the profile from the template, or declare it ' +
+        'with an empty commands list to keep it off.',
+    )
+}
+
 export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
   const filePath = repositoryChecksSourcePath(root)
 

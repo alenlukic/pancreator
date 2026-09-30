@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   creditKnownFailures,
   executedTestNames,
+  failedRepositoryCheckLanes,
   isolationExecutedTest,
   parseKnownFailingTests,
   parseTestFailureIdentity,
@@ -374,4 +375,43 @@ test('an isolation pass counts only when the transcript names the test', () => {
     false,
   )
   assert.equal(isolationExecutedTest('ok 1 - outside case', ''), false)
+})
+
+test('a failed profile names the test lanes its failures sit in and the commands that name none', () => {
+  const lanes = failedRepositoryCheckLanes(
+    result(
+      failingCommand(
+        'npm run   test:coverage',
+        [
+          'not ok 1 - installs cleanly (/workspace/dist/tests/secondary/embedded-installation.test.js:12)',
+          'not ok 2 - lands a release (/workspace/dist/tests/integration/release-landing.test.js:40)',
+        ].join('\n'),
+      ),
+      failingCommand('./bin/install --smoke', 'smoke failed\n'),
+      {
+        ...failingCommand(
+          'npm run validate',
+          'not ok - x (tests/unit/a.test.ts:1)',
+        ),
+        kind: 'probe',
+      },
+    ),
+  )
+
+  assert.deepEqual(lanes, ['./bin/install --smoke', 'integration', 'secondary'])
+})
+
+test('a timed-out command names itself as the lane, whatever its transcript holds', () => {
+  assert.deepEqual(
+    failedRepositoryCheckLanes(
+      result({
+        ...failingCommand(
+          'npm test',
+          'not ok 1 - x (/workspace/dist/tests/unit/a.test.js:1)',
+        ),
+        timed_out: true,
+      }),
+    ),
+    ['npm test'],
+  )
 })

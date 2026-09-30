@@ -15,6 +15,20 @@ const RELEASE_METADATA_PATHS = new Set([
   'package.json',
 ])
 
+/**
+ * Paths `pan release land` resolves to the tip's content on integration and
+ * that a release commit rewrites. A tree that differs from a verified one only
+ * in these paths holds the same sources the verification ran on.
+ */
+export const RELEASE_LANDING_METADATA_PATHS: ReadonlySet<string> = new Set([
+  'VERSION',
+  'CHANGELOG.md',
+  'package.json',
+  'package-lock.json',
+  'release/index.json',
+  'docs/embedded-installation.md',
+])
+
 export type ReleaseBump = 'major' | 'minor' | 'patch'
 
 interface ParsedVersion {

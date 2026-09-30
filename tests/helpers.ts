@@ -672,6 +672,21 @@ function requiredData(
           acceptance_results: [
             { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
           ],
+          // A scoped return visit ran no evidence worker, so a compliant
+          // verifier records each assigned dimension itself.
+          ...(invocation?.scoped_return
+            ? {
+                dimensions: Object.fromEntries(
+                  invocation.scoped_return.dimensions.map((dimension) => [
+                    dimension.role,
+                    {
+                      summary: `Fixture ${dimension.role} dimension.`,
+                      evidence: ['fixture'],
+                    },
+                  ]),
+                ),
+              }
+            : {}),
         },
       }
     case 'remediate':

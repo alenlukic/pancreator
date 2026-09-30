@@ -168,6 +168,8 @@ test('submit reports the sole operator brief and removes its source', () => {
   assert.ok(stateRevisions.length <= 1)
   assert.deepEqual(nonStateAdditions, [
     `agent/artifacts/json/${invocation.invocation_id}.json`,
+    `agent/evidence/${invocation.invocation_id}-configuration.valid.log`,
+    `agent/evidence/${invocation.invocation_id}-implement.impacted_integration.log`,
     `agent/evidence/${invocation.invocation_id}-implement.lint.log`,
     `agent/evidence/${invocation.invocation_id}-implement.unit_tests.log`,
     `agent/validations/${invocation.invocation_id}.attestation-validation.json`,

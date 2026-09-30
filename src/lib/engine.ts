@@ -15,11 +15,13 @@ import {
   releaseCohortBaselineClaim,
 } from './cohorts.js'
 import { agentRecordedProfilePasses } from './agent-ledger-evidence.js'
+import { readEvidenceReady } from './watch-evidence.js'
 import {
   buildContextReference,
   buildInvocationInputs,
   operatorStageRepairContext,
   remediationReturn,
+  scopedReturnForStage,
   summarizePriorFailure,
 } from './context.js'
 import {
@@ -224,6 +226,7 @@ import {
 import {
   cursorAgentName,
   cursorAgentTarget,
+  policyDeliveryPlan,
   projectPersonaVariants,
   syncCursorProjection,
 } from './projection.js'
@@ -280,6 +283,7 @@ import type {
   RunState,
   SameReasonFailureTrackers,
   StageDefinition,
+  StageEntryGateRecord,
   StageFailureTracker,
   StageHistoryItem,
   StageOutcome,
@@ -327,6 +331,7 @@ import {
   workflowPersonaNames,
 } from './workflow.js'
 import {
+  gitSourceContentFingerprint,
   gitStatusPaths,
   gitWorkspaceSnapshot,
   isGitRepository,
@@ -334,6 +339,7 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { buildCurrency, buildCurrencyAdvisory } from './build-identity.js'
+import { RELEASE_LANDING_METADATA_PATHS } from './versioning.js'
 import { entryGateWaiver, waiverCoversCriterion } from './waivers.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
@@ -2119,6 +2125,145 @@ function boundedCriterionList(criterionIds: string[]): string {
  * exceeded `max_loops` and the run now waits for an operator decision that
  * away mode cannot take.
  */
+/**
+ * Profiles whose commands prove a test lane on their own. A lane named here is
+ * covered when one of its profiles passed at the gate's workspace. The
+ * integration lane has no entry: the only profile short of `full` that runs
+ * it selects by import closure, so a failure there is always a gap.
+ */
+const LANE_COVERING_PROFILES: Readonly<Record<string, readonly string[]>> = {
+  unit: ['fast'],
+  regression: ['fast'],
+  secondary: ['secondary'],
+}
+
+/**
+ * Repository-check profiles, other than the `full` release profile, that some
+ * gate of this run passed at `fingerprint`: stage gates the run recorded and
+ * profile passes recorded against the run.
+ */
+function profilesPassedAtFingerprint(
+  root: string,
+  state: RunState,
+  fingerprint: string,
+): string[] {
+  const profiles = new Set<string>()
+
+  for (const item of state.stage_history) {
+    for (const result of item.deterministic ?? []) {
+      const profile = result.command
+        ? repositoryCheckProfileName(result.command)
+        : null
+
+      if (
+        profile &&
+        profile !== FULL_PROFILE &&
+        result.passed &&
+        !result.disabled &&
+        !result.skipped &&
+        result.workspace_fingerprint === fingerprint
+      ) {
+        profiles.add(profile)
+      }
+    }
+  }
+
+  for (const pass of agentRecordedProfilePasses(root, state.run_id)) {
+    if (pass.fingerprint === fingerprint && pass.profile !== FULL_PROFILE) {
+      profiles.add(pass.profile)
+    }
+  }
+
+  return [...profiles].sort()
+}
+
+/**
+ * The lanes of a failed entry gate that no earlier gate of the run proved at
+ * the same workspace. A lane is covered by a profile listed for it in
+ * `LANE_COVERING_PROFILES`, or, for a lane spelled as a command, by a passed
+ * profile that declares that exact command.
+ */
+function entryGateLaneGap(
+  root: string,
+  state: RunState,
+  result: DeterministicResult,
+): StageEntryGateRecord['lane_gap'] {
+  const lanes = result.failed_lanes ?? []
+
+  if (lanes.length === 0) {
+    return undefined
+  }
+
+  const verified = profilesPassedAtFingerprint(
+    root,
+    state,
+    result.workspace_fingerprint,
+  )
+  let declared: Record<string, { commands: string[] }> = {}
+
+  try {
+    declared = loadRepositoryChecks(root).profiles
+  } catch {
+    // An unreadable profile file leaves only the lane table to decide.
+  }
+
+  const normalize = (command: string): string =>
+    command.trim().replaceAll(/\s+/gu, ' ')
+  const uncovered = lanes.filter(
+    (lane) =>
+      !(LANE_COVERING_PROFILES[lane] ?? []).some((profile) =>
+        verified.includes(profile),
+      ) &&
+      !verified.some((profile) =>
+        (declared[profile]?.commands ?? []).some(
+          (command) => normalize(command) === lane,
+        ),
+      ),
+  )
+
+  return uncovered.length > 0
+    ? { lanes: uncovered, verified_profiles: verified }
+    : undefined
+}
+
+/**
+ * The source content an executed, passing entry gate verified, or undefined
+ * when the gate proved nothing about the tree: waived, disabled by the
+ * verification level, skipped, or not a repository-check profile.
+ */
+function entryGateVerifiedSource(
+  root: string,
+  state: RunState,
+  criterion: StageDefinition['criteria'][number],
+  result: DeterministicResult,
+): StageEntryGateRecord['verified_source'] {
+  if (
+    !result.passed ||
+    result.waived ||
+    result.disabled ||
+    result.skipped ||
+    result.overridden
+  ) {
+    return undefined
+  }
+
+  const { profile } = effectiveRepositoryCheckProfile(
+    state.verification,
+    criterion,
+  )
+
+  if (!profile) {
+    return undefined
+  }
+
+  const fingerprint = gitSourceContentFingerprint(
+    workspaceDirectory(root, state),
+    RELEASE_LANDING_METADATA_PATHS,
+  )
+
+  return fingerprint ? { fingerprint, profile } : undefined
+}
+
 function runStageEntryGate(
   root: string,
   state: RunState,
@@ -2201,17 +2346,31 @@ function runStageEntryGate(
   )
 
   if (entryGateSatisfied(result)) {
+    const verifiedSource = entryGateVerifiedSource(
+      root,
+      state,
+      criterion,
+      result,
+    )
+
     records[stage.slug] = {
       criterion_id: criterion.id,
       executions,
       failures: 0,
       last_result: result,
       passed_at_history_length: state.stage_history.length,
+      ...(verifiedSource ? { verified_source: verifiedSource } : {}),
     }
     persistRun(root, state, 'entry_gate_passed', {
       stage: stage.slug,
       criterion: criterion.id,
       ...(result.evidence_path ? { evidence_path: result.evidence_path } : {}),
+      ...(verifiedSource
+        ? {
+            verified_source_fingerprint: verifiedSource.fingerprint,
+            verified_profile: verifiedSource.profile,
+          }
+        : {}),
     })
 
     return 'pass'
@@ -2226,6 +2385,12 @@ function runStageEntryGate(
   }
 
   records[stage.slug] = record
+
+  const laneGap = entryGateLaneGap(root, state, result)
+
+  if (laneGap) {
+    record.lane_gap = laneGap
+  }
 
   const evidence = result.evidence_path
     ? ` Evidence: ${result.evidence_path}.`
@@ -2331,6 +2496,7 @@ function runStageEntryGate(
     failures,
     routed_to: gate.failure,
     ...(result.evidence_path ? { evidence_path: result.evidence_path } : {}),
+    ...(laneGap ? { lane_gap: true, lanes: laneGap.lanes } : {}),
   })
 
   return 'routed'
@@ -4716,6 +4882,12 @@ function refreshReturningVerifyProfiles(
       workspace: state.workspace_root || '.',
     })
 
+    // A profile the repository does not declare has nothing to refresh. Its
+    // stage gate skips it the same way, so it never blocks a return visit.
+    if (result.status === 'not_configured') {
+      continue
+    }
+
     if (result.status !== 'passed') {
       recordAgentRepositoryCheckForRuns(
         root,
@@ -5101,11 +5273,28 @@ export function prepareInvocation(
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
 
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
+    const workspace = workspaceSnapshotForRun(root, state)
+    // A return visit that serves a small repair runs the stage worker alone;
+    // the stage declares the limits and the harness decides from the record.
+    const scopedDecision =
+      stage.persona !== 'orchestrator'
+        ? scopedReturnForStage(
+            root,
+            state,
+            stage,
+            workspace.entries
+              .filter((entry) => entry.slice(0, 2).includes('D'))
+              .map(snapshotEntryPath),
+          )
+        : undefined
+    const scopedReturn = scopedDecision?.scoped ?? undefined
     // Parallel evidence workers run as top-level named agents so their
     // persona-model mappings hold. Resolving them at prepare time makes a
     // missing mapping fail here rather than silently downgrade at launch.
     const evidenceWorkers =
-      stage.evidence_workers && stage.persona !== 'orchestrator'
+      stage.evidence_workers &&
+      stage.persona !== 'orchestrator' &&
+      !scopedReturn
         ? stage.evidence_workers.map((worker) => {
             const workerMapping = resolvePersonaMapping(
               pipelineConfig,
@@ -5139,7 +5328,6 @@ export function prepareInvocation(
           })
         : undefined
 
-    const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
     const policies = resolvePolicies(root, {
       persona: stage.persona,
@@ -5195,7 +5383,14 @@ export function prepareInvocation(
                   .join(', ') +
                 ` — and confirm every report exists and is non-empty. Only ` +
                 `then launch `
-              : 'Launch ') +
+              : scopedReturn
+                ? `Scoped return visit: no evidence worker runs, and the ` +
+                  `stage worker records the ` +
+                  scopedReturn.dimensions
+                    .map((item) => item.role)
+                    .join(' and ') +
+                  ` dimensions itself. Launch `
+                : 'Launch ') +
             `the named Cursor agent for persona '${stage.persona}' ` +
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
@@ -5427,9 +5622,18 @@ export function prepareInvocation(
         ...(prDescription ? { prDescription } : {}),
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
+      ...(scopedReturn ? { scoped_return: scopedReturn } : {}),
       ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       ...(fastWall ? { fast_wall: fastWall } : {}),
       policies,
+      policy_delivery: policyDeliveryPlan(root, policies, {
+        executor: externalExecutor ?? 'cursor',
+        mode: isSelfDevelopmentInstallation(root)
+          ? 'self_development'
+          : isDetachedInstallation(root)
+            ? 'detached'
+            : 'embedded',
+      }),
       requirements,
       rubric: stage.criteria,
       output: {
@@ -5657,6 +5861,15 @@ export function prepareInvocation(
       invocation_id: invocationId,
       stage: stage.slug,
       attempt,
+      // Audits count scoped and declined return visits from this record.
+      ...(scopedDecision
+        ? {
+            scoped_return: scopedDecision.scoped !== null,
+            ...(scopedDecision.scoped === null
+              ? { scoped_return_declined: scopedDecision.reason }
+              : {}),
+          }
+        : {}),
     })
     recordDefaultModelEvidence(root, state, invocation)
     deferred.registration = {
@@ -9235,6 +9448,11 @@ export interface DelegatedWorkerStateView {
   wrote_nothing: boolean
   /** Terminal state of the watch over the worker's invocation, when armed. */
   watch_terminal_state: string | null
+  /**
+   * The evidence-complete watch recorded this role's report as complete in
+   * the invocation's ready marker. Always false for the stage worker.
+   */
+  evidence_ready: boolean
 }
 
 /**
@@ -9306,6 +9524,10 @@ export function describeDelegatedWorkers(
         watch_terminal_state:
           summarizeDelegationWatch(root, runId, record.invocation_id)
             .terminal_state ?? null,
+        evidence_ready:
+          readEvidenceReady(root, runId, record.invocation_id)?.roles.some(
+            (role) => role.role === record.role,
+          ) ?? false,
       }
     })
 }

@@ -234,6 +234,10 @@ function writeFixtureRepositoryChecks(root: string): void {
           static: profile('static', 'Run fixture static checks.'),
           fast: profile('fast', 'Run the fixture mainline tests.'),
           impacted: profile('impacted', 'Run fixture blast-radius tests.'),
+          'impacted-integration': profile(
+            'impacted-integration',
+            'Run fixture integration blast-radius tests.',
+          ),
           secondary: profile('secondary', 'Run fixture secondary tests.'),
           full: profile('full', 'Run complete fixture verification.'),
         },

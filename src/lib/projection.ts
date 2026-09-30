@@ -10,7 +10,8 @@ import { invariant } from './errors.js'
 import { parsePersonaMapping } from './executors/mapping.js'
 import { createCursorModelResolver } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
-import type { Policy } from './types.js'
+import { policySectionDigest } from './policy-guidance.js'
+import type { Policy, PolicyDelivery } from './types.js'
 import {
   fileExists,
   isRecord,
@@ -300,6 +301,71 @@ function projectionMode(
   mode: CursorInstallationMode,
 ): Exclude<CursorInstallationMode, 'detached'> {
   return mode === 'detached' ? 'embedded' : mode
+}
+
+/**
+ * The always-apply rule each projected policy reaches a Cursor session
+ * through in `mode`, keyed by policy id.
+ */
+export function projectedPolicyRuleTargets(
+  root: string,
+  mode: CursorInstallationMode = installationMode(root),
+): Map<string, string> {
+  const projected = projectionMode(mode)
+  const targets = new Map<string, string>()
+
+  for (const projection of readProjectionManifest(root).projections) {
+    if (
+      projection.transforms.includes('policy-rule') &&
+      projection.installation_modes.includes(projected)
+    ) {
+      targets.set(path.basename(projection.source, '.json'), projection.target)
+    }
+  }
+
+  return targets
+}
+
+/**
+ * How each policy reaches a worker card, keyed by policy id.
+ *
+ * A Cursor executor already receives every projected policy as an
+ * always-apply rule, so its card carries a digest pointer for those policies
+ * instead of a second copy. An external executor receives no Cursor rules,
+ * so every policy stays inline for it. An unreadable manifest inlines
+ * everything rather than point at a rule that may not exist.
+ */
+export function policyDeliveryPlan(
+  root: string,
+  policies: Policy[],
+  options: { executor: string; mode: CursorInstallationMode },
+): Record<string, PolicyDelivery> {
+  let targets = new Map<string, string>()
+
+  if (options.executor === 'cursor') {
+    try {
+      targets = projectedPolicyRuleTargets(root, options.mode)
+    } catch {
+      targets = new Map()
+    }
+  }
+
+  return Object.fromEntries(
+    policies.map((policy): [string, PolicyDelivery] => {
+      const target = targets.get(policy.id)
+
+      return [
+        policy.id,
+        target
+          ? {
+              mode: 'pointer',
+              target,
+              sha256: policySectionDigest(policy, 'agent'),
+            }
+          : { mode: 'inline' },
+      ]
+    }),
+  )
 }
 
 interface ProjectionRemoval {

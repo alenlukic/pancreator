@@ -83,9 +83,16 @@ export function normalizePolicyInstruction(
     )
   }
 
+  invariant(
+    value.excerpt === undefined || typeof value.excerpt === 'boolean',
+    `${source}.excerpt MUST be a boolean when present.`,
+    { code: 'INVALID_POLICY' },
+  )
+
   return {
     text: value.text,
     audience: audiences,
+    ...(value.excerpt === true ? { excerpt: true } : {}),
   }
 }
 

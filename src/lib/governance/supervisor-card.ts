@@ -14,7 +14,7 @@ import {
   withOperationMutex,
   writeTextAtomic,
 } from '../io.js'
-import { renderPolicyBlocks } from '../policy-guidance.js'
+import { policySectionDigest } from '../policy-guidance.js'
 import { loadPolicySources, resolvePolicies } from '../policies.js'
 import { readRedlineRecord, redlineRecordPath } from '../watch.js'
 import { readWorktreeIndex } from '../worktrees.js'
@@ -255,13 +255,10 @@ export function renderSupervisorCard(
   })
   const digest = sha256(markdown)
   const policySections = policies
-    .map((policy) => {
-      const section = `${renderPolicyBlocks([policy], 3, 'supervisor')
-        .join('\n')
-        .trimEnd()}\n`
-
-      return { policy_id: policy.id, sha256: sha256(section) }
-    })
+    .map((policy) => ({
+      policy_id: policy.id,
+      sha256: policySectionDigest(policy, 'supervisor'),
+    }))
     .sort((a, b) => a.policy_id.localeCompare(b.policy_id))
 
   const previous = state.supervisor_card

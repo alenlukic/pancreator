@@ -320,6 +320,40 @@ export interface StageEvidenceWorkerDefinition {
   scope: string
 }
 
+/**
+ * When a return visit of an evidence stage runs one agent instead of its
+ * evidence workers plus the stage worker. The harness decides; the stage
+ * worker never declares one.
+ */
+export interface StageScopedReturn {
+  /** Most paths the preceding remediation may have changed. */
+  max_paths: number
+  /** Most findings the verdict that routed the remediation may carry. */
+  max_findings: number
+  /** A changed path matching one of these keeps the full topology. */
+  excluded_path_globs: string[]
+  /**
+   * Evidence roles the stage worker takes over. A stage whose declared roles
+   * reach beyond this list, such as a design-composed verify, never scopes.
+   */
+  dimensions: string[]
+}
+
+/** The scoped return visit an invocation runs, with the facts that allowed it. */
+export interface InvocationScopedReturn {
+  remediation_invocation_id: string
+  /** The verify visit whose verdict routed the remediation, when one did. */
+  routing_invocation_id: string | null
+  blast_radius: string[]
+  findings: Array<{ id: string; severity: string; source: string }>
+  /** Each evidence dimension the stage worker covers, with its scope text. */
+  dimensions: Array<{ role: string; persona: string; scope: string }>
+  limits: Pick<
+    StageScopedReturn,
+    'max_paths' | 'max_findings' | 'excluded_path_globs'
+  >
+}
+
 /** Additive changes one optional design composition applies to a stage. */
 export interface DesignCompositionStageOverride {
   required_stage_outputs?: StageContextStageSelector[]
@@ -344,6 +378,7 @@ export interface StageDefinition {
   persona: string
   persona_by_verdict?: StagePersonaByVerdict
   evidence_workers?: StageEvidenceWorkerDefinition[]
+  scoped_return?: StageScopedReturn
   executor?: StageExecutor
   prompt?: string
   prompt_path?: string
@@ -536,7 +571,22 @@ export type PolicyAudience = 'agent' | 'supervisor' | 'harness' | 'operator'
 export interface PolicyInstruction {
   text: string
   audience: PolicyAudience[]
+  /**
+   * Keep this instruction on a card that delivers its policy as a pointer to
+   * a projected always-apply rule. Marks a clause a worker has to meet on
+   * the card itself, beside the rule.
+   */
+  excerpt?: boolean
 }
+
+/**
+ * How one policy reaches a worker card. `pointer` names the projected
+ * always-apply Cursor rule that carries the policy text and the digest of
+ * the agent-audience section the pointer stands for.
+ */
+export type PolicyDelivery =
+  | { mode: 'inline' }
+  | { mode: 'pointer'; target: string; sha256: string }
 
 export interface Policy {
   id: string
@@ -1419,6 +1469,11 @@ export interface Invocation {
    */
   evidence_workers?: InvocationEvidenceWorker[]
   /**
+   * Present on a scoped return visit: no evidence worker runs, and the stage
+   * worker records every listed dimension in its own output.
+   */
+  scoped_return?: InvocationScopedReturn
+  /**
    * Advisory suite profile section data, present when the stage context asks
    * for it and the run recorded a profile. Never a gate.
    */
@@ -1426,6 +1481,12 @@ export interface Invocation {
   /** Fast-lane measurements bracketing this run's implementation stage. */
   fast_wall?: FastWallStageSummary
   policies: Policy[]
+  /**
+   * Delivery mode of each policy on the worker card, keyed by policy id.
+   * Absent on cards prepared before pointer delivery existed, which inline
+   * every policy.
+   */
+  policy_delivery?: Record<string, PolicyDelivery>
   requirements?: RequirementManifest
   rubric: Criterion[]
   output: {
@@ -1767,6 +1828,12 @@ export interface DeterministicResult {
   environment_blocked?: boolean
   repository_check_delta?: RepositoryCheckDelta
   failure_classifications?: GateFailureClassification[]
+  /**
+   * Lanes a failed repository-check gate failed in: a test lane directory
+   * name (`unit`, `integration`, ...) for a failing test, otherwise the
+   * failing command. Absent on a pass and on a non-profile gate.
+   */
+  failed_lanes?: string[]
   workspace_fingerprint: string
   delta?: WorkspaceDelta
   /**
@@ -1798,6 +1865,21 @@ export interface StageEntryGateRecord {
   repair_stage?: string
   /** Latest execution, pass or fail. */
   last_result: DeterministicResult
+  /**
+   * Set on a failure in a lane no earlier gate of the run proved current for
+   * the same workspace: the lanes and the profiles that were current. Audits
+   * count these to find checks that belong before the verify verdict.
+   */
+  lane_gap?: { lanes: string[]; verified_profiles: string[] }
+  /**
+   * Source content digest of the workspace the last pass verified, outside
+   * `runtime/` and the release landing metadata paths, with the profile that
+   * pass ran. Present only when the gate executed its profile and passed; a
+   * waived or level-disabled gate proved nothing and records none. `pan
+   * release land` reads it to tell a no-op integrate on this tree from one
+   * on a tree nobody verified.
+   */
+  verified_source?: { fingerprint: string; profile: string }
   /**
    * Length of `stage_history` when the current visit passed. The pass stands
    * while no other stage submits after it; leaving the stage closes the visit.

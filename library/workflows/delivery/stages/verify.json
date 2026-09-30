@@ -14,6 +14,12 @@
       "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Record any profile execution your card allows in your evidence report, not as a QA case. For a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review architecture — the parallel review worker owns that. Do not review code style — no worker in the run owns it, and the operator-invoked `/pan-style` batch pass repairs it after delivery."
     }
   ],
+  "scoped_return": {
+    "max_paths": 3,
+    "max_findings": 2,
+    "excluded_path_globs": ["governance/**"],
+    "dimensions": ["review", "qa"]
+  },
   "prompt_path": "library/workflows/delivery/prompts/verify.md",
   "workspace_policy": "read_only",
   "gate": "stage_verdict",

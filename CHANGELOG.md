@@ -1,5 +1,29 @@
 # Changelog
 
+## [7.36.0] - 2026-09-30
+
+This release cuts the fixed cost of verify and land. Verify now runs every lane the ship gate can fail on. A small return visit runs one agent, and a land skips `full` on a tree the ship gate verified.
+
+### Changed
+
+- Gate the `delivery` and `delivery-chunk` implement and remediate stages on the `configuration` profile and the new `impacted-integration` profile. A returning verify refreshes both ([9e3e4994](https://github.com/alenlukic/pancreator/commit/9e3e4994)).
+- In self-development, copy the `impacted-integration` profile from `library/templates/repository-checks.self-development.json` into the untracked `runtime/repository-checks.json`. Until you do, its gate is skipped as `not_configured` ([9e3e4994](https://github.com/alenlukic/pancreator/commit/9e3e4994)).
+- Point a Cursor worker card at each projected always-apply policy instead of a second inline copy. A remediate card drops from about 70 KB to 48 KB ([46165d51](https://github.com/alenlukic/pancreator/commit/46165d51)).
+- Run the verifier alone on a return visit that serves a small, bounded remediation. The verifier records the review and QA dimensions in `data.verify.dimensions` ([7a5b0fcc](https://github.com/alenlukic/pancreator/commit/7a5b0fcc)).
+- Run `static` and `configuration` instead of `full` when `pan release land --run` merges nothing onto the tree the ship entry gate verified. Record the basis of each verify step in `landing.jsonl` ([f1823236](https://github.com/alenlukic/pancreator/commit/f1823236)).
+
+### Added
+
+- Add `pan watch <run-id> --until-evidence-complete`. It returns within one cadence of the last evidence report's completion marker and writes a ready marker ([8b7287c0](https://github.com/alenlukic/pancreator/commit/8b7287c0)).
+- Add `--lane <unit|regression|integration>` to `pan tests impacted` ([9e3e4994](https://github.com/alenlukic/pancreator/commit/9e3e4994)).
+- Record `lane_gap` on a failed ship entry gate for each failed lane that no earlier gate proved ([9e3e4994](https://github.com/alenlukic/pancreator/commit/9e3e4994)).
+- Warn in `pan validate` when the self-development `runtime/repository-checks.json` lacks a template profile ([9e3e4994](https://github.com/alenlukic/pancreator/commit/9e3e4994)).
+
+### Fixed
+
+- Skip an undeclared profile in the return-visit refresh, as the stage gate does. The run no longer goes back to remediate ([9e3e4994](https://github.com/alenlukic/pancreator/commit/9e3e4994)).
+- Leave test files of other lanes out of the unreached report of `pan tests impacted` ([180c30e3](https://github.com/alenlukic/pancreator/commit/180c30e3)).
+
 ## [7.35.1] - 2026-09-29
 
 This release closes three build and observation defects: an installation behind this checkout's own config schema disappeared from `pan installs list` and `pan spend`, a retained retired `tests/` tree could break every `pan` command after a refresh, and `pan watch --agent` reported an unregistered subagent as stalled.

@@ -45,6 +45,22 @@
       "statement": "Configured repository fast checks pass.",
       "command": "pan repository-check fast",
       "timeout_ms": 1200000
+    },
+    {
+      "id": "configuration.valid",
+      "type": "shell",
+      "hard": true,
+      "statement": "Repository configuration and governance validate.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "implement.impacted_integration",
+      "type": "shell",
+      "hard": true,
+      "statement": "The integration tests the change reaches pass, so verify sees every lane the ship gate can fail on.",
+      "command": "pan repository-check impacted-integration",
+      "timeout_ms": 900000
     }
   ],
   "transitions": {

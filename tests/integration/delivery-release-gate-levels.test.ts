@@ -50,6 +50,8 @@ test('the minimal level records the ship release gate as disabled and delegates 
   assert.equal(gate.failures, 0)
   assert.equal(gate.last_result.disabled, true)
   assert.equal(gate.last_result.verification_level, 'minimal')
+  // A gate the level disabled proved nothing, so no land may reuse it.
+  assert.equal(gate.verified_source, undefined)
 })
 
 test('a third release-gate failure pauses for an operator-only decision that away mode cannot take', () => {

@@ -299,6 +299,37 @@ launch itself. An elapsed time shorter than the watch record's own
 first-to-last wake span is labeled `elapsed_implausible` and names both
 numbers. `--foreground-returned` and `--mark-background` are exclusive.
 
+A verify stage launches its evidence workers before its stage worker. The
+supervisor blocks on the evidence-complete watch in the launch turn:
+
+```bash
+./bin/pan watch <run-id> --invocation <invocation-id> --until-evidence-complete [--json]
+```
+
+It exits `0` within one cadence of the moment every role's newest report
+carries the `<!-- evidence-report: complete -->` marker, writes
+`agent/evidence/<invocation-id>-evidence-ready.json`, and appends an
+`evidence_ready` run event. The supervisor then launches the stage worker in
+the same turn and arms its ordinary watch. Exit `2` means the reports and the
+workers stopped changing for the stall bound, and exit `3` means the bound
+passed. The evidence watch keeps its own ledger,
+`agent/evidence/<invocation-id>-evidence-watch.jsonl`, records no launch, and
+never counts as the stage worker's delegation evidence, because the evidence
+workers and the stage worker share one invocation id. `pan worker state`
+marks each role the ready marker names as `evidence ready`.
+
+A return visit that serves a small repair runs the verifier alone. The
+delivery and delivery-chunk verify stages declare the limits under
+`scoped_return`: the remediation changed one to three paths, none under
+`governance/**`, the workspace deletes no test, and the verdict that routed the
+remediation carried at most two findings and was not `fail_severe`. The card
+then carries a `Scoped return visit` section in place of the evidence reports,
+the supervisor procedure launches the verifier directly, and the verify output
+records `data.verify.dimensions.review` and `data.verify.dimensions.qa`. The
+`invocation_prepared` event records `scoped_return` and, for a declined visit,
+the reason. A design-composed verify never scopes, because its design roles
+are outside the declared dimensions.
+
 `pan submit` accepts one of three records for every worker invocation an
 operator session delegated:
 
@@ -1594,11 +1625,11 @@ Evals are bounded toy workflow runs plus deterministic graders over the run's re
 `./bin/pan tests impacted` is the iteration profile. It is never a gate. The
 command builds the runtime import graph of `src/**/*.ts` and `tests/**/*.ts`
 with the TypeScript parser, takes the change set from Git, and runs every test
-in `tests/unit` and `tests/regression` that the change reaches. It never
-selects `tests/integration`: that lane runs only before a branch lands on
-`pan-dev`, in the `full` profile and in `/pan-release`. The `fast` profile
-stays the validation run at the end of an iteration loop, and `full` stays the
-release gate.
+in `tests/unit` and `tests/regression` that the change reaches. By default it
+never selects `tests/integration`. `--lane <unit|regression|integration>`
+replaces the default lanes with the named ones. The `fast` profile stays the
+validation run at the end of an iteration loop, and `full` stays the release
+gate.
 
 A test is selected when:
 
@@ -1652,6 +1683,28 @@ ratio, advisory flag, graph build time, duration, and the run result.
 The `impacted` profile in `runtime/repository-checks.json` runs the same
 command. An embedded target may declare its own `impacted` command in its
 `repository-checks.json`; the harness never treats that profile as a gate.
+
+The `impacted-integration` profile is different: it is an interior gate. It
+runs `./bin/pan tests impacted --lane integration --changed pan-dev`, which
+selects the integration tests that any file the branch changed reaches. The
+delivery and delivery-chunk implement and remediate stages gate on it and on
+`configuration`, and a returning verify refreshes both. A passed verify
+therefore rests on every lane the ship `full` gate can fail on, except the
+installer suites and integration tests the import graph cannot reach. The
+`minimal` verification level skips the integration gate. A target
+installation that does not declare the profile skips the gate as
+`not_configured`.
+
+In self-development, `runtime/repository-checks.json` is untracked, so a
+profile added to `library/templates/repository-checks.self-development.json`
+does not reach it by itself. `pan validate` warns for each template profile
+the live file lacks. Copy the profile from the template.
+
+When the ship entry gate fails, its run-state record names each failed lane
+that no earlier gate proved at the same workspace, under `lane_gap`, and the
+`entry_gate_failed` event carries `lane_gap: true` with the lanes. A lane is a
+test lane directory (`unit`, `integration`, `secondary`) or the failing
+command.
 
 ## Read a gate's failure classification
 
@@ -2180,11 +2233,11 @@ The command holds the landing mutex at `runtime/release/landing.lock` from tip r
 3. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
 4. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
 5. **Finalize** — calls `pan release finalize` to create the release and index commits.
-6. **Verify** — runs each `--verify-profile` (default `full`) against the candidate worktree.
+6. **Verify** — runs each `--verify-profile` against the candidate worktree. Without `--verify-profile`, the land runs `full`, with one exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
 7. **Check** — runs `bin/check-landing branch <head> pan-dev`.
 8. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
 
-The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `lock_wait_seconds`, and `lock_hold_seconds`.
+The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `verification_basis`, `lock_wait_seconds`, and `lock_hold_seconds`.
 
 ### Statuses
 

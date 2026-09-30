@@ -18,12 +18,15 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { acquireLandingMutex } from '../../src/lib/landing-mutex.js'
+import { gitSourceContentFingerprint } from '../../src/lib/git.js'
 import {
   landRelease,
+  resolveLandingVerification,
   type LandingResult,
 } from '../../src/lib/release-landing.js'
 import {
   nextSemanticVersion,
+  RELEASE_LANDING_METADATA_PATHS,
   validateReleaseMetadata,
 } from '../../src/lib/versioning.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
@@ -799,4 +802,158 @@ test('a landing that waits past a short bound fails with LANDING_MUTEX_TIMEOUT n
   }
 
   assert.equal(git(root, ['rev-parse', PAN_DEV]), tipBefore)
+})
+
+// HR-002 of the 2026-09-29 efficiency audit: 7 of 8 lands in one week reran
+// `full` after an integrate that merged nothing, on a tree the ship entry
+// gate had just verified. The land now reuses that proof when the source
+// content still matches, and keeps `full` for anything else.
+test('a no-op integrate on the tree the entry gate verified runs static and configuration, and every other land keeps full', () => {
+  const root = landingFixture()
+  const worktreePath = path.join(
+    root,
+    createWorktree(root, 'verified-tree').path,
+  )
+
+  writeFileSync(
+    path.join(worktreePath, 'src', 'verified.ts'),
+    "export const verified = 'tree'\n",
+  )
+
+  // The entry gate runs on the implementation before the steward commits it.
+  const verified = gitSourceContentFingerprint(
+    worktreePath,
+    RELEASE_LANDING_METADATA_PATHS,
+  )
+
+  assert.ok(verified)
+
+  git(worktreePath, ['add', 'src/verified.ts'])
+  git(worktreePath, ['commit', '-qm', 'feat: verified change'])
+  commitReleasePair(worktreePath, '9.9.9')
+
+  const gate = () => ({ fingerprint: verified, profile: 'full' })
+  const matched = resolveLandingVerification(
+    root,
+    worktreePath,
+    'already_current',
+    'run-verified',
+    undefined,
+    gate,
+  )
+
+  assert.deepEqual(matched.profiles, ['static', 'configuration'])
+  assert.equal(matched.basis, 'entry_gate_fingerprint')
+  assert.equal(matched.source_fingerprint, verified)
+
+  const cases: Array<[string, ReturnType<typeof resolveLandingVerification>]> =
+    [
+      [
+        'merged',
+        resolveLandingVerification(
+          root,
+          worktreePath,
+          'merged',
+          'run-verified',
+          undefined,
+          gate,
+        ),
+      ],
+      [
+        'no run',
+        resolveLandingVerification(
+          root,
+          worktreePath,
+          'already_current',
+          null,
+          undefined,
+          gate,
+        ),
+      ],
+      [
+        'gate ran another profile',
+        resolveLandingVerification(
+          root,
+          worktreePath,
+          'already_current',
+          'run-verified',
+          undefined,
+          () => ({ fingerprint: verified, profile: 'fast' }),
+        ),
+      ],
+      [
+        'no gate record',
+        resolveLandingVerification(
+          root,
+          worktreePath,
+          'already_current',
+          'run-verified',
+          undefined,
+          () => undefined,
+        ),
+      ],
+    ]
+
+  for (const [name, verification] of cases) {
+    assert.deepEqual(verification.profiles, ['full'], name)
+    assert.equal(verification.basis, 'default', name)
+    assert.ok(verification.reason.length > 0, name)
+  }
+
+  const operator = resolveLandingVerification(
+    root,
+    worktreePath,
+    'merged',
+    'run-verified',
+    ['static'],
+    gate,
+  )
+
+  assert.deepEqual(operator.profiles, ['static'])
+  assert.equal(operator.basis, 'operator')
+
+  // A source change after the gate is a tree nobody verified.
+  writeFileSync(
+    path.join(worktreePath, 'src', 'verified.ts'),
+    "export const verified = 'changed'\n",
+  )
+
+  const moved = resolveLandingVerification(
+    root,
+    worktreePath,
+    'already_current',
+    'run-verified',
+    undefined,
+    gate,
+  )
+
+  assert.deepEqual(moved.profiles, ['full'])
+  assert.match(moved.reason, /differs from the tree the entry gate verified/u)
+})
+
+test('a land records the basis of every verify step it ran', () => {
+  const root = landingFixture()
+
+  finalizedCandidate(
+    root,
+    'basis-recorded',
+    nextSemanticVersion(versionAt(root, PAN_DEV), 'minor') as string,
+    'This release records its verify basis.\n\n### Added\n\n- Add the basis-recorded marker module.',
+  )
+  setFullProfileCommand(root, 'node -e "process.exit(0)"')
+
+  const landed = landRelease(root, {
+    worktree: 'basis-recorded',
+    bump: 'minor',
+  })
+  const verifySteps = readLandingLog(root).filter(
+    (entry) => entry.event === 'step' && entry.step === 'verify',
+  )
+
+  assert.equal(landed.status, 'landed')
+  assert.deepEqual(landed.verified_profiles, ['full'])
+  assert.equal(landed.verification_basis, 'default')
+  assert.equal(verifySteps.length, 1)
+  assert.equal(verifySteps[0]?.basis, 'default')
+  assert.match(String(verifySteps[0]?.reason), /no --run/u)
 })
