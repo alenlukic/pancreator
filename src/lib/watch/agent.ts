@@ -6,13 +6,15 @@ import path from 'node:path'
 
 import { invariant } from '../errors.js'
 import {
-  agentIndexHooksStatus,
   getAgentEntry,
   readAgentActivity,
   type AgentActivity,
-  type AgentEntry,
+} from '../agent-index/activity.js'
+import {
+  agentIndexHooksStatus,
   type AgentIndexHooksStatus,
-} from '../agent-index.js'
+} from '../agent-index/hooks-status.js'
+import type { AgentEntry } from '../agent-index/store.js'
 import { appendJsonLine } from '../io.js'
 
 import {

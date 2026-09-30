@@ -1,6 +1,6 @@
 /** Watch result states, record shapes, cadence defaults, and error codes. */
 
-import type { AgentActivity } from '../agent-index.js'
+import type { AgentActivity } from '../agent-index/activity.js'
 
 export type WatchTerminalState =
   | 'completed'

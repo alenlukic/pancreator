@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-import { getAgentByRunInvocation } from './agent-index.js'
+import { getAgentByRunInvocation } from './agent-index/activity.js'
 import { isRecord, readJson, resolveInside, writeTextAtomic } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
 import type { RunState, StageHistoryItem } from './types.js'

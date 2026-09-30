@@ -1,8 +1,8 @@
 /**
  * Thin entry point for the agent-index Cursor hook.
  *
- * Imported by `bin/pan-hook-agent-index`. Imports only `src/lib/agent-index`
- * and `src/lib/io` for fast hook startup.
+ * Imported by `bin/pan-hook-agent-index`. Imports only the hook handlers and
+ * store of `src/lib/agent-index/`, and `src/lib/io`, for fast hook startup.
  *
  * Reads the Cursor hook payload from stdin and writes the event-appropriate
  * JSON response to stdout. Fails open on any error (C-002).
@@ -11,17 +11,19 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import {
-  AGENTS_DIR,
   handlePostToolUse,
   handlePreToolUse,
   handleSubagentStart,
   handleSubagentStop,
+} from './lib/agent-index/hooks.js'
+import {
+  AGENTS_DIR,
   type HookPayload,
   type PostToolUsePayload,
   type PreToolUsePayload,
   type SubagentStartPayload,
   type SubagentStopPayload,
-} from './lib/agent-index.js'
+} from './lib/agent-index/store.js'
 import { findProjectRoot } from './lib/io.js'
 
 type EventName =
