@@ -330,6 +330,21 @@ records `data.verify.dimensions.review` and `data.verify.dimensions.qa`. The
 the reason. A design-composed verify never scopes, because its design roles
 are outside the declared dimensions.
 
+The QA worker runs only when QA can prove something the gates cannot. The
+planner tags each acceptance criterion with one `proof` type (`test`,
+`review`, `live`, or `observe`), and each child specification repeats the tag
+as `1. AC-001 [proof: live] <statement>`. The qa worker declares
+`run_when: live_criteria`, so prepare launches it only when a criterion is
+`live`, or when no criterion proof can be read from the run's plan output,
+the child specifications of a release run, or the request. A skipped worker
+is recorded under `evidence_worker_skips` on the invocation, the verifier card
+states the reason, and that visit owes no `data.verify.qa_cases`. An
+`observe` criterion records the result `observe` and does not block the
+verdict. On a return visit after remediation the reviewer runs under its
+`return_scope`: it reviews the remediation diff and confirms each prior
+finding fixed or still open, and a new finding in code the remediation did not
+change blocks only at `blocker` severity.
+
 `pan submit` accepts one of three records for every worker invocation an
 operator session delegated:
 

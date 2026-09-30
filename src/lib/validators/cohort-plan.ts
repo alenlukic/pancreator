@@ -1,6 +1,10 @@
 import path from 'node:path'
 
 import {
+  acceptanceCriterionLines,
+  acceptanceProofsFromPlanData,
+} from '../acceptance-proof.js'
+import {
   fileExists,
   isRecord,
   readJson,
@@ -624,6 +628,7 @@ export function validateChildSpecifications(
     parentText === null ? null : referenceContentSha256(parentText)
 
   const ownership = new Map<string, string[]>()
+  const planProofs = acceptanceProofsFromPlanData(data)
 
   for (const chunk of plan.chunks) {
     const childAbsolute = path.join(input.root, chunk.child_spec_path)
@@ -717,6 +722,32 @@ export function validateChildSpecifications(
           `${chunk.child_spec_path} repeats at least ${PASTED_PARENT_RUN_WORDS} consecutive words of the parent specification. Reference the parent instead of copying it.`,
         ),
       )
+    }
+
+    // A chunk run reads its criterion proofs from the child specification it
+    // receives as its request, so each criterion line carries the plan's tag.
+    for (const line of acceptanceCriterionLines(content)) {
+      const proof = planProofs.get(line.id)
+
+      if (proof === undefined) {
+        continue
+      }
+
+      if (line.tag === null) {
+        issues.push(
+          issue(
+            'child.proof_tag_missing',
+            `${chunk.child_spec_path} criterion ${line.id} MUST carry the plan's proof tag after its id, as in '1. ${line.id} [proof: ${proof ?? '<proof>'}] <statement>'`,
+          ),
+        )
+      } else if (proof !== null && line.tag !== proof) {
+        issues.push(
+          issue(
+            'child.proof_tag_mismatch',
+            `${chunk.child_spec_path} criterion ${line.id} carries [proof: ${line.tag}], but the plan declares proof ${proof}`,
+          ),
+        )
+      }
     }
 
     // Ownership is read from `In scope` only. An id a child names under

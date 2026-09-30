@@ -62,7 +62,7 @@
       "id": "plan.test_plan_covers",
       "type": "judgment",
       "hard": true,
-      "statement": "The test plan gives every acceptance criterion at least one executable verification case that a later stage can run without editing source."
+      "statement": "Every acceptance criterion carries one proof type (test, review, live, or observe) that fits how it is proven, and the test plan gives every live criterion at least one executable verification case that a later stage can run without editing source."
     }
   ],
   "transitions": {

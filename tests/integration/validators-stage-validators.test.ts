@@ -209,6 +209,7 @@ function writePlanWithQuestions(
       id: 'AC-01',
       maps_to: ['US-1'],
       verification: { method: 'unit test', expected: 'passes' },
+      proof: 'test',
     },
   ],
   testPlan: unknown[] = [],
@@ -289,6 +290,7 @@ test('plan trace refuses a criterion no assigned worker may produce', () => {
           method: 'Render the implement card with `pan context card <run-id>`.',
           expected: 'The card names the resolved gate bound.',
         },
+        proof: 'review',
       },
     ],
   )
@@ -3881,4 +3883,161 @@ test('plan field contract declares every validator-enforced shape', () => {
   })
 
   assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+})
+
+test('plan trace requires one proof type per criterion and a case only for live criteria', () => {
+  const root = validatorFixtureRoot('pan-plan-proof-')
+  const target = 'output.json'
+  const criterion = (id: string, proof?: string) => ({
+    id,
+    maps_to: ['US-1'],
+    verification: { method: 'unit test', expected: 'passes' },
+    ...(proof === undefined ? {} : { proof }),
+  })
+  const codes = (): string[] =>
+    validatePlanTrace({
+      root,
+      targetPath: target,
+      requirement: planTraceRequirement,
+    }).issues.map((item) => item.code)
+
+  writePlanWithQuestions(
+    root,
+    target,
+    [],
+    [],
+    [criterion('AC-01'), criterion('AC-02', 'manual')],
+  )
+  assert.deepEqual(codes(), ['plan.proof_missing', 'plan.proof_missing'])
+
+  // A test, review, or observe criterion needs no test-plan case.
+  writePlanWithQuestions(
+    root,
+    target,
+    [],
+    [],
+    [
+      criterion('AC-01', 'test'),
+      criterion('AC-02', 'review'),
+      criterion('AC-03', 'observe'),
+      criterion('AC-04', 'live'),
+    ],
+  )
+  assert.deepEqual(codes(), ['plan.live_case_missing'])
+
+  writePlanWithQuestions(
+    root,
+    target,
+    [],
+    [],
+    [criterion('AC-01', 'test'), criterion('AC-04', 'live')],
+    [
+      {
+        id: 'TP-01',
+        criterion: 'AC-04',
+        setup: 'Open the rendered page in an isolated browser.',
+        action: 'Select the new panel.',
+        expected: 'The panel renders.',
+      },
+    ],
+  )
+  assert.deepEqual(codes(), [])
+})
+
+test('verify validator owes qa_cases only on a visit that runs QA', () => {
+  const root = validatorFixtureRoot('pan-verify-qa-conditional-')
+  const target = 'output.json'
+  const worker = (role: string) => ({ role, persona: role, scope: 'fixture' })
+  const codes = (invocation?: Record<string, unknown>): string[] =>
+    validateVerifyOutput({
+      root,
+      targetPath: target,
+      requirement: verifyRequirement(),
+      ...(invocation ? { invocation } : {}),
+    }).issues.map((item) => item.code)
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+    dimensions: Object.fromEntries(
+      ['review', 'qa'].map((role) => [
+        role,
+        { summary: `Fixture ${role} dimension.`, evidence: ['fixture'] },
+      ]),
+    ),
+  })
+
+  assert.deepEqual(codes({ evidence_workers: [worker('review')] }), [])
+  assert.deepEqual(
+    codes({ evidence_workers: [worker('review'), worker('qa')] }),
+    ['verify.qa_cases_missing'],
+  )
+  assert.deepEqual(
+    codes({
+      scoped_return: { dimensions: [worker('review'), worker('qa')] },
+    }),
+    ['verify.qa_cases_missing'],
+  )
+  // Without a card the validator cannot tell, so it keeps the requirement.
+  assert.deepEqual(codes(), ['verify.qa_cases_missing'])
+})
+
+test('verify validator accepts an observe result only for an observe criterion', () => {
+  const root = validatorFixtureRoot('pan-verify-observe-')
+  const runId = 'run-verify-observe'
+  const planPath = `runtime/logs/workflows/${runId}/outputs/plan-1-test.json`
+  const target = `runtime/logs/workflows/${runId}/outputs/verify-1-test.json`
+
+  writeJson(path.join(root, planPath), {
+    data: {
+      acceptance_criteria: [
+        { id: 'AC-01', proof: 'test' },
+        { id: 'AC-02', proof: 'observe' },
+      ],
+    },
+  })
+
+  const runState = {
+    stage_history: [
+      { stage: 'plan', outcome: 'success', output_path: planPath },
+    ],
+  }
+  const validate = (results: Array<{ id: string; result: string }>) => {
+    writeVerifyOutput(root, target, {
+      verdict: 'pass',
+      findings: [],
+      acceptance_results: results.map((item) => ({
+        ...item,
+        evidence: ['fixture'],
+      })),
+    })
+
+    return validateVerifyOutput({
+      root,
+      targetPath: target,
+      requirement: verifyRequirement(),
+      invocation: { evidence_workers: [{ role: 'review' }] },
+      runState,
+    })
+  }
+
+  const deferred = validate([
+    { id: 'AC-01', result: 'pass' },
+    { id: 'AC-02', result: 'observe' },
+  ])
+
+  // A deferred criterion is not a failure, so the pass verdict stands.
+  assert.equal(deferred.status, 'passed', JSON.stringify(deferred.issues))
+
+  const misused = validate([
+    { id: 'AC-01', result: 'observe' },
+    { id: 'AC-02', result: 'observe' },
+  ])
+
+  assert.deepEqual(
+    misused.issues.map((item) => item.code),
+    ['verify.acceptance_observe_unproven'],
+  )
+  assert.match(misused.issues[0].message, /AC-01 has proof test/u)
 })

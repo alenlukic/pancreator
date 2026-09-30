@@ -27,11 +27,21 @@ gate ratifies the whole artifact before any source changes.
    concerns, and validation methods.
 6. Write acceptance criteria with ids (`AC-*`). Map each criterion back to a
    user story and forward to a verification method with an expected result.
-7. Write the test plan: for each acceptance criterion, at least one concrete
-   verification case a later stage can execute against the workspace without
-   editing source. State the setup, the action, and the expected observation.
-   The verify stage executes these cases independently of the implementer, so
-   write them against observable behavior, not implementation internals.
+   Tag each criterion with exactly one `proof` type:
+   - `live`: the criterion changes a browser or app surface, so QA must check
+     it live.
+   - `observe`: it needs an operator's live observation or a production signal
+     after ship. Verify defers it.
+   - `test`: a gate lane can prove it. Prefer `test` whenever one can.
+   - `review`: reading the code proves it, such as structure, wording, or docs.
+7. Write the test plan for the `live` criteria only: for each one, at least one
+   concrete verification case a later stage can execute against the workspace
+   without editing source. State the setup, the action, and the expected
+   observation. QA runs only for `live` criteria and executes these cases
+   independently of the implementer, so write them against observable
+   behavior, not implementation internals. A `test`, `review`, or `observe`
+   criterion needs no case: gate evidence, the review, or a post-ship signal
+   proves it.
 8. Carve the ratified scope into chunks. A chunk owns one coherent operator
    outcome, carries independently testable acceptance criteria, and reaches a
    valid standalone completion state. Default to one chunk. Split only when
@@ -57,7 +67,11 @@ gate ratifies the whole artifact before any source changes.
     card's **Harness root** line names it when present. Otherwise the card's
     **Workspace** is the harness root. Do not compute it by hand. The
     validator rejects a digest on another basis and names the expected value.
-    Do not paste the parent body into a child.
+    Do not paste the parent body into a child. Write each criterion line of
+    the child `Acceptance criteria` section as its id, then its plan proof
+    tag, then the statement: `1. AC-01 [proof: live] <statement>`. Use the
+    criterion's `proof` from the plan JSON; the validator rejects a missing
+    or different tag. The chunk run reads it to decide whether QA runs.
 12. State the authority relationship in every child specification: the child
     governs the chunk's own scope, the parent governs system-wide context, the
     child wins for its own scope, and the parent wins for cross-chunk context.
@@ -93,16 +107,21 @@ that produced the design specification and mocks, `verification_stage` names the
 stage that verifies the implemented UI against them, and `evidence_roles` lists
 the design evidence-worker roles that run there. The design stage's draft design
 acceptance criteria belong to the artifact one operator gate ratifies, so carry
-each one into `data.acceptance_criteria` with its own `AC-*` id and at least one
-test-plan case, and give it an owning chunk. Do not leave a design acceptance
+each one into `data.acceptance_criteria` with its own `AC-*` id, a `proof` of
+`live` when it checks the rendered UI, and at least one test-plan case, and give
+it an owning chunk. Do not leave a design acceptance
 criterion in the design output alone.
 
 Each disposition states the question `id`, a `disposition` of `resolved`,
 `deferred`, or `escalated`, an `answer` naming the answer or the decision
 still required, and `evidence`, which is required and must be non-empty for a
-resolved question. Each test-plan entry states `id`, the acceptance criterion
-it verifies (`criterion`), `setup`, `action`, and `expected`. A test-plan case
-must not run a configured repository-check profile command or `pan
+resolved question. Each acceptance criterion states `id`, `maps_to`,
+`verification` (`method`, `expected`), and `proof`, and the validator rejects a
+criterion without a valid `proof` with `plan.proof_missing`. Each test-plan
+entry states `id`, the `live` acceptance criterion it verifies (`criterion`),
+`setup`, `action`, and `expected`, and the validator rejects a `live`
+criterion without a case with `plan.live_case_missing`. A test-plan case must
+not run a configured repository-check profile command or `pan
 repository-check <profile>`. The gates run those profiles, and the validator
 rejects such a case with `plan.case_reruns_profile`. Follow the card's `output.operator_brief` contract.
 
@@ -115,8 +134,9 @@ the change.
 
 The specification faithfully covers the request, every open question has a
 recorded disposition whose resolutions rest on cited evidence, every
-requirement maps to a testable acceptance criterion, every criterion has an
-executable test-plan case, the cohort plan is acyclic with no dependency edge
-inside a cohort, every chunk names an existing child specification, every
+requirement maps to a testable acceptance criterion with one proof type,
+every `live` criterion has an executable test-plan case, the cohort plan is
+acyclic with no dependency edge inside a cohort, every chunk names an existing
+child specification whose criterion lines carry the plan's proof tags, every
 originating item is traced exactly once, and the plan needs no further
 architectural decisions.

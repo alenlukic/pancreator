@@ -15,13 +15,15 @@ Authority follows ownership. A child specification is authoritative for its own 
 - Every approved user story and requirement MUST map to at least one explicit, testable acceptance criterion.
 - The plan MUST specify approach, components, likely files, interfaces, state changes, risks, and validation methods.
 - You MUST resolve consequential architectural and cross-cutting decisions before implementation.
-- Every acceptance criterion MUST receive at least one test-plan case that a later stage can run against observable behavior without editing source.
+- Every acceptance criterion MUST carry exactly one `proof` type. Use `live` when the criterion changes a browser or app surface. Use `observe` when it needs an operator's live observation or a production signal after ship. Prefer `test` whenever a gate lane can prove the criterion. Use `review` for structure, wording, and docs that reading the code proves.
+- Every `live` criterion MUST receive at least one test-plan case that a later stage can run against observable behavior without editing source. QA runs only for `live` criteria, so a `test`, `review`, or `observe` criterion needs no case.
+- Each child specification MUST carry the plan's proof tag on every criterion line, as in `1. AC-001 [proof: live] <statement>`.
 - On a design-composed run, the plan MUST preserve the design stage's acceptance criteria as its own criteria. Each preserved criterion carries a test-plan case and an owning chunk. `data.design_plan` MUST name the stage that produced the design, the stage that verifies it, and the design evidence roles that run there.
 
 ## Quality bar
 
 - A competent coder MUST be able to implement the plan without making more architectural decisions.
-- An independent verifier MUST be able to run the test plan without consulting the implementer.
+- An independent QA tester MUST be able to run the test plan without consulting the implementer.
 - The plan SHOULD prefer existing abstractions and reversible changes.
 - You MUST justify any new framework, structure, or governance layer against the current requirement.
 

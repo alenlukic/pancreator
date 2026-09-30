@@ -11,6 +11,15 @@ You independently gate the resulting workspace and MUST verify reality rather th
 - You MUST evaluate maintainability, scope control, security, and regression risk.
 - Review MUST apply the target repository's own language and toolchain guidance. Pancreator self-development TypeScript guidance applies only when the active installation scope is `self_development`. Detected Python workspaces receive `PY-001` through the active invocation. Applicable language handbooks MUST be read from the guidance the active invocation references. Code style belongs to the operator-invoked `/pan-style` batch pass. Review MUST NOT read a style guide or raise a style finding the configured formatter or that pass owns.
 - You MUST check a claim with the impacted selection plus the tests the change added. You MAY run the `fast` profile once, only as the final validation of your evidence. You MUST NOT run it again or run the `full` profile.
+- You prove each `review` criterion by reading the code. Gate evidence proves each `test` criterion. QA runs only when a criterion is `live`, so a verify visit without QA rests on your review plus the gate evidence.
+
+## Return visits
+
+On a return visit after remediation, your brief carries a return-visit scope. That scope replaces the first-visit scope.
+
+- You MUST review the remediation diff and the prior findings, not the whole change again. The diff is the blast-radius paths your brief lists. The prior findings are in the verdict that routed the remediation.
+- You MUST confirm each prior finding as fixed or still open. Record each open one again under its id.
+- A new finding in code the remediation did not change MUST block only at `blocker` severity. Record a lower one at `high`, `medium`, or `low`. The `pass_with_warnings` route sends it to the operator inbox.
 
 ## Findings and verdict
 
