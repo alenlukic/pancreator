@@ -78,12 +78,16 @@ function childSpec(options: {
   omitSection?: string
   parentPath?: string
   extra?: string
+  acceptance?: string
 }): string {
   const sections: Array<[string, string]> = [
     ['Objective', 'Deliver one coherent outcome.'],
     ['In scope', options.inScope],
     ['Out of scope', 'Everything another chunk owns.'],
-    ['Acceptance criteria', '- The chunk behaves as stated.'],
+    [
+      'Acceptance criteria',
+      options.acceptance ?? '- The chunk behaves as stated.',
+    ],
     ['Dependencies', 'None.'],
     ['Validation', 'Run the configured fast profile.'],
     ['Handoff contract', 'The branch merges cleanly into the base branch.'],
@@ -128,6 +132,7 @@ function writePlanOutput(
     parentSpecPath?: string
     /** Raw `product_spec` entries that replace the generated, labeled ones. */
     productSpecOverrides?: Record<string, unknown>
+    acceptanceCriteria?: unknown[]
   } = {},
 ): string {
   const cohorts =
@@ -167,6 +172,9 @@ function writePlanOutput(
         ...options.productSpecOverrides,
       },
       open_question_dispositions: options.dispositions ?? [],
+      ...(options.acceptanceCriteria
+        ? { acceptance_criteria: options.acceptanceCriteria }
+        : {}),
       cohort_plan: {
         parent_spec_path: options.parentSpecPath ?? PARENT_PATH,
         chunks: chunks.map((chunk) => ({
@@ -869,4 +877,60 @@ test('a cohort plan with an empty or inconsistent cohort group is refused', () =
       ),
     /names chunk 'ghost', which the plan does not declare/u,
   )
+})
+
+test('child-spec-validate requires each criterion line to carry the plan proof tag', () => {
+  const root = validatorRoot()
+
+  writeParent(root)
+  mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
+
+  const write = (acceptance: string): string => {
+    writeFileSync(
+      path.join(root, 'runtime/specs/c1.md'),
+      childSpec({ inScope: '- US-1', acceptance }),
+    )
+
+    return writePlanOutput(
+      root,
+      [{ id: 'c1', cohort_index: 1, child_spec_path: 'runtime/specs/c1.md' }],
+      {
+        userStoryIds: ['US-1'],
+        serialJustification: 'One outcome.',
+        acceptanceCriteria: [
+          { id: 'AC-001', proof: 'live' },
+          { id: 'AC-002', proof: 'test' },
+        ],
+      },
+    )
+  }
+
+  const tagged = write(
+    [
+      '1. AC-001 [proof: live] The page renders the new panel.',
+      '2. AC-002 [proof: test] The parser accepts the new field.',
+    ].join('\n'),
+  )
+
+  assert.deepEqual(
+    validateChildSpecifications(handlerInput(root, tagged)).issues,
+    [],
+  )
+
+  const untagged = write(
+    [
+      '1. AC-001 The page renders the new panel.',
+      '2. AC-002 [proof: review] The parser accepts the new field.',
+    ].join('\n'),
+  )
+  const issues = validateChildSpecifications(
+    handlerInput(root, untagged),
+  ).issues
+
+  assert.deepEqual(
+    issues.map((entry) => entry.code),
+    ['child.proof_tag_missing', 'child.proof_tag_mismatch'],
+  )
+  assert.match(issues[0].message, /AC-001/u)
+  assert.match(issues[1].message, /\[proof: review\].*proof test/u)
 })

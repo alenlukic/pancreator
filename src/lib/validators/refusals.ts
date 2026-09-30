@@ -250,6 +250,16 @@ export const PLAN_REFUSALS: readonly StageRefusal[] = [
     paths: ['data.acceptance_criteria[].verification.expected'],
   },
   {
+    code: 'plan.proof_missing',
+    paths: ['data.acceptance_criteria[].proof'],
+  },
+  {
+    code: 'plan.live_case_missing',
+    paths: [],
+    unowned_reason:
+      'The refusal matches each live criterion against the test-plan cases that name it, which is a relation between two collections.',
+  },
+  {
     code: 'plan.maps_to_missing',
     paths: ['data.acceptance_criteria[].maps_to'],
   },

@@ -19,6 +19,7 @@
             "data.acceptance_criteria[].verification",
             "data.acceptance_criteria[].verification.method",
             "data.acceptance_criteria[].verification.expected",
+            "data.acceptance_criteria[].proof",
             "data.engineering_plan.files[]",
             "data.engineering_plan.files[].path",
             "data.engineering_plan.files[].status",
@@ -77,6 +78,12 @@
           "type": "string"
         },
         {
+          "path": "data.acceptance_criteria[].proof",
+          "type": "string",
+          "enum": ["test", "review", "live", "observe"],
+          "format": "how the criterion is proven: test (a gate lane), review (reading the code), live (a browser or app check QA runs), or observe (a signal after ship). A criterion that changes a browser or app surface is live; one that needs an operator's live observation or a production signal is observe; prefer test when a gate lane can prove it; use review for structure, wording, and docs"
+        },
+        {
           "path": "data.engineering_plan.files[]",
           "type": "object",
           "required": ["path", "status", "purpose"],
@@ -98,7 +105,7 @@
         {
           "path": "data.test_plan[]",
           "type": "object",
-          "format": "focused scenario; setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
+          "format": "focused scenario for a live criterion, naming it in criterion; every live criterion needs at least one case, and test, review, and observe criteria need none. Setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
         },
         {
           "path": "data.open_question_dispositions[].id",
@@ -329,7 +336,7 @@
         {
           "path": "data.verify.qa_cases[].id",
           "type": "string",
-          "format": "non-empty stable QA case identifier"
+          "format": "non-empty stable QA case identifier. data.verify.qa_cases is required and non-empty only on a visit that runs QA: the card lists a qa evidence worker or a scoped return assigns the qa dimension"
         },
         {
           "path": "data.verify.qa_cases[].expected",
@@ -373,7 +380,7 @@
         {
           "path": "data.verify.acceptance_results[].result",
           "type": "string",
-          "format": "non-empty result for the criterion, such as pass or fail"
+          "format": "non-empty result for the criterion, such as pass or fail. observe defers a criterion whose proof is observe to a signal after ship; it does not count as a failure and does not block the verdict, and it is refused for a criterion whose declared proof is another type"
         },
         {
           "path": "data.verify.gate_evidence_citations[]",

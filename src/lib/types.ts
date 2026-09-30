@@ -318,6 +318,27 @@ export interface StageEvidenceWorkerDefinition {
   role: string
   /** One-paragraph scope statement rendered into the worker's brief. */
   scope: string
+  /**
+   * Scope used instead of `scope` on a return visit after remediation, and
+   * as the dimension scope of a scoped return. Absent means `scope`.
+   */
+  return_scope?: string
+  /**
+   * Condition for launching the worker. `live_criteria` launches it only
+   * when a criterion of the run has proof `live`, or when no proof can be
+   * read. Absent means the worker always runs.
+   */
+  run_when?: EvidenceWorkerRunCondition
+}
+
+export type EvidenceWorkerRunCondition = 'live_criteria'
+
+/** A declared evidence worker the harness did not launch on this visit. */
+export interface EvidenceWorkerSkip {
+  persona: string
+  role: string
+  run_when: EvidenceWorkerRunCondition
+  reason: string
 }
 
 /**
@@ -1144,6 +1165,8 @@ export interface TargetInstructionInput {
 export interface RemediationReturn {
   remediation_invocation_id: string
   blast_radius: string[]
+  /** Output of the visit whose verdict routed the remediation, when one did. */
+  routing_output_path?: string
 }
 
 export interface PrDescriptionContext {
@@ -1483,6 +1506,8 @@ export interface Invocation {
    * evidence report is missing.
    */
   evidence_workers?: InvocationEvidenceWorker[]
+  /** Declared evidence workers whose `run_when` kept them off this visit. */
+  evidence_worker_skips?: EvidenceWorkerSkip[]
   /**
    * Present on a scoped return visit: no evidence worker runs, and the stage
    * worker records every listed dimension in its own output.

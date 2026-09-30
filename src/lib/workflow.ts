@@ -13,6 +13,7 @@ import type {
   Criterion,
   CriterionType,
   DesignComposition,
+  EvidenceWorkerRunCondition,
   JsonTypeName,
   StageCheckpoint,
   StageContextDefinition,
@@ -68,6 +69,8 @@ const JSON_TYPE_NAMES = new Set<JsonTypeName>([
   'boolean',
 ])
 const RESERVED_EVIDENCE_WORKER_ROLES = new Set(['worker', 'supervisor'])
+const EVIDENCE_WORKER_RUN_CONDITIONS: ReadonlySet<string> =
+  new Set<EvidenceWorkerRunCondition>(['live_criteria'])
 
 function parseCriterion(value: unknown, source: string): Criterion {
   invariant(isRecord(value), `${source} MUST be an object.`, {
@@ -347,10 +350,31 @@ function parseEvidenceWorkers(
     })
     roles.add(role)
 
+    invariant(
+      entry.return_scope === undefined ||
+        (typeof entry.return_scope === 'string' &&
+          entry.return_scope.length > 0),
+      `${entrySource}.return_scope MUST be a non-empty string when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    invariant(
+      entry.run_when === undefined ||
+        EVIDENCE_WORKER_RUN_CONDITIONS.has(entry.run_when as string),
+      `${entrySource}.run_when MUST be one of: ` +
+        `${[...EVIDENCE_WORKER_RUN_CONDITIONS].join(', ')}.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+
     return {
       persona: entry.persona as string,
       role,
       scope: entry.scope as string,
+      ...(typeof entry.return_scope === 'string'
+        ? { return_scope: entry.return_scope }
+        : {}),
+      ...(entry.run_when !== undefined
+        ? { run_when: entry.run_when as EvidenceWorkerRunCondition }
+        : {}),
     }
   })
 

@@ -82,6 +82,15 @@
             "type": "string",
             "minLength": 1,
             "description": "Scope statement rendered into the generated evidence brief."
+          },
+          "return_scope": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Scope used instead of scope on a return visit after remediation, and as this dimension's scope on a scoped return visit. Absent means scope applies on every visit."
+          },
+          "run_when": {
+            "enum": ["live_criteria"],
+            "description": "Condition for launching the worker. live_criteria launches it only when an acceptance criterion of the run has proof live, or when no criterion proof can be read. The harness records a skipped worker on the invocation and renders the reason on the stage worker's card. Absent means the worker always runs."
           }
         }
       }

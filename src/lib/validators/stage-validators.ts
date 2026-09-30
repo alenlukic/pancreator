@@ -10,6 +10,7 @@ import {
   readText,
   resolveInside,
 } from '../io.js'
+import { runAcceptanceProofs } from '../acceptance-proof.js'
 import { errorMessage, invariant } from '../errors.js'
 import {
   loadHarnessRepairCategories,
@@ -486,6 +487,12 @@ const VERIFY_UNOWNED_REFUSALS: readonly StageRefusal[] = [
     paths: [],
     unowned_reason:
       'Uniqueness is a relation between items rather than a requirement on one item.',
+  },
+  {
+    code: 'verify.acceptance_observe_unproven',
+    paths: [],
+    unowned_reason:
+      "The refusal compares an observe result against the criterion's proof in the plan or specification, which is a relation to another document.",
   },
   {
     code: 'verify.acceptance_unknown',
@@ -2442,6 +2449,11 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   const intakeStories = productSpec ? productSpec.user_stories : null
   const storyIds = new Set<string>()
   const relatedTraceIds = new Set<string>()
+  const proofTypes = sharedEnum(
+    input.root,
+    'plan',
+    'data.acceptance_criteria[].proof',
+  )
 
   if (productSpec) {
     for (const collection of [
@@ -2498,6 +2510,16 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
         issue(
           'plan.verification_expected',
           `Criterion ${item.id} MUST declare verification.expected`,
+        ),
+      )
+    }
+
+    if (!proofTypes.has(typeof item.proof === 'string' ? item.proof : '')) {
+      issues.push(
+        issue(
+          'plan.proof_missing',
+          `Criterion ${item.id} MUST declare proof as one of ` +
+            `${[...proofTypes].join(', ')}`,
         ),
       )
     }
@@ -2691,6 +2713,34 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
           ),
         )
       }
+    }
+  }
+
+  // PLAN-002: the test plan lists cases only for `live` criteria, because QA
+  // runs only for them. A gate lane, a code read, or a post-ship signal
+  // proves every other criterion.
+  const coveredCriteria = new Set(
+    testPlan.flatMap((testCase) =>
+      isRecord(testCase) && typeof testCase.criterion === 'string'
+        ? [testCase.criterion]
+        : [],
+    ),
+  )
+
+  for (const item of criteria) {
+    if (
+      isRecord(item) &&
+      typeof item.id === 'string' &&
+      item.proof === 'live' &&
+      !coveredCriteria.has(item.id)
+    ) {
+      issues.push(
+        issue(
+          'plan.live_case_missing',
+          `Criterion ${item.id} has proof live and MUST have at least one ` +
+            'test-plan case whose criterion names it',
+        ),
+      )
     }
   }
 
@@ -3079,6 +3129,31 @@ function currentGateEvidenceReferences(
 }
 
 /**
+ * Whether this verify visit ran QA: the card launched a `qa` evidence worker
+ * or a scoped return assigned the `qa` dimension. A validation with no card
+ * in hand cannot tell, so it keeps the requirement.
+ */
+function verifyQaRan(invocation: Record<string, unknown> | undefined): boolean {
+  if (!invocation) {
+    return true
+  }
+
+  const roles = [
+    ...(Array.isArray(invocation.evidence_workers)
+      ? invocation.evidence_workers
+      : []),
+    ...(isRecord(invocation.scoped_return) &&
+    Array.isArray(invocation.scoped_return.dimensions)
+      ? invocation.scoped_return.dimensions
+      : []),
+  ].flatMap((entry) =>
+    isRecord(entry) && typeof entry.role === 'string' ? [entry.role] : [],
+  )
+
+  return roles.includes('qa')
+}
+
+/**
  * Joint verification output for the delivery workflow's verify stage. One
  * stage carries both the review findings and the QA evidence, and one verdict
  * routes the run: pass and pass_with_warnings advance, fail_remedial and
@@ -3204,7 +3279,9 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   )
   const qaCases = Array.isArray(verify.qa_cases) ? verify.qa_cases : []
 
-  if (qaCases.length === 0) {
+  // VERIFY-001: QA runs only for a live criterion, so the cases are owed only
+  // on a visit whose card ran the QA worker or assigned its dimension.
+  if (qaCases.length === 0 && verifyQaRan(input.invocation)) {
     issues.push(issue('verify.qa_cases_missing', 'verify.qa_cases is required'))
   }
 
@@ -3291,6 +3368,10 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   }
 
   const reportedIds = new Set<string>()
+  // An `observe` result defers the criterion to a signal after ship, so it is
+  // accepted only for a criterion whose proof is `observe`. A proof no source
+  // declares cannot be checked, and the result stands on the verifier's word.
+  let proofs: ReturnType<typeof runAcceptanceProofs> | null = null
 
   for (const { item } of checkVerifyItems(
     acceptanceResults,
@@ -3307,6 +3388,21 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     }
 
     reportedIds.add(id)
+
+    if (item.result === 'observe') {
+      proofs ??= runAcceptanceProofs(input.root, input.runState)
+      const proof = proofs.get(id)
+
+      if (proof !== undefined && proof !== null && proof !== 'observe') {
+        issues.push(
+          issue(
+            'verify.acceptance_observe_unproven',
+            `Acceptance ${id} has proof ${proof}, so its result MUST NOT be ` +
+              'observe; only an observe criterion defers to a signal after ship',
+          ),
+        )
+      }
+    }
   }
 
   const expectedIds = planAcceptanceCriterionIds(

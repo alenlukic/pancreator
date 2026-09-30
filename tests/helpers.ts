@@ -640,6 +640,7 @@ function requiredData(
               method: 'integration test',
               expected: 'Workflow reaches ship',
             },
+            proof: 'test',
           },
         ],
         test_plan: [

@@ -710,7 +710,11 @@ function renderRemediationReturn(invocation: Invocation): string[] {
 
   const opening =
     'This is a return visit after remediation ' +
-    `\`${returnVisit.remediation_invocation_id}\`.`
+    `\`${returnVisit.remediation_invocation_id}\`.` +
+    (returnVisit.routing_output_path
+      ? ' The verdict that routed it, with the prior findings, is ' +
+        `\`${returnVisit.routing_output_path}\`.`
+      : '')
 
   if (returnVisit.blast_radius.length === 0) {
     return [
@@ -792,10 +796,47 @@ function renderScopedReturn(invocation: Invocation): string[] {
         'each finding it raises.',
       '',
     ]),
-    'Execute the cases the blast radius reaches, record each in ' +
-      '`data.verify.qa_cases`, and carry every other case forward with ' +
-      '`carried_from`, as a return-visit evidence worker would.',
+    ...(scoped.dimensions.some((dimension) => dimension.role === 'qa')
+      ? [
+          'Execute the cases the blast radius reaches, record each in ' +
+            '`data.verify.qa_cases`, and carry every other case forward ' +
+            'with `carried_from`, as a return-visit evidence worker would.',
+          '',
+        ]
+      : []),
+  ]
+}
+
+/**
+ * The declared evidence workers the harness kept off this visit, so the
+ * stage worker knows the dimension did not run and why (`VERIFY-001`).
+ */
+function renderEvidenceWorkerSkips(invocation: Invocation): string[] {
+  const skips = invocation.evidence_worker_skips ?? []
+
+  if (skips.length === 0) {
+    return []
+  }
+
+  return [
+    '### Evidence workers not launched',
     '',
+    ...skips.map(
+      (skip) =>
+        `- \`${skip.role}\` (\`${skip.persona}\`) did not run: ${skip.reason}. ` +
+        'No report exists for it, so do not wait for one or report it missing.',
+    ),
+    '',
+    ...(skips.some((skip) => skip.role === 'qa')
+      ? [
+          'QA did not run on this visit. `data.verify.qa_cases` is not ' +
+            'owed. Grade each `test` criterion from the gate evidence, each ' +
+            '`review` criterion from the review evidence and your spot ' +
+            'checks, and record `observe` as the result of each `observe` ' +
+            'criterion.',
+          '',
+        ]
+      : []),
   ]
 }
 
@@ -1412,6 +1453,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ]
       : []),
     ...renderScopedReturn(invocation),
+    ...renderEvidenceWorkerSkips(invocation),
     ...(contextReferenceLines.length > 0 ? [...contextReferenceLines, ''] : []),
     ...(conditionalReferences.length > 0
       ? ['### Conditional references', '', ...conditionalReferences, '']

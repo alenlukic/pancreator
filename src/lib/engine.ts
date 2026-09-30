@@ -15,6 +15,10 @@ import {
   releaseCohortBaselineClaim,
 } from './cohorts.js'
 import { agentRecordedProfilePasses } from './agent-ledger-evidence.js'
+import {
+  liveCriteriaDecision,
+  runAcceptanceProofs,
+} from './acceptance-proof.js'
 import { readEvidenceReady } from './watch-evidence.js'
 import {
   buildContextReference,
@@ -260,6 +264,7 @@ import type {
   DeterministicResult,
   EntryGateReach,
   EvidenceWorkerAttempt,
+  EvidenceWorkerSkip,
   ExternalDelegationRecord,
   ExternalExecutorAdapter,
   ExternalExecutorRunResult,
@@ -284,6 +289,7 @@ import type {
   RunState,
   SameReasonFailureTrackers,
   StageDefinition,
+  StageEvidenceWorkerDefinition,
   StageEntryGateRecord,
   StageFailureTracker,
   StageHistoryItem,
@@ -5279,6 +5285,10 @@ export function prepareInvocation(
 
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
     const workspace = workspaceSnapshotForRun(root, state)
+    // A worker whose `run_when` condition fails stays off this visit, and the
+    // card says why (`VERIFY-001`: QA runs only for a live criterion).
+    const { workers: scheduledWorkers, skips: evidenceWorkerSkips } =
+      scheduleEvidenceWorkers(root, state, stage)
     // A return visit that serves a small repair runs the stage worker alone;
     // the stage declares the limits and the harness decides from the record.
     const scopedDecision =
@@ -5290,17 +5300,25 @@ export function prepareInvocation(
             workspace.entries
               .filter((entry) => entry.slice(0, 2).includes('D'))
               .map(snapshotEntryPath),
+            scheduledWorkers,
           )
         : undefined
     const scopedReturn = scopedDecision?.scoped ?? undefined
+    // A full-topology return visit reviews the remediation rather than the
+    // whole change, so a worker's return-visit scope replaces its scope.
+    const returnVisit =
+      scheduledWorkers && !scopedReturn
+        ? remediationReturn(root, state, stage)
+        : undefined
     // Parallel evidence workers run as top-level named agents so their
     // persona-model mappings hold. Resolving them at prepare time makes a
     // missing mapping fail here rather than silently downgrade at launch.
     const evidenceWorkers =
-      stage.evidence_workers &&
+      scheduledWorkers &&
+      scheduledWorkers.length > 0 &&
       stage.persona !== 'orchestrator' &&
       !scopedReturn
-        ? stage.evidence_workers.map((worker) => {
+        ? scheduledWorkers.map((worker) => {
             const workerMapping = resolvePersonaMapping(
               pipelineConfig,
               worker.persona,
@@ -5321,7 +5339,10 @@ export function prepareInvocation(
             return {
               persona: worker.persona,
               role: worker.role,
-              scope: worker.scope,
+              scope:
+                returnVisit && worker.return_scope
+                  ? worker.return_scope
+                  : worker.scope,
               agent: (agentTarget.split('/').pop() ?? worker.persona).replace(
                 /\.md$/u,
                 '',
@@ -5527,6 +5548,17 @@ export function prepareInvocation(
       requiredData['implementation.remediation'] = 'array'
     }
 
+    // VERIFY-001: QA cases are owed only on a visit that runs QA, either as
+    // an evidence worker or as a dimension a scoped return assigns.
+    if (
+      requiredData.verify === 'object' &&
+      [...(evidenceWorkers ?? []), ...(scopedReturn?.dimensions ?? [])].some(
+        (worker) => worker.role === 'qa',
+      )
+    ) {
+      requiredData['verify.qa_cases'] = 'array'
+    }
+
     if (
       stage.persona === 'release-steward' &&
       stage.slug === 'ship' &&
@@ -5627,6 +5659,9 @@ export function prepareInvocation(
         ...(prDescription ? { prDescription } : {}),
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
+      ...(evidenceWorkerSkips.length > 0 && stage.persona !== 'orchestrator'
+        ? { evidence_worker_skips: evidenceWorkerSkips }
+        : {}),
       ...(scopedReturn ? { scoped_return: scopedReturn } : {}),
       ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       ...(fastWall ? { fast_wall: fastWall } : {}),
@@ -5873,6 +5908,14 @@ export function prepareInvocation(
             ...(scopedDecision.scoped === null
               ? { scoped_return_declined: scopedDecision.reason }
               : {}),
+          }
+        : {}),
+      // Audits count the evidence workers a run condition kept off a visit.
+      ...(invocation.evidence_worker_skips
+        ? {
+            evidence_workers_skipped: invocation.evidence_worker_skips.map(
+              (skip) => skip.role,
+            ),
           }
         : {}),
     })
@@ -9081,6 +9124,54 @@ function invalidatePausedInvocation(state: RunState): void {
   state.status = 'running'
   state.pending_action = { type: 'prepare_invocation' }
   state.current_invocation = null
+}
+
+/**
+ * The declared evidence workers this visit launches, and the ones a
+ * `run_when` condition keeps off it with the reason.
+ *
+ * `live_criteria` reads the run's criterion proofs: its own plan output, the
+ * child specifications of a release run, or the request specification. QA
+ * runs for a `live` criterion and whenever no proof can be read, so a legacy
+ * or unplanned request keeps the full topology.
+ */
+function scheduleEvidenceWorkers(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): {
+  workers: StageEvidenceWorkerDefinition[] | undefined
+  skips: EvidenceWorkerSkip[]
+} {
+  if (!stage.evidence_workers) {
+    return { workers: undefined, skips: [] }
+  }
+
+  const conditional = stage.evidence_workers.some(
+    (worker) => worker.run_when === 'live_criteria',
+  )
+  const decision = conditional
+    ? liveCriteriaDecision(
+        runAcceptanceProofs(root, state as unknown as Record<string, unknown>),
+      )
+    : null
+  const skips: EvidenceWorkerSkip[] = []
+  const workers = stage.evidence_workers.filter((worker) => {
+    if (worker.run_when !== 'live_criteria' || decision?.run !== false) {
+      return true
+    }
+
+    skips.push({
+      persona: worker.persona,
+      role: worker.role,
+      run_when: worker.run_when,
+      reason: decision.reason,
+    })
+
+    return false
+  })
+
+  return { workers, skips }
 }
 
 /**

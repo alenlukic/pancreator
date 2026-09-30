@@ -37,6 +37,7 @@ import type {
   RunState,
   StageContextStageSelector,
   StageDefinition,
+  StageEvidenceWorkerDefinition,
   StageHistoryItem,
   StageScopedReturn,
   TargetInstructionInput,
@@ -947,9 +948,20 @@ export function remediationReturn(
     return undefined
   }
 
+  // The visit whose verdict routed this remediation holds the findings a
+  // return visit confirms fixed or still open.
+  const remediationIndex = state.stage_history.lastIndexOf(remediation)
+  const routing = state.stage_history
+    .slice(0, remediationIndex)
+    .reverse()
+    .find((item) => item.stage === stage.slug && item.outcome !== 'blocked')
+
   return {
     remediation_invocation_id: remediation.invocation_id,
     blast_radius: outputChangedPaths(root, state, 'remediate'),
+    ...(routing?.output_path
+      ? { routing_output_path: routing.output_path }
+      : {}),
   }
 }
 
@@ -1075,8 +1087,12 @@ export function scopedReturnForStage(
   state: RunState,
   stage: StageDefinition,
   deletedPaths: string[],
+  // The workers this visit would launch. A worker whose `run_when` keeps it
+  // off the visit assigns no dimension, so the stage worker does not take it
+  // over either.
+  workers: StageEvidenceWorkerDefinition[] | undefined = stage.evidence_workers,
 ): ScopedReturnDecision | undefined {
-  if (!stage.scoped_return || !stage.evidence_workers) {
+  if (!stage.scoped_return || !workers || workers.length === 0) {
     return undefined
   }
 
@@ -1117,10 +1133,12 @@ export function scopedReturnForStage(
 
   return evaluateScopedReturn({
     limits: stage.scoped_return,
-    declared: stage.evidence_workers.map((worker) => ({
+    // A scoped visit is always a return, so each dimension takes the
+    // worker's return-visit scope when it declares one.
+    declared: workers.map((worker) => ({
       role: worker.role,
       persona: worker.persona,
-      scope: worker.scope,
+      scope: worker.return_scope ?? worker.scope,
     })),
     remediation_invocation_id: visit.remediation_invocation_id,
     routing,

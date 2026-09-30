@@ -410,9 +410,12 @@ test('a returning verification bounds execution by the remediation blast radius'
   // marker is present and only its radius is empty, because the profile
   // prohibition does not depend on how far the repair reached.
   writeJson(path.join(root, remediate.output_path), { data: {} })
+  // The marker also names the verdict that routed the remediation, whose
+  // findings the return visit confirms fixed or still open.
   assert.deepEqual(scopeOf([implement, verify, remediate]), {
     remediation_invocation_id: 'remediate-1',
     blast_radius: [],
+    routing_output_path: verify.output_path,
   })
 
   writeJson(path.join(root, remediate.output_path), {
@@ -424,6 +427,7 @@ test('a returning verification bounds execution by the remediation blast radius'
   assert.deepEqual(scope, {
     remediation_invocation_id: 'remediate-1',
     blast_radius: ['src/lib/narrow.ts'],
+    routing_output_path: verify.output_path,
   })
 
   const brief = renderEvidenceWorkerBrief(
