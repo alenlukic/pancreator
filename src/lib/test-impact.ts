@@ -872,7 +872,10 @@ export function selectImpactedTests(
     (file) =>
       !reachedBy.has(file) &&
       !(globalChange && GLOBAL_FILES.includes(file)) &&
-      !GENERATED_ROOTS.some((root) => file.startsWith(root)),
+      !GENERATED_ROOTS.some((root) => file.startsWith(root)) &&
+      // A changed test of a lane outside this selection is that lane's
+      // business, not a file this selection failed to cover.
+      !(isLaneTest(file, ALL_TEST_LANES) && !isLaneTest(file, lanes)),
   )
   // The fast profile covers only the default lanes, so recommending it for a
   // selection that includes another lane would drop that lane's tests.

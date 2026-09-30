@@ -403,6 +403,13 @@ test('the integration lane selects the integration tests a change reaches and le
     })
     assert.deepEqual(untouched.selected, [])
 
+    // A changed unit test is outside an integration selection, not a file
+    // it failed to cover.
+    const otherLane = selectImpactedTests(graph, ['tests/unit/core.test.ts'], {
+      lanes: ['tests/integration'],
+    })
+    assert.deepEqual(otherLane.unreached, [])
+
     // A bin reference an integration test would carry never credits a
     // default-lane selection.
     const defaults = selectImpactedTests(graph, ['src/lib/core.ts'])
