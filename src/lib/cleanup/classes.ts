@@ -29,6 +29,14 @@ export interface CleanupArtifactClass {
   paths: string[]
   age_source: CleanupAgeSource
   disposal: CleanupDisposal
+  /**
+   * Entry names under this class's paths that planning never inspects or
+   * lists, such as a navigation symlink a producer refreshes in place. A
+   * plain `mtime`/`statSync` age check would otherwise judge the symlink by
+   * its live target's age, which a concurrent deletion of that same target
+   * could also race.
+   */
+  skip?: readonly string[]
 }
 
 /**
@@ -198,6 +206,10 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     paths: ['runtime/logs/shell'],
     age_source: 'mtime',
     disposal: 'archive_then_delete',
+    // bin/pan-run refreshes this symlink to the newest record on every run;
+    // it is navigation, not an artifact, and a per-run compaction inside the
+    // wrapper already bounds this directory well under the 30-day default.
+    skip: ['latest'],
   },
   // One full-output log per `pan repository-check` or `pan tests impacted`
   // execution. A run's durable evidence lives in its own evidence directory,

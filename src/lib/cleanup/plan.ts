@@ -434,6 +434,10 @@ function planFileClasses(plan: PlanAccumulator): void {
       skipNames.add('archive')
       skipNames.add('.metadata_never_index')
 
+      for (const name of artifactClass.skip ?? []) {
+        skipNames.add(name)
+      }
+
       // Archival keeps a run that owes a post-ship observation live, so the
       // deletion tier keeps it too until an audit resolves the item.
       const holdsObservation =
