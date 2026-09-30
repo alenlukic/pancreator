@@ -13,6 +13,13 @@ import {
   workspaceRootFromInput,
 } from './evidence.js'
 
+/**
+ * Validate a spotfix outcome Markdown file: it does not claim success and
+ * escalation together, runs at most three validation cycles, documents a
+ * validation command, changes at most three non-exempt workspace files, and
+ * gives an escalation its own section with acceptance criteria, validation
+ * cycles, and blocker. Raises `spotfix.*` and `git.unavailable` codes.
+ */
 export function validateSpotfixOutcome(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const content = readText(path.join(input.root, input.targetPath))

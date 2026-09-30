@@ -21,6 +21,12 @@ interface SharedFieldRequirement {
   accepted_shapes?: string[]
 }
 
+/**
+ * Return the field declarations for a stage from
+ * `library/schemas/stage-output-requirements.json`, keeping only well-formed
+ * entries. Throws `PanError` `INVALID_STAGE_OUTPUT_REQUIREMENTS` when the file
+ * is missing, has no stage map, or the stage declares no fields.
+ */
 export function sharedFieldRequirements(
   root: string,
   stageSlug: string,
@@ -75,6 +81,11 @@ export function sharedFieldRequirements(
   )
 }
 
+/**
+ * Return the allowed values the shared field contract declares for one field of
+ * a stage, or an empty set when the field declares none. Throws as
+ * `sharedFieldRequirements` does.
+ */
 export function sharedEnum(
   root: string,
   stageSlug: string,
@@ -111,6 +122,11 @@ export function sharedChildFields(
     )
 }
 
+/**
+ * Return the `required` child field names the shared field contract declares
+ * for one parent field of a stage, or an empty list when none. Throws as
+ * `sharedFieldRequirements` does.
+ */
 export function sharedRequiredChildFields(
   root: string,
   stageSlug: string,
@@ -123,6 +139,12 @@ export function sharedRequiredChildFields(
   return parent?.required ?? []
 }
 
+/**
+ * Report whether an evidence entry matches one of the accepted shapes: a
+ * `path_reference` (a file path with an optional line and column), a
+ * `prose_observation` (at least 12 characters with a space), or a
+ * `pytest_node_id`.
+ */
 export function validEvidenceShape(
   entry: string,
   acceptedShapes: Set<string>,
@@ -198,6 +220,13 @@ export function undeclaredBlockingFieldIssues(
   return issues
 }
 
+/**
+ * Validate the shared stage field contract document: its identity fields, the
+ * meaning of each non-verdict criterion result, and for each covered stage its
+ * validators (known registry ids, `blocks` or `advises`), enforced fields that
+ * are declared fields, required child fields, and the blocking fields every
+ * validator refusal depends on. Raises `field_contract.*` codes.
+ */
 export function validateSharedFieldContract(
   input: HandlerInput,
 ): HandlerResult {

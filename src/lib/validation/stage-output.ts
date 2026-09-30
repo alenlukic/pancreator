@@ -216,6 +216,13 @@ function requiredDataErrors(
   })
 }
 
+/**
+ * Validate a submitted stage output against its stage and invocation and return
+ * coded issues, their messages, and the normalized output. Checks the top-level
+ * shape, required data, criterion results against the stage rubric and the
+ * overall result, declared artifact and operator brief paths, and that every
+ * artifact exists unless listed in `pendingArtifactPaths`.
+ */
 export function validateStageOutput(
   root: string,
   stage: StageDefinition,

@@ -129,6 +129,11 @@ function parseTransitions(value: unknown, source: string): StageTransitions {
   return value as unknown as StageTransitions
 }
 
+/**
+ * Validate an optional list of stage-output context selectors, each naming a
+ * stage and a `latest` or `latest_success` selection. Returns undefined when
+ * absent; throws `PanError` `INVALID_WORKFLOW` on a malformed entry.
+ */
 export function parseContextSelectors(
   value: unknown,
   source: string,
@@ -296,6 +301,12 @@ function parsePersonaByVerdict(
   }
 }
 
+/**
+ * Validate an optional, non-empty list of evidence worker definitions: persona,
+ * a unique lowercase non-reserved role, scope, and optional return scope and
+ * run condition. Returns undefined when absent; throws `PanError`
+ * `INVALID_WORKFLOW` on a malformed entry.
+ */
 export function parseEvidenceWorkers(
   value: unknown,
   source: string,
@@ -461,6 +472,11 @@ function parseEntryGate(
   }
 }
 
+/**
+ * Validate an optional map of required data paths to supported JSON type names.
+ * Returns undefined when absent; throws `PanError` `INVALID_WORKFLOW` on an
+ * unsupported type.
+ */
 export function parseRequiredData(
   value: unknown,
   source: string,
@@ -489,6 +505,12 @@ export function parseRequiredData(
   return requiredData
 }
 
+/**
+ * Validate one stage definition and return it typed, including its context,
+ * criteria, transitions, required data, persona mapping, evidence workers, and
+ * entry gate. A missing `context` is allowed only when `allowLegacyContext` is
+ * set. Throws `PanError` `INVALID_WORKFLOW` on the first violation.
+ */
 export function parseStage(
   value: unknown,
   source: string,

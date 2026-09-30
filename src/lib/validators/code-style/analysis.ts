@@ -70,6 +70,12 @@ export function analyzeCodeStyle(
     .sort((first, second) => first.line - second.line)
 }
 
+/**
+ * Check one source file against the code style rules for its language and
+ * report at most 50 issues with line numbers, plus a `style.issues_elided`
+ * entry naming how many more were found. Fails with `artifact.missing` when the
+ * file does not exist.
+ */
 export function validateCodeStyle(input: HandlerInput): HandlerResult {
   const absolute = path.isAbsolute(input.targetPath)
     ? input.targetPath

@@ -7,6 +7,13 @@ import { parseMarkdown, hasHeading } from '../../markdown.js'
 import type { HandlerInput, HandlerResult } from '../../requirements/types.js'
 import { issue } from './evidence.js'
 
+/**
+ * Validate a decomposition Markdown artifact: required sections, a decision of
+ * exactly `retain` or `decompose`, threshold and economics coverage, and for
+ * `retain` the retained intake spec with no chunks, or for `decompose` a
+ * dependency graph, execution order, and at least two well-formed, sequential
+ * chunks. Raises `decomposition.*` codes.
+ */
 export function validateDecompositionArtifact(
   input: HandlerInput,
 ): HandlerResult {

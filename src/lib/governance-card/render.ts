@@ -32,6 +32,14 @@ interface BaseConductBlock {
   tainted: string[]
 }
 
+/**
+ * Build the base-revision conduct block for a review card whose target changes
+ * governance: the base text of each changed policy's agent-audience
+ * instructions, other conduct-tier paths that cannot be inlined,
+ * instrument-tier paths the squad must not grade, and substrate paths that
+ * taint verification. Reads policy files at `scope.base` through Git; a policy
+ * the change adds has no base text and is omitted.
+ */
 export function baseConductBlock(
   targetRoot: string,
   scope: ReviewScope,
@@ -260,6 +268,13 @@ export interface GovernanceCardRunBinding {
   attest_command: string
 }
 
+/**
+ * Render the complete Markdown of a standalone or supervisor governance card:
+ * header, attestation section when bound to a run, operator input, worktree,
+ * path note, policies in force for the card's audience, base conduct, review
+ * dimensions, agent-executed validation requirements, and boundaries. Pure; the
+ * caller writes the result.
+ */
 export function renderGovernanceCardMarkdown(options: {
   mode: StandaloneMode
   policies: Policy[]

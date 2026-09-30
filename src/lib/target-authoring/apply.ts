@@ -76,6 +76,13 @@ function renderPersonaAgent(
   )
 }
 
+/**
+ * Render the Cursor file a target extension draft projects into the target: the
+ * command Markdown for a command, or the generated agent file with its resolved
+ * Cursor model for a persona. Returns null for a skill, which has no
+ * projection. Throws `PanError` `TARGET_AUTHORING_UNAVAILABLE` outside a target
+ * installation, and when the persona's model mapping does not resolve.
+ */
 export function renderProjection(
   root: string,
   draft: TargetAuthoringDraft,
@@ -105,6 +112,12 @@ export function renderProjection(
   return renderPersonaAgent(root, draft, model)
 }
 
+/**
+ * Return the policy lookup extension document a target extension manifest
+ * implies: one row binding the manifest's policies to its standalone context.
+ * Written to `governance/registries/policy_lookup.d/<extension-id>.json` and
+ * compared against it to detect drift.
+ */
 export function bindingFor(manifest: TargetExtensionManifest): unknown {
   return {
     schema_version: 1,
@@ -221,6 +234,11 @@ function manifestFor(
   }
 }
 
+/**
+ * Read and validate the manifest of every directory under `target-extensions/`,
+ * sorted by name. Returns an empty list when the directory is absent; throws
+ * when a manifest is missing or invalid.
+ */
 export function listManifests(root: string): TargetExtensionManifest[] {
   const directory = path.join(root, 'target-extensions')
 
@@ -303,6 +321,13 @@ interface TargetExclusionState {
   desired: string
 }
 
+/**
+ * Compute the target clone's `.git/info/exclude` content before and after
+ * rewriting the Pancreator block that excludes every target extension
+ * projection path. Leaves the file text unchanged when no projection exists and
+ * no block was ever written. Returns null when the target root is not a Git
+ * repository.
+ */
 export function targetExclusionState(
   root: string,
   workspace?: string,
@@ -332,6 +357,12 @@ export function targetExclusionState(
   return { path: excludePath, previous, desired }
 }
 
+/**
+ * Rewrite the Pancreator target extension block in the target clone's
+ * `.git/info/exclude` so it lists exactly the current projection paths. Writes
+ * only when the content changes; does nothing when the target root is not a Git
+ * repository.
+ */
 export function updateTargetExclusions(root: string, workspace?: string): void {
   const state = targetExclusionState(root, workspace)
 

@@ -38,6 +38,16 @@ import {
   workspaceDelta,
 } from './state-criteria.js'
 
+/**
+ * Evaluate a stage's deterministic criteria at submission and return the
+ * results, the after workspace snapshot, and advisories. Adds
+ * `scope.no_unapproved_changes` for a stage that is not source-allowed: it
+ * fails on unattributed workspace changes, commit-absorbed paths no live run
+ * owns, and any write to the harness root outside `runtime/`. Runs each shell
+ * gate unless an override, the verification level, or `gateSkipReason` disables
+ * it or an entry gate result is reused, and evaluates each state criterion.
+ * Shell gates execute commands and write evidence logs to the run directory.
+ */
 export function evaluateDeterministicCriteria(
   root: string,
   runDirectory: string,

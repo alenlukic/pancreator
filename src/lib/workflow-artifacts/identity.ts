@@ -46,6 +46,10 @@ export interface FileMove {
   targetRelative: string
 }
 
+/**
+ * Return the root-relative path of a run's JSON artifact in its run layout, or
+ * the legacy `artifacts/json/` path when `root` is omitted.
+ */
 export function artifactJsonPath(
   runId: string,
   artifactId: string,
@@ -56,6 +60,10 @@ export function artifactJsonPath(
     : `runtime/logs/workflows/${runId}/artifacts/json/${artifactId}.json`
 }
 
+/**
+ * Return the root-relative path of a run's operator Markdown artifact in its
+ * run layout, or the legacy `artifacts/markdown/` path when `root` is omitted.
+ */
 export function artifactMarkdownPath(
   runId: string,
   artifactId: string,
@@ -67,6 +75,10 @@ export function artifactMarkdownPath(
     : `runtime/logs/workflows/${runId}/artifacts/markdown/${artifactId}.md`
 }
 
+/**
+ * Return the root-relative path of a run's operator HTML artifact in its run
+ * layout, or the legacy `artifacts/html/` path when `root` is omitted.
+ */
 export function artifactHtmlPath(
   runId: string,
   artifactId: string,
@@ -77,14 +89,24 @@ export function artifactHtmlPath(
     : `runtime/logs/workflows/${runId}/artifacts/html/${artifactId}.html`
 }
 
+/**
+ * Report whether a run status is terminal: `succeeded`, `failed`, or
+ * `canceled`.
+ */
 export function isClosedRunStatus(status: RunStatus): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'canceled'
 }
 
-// Iterative on purpose: recursion with `push(...listFiles(child))` spreads a
-// child subtree's entire file list into one call, and a large tree (a worktree
-// with dependencies installed) exceeds the engine's argument limit, which
-// surfaces as a call-stack RangeError.
+/**
+ * Return the absolute paths of every regular file under `directory`,
+ * recursively and in no fixed order, skipping the `exclude` subtree when given.
+ * Returns an empty list when the directory does not exist.
+ *
+ * The walk is iterative on purpose: recursion with `push(...listFiles(child))`
+ * spreads a child subtree's entire file list into one call, and a large tree (a
+ * worktree with dependencies installed) exceeds the engine's argument limit,
+ * which surfaces as a call-stack RangeError.
+ */
 export function listFiles(directory: string, exclude?: string): string[] {
   if (!existsSync(directory)) {
     return []
@@ -114,6 +136,11 @@ export function listFiles(directory: string, exclude?: string): string[] {
   return files
 }
 
+/**
+ * Return the directory holding a run's machine records: `agent/` under the run
+ * directory when it contains `state.json`, else the run directory itself for
+ * older layouts.
+ */
 export function agentDirectory(runDirectory: string): string {
   const candidate = path.join(runDirectory, 'agent')
 
@@ -122,16 +149,28 @@ export function agentDirectory(runDirectory: string): string {
     : runDirectory
 }
 
+/**
+ * Read a file as UTF-8 text, or return null when it contains a NUL byte and so
+ * is treated as binary.
+ */
 export function textFileContent(filePath: string): string | null {
   const content = readFileSync(filePath)
 
   return content.includes(0) ? null : content.toString('utf8')
 }
 
+/**
+ * Read and parse a JSON file. Throws when the file is missing or is not valid
+ * JSON.
+ */
 export function parseJsonFile(filePath: string): unknown {
   return JSON.parse(readFileSync(filePath, 'utf8'))
 }
 
+/**
+ * Read a JSON Lines file and return one parsed value per non-blank line, or an
+ * empty list when the file does not exist. Throws on a malformed line.
+ */
 export function parseJsonLines(filePath: string): unknown[] {
   if (!existsSync(filePath)) {
     return []
@@ -143,6 +182,11 @@ export function parseJsonLines(filePath: string): unknown[] {
     .map((line) => JSON.parse(line) as unknown)
 }
 
+/**
+ * Collect the stage slugs a run directory mentions, from its workflow snapshot,
+ * its events, and its invocation snapshots. Throws `PanError`
+ * `INVALID_WORKFLOW_ARTIFACTS` when none is found.
+ */
 export function workflowStageSlugs(runDirectory: string): Set<string> {
   const stageSlugs = new Set<string>()
   const machineDirectory = agentDirectory(runDirectory)
@@ -195,6 +239,11 @@ export function workflowStageSlugs(runDirectory: string): Set<string> {
   return stageSlugs
 }
 
+/**
+ * Parse an invocation id into its stage slug, stage iteration, and suffix, or
+ * return null when it does not have the artifact id shape or names a stage
+ * outside `stageSlugs`.
+ */
 export function artifactIdentity(
   invocationId: string,
   stageSlugs: ReadonlySet<string>,
@@ -212,10 +261,18 @@ export function artifactIdentity(
   }
 }
 
+/**
+ * Return the first eight hex characters of the SHA-256 digest of `value`, used
+ * as a stable stand-in for a non-hex id suffix.
+ */
 export function deterministicUuidSuffix(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 8)
 }
 
+/**
+ * Return an artifact identity's suffix when it is eight hex characters, else a
+ * deterministic eight-character digest of its stage, iteration, and suffix.
+ */
 export function normalizedUuidSuffix(identity: ArtifactIdentity): string {
   return UUID_SUFFIX_PATTERN.test(identity.uuidSuffix)
     ? identity.uuidSuffix
@@ -345,6 +402,13 @@ function finalHistoryIds(
   return candidates.sort((left, right) => left.timestamp - right.timestamp)
 }
 
+/**
+ * Return the run's invocation ids in stage-occurrence order: those named by
+ * preparation and harness execution events first, then any found only in
+ * invocation snapshots or in the final stage history, ordered by time. Throws
+ * `PanError` `WORKFLOW_ARTIFACT_LIMIT` when the run has more than 100
+ * occurrences.
+ */
 export function collectInvocationIds(runDirectory: string): string[] {
   const stageSlugs = workflowStageSlugs(runDirectory)
   const ordered = eventInvocationIds(runDirectory, stageSlugs)
@@ -379,6 +443,12 @@ export function collectInvocationIds(runDirectory: string): string[] {
   return ordered
 }
 
+/**
+ * Map each of the run's invocation ids, in occurrence order, to its sequenced
+ * artifact id: the in-flight form, or the completed form that encodes the total
+ * stage count when `mode` is `completed`. Throws `PanError`
+ * `INVALID_WORKFLOW_ARTIFACTS` for an id that does not parse.
+ */
 export function stageOccurrences(
   runDirectory: string,
   mode: WorkflowArtifactSequenceMode,
@@ -415,6 +485,12 @@ export function stageOccurrences(
   })
 }
 
+/**
+ * Build the string replacements that rename invocation ids across run files:
+ * each old id that maps to exactly one new id, plus its legacy assessment
+ * request and assessment file names. An id that occurs with several new ids is
+ * left out, because only ordered rewriting can place it.
+ */
 export function replacementMappings(
   occurrences: StageOccurrence[],
 ): Map<string, string> {
@@ -449,6 +525,10 @@ export function replacementMappings(
   return mappings
 }
 
+/**
+ * Apply every mapping to a string at once, longest source first, through
+ * placeholders so one replacement's output is never rewritten by another.
+ */
 export function replaceMappings(
   content: string,
   mappings: ReadonlyMap<string, string>,
@@ -471,6 +551,10 @@ export function replaceMappings(
   return updated
 }
 
+/**
+ * Return a deep copy of a JSON value with `replaceMappings` applied to every
+ * string value. Object keys are not rewritten.
+ */
 export function replaceStringsInValue(
   value: unknown,
   mappings: ReadonlyMap<string, string>,
@@ -510,6 +594,12 @@ function occurrenceQueues(
   return queues
 }
 
+/**
+ * Return a copy of a run state with invocation ids rewritten: each stage
+ * history entry takes the next new id for its old id in occurrence order, the
+ * current invocation takes the last one, and every other string receives the
+ * unambiguous mappings.
+ */
 export function rewriteRunStateValue(
   value: unknown,
   occurrences: StageOccurrence[],
@@ -562,6 +652,12 @@ export function rewriteRunStateValue(
   return replaceStringsInValue(clone, mappings)
 }
 
+/**
+ * Rewrite invocation ids in a run's `state.json` and `events.jsonl` in place,
+ * assigning sequenced ids to preparation and execution events in occurrence
+ * order and rewriting each embedded `state_after`. Adds each file it changes to
+ * `updatedFiles`.
+ */
 export function rewriteStructuredFiles(
   runDirectory: string,
   occurrences: StageOccurrence[],
@@ -632,6 +728,9 @@ export function rewriteStructuredFiles(
   }
 }
 
+/**
+ * Return `absolute` relative to `root` with forward slashes.
+ */
 export function toRepoRelative(root: string, absolute: string): string {
   return path.relative(root, absolute).split(path.sep).join('/')
 }

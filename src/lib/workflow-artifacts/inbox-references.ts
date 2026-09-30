@@ -33,6 +33,11 @@ export interface WorkflowReferenceRepairSummary {
   skipped_runs: WorkflowReferenceSkip[]
 }
 
+/**
+ * Return the sorted names of the subdirectories of `directory` that carry a
+ * current temporal run id, excluding `archive`. Returns an empty list when the
+ * directory does not exist.
+ */
 export function activeWorkflowDirectoryNames(directory: string): string[] {
   if (!existsSync(directory)) {
     return []
@@ -74,6 +79,12 @@ function referenceCandidates(
   })
 }
 
+/**
+ * For each closed run, rewrite stale invocation ids quoted in the run's own
+ * inbox items to the final sequenced ids and return a summary. A file with an
+ * ambiguous reference is reported and left unchanged, and a run whose state
+ * file cannot be read is skipped with its reason.
+ */
 export function repairWorkflowInboxReferences(
   root = findProjectRoot(),
 ): WorkflowReferenceRepairSummary {

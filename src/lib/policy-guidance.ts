@@ -53,6 +53,10 @@ export function guidanceInlineHeading(
   return `${'#'.repeat(level)} Unrolled guidance · \`${sourcePath}\``
 }
 
+/**
+ * Return the `sha256:<hex>` token a card prints for a guidance reference's
+ * content digest.
+ */
 export function guidanceDigestToken(
   reference: PolicyGuidanceReference,
 ): string {
@@ -81,6 +85,11 @@ export const CONTEXT_REFERENCE_DIGEST_OWNERSHIP =
   '`Reference status` reports the result. Read the source file directly and ' +
   'do not recompute the digest.'
 
+/**
+ * Describe the heading range a guidance reference selects, as the Markdown
+ * phrase a card prints (for example "from `A` to the end of the file", or "the
+ * complete file").
+ */
 export function guidanceSelectedRange(
   reference: PolicyGuidanceReference,
 ): string {
@@ -136,6 +145,10 @@ export function renderGuidanceBlock(
   ]
 }
 
+/**
+ * Return the `sha256:<hex>` token a card prints for a context reference's
+ * content digest.
+ */
 export function contextReferenceDigestToken(
   reference: ContextReference,
 ): string {

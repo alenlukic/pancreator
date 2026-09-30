@@ -92,18 +92,32 @@ export interface RuntimeMutableFileSet {
   paths: string[] | null
 }
 
+/**
+ * Create a lazy index of the mutable runtime files under `runtimeRoot`. The
+ * file list is built on first use and kept current as maintenance passes move
+ * directories, so passes share one traversal.
+ */
 export function createRuntimeMutableFileSet(
   runtimeRoot: string,
 ): RuntimeMutableFileSet {
   return { runtime_root: runtimeRoot, paths: null }
 }
 
+/**
+ * Return the index's mutable runtime file paths, building the list on first
+ * call.
+ */
 export function runtimeMutablePaths(index: RuntimeMutableFileSet): string[] {
   index.paths ??= mutableRuntimeFiles(index.runtime_root)
 
   return index.paths
 }
 
+/**
+ * Update an already-built index after a move: paths equal to `source` or under
+ * it are rewritten to `target`. Does nothing when the index is absent or not
+ * yet built.
+ */
 export function relocateRuntimeMutablePaths(
   index: RuntimeMutableFileSet | undefined,
   source: string,
@@ -141,6 +155,11 @@ function migratableDirectoryNames(root: string, directory: string): string[] {
     .sort()
 }
 
+/**
+ * Rename `parent/oldName` to `parent/newName` and update the mutable file
+ * index. Does nothing when the names are equal; throws `PanError`
+ * `MIGRATION_COLLISION` when the target exists.
+ */
 export function moveDirectory(
   parent: string,
   oldName: string,
@@ -221,6 +240,15 @@ function removeEmptyHelpDirectory(logRoot: string): number {
   return 1
 }
 
+/**
+ * Migrate legacy run directory names under `runtime/logs/workflows` and
+ * `runtime/workflows` to current temporal run ids: rewrite references in
+ * mutable runtime files, rename the directories, and renumber each run's
+ * artifacts for its status. Also removes an empty stray `--help` log directory.
+ * Throws `PanError` `MIGRATION_COLLISION`, `INVALID_WORKFLOW_MIGRATION`, or
+ * `INVALID_RUNTIME_DIRECTORY` when a non-empty `--help` directory needs manual
+ * review.
+ */
 export function migrateWorkflowNames(
   root = findProjectRoot(),
   mutableFileSet = createRuntimeMutableFileSet(path.join(root, 'runtime')),

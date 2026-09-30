@@ -408,6 +408,14 @@ function resolveRole(
     : { role: 'unbound', mode: 'unbound' }
 }
 
+/**
+ * Handle a prompt-submit hook payload: infer the conversation's reminder role
+ * from the prompt, the stored conversation role, and live runs, record that
+ * role in the turn reminder state file, and return the rendered governance
+ * reminder as `additional_context`. Returns only `{ continue: true }` for other
+ * hook events, headless horizon starts, named orchestrator prompts, and any
+ * error, so the hook never blocks a prompt.
+ */
 export function resolvePromptContext(
   root: string,
   payloadText: string,

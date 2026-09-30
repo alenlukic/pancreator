@@ -601,6 +601,17 @@ function listEligibleRuntimePaths(
     .sort()
 }
 
+/**
+ * Scan eligible workspace and harness runtime prose artifacts for conform
+ * issues and return per-file entries with a summary; status is `failed` when
+ * any editable file has an issue. Selects files changed since the
+ * `runtime/cache/conform.json` checkpoint (or since `since_ref`), every
+ * eligible file with `all` or when no checkpoint exists, and checkpointed files
+ * since deleted; `workspace_only` skips runtime files. Reads the checkpoint but
+ * never writes it. Throws `PanError` `INVALID_ARGUMENT` when the workspace is
+ * not a Git repository, when `since_ref` and `all` are both set, or when
+ * `since_ref` does not resolve.
+ */
 export function scanConformArtifacts(
   harnessRoot: string,
   options: ConformScanOptions,
@@ -752,6 +763,14 @@ export function scanConformArtifacts(
   }
 }
 
+/**
+ * Scan every eligible conform artifact and, when no editable file has an issue,
+ * write the content digests to `runtime/cache/conform.json`. Returns `blocked`
+ * without writing when an editable file still has an issue. With
+ * `workspace_only`, keeps the existing runtime entries of the checkpoint.
+ * Throws `PanError` `INVALID_ARGUMENT` on the same conditions as
+ * `scanConformArtifacts`.
+ */
 export function checkpointConformArtifacts(
   harnessRoot: string,
   options: ConformScanOptions,

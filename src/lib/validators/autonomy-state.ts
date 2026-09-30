@@ -25,6 +25,12 @@ const RECOVERY_STEPS = new Set([
   'quarantine',
 ])
 
+/**
+ * Validate the hypervisor agent registry: each agent needs a unique non-empty
+ * `agent_id`, a known health value, and a well-formed recovery record. Raises
+ * `hypervisor.agent.*` codes, or `hypervisor.registry.invalid` when the
+ * registry cannot be read.
+ */
 export function validateHypervisorState(input: HandlerInput): HandlerResult {
   try {
     const registry = readAgentRegistry(input.root)
@@ -125,6 +131,14 @@ function nonEmptyString(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+/**
+ * Validate the away mode decision ledger: each record needs a unique
+ * `decision_id`, author `supervisor`, guardrails whose allowed actions include
+ * its action, a reason, a known blocker type, an `applied` or `failed` result
+ * (a failure with an error), and repository-relative evidence references.
+ * Raises `away.decision.*` codes, or `away.ledger.invalid` when the ledger
+ * cannot be read.
+ */
 export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
   try {
     const records = readAwayDecisionLedger(input.root)

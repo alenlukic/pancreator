@@ -22,6 +22,9 @@ export interface ActiveCard {
 }
 const STANDALONE_SESSION_ROOT = 'runtime/logs/sessions'
 
+/**
+ * Return the live runs of the workspace, most recently updated first.
+ */
 export function liveRuns(root: string): RunState[] {
   return listRunStates(root)
     .filter(runIsLive)
@@ -31,6 +34,10 @@ export function liveRuns(root: string): RunState[] {
     )
 }
 
+/**
+ * Return the operating card `AGENTS.md` with its current SHA-256 digest. Throws
+ * when the file cannot be read.
+ */
 export function fallbackCard(root: string): ActiveCard {
   return {
     path: CARD_PATH,
@@ -107,6 +114,13 @@ function workspaceCard(root: string, card: ActiveCard): ActiveCard {
   }
 }
 
+/**
+ * Return the card a turn reminder cites for a role: for a supervisor role, the
+ * newest live run's supervisor card; for any other role, the newest session
+ * card of `mode` under `runtime/logs/sessions/`. Either falls back to
+ * `AGENTS.md`. In a target installation the path is rewritten to one an agent
+ * in the target workspace can open.
+ */
 export function activeCard(
   root: string,
   role: Exclude<TurnReminderRole, 'none'>,

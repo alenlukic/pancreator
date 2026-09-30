@@ -8,6 +8,11 @@ function issue(code: string, message: string) {
   return { code, message }
 }
 
+/**
+ * Validate a test tuning record file against the tune record shape, reporting
+ * each shape error as `tune-record.invalid`. Throws when the file is not valid
+ * JSON.
+ */
 export function validateTuneRecord(input: HandlerInput): HandlerResult {
   const absolute = path.isAbsolute(input.targetPath)
     ? input.targetPath

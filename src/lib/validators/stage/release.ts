@@ -37,6 +37,14 @@ import {
 } from './evidence.js'
 import { releaseObservationIssues } from './release-observations.js'
 
+/**
+ * Validate a ship stage output's `data.release`: version bump, rationale,
+ * change list against the diff, updated files, rollback, compatibility,
+ * governance review, and release metadata. In self-development with a managed
+ * worktree, also checks the local release and index commits, their order and
+ * ancestry, the branch, a clean worktree, and the PR description. Raises
+ * `release.*` and `git.unavailable` codes.
+ */
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<

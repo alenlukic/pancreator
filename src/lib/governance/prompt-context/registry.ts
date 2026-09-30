@@ -113,6 +113,10 @@ export function turnReminderCardPath(mode: TurnReminderCardMode): string {
   return CARD_MODE_TEMPLATES[mode] ?? CARD_PATH
 }
 
+/**
+ * Throw an `Error` whose message is prefixed with `turn reminder registry:`.
+ * Never returns.
+ */
 export function invalid(message: string): never {
   throw new Error(`turn reminder registry: ${message}`)
 }
@@ -241,6 +245,13 @@ function parseSelector(value: unknown, source: string): TurnReminderSelector {
   invalid(`${source}.type MUST be 'policy' or 'card'.`)
 }
 
+/**
+ * Validate an untyped value as the turn reminder registry and return it typed.
+ * Checks allowed keys, schema version, positive budgets, profile ids, selector
+ * shapes, role-to-profile references (`none` must map to null), and resolves
+ * every profile's inheritance chain. Throws through `invalid` on the first
+ * violation.
+ */
 export function parseTurnReminderRegistry(
   value: unknown,
   source = TURN_REMINDER_REGISTRY_PATH,
@@ -383,12 +394,22 @@ export function parseTurnReminderRegistry(
   return registry
 }
 
+/**
+ * Read and validate `governance/registries/turn_reminder_profiles.json` under
+ * `root`. Throws when the file is missing, is not JSON, or fails
+ * `parseTurnReminderRegistry`.
+ */
 export function loadTurnReminderRegistry(root: string): TurnReminderRegistry {
   return parseTurnReminderRegistry(
     readJson(path.join(root, TURN_REMINDER_REGISTRY_PATH)),
   )
 }
 
+/**
+ * Return the selectors a profile resolves to, inherited selectors first,
+ * following `extends` recursively. Throws through `invalid` on an unknown
+ * profile, an inheritance cycle, or a duplicate selector id across the chain.
+ */
 export function resolveProfileSelectors(
   registry: TurnReminderRegistry,
   profileId: string,

@@ -114,6 +114,18 @@ function sweepRunLocalScripts(runDirectory: string): boolean {
   return true
 }
 
+/**
+ * Move runtime records older than the retention window into their `archive/`
+ * directories and rewrite references to the moved paths in mutable runtime
+ * files. Covers closed workflow runs (their log and state directories),
+ * standalone session and best-of-N directories, completed inbox items (canceled
+ * ones only when selected), and temporal files such as PR descriptions. Deletes
+ * each archived run's `scripts/` directory, keeps a closed run that still owes
+ * an unresolved observation, and returns a summary. Throws `PanError`
+ * `INVALID_RETENTION_DAYS`, `INVALID_ARCHIVE_TIME`, `INVALID_WORKFLOW_ARCHIVE`
+ * when a creation time cannot be determined, or `ARCHIVE_COLLISION` when a
+ * target already exists.
+ */
 export function archiveWorkflowDirectories(
   root = findProjectRoot(),
   options: {

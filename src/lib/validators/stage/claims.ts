@@ -22,6 +22,16 @@ import {
 } from './evidence.js'
 import { planAcceptanceCriterionIds } from './plan-lookups.js'
 
+/**
+ * Validate an implement or remediate stage output against the workspace. A
+ * blocked result needs a complete `data.blocked`, no implementation, empty
+ * acceptance results, and every changed file disclosed in
+ * `workspace_changes.paths`. Otherwise `data.implementation` claims must exist,
+ * match the Git diff of this attempt, predate the output, and disclose every
+ * changed file, and acceptance results must cover each plan acceptance
+ * criterion with evidence. Raises `blocked.*`, `implementation.*`, `claim.*`,
+ * `acceptance.*`, and `git.unavailable` codes.
+ */
 export function validateImplementationClaims(
   input: HandlerInput,
 ): HandlerResult {

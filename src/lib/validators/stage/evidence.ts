@@ -62,6 +62,11 @@ export function modifiedMs(absolute: string): number | null {
   }
 }
 
+/**
+ * Return the absolute workspace root a validator measures: the run state's
+ * `workspace_root` resolved against the harness root, or the harness root when
+ * the run state names none.
+ */
 export function workspaceRootFromInput(input: HandlerInput): string {
   if (
     isRecord(input.runState) &&
@@ -102,6 +107,11 @@ function resolveEvidenceFilesystemPath(
   return path.join(workspaceRoot, candidate)
 }
 
+/**
+ * Resolve a relative path for validation: an absolute path is kept, a path
+ * under `runtime/`, `library/`, or `governance/` resolves against the harness
+ * root, and anything else against the workspace root.
+ */
 export function resolveWorkspaceRelativeFilePath(
   installationRoot: string,
   workspaceRoot: string,
@@ -120,6 +130,12 @@ export function resolveWorkspaceRelativeFilePath(
   return path.join(workspaceRoot, trimmed)
 }
 
+/**
+ * Return the file path an evidence entry names when that file does not exist,
+ * or null when the entry is not a string, names no file path, or the file
+ * exists. Harness-owned prefixes resolve against the harness root and other
+ * paths against the workspace root.
+ */
 export function missingEvidencePath(
   input: HandlerInput,
   entry: unknown,
@@ -151,6 +167,11 @@ type GitDiffResult =
   | { ok: true; files: string[] }
   | { ok: false; error: string }
 
+/**
+ * Run a Git command in `root` with a 30-second timeout and return its trimmed
+ * stdout, or an error message on a spawn failure or a non-zero exit. Never
+ * throws.
+ */
 export function gitOutput(root: string, gitArgs: string[]): GitCommandResult {
   const result = spawnSync('git', gitArgs, {
     cwd: root,
@@ -177,6 +198,11 @@ export function gitOutput(root: string, gitArgs: string[]): GitCommandResult {
   return { ok: true, stdout: result.stdout.trim() }
 }
 
+/**
+ * Return the files that differ from `HEAD` (added, copied, modified, or
+ * renamed) plus untracked files not ignored, or an error when a Git command
+ * fails.
+ */
 export function gitChangedFiles(root: string): GitDiffResult {
   const files = new Set<string>()
 
@@ -212,6 +238,10 @@ export function gitChangedFiles(root: string): GitDiffResult {
   return { ok: true, files: [...files] }
 }
 
+/**
+ * Report whether a changed file is exempt from the spotfix three-file scope
+ * limit: Markdown, `docs/`, `tests/`, test files, and `.cursor/` paths.
+ */
 export function isSpotfixDiffExempt(file: string): boolean {
   if (file.endsWith('.md') || file.endsWith('.mdc')) {
     return true
@@ -241,6 +271,11 @@ function isHarnessBookkeepingPath(file: string): boolean {
   )
 }
 
+/**
+ * Return the workspace files that differ from `HEAD`, as `gitChangedFiles`
+ * does, without harness bookkeeping such as `runtime/`, lock files, and
+ * `validations/` paths.
+ */
 export function workspaceSourceChanges(root: string): GitDiffResult {
   const diff = gitChangedFiles(root)
 
@@ -430,6 +465,10 @@ export function attemptTestDelta(
   return deltas
 }
 
+/**
+ * Build the `git.unavailable` validator issue, stating that Git-backed
+ * validation failed closed with the given error.
+ */
 export function gitUnavailableIssue(
   error: string,
 ): HandlerResult['issues'][number] {
@@ -439,6 +478,11 @@ export function gitUnavailableIssue(
   )
 }
 
+/**
+ * Build a validator issue from a refusal code and message. Every stage
+ * validator reports its refusals through this factory, so repository tests can
+ * inventory the codes each validator raises.
+ */
 export function issue(
   code: string,
   message: string,

@@ -74,6 +74,11 @@ const POLICY_FILE_PATTERN = /governance\/policies\/[A-Z]+-\d{3}\.json/u
 export const EXCLUDE_BEGIN = '# >>> pancreator target extensions >>>'
 export const EXCLUDE_END = '# <<< pancreator target extensions <<<'
 
+/**
+ * Return the installation mode of a target installation. Throws `PanError`
+ * `TARGET_AUTHORING_UNAVAILABLE` in self-development, where target authoring
+ * does not apply.
+ */
 export function installationMode(root: string): CursorInstallationMode {
   const mode = loadProjectConfig(root).installation_mode
 
@@ -86,22 +91,41 @@ export function installationMode(root: string): CursorInstallationMode {
   return mode
 }
 
+/**
+ * Return the absolute target workspace root: `workspace` when given, else the
+ * configured `workspace_root`, resolved against the harness root.
+ */
 export function targetRoot(root: string, workspace?: string): string {
   return path.resolve(root, workspace ?? configuredWorkspaceRoot(root))
 }
 
+/**
+ * Return the absolute directory of a target extension,
+ * `target-extensions/<extension-id>` under the harness root.
+ */
 export function extensionDirectory(root: string, extensionId: string): string {
   return path.join(root, 'target-extensions', extensionId)
 }
 
+/**
+ * Return the harness-relative path of a target extension's `manifest.json`.
+ */
 export function manifestRelativePath(extensionId: string): string {
   return `target-extensions/${extensionId}/manifest.json`
 }
 
+/**
+ * Return the content file name for an extension kind, `<kind>.md`.
+ */
 export function contentFilename(kind: TargetExtensionKind): string {
   return `${kind}.md`
 }
 
+/**
+ * Return the target-relative Cursor path an extension projects to:
+ * `.cursor/commands/<id>.md` for a command, `.cursor/agents/<id>.md` for a
+ * persona, or null for a skill.
+ */
 export function projectionRelativePath(
   kind: TargetExtensionKind,
   extensionId: string,
@@ -117,6 +141,10 @@ export function projectionRelativePath(
   return null
 }
 
+/**
+ * Return the harness-relative path of a persona extension's generated agent
+ * file, or null for any other kind.
+ */
 export function agentRelativePath(
   kind: TargetExtensionKind,
   extensionId: string,
@@ -146,6 +174,14 @@ const DRAFT_KEYS = new Set([
   'expected_manifest_sha256',
 ])
 
+/**
+ * Validate a target authoring draft and return it typed: schema version, id
+ * pattern and reserved Cursor names, kind, required text fields, policy ids,
+ * `model` only on personas, no unknown keys, and kind-specific Markdown rules.
+ * Throws `PanError` `INVALID_TARGET_AUTHORING_DRAFT`,
+ * `RESERVED_TARGET_EXTENSION`, or `INVALID_TARGET_AUTHORING_MARKDOWN` on the
+ * first violation.
+ */
 export function parseDraft(
   value: unknown,
   source: string,
@@ -272,6 +308,11 @@ function validateMarkdown(
   }
 }
 
+/**
+ * Validate a target extension manifest and return it typed, including that its
+ * context, content path, projection path, and agent path match its id and kind.
+ * Throws `PanError` `INVALID_TARGET_EXTENSION` on the first violation.
+ */
 export function parseManifest(
   value: unknown,
   source: string,

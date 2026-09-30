@@ -95,6 +95,10 @@ export const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
   },
 ]
 
+/**
+ * Report whether a handbook policy requirement applies to this installation:
+ * always, unless it is scoped to self-development and the installation is not.
+ */
 export function handbookRequirementApplies(
   requirement: HandbookPolicyRequirement,
   selfDevelopment: boolean,
@@ -138,6 +142,14 @@ function validateHandbookPolicyCoverage(
   return policyIds
 }
 
+/**
+ * Check governance authoring and append error messages to `errors`: every
+ * governance Markdown file declares RFC 2119 semantics, every policy summary
+ * and instruction uses an RFC 2119 directive, static guidance paths are
+ * declared as guidance sources, and each required handbook is delivered by a
+ * policy and reaches its standalone mode. Returns the ids of the policies that
+ * deliver each required handbook.
+ */
 export function validateGovernance(
   root: string,
   catalog: Map<string, Policy>,
@@ -558,6 +570,12 @@ function referencedPolicyIds(policy: Policy): Set<string> {
   return new Set(withoutTestCitations.match(POLICY_REFERENCE_PATTERN) ?? [])
 }
 
+/**
+ * Append an error to `errors` for each policy that names a policy id missing
+ * from the catalog, and for each lookup row that loads a policy without also
+ * loading, through a covering row, every policy it references. Test citations
+ * are not read as policy references.
+ */
 export function validatePolicyLookupDependencies(
   catalog: Map<string, Policy>,
   lookup: PolicyLookupTable,

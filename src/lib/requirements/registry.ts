@@ -130,6 +130,12 @@ export function loadRegistry(root: string): RegistryCatalog {
   return catalog
 }
 
+/**
+ * Check a requirement registry catalog against the known handler ids and return
+ * the error messages: an entry naming an unknown handler, a validator entry not
+ * declared `side_effect_free`, and a known handler no entry references. Empty
+ * when the catalog is consistent.
+ */
 export function validateRegistry(
   catalog: RegistryCatalog,
   knownHandlers: Set<string>,

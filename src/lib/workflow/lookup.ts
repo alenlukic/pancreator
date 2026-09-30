@@ -27,6 +27,10 @@ export function workflowPersonaNames(workflow: WorkflowDefinition): string[] {
   ].sort()
 }
 
+/**
+ * Return the workflow stage with the given slug. Throws `PanError`
+ * `STAGE_NOT_FOUND` when `slug` is null or no stage matches.
+ */
 export function stageBySlug(
   workflow: WorkflowDefinition,
   slug: string | null,
@@ -44,6 +48,11 @@ export function stageBySlug(
   return stage
 }
 
+/**
+ * Return a stage's trimmed prompt text: the inline `prompt`, else the contents
+ * of `prompt_path` resolved inside `root`. Throws `PanError` `INVALID_WORKFLOW`
+ * when the stage declares neither.
+ */
 export function loadStagePrompt(root: string, stage: StageDefinition): string {
   if (typeof stage.prompt === 'string') {
     return stage.prompt.trim()

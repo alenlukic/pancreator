@@ -243,6 +243,13 @@ export function reviewMachineryConflicts(changedPaths: string[]): string[] {
   return [...new Set(conflicts)].sort()
 }
 
+/**
+ * Build the governance closure a review card depends on: the policy files and
+ * guidance sources resolved for the reviewer and shepherd-reviewer personas in
+ * standalone review mode, the persona and projected agent files, and the lookup
+ * and projection registries. A change to any of these paths conflicts with an
+ * independent review.
+ */
 export function buildReviewClosure(root: string): ReviewClosure {
   const policies: Record<string, string> = {}
   const guidance: Record<string, string> = {}
@@ -278,6 +285,13 @@ export function buildReviewClosure(root: string): ReviewClosure {
   }
 }
 
+/**
+ * Classify changed paths against the review closure and return one conflict per
+ * path with its tier and source: `instrument` for review machinery and review
+ * personas, `conduct` for policies, guidance, and registries on the review
+ * card, and `substrate` for verification substrate. Paths outside every tier
+ * are omitted.
+ */
 export function classifyReviewPaths(
   changedPaths: string[],
   closure: ReviewClosure,
@@ -783,6 +797,10 @@ function tierRank(tier: ConflictTier): number {
   return tier === 'instrument' ? 0 : tier === 'conduct' ? 1 : 2
 }
 
+/**
+ * Group review conflicts by tier into `instrument`, `conduct`, and `substrate`
+ * lists, preserving input order.
+ */
 export function conflictsByTier(
   conflicts: ReviewConflict[],
 ): Record<ConflictTier, ReviewConflict[]> {

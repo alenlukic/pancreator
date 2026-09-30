@@ -51,6 +51,13 @@ export interface WorkflowRuntimeMaintenanceProgress {
   file_count: number
 }
 
+/**
+ * Run every runtime maintenance pass in order and return their summaries:
+ * migrate the legacy inbox layout, standardize temporal file names, migrate
+ * workflow run names and suffixes, repair inbox references, then archive
+ * records past retention. Moves and rewrites runtime files; `onProgress`
+ * receives the start and finish of each pass.
+ */
 export function maintainWorkflowRuntime(
   root = findProjectRoot(),
   options: {

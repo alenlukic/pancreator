@@ -157,6 +157,10 @@ function temporalPrefixDate(
   return new Date(startOfDay + (1440 - minutesToEnd) * MILLISECONDS_PER_MINUTE)
 }
 
+/**
+ * Return the creation time a current-format temporal run id encodes, or null
+ * when the id is not in that format or its date parts are invalid.
+ */
 export function currentRunDate(runId: string): Date | null {
   const match = CURRENT_RUN_ID_PATTERN.exec(runId)
 
@@ -165,6 +169,10 @@ export function currentRunDate(runId: string): Date | null {
     : null
 }
 
+/**
+ * Return the creation time a temporal file name prefix encodes, or null when
+ * the name has no valid prefix.
+ */
 export function temporalFileDate(name: string): Date | null {
   const match = TEMPORAL_FILE_NAME_PATTERN.exec(name)
 
@@ -186,6 +194,9 @@ export function temporalNameDate(name: string): Date | null {
   )
 }
 
+/**
+ * Parse a string as a date, returning null for a non-string or an invalid date.
+ */
 export function validDate(value: unknown): Date | null {
   if (typeof value !== 'string') {
     return null
@@ -196,6 +207,11 @@ export function validDate(value: unknown): Date | null {
   return Number.isFinite(date.getTime()) ? date : null
 }
 
+/**
+ * Return when a run was created: `created_at` from its state, else the first
+ * event timestamp, else the time its run id encodes in any supported format.
+ * Returns null when none is available.
+ */
 export function runCreatedAt(root: string, runId: string): Date | null {
   const layout = resolveRunLayout(root, runId)
   const statePath = layout.state.absolute
@@ -229,6 +245,11 @@ export function runCreatedAt(root: string, runId: string): Date | null {
   )
 }
 
+/**
+ * Return the current-format run id for a legacy or day-only run id, reusing its
+ * suffix and using `createdAt` when the id carries only a day. Returns null for
+ * an id in any other format, including the current one.
+ */
 export function migratedRunId(runId: string, createdAt?: Date): string | null {
   const legacy = legacyRunDate(runId)
 
@@ -248,6 +269,11 @@ export function migratedRunId(runId: string, createdAt?: Date): string | null {
   )
 }
 
+/**
+ * Return the run id a directory should carry after migration: the migrated id
+ * for a legacy name, the name itself when it is already current, or null when
+ * it is not a run id.
+ */
 export function migrationTargetRunId(
   root: string,
   runId: string,
@@ -261,6 +287,10 @@ export function migrationTargetRunId(
   return currentRunDate(runId) ? runId : null
 }
 
+/**
+ * Apply string mappings to each text file in place and return how many files
+ * changed.
+ */
 export function updateFileCount(
   files: string[],
   mappings: ReadonlyMap<string, string>,
@@ -272,6 +302,10 @@ export function updateFileCount(
   return updated.size
 }
 
+/**
+ * Build a UTC date from string components, defaulting to noon, or return null
+ * when the components do not form a valid date.
+ */
 export function utcDate(
   year: string,
   month: string,

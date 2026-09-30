@@ -115,6 +115,14 @@ function unresolvedSiblingIntakes(
   return [...unresolved]
 }
 
+/**
+ * Validate a harness repair intake Markdown file: the title and operator lead,
+ * a registered category whose display name and filename slug agree, sibling
+ * intake references that some inbox holds, every required section, unique
+ * `HR-###` findings with their fields, numbered and traceable acceptance
+ * criteria, transcript coverage, and a permitted next action. Raises `repair.*`
+ * codes.
+ */
 export function validateHarnessRepairIntake(
   input: HandlerInput,
 ): HandlerResult {
