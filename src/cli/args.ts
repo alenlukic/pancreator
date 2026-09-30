@@ -23,6 +23,7 @@ import {
   type WorktreeRecord,
 } from '../lib/worktrees.js'
 
+/** The CLI help text, headed by the harness version read from `VERSION` (`unknown` when the file is absent). */
 export function helpText(root: string): string {
   const versionPath = path.join(root, 'VERSION')
   const version = fileExists(versionPath)
@@ -34,6 +35,11 @@ export function helpText(root: string): string {
 ${HELP_BODY}`
 }
 
+/**
+ * The value after the first occurrence of a flag, or `fallback` when the flag
+ * is absent. A flag followed by nothing or by another flag throws
+ * `INVALID_ARGUMENT`.
+ */
 export function option(
   args: string[],
   name: string,
@@ -56,6 +62,10 @@ export function option(
   return value
 }
 
+/**
+ * Every value given for a repeatable flag, in argument order. A missing value
+ * throws `INVALID_ARGUMENT`.
+ */
 export function options(args: string[], name: string): string[] {
   const values: string[] = []
 
@@ -79,6 +89,7 @@ export function options(args: string[], name: string): string[] {
   return values
 }
 
+/** The value, or an `INVALID_ARGUMENT` error naming the missing argument when it is empty or absent. */
 export function requiredArgument(
   value: string | null | undefined,
   name: string,
@@ -106,6 +117,7 @@ export function requiredPositional(
   return value
 }
 
+/** Whether a boolean flag appears anywhere in the arguments. */
 export function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
 }
@@ -376,6 +388,10 @@ export function commaSeparatedOption(
   return items
 }
 
+/**
+ * Every value given for a repeatable flag, in argument order, with the same
+ * missing-value refusal as `options`.
+ */
 export function repeatedOption(args: string[], name: string): string[] {
   const values: string[] = []
 
@@ -399,6 +415,10 @@ export function repeatedOption(args: string[], name: string): string[] {
   return values
 }
 
+/**
+ * Write a command result to stdout: pretty JSON when `asJson` is set or the
+ * value is not a string, else the string with one trailing newline.
+ */
 export function print(value: unknown, asJson = false): void {
   if (asJson || typeof value !== 'string') {
     process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
