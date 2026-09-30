@@ -817,7 +817,8 @@ test('self-test: the fixture helper reaches no engine module', async () => {
   const seen = closureOf(graph, 'tests/fixture-template.ts')
 
   // The run-execution stack. A fixture builder writes files and drives git;
-  // it never needs to know how a run is laid out or advanced.
+  // it never needs to know how a run is laid out or advanced. The engine
+  // facade re-exports `src/lib/engine/`, so every module there counts too.
   const engineModules = [
     'src/cli.ts',
     'src/lib/engine.ts',
@@ -831,7 +832,9 @@ test('self-test: the fixture helper reaches no engine module', async () => {
   const engine = [...seen]
     .filter(
       (file) =>
-        engineModules.includes(file) || file.startsWith('src/lib/validators/'),
+        engineModules.includes(file) ||
+        file.startsWith('src/lib/engine/') ||
+        file.startsWith('src/lib/validators/'),
     )
     .sort()
 

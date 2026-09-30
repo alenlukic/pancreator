@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, readdirSync, renameSync } from 'node:fs'
 import path from 'node:path'
 
-import { createRun } from '../engine.js'
+import { createRun } from '../engine/create-run.js'
 import type { DeliveryAutostartResult } from '../cohorts.js'
 import { driveRun } from '../headless-driver.js'
 import { PanError } from '../errors.js'

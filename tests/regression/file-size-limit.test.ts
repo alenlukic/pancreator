@@ -28,7 +28,6 @@ const PENDING_SPLIT = new Set([
   'src/lib/cursor-handoff/driver.ts',
   'src/lib/debloat/graph.ts',
   'src/lib/debloat/usage.ts',
-  'src/lib/engine.ts',
   'src/lib/evals/graders.ts',
   'src/lib/git.ts',
   'src/lib/governance-card.ts',

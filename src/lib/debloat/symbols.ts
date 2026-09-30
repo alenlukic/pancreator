@@ -99,9 +99,9 @@ function externalConsumerFiles(root: string): string[] {
  * Source file each unambiguous basename belongs to.
  *
  * A bare filename is the only shape a run-time path expression leaves behind:
- * `src/lib/engine.ts` holds `'openai-agent-cli.js'` and joins it to a
- * directory computed elsewhere. A basename two sources share proves nothing
- * about either, so only a unique one resolves.
+ * `src/lib/engine/executors.ts` holds `'openai-agent-cli.js'` and joins it
+ * to a directory computed elsewhere. A basename two sources share proves
+ * nothing about either, so only a unique one resolves.
  */
 function sourceByBasename(files: readonly string[]): Map<string, string> {
   const owners = new Map<string, string | null>()

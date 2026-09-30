@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import path from 'node:path'
 
-import { prepareInvocation } from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine/prepare.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import { makeOutput, writeCanonicalDelegation, writeJson } from '../helpers.js'
 import { submitAsSupervisor } from '../run-helpers.js'

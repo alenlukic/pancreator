@@ -1,7 +1,7 @@
 import { copyFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
-import { createRun } from './engine.js'
+import { createRun } from './engine/create-run.js'
 import { errorMessage, invariant, PanError } from './errors.js'
 import { parsePersonaMapping } from './executors/mapping.js'
 import {

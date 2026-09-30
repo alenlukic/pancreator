@@ -5,10 +5,10 @@ import { readAwayDecisionLedger } from './away-mode.js'
 import {
   decideRunAsAway,
   liftOperatorOnlyPauseForHorizon,
-  resumeRunAsAway,
-  setRunStageAsAway,
-  waiveGate,
-} from './engine.js'
+} from './engine/decide.js'
+import { resumeRunAsAway } from './engine/pause-resume.js'
+import { setRunStageAsAway } from './engine/set-stage.js'
+import { waiveGate } from './engine/waive-gate.js'
 import { errorMessage } from './errors.js'
 import { runCursorAgentJson } from './executors/cursor-agent.js'
 import {

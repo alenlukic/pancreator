@@ -8,7 +8,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
-import { setRunStage } from '../../src/lib/engine.js'
+import { setRunStage } from '../../src/lib/engine/set-stage.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation, RunState } from '../../src/lib/types.js'
 import { readLaunchRecord } from '../../src/lib/watch/launch.js'
