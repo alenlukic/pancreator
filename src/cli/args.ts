@@ -207,6 +207,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'away',
   'cohort',
   'best-of-n',
+  'docs',
   'briefs',
   'conform',
   'context',

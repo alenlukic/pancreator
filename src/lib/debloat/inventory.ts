@@ -122,6 +122,7 @@ export const EDIT_ONLY_PATHS: readonly string[] = [
   'src/cli/checks.ts',
   'src/cli/context.ts',
   'src/cli/diagnostics.ts',
+  'src/cli/docs.ts',
   'src/cli/governance.ts',
   'src/cli/orchestration.ts',
   'src/cli/release.ts',
