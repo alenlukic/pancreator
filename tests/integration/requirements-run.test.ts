@@ -69,6 +69,49 @@ test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-00
   assert.equal(result.requirement_id, 'spotfix-validate')
 })
 
+test('requirements run reads an absolute --target inside or outside the root', () => {
+  const root = createFixture()
+  const elsewhere = createFixture()
+  const relativePath = 'runtime/inbox/spotfix-outcome.md'
+  const runWithTarget = (target: string): { status: string } => {
+    const stdout = execFileSync(
+      process.execPath,
+      [
+        CLI,
+        'requirements',
+        'run',
+        '--persona',
+        'spotfixer',
+        '--workflow',
+        'standalone',
+        '--stage',
+        'spotfix',
+        '--kind',
+        'spotfix',
+        '--registry',
+        'SPOTFIX-VALIDATE-001',
+        '--target',
+        target,
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8' },
+    )
+
+    return JSON.parse(stdout) as { status: string }
+  }
+
+  writeFileSync(path.join(root, relativePath), SPOTFIX_OUTCOME)
+  writeFileSync(path.join(elsewhere, relativePath), SPOTFIX_OUTCOME)
+
+  assert.equal(runWithTarget(relativePath).status, 'passed')
+  assert.equal(runWithTarget(path.join(root, relativePath)).status, 'passed')
+  // A run from a worktree reads the intake in the checkout that holds it.
+  assert.equal(
+    runWithTarget(path.join(elsewhere, relativePath)).status,
+    'passed',
+  )
+})
+
 test('requirements run preserves ambiguity when duplicate required bindings remain', () => {
   const root = createFixture()
   const targetPath = 'runtime/inbox/spotfix-outcome.md'

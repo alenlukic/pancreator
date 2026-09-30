@@ -4365,10 +4365,16 @@ async function main(): Promise<void> {
           option(args, '--registry'),
           '--registry',
         )
-        const targetPath = requiredArgument(
+        const targetArgument = requiredArgument(
           option(args, '--target') ?? invocation?.output.path ?? null,
           '--target',
         )
+        // Handlers join the target to the root, and `path.join` appends an
+        // absolute second argument instead of honoring it. A path relative to
+        // the root reads the same file, including one outside the root.
+        const targetPath = path.isAbsolute(targetArgument)
+          ? path.relative(root, targetArgument)
+          : targetArgument
         let validatorInvocation: Record<string, unknown> | undefined =
           invocation
             ? (invocation as unknown as Record<string, unknown>)
