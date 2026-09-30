@@ -257,6 +257,29 @@ export function gitShowFile(
   return result.status === 0 ? result.stdout : null
 }
 
+/**
+ * Commits that changed one path, newest first, at most `limit` of them. An
+ * empty list means the path has no history or Git cannot answer.
+ */
+export function gitPathCommits(
+  root: string,
+  relativePath: string,
+  limit: number,
+): string[] {
+  const result = runGit(
+    root,
+    ['log', '--format=%H', `--max-count=${limit}`, '--', relativePath],
+    { allowFailure: true },
+  )
+
+  return result.status === 0
+    ? result.stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    : []
+}
+
 export function gitBranchExists(root: string, branch: string): boolean {
   const result = runGit(
     root,

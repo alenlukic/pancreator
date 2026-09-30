@@ -7543,9 +7543,12 @@ export function submitOutput(
 
       // Referenced delivery gives the harness no way to observe the read itself,
       // so the declared attestation is the observable and it is checked exactly.
+      // The contract file is re-hashed here as well: the worker is told not to
+      // recompute the digest, so the harness owns that comparison.
       const attestation = validateInvocationAttestation(
         invocation,
         submittedValue,
+        { root },
       )
       const attestationArtifactPath = attestationValidationPath(
         runId,
@@ -10815,7 +10818,8 @@ export function validateOutputForSubmission(
 
   if (invocation.contract_manifest) {
     checks.push(
-      ...validateInvocationAttestation(invocation, effectiveValue).checks,
+      ...validateInvocationAttestation(invocation, effectiveValue, { root })
+        .checks,
     )
   }
 

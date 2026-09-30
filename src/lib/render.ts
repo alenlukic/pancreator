@@ -25,7 +25,7 @@ import type {
   RunState,
   SuiteProfileSummary,
 } from './types.js'
-import { DELEGATION_HEADING, normalizeMarkdownContent } from './validation.js'
+import { DELEGATION_HEADING, normalizeContractMarkdown } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
 import { DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION } from './workspace-attribution.js'
 import { latestHandoffStatus } from './supervisor-handoff.js'
@@ -50,13 +50,6 @@ export interface InvocationContractBlock {
   owner: InvocationContractSectionOwner
   markdown: string
   line_count: number
-}
-
-/** Normalize to LF with exactly one final newline. */
-function normalizeContract(markdown: string): string {
-  const normalized = normalizeMarkdownContent(markdown)
-
-  return normalized.endsWith('\n') ? normalized : `${normalized}\n`
 }
 
 function sectionSlug(heading: string): string {
@@ -85,7 +78,7 @@ function sectionId(index: number, heading: string): string {
 export function splitInvocationContract(
   markdown: string,
 ): InvocationContractBlock[] {
-  const lines = normalizeContract(markdown).slice(0, -1).split('\n')
+  const lines = normalizeContractMarkdown(markdown).slice(0, -1).split('\n')
   const groups: Array<{ heading: string; lines: string[] }> = []
 
   for (const line of lines) {
@@ -145,7 +138,7 @@ export function buildInvocationContractManifest(
   markdown: string,
   policies: Policy[] = [],
 ): InvocationContractManifest {
-  const contract = normalizeContract(markdown)
+  const contract = normalizeContractMarkdown(markdown)
   const blocks = splitInvocationContract(contract)
   const guidance = manifestGuidance(policies)
 
@@ -326,9 +319,12 @@ export function renderInvocationDeliveryPrompt(
     '## How to read the contract',
     '',
     `1. Read \`${manifest.contract_path}\` in full, from line 1 to line ${manifest.line_count}.`,
-    '2. Compare the digest of that file with the digest above.',
-    '3. Read no other repository context before the contract.',
-    '4. When the file is unreadable, or the digest differs, stop and report a reference failure.',
+    '2. Read no other repository context before the contract.',
+    '3. When the file is unreadable, stop and report a reference failure.',
+    '',
+    'The harness wrote the contract and the digest above together, and it ' +
+      're-hashes the contract file when you submit. Do not recompute the ' +
+      'digest; the scaffold already copies it into the attestation.',
     '',
     '## Contract sections',
     '',
@@ -369,9 +365,11 @@ export function renderInvocationDeliveryPrompt(
           '## Referenced guidance',
           '',
           'The contract references policy guidance instead of inlining it. ' +
-            'Read each selection from its source file; when the file no ' +
-            'longer matches its digest, read the exact selected bytes from ' +
-            'the invocation JSON snapshot. The scaffold prefills one ' +
+            'Read each selection directly from its source file. The harness ' +
+            'computed each digest below when it wrote the contract, so do ' +
+            'not recompute it. Read the exact selected bytes from the ' +
+            'invocation JSON snapshot only when the source file is missing ' +
+            'or unreadable. The scaffold prefills one ' +
             '`invocation_attestation.guidance` entry per selection, with ' +
             'both prose fields empty. Each entry takes exactly one of two ' +
             'shapes, and the field differs between them:',
