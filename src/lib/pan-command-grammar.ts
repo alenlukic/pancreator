@@ -40,6 +40,8 @@ export const HELP_BODY = `Usage:
       Record the identity the platform returned for one launched worker. The harness otherwise watches a worker only through the files it writes, so a worker that died before its first write is indistinguishable from one that was never launched.
   pan worker state <run-id> [--invocation <invocation-id>] [--role <evidence-role>] [--json]
       Report the last known state of every recorded worker: the handle, the launch time, how long ago that was, each declared path with its producer and its state on disk, and whether the worker has written anything at all. An evidence worker's brief is harness-written and never counts as the worker's own output, so a worker that wrote nothing reports that state rather than an error, and a path nobody has written is named rather than omitted.
+  pan worker profile [--days <1..365>] [--json]
+      Read-only per-stage worker efficiency from the local Cursor transcripts of the last --days days (default 7): workers, turns, tool calls by tool, file reads, partial reads and re-reads with the most re-read files, shell browsing calls, inline Python scripts, self-run checks by kind, unfiltered test output, paperwork calls (output scaffold and validate, digest commands), and the turn of the first source edit. It emits counts and repository-relative paths only, never transcript content, email addresses, or conversation ids.
   pan submit <run-id> <output-json> [--worktree <name>]
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject|revise|landed> [--note <text> | --note-file <path>] [--stage <stage-slug>] [--worktree <name>] [--json]

@@ -214,13 +214,13 @@ export function conversationKeyFromId(id: string): string {
   return createHash('sha256').update(id).digest('hex')
 }
 
-interface WorkerBrief {
+export interface WorkerBrief {
   run_id: string
   invocation_id: string
   role: string
 }
 
-interface TranscriptEvidence {
+export interface TranscriptEvidence {
   id: string
   parent_id: string | null
   command: string | null
@@ -231,13 +231,13 @@ interface TranscriptEvidence {
   at_ms: number
 }
 
-interface AttributionRoot {
+export interface AttributionRoot {
   harness_root: string
   workspace_root: string
   embedded: boolean
 }
 
-interface WorkflowIdentity {
+export interface WorkflowIdentity {
   run_id: string
   persona: string
   stage: string | null
@@ -246,7 +246,7 @@ interface WorkflowIdentity {
   remedial: boolean
 }
 
-interface RunEvidence {
+export interface RunEvidence {
   run_id: string
   state: Record<string, unknown>
   current_stage: string | null
@@ -254,13 +254,13 @@ interface RunEvidence {
   timeline: Array<{ at_ms: number; stage: string | null }>
 }
 
-interface RunStorage {
+export interface RunStorage {
   state: string
   events: string
   invocation: (invocationId: string) => string
 }
 
-interface WorkflowEvidence {
+export interface WorkflowEvidence {
   runs: RunEvidence[]
   workers: Map<string, WorkflowIdentity>
   storages: Map<string, RunStorage>
@@ -399,7 +399,7 @@ function listRecursively(
   return files
 }
 
-function cursorProjectDirectory(
+export function cursorProjectDirectory(
   workspaceRoot: string,
   projectsRoot = path.join(os.homedir(), '.cursor', 'projects'),
 ): string {
@@ -453,7 +453,7 @@ function openingText(content: string): string {
     .join('\n')
 }
 
-function transcriptBrief(content: string): WorkerBrief | null {
+export function transcriptBrief(content: string): WorkerBrief | null {
   const opening = openingText(content)
 
   for (const pattern of BRIEF_REFERENCE_PATTERNS) {
@@ -523,7 +523,7 @@ function transcriptTimestamp(content: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-function attributionRoots(root: string): {
+export function attributionRoots(root: string): {
   roots: AttributionRoot[]
   warnings: string[]
 } {
@@ -601,7 +601,7 @@ function attributionRoots(root: string): {
   return { roots, warnings }
 }
 
-function readTranscripts(
+export function readTranscripts(
   roots: AttributionRoot[],
   windowStartMs: number,
   override: string | null | undefined,
@@ -1161,57 +1161,12 @@ export async function collectSpendRecords(
     options.transcriptsRoot,
     options.cursorProjectsRoot,
   )
-  const workflowRoots =
-    options.transcriptsRoot === undefined
-      ? roots.map((item) => item.harness_root)
-      : [root]
-  const workflow = workflowRoots.reduce(
-    (aggregate, harnessRoot) => {
-      const evidence = readWorkflowEvidence(harnessRoot)
-
-      aggregate.runs.push(...evidence.runs)
-
-      for (const [handle, identity] of evidence.workers) {
-        aggregate.workers.set(handle, identity)
-      }
-
-      for (const [runId, storage] of evidence.storages) {
-        aggregate.storages.set(runId, storage)
-      }
-
-      return aggregate
-    },
-    {
-      runs: [] as RunEvidence[],
-      workers: new Map<string, WorkflowIdentity>(),
-      storages: new Map<string, RunStorage>(),
-    },
+  const workflow = resolveTranscriptWorkflow(
+    root,
+    roots,
+    transcripts,
+    options.transcriptsRoot,
   )
-
-  for (const transcript of transcripts.values()) {
-    const brief = transcript.brief
-    const storage =
-      brief === null ? undefined : workflow.storages.get(brief.run_id)
-
-    if (
-      brief === null ||
-      storage === undefined ||
-      workflow.workers.has(transcript.id)
-    ) {
-      continue
-    }
-
-    const identity = workerIdentity(
-      brief.run_id,
-      storage,
-      brief.invocation_id,
-      brief.role,
-    )
-
-    if (identity !== null) {
-      workflow.workers.set(transcript.id, identity)
-    }
-  }
 
   const supervisorCommands = readSupervisorCommands(root)
   const records: SpendRecord[] = []
@@ -1274,6 +1229,73 @@ export async function collectSpendRecords(
     },
     warnings: attributionWarnings,
   }
+}
+
+/**
+ * Workflow records of every attribution root, with each worker transcript
+ * mapped to the run identity its recorded handle or opening brief names.
+ * A transcript override reads only this checkout's records, because the
+ * override replaces every root's transcripts with one directory.
+ */
+export function resolveTranscriptWorkflow(
+  root: string,
+  roots: AttributionRoot[],
+  transcripts: Map<string, TranscriptEvidence>,
+  transcriptsOverride: string | null | undefined,
+): WorkflowEvidence {
+  const workflowRoots =
+    transcriptsOverride === undefined
+      ? roots.map((item) => item.harness_root)
+      : [root]
+  const workflow = workflowRoots.reduce(
+    (aggregate, harnessRoot) => {
+      const evidence = readWorkflowEvidence(harnessRoot)
+
+      aggregate.runs.push(...evidence.runs)
+
+      for (const [handle, identity] of evidence.workers) {
+        aggregate.workers.set(handle, identity)
+      }
+
+      for (const [runId, storage] of evidence.storages) {
+        aggregate.storages.set(runId, storage)
+      }
+
+      return aggregate
+    },
+    {
+      runs: [] as RunEvidence[],
+      workers: new Map<string, WorkflowIdentity>(),
+      storages: new Map<string, RunStorage>(),
+    },
+  )
+
+  for (const transcript of transcripts.values()) {
+    const brief = transcript.brief
+    const storage =
+      brief === null ? undefined : workflow.storages.get(brief.run_id)
+
+    if (
+      brief === null ||
+      storage === undefined ||
+      workflow.workers.has(transcript.id)
+    ) {
+      continue
+    }
+
+    const identity = workerIdentity(
+      brief.run_id,
+      storage,
+      brief.invocation_id,
+      brief.role,
+    )
+
+    if (identity !== null) {
+      workflow.workers.set(transcript.id, identity)
+    }
+  }
+
+  return workflow
 }
 
 /** Aggregate spend records into totals, daily series, slices, and coverage. */

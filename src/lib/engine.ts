@@ -355,6 +355,7 @@ import {
   DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION,
   recordWorkspaceAttribution,
 } from './workspace-attribution.js'
+import { workerInvocationSuiteCost } from './worker-profile.js'
 
 /**
  * Persona-to-model map that replaces the active pipeline config for one run.
@@ -7766,6 +7767,34 @@ export function submitOutput(
         criterion: FAST_WALL_CRITERION_ID,
         intake_path: intakePath,
         evidence_path: suiteCostResult.evidence_path ?? null,
+      })
+    }
+
+    // A source stage's worker iterates on the impacted profile. A gate
+    // profile it runs itself, or a file it reads through the shell, spends
+    // turns and context the exit gate and the file tools already cover, so
+    // each submission records that count where the run audit reads it.
+    const workerCost =
+      stage.workspace_policy === 'source_allowed'
+        ? workerInvocationSuiteCost(
+            root,
+            runId,
+            invocation.invocation_id,
+            Date.parse(
+              state.current_invocation.prepared_at ?? invocation.created_at,
+            ),
+          )
+        : null
+
+    if (workerCost) {
+      advise('suite_cost', [workerCost.message])
+      persistRun(root, state, 'suite_cost_advisory', {
+        scope: 'worker_invocation',
+        stage: stage.slug,
+        invocation_id: invocation.invocation_id,
+        worker_gate_profiles: workerCost.worker_gate_profiles,
+        shell_browsing_calls: workerCost.shell_browsing_calls,
+        transcript_found: workerCost.transcript_found,
       })
     }
 
