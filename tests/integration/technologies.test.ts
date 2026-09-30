@@ -4,7 +4,10 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { detectWorkspaceTechnologies } from '../../src/lib/technologies.js'
+import {
+  detectObservabilityTools,
+  detectWorkspaceTechnologies,
+} from '../../src/lib/technologies.js'
 import { createTestTempDirectory } from '../temp.js'
 
 function createTechnologyFixture(): string {
@@ -104,6 +107,68 @@ test('uses tracked source evidence in git workspaces', () => {
       languages: [{ id: 'typescript', evidence: ['src/tracked.ts'] }],
       unsupported_evidence: ['src/tracked.rs'],
     })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('detects observability tools from tracked config files and manifests', () => {
+  const root = createTechnologyFixture()
+
+  try {
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({
+        dependencies: { '@sentry/node': '^8.0.0', express: '^4.0.0' },
+        devDependencies: { '@opentelemetry/api': '^1.0.0' },
+      }),
+    )
+    writeFileSync(
+      path.join(root, 'requirements-prod.txt'),
+      'flask==3.0\nddtrace>=2.0\n',
+    )
+    writeFileSync(path.join(root, 'sentry.client.config.ts'), 'export {}\n')
+    mkdirSync(path.join(root, 'deploy'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'deploy', 'otel-collector-config.yaml'),
+      'receivers: {}\n',
+    )
+    // Untracked, so it is no evidence.
+    writeFileSync(path.join(root, 'datadog.yaml'), 'api_key: x\n')
+
+    git(root, ['init', '-q'])
+    git(root, [
+      'add',
+      'config.json',
+      'package.json',
+      'requirements-prod.txt',
+      'sentry.client.config.ts',
+      'deploy/otel-collector-config.yaml',
+    ])
+
+    assert.deepEqual(detectObservabilityTools(root), [
+      { id: 'datadog', evidence: ['requirements-prod.txt'] },
+      {
+        id: 'opentelemetry',
+        evidence: ['deploy/otel-collector-config.yaml', 'package.json'],
+      },
+      { id: 'sentry', evidence: ['package.json', 'sentry.client.config.ts'] },
+    ])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('reports no observability tool when none is declared', () => {
+  const root = createTechnologyFixture()
+
+  try {
+    writeFileSync(
+      path.join(root, 'pyproject.toml'),
+      '[project]\ndependencies = ["requests"]\n',
+    )
+
+    assert.deepEqual(detectObservabilityTools(root), [])
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

@@ -213,6 +213,14 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     disposal: 'retain',
   },
   {
+    // `pan observations resolve` appends here; a lost line would reopen an
+    // observation the audit already confirmed or refuted.
+    name: 'observation-resolutions',
+    paths: ['runtime/observations'],
+    age_source: 'none',
+    disposal: 'retain',
+  },
+  {
     name: 'spend-ledger',
     paths: ['runtime/spend'],
     age_source: 'none',

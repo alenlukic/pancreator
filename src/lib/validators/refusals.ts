@@ -589,6 +589,24 @@ export const RELEASE_REFUSALS: readonly StageRefusal[] = [
     paths: ['data.release.deferred_acceptance_criteria[]'],
   },
   {
+    code: 'release.observation_shape',
+    paths: [
+      'data.release.observations[]',
+      'data.release.observations[].criterion',
+      'data.release.observations[].signal',
+      'data.release.observations[].source',
+      'data.release.observations[].window',
+      'data.release.observations[].check',
+    ],
+  },
+  {
+    code: 'release.observation_missing',
+    paths: [
+      'data.release.observations[]',
+      'data.release.observations[].criterion',
+    ],
+  },
+  {
     code: 'release.follow_up_shape',
     paths: [
       'data.release.follow_up_cases[]',
@@ -1061,7 +1079,11 @@ export function stageValidatorRefusals(
       sources: [
         {
           file: STAGE_VALIDATORS_MODULE,
-          functions: ['validateReleaseOutput', 'gitUnavailableIssue'],
+          functions: [
+            'validateReleaseOutput',
+            'releaseObservationIssues',
+            'gitUnavailableIssue',
+          ],
         },
       ],
       refusals: RELEASE_REFUSALS,

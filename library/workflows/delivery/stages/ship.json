@@ -80,7 +80,7 @@
       "id": "ship.release_packet_complete",
       "type": "judgment",
       "hard": true,
-      "statement": "The release packet accurately summarizes scope, validation, risks, warnings routed to the inbox, and rollback."
+      "statement": "The release packet accurately summarizes scope, validation, risks, warnings routed to the inbox, rollback, and one post-ship observation for each criterion verify deferred to observation."
     },
     {
       "id": "ship.release_metadata_updated",

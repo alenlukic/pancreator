@@ -41,7 +41,11 @@ transcripts in addition to generated run records and explicitly account for any
 transcript that cannot be retrieved. Build the efficiency profile of every
 workflow run the audit covers, and run `{{PANCREATOR_PAN_COMMAND}} spend --days 7 --json` on every audit
 to judge spend against the value it bought, without being directed; follow the
-efficiency and spend guidance the repair card references. Run the policy-bound
+efficiency and spend guidance the repair card references. Run
+`{{PANCREATOR_PAN_COMMAND}} observations --json` on every audit, check each due
+item against its named source, file a refuted item as a regression finding,
+and report every verdict; the supervising repair session resolves the items
+after validation. Run the policy-bound
 `HARNESS-REPAIR-VALIDATE-001` validator against each declared intake before you
 represent that intake as ready. When the repair card supplies registered
 installation roots, classify each queued item you examine as harness-directed

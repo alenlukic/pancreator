@@ -60,6 +60,7 @@ For embedded and detached target installations only, also include:
 
 8. `## Frontend visual inspection` with source-verified startup, route or state, and applicable isolated browser-inspection guidance when a relevant client exists. Write an explicit `Not applicable` result when none is found.
 9. `## Major workflows and data flows` documenting each source-identified major workflow or data flow as ordered steps. Every step states input data shape, an abbreviated source-derived business-logic excerpt, and output data shape. Write an explicit `None identified` result when bounded inspection finds none. Do not fabricate absent frontend or flow content.
+10. `## Observability` naming each tool in the detector's `observability` list with its evidence paths. For each tool, state the query an operator or agent runs to check a signal. Examples are a Sentry issue search, a Datadog log or APM query, or the backend an OpenTelemetry collector exports to. Write `None detected` when the list is empty. A ship observation names this tool and query, and nothing queries the tool automatically.
 
 Both external-only sections are checked deterministically against a fixed heading and bold-label shape. `LIBRARIAN-001` on the active card states those labels. Write them verbatim with each value on the same line as its label rather than paraphrasing them.
 

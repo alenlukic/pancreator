@@ -115,8 +115,9 @@ requires `--apply` to mutate state. The class table covers workflow and
 standalone runs, best-of-N and cohort sessions, traces, evaluations, horizon,
 hypervisor, away mode, event logs, terminal inbox history, PR descriptions,
 research, benchmarks, scratch, and managed worktrees. Cache checkpoints,
-`runtime/release/allocations.jsonl`, and `runtime/repository-checks.json` are
-durable retained classes.
+`runtime/release/allocations.jsonl`, the observation resolution ledger under
+`runtime/observations/`, and `runtime/repository-checks.json` are durable
+retained classes.
 
 The plan lists every action the apply performs, and the apply performs no
 action the plan omitted. Deletion runs first and removes exactly the expired
@@ -554,6 +555,12 @@ At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's decl
 `./bin/pan decide <run-id> landed --note "<directive>"` closes a run at the `ship` stage as `succeeded` after the operator landed its release on `pan-dev` outside the stage. It runs only for an operator, for a run that is `awaiting_operator` or `paused` at ship, and it needs a non-empty note. The command reads the run's landing from `runtime/release/landing.jsonl` (the newest session of this run and worktree that reached `fast_forward`) and refuses with `RELEASE_LANDING_NOT_FOUND` when none exists, and with `RELEASE_LANDING_NOT_ON_INTEGRATION` when the landed commit is not an ancestor of `pan-dev`.
 
 It stores `release_landing` on the run state (`version`, `release_commit`, `index_commit`, `tip_before`, `tip_after`, `verified_profiles`, `verification_basis`, `landed_at`, `landing_token`, `directive_note`, `recorded_at`), appends a `release_landed` event with the same fields, and then the usual `operator_decision_recorded` event with `decision: landed`. The run ends `succeeded`, so `pan status` no longer lists it as pending.
+
+## Post-ship observations
+
+A ship output records `data.release.observations[]`, one entry per acceptance criterion the run's latest successful verify output marks `result: observe`. Each entry is `{ criterion, signal, source, window, check }`, all non-empty strings, and `RELEASE-VALIDATE-001` refuses a missing or incomplete entry with `release.observation_missing` or `release.observation_shape`. A run whose verify output defers nothing, including every run created before the `observe` proof type, needs no entry.
+
+`./bin/pan observations` reads the latest successful ship output of every run under `runtime/logs/workflows/`. Each item carries `run_id`, `criterion`, `signal`, `source`, `window`, `check`, `shipped_at` (that ship submission's `submitted_at`), `due_at` (`shipped_at` plus a `<n>h`, `<n>d`, or `<n>w` window, or null), and `status`: `open` before `due_at`, and `due` after it or when the window does not parse. `./bin/pan observations resolve` appends `{ schema_version: 1, run_id, criterion, status: confirmed|refuted, note, intake?, resolved_at }` to `runtime/observations/resolutions.jsonl` under a mutex. It refuses an unknown run (`RUN_NOT_FOUND`), an unknown criterion (`OBSERVATION_NOT_FOUND`), a second resolution (`OBSERVATION_ALREADY_RESOLVED`), and a refutation without an existing `--intake` file (`OBSERVATION_INTAKE_REQUIRED`, `OBSERVATION_INTAKE_NOT_FOUND`). A resolved item appears only under `--all`.
 
 ## Operator stage repair
 

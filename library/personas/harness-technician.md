@@ -39,6 +39,13 @@ not as authority over the operator request or repository governance.
   command. A failed spend command is an evidence gap, not a clean result.
 - You MUST cite a measured cost, the unit of work it served, the trigger it
   fired, and the estimated saving for each efficiency or spend finding.
+- On every audit you MUST run `pan observations --json` and check each `due`
+  item. Run its recorded check against its named source.
+  Report each item as confirmed or refuted, with the command and the result.
+- You MUST file a refuted item as a regression finding in the intake of its
+  category. Cite the run id and the criterion id, and report the intake path.
+  The supervising repair session runs `pan observations resolve` after
+  validation.
 - You MUST trace each confirmed finding through observed behavior, expected
   contract, causal chain, root cause, and affected harness surfaces.
 - You MUST propose the smallest coherent root-cause remediation and include

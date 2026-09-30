@@ -203,6 +203,28 @@ None identified.
   assert.equal(notApplicable.status, 'passed')
 })
 
+test('the Observability primer section is optional but never empty', () => {
+  const root = fixtureRoot({ installationMode: 'embedded' })
+
+  // A primer built before the section existed stays valid.
+  assert.equal(validateIn(root, VALID_EXTERNAL_PRIMER).status, 'passed')
+  assert.equal(
+    validateIn(
+      root,
+      `${VALID_EXTERNAL_PRIMER}\n## Observability\n\nNone detected.\n`,
+    ).status,
+    'passed',
+  )
+
+  const empty = validateIn(root, `${VALID_EXTERNAL_PRIMER}\n## Observability\n`)
+
+  assert.equal(empty.status, 'failed')
+  assert.deepEqual(
+    empty.issues.map((item) => item.code),
+    ['primer.observability_empty'],
+  )
+})
+
 test('target repository primer validator rejects malformed external flow steps', () => {
   const root = fixtureRoot({ installationMode: 'embedded' })
   const result = validateIn(
