@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.9.0] - 2026-10-01
+
+This release makes `pan cleanup` gzip aged shell logs and delete the records after 30 days.
+
+### Changed
+
+- Compact `shell-logs` older than 7 days by gzipping remaining `.log` files, keep `record.json` and `heartbeat.json`, and delete any record, compacted or not, older than 30 days.
+
 ## [8.8.1] - 2026-10-01
 
 This release makes `pan watch` return within seconds of a subagent stop. A resumed subagent no longer reads as complete from its earlier stop.

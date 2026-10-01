@@ -4,16 +4,21 @@
  * exactly the reported plan.
  */
 
+import { randomUUID } from 'node:crypto'
 import {
   existsSync,
   readFileSync,
   readdirSync,
+  renameSync,
   statSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs'
 import type { Dirent, Stats } from 'node:fs'
 import path from 'node:path'
+import { gzipSync } from 'node:zlib'
 
+import { shellRecordDirectoryMs } from '../agent-index/shell-records.js'
 import { PanError, isNodeError, errorMessage } from '../errors.js'
 import { gitDefaultBranch, gitIsAncestor } from '../git/branches.js'
 import {
@@ -216,7 +221,92 @@ function artifactTimestampMs(
     }
   }
 
+  if (artifactClass.age_source === 'shell_record_name') {
+    const started = shellRecordDirectoryMs(path.basename(target))
+
+    if (started !== null) {
+      return started
+    }
+  }
+
   return mtimeMs
+}
+
+/** Marker `bin/pan-run` keeps in a record directory while its helper runs. */
+const PAN_RUN_HELPER_MARKER = '.pan-run.cjs'
+
+/**
+ * Why a `bin/pan-run` record must stay untouched: its wrapper is still alive,
+ * or its record is unreadable while the helper marker remains. Mirrors the
+ * wrapper's own compaction judgment.
+ */
+function shellRecordHold(target: string): string | null {
+  let record: unknown = null
+
+  try {
+    record = JSON.parse(readFileSync(path.join(target, 'record.json'), 'utf8'))
+  } catch {
+    // An absent or partial record is judged by the helper marker below.
+  }
+
+  if (isRecord(record)) {
+    const wrapperPid = Number(record.wrapper_pid)
+    const running =
+      (record.ended_at === null || record.ended_at === undefined) &&
+      processIsAlive(wrapperPid)
+
+    return running ? `wrapper process ${wrapperPid} is still running` : null
+  }
+
+  return existsSync(path.join(target, PAN_RUN_HELPER_MARKER))
+    ? 'record.json is unreadable while the pan-run helper marker remains'
+    : null
+}
+
+function uncompactedLogNames(entries: readonly Dirent[]): string[] {
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.log'))
+    .map((entry) => entry.name)
+    .sort()
+}
+
+function writeBytesAtomic(filePath: string, bytes: Buffer): void {
+  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`
+
+  writeFileSync(tempPath, bytes)
+  renameSync(tempPath, filePath)
+}
+
+/**
+ * Gzip every remaining `.log` file in a `bin/pan-run` record. Keeps
+ * `record.json` and `heartbeat.json` so the agent index and `pan watch --shell`
+ * can still read the record.
+ */
+function compactShellRecord(target: string): void {
+  for (const name of uncompactedLogNames(
+    readdirSync(target, { withFileTypes: true }),
+  )) {
+    const logPath = path.join(target, name)
+
+    writeBytesAtomic(`${logPath}.gz`, gzipSync(readFileSync(logPath)))
+    rmSync(logPath)
+  }
+}
+
+function shellClassHold(
+  artifactClass: CleanupArtifactClass,
+  parent: string,
+  holdsObservation: ((name: string) => boolean) | null,
+): (name: string) => string | null {
+  return (name: string) => {
+    if (artifactClass.age_source === 'shell_record_name') {
+      return shellRecordHold(path.join(parent, name))
+    }
+
+    return holdsObservation?.(name)
+      ? 'run owes an unresolved post-ship observation'
+      : null
+  }
 }
 
 function selectedClasses(options: CleanupOptions): Set<string> {
@@ -353,6 +443,72 @@ function planExpiredEntries(
   }
 }
 
+function planCompactEntries(
+  plan: PlanAccumulator,
+  artifactClass: CleanupArtifactClass,
+  parent: string,
+  days: number,
+  cutoff: number,
+  skipNames: ReadonlySet<string>,
+  holdReason: (name: string) => string | null,
+): void {
+  const compactAfter = artifactClass.compact_after_days
+
+  if (compactAfter === undefined || compactAfter >= days) {
+    return
+  }
+
+  const compactCutoff = plan.now.getTime() - compactAfter * MILLISECONDS_PER_DAY
+
+  for (const entry of readDirectoryEntries(plan, artifactClass.name, parent)) {
+    if (skipNames.has(entry.name)) {
+      continue
+    }
+
+    const target = path.join(parent, entry.name)
+    const stat = statOrNull(plan, artifactClass.name, target)
+
+    if (stat === null || !stat.isDirectory()) {
+      continue
+    }
+
+    const timestampMs = artifactTimestampMs(artifactClass, target, stat.mtimeMs)
+
+    if (timestampMs >= compactCutoff || timestampMs < cutoff) {
+      continue
+    }
+
+    const relative = toPosix(path.relative(plan.root, target))
+
+    if (plan.deleting.has(relative)) {
+      continue
+    }
+
+    const reason = livenessReason(target, true) ?? holdReason(entry.name)
+
+    if (reason) {
+      plan.skipped.push({ class: artifactClass.name, path: relative, reason })
+      continue
+    }
+
+    if (
+      uncompactedLogNames(
+        readDirectoryEntries(plan, artifactClass.name, target),
+      ).length === 0
+    ) {
+      continue
+    }
+
+    plan.actions.push({
+      class: artifactClass.name,
+      path: relative,
+      action: 'compact',
+      age_days: ageInDays(plan.now, timestampMs),
+      reason: `older than ${compactAfter} days`,
+    })
+  }
+}
+
 /**
  * A class's paths with the test scratch root resolved from configuration,
  * which can place it outside the root and so appear as a `..` path.
@@ -445,6 +601,8 @@ function planFileClasses(plan: PlanAccumulator): void {
           ? unresolvedObservationHold(root)
           : null
 
+      const holdReason = shellClassHold(artifactClass, parent, holdsObservation)
+
       planExpiredEntries(
         plan,
         artifactClass,
@@ -453,10 +611,16 @@ function planFileClasses(plan: PlanAccumulator): void {
         cutoff,
         skipNames,
         (window) => `older than ${window} days`,
-        (name) =>
-          holdsObservation?.(name)
-            ? 'run owes an unresolved post-ship observation'
-            : null,
+        holdReason,
+      )
+      planCompactEntries(
+        plan,
+        artifactClass,
+        parent,
+        days,
+        cutoff,
+        skipNames,
+        holdReason,
       )
 
       const archive = path.join(parent, 'archive')
@@ -465,6 +629,12 @@ function planFileClasses(plan: PlanAccumulator): void {
         artifactClass.disposal === 'archive_then_delete' &&
         existsSync(archive)
       ) {
+        const archiveHold = shellClassHold(
+          artifactClass,
+          archive,
+          holdsObservation,
+        )
+
         planExpiredEntries(
           plan,
           artifactClass,
@@ -473,6 +643,16 @@ function planFileClasses(plan: PlanAccumulator): void {
           cutoff,
           new Set(),
           (window) => `archived artifact older than ${window} days`,
+          archiveHold,
+        )
+        planCompactEntries(
+          plan,
+          artifactClass,
+          archive,
+          days,
+          cutoff,
+          new Set(),
+          archiveHold,
         )
       }
     }
@@ -793,6 +973,8 @@ export function applyCleanup(
   for (const action of plan.actions) {
     if (action.action === 'delete') {
       rmSync(path.resolve(root, action.path), { recursive: true, force: true })
+    } else if (action.action === 'compact') {
+      compactShellRecord(path.resolve(root, action.path))
     } else if (action.action === 'remove_worktree') {
       const worktree = plan.worktrees.find(
         (entry) => entry.path === action.path && entry.action === 'remove',

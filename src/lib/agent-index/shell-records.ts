@@ -50,7 +50,11 @@ export interface AgentShellRecord {
   tree_cpu_seconds: number | null
 }
 
-function shellRecordDirectoryMs(name: string): number | null {
+/**
+ * The UTC start instant a `bin/pan-run` record directory name encodes in its
+ * `<YYYYMMDD>T<HHMMSS>Z-` prefix, or null for any other name.
+ */
+export function shellRecordDirectoryMs(name: string): number | null {
   const match = RECORD_DIR_MS_PATTERN.exec(name)
 
   if (!match) {
