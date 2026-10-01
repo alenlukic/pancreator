@@ -1695,8 +1695,11 @@ with the TypeScript parser, takes the change set from Git, and runs every test
 in `tests/unit` and `tests/regression` that the change reaches. By default it
 never selects `tests/integration`. `--lane <unit|regression|integration>`
 replaces the default lanes with the named ones. The `fast` profile stays the
-validation run at the end of an iteration loop, and `full` stays the release
-gate.
+validation run at the end of an iteration loop. `pan release land`'s own
+default, `impacted-release`, reuses this same selector across every lane
+(`--changed pan-dev`, covering unit, integration, and regression at once) as
+the touch-set rule for landing; `full` remains available by explicit
+`--verify-profile full`.
 
 A test is selected when:
 
@@ -1831,9 +1834,10 @@ alone never earns a pass.
 ## Govern the fast-lane wall
 
 The fast lane is `npm test`: the unit and regression lanes. The integration
-lane runs only before a branch lands on `pan-dev`, in the `full` profile and in
-`/pan-release`, because it spends most of the suite's process and file-system
-cost and made the host unusable while agents iterated.
+lane runs only before a branch lands on `pan-dev` — selected by `impacted-release`
+(the land's touch-set default) when it reaches the change, or wholesale in the
+`full` profile and in `/pan-release` — because it spends most of the suite's
+process and file-system cost and made the host unusable while agents iterated.
 
 In self-development, every complete `npm test` run appends one record to
 `runtime/fast-wall-series.jsonl` under the installation root that started it:
@@ -2400,7 +2404,7 @@ The command holds the landing mutex at `runtime/release/landing.lock` from tip r
 3. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
 4. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
 5. **Finalize** — calls `pan release finalize` to create the release and index commits.
-6. **Verify** — first compiles the candidate worktree through its own `bin/run-built --build-only`, without the `PANCREATOR_BUILD_READY` value the launching `bin/pan` exported for the earlier tree. A tree that does not compile returns `verification_failed` before any profile runs. The `build` step and every `verify` step in `landing.jsonl` record the build stamp of the tree they tested, and the land fails if the sources change while the profiles run. A worktree without `bin/run-built` skips the build. No profile command inherits `PANCREATOR_BUILD_READY`. The step runs each `--verify-profile` against the candidate worktree. Without `--verify-profile`, the land runs `full`, with one exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, `bounded_repair`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
+6. **Verify** — first compiles the candidate worktree through its own `bin/run-built --build-only`, without the `PANCREATOR_BUILD_READY` value the launching `bin/pan` exported for the earlier tree. A tree that does not compile returns `verification_failed` before any profile runs. The `build` step and every `verify` step in `landing.jsonl` record the build stamp of the tree they tested, and the land fails if the sources change while the profiles run. A worktree without `bin/run-built` skips the build. No profile command inherits `PANCREATOR_BUILD_READY`. The step runs each `--verify-profile` against the candidate worktree. Operator directive (2026-10-01), the touch-set rule: without `--verify-profile`, the land runs `impacted-release` (every lane test whose static import closure reaches a file the candidate changed against `pan-dev`), with one lighter exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `impacted-release`. An operator who needs the full suite for a specific land still gets it with `--verify-profile full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, `bounded_repair`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
 7. **Check** — runs `bin/check-landing branch <head> pan-dev`.
 8. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
 

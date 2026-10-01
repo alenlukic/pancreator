@@ -30,7 +30,7 @@ import {
   landingLockExists,
   makeCandidate,
   readLandingLog,
-  setFullProfileCommand,
+  setProfileCommand,
   versionAt,
 } from './release-landing-helpers.js'
 
@@ -233,7 +233,7 @@ test('a source conflict with the tip stops before any release commit, and the do
   })
 
   assert.equal(rerun.status, 'landed')
-  assert.deepEqual(rerun.verified_profiles, ['full'])
+  assert.deepEqual(rerun.verified_profiles, ['impacted-release'])
   assert.equal(git(root, ['rev-parse', PAN_DEV]), rerun.index_commit)
   assert.match(
     git(root, ['show', `${PAN_DEV}:CHANGELOG.md`]),
@@ -486,7 +486,7 @@ test('a failing verification keeps the release commits on the candidate, and a r
     'This release fails verification once.\n\n### Added\n\n- Add the verify-fails marker module.',
   )
 
-  setFullProfileCommand(root, 'node -e "process.exit(1)"')
+  setProfileCommand(root, 'impacted-release', 'node -e "process.exit(1)"')
 
   const failed = landRelease(root, { worktree: 'verify-fails', bump: 'minor' })
 
@@ -496,7 +496,7 @@ test('a failing verification keeps the release commits on the candidate, and a r
   assert.equal(git(candidate, ['rev-parse', 'HEAD']), failed.index_commit)
   assert.equal(landingLockExists(root), false)
 
-  setFullProfileCommand(root, 'node -e "process.exit(0)"')
+  setProfileCommand(root, 'impacted-release', 'node -e "process.exit(0)"')
 
   const rerun = landRelease(root, { worktree: 'verify-fails', bump: 'minor' })
 

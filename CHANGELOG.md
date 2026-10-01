@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.1.0] - 2026-10-01
+
+This release ends `pan release land`'s default use of the `full` verification profile, which had grown too slow and too heavy to run on every land.
+
+### Changed
+
+- Make `impacted-release` the default verify profile for `pan release land`: every lane test (unit, integration, regression) whose static import closure reaches a file the candidate changed against `pan-dev`, instead of the complete `full` battery. `--verify-profile full` still runs it by explicit request ([0bb4e56e](https://github.com/alenlukic/pancreator/commit/0bb4e56e)).
+
 ## [8.0.0] - 2026-09-30
 
 This release cuts what a stage worker spends to orient itself and to prove its work. Implementing agents leave the suites to the gates, a retry or remediation starts from the previous worker's notes and reading map, every source and test file is at most 1,000 lines, and a generated function index states each export's interface and behavior. Verify converges faster: QA runs only for live criteria, and a return visit reviews the remediation. Post-ship observations replace acceptance criteria that no stage could prove. The module layout under `src/` changed throughout, so this is a major release.

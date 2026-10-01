@@ -103,12 +103,16 @@ export function landingBuildIsCurrent(
 /**
  * Decide the land's verify profiles.
  *
- * A bounded ship repair of lane tests runs `static`, `configuration`, and the
- * lane profile of each repaired path. A land that merged commits, or names no
- * run, or whose run has no executed
- * `full` entry-gate pass, keeps `full`. A no-op integrate on a tree whose
- * source content matches the one the entry gate verified runs `static` and
- * `configuration`. An operator-named profile list always wins.
+ * Operator directive (2026-10-01): a land verifies the touch set only. A
+ * bounded ship repair of lane tests runs `static`, `configuration`, and the
+ * lane profile of each repaired path. Every other land — one that merged
+ * commits, names no run, or whose run has no executed `full` entry-gate pass
+ * — runs `impacted-release`: every lane test whose static import closure
+ * reaches a file the candidate changed against `pan-dev`. A no-op integrate
+ * on a tree whose source content matches the one the entry gate verified on
+ * `full` runs the lighter `static` and `configuration` instead, since nothing
+ * past release metadata changed. An operator-named profile list (including
+ * `full`, for the rare land that needs it) always wins.
  */
 export function resolveLandingVerification(
   root: string,
@@ -149,18 +153,23 @@ export function resolveLandingVerification(
     }
   }
 
-  const full = (reason: string): LandingVerification => ({
-    profiles: ['full'],
+  // The touch-set rule (operator directive, 2026-10-01): a land verifies
+  // only the lane tests the candidate's own changes reach, not the full
+  // suite. `full` stays available, but only on explicit operator request.
+  const touchSetOnly = (reason: string): LandingVerification => ({
+    profiles: ['impacted-release'],
     basis: 'default',
     reason,
   })
 
   if (integration !== 'already_current') {
-    return full('integration merged commits, so the landing tree is new')
+    return touchSetOnly(
+      'integration merged commits, so the landing tree is new',
+    )
   }
 
   if (!runId) {
-    return full('no --run names an entry gate that verified this tree')
+    return touchSetOnly('no --run names an entry gate that verified this tree')
   }
 
   let verified: { fingerprint: string; profile: string } | undefined
@@ -168,11 +177,11 @@ export function resolveLandingVerification(
   try {
     verified = readVerifiedSource(runId)
   } catch {
-    return full(`run ${runId} could not be read`)
+    return touchSetOnly(`run ${runId} could not be read`)
   }
 
   if (verified?.profile !== 'full') {
-    return full(`run ${runId} records no executed full entry-gate pass`)
+    return touchSetOnly(`run ${runId} records no executed full entry-gate pass`)
   }
 
   const current = gitSourceContentFingerprint(
@@ -181,7 +190,7 @@ export function resolveLandingVerification(
   )
 
   if (current !== verified.fingerprint) {
-    return full(
+    return touchSetOnly(
       'the worktree source differs from the tree the entry gate verified',
     )
   }
