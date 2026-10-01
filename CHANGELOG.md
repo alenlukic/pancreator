@@ -1,5 +1,23 @@
 # Changelog
 
+## [8.10.0] - 2026-10-01
+
+This release installs Cursor hooks that enforce visible operator chat. The same hooks reach a subagent turn.
+
+### Changed
+
+- Install Cursor `postToolUse`, `postToolUseFailure`, and `stop` hooks that remind after a tool-only step ([d65f36de](https://github.com/alenlukic/pancreator/commit/d65f36de)).
+- Send one follow-up from the `stop` hook when a completed turn has no visible text ([d65f36de](https://github.com/alenlukic/pancreator/commit/d65f36de)).
+- Resolve a subagent transcript through the agent index when Cursor sends a null `transcript_path` ([b1e88434](https://github.com/alenlukic/pancreator/commit/b1e88434)).
+
+### Added
+
+- Add `bin/pan-hook-visible-chat` and the visible-chat hook modules. The hook fails open when the transcript is absent ([d65f36de](https://github.com/alenlukic/pancreator/commit/d65f36de)).
+
+### Fixed
+
+- Run `pan models --sync` from `.githooks/post-checkout` and `.githooks/post-merge` when projection sources change ([cb3ce161](https://github.com/alenlukic/pancreator/commit/cb3ce161)).
+
 ## [8.9.0] - 2026-10-01
 
 This release makes `pan cleanup` gzip aged shell logs and delete the records after 30 days.
