@@ -187,6 +187,7 @@ function shellOpenCallActivity(
     },
     stall_suppressed: shellHeartbeat !== null,
     stop: null,
+    transcript: null,
     signature: 'sig-1',
   }
 }
@@ -251,6 +252,7 @@ test('formatOpenCallSuffix omits the heartbeat bracket for a non-shell open call
     },
     stall_suppressed: true,
     stop: null,
+    transcript: null,
     signature: 'sig-2',
   }
 

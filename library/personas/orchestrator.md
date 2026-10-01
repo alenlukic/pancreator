@@ -38,7 +38,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Arm the watch in the launch turn before any other action.
 - Use `--mark-background --launched-at <iso-8601> --handle <platform-handle>` to arm the watch after a background launch.
 - Run `pan watch` as a foreground blocking shell call. It loops on its cadence up to the one hour (3600 seconds) default bound and returns only at a terminal state or the bound.
-- When the platform detaches the blocking call early, run `./bin/pan watch --attach <ledger>` at once, naming the watch session record the watch wrote. Never arm a second watch over the same invocation. Never call `AwaitShell` or any platform await tool.
+- When the platform detaches the blocking call early, run `./bin/pan watch --attach <ledger>` at once, naming the watch session record the watch wrote, and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never arm a second watch over the same invocation. Never call `AwaitShell` or any platform await tool.
 - When the watch exits `unverified`, inspect the launched agent. Rerun the watch with `--agent-state running` or `--agent-state completed`.
 - Supply the recorded inspection through `--agent-state-evidence` for a `completed` report. Without that record, the watch spends one confirming wake.
 - Ask `./bin/pan worker state <run-id>` for a launched worker's last known state. A transcript's size and modification time are not liveness signals and MUST NOT be read as one.

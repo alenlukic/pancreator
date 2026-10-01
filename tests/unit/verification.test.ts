@@ -11,6 +11,7 @@ import {
   parseVerification,
   resolveVerification,
 } from '../../src/lib/verification.js'
+import { sharedFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
 test('a config without a verification block gets the built-in levels and the light default', () => {
@@ -174,6 +175,42 @@ test('resolveVerification snapshots the named level from config.json', () => {
   })
 
   assert.throws(() => resolveVerification(root, 'nope'), /not defined/u)
+})
+
+test('the self-development installation gates ship on impacted-release, never full', () => {
+  const root = sharedFixture()
+
+  for (const name of ['light', 'thorough']) {
+    assert.equal(
+      resolveVerification(root, name).gates['ship.full_suite'],
+      'impacted-release',
+    )
+  }
+
+  assert.equal(
+    resolveVerification(root, 'light').gates['test.full_suite'],
+    'full',
+  )
+  assert.equal(
+    resolveVerification(root, 'minimal').gates['ship.full_suite'],
+    false,
+  )
+
+  const target = createTestTempDirectory('pan-verification-target-')
+
+  writeFileSync(
+    path.join(target, 'config.json'),
+    JSON.stringify({ installation_mode: 'embedded' }),
+  )
+
+  assert.equal(
+    resolveVerification(target, 'light').gates['ship.full_suite'],
+    'full',
+  )
+  assert.equal(
+    resolveVerification(target, 'thorough').gates['ship.full_suite'],
+    undefined,
+  )
 })
 
 test('effectiveRepositoryCheckProfile applies the level remap only to repository-check gates', () => {

@@ -25,7 +25,7 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
 10. For a bound run, use `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json> --worktree <name>`.
 11. Launch every stage worker yourself, with `run_in_background: true`, from this session. Arm the watch in the launch turn before any other action.
     - Always use `--mark-background`, since the `Task` call is always background: `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` as a foreground blocking call (one-hour default bound).
-    - When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once to rejoin that session. Never call `AwaitShell`.
+    - When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once, naming the watch session record the watch wrote, and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never call `AwaitShell`.
     - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
     - Before you act on `stalled`, `unverified`, or `timed_out`, read the linked `bin/pan-run` record's `heartbeat.json` as **Worker delivery** in the persona requires. A fresh heartbeat means rearm with `--agent-state running`, never interrupt.
     - `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.

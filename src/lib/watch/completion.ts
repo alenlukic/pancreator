@@ -19,6 +19,8 @@ import {
   resolveWatchedInvocation,
   watchRecordPath,
 } from './paths.js'
+import type { AgentActivity } from '../agent-index/activity.js'
+import { DEFAULT_STALL_TIMEOUT_SECONDS } from './types.js'
 import {
   isTerminalObservation,
   observeInvocation,
@@ -47,24 +49,77 @@ import {
  * and an unreadable elapsed time. All three mean the same thing, so all three
  * now produce `weak`, which buys one confirming wake rather than a verdict.
  */
+export function agentActiveWithinCadence(
+  activity: AgentActivity | null | undefined,
+  cadenceSeconds: number,
+): boolean {
+  if (!activity || activity.stop) {
+    return false
+  }
+
+  if (
+    activity.transcript?.readable &&
+    !activity.transcript.turn_ended &&
+    activity.transcript.age_seconds < cadenceSeconds
+  ) {
+    return true
+  }
+
+  if (
+    activity.last_event_age_seconds !== null &&
+    activity.last_event_age_seconds < cadenceSeconds
+  ) {
+    return true
+  }
+
+  const open = activity.open_call
+
+  if (open?.shell_heartbeat) {
+    return open.shell_heartbeat.age_seconds < 2 * cadenceSeconds
+  }
+
+  if (open) {
+    const startedMs = Date.parse(open.started_at)
+
+    return (
+      Number.isFinite(startedMs) &&
+      (Date.now() - startedMs) / 1000 < DEFAULT_STALL_TIMEOUT_SECONDS
+    )
+  }
+
+  return false
+}
+
 export function completionEvidenceForObservation(
   observation: WatchObservation,
   sinceLaunchSeconds: number | null,
   cadenceSeconds: number,
   agentState?: WatchAgentState,
   agentStateEvidence?: AgentStateEvidence | null,
+  /** Omitted: the caller tracks no prior. Null: the watch has not seen the output before. */
+  priorOutputSignature?: string | null,
 ): CompletionEvidence {
   if (!isTerminalObservation(observation)) {
     return { strength: 'none' }
   }
 
+  const activity = observation.agent_activity
+  const transcriptOpen =
+    activity?.transcript?.readable === true &&
+    activity.transcript.turn_ended === false
+
+  if (transcriptOpen) {
+    return { strength: 'weak', reason: 'agent_turn_open' }
+  }
+
   if (agentState === 'completed') {
-    // A completion report without its recorded inspection is an assertion
-    // nobody can audit, so it buys the same confirming wake a running report
-    // does. The supplied record keeps the strong basis it validates.
-    return agentStateEvidence
+    return agentStateEvidence && !transcriptOpen
       ? { strength: 'strong', basis: 'agent_state' }
       : { strength: 'weak', reason: 'agent_completion_basis_missing' }
+  }
+
+  if (agentActiveWithinCadence(activity, cadenceSeconds)) {
+    return { strength: 'weak', reason: 'agent_active' }
   }
 
   if (agentState === 'running') {
@@ -75,10 +130,13 @@ export function completionEvidenceForObservation(
     return { strength: 'weak', reason: 'elapsed_time_unreadable' }
   }
 
-  // An output written within one cadence of the launch is a draft far more
-  // often than a finished stage, and files cannot tell the two apart.
-  return sinceLaunchSeconds < cadenceSeconds
-    ? { strength: 'weak', reason: 'output_younger_than_cadence' }
+  if (sinceLaunchSeconds < cadenceSeconds) {
+    return { strength: 'weak', reason: 'output_younger_than_cadence' }
+  }
+
+  return priorOutputSignature !== undefined &&
+    priorOutputSignature !== outputSignature(observation)
+    ? { strength: 'weak', reason: 'output_unconfirmed' }
     : { strength: 'strong', basis: 'output_plausible' }
 }
 

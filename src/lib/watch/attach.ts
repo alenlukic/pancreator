@@ -6,47 +6,65 @@ import { invariant } from '../errors.js'
 import { fileExists, isRecord, readText, resolveInside } from '../io.js'
 
 import {
+  ATTACH_POLL_MS,
   DEFAULT_WATCH_CADENCE_SECONDS,
   DEFAULT_WATCH_TIMEOUT_SECONDS,
+  WATCH_BLOCK_BOUND_MS,
   WATCH_EXIT_CODES,
+  WATCH_PARENT_BACKSTOP_SECONDS,
   WATCH_TIMEOUT_BELOW_CADENCE,
+  type WatchStallCause,
 } from './types.js'
 import { processRunning, processStartIdentity } from './process-evidence.js'
 import { defaultSleep } from './session.js'
+import type { AgentLiveness } from './liveness.js'
+import { agentLiveness } from './liveness.js'
+import type { AgentActivity } from '../agent-index/activity.js'
 
 /** Exit code the CLI returns when an attach session is orphaned. */
 export const WATCH_ATTACH_EXIT_ORPHANED = 5
 
+/** Exit code when the parent backstop returns control to the starting agent. */
+export const WATCH_ATTACH_EXIT_WAKE = 7
+
 export const WATCH_ATTACH_NO_SESSION = 'WATCH_ATTACH_NO_SESSION'
 
-/** Exit codes of every verdict a followed worker or generic session can record. */
 const FOLLOWED_VERDICT_EXIT_CODES: Record<string, number> = {
   ...WATCH_EXIT_CODES,
   exited: 0,
   elapsed: 0,
   failed: 1,
-  // 5 is already WATCH_ATTACH_EXIT_ORPHANED.
   unregistered: 6,
 }
 
 export type AttachTerminalState =
   | 'attach_completed'
   | 'attach_timed_out'
+  | 'attach_wake'
   | 'orphaned'
+
+export interface AttachLatestWake {
+  wake: number
+  recorded_at: string
+  terminal_state?: string
+  completion_hold?: string
+  stall_cause?: WatchStallCause
+  liveness?: AgentLiveness
+}
 
 export interface AttachSessionEntry {
   ledger: string
   state: AttachTerminalState | null
   session_terminal_state?: string
+  latest_wake?: AttachLatestWake
 }
 
 export interface WatchAttachOptions {
-  /** One or more ledger paths (relative to root, within runtime/logs). */
   ledgers: string[]
   timeoutSeconds?: number
   cadenceSeconds?: number
-  /** Operator direction behind a non-default cadence, echoed in the result. */
   cadenceAuthority?: string
+  untilTerminal?: boolean
   sleep?: (ms: number) => Promise<void>
   now?: () => number
 }
@@ -59,16 +77,13 @@ export interface WatchAttachResult {
   elapsed_seconds: number
   timeout_seconds: number
   cadence_seconds: number
+  backstop_seconds: number
+  block_bound_ms: number
   cadence_authority?: string
-  /**
-   * The CLI exit code: 5 when any session orphaned, 3 when any attach timed
-   * out, and otherwise the highest exit code among the followed verdicts, so
-   * a single followed session exits with its own verdict's code.
-   */
   exit_code: number
+  reattach_command: string
 }
 
-/** Read all entries from an arbitrary JSONL watch ledger. */
 function readLedgerEntries(
   absolutePath: string,
 ): Array<Record<string, unknown>> {
@@ -90,18 +105,14 @@ function readLedgerEntries(
     })
 }
 
-/**
- * Inspect a ledger and return the latest session's watcher_pid and whether
- * a terminal wake has been appended.
- */
 function inspectLedger(absolutePath: string): {
   watcherPid: number | null
   watcherIdentity: string | null
   terminalState: string | null
+  latestWake: AttachLatestWake | null
 } {
   const entries = readLedgerEntries(absolutePath)
 
-  // Find the last session_started entry to get the current watcher PID.
   let watcherPid: number | null = null
   let watcherIdentity: string | null = null
 
@@ -118,8 +129,6 @@ function inspectLedger(absolutePath: string): {
     }
   }
 
-  // Find any terminal state in wake entries (most recent session wins).
-  // We only care about wakes after the last session_started.
   let lastSessionIdx = -1
 
   for (let i = entries.length - 1; i >= 0; i -= 1) {
@@ -130,28 +139,48 @@ function inspectLedger(absolutePath: string): {
   }
 
   let terminalState: string | null = null
+  let latestWake: AttachLatestWake | null = null
 
   for (let i = lastSessionIdx + 1; i < entries.length; i += 1) {
     const entry = entries[i]
 
-    if (
-      entry !== undefined &&
-      entry.event === 'wake' &&
-      typeof entry.terminal_state === 'string'
-    ) {
-      terminalState = entry.terminal_state
+    if (entry === undefined) {
+      continue
+    }
+
+    if (entry.event === 'wake' && typeof entry.wake === 'number') {
+      const observation = isRecord(entry.observation)
+        ? (entry.observation as { agent_activity?: AgentActivity })
+        : undefined
+      const activity = observation?.agent_activity ?? null
+
+      latestWake = {
+        wake: entry.wake,
+        recorded_at:
+          typeof entry.recorded_at === 'string'
+            ? entry.recorded_at
+            : new Date(0).toISOString(),
+        ...(typeof entry.terminal_state === 'string'
+          ? { terminal_state: entry.terminal_state }
+          : {}),
+        ...(typeof entry.completion_hold === 'string'
+          ? { completion_hold: entry.completion_hold }
+          : {}),
+        ...(typeof entry.stall_cause === 'string'
+          ? { stall_cause: entry.stall_cause as WatchStallCause }
+          : {}),
+        liveness: agentLiveness(activity),
+      }
+
+      if (typeof entry.terminal_state === 'string') {
+        terminalState = entry.terminal_state
+      }
     }
   }
 
-  return { watcherPid, watcherIdentity, terminalState }
+  return { watcherPid, watcherIdentity, terminalState, latestWake }
 }
 
-/**
- * Attach to one or more existing watch sessions by ledger path and block until
- * all reach a terminal state, any watcher process orphans, or the bound arrives.
- *
- * This form appends nothing to the followed ledger.
- */
 export async function watchAttach(
   root: string,
   options: WatchAttachOptions,
@@ -159,9 +188,7 @@ export async function watchAttach(
   invariant(
     options.ledgers.length > 0,
     '--attach requires at least one ledger.',
-    {
-      code: 'INVALID_ARGUMENT',
-    },
+    { code: 'INVALID_ARGUMENT' },
   )
 
   const logsRoot = resolveInside(root, 'runtime/logs')
@@ -197,12 +224,17 @@ export async function watchAttach(
   const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
   const timeoutMs = Math.round(timeoutSeconds * 1000)
-  const cadenceMs = Math.round(cadenceSeconds * 1000)
+  const backstopMs = WATCH_PARENT_BACKSTOP_SECONDS * 1000
+  const pollMs = Math.min(ATTACH_POLL_MS, Math.round(cadenceSeconds * 1000))
 
   const sessions: AttachSessionEntry[] = options.ledgers.map((ledger) => ({
     ledger,
     state: null,
   }))
+
+  const reattachCommand = `./bin/pan watch --attach ${options.ledgers.join(',')}`
+
+  const lastIdentityCheckMs = new Map<string, number>()
 
   for (;;) {
     let allDone = true
@@ -215,13 +247,14 @@ export async function watchAttach(
       const abs = resolveInside(root, session.ledger)
 
       if (!fileExists(abs)) {
-        // The ledger vanished after the attach verified its session.
         session.state = 'orphaned'
-        session.session_terminal_state = undefined
         continue
       }
 
-      const { watcherPid, watcherIdentity, terminalState } = inspectLedger(abs)
+      const { watcherPid, watcherIdentity, terminalState, latestWake } =
+        inspectLedger(abs)
+
+      session.latest_wake = latestWake ?? undefined
 
       if (terminalState !== null) {
         session.state = 'attach_completed'
@@ -229,18 +262,26 @@ export async function watchAttach(
         continue
       }
 
-      // Not yet terminal — check watcher liveness.
       if (watcherPid !== null) {
         const alive = processRunning(watcherPid)
-        const identityNow = alive ? processStartIdentity(watcherPid) : null
+        const nowMs = now()
+        const lastCheckMs = lastIdentityCheckMs.get(session.ledger)
+        const identityDue =
+          lastCheckMs === undefined ||
+          nowMs - lastCheckMs >= Math.round(cadenceSeconds * 1000)
+        const identityNow =
+          alive && identityDue ? processStartIdentity(watcherPid) : null
         const identityMatch =
           alive &&
           (watcherIdentity === null ||
             identityNow === null ||
             identityNow === watcherIdentity)
 
+        if (identityDue) {
+          lastIdentityCheckMs.set(session.ledger, nowMs)
+        }
+
         if (!alive || !identityMatch) {
-          // Watcher is gone without a terminal entry.
           session.state = 'orphaned'
           continue
         }
@@ -253,7 +294,23 @@ export async function watchAttach(
       break
     }
 
-    if (now() - startedMs >= timeoutMs) {
+    const elapsedMs = now() - startedMs
+
+    if (
+      !options.untilTerminal &&
+      elapsedMs >= backstopMs &&
+      sessions.some((session) => session.state === null)
+    ) {
+      for (const session of sessions) {
+        if (session.state === null) {
+          session.state = 'attach_wake'
+        }
+      }
+
+      break
+    }
+
+    if (elapsedMs >= timeoutMs) {
       for (const session of sessions) {
         if (session.state === null) {
           session.state = 'attach_timed_out'
@@ -263,11 +320,9 @@ export async function watchAttach(
       break
     }
 
-    await sleep(cadenceMs)
+    await sleep(pollMs)
   }
 
-  // Determine overall state: any orphan → orphaned; any timeout → timed_out;
-  // all completed → attach_completed.
   let overallState: AttachTerminalState = 'attach_completed'
 
   for (const session of sessions) {
@@ -278,6 +333,8 @@ export async function watchAttach(
 
     if (session.state === 'attach_timed_out') {
       overallState = 'attach_timed_out'
+    } else if (session.state === 'attach_wake') {
+      overallState = 'attach_wake'
     }
   }
 
@@ -287,15 +344,17 @@ export async function watchAttach(
       ? WATCH_ATTACH_EXIT_ORPHANED
       : overallState === 'attach_timed_out'
         ? WATCH_EXIT_CODES.timed_out
-        : Math.max(
-            0,
-            ...sessions.map(
-              (session) =>
-                FOLLOWED_VERDICT_EXIT_CODES[
-                  session.session_terminal_state ?? ''
-                ] ?? 1,
-            ),
-          )
+        : overallState === 'attach_wake'
+          ? WATCH_ATTACH_EXIT_WAKE
+          : Math.max(
+              0,
+              ...sessions.map(
+                (session) =>
+                  FOLLOWED_VERDICT_EXIT_CODES[
+                    session.session_terminal_state ?? ''
+                  ] ?? 1,
+              ),
+            )
 
   return {
     state: overallState,
@@ -305,9 +364,12 @@ export async function watchAttach(
     elapsed_seconds: (endedMs - startedMs) / 1000,
     timeout_seconds: timeoutSeconds,
     cadence_seconds: cadenceSeconds,
+    backstop_seconds: WATCH_PARENT_BACKSTOP_SECONDS,
+    block_bound_ms: WATCH_BLOCK_BOUND_MS,
     ...(options.cadenceAuthority
       ? { cadence_authority: options.cadenceAuthority }
       : {}),
     exit_code: exitCode,
+    reattach_command: reattachCommand,
   }
 }

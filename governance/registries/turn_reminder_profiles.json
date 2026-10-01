@@ -63,6 +63,12 @@
           "instruction_sha256": "517014b1e0bf9e05f9c892bfe16b904829da4c5ce9e0b900c86fb5cbd2705915"
         },
         {
+          "id": "principles-no-permission",
+          "type": "policy",
+          "policy_id": "PRINCIPLES-001",
+          "instruction_sha256": "4c5cd0fabd53b8c2500b8b3e52c0d7fdf641054ba8ee0a6ebd88e2272764ca68"
+        },
+        {
           "id": "principles-verdict",
           "type": "policy",
           "policy_id": "PRINCIPLES-001",
@@ -130,7 +136,7 @@
           "id": "orch-watch",
           "type": "policy",
           "policy_id": "ORCH-001",
-          "instruction_sha256": "b9b7be7c7b7ab3e9b6723f460fb1823224db1b4ea4aa6704618b4d3321a56f70"
+          "instruction_sha256": "3d594e00afc6ef3fe6b32953a5bc2a64e8ff66077afd22e6e47e132dcc408132"
         },
         {
           "id": "orch-redline",

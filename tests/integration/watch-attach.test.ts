@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -20,7 +26,6 @@ import {
 import { createTestTempDirectory } from '../temp.js'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { readFileSync } from 'node:fs'
 
 /** Read all JSONL entries from a ledger path. */
 function readLedger(root: string, relative: string): GenericWatchRecordEntry[] {
@@ -38,6 +43,46 @@ test('AC-005: one-hour default timeout on DEFAULT_WATCH_TIMEOUT_SECONDS', () => 
     3600,
     'default timeout is exactly 3600 seconds (one hour)',
   )
+})
+
+test('returns attach_wake at the 300-second backstop when session is still active', async () => {
+  const root = createTestTempDirectory('watch-attach-backstop-top-')
+  const logsDir = path.join(root, GENERIC_WATCH_RECORD_DIRECTORY)
+  mkdirSync(logsDir, { recursive: true })
+  const ledgerRelative = path.posix.join(
+    GENERIC_WATCH_RECORD_DIRECTORY,
+    'backstop-top.jsonl',
+  )
+  const ledgerAbs = path.join(root, ledgerRelative)
+  const sessionEntry: GenericWatchRecordEntry = {
+    schema_version: 1,
+    event: 'session_started',
+    subject: String(process.pid),
+    label: 'backstop-top-fixture',
+    recorded_at: new Date().toISOString(),
+    cadence_seconds: 0.1,
+    wake: 0,
+    watch_session_id: 'test-session-backstop-top',
+    watcher_pid: process.pid,
+    timeout_seconds: 3600,
+  }
+  writeFileSync(ledgerAbs, JSON.stringify(sessionEntry) + '\n')
+
+  let current = Date.now()
+  const result = await watchAttach(root, {
+    ledgers: [ledgerRelative],
+    timeoutSeconds: 3600,
+    cadenceSeconds: 0.1,
+    now: () => current,
+    sleep: async (ms) => {
+      current += ms
+    },
+  })
+
+  assert.equal(result.state, 'attach_wake')
+  assert.equal(result.backstop_seconds, 300)
+  assert.equal(result.block_bound_ms, 330000)
+  assert.ok(result.reattach_command.includes('--attach'))
 })
 
 test('AC-007: pan watch --attach', async (t) => {
@@ -299,6 +344,49 @@ test('AC-007: pan watch --attach', async (t) => {
   )
 
   await t.test(
+    'returns attach_wake at the 300-second backstop when session is still active (nested)',
+    async () => {
+      const root = createTestTempDirectory('watch-attach-backstop-')
+      const logsDir = path.join(root, GENERIC_WATCH_RECORD_DIRECTORY)
+      mkdirSync(logsDir, { recursive: true })
+      const ledgerRelative = path.posix.join(
+        GENERIC_WATCH_RECORD_DIRECTORY,
+        'backstop-test.jsonl',
+      )
+      const ledgerAbs = path.join(root, ledgerRelative)
+      const sessionEntry: GenericWatchRecordEntry = {
+        schema_version: 1,
+        event: 'session_started',
+        subject: String(process.pid),
+        label: 'backstop-fixture',
+        recorded_at: new Date().toISOString(),
+        cadence_seconds: 0.1,
+        wake: 0,
+        watch_session_id: 'test-session-backstop',
+        watcher_pid: process.pid,
+        timeout_seconds: 3600,
+      }
+      writeFileSync(ledgerAbs, JSON.stringify(sessionEntry) + '\n')
+
+      let current = Date.now()
+      const result = await watchAttach(root, {
+        ledgers: [ledgerRelative],
+        timeoutSeconds: 3600,
+        cadenceSeconds: 0.1,
+        now: () => current,
+        sleep: async (ms) => {
+          current += ms
+        },
+      })
+
+      assert.equal(result.state, 'attach_wake')
+      assert.equal(result.backstop_seconds, 300)
+      assert.equal(result.block_bound_ms, 330000)
+      assert.ok(result.reattach_command.includes('--attach'))
+    },
+  )
+
+  await t.test(
     'returns attach_timed_out at the bound when session is still active',
     async () => {
       const root = createTestTempDirectory('watch-attach-timeout-')
@@ -335,6 +423,64 @@ test('AC-007: pan watch --attach', async (t) => {
       // Our PID is alive and no terminal entry exists, so we hit the timeout.
       assert.equal(result.state, 'attach_timed_out')
       assert.equal(result.ledgers[0]?.state, 'attach_timed_out')
+    },
+  )
+
+  await t.test(
+    '--until-terminal never returns attach_wake before a terminal wake',
+    async () => {
+      const root = createTestTempDirectory('watch-attach-until-')
+      mkdirSync(path.join(root, GENERIC_WATCH_RECORD_DIRECTORY), {
+        recursive: true,
+      })
+      const ledgerRelative = path.posix.join(
+        GENERIC_WATCH_RECORD_DIRECTORY,
+        'until-terminal.jsonl',
+      )
+      const ledgerAbs = path.join(root, ledgerRelative)
+      writeFileSync(
+        ledgerAbs,
+        JSON.stringify({
+          schema_version: 1,
+          event: 'session_started',
+          subject: String(process.pid),
+          label: 'until-fixture',
+          recorded_at: new Date().toISOString(),
+          cadence_seconds: 0.1,
+          wake: 0,
+          watch_session_id: 'session-until',
+          watcher_pid: process.pid,
+          timeout_seconds: 3600,
+        }) + '\n',
+      )
+
+      let current = Date.now()
+      let polls = 0
+      const result = await watchAttach(root, {
+        ledgers: [ledgerRelative],
+        timeoutSeconds: 3600,
+        cadenceSeconds: 0.1,
+        untilTerminal: true,
+        now: () => current,
+        sleep: async (ms) => {
+          current += ms
+          polls += 1
+          if (polls === 3) {
+            appendFileSync(
+              ledgerAbs,
+              JSON.stringify({
+                schema_version: 1,
+                event: 'wake',
+                wake: 1,
+                terminal_state: 'completed',
+              }) + '\n',
+            )
+          }
+        },
+      })
+
+      assert.notEqual(result.state, 'attach_wake')
+      assert.equal(result.state, 'attach_completed')
     },
   )
 

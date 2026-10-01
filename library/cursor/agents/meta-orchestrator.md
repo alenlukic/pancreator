@@ -56,7 +56,7 @@ The delivery rules in `BESTOFN-001`, on your governance card, govern every worke
 4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
 5. Run `{{PANCREATOR_PAN_COMMAND}} models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.
 6. Use `run_in_background: true` for every worker call. The deny hook enforces this.
-7. Run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` in the same turn as the launch. Run it as a foreground blocking call (one-hour default bound). When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once. Never call `AwaitShell`. `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when no watch record exists.
+7. Run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` in the same turn as the launch. Run it as a foreground blocking call (one-hour default bound). When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once, naming the watch session record the watch wrote, and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never call `AwaitShell`. `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when no watch record exists.
 8. Submit the worker's declared output with `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json>`.
 9. Re-check the run's `pending_action` and continue.
 

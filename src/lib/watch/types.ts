@@ -32,6 +32,9 @@ export type WeakCompletionReason =
   | 'output_younger_than_cadence'
   | 'elapsed_time_unreadable'
   | 'agent_completion_basis_missing'
+  | 'agent_active'
+  | 'output_unconfirmed'
+  | 'agent_turn_open'
 
 /** What the terminal verdict for one observation rests on. */
 export type CompletionEvidence =
@@ -51,6 +54,22 @@ export const DEFAULT_STALL_TIMEOUT_SECONDS = 5 * 60
 
 /** Bound so a watch never outlives an abandoned session silently. */
 export const DEFAULT_WATCH_TIMEOUT_SECONDS = 1 * 60 * 60
+
+/** Parent backstop: attach returns attach_wake after this many seconds. */
+export const WATCH_PARENT_BACKSTOP_SECONDS = 300
+
+/** Printed block bound for every blocking pan watch call. */
+export const WATCH_BLOCK_BOUND_MS = 330_000
+
+export const ATTACH_POLL_MS = 1_000
+
+export const WORKER_STILL_ACTIVE = 'WORKER_STILL_ACTIVE'
+
+export type WatchStallCause =
+  | 'shell_dead'
+  | 'shell_stopped'
+  | 'shell_heartbeat_stale'
+  | 'quiet_fallback'
 
 /** Floor that keeps a fractional test cadence from becoming a busy loop. */
 export const MIN_WATCH_CADENCE_SECONDS = 0.05
@@ -253,6 +272,7 @@ export interface WatchRecordEntry {
    * held wake, never on the wake that settles it.
    */
   completion_hold?: WeakCompletionReason
+  stall_cause?: WatchStallCause
   /** Named non-blocking diagnostics observed on this wake. */
   advisories?: string[]
   changed?: boolean

@@ -466,6 +466,9 @@ function recordStart(commandArgv) {
     log_path: `${rel}/output.log`,
     heartbeat_path: `${rel}/heartbeat.json`,
     heartbeat_seconds: Number(env.PAN_RUN_CADENCE),
+    cursor_conversation_id: env.PAN_RUN_CURSOR_CONVERSATION_ID || null,
+    parent_record: env.PAN_RUN_PARENT_RECORD || null,
+    wrapper_process_identity: env.PAN_RUN_WRAPPER_IDENTITY || null,
   });
   writeJson(path.join(dir, "heartbeat.json"), {
     elapsed_seconds: 0,
@@ -494,6 +497,9 @@ function recordEnd(commandArgv) {
     log_path: `${env.PAN_RUN_RECORD_REL}/output.log`,
     heartbeat_path: `${env.PAN_RUN_RECORD_REL}/heartbeat.json`,
     heartbeat_seconds: Number(env.PAN_RUN_CADENCE),
+    cursor_conversation_id: env.PAN_RUN_CURSOR_CONVERSATION_ID || null,
+    parent_record: env.PAN_RUN_PARENT_RECORD || null,
+    wrapper_process_identity: env.PAN_RUN_WRAPPER_IDENTITY || null,
   };
   record.ended_at = new Date().toISOString();
   record.exit_code = Number(env.PAN_RUN_EXIT_CODE);
@@ -606,6 +612,12 @@ SAFE_LABEL="$(printf '%s' "$LABEL" | tr -cd 'a-zA-Z0-9._-' | cut -c1-32)"
 
 RECORD_DIR_REL="runtime/logs/shell/$(date -u '+%Y%m%dT%H%M%SZ')-${SAFE_LABEL}-${HEX}"
 RECORD_DIR="$ROOT/$RECORD_DIR_REL"
+# Exported before the command forks so a nested wrapper names this record.
+PARENT_RECORD=""
+if [[ "${PAN_RUN_RECORD:-}" =~ ^runtime/logs/shell/[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9._-]+$ ]]; then
+  PARENT_RECORD="$PAN_RUN_RECORD"
+fi
+export PAN_RUN_RECORD="$RECORD_DIR_REL"
 LOG_PATH="$RECORD_DIR/output.log"
 STDOUT_LOG="$RECORD_DIR/stdout.log"
 STDERR_LOG="$RECORD_DIR/stderr.log"
@@ -727,8 +739,15 @@ trap 'forward_signal INT 2' INT
 trap 'forward_signal TERM 15' TERM
 
 START_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+WRAPPER_IDENTITY="$(ps -o lstart= -p "$WRAPPER_PID" 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+CURSOR_CONV_ID=""
+if [[ "${CURSOR_CONVERSATION_ID:-}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+  CURSOR_CONV_ID="$CURSOR_CONVERSATION_ID"
+fi
 
 run_record_start() {
+  PAN_RUN_CURSOR_CONVERSATION_ID="$CURSOR_CONV_ID" PAN_RUN_PARENT_RECORD="$PARENT_RECORD" \
+    PAN_RUN_WRAPPER_IDENTITY="$WRAPPER_IDENTITY" \
   PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_RECORD_REL="$RECORD_DIR_REL" \
     PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" PAN_RUN_PID="$CMD_PID" \
     PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
@@ -816,6 +835,8 @@ PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_EXIT_CODE="$EXIT_CODE" PAN_RUN_SIGNAL="
   PAN_RUN_STARTED_AT="$START_AT" PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_QUIET="$QUIET" \
   PAN_RUN_START_STATUS="$START_STATUS" PAN_RUN_START_SIGNAL="$START_SIGNAL" \
   PAN_RUN_START_RECOVERED="$START_RECOVERED" PAN_RUN_START_STDERR="$START_STDERR" \
+  PAN_RUN_CURSOR_CONVERSATION_ID="$CURSOR_CONV_ID" PAN_RUN_PARENT_RECORD="$PARENT_RECORD" \
+  PAN_RUN_WRAPPER_IDENTITY="$WRAPPER_IDENTITY" \
   node "$HELPER" record-end -- "${COMMAND_ARGV[@]}"
 
 if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -eq 0 ]]; then

@@ -73,6 +73,90 @@ function jsonDocuments(stdout: string): unknown[] {
     .map((line) => JSON.parse(line) as unknown)
 }
 
+test('AC-01: alias tool events land in the canonical event file', () => {
+  const root = harnessRoot()
+  const env = { PANCREATOR_ROOT: root }
+  runHook(
+    'subagentStart',
+    {
+      subagent_id: 'canonical-child',
+      conversation_id: 'parent',
+      parent_conversation_id: 'parent',
+      tool_call_id: 'tc-child',
+      task: 'Read runtime/logs/workflows/63278_Oct-01-0956_chunk-subage/agent/invocations/99_implement-1_65919ef7.md first.',
+    },
+    env,
+  )
+  runHook(
+    'preToolUse',
+    {
+      conversation_id: 'alias-conv',
+      parent_tool_call_id: 'tc-child',
+      tool_name: 'Read',
+      tool_use_id: 'tu-alias',
+      tool_input: { path: 'README.md' },
+    },
+    env,
+  )
+
+  const canonicalLines = readFileSync(
+    path.join(root, 'runtime/logs/agents', 'canonical-child.jsonl'),
+    'utf8',
+  )
+  assert.match(canonicalLines, /"agent_id":"canonical-child"/u)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/agents', 'alias-conv.jsonl')),
+    false,
+  )
+})
+
+test('AC-02: subagentStart accepts task and keeps a valid parent transcript path', () => {
+  const root = harnessRoot()
+  const env = { PANCREATOR_ROOT: root }
+  const parentTranscript = path.join(root, 'parent-transcript.jsonl')
+  writeFileSync(parentTranscript, '{}\n')
+
+  runHook(
+    'subagentStart',
+    {
+      subagent_id: 'task-child',
+      conversation_id: 'parent',
+      parent_conversation_id: 'parent',
+      task: 'Read runtime/logs/workflows/63278_Oct-01-0956_chunk-subage/agent/invocations/99_implement-1_65919ef7.md first.',
+      transcript_path: parentTranscript,
+    },
+    env,
+  )
+
+  const index = JSON.parse(
+    readFileSync(path.join(root, 'runtime/logs/agents/index.json'), 'utf8'),
+  ) as {
+    agents: Array<{
+      agent_id: string
+      run_id: string | null
+      invocation_id: string | null
+      parent_transcript_path: string | null
+    }>
+  }
+  const entry = index.agents.find((agent) => agent.agent_id === 'task-child')
+  assert.ok(entry)
+  assert.equal(entry.run_id, '63278_Oct-01-0956_chunk-subage')
+  assert.equal(entry.invocation_id, '99_implement-1_65919ef7')
+  assert.equal(entry.parent_transcript_path, parentTranscript)
+
+  runHook(
+    'subagentStart',
+    {
+      subagent_id: 'text-child',
+      conversation_id: 'parent2',
+      parent_conversation_id: 'parent2',
+      task_text:
+        'Read runtime/logs/workflows/63278_Oct-01-0956_chunk-subage/agent/invocations/99_implement-1_65919ef7.md first.',
+    },
+    env,
+  )
+})
+
 test('AC-004: a hook fired outside the harness writes the index at PANCREATOR_ROOT', () => {
   assert.ok(
     existsSync(path.join(process.cwd(), 'dist', 'src', 'agent-index-hook.js')),

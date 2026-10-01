@@ -26,6 +26,7 @@ import {
   redact,
   resolveActor,
   resolveCanonicalId,
+  resolveEventFileId,
   summarizeToolInput,
   touch,
   withLock,
@@ -38,11 +39,42 @@ import {
   type PreToolUsePayload,
   type SubagentStartPayload,
   type SubagentStopPayload,
+  type AgentEvent,
 } from './store.js'
+import { validatedParentTranscriptPath } from './transcript.js'
 
 // ---------------------------------------------------------------------------
 // Public event handlers
 // ---------------------------------------------------------------------------
+
+function canonicalAgentId(
+  index: ReturnType<typeof readIndex>,
+  rawId: string,
+  parentToolCallId: string | null,
+): string {
+  return (
+    resolveCanonicalId(index, rawId) ??
+    (parentToolCallId !== null
+      ? resolveCanonicalId(index, parentToolCallId)
+      : null) ??
+    rawId
+  )
+}
+
+function appendToolEvent(
+  root: string,
+  rawId: string,
+  parentToolCallId: string | null,
+  event: AgentEvent,
+): void {
+  const index = readIndex(root)
+  const fileId = resolveEventFileId(index, rawId, parentToolCallId)
+
+  appendEvent(root, fileId, {
+    ...event,
+    agent_id: canonicalAgentId(index, rawId, parentToolCallId),
+  })
+}
 
 /**
  * Handle `preToolUse`: append `call_started`, and for a `Task` call record a
@@ -65,7 +97,9 @@ export function handlePreToolUse(
   const summary = summarizeToolInput(toolName, payload.tool_input, secrets)
 
   ensureAgentsDir(root)
-  appendEvent(root, rawId, {
+  const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
+
+  appendToolEvent(root, rawId, parentToolCallId, {
     schema_version: SCHEMA_VERSION,
     kind: 'call_started',
     agent_id: rawId,
@@ -74,8 +108,6 @@ export function handlePreToolUse(
     tool_use_id: toolUseId,
     ...(summary !== undefined ? { summary } : {}),
   })
-
-  const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
 
   withLock(lockPath(root), () => {
     const index = readIndex(root)
@@ -146,7 +178,9 @@ export function handlePostToolUse(
   const failureType = failed ? nonEmptyString(payload.failure_type) : null
 
   ensureAgentsDir(root)
-  appendEvent(root, rawId, {
+  const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
+
+  appendToolEvent(root, rawId, parentToolCallId, {
     schema_version: SCHEMA_VERSION,
     kind,
     agent_id: rawId,
@@ -162,7 +196,7 @@ export function handlePostToolUse(
       : null
 
   if (handle !== null) {
-    appendEvent(root, rawId, {
+    appendToolEvent(root, rawId, parentToolCallId, {
       schema_version: SCHEMA_VERSION,
       kind: 'launch_returned',
       agent_id: rawId,
@@ -172,8 +206,6 @@ export function handlePostToolUse(
       summary: handle,
     })
   }
-
-  const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
 
   withLock(lockPath(root), () => {
     const index = readIndex(root)
@@ -244,9 +276,15 @@ export function handleSubagentStart(
       ? conversationId
       : null
   const toolCallId = nonEmptyString(payload.tool_call_id)
-  const taskText = nonEmptyString(payload.task_text) ?? ''
+  const secrets = collectSecrets(root)
+  const taskText =
+    nonEmptyString(payload.task) ?? nonEmptyString(payload.task_text) ?? ''
   const parsed = parseRunInvocation(taskText)
   const digest = promptDigest(taskText)
+  const rawParentTranscript = nonEmptyString(payload.transcript_path)
+  const parentTranscriptPath = validatedParentTranscriptPath(
+    rawParentTranscript !== null ? redact(rawParentTranscript, secrets) : null,
+  )
   const nowIso = new Date().toISOString()
 
   ensureAgentsDir(root)
@@ -283,6 +321,10 @@ export function handleSubagentStart(
     if (parsed) {
       child.run_id = parsed.run_id
       child.invocation_id = parsed.invocation_id
+    }
+
+    if (parentTranscriptPath !== null) {
+      child.parent_transcript_path = parentTranscriptPath
     }
 
     for (const alias of [toolCallId, childConversationId]) {
@@ -378,7 +420,9 @@ function resolveStoppedChild(
     }
   }
 
-  const digest = promptDigest(nonEmptyString(payload.task_text))
+  const digest = promptDigest(
+    nonEmptyString(payload.task) ?? nonEmptyString(payload.task_text),
+  )
 
   if (parentCanonical !== null && digest !== null) {
     const match = index.agents
@@ -430,10 +474,13 @@ export function handleSubagentStop(
   }
 
   ensureAgentsDir(root)
-  appendEvent(root, target, {
+  const stopIndex = readIndex(root)
+  const stopFileId = resolveEventFileId(stopIndex, target, null)
+
+  appendEvent(root, stopFileId, {
     schema_version: SCHEMA_VERSION,
     kind: 'stopped',
-    agent_id: target,
+    agent_id: canonicalAgentId(stopIndex, target, null),
     timestamp: nowIso,
     status,
     ...(typeof payload.duration_seconds === 'number'

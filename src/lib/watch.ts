@@ -165,9 +165,17 @@ export type {
 } from './watch/process.js'
 export {
   WATCH_ATTACH_EXIT_ORPHANED,
+  WATCH_ATTACH_EXIT_WAKE,
   WATCH_ATTACH_NO_SESSION,
   watchAttach,
 } from './watch/attach.js'
+export {
+  WATCH_PARENT_BACKSTOP_SECONDS,
+  WATCH_BLOCK_BOUND_MS,
+  ATTACH_POLL_MS,
+  WORKER_STILL_ACTIVE,
+} from './watch/types.js'
+export { agentLiveness, workerActivityRefusal } from './watch/liveness.js'
 export type {
   AttachTerminalState,
   AttachSessionEntry,

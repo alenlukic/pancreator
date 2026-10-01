@@ -684,6 +684,67 @@ test('AC-15: secrets are redacted in output.log, heartbeat.json, record.json, an
   })
 })
 
+/** Records made in the same second sort by random suffix, so follow `latest`. */
+function readLatestRecordJson(root: string): Record<string, unknown> {
+  const shellDir = path.join(root, 'runtime', 'logs', 'shell')
+  const latest = readlinkSync(path.join(shellDir, 'latest'))
+
+  return readJsonFile(path.join(shellDir, latest, 'record.json')) as Record<
+    string,
+    unknown
+  >
+}
+
+test('AC-13 identity fields on nested pan-run records', () => {
+  const root = createTestTempDirectory('pan-run-nested-id-')
+  const parent = runPanRun(['--', 'echo', 'parent'], { root })
+  assert.equal(parent.status, 0, parent.stderr)
+  const parentDir = findLatestLogDir(root)
+  assert.ok(parentDir)
+  const parentRel = path.relative(root, parentDir).split(path.sep).join('/')
+
+  const nested = runPanRun(['--', 'echo', 'nested'], {
+    root,
+    env: {
+      CURSOR_CONVERSATION_ID: 'agent-nested-valid',
+      PAN_RUN_RECORD: parentRel,
+    },
+  })
+  assert.equal(nested.status, 0, nested.stderr)
+  const nestedJson = readLatestRecordJson(root)
+  assert.equal(nestedJson.cursor_conversation_id, 'agent-nested-valid')
+  assert.equal(nestedJson.parent_record, parentRel)
+  assert.ok(nestedJson.wrapper_process_identity)
+  const realNested = runPanRun(
+    ['--label', 'outer', '--', PAN_RUN, '--label', 'inner', '--', 'true'],
+    { root },
+  )
+  assert.equal(realNested.status, 0, realNested.stderr)
+  const shellDir = path.join(root, 'runtime', 'logs', 'shell')
+  const recordFor = (label: string): Record<string, unknown> => {
+    const name = readdirSync(shellDir).find((entry) =>
+      new RegExp(`^\\d{8}T\\d{6}Z-${label}-`, 'u').test(entry),
+    )
+    assert.ok(name, `no ${label} record`)
+
+    return readJsonFile(path.join(shellDir, name, 'record.json')) as Record<
+      string,
+      unknown
+    >
+  }
+  assert.equal(
+    recordFor('inner').parent_record,
+    String(recordFor('outer').log_path).replace(/\/output\.log$/u, ''),
+  )
+  const invalid = runPanRun(['--', 'echo', 'bad-id'], {
+    root,
+    env: { CURSOR_CONVERSATION_ID: '!!!invalid!!!' },
+  })
+  assert.equal(invalid.status, 0, invalid.stderr)
+  const invalidJson = readLatestRecordJson(root)
+  assert.equal(invalidJson.cursor_conversation_id, null)
+})
+
 test('a linked worktree logs to its main worktree', () => {
   const main = createTestTempDirectory('pan-run-main-')
   const git = (cwd: string, ...args: string[]) => {
@@ -767,9 +828,14 @@ function killingNodeShim(root: string, onlyFirst: boolean): NodeJS.ProcessEnv {
 
 test('AC-004: a start helper killed twice still prints the observe line and the record names the failure', () => {
   const root = createTestTempDirectory('pan-run-start-killed-')
+  const parentRel = 'runtime/logs/shell/20261001T000000Z-outer-abcdef01'
   const result = runPanRun(['--label', 'killed', '--', 'echo', 'still runs'], {
     root,
-    env: killingNodeShim(root, false),
+    env: {
+      ...killingNodeShim(root, false),
+      CURSOR_CONVERSATION_ID: 'agent-fallback',
+      PAN_RUN_RECORD: parentRel,
+    },
   })
 
   assert.equal(result.status, 0, result.stderr)
@@ -797,6 +863,9 @@ test('AC-004: a start helper killed twice still prints the observe line and the 
     recovered: false,
     stderr: 'helper killed for the test',
   })
+  assert.equal(record.cursor_conversation_id, 'agent-fallback')
+  assert.equal(record.parent_record, parentRel)
+  assert.ok(typeof record.wrapper_process_identity === 'string')
 })
 
 test('AC-01: wrapper start line precedes external work and arrives quickly', async () => {

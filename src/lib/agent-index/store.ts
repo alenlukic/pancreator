@@ -104,6 +104,8 @@ export interface AgentEntry {
   invocation_id: string | null
   aliases: string[]
   transcript_path: string | null
+  /** Parent conversation transcript path from subagentStart when valid. */
+  parent_transcript_path?: string | null
   /** Digest of the task text, the last key the stop resolution tries. */
   prompt_digest?: string | null
   stop: AgentStopRecord | null
@@ -175,7 +177,9 @@ export interface SubagentStartPayload {
   parent_conversation_id?: string
   parent_tool_call_id?: string
   tool_call_id?: string
+  task?: string
   task_text?: string
+  transcript_path?: string
   subagent_type?: string
   model?: string
 }
@@ -186,6 +190,7 @@ export interface SubagentStopPayload {
   subagent_id?: string
   parent_conversation_id?: string
   status?: string
+  task?: string
   task_text?: string
   agent_transcript_path?: string
   tool_call_count?: number
@@ -693,9 +698,37 @@ export function newAgentEntry(agentId: string, nowIso: string): AgentEntry {
     invocation_id: null,
     aliases: [],
     transcript_path: null,
+    parent_transcript_path: null,
     prompt_digest: null,
     stop: null,
   }
+}
+
+/**
+ * The canonical event-file id for a tool event before append. Resolution
+ * order mirrors resolveActor: canonical raw id, canonical parent tool call,
+ * then raw id.
+ */
+export function resolveEventFileId(
+  index: AgentIndex,
+  rawId: string,
+  parentToolCallId: string | null,
+): string {
+  const fromRaw = resolveCanonicalId(index, rawId)
+
+  if (fromRaw !== null) {
+    return fromRaw
+  }
+
+  if (parentToolCallId !== null) {
+    const fromParent = resolveCanonicalId(index, parentToolCallId)
+
+    if (fromParent !== null) {
+      return fromParent
+    }
+  }
+
+  return rawId
 }
 
 /**

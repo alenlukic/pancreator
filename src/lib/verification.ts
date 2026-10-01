@@ -2,7 +2,12 @@ import path from 'node:path'
 
 import { invariant } from './errors.js'
 import { fileExists, isRecord } from './io.js'
-import { harnessConfigName, readHarnessConfig } from './project-config.js'
+import {
+  harnessConfigName,
+  readHarnessConfig,
+  readInstallationIdentity,
+} from './project-config.js'
+import { loadRepositoryChecks } from './repository-checks/config.js'
 import { repositoryCheckProfileName } from './repository-checks/diagnostics.js'
 import type { Criterion, ResolvedVerification } from './types.js'
 
@@ -201,6 +206,16 @@ export function loadVerificationFile(root: string): VerificationFile {
 }
 
 /**
+ * Ship release gate profile of the Pancreator self-development installation.
+ * `pan release land` verifies the same touch set, and the operator forbids
+ * `full` on release (directive of 2026-10-01). Target installations, and any
+ * installation that declares no such profile, keep the level's own mapping.
+ */
+export const SELF_DEVELOPMENT_RELEASE_GATE_PROFILE = 'impacted-release'
+
+const RELEASE_GATE_ID = 'ship.full_suite'
+
+/**
  * Resolve the verification level a run snapshots at init. A later edit to
  * `config.json` cannot change a run already in flight.
  */
@@ -219,7 +234,18 @@ export function resolveVerification(
     { code: 'INVALID_VERIFICATION' },
   )
 
-  return { level: resolved, summary: level.summary, gates: level.gates }
+  const remapsReleaseGate =
+    level.gates[RELEASE_GATE_ID] !== false &&
+    readInstallationIdentity(root)?.installation_mode === 'self_development' &&
+    SELF_DEVELOPMENT_RELEASE_GATE_PROFILE in loadRepositoryChecks(root).profiles
+  const gates = remapsReleaseGate
+    ? {
+        ...level.gates,
+        [RELEASE_GATE_ID]: SELF_DEVELOPMENT_RELEASE_GATE_PROFILE,
+      }
+    : level.gates
+
+  return { level: resolved, summary: level.summary, gates }
 }
 
 /**

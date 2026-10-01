@@ -90,8 +90,10 @@ export function renderSupervisorProcedureBody(
                   'default — so run `pan watch` as a foreground blocking ' +
                   'shell call for that lifetime. When the platform detaches ' +
                   'the blocking call, run `pan watch --attach <ledger>` at ' +
-                  'once to rejoin the session rather than arming a second ' +
-                  'watch. Never call `AwaitShell`. The watch process ' +
+                  'once to rejoin the session, rerun the same attach command on each ' +
+                  '`attach_wake` return (exit 7 at the 300-second backstop), and read the ' +
+                  'printed liveness summary rather than arming a second watch. Give every blocking ' +
+                  '`pan watch` call a 330-second block bound (330000 ms). Never call `AwaitShell`. The watch process ' +
                   'sleeps and records; the foreground block holds your turn ' +
                   'open. A finished-looking output whose evidence is weak ' +
                   'buys one confirming wake instead of a verdict, and a ' +

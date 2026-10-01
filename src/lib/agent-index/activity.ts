@@ -22,6 +22,12 @@ import {
   type AgentStopRecord,
   type EventKind,
 } from './store.js'
+import { readTranscriptState, type TranscriptState } from './transcript.js'
+import {
+  readAgentShellRecords,
+  type AgentShellRecord,
+} from './shell-records.js'
+import { agentLiveness, type AgentLiveness } from '../watch/liveness.js'
 
 // A pan-run record that started this long before a shell call cannot be its.
 const PAN_RUN_LINK_LEAD_MS = 2_000
@@ -184,10 +190,15 @@ export interface AgentActivity {
   last_event_age_seconds: number | null
   open_call: {
     tool: string
+    tool_use_id?: string | null
     started_at: string
     summary?: string
     shell_heartbeat: ShellHeartbeat | null
+    shell_record_state?: AgentShellRecord['process_state'] | null
+    shell_link?: 'conversation_id' | 'time_window' | null
   } | null
+  shell_records?: AgentShellRecord[]
+  liveness?: AgentLiveness
   /**
    * An open call holds off a stall verdict. A shell call holds it only while
    * its linked `bin/pan-run` heartbeat is younger than two cadences.
@@ -197,9 +208,11 @@ export interface AgentActivity {
     status: AgentStatus
     recorded_at: string
     transcript_path: string | null
+    source: 'hook' | 'transcript'
     /** The stop left a readable, non-empty transcript behind. */
     terminal_output_present: boolean
   } | null
+  transcript: TranscriptState | null
   /** Changes whenever an event lands or the stop record changes. */
   signature: string
 }
@@ -260,7 +273,158 @@ function commandTextMatchesSummary(command: unknown, summary: string): boolean {
  * the tie, and the earliest candidate otherwise does, matching this link's
  * original single-candidate behavior.
  */
-export function linkedShellHeartbeat(
+function heartbeatFromDirectory(
+  root: string,
+  directory: string,
+  record: Record<string, unknown>,
+  nowMs: number,
+): ShellHeartbeat | null {
+  try {
+    const heartbeatPath = path.join(directory, 'heartbeat.json')
+    const heartbeatMs = statSync(heartbeatPath).mtimeMs
+    const heartbeatRaw: unknown = JSON.parse(
+      readFileSync(heartbeatPath, 'utf8'),
+    )
+    const heartbeat = isRecord(heartbeatRaw) ? heartbeatRaw : {}
+    const recentLines = Array.isArray(heartbeat.recent_lines)
+      ? heartbeat.recent_lines.filter(
+          (line): line is string => typeof line === 'string',
+        )
+      : []
+
+    return {
+      record_path: path.relative(root, path.join(directory, 'record.json')),
+      heartbeat_at: new Date(heartbeatMs).toISOString(),
+      age_seconds: Math.max(0, (nowMs - heartbeatMs) / 1000),
+      label: typeof record.label === 'string' ? record.label : null,
+      pid: typeof record.pid === 'number' ? record.pid : null,
+      elapsed_seconds:
+        typeof heartbeat.elapsed_seconds === 'number'
+          ? heartbeat.elapsed_seconds
+          : null,
+      log_bytes:
+        typeof heartbeat.log_bytes === 'number' ? heartbeat.log_bytes : null,
+      last_output_at:
+        typeof heartbeat.last_output_at === 'string'
+          ? heartbeat.last_output_at
+          : null,
+      recent_lines: recentLines,
+    }
+  } catch {
+    return null
+  }
+}
+
+function recordCommandMatchesSummary(
+  recordPath: string,
+  root: string,
+  summary: string,
+): boolean {
+  try {
+    const parsed: unknown = JSON.parse(
+      readFileSync(resolveInsideRecord(root, recordPath), 'utf8'),
+    )
+    return (
+      isRecord(parsed) && commandTextMatchesSummary(parsed.command, summary)
+    )
+  } catch {
+    return false
+  }
+}
+
+function resolveInsideRecord(root: string, relative: string): string {
+  return path.join(root, relative)
+}
+
+/** Prefer the agent's own `bin/pan-run` record by conversation id; fall back to the time window. */
+export function linkOpenShellCall(
+  root: string,
+  callStartedAt: string,
+  nowMs: number,
+  summary: string | undefined,
+  shellRecords: AgentShellRecord[],
+  agentIds: ReadonlySet<string>,
+): {
+  heartbeat: ShellHeartbeat | null
+  shell_record_state: AgentShellRecord['process_state'] | null
+  shell_link: 'conversation_id' | 'time_window' | null
+} {
+  const startedMs = Date.parse(callStartedAt)
+
+  if (!Number.isFinite(startedMs)) {
+    return {
+      heartbeat: null,
+      shell_record_state: null,
+      shell_link: null,
+    }
+  }
+
+  const owned = shellRecords.filter((record) => {
+    if (record.ended_at !== null) {
+      return false
+    }
+
+    const id = record.cursor_conversation_id
+
+    if (!id || !agentIds.has(id)) {
+      return false
+    }
+
+    const recordMs = record.started_at ? Date.parse(record.started_at) : NaN
+
+    return (
+      Number.isFinite(recordMs) && recordMs >= startedMs - PAN_RUN_LINK_LEAD_MS
+    )
+  })
+
+  const topLevel = owned.filter((record) => record.parent_record === null)
+  const pool = topLevel.length > 0 ? topLevel : owned
+  const preferred =
+    summary !== undefined
+      ? pool.find((record) =>
+          recordCommandMatchesSummary(record.record_path, root, summary),
+        )
+      : undefined
+  const chosen = preferred ?? pool[0] ?? null
+
+  if (chosen) {
+    const directory = path.join(root, path.dirname(chosen.record_path))
+
+    try {
+      const recordJson: unknown = JSON.parse(
+        readFileSync(path.join(directory, 'record.json'), 'utf8'),
+      )
+      const record = isRecord(recordJson) ? recordJson : {}
+
+      return {
+        heartbeat: heartbeatFromDirectory(root, directory, record, nowMs),
+        shell_record_state: chosen.process_state,
+        shell_link: 'conversation_id',
+      }
+    } catch {
+      return {
+        heartbeat: null,
+        shell_record_state: chosen.process_state,
+        shell_link: 'conversation_id',
+      }
+    }
+  }
+
+  const fallback = linkedShellHeartbeatTimeWindow(
+    root,
+    callStartedAt,
+    nowMs,
+    summary,
+  )
+
+  return {
+    heartbeat: fallback,
+    shell_record_state: null,
+    shell_link: fallback ? 'time_window' : null,
+  }
+}
+
+function linkedShellHeartbeatTimeWindow(
   root: string,
   callStartedAt: string,
   nowMs: number,
@@ -384,16 +548,19 @@ function transcriptPresent(transcriptPath: string | null): boolean {
 function resolveStop(
   agent: AgentEntry,
   events: AgentEvent[],
+  nowMs: number,
 ): {
   status: AgentStatus
   recorded_at: string
   transcript_path: string | null
+  source: 'hook' | 'transcript'
 } | null {
   if (agent.stop) {
     return {
       status: agent.stop.status,
       recorded_at: agent.stop.recorded_at,
       transcript_path: agent.transcript_path,
+      source: 'hook',
     }
   }
 
@@ -405,7 +572,19 @@ function resolveStop(
         status: event.status,
         recorded_at: event.timestamp,
         transcript_path: event.transcript_path ?? agent.transcript_path,
+        source: 'hook',
       }
+    }
+  }
+
+  const transcript = readTranscriptState(agent, nowMs)
+
+  if (transcript?.turn_ended) {
+    return {
+      status: transcript.turn_status === 'success' ? 'completed' : 'error',
+      recorded_at: new Date(transcript.mtime_ms).toISOString(),
+      transcript_path: transcript.path,
+      source: 'transcript',
     }
   }
 
@@ -433,30 +612,46 @@ export function readAgentActivity(
   const openEvent = openCallIn(events)
   const lastEventAt = latest?.timestamp ?? agent.last_event_at
   const lastMs = Date.parse(lastEventAt)
-  const stopRecord = resolveStop(agent, events)
+  const transcript = readTranscriptState(agent, nowMs)
+  const agentIds = new Set([agent.agent_id, ...agent.aliases])
+  const registeredMs = Date.parse(agent.registered_at)
+  const shellRecords = Number.isFinite(registeredMs)
+    ? readAgentShellRecords(root, agentIds, registeredMs, nowMs)
+    : []
+  const stopRecord = resolveStop(agent, events, nowMs)
   let openCall: AgentActivity['open_call'] = null
   let stallSuppressed = false
 
   if (openEvent && stopRecord === null) {
     const tool = openEvent.tool_name ?? 'unknown'
     const shell = SHELL_TOOLS.has(tool)
-    const heartbeat = shell
-      ? linkedShellHeartbeat(
+    const link = shell
+      ? linkOpenShellCall(
           root,
           openEvent.timestamp,
           nowMs,
           openEvent.summary,
+          shellRecords,
+          agentIds,
         )
-      : null
+      : {
+          heartbeat: null,
+          shell_record_state: null,
+          shell_link: null,
+        }
 
     openCall = {
       tool,
+      tool_use_id: openEvent.tool_use_id ?? null,
       started_at: openEvent.timestamp,
       ...(openEvent.summary ? { summary: openEvent.summary } : {}),
-      shell_heartbeat: heartbeat,
+      shell_heartbeat: link.heartbeat,
+      shell_record_state: link.shell_record_state,
+      shell_link: link.shell_link,
     }
     stallSuppressed = shell
-      ? heartbeat !== null && heartbeat.age_seconds < 2 * cadenceSeconds
+      ? link.heartbeat !== null &&
+        link.heartbeat.age_seconds < 2 * cadenceSeconds
       : true
   }
 
@@ -476,12 +671,14 @@ export function readAgentActivity(
         latest?.tool_use_id ?? '',
         stopRecord?.status ?? '',
         stopRecord?.recorded_at ?? '',
+        transcript?.size ?? '',
+        transcript?.mtime_ms ?? '',
       ].join(':'),
     )
     .digest('hex')
     .slice(0, 16)
 
-  return {
+  const activityBody = {
     agent_id: agent.agent_id,
     aliases: [...agent.aliases],
     event_file: path.relative(root, agentEventFile(root, agent.agent_id)),
@@ -495,7 +692,19 @@ export function readAgentActivity(
     open_call: openCall,
     stall_suppressed: stallSuppressed,
     stop,
+    transcript,
     signature,
+    shell_records: shellRecords,
+  }
+
+  return {
+    ...activityBody,
+    liveness: agentLiveness({
+      ...activityBody,
+      stop,
+      transcript,
+      open_call: openCall,
+    }),
   }
 }
 
@@ -505,4 +714,14 @@ export function agentActivitySignature(
   agentId: string,
 ): string | null {
   return readAgentActivity(root, agentId, Date.now(), 60)?.signature ?? null
+}
+
+/** @deprecated Prefer linkOpenShellCall; kept for callers that need the window only. */
+export function linkedShellHeartbeat(
+  root: string,
+  callStartedAt: string,
+  nowMs: number,
+  summary?: string,
+): ShellHeartbeat | null {
+  return linkedShellHeartbeatTimeWindow(root, callStartedAt, nowMs, summary)
 }
