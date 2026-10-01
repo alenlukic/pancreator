@@ -34,6 +34,11 @@
         "./bin/pan tests impacted --lane integration --changed pan-dev"
       ]
     },
+    "impacted-release": {
+      "description": "Release-landing default: the touch-set rule. Run every lane test whose static import closure reaches a file the candidate changed against pan-dev, covering unit, integration, and regression at once. Replaces full as pan release land's default gate; an operator who needs full or another profile for a specific land still gets it with --verify-profile.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["./bin/pan tests impacted --changed pan-dev"]
+    },
     "secondary": {
       "description": "Run Pancreator's installer suites, which are outside the default lane.",
       "probes": ["node --version", "npm --version"],

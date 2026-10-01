@@ -238,6 +238,10 @@ function writeFixtureRepositoryChecks(root: string): void {
             'impacted-integration',
             'Run fixture integration blast-radius tests.',
           ),
+          'impacted-release': profile(
+            'impacted-release',
+            'Run the fixture release-landing touch-set tests.',
+          ),
           secondary: profile('secondary', 'Run fixture secondary tests.'),
           full: profile('full', 'Run complete fixture verification.'),
         },

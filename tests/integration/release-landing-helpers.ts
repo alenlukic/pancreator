@@ -60,13 +60,18 @@ export function landingFixture(): string {
   return root
 }
 
-export function setFullProfileCommand(root: string, command: string): void {
+/** Stub a fixture repository-check profile's command, e.g. the land default `impacted-release` or `full` for an explicit operator request. */
+export function setProfileCommand(
+  root: string,
+  profile: string,
+  command: string,
+): void {
   const checksPath = path.join(root, 'runtime', 'repository-checks.json')
   const checks = JSON.parse(readFileSync(checksPath, 'utf8')) as {
     profiles: Record<string, { commands: string[] }>
   }
 
-  ;(checks.profiles.full as { commands: string[] }).commands = [command]
+  ;(checks.profiles[profile] as { commands: string[] }).commands = [command]
   writeFileSync(checksPath, `${JSON.stringify(checks, null, 2)}\n`)
 }
 

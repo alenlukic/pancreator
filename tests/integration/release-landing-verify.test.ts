@@ -1,7 +1,8 @@
 /**
  * Integration tests for `pan release land`: the landing mutex across callers,
  * and `landRelease` against a fixture repository with a pan-dev branch,
- * candidate worktrees, and a stub `full` profile.
+ * candidate worktrees, and a stub `impacted-release` profile (the touch-set
+ * land default; `full` stubs remain for the explicit-operator-request path).
  */
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -39,15 +40,16 @@ import {
   landingLockExists,
   makeCandidate,
   readLandingLog,
-  setFullProfileCommand,
+  setProfileCommand,
   versionAt,
 } from './release-landing-helpers.js'
 
 // HR-002 of the 2026-09-29 efficiency audit: 7 of 8 lands in one week reran
 // `full` after an integrate that merged nothing, on a tree the ship entry
 // gate had just verified. The land now reuses that proof when the source
-// content still matches, and keeps `full` for anything else.
-test('a no-op integrate on the tree the entry gate verified runs static and configuration, and every other land keeps full', () => {
+// content still matches. Operator directive (2026-10-01): every other land
+// runs the touch-set default `impacted-release` instead of `full`.
+test('a no-op integrate on the tree the entry gate verified runs static and configuration, and every other land runs the touch-set default', () => {
   const root = landingFixture()
   const worktreePath = path.join(
     root,
@@ -134,7 +136,7 @@ test('a no-op integrate on the tree the entry gate verified runs static and conf
     ]
 
   for (const [name, verification] of cases) {
-    assert.deepEqual(verification.profiles, ['full'], name)
+    assert.deepEqual(verification.profiles, ['impacted-release'], name)
     assert.equal(verification.basis, 'default', name)
     assert.ok(verification.reason.length > 0, name)
   }
@@ -166,7 +168,7 @@ test('a no-op integrate on the tree the entry gate verified runs static and conf
     gate,
   )
 
-  assert.deepEqual(moved.profiles, ['full'])
+  assert.deepEqual(moved.profiles, ['impacted-release'])
   assert.match(moved.reason, /differs from the tree the entry gate verified/u)
 })
 
@@ -179,7 +181,7 @@ test('a land records the basis of every verify step it ran', () => {
     nextSemanticVersion(versionAt(root, PAN_DEV), 'minor') as string,
     'This release records its verify basis.\n\n### Added\n\n- Add the basis-recorded marker module.',
   )
-  setFullProfileCommand(root, 'node -e "process.exit(0)"')
+  setProfileCommand(root, 'impacted-release', 'node -e "process.exit(0)"')
 
   const landed = landRelease(root, {
     worktree: 'basis-recorded',
@@ -190,7 +192,7 @@ test('a land records the basis of every verify step it ran', () => {
   )
 
   assert.equal(landed.status, 'landed')
-  assert.deepEqual(landed.verified_profiles, ['full'])
+  assert.deepEqual(landed.verified_profiles, ['impacted-release'])
   assert.equal(landed.verification_basis, 'default')
   assert.equal(verifySteps.length, 1)
   assert.equal(verifySteps[0]?.basis, 'default')
@@ -315,7 +317,7 @@ test('a landing that merges a tip removing a source verifies the rebuilt tree, n
   const verifyCheck =
     "const fs = require('node:fs'); process.exit(process.env.PANCREATOR_BUILD_READY || fs.existsSync('dist/src/gone.js') || !fs.existsSync('dist/src/base.js') ? 1 : 0)"
 
-  setFullProfileCommand(root, `node -e "${verifyCheck}"`)
+  setProfileCommand(root, 'impacted-release', `node -e "${verifyCheck}"`)
 
   withBuildEnvironment(tools, null, () => {
     compileCandidate(candidate)
@@ -330,7 +332,7 @@ test('a landing that merges a tip removing a source verifies the rebuilt tree, n
     const result = landRelease(root, { worktree: 'stale-dist', bump: 'minor' })
 
     assert.equal(result.status, 'landed', result.verification_output ?? '')
-    assert.deepEqual(result.verified_profiles, ['full'])
+    assert.deepEqual(result.verified_profiles, ['impacted-release'])
 
     const stamp = readFileSync(
       path.join(candidate, 'dist', '.build-stamp'),
@@ -364,7 +366,7 @@ test('a landing whose integrated tree does not compile fails before any profile 
     'broken',
     'This release does not compile.\n\n### Added\n\n- Add the broken module.',
   )
-  setFullProfileCommand(root, 'node -e "process.exit(0)"')
+  setProfileCommand(root, 'impacted-release', 'node -e "process.exit(0)"')
 
   withBuildEnvironment(tools, null, () => {
     const result = landRelease(root, { worktree: 'broken', bump: 'minor' })
@@ -382,7 +384,7 @@ test('a landing whose integrated tree does not compile fails before any profile 
 
 const REPAIR_RUN = 'run-ship-repair'
 
-/** A candidate whose first land failed `full` after finalize, plus that result. */
+/** A candidate whose first land failed `impacted-release` after finalize, plus that result. */
 function failedCandidate(
   root: string,
   name: string,
@@ -393,7 +395,7 @@ function failedCandidate(
     `This release is repaired in place.\n\n### Added\n\n- Add the ${name} marker module.`,
   )
 
-  setFullProfileCommand(root, 'node -e "process.exit(1)"')
+  setProfileCommand(root, 'impacted-release', 'node -e "process.exit(1)"')
 
   const failed = landRelease(root, {
     worktree: name,
@@ -424,7 +426,7 @@ test('a bounded repair of one lane test relands on the failed release pair and v
   const repaired = landRelease(root, {
     worktree: 'repair-ok',
     runId: REPAIR_RUN,
-    repairNote: 'A stale compiled test failed the full profile.',
+    repairNote: 'A stale compiled test failed the impacted-release profile.',
   })
 
   assert.equal(repaired.status, 'landed')
@@ -459,7 +461,7 @@ test('a bounded repair of one lane test relands on the failed release pair and v
   assert.equal(verifyStep?.basis, 'bounded_repair')
   assert.equal(
     verifyStep?.repair_note,
-    'A stale compiled test failed the full profile.',
+    'A stale compiled test failed the impacted-release profile.',
   )
   assert.equal(verifyStep?.run_id, REPAIR_RUN)
   assert.equal(typeof verifyStep?.token, 'string')
