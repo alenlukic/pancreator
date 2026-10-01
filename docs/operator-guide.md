@@ -2469,21 +2469,19 @@ When `pan release land` returns `conflict`:
 
 ## Monitored shell execution
 
-Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the exact `pan watch` command to observe the process:
+Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the command, its pid, and the `pan watch` command that observes it. The record directory in that command holds `output.log`:
 
 ```
-[pan-run] <label> started pid=<pid> log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+[pan-run] <label> started pid=<pid>; watch with ./bin/pan watch --shell runtime/logs/shell/<timestamp>-<label>-<hex>
 ```
 
-Run the command directly when you want to observe a wrapped agent command:
+Run that command to observe a wrapped agent command. `--shell` also takes the record's bare directory name, or `latest` for the newest record:
 
 ```sh
-./bin/pan watch --process <pid> --label <label> \
-  --output runtime/logs/shell/.../output.log \
-  --exit-record runtime/logs/shell/.../record.json
+./bin/pan watch --shell latest
 ```
 
-`--exit-record` supplies the wrapper's `record.json`, and the path must stay inside `runtime/logs`; any other path is refused with `PATH_ESCAPE` when the watch arms. When the process has exited and the record holds a numeric `exit_code`, `pan watch` reports `exit_status` as that code instead of `unknown`, and the terminal wake entry records it. A timed-out watch prints a re-arm command that keeps `--output` and `--exit-record`. Each interactive wake also prints the output's growth since the previous wake with an indented tail, or `no new output for <n>s` once the output has been silent for two cadences; when a `heartbeat.json` sits beside the exit record, the wake names its age and elapsed time too.
+`--shell` reads the pid and label from the record's `record.json`, watches its `output.log`, and reads the exit from that `record.json`, so a finished command reports its numeric `exit_status` instead of `unknown`. The record must sit inside `runtime/logs`; any other path is refused with `PATH_ESCAPE`, and a `record.json` that names no pid is refused with `SHELL_RECORD_UNREADABLE`. A timed-out watch prints the same `--shell` re-arm command. When the wrapper's start helper failed and wrote no `record.json`, the start line names the explicit form, `./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>`, which observes the same process. Each interactive wake also prints the output's growth since the previous wake with an indented tail, or `no new output for <n>s` once the output has been silent for two cadences; when a `heartbeat.json` sits beside the exit record, the wake names its age and elapsed time too.
 
 ### Reading a wrapped command's record
 

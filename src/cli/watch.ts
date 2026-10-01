@@ -25,6 +25,7 @@ import {
 } from '../lib/watch/options.js'
 import { foregroundReturnRecordPath } from '../lib/watch/paths.js'
 import {
+  resolveShellRecord,
   watchProcess,
   formatProcessWakeLines,
   type GenericWatchRecordEntry,
@@ -203,6 +204,7 @@ export async function watchCommand({
   }
 
   const processPid = option(args, '--process')
+  const shellRecordArg = option(args, '--shell')
   const timerMode = hasFlag(args, '--timer')
   const agentId = option(args, '--agent')
 
@@ -219,6 +221,7 @@ export async function watchCommand({
       '--handle',
       '--launched-at',
       '--process',
+      '--shell',
     ]
 
     if (
@@ -321,11 +324,26 @@ export async function watchCommand({
     return
   }
 
-  if (processPid !== null || timerMode) {
+  if (processPid !== null || shellRecordArg !== null || timerMode) {
     if (processPid !== null && timerMode) {
       throw new PanError('--process and --timer are exclusive.', {
         code: 'INVALID_ARGUMENT',
       })
+    }
+
+    if (
+      shellRecordArg !== null &&
+      (timerMode ||
+        ['--process', '--label', '--output', '--exit-record'].some(
+          (name) => option(args, name) !== null,
+        ))
+    ) {
+      throw new PanError(
+        '--shell reads the pid, label, output, and exit record from the ' +
+          'pan-run record, so it takes no --process, --label, --output, ' +
+          '--exit-record, or --timer.',
+        { code: 'INVALID_ARGUMENT' },
+      )
     }
 
     const genericExclusive = [
@@ -347,7 +365,7 @@ export async function watchCommand({
       )
     ) {
       throw new PanError(
-        '--process/--timer are standalone forms: they take no run id, ' +
+        '--process/--shell/--timer are standalone forms: they take no run id, ' +
           '--targets, --invocation, or delegation flags.',
         { code: 'INVALID_ARGUMENT' },
       )
@@ -385,14 +403,28 @@ export async function watchCommand({
     }
 
     const exitRecordArg = option(args, '--exit-record')
+    const shell =
+      shellRecordArg !== null ? resolveShellRecord(root, shellRecordArg) : null
 
-    const result = await watchProcess(root, {
-      pid: Number(processPid),
-      label: requiredArgument(option(args, '--label'), '--label'),
-      ...(option(args, '--output')
-        ? { outputPath: option(args, '--output') as string }
-        : {}),
-      ...(exitRecordArg !== null ? { exitRecordPath: exitRecordArg } : {}),
+    const result = await watchProcess(shell ? shell.root : root, {
+      ...(shell
+        ? {
+            pid: shell.pid,
+            label: shell.label,
+            outputPath: shell.output_path,
+            exitRecordPath: shell.record_path,
+            shellRecord: shell.directory,
+          }
+        : {
+            pid: Number(processPid),
+            label: requiredArgument(option(args, '--label'), '--label'),
+            ...(option(args, '--output')
+              ? { outputPath: option(args, '--output') as string }
+              : {}),
+            ...(exitRecordArg !== null
+              ? { exitRecordPath: exitRecordArg }
+              : {}),
+          }),
       ...(genericRecord ? { recordPath: genericRecord } : {}),
       cadenceSeconds: genericCadence,
       timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),

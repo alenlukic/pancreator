@@ -21,7 +21,10 @@ import { createTestTempDirectory } from '../temp.js'
 const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
 const PROCESS_TIMEOUT_MS = 30_000
 const BANNER =
-  /\[pan-run\] \S+ started pid=(\d+) log: (\S+) observe: \.\/bin\/pan watch --process (\d+) --label \S+ --output \S+ --exit-record (\S+)/u
+  /^\[pan-run\] \S+ started pid=(\d+); watch with \.\/bin\/pan watch --shell (runtime\/logs\/shell\/\S+)$/mu
+// Printed only when the start helper wrote no record.json.
+const FALLBACK_BANNER =
+  /^\[pan-run\] \S+ started pid=(\d+); watch with \.\/bin\/pan watch --process (\d+) --label \S+ --output (\S+) --exit-record (\S+)$/mu
 
 function runEnv(
   root: string,
@@ -127,10 +130,9 @@ async function startPanRun(root: string, args: string[]) {
     child,
     streams,
     closed,
-    startPid: Number(banner[1]),
-    logPath: path.join(root, banner[2]),
-    pid: Number(banner[3]),
-    recordPath: banner[4],
+    pid: Number(banner[1]),
+    logPath: path.join(root, banner[2], 'output.log'),
+    recordPath: `${banner[2]}/record.json`,
   }
 }
 
@@ -385,15 +387,13 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
         1,
         'the banner is one line',
       )
-      assert.equal(Number(banner[3]), readRecord(root).pid)
-      assert.equal(
-        banner[4],
-        `${banner[2].replace(/output\.log$/u, '')}record.json`,
-      )
-      assert.equal(
-        banner[1],
-        banner[3],
-        'the started-line pid matches the observe command pid',
+      const record = readRecord(root)
+
+      assert.equal(Number(banner[1]), record.pid)
+      assert.equal(record.log_path, `${banner[2]}/output.log`)
+      assert.ok(
+        (banner[0] as string).length < 160,
+        `the banner stays readable on one line: ${banner[0]}`,
       )
     },
   )
@@ -765,7 +765,12 @@ test('AC-004: a start helper killed twice still prints the observe line and the 
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(result.stdout, 'still runs\n')
-  assert.match(result.stderr, BANNER)
+  assert.doesNotMatch(result.stderr, BANNER)
+
+  const fallback = FALLBACK_BANNER.exec(result.stderr)
+
+  assert.ok(fallback, `the explicit watch form prints: ${result.stderr}`)
+  assert.equal(fallback[1], fallback[2])
   assert.match(
     result.stderr,
     /record-start helper failed with status 137 \(KILL\)/u,

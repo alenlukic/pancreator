@@ -89,7 +89,7 @@
       "excerpt": true
     },
     {
-      "text": "A long or backgrounded wrapped command MUST be observed through the `pan watch --process ... --exit-record ...` command printed by `bin/pan-run` at start, on the 60-second cadence.",
+      "text": "An agent MUST observe a long or backgrounded wrapped command through the `pan watch --shell <record>` command that `bin/pan-run` prints at start, on the 60-second cadence.",
       "audience": ["agent"]
     },
     {

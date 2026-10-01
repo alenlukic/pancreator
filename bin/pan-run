@@ -661,15 +661,6 @@ trap 'forward_signal TERM 15' TERM
 
 START_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
-# The observe line needs only values this shell already holds, so it prints
-# before the helper runs. A helper that dies still leaves the agent a
-# `pan watch --process` command to observe the running command with.
-if [[ -n "$PROGRESS_FD" ]]; then
-  printf '[pan-run] %s started pid=%s log: %s observe: ./bin/pan watch --process %s --label %s --output %s --exit-record %s\n' \
-    "$SAFE_LABEL" "$CMD_PID" "$RECORD_DIR_REL/output.log" "$CMD_PID" "$SAFE_LABEL" \
-    "$RECORD_DIR_REL/output.log" "$RECORD_DIR_REL/record.json" >&"$PROGRESS_FD"
-fi
-
 run_record_start() {
   PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_RECORD_REL="$RECORD_DIR_REL" \
     PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" PAN_RUN_PID="$CMD_PID" \
@@ -696,6 +687,20 @@ if (( START_STATUS != 0 )); then
       "$START_STATUS" "${START_SIGNAL:+ ($START_SIGNAL)}" \
       "$([[ "$START_RECOVERED" -eq 1 ]] && echo 'the retry wrote the record' || echo 'record.json is written when the command ends')" \
       >&"$PROGRESS_FD"
+  fi
+fi
+
+# `pan watch --shell` reads the pid and paths from record.json, so the short
+# command prints only once that record exists. A start helper that died twice
+# left no record, and the explicit form still gives the agent a command.
+if [[ -n "$PROGRESS_FD" ]]; then
+  if [[ -f "$RECORD_DIR/record.json" ]]; then
+    printf '[pan-run] %s started pid=%s; watch with ./bin/pan watch --shell %s\n' \
+      "$SAFE_LABEL" "$CMD_PID" "$RECORD_DIR_REL" >&"$PROGRESS_FD"
+  else
+    printf '[pan-run] %s started pid=%s; watch with ./bin/pan watch --process %s --label %s --output %s --exit-record %s\n' \
+      "$SAFE_LABEL" "$CMD_PID" "$CMD_PID" "$SAFE_LABEL" \
+      "$RECORD_DIR_REL/output.log" "$RECORD_DIR_REL/record.json" >&"$PROGRESS_FD"
   fi
 fi
 

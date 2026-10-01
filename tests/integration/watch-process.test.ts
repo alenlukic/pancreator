@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,6 +18,7 @@ import { createTestTempDirectory } from '../temp.js'
 import {
   GENERIC_WATCH_RECORD_DIRECTORY,
   processStartIdentity,
+  resolveShellRecord,
   watchProcess,
   watchTimer,
   type GenericWatchRecordEntry,
@@ -431,8 +439,7 @@ test('wakes report output growth, a tail on growth, and silence once output stop
 // AC-16: --exit-record support
 test('AC-16: --exit-record reports the exit status of a wrapped command', async (t) => {
   const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
-  const BANNER =
-    /observe: \.\/bin\/pan watch --process (\d+) --label \S+ --output \S+ --exit-record (\S+)/u
+  const BANNER = /watch with \.\/bin\/pan watch --shell (\S+)/u
 
   await t.test(
     'a watch armed on a live wrapped command that exits 3 reports exit_status 3',
@@ -458,11 +465,14 @@ test('AC-16: --exit-record reports the exit status of a wrapped command', async 
       try {
         await waitFor(() => BANNER.test(stderr))
 
-        const [, pid, exitRecord] = BANNER.exec(stderr) as RegExpExecArray
+        const [, shellRecord] = BANNER.exec(stderr) as RegExpExecArray
+        const shell = resolveShellRecord(root, shellRecord as string)
         const result = await watchProcess(root, {
-          pid: Number(pid),
+          pid: shell.pid,
           label: 'wrapped-exit-3',
-          exitRecordPath: exitRecord,
+          outputPath: shell.output_path,
+          exitRecordPath: shell.record_path,
+          shellRecord: shell.directory,
           cadenceSeconds: 0.2,
           timeoutSeconds: 30,
         })
@@ -524,6 +534,188 @@ test('AC-16: --exit-record reports the exit status of a wrapped command', async 
           `--output 'runtime/logs/shell/x/output.log' ` +
           `--exit-record 'runtime/logs/shell/x/record.json' --timeout-seconds 0.2`,
       )
+    },
+  )
+})
+
+test('pan watch --shell resolves one pan-run record to its process and paths', async (t) => {
+  const name = '20261001T051502Z-run-built-650b256b'
+  const directory = `runtime/logs/shell/${name}`
+  const seed = (root: string, record: Record<string, unknown> | null): void => {
+    mkdirSync(path.join(root, directory), { recursive: true })
+
+    if (record) {
+      writeFileSync(
+        path.join(root, directory, 'record.json'),
+        JSON.stringify(record),
+      )
+    }
+  }
+
+  await t.test(
+    'a full path, a bare name, and latest name the same record',
+    () => {
+      const root = createTestTempDirectory('watch-shell-resolve-')
+
+      seed(root, { pid: 4242, label: 'npm test' })
+      symlinkSync(name, path.join(root, 'runtime/logs/shell/latest'))
+
+      const expected = {
+        root,
+        directory,
+        pid: 4242,
+        label: 'npm test',
+        output_path: `${directory}/output.log`,
+        record_path: `${directory}/record.json`,
+      }
+
+      assert.deepEqual(resolveShellRecord(root, directory), expected)
+      assert.deepEqual(resolveShellRecord(root, `${directory}/`), expected)
+      assert.deepEqual(resolveShellRecord(root, name), expected)
+      assert.deepEqual(resolveShellRecord(root, 'latest'), expected)
+    },
+  )
+
+  await t.test(
+    'a linked worktree finds the record its pan-run wrote to the main checkout',
+    () => {
+      const main = createTestTempDirectory('watch-shell-main-')
+      const git = (cwd: string, ...args: string[]): void => {
+        const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+
+        assert.equal(result.status, 0, result.stderr)
+      }
+
+      git(main, 'init', '-q')
+      git(
+        main,
+        '-c',
+        'user.email=t@example.com',
+        '-c',
+        'user.name=t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'root',
+      )
+      mkdirSync(path.join(main, 'bin'))
+      writeFileSync(path.join(main, 'bin', 'pan-run'), '')
+      writeFileSync(path.join(main, 'config.json'), '{}')
+      seed(main, { pid: 4242, label: 'npm test' })
+
+      const worktree = path.join(main, 'linked')
+
+      git(main, 'worktree', 'add', '-q', '--detach', worktree)
+
+      const resolved = resolveShellRecord(worktree, directory)
+
+      assert.equal(realpathSync(resolved.root), realpathSync(main))
+      assert.equal(resolved.pid, 4242)
+      assert.equal(resolved.record_path, `${directory}/record.json`)
+    },
+  )
+
+  await t.test('a record without a label takes it from the name', () => {
+    const root = createTestTempDirectory('watch-shell-label-')
+
+    seed(root, { pid: 4242 })
+
+    assert.equal(resolveShellRecord(root, name).label, 'run-built')
+  })
+
+  await t.test(
+    'a path outside runtime/logs and a missing record are refused',
+    () => {
+      const root = createTestTempDirectory('watch-shell-refused-')
+
+      seed(root, null)
+
+      assert.throws(
+        () => resolveShellRecord(root, 'docs/x'),
+        (error: unknown) =>
+          error instanceof PanError && error.code === 'PATH_ESCAPE',
+      )
+      assert.throws(
+        () => resolveShellRecord(root, name),
+        (error: unknown) =>
+          error instanceof PanError &&
+          error.code === 'SHELL_RECORD_UNREADABLE' &&
+          /pan watch --process/u.test(error.message),
+      )
+    },
+  )
+
+  await t.test('a timed-out --shell watch re-arms with --shell', async () => {
+    const root = createTestTempDirectory('watch-shell-rearm-')
+    const result = await watchProcess(root, {
+      pid: process.pid,
+      label: 'rearm',
+      outputPath: `${directory}/output.log`,
+      exitRecordPath: `${directory}/record.json`,
+      shellRecord: directory,
+      cadenceSeconds: 0.1,
+      timeoutSeconds: 0.2,
+    })
+
+    assert.equal(result.state, 'timed_out')
+    assert.equal(
+      result.rearm_command,
+      `./bin/pan watch --shell '${directory}' --timeout-seconds 0.2`,
+    )
+  })
+
+  await t.test(
+    'the CLI watches a wrapped command to its exit status and refuses mixed forms',
+    () => {
+      const root = createFixture()
+      const wrapped = spawnSync(
+        path.join(process.cwd(), 'bin', 'pan-run'),
+        ['--', 'bash', '-c', 'exit 3'],
+        {
+          cwd: root,
+          encoding: 'utf8',
+          env: { ...process.env, PANCREATOR_ROOT: root, PAN_VERBOSE: '' },
+          timeout: 60_000,
+        },
+      )
+      const shellRecord = /watch with \.\/bin\/pan watch --shell (\S+)/u.exec(
+        wrapped.stderr,
+      )?.[1]
+
+      assert.ok(shellRecord, wrapped.stderr)
+
+      const watched = spawnSync(
+        process.execPath,
+        [
+          CLI,
+          'watch',
+          '--shell',
+          shellRecord,
+          '--cadence-seconds',
+          '0.05',
+          '--cadence-directed-by-operator',
+          'cli fixture',
+          '--json',
+        ],
+        { cwd: root, encoding: 'utf8', timeout: 60_000 },
+      )
+
+      assert.equal(watched.status, 0, watched.stderr)
+
+      const result = JSON.parse(watched.stdout) as Record<string, unknown>
+
+      assert.equal(result.state, 'exited')
+      assert.equal(result.exit_status, 3)
+
+      const mixed = spawnSync(
+        process.execPath,
+        [CLI, 'watch', '--shell', shellRecord, '--process', '1'],
+        { cwd: root, encoding: 'utf8', timeout: 60_000 },
+      )
+
+      assert.notEqual(mixed.status, 0)
+      assert.match(mixed.stderr, /--shell reads the pid/u)
     },
   )
 })
