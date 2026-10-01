@@ -39,6 +39,24 @@
           "instruction_sha256": "629e172441e51f1ed84d84310515282654dad4d40a47816c825a63f68d6278a4"
         },
         {
+          "id": "comms-visible",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "7314bab9c8c1a0c59fa6219111bd96f476b2800ebc1343dbde6e9992ce6142eb"
+        },
+        {
+          "id": "comms-tool-turn",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "3a1e05439797cc7d7c8e5f442489fbec64afe5c38616ecf0c20863efd916d65b"
+        },
+        {
+          "id": "comms-result-order",
+          "type": "policy",
+          "policy_id": "COMMS-001",
+          "instruction_sha256": "2d7bcd87f810759715cc55eccfaa9d46e76093a736d78e40247ea69988136438"
+        },
+        {
           "id": "principles-objective",
           "type": "policy",
           "policy_id": "PRINCIPLES-001",

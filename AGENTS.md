@@ -126,7 +126,7 @@ The release steward owns the version decision and synchronized metadata inside a
 
 ## Shell and chat output
 
-`COMMS-001` governs every report you write to the operator in chat. It binds your first response, before you resolve any card. Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
+`COMMS-001` governs every report you write to the operator in chat. It binds your first response, before you resolve any card. Hidden reasoning, a Thinking block, and raw tool output do not satisfy it. Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
 
 Run every agent shell command inside `bin/pan-run`. Allowlisted read-only commands (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`) may run unwrapped but must not chain or pipe into a non-allowlisted command.
 
