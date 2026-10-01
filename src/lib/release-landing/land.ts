@@ -38,6 +38,7 @@ import {
 } from './steps.js'
 import {
   buildLandingTree,
+  landingBuildCurrency,
   landingBuildIsCurrent,
   resolveLandingVerification,
   runLandingCheck,
@@ -121,6 +122,29 @@ export function landRelease(
       `Candidate worktree '${worktreeName}' has no HEAD commit.`,
       { code: 'LANDING_NO_HEAD' },
     )
+
+    const staleBuild = landingBuildCurrency(
+      repositoryRoot,
+      tipCommit,
+      worktreePath,
+      worktreeRelative,
+      worktreeName,
+    )
+
+    if (staleBuild !== null) {
+      recordStep('build_currency', {
+        outcome: 'refused',
+        executing_root: staleBuild.executing_root,
+        executing_head: staleBuild.executing_head,
+        candidate_has_tip: staleBuild.candidate_has_tip,
+      })
+
+      return finish({
+        status: 'landing_refused',
+        tip_before: tipCommit,
+        refused_reason: staleBuild.reason,
+      })
+    }
 
     const repair =
       options.repairNote !== undefined
