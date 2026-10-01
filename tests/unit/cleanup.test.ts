@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -62,6 +62,8 @@ test('cleanup artifact table covers ephemeral and retained classes', () => {
     'benchmarks',
     'scratch',
     'worktrees',
+    'shell-logs',
+    'agent-index',
   ]) {
     assert.ok(byName.has(name), name)
     assert.notEqual(byName.get(name)?.disposal, 'retain')
@@ -74,6 +76,30 @@ test('cleanup artifact table covers ephemeral and retained classes', () => {
     byName
       .get('release-allocations')
       ?.paths.includes('runtime/release/allocations.jsonl'),
+  )
+})
+
+test('shell-logs planning skips the latest symlink', () => {
+  const root = createTestTempDirectory('cleanup-shell-logs-')
+  const shellDir = path.join(root, 'runtime', 'logs', 'shell')
+  const recordName = '20260101T000000Z-oldfinished-aaaaaaaa'
+  const recordDir = path.join(shellDir, recordName)
+
+  mkdirSync(recordDir, { recursive: true })
+  writeFileSync(path.join(recordDir, 'record.json'), '{}\n')
+  symlinkSync(recordName, path.join(shellDir, 'latest'))
+
+  const plan = planCleanup(root, {
+    classes: ['shell-logs'],
+    // Far enough past any real mtime that the record reads as expired,
+    // matching the far-future pattern the landing-lock test below uses.
+    now: new Date(Date.now() + 60 * 24 * 60 * 60 * 1_000),
+  })
+
+  assert.deepEqual(
+    plan.actions.map((action) => [action.action, action.path]),
+    [['delete', `runtime/logs/shell/${recordName}`]],
+    'only the record directory is planned; the latest symlink is never listed',
   )
 })
 

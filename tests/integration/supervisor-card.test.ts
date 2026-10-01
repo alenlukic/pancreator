@@ -99,6 +99,20 @@ test('pan init renders the supervisor card and records its digest in run state',
   for (const id of expected) {
     assert.ok(written.includes(`**${id} · `), `card omits ${id}`)
   }
+
+  // DELEGATE-001's stall decision procedure is supervisor-audience, so it
+  // must reach the card the supervisor attests, not only the always-apply
+  // rule every worker card gets a pointer to.
+  assert.ok(
+    written.includes(
+      'Only a watch verdict `stalled` (exit 2) is a stall signal.',
+    ),
+    'the supervisor card carries the DELEGATE-001 stall procedure',
+  )
+  assert.ok(
+    written.includes('MUST NOT interrupt the worker or the command'),
+    'the supervisor card carries the no-interrupt rule for a live wrapped command',
+  )
 })
 
 test('attesting the current digest unlocks prepare and submit; a wrong digest is refused', () => {

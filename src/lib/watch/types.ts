@@ -1,6 +1,7 @@
 /** Watch result states, record shapes, cadence defaults, and error codes. */
 
-import type { AgentActivity } from '../agent-index/activity.js'
+import type { AgentActivity, ShellHeartbeat } from '../agent-index/activity.js'
+import type { EventKind } from '../agent-index/store.js'
 
 export type WatchTerminalState =
   | 'completed'
@@ -292,6 +293,34 @@ export interface WatchResult {
   interrupted_signal?: string
   /** Exact command that starts another bounded observation after timeout. */
   rearm_command?: string
+  /**
+   * The worker's last known activity behind a `stalled`, `unverified`, or
+   * `timed_out` verdict. Absent for every other state.
+   */
+  stall_evidence?: WatchStallEvidence
+}
+
+/**
+ * What a `stalled`, `unverified`, or `timed_out` verdict rests on: the
+ * worker's last known activity from the hook-fed agent index, so a
+ * supervisor deciding on recovery reads it in the same place it reads the
+ * verdict, under `DELEGATE-001`. `agent_id: null` means the index has no
+ * entry for the worker at all, distinct from an indexed worker with no open
+ * call.
+ */
+export interface WatchStallEvidence {
+  agent_id: string | null
+  last_event_kind: EventKind | null
+  last_event_at: string | null
+  last_event_age_seconds: number | null
+  open_call: {
+    tool: string
+    started_at: string
+    age_seconds: number
+    summary?: string
+    shell_heartbeat: ShellHeartbeat | null
+  } | null
+  stall_suppressed: boolean
 }
 
 export interface WatchOptions {

@@ -21,6 +21,7 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
     - Always use `--mark-background`, since the `Task` call is always background: `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` as a foreground blocking call (one-hour default bound).
     - When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once to rejoin that session. Never call `AwaitShell`.
     - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
+    - Before you act on `stalled`, `unverified`, or `timed_out`, read the linked `bin/pan-run` record's `heartbeat.json` as **Worker delivery** in the persona requires. A fresh heartbeat means rearm with `--agent-state running`, never interrupt.
     - `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.
 12. Apply the snapshotted enabled or disabled away-mode branch at each unresolved operator action.
 13. Report to the operator as **Operator communication** in the brief requires.

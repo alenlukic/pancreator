@@ -8,6 +8,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   statSync,
   writeFileSync,
 } from 'node:fs'
@@ -20,7 +21,7 @@ import { createTestTempDirectory } from '../temp.js'
 const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
 const PROCESS_TIMEOUT_MS = 30_000
 const BANNER =
-  /\[pan-run\] log: (\S+) observe: \.\/bin\/pan watch --process (\d+) --label \S+ --output \S+ --exit-record (\S+)/u
+  /\[pan-run\] \S+ started pid=(\d+) log: (\S+) observe: \.\/bin\/pan watch --process (\d+) --label \S+ --output \S+ --exit-record (\S+)/u
 
 function runEnv(
   root: string,
@@ -126,9 +127,10 @@ async function startPanRun(root: string, args: string[]) {
     child,
     streams,
     closed,
-    logPath: path.join(root, banner[1]),
-    pid: Number(banner[2]),
-    recordPath: banner[3],
+    startPid: Number(banner[1]),
+    logPath: path.join(root, banner[2]),
+    pid: Number(banner[3]),
+    recordPath: banner[4],
   }
 }
 
@@ -187,6 +189,110 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
       'the record directory keeps no scratch files',
     )
   })
+
+  await t.test(
+    'the wrapper refreshes runtime/logs/shell/latest to the newest record',
+    () => {
+      const root = createTestTempDirectory('pan-run-latest-')
+
+      runPanRun(['--label', 'first', '--', 'echo', 'one'], { root })
+      const firstTarget = readlinkSync(
+        path.join(root, 'runtime', 'logs', 'shell', 'latest'),
+      )
+      const firstDir = findLatestLogDir(root)
+
+      assert.equal(firstDir && path.basename(firstDir), firstTarget)
+      assert.ok(!firstTarget.includes('/'), 'the link target is relative')
+
+      runPanRun(['--label', 'second', '--', 'echo', 'two'], { root })
+      const secondTarget = readlinkSync(
+        path.join(root, 'runtime', 'logs', 'shell', 'latest'),
+      )
+      const secondDir = findLatestLogDir(root)
+
+      assert.equal(secondDir && path.basename(secondDir), secondTarget)
+      assert.notEqual(
+        secondTarget,
+        firstTarget,
+        'latest must move to the newer record',
+      )
+    },
+  )
+
+  await t.test(
+    'a finished run compacts records older than the bound and keeps a running one',
+    () => {
+      const root = createTestTempDirectory('pan-run-compact-')
+      const shellDir = path.join(root, 'runtime', 'logs', 'shell')
+      const oldFinished = path.join(
+        shellDir,
+        '20260101T000000Z-oldfinished-aaaaaaaa',
+      )
+      const oldRunning = path.join(
+        shellDir,
+        '20260101T000000Z-oldrunning-bbbbbbbb',
+      )
+
+      mkdirSync(oldFinished, { recursive: true })
+      writeFileSync(
+        path.join(oldFinished, 'record.json'),
+        JSON.stringify({
+          schema_version: 1,
+          label: 'oldfinished',
+          command: ['echo', 'x'],
+          cwd: '/tmp',
+          pid: 1,
+          wrapper_pid: 999_999,
+          started_at: '2026-01-01T00:00:00.000Z',
+          ended_at: '2026-01-01T00:00:05.000Z',
+          exit_code: 0,
+          signal: null,
+          log_path: 'x',
+          heartbeat_path: 'y',
+          heartbeat_seconds: 30,
+        }),
+      )
+      writeFileSync(path.join(oldFinished, 'heartbeat.json'), '{}')
+      writeFileSync(path.join(oldFinished, 'output.log'), 'old\n')
+
+      mkdirSync(oldRunning, { recursive: true })
+      writeFileSync(
+        path.join(oldRunning, 'record.json'),
+        JSON.stringify({
+          schema_version: 1,
+          label: 'oldrunning',
+          command: ['sleep', '999'],
+          cwd: '/tmp',
+          pid: process.pid,
+          wrapper_pid: process.pid,
+          started_at: '2026-01-01T00:00:00.000Z',
+          ended_at: null,
+          exit_code: null,
+          signal: null,
+          log_path: 'x',
+          heartbeat_path: 'y',
+          heartbeat_seconds: 30,
+        }),
+      )
+      writeFileSync(path.join(oldRunning, 'heartbeat.json'), '{}')
+
+      const result = runPanRun(['--label', 'trigger', '--', 'echo', 'go'], {
+        root,
+      })
+
+      assert.equal(result.status, 0)
+      assert.equal(
+        existsSync(oldFinished),
+        false,
+        'an old finished record past the bound is removed',
+      )
+      assert.equal(
+        existsSync(oldRunning),
+        true,
+        'a record whose wrapper is still alive is never removed',
+      )
+    },
+  )
 
   await t.test('-c form runs through bash -c', () => {
     const root = createTestTempDirectory('pan-run-c-form-')
@@ -279,10 +385,15 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
         1,
         'the banner is one line',
       )
-      assert.equal(Number(banner[2]), readRecord(root).pid)
+      assert.equal(Number(banner[3]), readRecord(root).pid)
       assert.equal(
+        banner[4],
+        `${banner[2].replace(/output\.log$/u, '')}record.json`,
+      )
+      assert.equal(
+        banner[1],
         banner[3],
-        `${banner[1].replace(/output\.log$/u, '')}record.json`,
+        'the started-line pid matches the observe command pid',
       )
     },
   )
@@ -365,12 +476,18 @@ test('AC-14: heartbeat updates heartbeat.json and clamps cadence above 60', asyn
       const beats = result.stderr
         .split('\n')
         .filter((line) =>
-          /^\[pan-run\] bash running \d+s pid=\d+ last: start$/u.test(line),
+          /^\[pan-run\] bash running \d+s pid=\d+ (\+\d+B|no new output for \d+s \(last: start\))$/u.test(
+            line,
+          ),
         )
 
       assert.ok(
         beats.length >= 2,
         `two heartbeat lines expected: ${result.stderr}`,
+      )
+      assert.ok(
+        result.stderr.includes('\n  start\n'),
+        `the first beat must print the indented tail: ${result.stderr}`,
       )
 
       const hb = readJsonFile(
@@ -383,8 +500,14 @@ test('AC-14: heartbeat updates heartbeat.json and clamps cadence above 60', asyn
         `heartbeat elapsed_seconds must be ≥ 2; got ${hb.elapsed_seconds}`,
       )
       assert.equal(hb.log_bytes, 'start\n'.length)
+      assert.equal(
+        typeof hb.last_beat_bytes,
+        'number',
+        "last_beat_bytes must record the previous beat's byte count",
+      )
       assert.deepEqual(hb.recent_lines, ['start'])
       assert.equal(typeof hb.last_output_at, 'string')
+      assert.equal(typeof hb.beat_at, 'string')
     },
   )
 
@@ -511,6 +634,17 @@ test('AC-15: secrets are redacted in output.log, heartbeat.json, record.json, an
 
     for (const entry of entries) {
       const entryPath = path.join(entry.parentPath, entry.name)
+      // Node's recursive readdir follows the `latest` symlink into the
+      // record directory it names, so everything reached through it is the
+      // same file reached through its real name. Count it once.
+      const relativeToShell = path.relative(shellDir, entryPath)
+
+      if (
+        relativeToShell === 'latest' ||
+        relativeToShell.startsWith(`latest${path.sep}`)
+      ) {
+        continue
+      }
 
       assert.ok(!entryPath.includes(secretValue), `${entryPath} leaks`)
       if (!entry.isFile()) continue

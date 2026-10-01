@@ -435,6 +435,14 @@ test('a Cursor worker card points at projected always-apply policies and keeps t
         instruction.text.includes('bin/pan-run'),
     ),
   )
+  // DELEGATE-001's stall decision procedure is supervisor-audience: a worker
+  // card MUST NOT carry it, only the supervisor card the operator attests.
+  assert.ok(
+    !markdown.includes(
+      'Only a watch verdict `stalled` (exit 2) is a stall signal.',
+    ),
+    'a worker card must not carry the supervisor-only stall procedure',
+  )
   assert.ok(
     Buffer.byteLength(markdown) + 15_000 < Buffer.byteLength(inline),
     `pointer card ${Buffer.byteLength(markdown)} B, inline ${Buffer.byteLength(inline)} B`,

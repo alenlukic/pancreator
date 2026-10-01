@@ -153,10 +153,23 @@ export function readAgentIndex(root: string): AgentIndex {
 // Activity view for watch wakes
 // ---------------------------------------------------------------------------
 
+/** Whether a tool name is one `bin/pan-run` wraps, so a linked heartbeat applies. */
+export function isShellTool(toolName: string): boolean {
+  return SHELL_TOOLS.has(toolName)
+}
+
 export interface ShellHeartbeat {
   record_path: string
   heartbeat_at: string
   age_seconds: number
+  /** From the linked record.json; null when absent or unreadable. */
+  label: string | null
+  pid: number | null
+  /** From the linked heartbeat.json; null/empty when the file holds `{}`. */
+  elapsed_seconds: number | null
+  log_bytes: number | null
+  last_output_at: string | null
+  recent_lines: string[]
 }
 
 export interface AgentActivity {
@@ -210,14 +223,48 @@ function shellRecordDirectoryMs(name: string): number | null {
   )
 }
 
+interface RunningShellRecord {
+  directory: string
+  record: Record<string, unknown>
+}
+
 /**
- * The `bin/pan-run` record an open shell call started: the earliest record
- * that began within the link window after the call and has not ended.
+ * The command a hook payload's `tool_input.command` carries can differ in
+ * whitespace from the array `bin/pan-run` recorded, so this compares on
+ * collapsed, trimmed text rather than an exact match.
+ */
+function commandTextMatchesSummary(command: unknown, summary: string): boolean {
+  if (!Array.isArray(command) || command.length === 0) {
+    return false
+  }
+
+  if (!command.every((word): word is string => typeof word === 'string')) {
+    return false
+  }
+
+  const commandText = command.join(' ').trim().replace(/\s+/gu, ' ')
+
+  if (commandText.length === 0) {
+    return false
+  }
+
+  return summary.replace(/\s+/gu, ' ').includes(commandText)
+}
+
+/**
+ * The `bin/pan-run` record an open shell call started, among every record
+ * that began within the link window and has not ended. With no way to
+ * attribute a shell call to its exact wrapper (no hook-supplied identity
+ * crosses the child shell), several in-window running records are
+ * ambiguous; a summary that names the linked record's own command breaks
+ * the tie, and the earliest candidate otherwise does, matching this link's
+ * original single-candidate behavior.
  */
 export function linkedShellHeartbeat(
   root: string,
   callStartedAt: string,
   nowMs: number,
+  summary?: string,
 ): ShellHeartbeat | null {
   const startedMs = Date.parse(callStartedAt)
   const shellDir = path.join(root, 'runtime', 'logs', 'shell')
@@ -245,6 +292,8 @@ export function linkedShellHeartbeat(
     )
     .sort((a, b) => a.ms - b.ms)
 
+  const running: RunningShellRecord[] = []
+
   for (const { name } of candidates) {
     const directory = path.join(shellDir, name)
 
@@ -257,14 +306,56 @@ export function linkedShellHeartbeat(
         continue
       }
 
-      const heartbeatMs = statSync(
-        path.join(directory, 'heartbeat.json'),
-      ).mtimeMs
+      running.push({ directory, record })
+    } catch {
+      continue
+    }
+  }
+
+  if (running.length === 0) {
+    return null
+  }
+
+  const preferred = summary
+    ? running.find(({ record }) =>
+        commandTextMatchesSummary(record.command, summary),
+      )
+    : undefined
+  const ordered = preferred
+    ? [preferred, ...running.filter((item) => item !== preferred)]
+    : running
+
+  for (const { directory, record } of ordered) {
+    try {
+      const heartbeatPath = path.join(directory, 'heartbeat.json')
+      const heartbeatMs = statSync(heartbeatPath).mtimeMs
+      const heartbeatRaw: unknown = JSON.parse(
+        readFileSync(heartbeatPath, 'utf8'),
+      )
+      const heartbeat = isRecord(heartbeatRaw) ? heartbeatRaw : {}
+      const recentLines = Array.isArray(heartbeat.recent_lines)
+        ? heartbeat.recent_lines.filter(
+            (line): line is string => typeof line === 'string',
+          )
+        : []
 
       return {
         record_path: path.relative(root, path.join(directory, 'record.json')),
         heartbeat_at: new Date(heartbeatMs).toISOString(),
         age_seconds: Math.max(0, (nowMs - heartbeatMs) / 1000),
+        label: typeof record.label === 'string' ? record.label : null,
+        pid: typeof record.pid === 'number' ? record.pid : null,
+        elapsed_seconds:
+          typeof heartbeat.elapsed_seconds === 'number'
+            ? heartbeat.elapsed_seconds
+            : null,
+        log_bytes:
+          typeof heartbeat.log_bytes === 'number' ? heartbeat.log_bytes : null,
+        last_output_at:
+          typeof heartbeat.last_output_at === 'string'
+            ? heartbeat.last_output_at
+            : null,
+        recent_lines: recentLines,
       }
     } catch {
       continue
@@ -350,7 +441,12 @@ export function readAgentActivity(
     const tool = openEvent.tool_name ?? 'unknown'
     const shell = SHELL_TOOLS.has(tool)
     const heartbeat = shell
-      ? linkedShellHeartbeat(root, openEvent.timestamp, nowMs)
+      ? linkedShellHeartbeat(
+          root,
+          openEvent.timestamp,
+          nowMs,
+          openEvent.summary,
+        )
       : null
 
     openCall = {

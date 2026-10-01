@@ -53,6 +53,7 @@ export type {
   EvidenceRoleObservation,
   WatchRecordEntry,
   WatchResult,
+  WatchStallEvidence,
   WatchOptions,
   DelegationWatchSummary,
   ForegroundReturnRecord,
@@ -137,7 +138,10 @@ export {
   readForegroundReturn,
   formatSessionStartLine,
   formatGapLine,
+  formatOpenCallSuffix,
   formatWakeLine,
+  formatStallEvidenceLine,
+  stallEvidenceFrom,
   readWatchRecord,
   summarizeDelegationWatch,
   summarizeForegroundReturn,
@@ -147,6 +151,7 @@ export {
 export {
   GENERIC_WATCH_RECORD_DIRECTORY,
   watchProcess,
+  formatProcessWakeLines,
 } from './watch/process.js'
 export type {
   GenericWatchTerminalState,

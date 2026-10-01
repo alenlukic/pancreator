@@ -26,11 +26,14 @@ import {
 import { foregroundReturnRecordPath } from '../lib/watch/paths.js'
 import {
   watchProcess,
+  formatProcessWakeLines,
   type GenericWatchRecordEntry,
 } from '../lib/watch/process.js'
 import {
   formatGapLine,
+  formatOpenCallSuffix,
   formatSessionStartLine,
+  formatStallEvidenceLine,
   formatWakeLine,
 } from '../lib/watch/record.js'
 import { watchTimer } from '../lib/watch/timer.js'
@@ -268,7 +271,6 @@ export async function watchCommand({
       onWake: interactive
         ? (info: WatchAgentWakeInfo) => {
             const activity = info.agent_activity
-            const openTool = activity?.open_call?.tool ?? null
             const age =
               activity?.last_event_age_seconds != null
                 ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
@@ -276,7 +278,7 @@ export async function watchCommand({
             process.stderr.write(
               `[pan watch:agent:${info.subject}] wake ${info.wake}` +
                 (activity ? '' : ' not registered') +
-                (openTool ? ` open:${openTool}` : '') +
+                formatOpenCallSuffix(activity) +
                 (activity?.last_event_kind
                   ? ` last:${activity.last_event_kind}${age}`
                   : '') +
@@ -298,7 +300,10 @@ export async function watchCommand({
             `record ${result.record_path}`
           : `agent watch ${result.state}: '${result.agent_id}' after ` +
             `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
-            `record ${result.record_path}`,
+            `record ${result.record_path}` +
+            (result.state === 'stalled'
+              ? `\n${formatStallEvidenceLine(result.stall_evidence)}`
+              : ''),
       json,
     )
     process.exitCode =
@@ -355,11 +360,7 @@ export async function watchCommand({
     const genericRecord = option(args, '--record') ?? undefined
     const genericOnWake = interactive
       ? (entry: GenericWatchRecordEntry) =>
-          process.stderr.write(
-            `[pan watch:${entry.label}] wake ${entry.wake} at ` +
-              `${entry.recorded_at}` +
-              `${entry.terminal_state ? ` -> ${entry.terminal_state}` : ''}\n`,
-          )
+          process.stderr.write(`${formatProcessWakeLines(entry)}\n`)
       : undefined
 
     if (timerMode) {
@@ -632,6 +633,9 @@ export async function watchCommand({
           `${launchRecordPath(root, runId, result.invocation_id)}` +
           (result.rearm_command
             ? `; re-arm with: ${result.rearm_command}`
+            : '') +
+          (result.state === 'stalled' || result.state === 'unverified'
+            ? `\n${formatStallEvidenceLine(result.stall_evidence)}`
             : ''),
     json,
   )

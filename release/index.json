@@ -396,6 +396,10 @@
     {
       "version": "8.1.0",
       "commit": "240ebdc083eb6ae63b8407576efcad9c78e730e4"
+    },
+    {
+      "version": "8.2.0",
+      "commit": "4b206b099e02d57dff1758fcb2493520124decba"
     }
   ]
 }

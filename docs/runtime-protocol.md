@@ -283,7 +283,12 @@ the worker the launch `--handle` names, else the agent whose task text named
 the invocation. The wake records that agent's latest event, any open call, and
 its stop. A new agent event counts as progress. An open call holds off a stall
 verdict, but an open shell call does so only while its linked `bin/pan-run`
-heartbeat is younger than two cadences. A completed stop with the output
+heartbeat is younger than two cadences. A `stalled` or `unverified` wake names
+the open shell call, the linked `runtime/logs/shell/` record, its heartbeat
+age, and its last output line, so the supervisor can read `heartbeat.json`
+before it acts. `DELEGATE-001` requires that read and permits interruption
+only for a dead wrapper, a stall with no live wrapped command and no new
+agent event, or an operator directive. A completed stop with the output
 present completes the watch with `terminal_basis: agent_state`. An error stop,
 an aborted stop, or a completed stop without output ends it `unverified` with
 `agent_stopped_error`, `agent_stopped_aborted`, or

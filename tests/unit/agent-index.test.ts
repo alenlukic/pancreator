@@ -32,6 +32,7 @@ import {
   handlePreToolUse,
   handleSubagentStart,
   handleSubagentStop,
+  linkedShellHeartbeat,
   loadAgentEvents,
   parseRunInvocation,
   promptDigest,
@@ -457,6 +458,143 @@ test('AC-004: an open shell call suppresses a stall only while its pan-run heart
   utimesSync(heartbeat, old, old)
   const stale = readAgentActivity(root, CHILD, Date.now(), 60)
   assert.equal(stale?.stall_suppressed, false)
+})
+
+test('the linked shell heartbeat carries the record label, pid, and heartbeat content', () => {
+  const root = makeRoot()
+  childStarts(root)
+  handlePreToolUse(root, {
+    event: 'preToolUse',
+    conversation_id: CHILD,
+    tool_name: 'Shell',
+    tool_use_id: 'tu-shell',
+    tool_input: { command: 'npm test' },
+  })
+
+  const startedAt = getOpenCall(root, CHILD)?.timestamp as string
+  const stamp = new Date(startedAt)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '')
+  const recordDir = path.join(
+    root,
+    'runtime/logs/shell',
+    `${stamp}-npm-abc12345`,
+  )
+
+  mkdirSync(recordDir, { recursive: true })
+  writeFileSync(
+    path.join(recordDir, 'record.json'),
+    JSON.stringify({
+      started_at: startedAt,
+      ended_at: null,
+      label: 'npm',
+      pid: 4242,
+      command: ['npm', 'test'],
+    }),
+  )
+  writeFileSync(
+    path.join(recordDir, 'heartbeat.json'),
+    JSON.stringify({
+      elapsed_seconds: 12,
+      log_bytes: 48,
+      last_output_at: '2026-09-30T19:00:00.000Z',
+      recent_lines: ['compiling', 'done'],
+    }),
+  )
+
+  const activity = readAgentActivity(root, CHILD, Date.now(), 60)
+  const heartbeat = activity?.open_call?.shell_heartbeat
+
+  assert.equal(heartbeat?.label, 'npm')
+  assert.equal(heartbeat?.pid, 4242)
+  assert.equal(heartbeat?.elapsed_seconds, 12)
+  assert.equal(heartbeat?.log_bytes, 48)
+  assert.equal(heartbeat?.last_output_at, '2026-09-30T19:00:00.000Z')
+  assert.deepEqual(heartbeat?.recent_lines, ['compiling', 'done'])
+
+  // An empty heartbeat.json (as a just-started record writes) degrades to
+  // null/empty fields rather than throwing.
+  writeFileSync(path.join(recordDir, 'heartbeat.json'), '{}')
+
+  const empty = readAgentActivity(root, CHILD, Date.now(), 60)
+  const emptyHeartbeat = empty?.open_call?.shell_heartbeat
+
+  assert.equal(emptyHeartbeat?.elapsed_seconds, null)
+  assert.equal(emptyHeartbeat?.log_bytes, null)
+  assert.equal(emptyHeartbeat?.last_output_at, null)
+  assert.deepEqual(emptyHeartbeat?.recent_lines, [])
+  // record.json is still readable, so label/pid survive an empty heartbeat.
+  assert.equal(emptyHeartbeat?.label, 'npm')
+  assert.equal(emptyHeartbeat?.pid, 4242)
+})
+
+/** Directory-name timestamp for a given instant, in pan-run's format. */
+function recordStamp(iso: string): string {
+  return iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+}
+
+test('linkedShellHeartbeat prefers the record whose command matches the call summary', () => {
+  const root = makeRoot()
+  const callStartedAt = new Date().toISOString()
+  // Distinct timestamps, both inside the 30-second link window, so ordering
+  // comes from the parsed directory name rather than directory-listing order
+  // (undefined when two record names share one timestamp).
+  const earlierAt = callStartedAt
+  const laterAt = new Date(Date.parse(callStartedAt) + 5_000).toISOString()
+  const shellDir = path.join(root, 'runtime/logs/shell')
+  const earlierDir = path.join(
+    shellDir,
+    `${recordStamp(earlierAt)}-sleep-11111111`,
+  )
+  const laterDir = path.join(shellDir, `${recordStamp(laterAt)}-npm-22222222`)
+
+  mkdirSync(earlierDir, { recursive: true })
+  writeFileSync(
+    path.join(earlierDir, 'record.json'),
+    JSON.stringify({
+      started_at: earlierAt,
+      ended_at: null,
+      label: 'sleep',
+      pid: 1111,
+      command: ['sleep', '30'],
+    }),
+  )
+  writeFileSync(path.join(earlierDir, 'heartbeat.json'), '{}')
+
+  mkdirSync(laterDir, { recursive: true })
+  writeFileSync(
+    path.join(laterDir, 'record.json'),
+    JSON.stringify({
+      started_at: laterAt,
+      ended_at: null,
+      label: 'npm',
+      pid: 2222,
+      command: ['npm', 'test'],
+    }),
+  )
+  writeFileSync(path.join(laterDir, 'heartbeat.json'), '{}')
+
+  const withoutSummary = linkedShellHeartbeat(root, callStartedAt, Date.now())
+
+  assert.equal(
+    withoutSummary?.pid,
+    1111,
+    'with no summary to break the tie, the earliest candidate wins',
+  )
+
+  const withSummary = linkedShellHeartbeat(
+    root,
+    callStartedAt,
+    Date.now(),
+    'bin/pan-run -- npm test',
+  )
+
+  assert.equal(
+    withSummary?.pid,
+    2222,
+    "a summary naming the record's own command breaks the tie",
+  )
 })
 
 test('AC-004: an open non-shell call suppresses a stall', () => {

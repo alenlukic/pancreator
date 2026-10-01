@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { readFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -351,6 +351,81 @@ test('AC-023: generic watch', async (t) => {
     assert.equal(parsed.state, 'exited')
     assert.equal(parsed.exit_status, 'unknown')
   })
+})
+
+test('wakes report output growth, a tail on growth, and silence once output stops', async () => {
+  const root = createTestTempDirectory('watch-process-growth-')
+  const outputRelative = 'runtime/logs/watch/growth-output.log'
+  const outputAbsolute = path.join(root, outputRelative)
+
+  mkdirSync(path.dirname(outputAbsolute), { recursive: true })
+  writeFileSync(outputAbsolute, '')
+
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+    stdio: 'ignore',
+  })
+
+  assert.ok(child.pid)
+
+  const exited = once(child, 'exit')
+  let call = 0
+
+  const result = await watchProcess(root, {
+    pid: child.pid,
+    label: 'growth-fixture',
+    outputPath: outputRelative,
+    // The injected sleep drives the timeline deterministically: it never
+    // really waits, so the cadence value here only has to satisfy the
+    // constructor's cadence <= timeout invariant.
+    cadenceSeconds: 1,
+    timeoutSeconds: 30,
+    sleep: async () => {
+      call += 1
+
+      if (call === 1) {
+        appendFileSync(outputAbsolute, 'a\n')
+      } else if (call === 2) {
+        appendFileSync(outputAbsolute, 'b\n')
+      } else if (call === 3) {
+        // No further output: this wake must report silence. Killing the
+        // child here also ends the watch on this same wake.
+        child.kill('SIGKILL')
+        await exited
+      }
+    },
+  })
+
+  assert.equal(result.state, 'exited')
+
+  const wakeEntries = readGenericRecord(root, result.record_path).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  assert.equal(
+    wakeEntries.length,
+    3,
+    `expected exactly 3 wakes: ${wakeEntries.length}`,
+  )
+
+  const [first, second, third] = wakeEntries
+
+  assert.equal(
+    first?.output?.growth_bytes,
+    null,
+    'the first wake has no prior size to compare',
+  )
+  assert.deepEqual(first?.output?.tail, ['a'])
+
+  assert.equal(second?.output?.growth_bytes, 2)
+  assert.deepEqual(second?.output?.tail, ['a', 'b'])
+
+  assert.equal(
+    third?.output?.growth_bytes,
+    0,
+    'no growth since the second wake',
+  )
+  assert.equal(third?.output?.tail, undefined, 'a silent wake carries no tail')
+  assert.equal(third?.terminal_state, 'exited')
 })
 
 // AC-16: --exit-record support

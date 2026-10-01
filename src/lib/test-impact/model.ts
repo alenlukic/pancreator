@@ -115,6 +115,8 @@ export interface ImpactOptions {
   worktreeDirty?: boolean
   files?: string[]
   include?: string[]
+  /** Changed paths to drop from the change set before selection, repeatable. */
+  ignore?: string[]
   depth?: number
   list?: boolean
   json?: boolean

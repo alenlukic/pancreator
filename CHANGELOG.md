@@ -1,5 +1,18 @@
 # Changelog
 
+## [8.2.0] - 2026-10-01
+
+This release bounds `runtime/logs/shell`, gives an agent and a supervisor the evidence a wrapped command's heartbeat and a watch verdict carry, and states when a supervisor may interrupt a live worker.
+
+### Changed
+
+- Compact `runtime/logs/shell` at the end of every `bin/pan-run` invocation: a finished record survives a ten-minute grace window, then `PAN_RUN_KEEP_HOURS` (default 24) and `PAN_RUN_KEEP_RECORDS` (default 1000) bound it by age and by count, and a record whose wrapper is still alive is never removed ([969daa80](https://github.com/alenlukic/pancreator/commit/969daa80)).
+- Refresh `runtime/logs/shell/latest` to the newest record on every `bin/pan-run` invocation, and remove a successful quiet run's duplicate `stdout.log`/`stderr.log` captures ([969daa80](https://github.com/alenlukic/pancreator/commit/969daa80)).
+- Exclude the `shell-logs` cleanup class's `latest` symlink from retention planning ([8ea2446c](https://github.com/alenlukic/pancreator/commit/8ea2446c)).
+- Print the output's byte growth and an indented tail on each `bin/pan-run` heartbeat and interactive `pan watch --process` wake, or `no new output for <n>s` once the output goes silent for two cadences ([969daa80](https://github.com/alenlukic/pancreator/commit/969daa80), [0fea04a4](https://github.com/alenlukic/pancreator/commit/0fea04a4)).
+- Carry the linked `bin/pan-run` heartbeat's label, pid, and tail onto a worker watch wake, and its age and last line onto a `stalled`/`unverified`/`timed_out` verdict as `stall_evidence` ([3cfd3a00](https://github.com/alenlukic/pancreator/commit/3cfd3a00), [3c28391f](https://github.com/alenlukic/pancreator/commit/3c28391f)).
+- State in `DELEGATE-001` how to read a wrapped command's evidence, that only a `stalled` verdict is a stall signal, and the three conditions under which a supervisor may interrupt a worker or a wrapped command ([897b3c45](https://github.com/alenlukic/pancreator/commit/897b3c45)).
+
 ## [8.1.0] - 2026-10-01
 
 This release ends `pan release land`'s default use of the `full` verification profile, which had grown too slow and too heavy to run on every land.

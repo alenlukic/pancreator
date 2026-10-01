@@ -162,6 +162,15 @@ test('parseImpactArgs maps --lane names to lane directories and rejects an unkno
   )
 })
 
+test('parseImpactArgs collects repeated --ignore paths and strips a leading ./', () => {
+  assert.deepEqual(
+    parseImpactArgs(['--ignore', './VERSION', '--ignore', 'package.json'])
+      .ignore,
+    ['VERSION', 'package.json'],
+  )
+  assert.deepEqual(parseImpactArgs([]).ignore, [])
+})
+
 test('a hub or global change selects most of the lane and raises the advisory', async () => {
   const root = createSyntheticTree()
 
@@ -199,6 +208,8 @@ test('parseImpactArgs reads every option and rejects conflicts', () => {
       './src/lib/a.ts',
       '--include',
       'tests/unit/a*.test.ts',
+      '--ignore',
+      './VERSION',
       '--depth',
       '2',
       '--list',
@@ -210,6 +221,7 @@ test('parseImpactArgs reads every option and rejects conflicts', () => {
       changed: 'main',
       files: ['src/lib/a.ts'],
       include: ['tests/unit/a*.test.ts'],
+      ignore: ['VERSION'],
       depth: 2,
       list: true,
       json: true,

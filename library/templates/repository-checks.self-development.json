@@ -35,9 +35,11 @@
       ]
     },
     "impacted-release": {
-      "description": "Release-landing default: the touch-set rule. Run every lane test whose static import closure reaches a file the candidate changed against pan-dev, covering unit, integration, and regression at once. Replaces full as pan release land's default gate; an operator who needs full or another profile for a specific land still gets it with --verify-profile.",
+      "description": "Release-landing default: the touch-set rule. Run every lane test whose static import closure reaches a file the candidate changed against pan-dev, covering unit, integration, and regression at once. Replaces full as pan release land's default gate; an operator who needs full or another profile for a specific land still gets it with --verify-profile. Ignores the release metadata paths a land's own finalize step rewrites, so the version bump every land carries never triggers the whole-lane global-file fallback.",
       "probes": ["node --version", "npm --version"],
-      "commands": ["./bin/pan tests impacted --changed pan-dev"]
+      "commands": [
+        "./bin/pan tests impacted --changed pan-dev --ignore VERSION --ignore CHANGELOG.md --ignore package.json --ignore package-lock.json --ignore release/index.json --ignore docs/embedded-installation.md"
+      ]
     },
     "secondary": {
       "description": "Run Pancreator's installer suites, which are outside the default lane.",

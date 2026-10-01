@@ -5,11 +5,12 @@
  * tests/unit/agent-index.test.ts for why.
  */
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
+  getOpenCall,
   handlePreToolUse,
   handleSubagentStart,
   handleSubagentStop,
@@ -88,6 +89,11 @@ test('AC-005: a completed agent stop with the output present completes on agent_
   assert.equal(result.state, 'completed')
   assert.equal(wake.terminal_basis, 'agent_state')
   assert.equal(wake.observation?.agent_activity?.agent_id, agent)
+  assert.equal(
+    result.stall_evidence,
+    undefined,
+    'a completed watch carries no stall evidence',
+  )
 })
 
 for (const [status, fill, reason] of [
@@ -176,6 +182,81 @@ test('AC-005: a worker with no agent activity still stalls', async () => {
   })
 
   assert.equal(result.state, 'stalled')
+  assert.equal(result.stall_evidence?.agent_id, null)
+})
+
+test('a stalled verdict names the open shell call and its linked (but stale) pan-run record', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const agent = registerWorker(root, state.run_id, invocationId)
+
+  handlePreToolUse(root, {
+    event: 'preToolUse',
+    conversation_id: agent,
+    tool_name: 'Shell',
+    tool_use_id: 'tu-shell',
+    tool_input: { command: 'npm test' },
+  })
+
+  const startedAt = getOpenCall(root, agent)?.timestamp as string
+  const stamp = new Date(startedAt)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '')
+  const recordDir = path.join(
+    root,
+    'runtime/logs/shell',
+    `${stamp}-npm-aaaa1111`,
+  )
+
+  mkdirSync(recordDir, { recursive: true })
+  writeFileSync(
+    path.join(recordDir, 'record.json'),
+    JSON.stringify({
+      started_at: startedAt,
+      ended_at: null,
+      label: 'npm',
+      pid: 4242,
+      command: ['npm', 'test'],
+    }),
+  )
+  const heartbeatPath = path.join(recordDir, 'heartbeat.json')
+
+  writeFileSync(
+    heartbeatPath,
+    JSON.stringify({
+      elapsed_seconds: 600,
+      log_bytes: 12,
+      last_output_at: null,
+      recent_lines: ['still building'],
+    }),
+  )
+  // Far older than two cadences (0.2s here), so the link is found but does
+  // not suppress the stall: the record is running, but its heartbeat is not
+  // fresh evidence of progress.
+  const staleMs = (Date.now() - 10 * 60_000) / 1000
+
+  utimesSync(heartbeatPath, staleMs, staleMs)
+
+  const result = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    stallWakes: 3,
+    timeoutSeconds: CADENCE_SECONDS * 6,
+    ...fakeClock(),
+  })
+
+  assert.equal(result.state, 'stalled')
+  assert.equal(result.stall_evidence?.agent_id, agent)
+  assert.equal(result.stall_evidence?.open_call?.tool, 'Shell')
+
+  const shellHeartbeat = result.stall_evidence?.open_call?.shell_heartbeat
+
+  assert.equal(
+    shellHeartbeat?.record_path,
+    path.relative(root, path.join(recordDir, 'record.json')),
+  )
+  assert.equal(shellHeartbeat?.label, 'npm')
+  assert.equal(shellHeartbeat?.pid, 4242)
+  assert.deepEqual(shellHeartbeat?.recent_lines, ['still building'])
 })
 
 test('AC-005: a multiplexed wait ends unverified when one target agent stops with an error', async () => {

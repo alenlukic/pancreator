@@ -100,24 +100,28 @@ bin/pan-run [--label <name>] [--quiet] [--cwd <dir>] [--heartbeat-seconds <n>] -
 bin/pan-run [same options] -c '<shell string>'
 ```
 
-Each invocation writes to `runtime/logs/shell/<timestamp>-<label>-<hex>/`:
+Each invocation writes to `runtime/logs/shell/<timestamp>-<label>-<hex>/`. `runtime/logs/shell/latest` links to the newest of these directories, refreshed at every start:
 
 - `record.json` — redacted command, working directory, command and wrapper pids, start and end times, exit code, signal, log path. Written at start and at end.
 - `output.log` — redacted output of both streams, appended as the command runs.
-- `heartbeat.json` — written at start and on each beat: elapsed seconds, log bytes, the time of the last output, and the last five output lines.
-- `stdout.log`, `stderr.log` — in quiet mode only, one per stream.
+- `heartbeat.json` — written at start and on each beat: elapsed seconds, log bytes, the bytes at the previous beat (`last_beat_bytes`), the time of that beat (`beat_at`), the time of the last output, and the last five output lines.
+- `stdout.log`, `stderr.log` — in quiet mode only, one per stream. Removed after a successful quiet run; kept for the failure replay.
 
 Streaming mode keeps stdout and stderr on their own streams. The command reads the wrapper's stdin. The wrapper prints one stderr line at start naming the log and the exact `pan watch` observation command:
 
 ```
-[pan-run] log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+[pan-run] <label> started pid=<pid> log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
 ```
 
 Redaction applies to values from the process environment, from the harness root `.env`, and from the `.env` at the command's Git top level, whose names match `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `API_KEY`, `ACCESS_KEY`, `PRIVATE_KEY`, `CREDENTIAL`, `AUTH`, or `SESSION` (case-insensitive) and are at least 8 characters long. One secret set serves the output, the heartbeat tail, and the recorded command.
 
-The heartbeat cadence defaults to 30 seconds; `--heartbeat-seconds` or `PAN_RUN_HEARTBEAT_SECONDS` can lower it. Any value above 60 is clamped to 60. Heartbeat lines go to stderr when streaming. In quiet mode they go only to `PAN_PROGRESS_FD` or a terminal stderr, and the wrapper exports that sink so nested quiet wrappers beat to it.
+The heartbeat cadence defaults to 30 seconds; `--heartbeat-seconds` or `PAN_RUN_HEARTBEAT_SECONDS` can lower it. Any value above 60 is clamped to 60. Heartbeat lines go to stderr when streaming. In quiet mode they go only to `PAN_PROGRESS_FD` or a terminal stderr, and the wrapper exports that sink so nested quiet wrappers beat to it. A beat that found new output prints a header naming the byte growth (`+<n>B`) followed by the last `PAN_RUN_TAIL_LINES` lines (default 5), each indented two spaces; a beat that found none prints `no new output for <n>s` instead, so a silent command still shows as silent rather than repeating stale output. `heartbeat.json`'s own `recent_lines` always keeps the last five lines regardless of `PAN_RUN_TAIL_LINES`. A fresh `heartbeat.json` (younger than two cadences) is the liveness signal for a wrapped command; `recent_lines` is the tail an agent or supervisor reads before it interrupts anything, and `DELEGATE-001` states how that reading and that interruption are governed.
 
 SIGINT or SIGTERM to the wrapper stops the command and its direct children, records the signal in `record.json`, and exits with 128 plus the signal number. The command receives SIGTERM in both cases, because a background job in a non-interactive shell ignores SIGINT.
+
+### Compaction
+
+`bin/pan-run` compacts `runtime/logs/shell` at exit. A finished record survives at least ten minutes past its end (the grace window); past that, `PAN_RUN_KEEP_HOURS` (default 24) and `PAN_RUN_KEEP_RECORDS` (default 1000) bound it by age and by count, and either set to `0` disables compaction. A record whose wrapper is still alive, or whose `record.json` is not yet written but whose `.pan-run.cjs` marker still sits in the directory, is never removed. This is a per-run best-effort bound, not a replacement for the 30-day `shell-logs` retention class `./bin/pan cleanup` applies; that class skips the `latest` symlink.
 
 `bin/run-quiet` is a thin shim that delegates to `pan-run`. `PAN_VERBOSE=1` streams by exec-ing `pan-run` without `--quiet`; otherwise it execs `pan-run --quiet`, which prints nothing on success and, on failure, replays the captured stdout on stdout and then the captured stderr on stderr, each truncated to its last 16 MiB.
 
