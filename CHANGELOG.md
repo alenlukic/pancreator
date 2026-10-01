@@ -1,5 +1,26 @@
 # Changelog
 
+## [8.7.0] - 2026-10-01
+
+This release makes subagent liveness deterministic. `pan watch` completes only on a finished turn. `pan submit` refuses while the worker still acts.
+
+### Changed
+
+- Complete a watch only on a finished transcript turn or a hook stop, and stall only on a shell fault ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+- Return `pan watch --attach` at once on a terminal wake, and return `attach_wake` at the 300-second parent backstop ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+- Forbid an agent to ask the operator for permission to do work the request already covers ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+
+### Added
+
+- Read the child transcript turn record and link each `bin/pan-run` record to its Cursor conversation and parent record ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+- Refuse `pan submit` with `WORKER_STILL_ACTIVE` while the worker turn is open ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+
+### Fixed
+
+- Run the self-development ship entry gate `ship.full_suite` and the release prefetch as `impacted-release` instead of `full` ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+- Print every `pan watch` wake line when stderr is not a terminal ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+- Route child tool events to the canonical agent id, keep the `ps` lstart weekday, and export `PAN_RUN_RECORD` before the command forks ([e7e72a53](https://github.com/alenlukic/pancreator/commit/e7e72a53)).
+
 ## [8.6.0] - 2026-10-01
 
 This release lets an agent see a wrapped command start at once and release a stalled Cursor launcher.
