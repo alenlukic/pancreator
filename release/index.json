@@ -400,6 +400,10 @@
     {
       "version": "8.2.0",
       "commit": "4b206b099e02d57dff1758fcb2493520124decba"
+    },
+    {
+      "version": "8.3.0",
+      "commit": "440446a8ed1bb4166e437fdc1f6da0a9324f028c"
     }
   ]
 }
