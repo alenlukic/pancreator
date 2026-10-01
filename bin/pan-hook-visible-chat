@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Cursor hook: hold agents to the COMMS-001 visible-chat rules.
+# Usage: pan-hook-visible-chat <postToolUse | postToolUseFailure | stop>
+#
+# After a tool result it returns additional_context when the agent's latest
+# tool-calling step had no chat text. On the first stop of a turn with no chat
+# text it returns a followup_message. Always exits 0 with one JSON document.
+set -u
+
+DIST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/dist/src/visible-chat-hook.js"
+PAYLOAD="$(cat 2>/dev/null || true)"
+
+if [[ -f "$DIST" ]] && command -v node >/dev/null 2>&1 &&
+  response="$(printf '%s' "$PAYLOAD" | node "$DIST" "${1:-}" 2>/dev/null)" &&
+  [[ -n "$response" ]]; then
+  printf '%s\n' "$response"
+else
+  printf '%s\n' '{}'
+fi
+
+exit 0

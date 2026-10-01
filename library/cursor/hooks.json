@@ -29,6 +29,12 @@
         "matcher": ".*",
         "timeout": 5,
         "failClosed": false
+      },
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-visible-chat postToolUse",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": false
       }
     ],
     "postToolUseFailure": [
@@ -37,6 +43,20 @@
         "matcher": ".*",
         "timeout": 5,
         "failClosed": false
+      },
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-visible-chat postToolUseFailure",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": false
+      }
+    ],
+    "stop": [
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-visible-chat stop",
+        "timeout": 5,
+        "failClosed": false,
+        "loop_limit": 1
       }
     ],
     "subagentStart": [
