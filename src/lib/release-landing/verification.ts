@@ -6,9 +6,14 @@
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 
+import { executingSourceRoot } from '../build-identity.js'
 import { PanError } from '../errors.js'
-import { INTEGRATION_BRANCH } from '../git/branches.js'
-import { gitSourceContentFingerprint } from '../git/core.js'
+import { INTEGRATION_BRANCH, gitIsAncestor } from '../git/branches.js'
+import {
+  gitCommonDir,
+  gitHead,
+  gitSourceContentFingerprint,
+} from '../git/core.js'
 import { fileExists, readText } from '../io.js'
 import { BUILD_READY_ENV } from '../repository-checks/runner.js'
 import { shipRepairLaneProfiles } from '../ship-repair.js'
@@ -24,6 +29,81 @@ import {
   type LandingVerification,
   type TipIntegration,
 } from './steps.js'
+
+/** Why the executing build may not run a land, or null when it may. */
+export interface LandingBuildCurrency {
+  executing_root: string
+  executing_head: string | null
+  candidate_has_tip: boolean
+  reason: string
+}
+
+/**
+ * Refuse a land whose executing build lacks the `pan-dev` tip.
+ *
+ * The land's own decisions (the verify profile, the integrate, the check)
+ * run from the executing build, not from the candidate. A build older than
+ * the tip runs landing code older than the tip it lands onto, so a landed
+ * change to the landing itself silently never applies. The check covers a
+ * build that is a checkout of this repository; a build consumed from outside
+ * any checkout of it has no history to compare and is not refused.
+ */
+export function landingBuildCurrency(
+  repositoryRoot: string,
+  tipCommit: string,
+  worktreePath: string,
+  worktreeRelative: string,
+  worktreeName: string,
+  executingRoot: string | null = executingSourceRoot(),
+): LandingBuildCurrency | null {
+  if (executingRoot === null) {
+    return null
+  }
+
+  try {
+    if (gitCommonDir(executingRoot) !== gitCommonDir(repositoryRoot)) {
+      return null
+    }
+  } catch {
+    return null
+  }
+
+  const executingHead = gitHead(executingRoot)
+
+  if (
+    executingHead !== null &&
+    gitIsAncestor(repositoryRoot, tipCommit, executingHead)
+  ) {
+    return null
+  }
+
+  const candidateHead = gitHead(worktreePath)
+  const candidateHasTip =
+    candidateHead !== null &&
+    gitIsAncestor(repositoryRoot, tipCommit, candidateHead)
+  const short = (commit: string | null): string =>
+    commit === null ? 'an unreadable head' : commit.slice(0, 8)
+  const rerun =
+    `PANCREATOR_EXEC_ROOT=${worktreeRelative} ./bin/pan release land ` +
+    `--worktree ${worktreeName} with the same flags`
+
+  return {
+    executing_root: executingRoot,
+    executing_head: executingHead,
+    candidate_has_tip: candidateHasTip,
+    reason:
+      `LANDING_BUILD_BEHIND_TIP: the executing pan build (${executingRoot} ` +
+      `at ${short(executingHead)}) does not contain the ${INTEGRATION_BRANCH} ` +
+      `tip ${short(tipCommit)}, so the land would run landing code older ` +
+      'than the tip it lands onto. ' +
+      (candidateHasTip
+        ? `Run the candidate's own build: ${rerun}.`
+        : `The candidate branch does not contain the tip either. Merge ` +
+          `${INTEGRATION_BRANCH} into it first ` +
+          `(git -C ${worktreeRelative} merge ${INTEGRATION_BRANCH}), then ` +
+          `run ${rerun}.`),
+  }
+}
 
 interface LandingBuild {
   outcome: 'built' | 'failed' | 'not_applicable'

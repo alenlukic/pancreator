@@ -52,6 +52,7 @@ export type LandingStatus =
 
 export type LandingStepName =
   | 'tip_read'
+  | 'build_currency'
   | 'integrate'
   | 'repair'
   | 'allocate'

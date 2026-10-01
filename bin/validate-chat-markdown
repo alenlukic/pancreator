@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
 
-npm run build --silent
-exec node "$ROOT/dist/src/lib/validators/markdown-validator.js" "$@"
+# Preserve the caller's working directory. The validator resolves its default
+# repository root and a relative input path from it.
+exec "$ROOT/bin/run-built" -- node "$ROOT/dist/src/lib/validators/markdown-validator.js" "$@"
