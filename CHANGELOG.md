@@ -1,5 +1,21 @@
 # Changelog
 
+## [8.5.0] - 2026-10-01
+
+This release makes every file reference in operator chat a clickable Markdown link.
+
+### Changed
+
+- Require a file reference in an operator chat report to be a Markdown link whose display text is the repository-relative path inside the workspace repository, or the fully qualified path outside it, and whose target is the absolute path of the file. A fenced code block stays exempt ([e79b890a](https://github.com/alenlukic/pancreator/commit/e79b890a)).
+
+### Added
+
+- Add `file_reference.unlinked`, `file_link.relative_target`, and `file_link.display` checks to `validateChatMarkdown`, and accept `--repo-root` on `bin/validate-chat-markdown` ([e79b890a](https://github.com/alenlukic/pancreator/commit/e79b890a)).
+
+### Fixed
+
+- Keep the caller working directory in `bin/validate-chat-markdown`, so the default repository root is the Git top level of the caller directory ([e79b890a](https://github.com/alenlukic/pancreator/commit/e79b890a)).
+
 ## [8.4.0] - 2026-10-01
 
 This release stops `pan release land` from running landing code older than the `pan-dev` tip it lands onto.
