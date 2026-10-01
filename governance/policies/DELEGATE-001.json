@@ -84,7 +84,27 @@
       "audience": ["harness"]
     },
     {
-      "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist.",
+      "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
+    {
+      "text": "`bin/pan-run` MUST print a `[pan-run] started` line before any other work. A wrapped call with no such line 5 seconds after launch MUST be treated as a stalled launch.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
+    {
+      "text": "An agent MUST give each wrapped shell call a block bound of 5 seconds or less. A `pan watch` call MUST keep the bound this policy already sets for it.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
+    {
+      "text": "On a stalled launch the agent MUST run `bin/pan-run -- bin/pan-unstick` at once. When it releases nothing, the agent MUST report the stalled call with its terminal and elapsed time.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
+    {
+      "text": "An agent MUST NOT issue parallel shell calls when any of them builds or runs tests in the same worktree. It MUST run them one after another.",
       "audience": ["agent"],
       "excerpt": true
     },

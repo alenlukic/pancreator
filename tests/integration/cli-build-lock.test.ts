@@ -164,6 +164,78 @@ test('a build lock written by an older single-line wrapper is reclaimed', () => 
 
 // A verified holder still serializes, but every pan command passes through
 // this wait, so it ends with a diagnosable failure rather than a hang.
+test('AC-06: a fresh stamp skips the lock while a live holder keeps it', () => {
+  const fixture = createBuildScriptFixture()
+  const holder = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(holder.pid)
+
+    const warm = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      { cwd: fixture.root, encoding: 'utf8', env: fixture.env },
+    )
+    assert.equal(warm.status, 0, warm.stderr)
+
+    writeBuildLock(fixture.root, `${holder.pid}\n${ownerToken(holder.pid)}\n`)
+
+    const started = Date.now()
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      { cwd: fixture.root, encoding: 'utf8', env: fixture.env },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.ok(
+      Date.now() - started < 2000,
+      'a fresh stamp must not wait on the build lock',
+    )
+  } finally {
+    holder.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('AC-07: a stale stamp wait notice reaches PAN_PROGRESS_FD', () => {
+  const fixture = createBuildScriptFixture()
+  const holder = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(holder.pid)
+
+    writeFileSync(path.join(fixture.root, 'dist', '.build-stamp'), 'stale\n')
+    writeBuildLock(fixture.root, `${holder.pid}\n${ownerToken(holder.pid)}\n`)
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: {
+          ...fixture.env,
+          PANCREATOR_BUILD_LOCK_NOTICE_SECONDS: '0',
+          PANCREATOR_BUILD_LOCK_TIMEOUT_SECONDS: '1',
+          PAN_PROGRESS_FD: '3',
+        },
+        stdio: ['ignore', 'pipe', 'pipe', 'pipe'],
+      },
+    )
+
+    const progress = String(result.output[3] ?? '')
+    assert.match(
+      progress,
+      /\[run-built\] waiting for the build lock held by pid/u,
+    )
+    assert.equal(result.stderr.includes('[run-built] waiting'), false)
+  } finally {
+    holder.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 test('a wait on a verified live lock holder ends at a bound', () => {
   const fixture = createBuildScriptFixture()
   const holder = spawn('/bin/sleep', ['30'])

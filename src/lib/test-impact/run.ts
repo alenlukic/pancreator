@@ -15,6 +15,7 @@ import {
   renderFailureDetail,
   runsInsideProfileCommand,
 } from '../check-output.js'
+import { TEST_HEARTBEAT_PREFIX } from '../suite-profile-env.js'
 import { PanError } from '../errors.js'
 import { gitHead } from '../git.js'
 import { appendJsonLine, sha256 } from '../io.js'
@@ -53,17 +54,47 @@ function testRunFailed(error: Error): PanError {
 }
 
 /**
+ * Append a chunk to `buffer` and pass each complete line that starts with the
+ * test heartbeat prefix to `onHeartbeat`, keeping a partial line for the next
+ * chunk.
+ */
+function forwardHeartbeatLines(
+  chunk: Buffer,
+  buffer: { text: string },
+  onHeartbeat: (line: string) => void,
+): void {
+  buffer.text += chunk.toString('utf8')
+
+  for (;;) {
+    const newline = buffer.text.indexOf('\n')
+
+    if (newline === -1) {
+      return
+    }
+
+    const line = buffer.text.slice(0, newline)
+    buffer.text = buffer.text.slice(newline + 1)
+
+    if (line.startsWith(TEST_HEARTBEAT_PREFIX)) {
+      onHeartbeat(line)
+    }
+  }
+}
+
+/**
  * Run the selection, returning its exit code.
  *
  * With `logFd`, the child's stdout and stderr both land in that file in the
  * order they were written; `echo` also copies each chunk to this process's
- * streams. Without it the child inherits this process's streams.
+ * streams, and `onHeartbeatLine` receives each complete test heartbeat line
+ * as it arrives. Without `logFd` the child inherits this process's streams.
  */
 async function runSelected(
   root: string,
   selected: string[],
   logFd: number | null = null,
   echo = false,
+  onHeartbeatLine: ((line: string) => void) | null = null,
 ): Promise<number> {
   const runBuilt = path.join(root, 'bin', 'run-built')
   // run-tests gives the selection its own scratch directory under the root
@@ -71,36 +102,45 @@ async function runSelected(
   const runTests = path.join(root, 'bin', 'run-tests')
   const args = ['--', runTests, '--', ...testCommandArgs(selected)]
 
-  if (logFd === null || !echo) {
-    const result = spawnSync(runBuilt, args, {
-      cwd: root,
-      stdio: logFd === null ? 'inherit' : ['ignore', logFd, logFd],
+  if (logFd !== null && (echo || onHeartbeatLine)) {
+    return await new Promise<number>((resolve, reject) => {
+      const child = spawn(runBuilt, args, {
+        cwd: root,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      const stdoutBuffer = { text: '' }
+      const stderrBuffer = { text: '' }
+      const tee =
+        (stream: NodeJS.WriteStream, buffer: { text: string }) =>
+        (chunk: Buffer): void => {
+          writeSync(logFd, chunk)
+
+          if (echo) {
+            stream.write(chunk)
+          }
+
+          if (onHeartbeatLine) {
+            forwardHeartbeatLines(chunk, buffer, onHeartbeatLine)
+          }
+        }
+
+      child.stdout.on('data', tee(process.stdout, stdoutBuffer))
+      child.stderr.on('data', tee(process.stderr, stderrBuffer))
+      child.on('error', (error) => reject(testRunFailed(error)))
+      child.on('close', (code) => resolve(code ?? 1))
     })
-
-    if (result.error) {
-      throw testRunFailed(result.error)
-    }
-
-    return result.status ?? 1
   }
 
-  return await new Promise<number>((resolve, reject) => {
-    const child = spawn(runBuilt, args, {
-      cwd: root,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    const tee =
-      (stream: NodeJS.WriteStream) =>
-      (chunk: Buffer): void => {
-        writeSync(logFd, chunk)
-        stream.write(chunk)
-      }
-
-    child.stdout.on('data', tee(process.stdout))
-    child.stderr.on('data', tee(process.stderr))
-    child.on('error', (error) => reject(testRunFailed(error)))
-    child.on('close', (code) => resolve(code ?? 1))
+  const result = spawnSync(runBuilt, args, {
+    cwd: root,
+    stdio: logFd === null ? 'inherit' : ['ignore', logFd, logFd],
   })
+
+  if (result.error) {
+    throw testRunFailed(result.error)
+  }
+
+  return result.status ?? 1
 }
 
 /** The run's own `# tests <n>` count, or null when the output carries none. */
@@ -429,6 +469,11 @@ export async function runTestsImpacted(
           selection.selected,
           logFd,
           outputMode === 'verbose',
+          outputMode === 'summary'
+            ? (line) => {
+                progress(`[tests impacted] ${line}\n`)
+              }
+            : null,
         )
       } finally {
         closeSync(logFd)

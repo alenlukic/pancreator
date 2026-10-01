@@ -161,7 +161,7 @@ test('AC-19: shell-monitor validator pass and fail cases', async (t) => {
       const root = setupRoot()
       const hookPath = path.join(root, HOOK_SCRIPT)
       const hook = readFileSync(hookPath, 'utf8')
-      const edited = hook.replace('"pwd"]', '"pwd", "find"]')
+      const edited = hook.replace('"ps"]', '"ps", "find"]')
 
       assert.notEqual(edited, hook, 'the fixture edit must change the hook')
       writeFileSync(hookPath, edited)
@@ -179,7 +179,7 @@ test('AC-19: shell-monitor validator pass and fail cases', async (t) => {
       const root = setupRoot()
       const policyPath = path.join(root, POLICY)
       const policy = readFileSync(policyPath, 'utf8')
-      const edited = policy.replace('`cat`, `pwd`.', '`cat`.')
+      const edited = policy.replace('`cat`, `pwd`, `ps`.', '`cat`, `pwd`.')
 
       assert.notEqual(edited, policy, 'the fixture edit must change the policy')
       writeFileSync(policyPath, edited)

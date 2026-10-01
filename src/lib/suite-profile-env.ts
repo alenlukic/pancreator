@@ -14,6 +14,12 @@ import { testScratchRoot } from './test-scratch.js'
 /** Environment variable the reporters read for their profile target. */
 export const TEST_PROFILE_ENV = 'PAN_TEST_PROFILE'
 
+/** Seconds between test-run heartbeat lines; non-positive values mean 30. */
+export const TEST_HEARTBEAT_SECONDS_ENV = 'PAN_TEST_HEARTBEAT_SECONDS'
+
+/** Prefix every test heartbeat line prints. */
+export const TEST_HEARTBEAT_PREFIX = '# heartbeat '
+
 /** Per-run scratch directory `bin/run-tests` owns and removes. */
 export const TEST_SCRATCH_ENV = 'PANCREATOR_TEST_TMP'
 
