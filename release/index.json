@@ -420,6 +420,10 @@
     {
       "version": "8.7.0",
       "commit": "7dcf50f8c26147fac1e461a2c2a8880ddeb04dc5"
+    },
+    {
+      "version": "8.8.0",
+      "commit": "463b5fd02d53c8c379bee41d03f86739f28c6e06"
     }
   ]
 }
