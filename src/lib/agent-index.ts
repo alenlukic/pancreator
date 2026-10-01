@@ -61,6 +61,7 @@ export {
   isShellTool,
   linkedShellHeartbeat,
   readAgentActivity,
+  readAgentStop,
   agentActivitySignature,
 } from './agent-index/activity.js'
 export type { ShellHeartbeat, AgentActivity } from './agent-index/activity.js'

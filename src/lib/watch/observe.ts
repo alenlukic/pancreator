@@ -12,7 +12,9 @@ import {
 } from '../git.js'
 import {
   getAgentByRunInvocation,
+  getAgentEntry,
   readAgentActivity,
+  readAgentStop,
   type AgentActivity,
 } from '../agent-index/activity.js'
 import { fileExists, isRecord, readText, resolveInside, sha256 } from '../io.js'
@@ -263,39 +265,78 @@ function workspaceChangedFromInvocation(
 }
 
 /**
- * The indexed agent behind one invocation: the launch record's handle when
+ * The indexed agent id behind one invocation: the launch record's handle when
  * the index knows it, else the newest agent registered for the run and
  * invocation ids its task text named.
  */
-export function watchedAgentActivity(
-  root: string,
-  invocation: Invocation,
-  nowMs: number,
-  cadenceSeconds: number,
-): AgentActivity | null {
+function watchedAgentId(root: string, invocation: Invocation): string | null {
   const handle = readLaunchRecord(
     root,
     invocation.run_id,
     invocation.invocation_id,
   )?.worker_handle
 
-  const byHandle = handle
-    ? readAgentActivity(root, handle, nowMs, cadenceSeconds)
-    : null
-
-  if (byHandle) {
-    return byHandle
+  if (handle && getAgentEntry(root, handle)) {
+    return handle
   }
 
-  const registered = getAgentByRunInvocation(
-    root,
-    invocation.run_id,
-    invocation.invocation_id,
+  return (
+    getAgentByRunInvocation(root, invocation.run_id, invocation.invocation_id)
+      ?.agent_id ?? null
   )
+}
 
-  return registered
-    ? readAgentActivity(root, registered.agent_id, nowMs, cadenceSeconds)
+/**
+ * The earliest time a stop can belong to this invocation. A resumed subagent
+ * still carries the stop of the attempt before it, and no worker stops for an
+ * invocation that did not exist yet.
+ */
+function invocationNotBeforeMs(invocation: Invocation): number | null {
+  const createdMs = Date.parse(invocation.created_at)
+
+  return Number.isFinite(createdMs) ? createdMs : null
+}
+
+/** The indexed activity of the agent behind one invocation, or null. */
+export function watchedAgentActivity(
+  root: string,
+  invocation: Invocation,
+  nowMs: number,
+  cadenceSeconds: number,
+): AgentActivity | null {
+  const agentId = watchedAgentId(root, invocation)
+
+  return agentId
+    ? readAgentActivity(
+        root,
+        agentId,
+        nowMs,
+        cadenceSeconds,
+        invocationNotBeforeMs(invocation),
+      )
     : null
+}
+
+/**
+ * Whether the agent behind one invocation has stopped since the invocation
+ * was created. A stop always makes the next observation terminal, so a watch
+ * asks this between wakes to wake as soon as the worker ends.
+ */
+export function watchedAgentStopped(
+  root: string,
+  invocation: Invocation,
+): boolean {
+  const agentId = watchedAgentId(root, invocation)
+
+  return (
+    agentId !== null &&
+    readAgentStop(
+      root,
+      agentId,
+      Date.now(),
+      invocationNotBeforeMs(invocation),
+    ) !== null
+  )
 }
 
 /**

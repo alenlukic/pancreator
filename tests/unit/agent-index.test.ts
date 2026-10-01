@@ -38,6 +38,7 @@ import {
   promptDigest,
   readAgentActivity,
   readAgentIndex,
+  readAgentStop,
   resolveCanonicalId,
   summarizeToolInput,
 } from '../../src/lib/agent-index.js'
@@ -411,6 +412,60 @@ test('AC-004: readAgentActivity reports stop output from the transcript on disk'
   writeFileSync(path.join(root, 'missing.jsonl'), '{"role":"assistant"}\n')
   const withOutput = readAgentActivity(root, CHILD, Date.now(), 60)
   assert.equal(withOutput?.stop?.terminal_output_present, true)
+})
+
+test('a resumed agent that starts a call after its stop is running again', () => {
+  const root = makeRoot()
+  childStarts(root)
+  handleSubagentStop(root, {
+    event: 'subagentStop',
+    subagent_id: CHILD,
+    status: 'completed',
+  })
+  const stoppedMs = Date.parse(getStopRecord(root, CHILD)?.recorded_at ?? '')
+
+  assert.ok(readAgentStop(root, CHILD, Date.now()), 'the stop is current')
+
+  // Hook timestamps have millisecond resolution; the resumed call must land
+  // strictly after the stop for the order to mean anything.
+  while (Date.now() <= stoppedMs) {
+    // spin
+  }
+
+  handlePreToolUse(root, {
+    event: 'preToolUse',
+    conversation_id: CHILD,
+    tool_name: 'Read',
+    tool_use_id: 'tu-resumed',
+  })
+
+  const activity = readAgentActivity(root, CHILD, Date.now(), 60)
+
+  assert.equal(readAgentStop(root, CHILD, Date.now()), null)
+  assert.equal(activity?.stop, null)
+  assert.equal(activity?.open_call?.tool, 'Read')
+})
+
+test('a stop older than the not-before bound is not current', () => {
+  const root = makeRoot()
+  childStarts(root)
+  handleSubagentStop(root, {
+    event: 'subagentStop',
+    subagent_id: CHILD,
+    status: 'completed',
+  })
+  const stoppedMs = Date.parse(getStopRecord(root, CHILD)?.recorded_at ?? '')
+
+  assert.equal(readAgentStop(root, CHILD, Date.now(), stoppedMs + 1), null)
+  assert.equal(
+    readAgentActivity(root, CHILD, Date.now(), 60, stoppedMs + 1)?.stop,
+    null,
+  )
+  assert.equal(
+    readAgentStop(root, CHILD, Date.now(), stoppedMs)?.status,
+    'completed',
+    'a stop at the bound itself is current',
+  )
 })
 
 test('AC-004: an open shell call suppresses a stall only while its pan-run heartbeat is fresh', () => {

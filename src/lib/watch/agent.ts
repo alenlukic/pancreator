@@ -8,6 +8,7 @@ import { invariant } from '../errors.js'
 import {
   getAgentEntry,
   readAgentActivity,
+  readAgentStop,
   type AgentActivity,
 } from '../agent-index/activity.js'
 import {
@@ -28,7 +29,7 @@ import {
 import { processStartIdentity } from './process-evidence.js'
 import { deterministicStallCause, quietStallApplies } from './liveness.js'
 import { stallEvidenceFrom } from './record.js'
-import { defaultSleep, installInterruptionHandlers } from './session.js'
+import { installInterruptionHandlers, stopAwareSleep } from './session.js'
 
 export interface WatchAgentOptions {
   /** How long between wakes, in seconds. */
@@ -156,7 +157,9 @@ export async function watchAgent(
     { code: WATCH_TIMEOUT_BELOW_CADENCE },
   )
 
-  const sleep = options.sleep ?? defaultSleep
+  const sleep =
+    options.sleep ??
+    stopAwareSleep(() => readAgentStop(root, agentId, Date.now()) !== null)
   const now = options.now ?? Date.now
   const sessionId = randomUUID()
   const startedMs = now()

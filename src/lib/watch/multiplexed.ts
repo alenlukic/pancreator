@@ -26,6 +26,7 @@ import {
   launchToOutputSeconds,
   observeInvocation,
   OUTPUT_SCAFFOLD_ORDER_ADVISORY,
+  watchedAgentStopped,
 } from './observe.js'
 import { markDelegationBackground, recordInvocationLaunch } from './launch.js'
 import { processStartIdentity } from './process-evidence.js'
@@ -37,9 +38,9 @@ import {
 import {
   acquireWatchLock,
   appendSessionGap,
-  defaultSleep,
   detectSessionGap,
   installInterruptionHandlers,
+  stopAwareSleep,
   type WatchLockAcquisition,
 } from './session.js'
 
@@ -207,7 +208,14 @@ export async function watchInvocations(
     { code: WATCH_TIMEOUT_BELOW_CADENCE },
   )
 
-  const sleep = options.sleep ?? defaultSleep
+  const sleep =
+    options.sleep ??
+    stopAwareSleep(() =>
+      watched.some(
+        (item) =>
+          !item.terminalReached && watchedAgentStopped(root, item.invocation),
+      ),
+    )
   const now = options.now ?? Date.now
 
   const startedMs = now()

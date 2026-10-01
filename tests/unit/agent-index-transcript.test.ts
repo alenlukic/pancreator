@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -48,6 +48,22 @@ test('a turn_ended transcript record is a completed stop without subagentStop', 
   assert.equal(activity.stop?.status, 'completed')
   assert.equal(activity.stop?.source, 'transcript')
   assert.equal(activity.transcript?.turn_ended, true)
+
+  // The same ended turn, read for an invocation created after it, is the
+  // earlier attempt's stop rather than this one's.
+  const endedMs = Math.floor(Date.parse('2026-10-01T00:30:00.000Z') / 1000)
+  utimesSync(childPath, endedMs, endedMs)
+
+  assert.equal(
+    readAgentActivity(root, 'canonical-child', now, 60, endedMs * 1000 + 1000)
+      ?.stop,
+    null,
+  )
+  assert.equal(
+    readAgentActivity(root, 'canonical-child', now, 60, endedMs * 1000 - 1000)
+      ?.stop?.status,
+    'completed',
+  )
 })
 
 test('transcript reader fails open on absent and partial tails', () => {
