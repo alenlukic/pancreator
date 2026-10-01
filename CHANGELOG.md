@@ -1,5 +1,20 @@
 # Changelog
 
+## [8.8.0] - 2026-10-01
+
+This release makes agent answers and tool context visible in operator chat. Hidden reasoning and a Thinking block never satisfy a response duty.
+
+### Changed
+
+- Require every operator question answer in visible chat. Hidden reasoning, a Thinking block, raw tool output, and a watch ledger do not satisfy that duty ([dc2ee0e7](https://github.com/alenlukic/pancreator/commit/dc2ee0e7)).
+- Require a one-line visible update in the same turn that starts a shell command or tool, and put a significant result in chat before the next tool call ([dc2ee0e7](https://github.com/alenlukic/pancreator/commit/dc2ee0e7)).
+- Bind the visible-chat rules to every supervisor, workflow worker, standalone agent, and subagent, and keep the pan watch cadence ([dc2ee0e7](https://github.com/alenlukic/pancreator/commit/dc2ee0e7)).
+
+### Added
+
+- Add regression coverage for visible answers, same-turn updates, result order, the tool-only ban, projection, and delivery ([dc2ee0e7](https://github.com/alenlukic/pancreator/commit/dc2ee0e7)).
+- Pin comms-visible, comms-tool-turn, and comms-result-order hashes on the common turn-reminder profile ([dc2ee0e7](https://github.com/alenlukic/pancreator/commit/dc2ee0e7)).
+
 ## [8.7.0] - 2026-10-01
 
 This release makes subagent liveness deterministic. `pan watch` completes only on a finished turn. `pan submit` refuses while the worker still acts.
