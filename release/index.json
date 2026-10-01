@@ -430,8 +430,12 @@
       "commit": "00b5478253aafc48cc0ea822110755efc9985a3e"
     },
     {
+      "version": "8.9.0",
+      "commit": "35dd63c0310ac4ea0023166b63d99eeab2cfef04"
+    },
+    {
       "version": "8.10.0",
-      "commit": "aead7c6cc1fd91fc22eaa39e2e1ce22b4b80aaae"
+      "commit": "be6599ce32a14b26dc89db8dcbcd5e3e18adba1d"
     }
   ]
 }
