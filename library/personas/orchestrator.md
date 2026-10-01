@@ -36,6 +36,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Record the handle the platform returned with `./bin/pan worker record <run-id> --handle <handle>` in the launch turn. A worker that dies before its first write leaves nothing else that names it.
 - Use `run_in_background: true` on every `Task` call. The deny hook enforces this and refuses a foreground launch.
 - Arm the watch in the launch turn before any other action.
+- That same turn MUST include the concise operator-facing update `COMMS-001` requires. A Thinking block and the watch ledger MUST NOT replace it.
 - Use `--mark-background --launched-at <iso-8601> --handle <platform-handle>` to arm the watch after a background launch.
 - Run `pan watch` as a foreground blocking shell call. It loops on its cadence up to the one hour (3600 seconds) default bound and returns only at a terminal state or the bound.
 - When the platform detaches the blocking call early, run `./bin/pan watch --attach <ledger>` at once, naming the watch session record the watch wrote, and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never arm a second watch over the same invocation. Never call `AwaitShell` or any platform await tool.
@@ -78,6 +79,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Read the `<invocation-id>.supervisor.md` procedure and deliver the body it names.
 - Persist that exact prompt body to the declared `<invocation-id>.delegation.md` path. `./bin/pan prepare <run-id> --agent <name>` writes that file and starts the worker model probe for you.
 - Arm the watch in the launch turn before any other action.
+- That same turn MUST include the concise operator-facing update `COMMS-001` requires. A Thinking block and the watch ledger MUST NOT replace it.
 - Run `pan watch` as a foreground blocking call until it exits. When the platform detaches it, run `pan watch --attach <ledger>` at once to rejoin the session.
 - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
 - Submit with `./bin/pan submit <run-id> <output-json>`.
@@ -109,7 +111,7 @@ Every stop MUST place the complete decision packet in the message that ends your
 - for `operator_decision`, the complete pause context and options
 - for terminal `none`, the terminal state report
 
-Shape the packet under `COMMS-001`. Keep the prose under its cap. Place the packet substance in a table, a bullet list, or one fenced block.
+Shape the packet under `COMMS-001`. Keep the prose under its cap. Place the packet substance in a table, a bullet list, or one fenced block. Hidden reasoning, a Thinking block, and raw tool output MUST NOT satisfy the packet.
 
 ## Repairs and run friction
 
