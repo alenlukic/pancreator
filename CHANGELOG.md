@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.4.0] - 2026-10-01
+
+This release stops `pan release land` from running landing code older than the `pan-dev` tip it lands onto.
+
+### Changed
+
+- Refuse a land whose executing `pan` build is a checkout of this repository that does not contain the `pan-dev` tip. The refusal comes before the land integrates anything, its reason starts with `LANDING_BUILD_BEHIND_TIP`, and it names the `PANCREATOR_EXEC_ROOT` rerun on the candidate's own build, or the `pan-dev` merge the candidate needs first. A land from the main checkout, whose build lags `pan-dev` until promotion, had silently applied the old full-suite default ([21d22851](https://github.com/alenlukic/pancreator/commit/21d22851)).
+
 ## [8.3.0] - 2026-10-01
 
 This release makes the `bin/pan-run` start line readable and gives it a watch command that works from a linked worktree.
