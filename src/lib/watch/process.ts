@@ -1,10 +1,20 @@
 /** Generic process watch for waits outside a workflow run. */
 
 import { randomUUID } from 'node:crypto'
-import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
+import {
+  closeSync,
+  existsSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  readSync,
+  readlinkSync,
+  statSync,
+} from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
+import { gitCommonDir } from '../git/core.js'
 import { appendJsonLine, isRecord, resolveInside } from '../io.js'
 
 import {
@@ -204,6 +214,11 @@ export interface ProcessWatchOptions {
    * of `'unknown'`.
    */
   exitRecordPath?: string
+  /**
+   * The `bin/pan-run` record directory the watch was armed from with
+   * `--shell`, so a timeout re-arm command uses the same short form.
+   */
+  shellRecord?: string
   cadenceSeconds?: number
   timeoutSeconds?: number
   sleep?: (milliseconds: number) => Promise<void>
@@ -240,6 +255,150 @@ function resolveInsideRuntimeLogs(
   )
 
   return absolute
+}
+
+/** Where `bin/pan-run` writes one record directory per wrapped command. */
+export const SHELL_RECORD_DIRECTORY = 'runtime/logs/shell'
+
+/** What `pan watch --shell` reads from one `bin/pan-run` record directory. */
+export interface ShellRecordTarget {
+  /**
+   * The installation root that holds the record. A linked worktree's
+   * `bin/pan-run` writes to its main checkout, so this can differ from the
+   * root `pan watch` runs in, and the watch runs against it.
+   */
+  root: string
+  /** Root-relative record directory, with `latest` resolved. */
+  directory: string
+  pid: number
+  label: string
+  output_path: string
+  record_path: string
+}
+
+/**
+ * The roots a `bin/pan-run` record can sit under, in lookup order: this root,
+ * then the main checkout of a linked worktree. `bin/pan-run` resolves the
+ * same main checkout when it picks where to write.
+ */
+function shellRecordRoots(root: string): string[] {
+  const roots = [root]
+
+  try {
+    if (statSync(path.join(root, '.git')).isFile()) {
+      const main = path.dirname(gitCommonDir(root))
+
+      if (
+        path.resolve(main) !== path.resolve(root) &&
+        existsSync(path.join(main, 'bin', 'pan-run')) &&
+        existsSync(path.join(main, 'config.json'))
+      ) {
+        roots.push(main)
+      }
+    }
+  } catch {
+    // Outside Git, or with an unreadable common directory, only this root
+    // can hold the record.
+  }
+
+  return roots
+}
+
+/**
+ * Resolve a `pan watch --shell` argument to the process and paths of one
+ * `bin/pan-run` record. The argument is a record directory path, its bare
+ * name under `runtime/logs/shell/`, or `latest`. The record is looked up
+ * under this root and then under a linked worktree's main checkout, where
+ * that worktree's `bin/pan-run` writes. The pid and label come from the
+ * record's `record.json`, which the wrapper writes before it prints the
+ * watch command. Throws `PanError` `PATH_ESCAPE` outside `runtime/logs` and
+ * `SHELL_RECORD_UNREADABLE` when no `record.json` names a pid.
+ */
+export function resolveShellRecord(
+  root: string,
+  reference: string,
+): ShellRecordTarget {
+  const trimmed = reference.trim().replace(/\/+$/u, '')
+
+  invariant(trimmed.length > 0, '--shell MUST name a pan-run record.', {
+    code: 'INVALID_ARGUMENT',
+  })
+
+  const named = trimmed.includes('/')
+    ? path.posix.normalize(trimmed)
+    : path.posix.join(SHELL_RECORD_DIRECTORY, trimmed)
+
+  resolveInsideRuntimeLogs(root, named, 'A --shell record')
+
+  const roots = shellRecordRoots(root)
+  const recordRoot =
+    roots.find((candidate) => {
+      try {
+        lstatSync(resolveInside(candidate, named))
+        return true
+      } catch {
+        return false
+      }
+    }) ?? root
+  let directory = named
+  let absolute = resolveInsideRuntimeLogs(
+    recordRoot,
+    directory,
+    'A --shell record',
+  )
+
+  // `latest` moves with every wrapped command, so the watch pins the record
+  // it names now.
+  try {
+    if (lstatSync(absolute).isSymbolicLink()) {
+      const target = readlinkSync(absolute)
+
+      if (!target.includes('/')) {
+        directory = path.posix.join(path.posix.dirname(directory), target)
+        absolute = resolveInsideRuntimeLogs(
+          recordRoot,
+          directory,
+          'A --shell record',
+        )
+      }
+    }
+  } catch {
+    // A missing directory is reported below with the record it lacks.
+  }
+
+  const recordPath = path.posix.join(directory, 'record.json')
+  let raw: unknown
+
+  try {
+    raw = JSON.parse(readFileSync(path.join(absolute, 'record.json'), 'utf8'))
+  } catch {
+    raw = null
+  }
+
+  const pid = isRecord(raw) ? raw.pid : undefined
+
+  invariant(
+    typeof pid === 'number' && Number.isInteger(pid) && pid > 0,
+    `${recordPath} is missing or names no pid. Check the record name, or ` +
+      'use the `pan watch --process` form that bin/pan-run prints when it ' +
+      'writes no record.json.',
+    { code: 'SHELL_RECORD_UNREADABLE' },
+  )
+
+  const recordedLabel =
+    isRecord(raw) && typeof raw.label === 'string' ? raw.label.trim() : ''
+  const nameLabel = /^\d{8}T\d{6}Z-(.+)-[0-9a-f]+$/u.exec(
+    path.posix.basename(directory),
+  )?.[1]
+
+  return {
+    root: recordRoot,
+    directory,
+    pid,
+    label: recordedLabel || nameLabel || 'shell',
+    output_path: path.posix.join(directory, 'output.log'),
+    record_path: recordPath,
+  }
 }
 
 /**
@@ -413,17 +572,22 @@ export async function watchProcess(
     const endedMs = now()
     const rearmCommand =
       state === 'timed_out'
-        ? [
-            `./bin/pan watch --process ${options.pid}`,
-            `--label ${shellSingleQuote(options.label)}`,
-            ...(options.outputPath
-              ? [`--output ${shellSingleQuote(options.outputPath)}`]
-              : []),
-            ...(options.exitRecordPath
-              ? [`--exit-record ${shellSingleQuote(options.exitRecordPath)}`]
-              : []),
-            `--timeout-seconds ${timeoutSeconds}`,
-          ].join(' ')
+        ? options.shellRecord
+          ? [
+              `./bin/pan watch --shell ${shellSingleQuote(options.shellRecord)}`,
+              `--timeout-seconds ${timeoutSeconds}`,
+            ].join(' ')
+          : [
+              `./bin/pan watch --process ${options.pid}`,
+              `--label ${shellSingleQuote(options.label)}`,
+              ...(options.outputPath
+                ? [`--output ${shellSingleQuote(options.outputPath)}`]
+                : []),
+              ...(options.exitRecordPath
+                ? [`--exit-record ${shellSingleQuote(options.exitRecordPath)}`]
+                : []),
+              `--timeout-seconds ${timeoutSeconds}`,
+            ].join(' ')
         : undefined
 
     return {

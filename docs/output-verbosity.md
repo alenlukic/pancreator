@@ -107,11 +107,13 @@ Each invocation writes to `runtime/logs/shell/<timestamp>-<label>-<hex>/`. `runt
 - `heartbeat.json` — written at start and on each beat: elapsed seconds, log bytes, the bytes at the previous beat (`last_beat_bytes`), the time of that beat (`beat_at`), the time of the last output, and the last five output lines.
 - `stdout.log`, `stderr.log` — in quiet mode only, one per stream. Removed after a successful quiet run; kept for the failure replay.
 
-Streaming mode keeps stdout and stderr on their own streams. The command reads the wrapper's stdin. The wrapper prints one stderr line at start naming the log and the exact `pan watch` observation command:
+Streaming mode keeps stdout and stderr on their own streams. The command reads the wrapper's stdin. The wrapper prints one stderr line at start naming the command, its pid, and the `pan watch` command that observes it. The record directory in that command is also where `output.log` lives:
 
 ```
-[pan-run] <label> started pid=<pid> log: <log> observe: ./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>
+[pan-run] <label> started pid=<pid>; watch with ./bin/pan watch --shell runtime/logs/shell/<timestamp>-<label>-<hex>
 ```
+
+`pan watch --shell` reads the pid and label from the record's `record.json` and watches its `output.log` and exit record. When the start helper failed twice and wrote no `record.json`, the line names the explicit form instead: `./bin/pan watch --process <pid> --label <label> --output <log> --exit-record <record.json>`.
 
 Redaction applies to values from the process environment, from the harness root `.env`, and from the `.env` at the command's Git top level, whose names match `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `API_KEY`, `ACCESS_KEY`, `PRIVATE_KEY`, `CREDENTIAL`, `AUTH`, or `SESSION` (case-insensitive) and are at least 8 characters long. One secret set serves the output, the heartbeat tail, and the recorded command.
 

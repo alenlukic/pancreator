@@ -150,10 +150,13 @@ export {
 } from './watch/record.js'
 export {
   GENERIC_WATCH_RECORD_DIRECTORY,
+  SHELL_RECORD_DIRECTORY,
+  resolveShellRecord,
   watchProcess,
   formatProcessWakeLines,
 } from './watch/process.js'
 export type {
+  ShellRecordTarget,
   GenericWatchTerminalState,
   GenericWatchRecordEntry,
   GenericWatchResult,

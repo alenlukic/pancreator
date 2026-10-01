@@ -160,7 +160,7 @@ test('progress ticks mark intervals in which the command produced output', () =>
   assert.equal(result.stderr, '')
   assert.match(
     result.progress,
-    /\[pan-run\] \S+ started pid=\d+ log: \S+ observe: /u,
+    /\[pan-run\] \S+ started pid=\d+; watch with \.\/bin\/pan watch --shell runtime\/logs\/shell\/\S+\n/u,
   )
   assert.match(
     result.progress,
