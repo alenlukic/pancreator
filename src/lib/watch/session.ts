@@ -15,6 +15,7 @@ import {
 import { resolveRunLayout } from '../run-layout.js'
 
 import {
+  WATCH_STOP_POLL_MS,
   WATCH_TARGET_BUSY,
   type WatchGap,
   type WatchRecordEntry,
@@ -29,6 +30,41 @@ import { readWatchRecord } from './record.js'
  */
 export const defaultSleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds))
+
+/**
+ * A sleep that ends early once `stopped` reports true, checked every
+ * `pollMs`. The watch takes its next wake at once, so a worker that ends
+ * mid-cadence is reported when it ends. A probe that throws counts as no
+ * stop: the scheduled wake still observes the worker.
+ */
+export function stopAwareSleep(
+  stopped: () => boolean,
+  pollMs: number = WATCH_STOP_POLL_MS,
+  sleep: (milliseconds: number) => Promise<void> = defaultSleep,
+): (milliseconds: number) => Promise<void> {
+  const probe = (): boolean => {
+    try {
+      return stopped()
+    } catch {
+      return false
+    }
+  }
+
+  return async (milliseconds) => {
+    let remaining = Math.max(0, milliseconds)
+
+    while (remaining > 0) {
+      const step = Math.min(pollMs, remaining)
+
+      await sleep(step)
+      remaining -= step
+
+      if (remaining > 0 && probe()) {
+        return
+      }
+    }
+  }
+}
 
 /** The recorded owner of a live watch target. */
 export interface WatchLockRecord {

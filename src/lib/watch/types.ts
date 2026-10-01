@@ -63,6 +63,12 @@ export const WATCH_BLOCK_BOUND_MS = 330_000
 
 export const ATTACH_POLL_MS = 1_000
 
+/**
+ * How often a sleeping watch checks the agent index for a worker stop, so a
+ * finished worker is reported within seconds instead of at the next wake.
+ */
+export const WATCH_STOP_POLL_MS = 5_000
+
 export const WORKER_STILL_ACTIVE = 'WORKER_STILL_ACTIVE'
 
 export type WatchStallCause =

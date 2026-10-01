@@ -30,6 +30,7 @@ import {
   launchToOutputSeconds,
   observeInvocation,
   OUTPUT_SCAFFOLD_ORDER_ADVISORY,
+  watchedAgentStopped,
 } from './observe.js'
 import { markDelegationBackground, recordInvocationLaunch } from './launch.js'
 import {
@@ -46,9 +47,9 @@ import {
 import {
   acquireWatchLock,
   appendSessionGap,
-  defaultSleep,
   detectSessionGap,
   installInterruptionHandlers,
+  stopAwareSleep,
 } from './session.js'
 
 /**
@@ -116,7 +117,8 @@ export async function watchInvocation(
         }
       : null
 
-  const sleep = options.sleep ?? defaultSleep
+  const sleep =
+    options.sleep ?? stopAwareSleep(() => watchedAgentStopped(root, invocation))
   const now = options.now ?? Date.now
 
   const recordRelative = watchRecordPath(root, runId, invocationId)

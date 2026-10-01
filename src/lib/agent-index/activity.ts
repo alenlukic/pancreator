@@ -541,21 +541,47 @@ function transcriptPresent(transcriptPath: string | null): boolean {
   }
 }
 
+type ResolvedStop = {
+  status: AgentStatus
+  recorded_at: string
+  transcript_path: string | null
+  source: 'hook' | 'transcript'
+}
+
 /**
  * The agent's stop from its index record, else from its latest kept
- * `stopped` line, because lock contention can drop the index update.
+ * `stopped` line, because lock contention can drop the index update, else
+ * from a transcript whose last turn ended.
+ *
+ * A resumed subagent keeps its earlier stop and its ended transcript turn
+ * until it stops again, so a stop is current only when no call started after
+ * it and it is not older than `notBeforeMs`. A watch passes the creation time
+ * of the invocation it observes there, because a stop recorded before that
+ * invocation existed belongs to an earlier attempt.
  */
 function resolveStop(
   agent: AgentEntry,
   events: AgentEvent[],
   nowMs: number,
-): {
-  status: AgentStatus
-  recorded_at: string
-  transcript_path: string | null
-  source: 'hook' | 'transcript'
-} | null {
-  if (agent.stop) {
+  notBeforeMs: number | null,
+): ResolvedStop | null {
+  const lastCallStartedMs = events.reduce(
+    (latest, event) =>
+      event.kind === 'call_started'
+        ? Math.max(latest, Date.parse(event.timestamp))
+        : latest,
+    Number.NEGATIVE_INFINITY,
+  )
+  const current = (recordedAt: string): boolean => {
+    const recordedMs = Date.parse(recordedAt)
+
+    return (
+      !(recordedMs < lastCallStartedMs) &&
+      (notBeforeMs === null || !(recordedMs < notBeforeMs))
+    )
+  }
+
+  if (agent.stop && current(agent.stop.recorded_at)) {
     return {
       status: agent.stop.status,
       recorded_at: agent.stop.recorded_at,
@@ -564,25 +590,32 @@ function resolveStop(
     }
   }
 
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    const event = events[i] as AgentEvent
+  const stoppedLine = [...events]
+    .reverse()
+    .find((event) => event.kind === 'stopped' && event.status !== undefined)
 
-    if (event.kind === 'stopped' && event.status !== undefined) {
-      return {
-        status: event.status,
-        recorded_at: event.timestamp,
-        transcript_path: event.transcript_path ?? agent.transcript_path,
-        source: 'hook',
-      }
+  if (stoppedLine?.status !== undefined && current(stoppedLine.timestamp)) {
+    return {
+      status: stoppedLine.status,
+      recorded_at: stoppedLine.timestamp,
+      transcript_path: stoppedLine.transcript_path ?? agent.transcript_path,
+      source: 'hook',
     }
   }
 
   const transcript = readTranscriptState(agent, nowMs)
+  const transcriptRecordedAt = transcript
+    ? new Date(transcript.mtime_ms).toISOString()
+    : null
 
-  if (transcript?.turn_ended) {
+  if (
+    transcript?.turn_ended &&
+    transcriptRecordedAt !== null &&
+    current(transcriptRecordedAt)
+  ) {
     return {
       status: transcript.turn_status === 'success' ? 'completed' : 'error',
-      recorded_at: new Date(transcript.mtime_ms).toISOString(),
+      recorded_at: transcriptRecordedAt,
       transcript_path: transcript.path,
       source: 'transcript',
     }
@@ -592,14 +625,34 @@ function resolveStop(
 }
 
 /**
+ * The agent's current stop, or null when the index does not know the id or
+ * the agent has not stopped since `notBeforeMs`. It reads only what the stop
+ * decision needs, so a watch can ask it between wakes.
+ */
+export function readAgentStop(
+  root: string,
+  agentId: string,
+  nowMs: number,
+  notBeforeMs: number | null = null,
+): ResolvedStop | null {
+  const agent = getAgentEntry(root, agentId)
+
+  return agent
+    ? resolveStop(agent, loadEventsForEntry(root, agent), nowMs, notBeforeMs)
+    : null
+}
+
+/**
  * Everything one watch wake records about an agent. Returns null when the
- * index does not know the id yet.
+ * index does not know the id yet. A stop older than `notBeforeMs` is not
+ * reported; see `resolveStop`.
  */
 export function readAgentActivity(
   root: string,
   agentId: string,
   nowMs: number,
   cadenceSeconds: number,
+  notBeforeMs: number | null = null,
 ): AgentActivity | null {
   const agent = getAgentEntry(root, agentId)
 
@@ -618,7 +671,7 @@ export function readAgentActivity(
   const shellRecords = Number.isFinite(registeredMs)
     ? readAgentShellRecords(root, agentIds, registeredMs, nowMs)
     : []
-  const stopRecord = resolveStop(agent, events, nowMs)
+  const stopRecord = resolveStop(agent, events, nowMs, notBeforeMs)
   let openCall: AgentActivity['open_call'] = null
   let stallSuppressed = false
 
