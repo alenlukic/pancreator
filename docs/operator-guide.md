@@ -30,11 +30,13 @@ archive target. Runtime scales with the durable files and retained runs; each
 maintenance pass reports its start, finish, and file count on stderr.
 
 Use `/pan-cleanup` to enforce the deletion tier. The command first reports every
-delete, relocation, rename, worktree removal, retained branch, and safety skip.
-It applies that exact selection only after operator approval. Configure the
-default with `retention.default_days` and per-class overrides with
-`retention.classes` in `config.json`. Cleanup preserves active runs, live
-process state, open inbox items, dirty worktrees, and every Git branch.
+compact, delete, relocation, rename, worktree removal, retained branch, and
+safety skip. It applies that exact selection only after operator approval.
+Configure the default with `retention.default_days` and per-class overrides
+with `retention.classes` in `config.json`. The `shell-logs` class gzips
+finished `runtime/logs/shell` records older than 7 days and deletes any
+record, compacted or not, older than 30 days. Cleanup preserves active runs,
+live process state, open inbox items, dirty worktrees, and every Git branch.
 
 ## Run the agent hypervisor
 

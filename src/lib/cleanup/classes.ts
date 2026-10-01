@@ -19,16 +19,29 @@ export type CleanupDisposal =
 
 /**
  * `temporal_name` reads age from the sortable UTC name a run, session, or
- * standardized file carries, so both retention tiers agree on what is old; a
- * name without one falls back to `mtime`.
+ * standardized file carries, so both retention tiers agree on what is old.
+ * `shell_record_name` reads it from the `<YYYYMMDD>T<HHMMSS>Z-` prefix of a
+ * `bin/pan-run` record directory, so compacting a record in place never
+ * resets its age. A name without the expected stamp falls back to `mtime`.
  */
-export type CleanupAgeSource = 'mtime' | 'temporal_name' | 'created_at' | 'none'
+export type CleanupAgeSource =
+  | 'mtime'
+  | 'temporal_name'
+  | 'shell_record_name'
+  | 'created_at'
+  | 'none'
 
 export interface CleanupArtifactClass {
   name: string
   paths: string[]
   age_source: CleanupAgeSource
   disposal: CleanupDisposal
+  /**
+   * Age in days past which a surviving finished entry is compacted in place.
+   * Deletion still follows the class's retention window, and a window at or
+   * below this age leaves nothing to compact.
+   */
+  compact_after_days?: number
   /**
    * Entry names under this class's paths that planning never inspects or
    * lists, such as a navigation symlink a producer refreshes in place. A
@@ -202,13 +215,15 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
     disposal: 'retain',
   },
   {
+    // A record past `compact_after_days` keeps record.json and heartbeat.json,
+    // which the agent index and `pan watch --shell` read, and gzips its logs.
     name: 'shell-logs',
     paths: ['runtime/logs/shell'],
-    age_source: 'mtime',
+    age_source: 'shell_record_name',
     disposal: 'archive_then_delete',
+    compact_after_days: 7,
     // bin/pan-run refreshes this symlink to the newest record on every run;
-    // it is navigation, not an artifact, and a per-run compaction inside the
-    // wrapper already bounds this directory well under the 30-day default.
+    // it is navigation, not an artifact.
     skip: ['latest'],
   },
   // One full-output log per `pan repository-check` or `pan tests impacted`
@@ -231,7 +246,7 @@ export const CLEANUP_ARTIFACT_CLASSES: readonly CleanupArtifactClass[] = [
 export interface CleanupAction {
   class: string
   path: string
-  action: 'delete' | 'relocate' | 'rename' | 'remove_worktree'
+  action: 'delete' | 'compact' | 'relocate' | 'rename' | 'remove_worktree'
   age_days: number
   reason: string
 }

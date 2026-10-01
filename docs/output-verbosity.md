@@ -127,7 +127,7 @@ The shell hook allowlist includes `ps` for read-only process sweeps such as `ps 
 
 ### Compaction
 
-`bin/pan-run` compacts `runtime/logs/shell` at exit. A finished record survives at least ten minutes past its end (the grace window); past that, `PAN_RUN_KEEP_HOURS` (default 24) and `PAN_RUN_KEEP_RECORDS` (default 1000) bound it by age and by count, and either set to `0` disables compaction. A record whose wrapper is still alive, or whose `record.json` is not yet written but whose `.pan-run.cjs` marker still sits in the directory, is never removed. This is a per-run best-effort bound, not a replacement for the 30-day `shell-logs` retention class `./bin/pan cleanup` applies; that class skips the `latest` symlink.
+`bin/pan-run` compacts `runtime/logs/shell` at exit. A finished record survives at least ten minutes past its end (the grace window); past that, `PAN_RUN_KEEP_HOURS` (default 24) and `PAN_RUN_KEEP_RECORDS` (default 1000) bound it by age and by count, and either set to `0` disables compaction. A record whose wrapper is still alive, or whose `record.json` is not yet written but whose `.pan-run.cjs` marker still sits in the directory, is never removed. This is a per-run best-effort bound, not a replacement for the `shell-logs` class `./bin/pan cleanup` applies: that class gzips remaining logs older than 7 days, deletes any record (including compacted ones) older than 30 days, and skips the `latest` symlink.
 
 `bin/run-quiet` is a thin shim that delegates to `pan-run`. `PAN_VERBOSE=1` streams by exec-ing `pan-run` without `--quiet`; otherwise it execs `pan-run --quiet`, which prints nothing on success and, on failure, replays the captured stdout on stdout and then the captured stderr on stderr, each truncated to its last 16 MiB.
 

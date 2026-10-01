@@ -1,6 +1,6 @@
 {
   "name": "pancreator-v2-prototype",
-  "version": "8.10.0",
+  "version": "8.9.0",
   "private": true,
   "type": "module",
   "description": "Cursor-native workflow harness with a dependency-free runtime.",
