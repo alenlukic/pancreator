@@ -1,5 +1,27 @@
 # Changelog
 
+## [8.6.0] - 2026-10-01
+
+This release lets an agent see a wrapped command start at once and release a stalled Cursor launcher.
+
+### Changed
+
+- Print `[pan-run] started wrapper_pid=` before any helper, and print the first heartbeat after 5 s ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+- Send SIGTERM to every descendant of a wrapped command when the wrapper receives SIGINT or SIGTERM ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+- Skip the build lock in `bin/run-built` when the stamp is fresh, and write a lock wait notice to `PAN_PROGRESS_FD` or stderr ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+- Put `ps` on the unwrapped allowlist, and refuse a form that prints process environments ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+- State stalled-launch detection, the 5 s block bound, `bin/pan-unstick`, and sequential build or test calls in DELEGATE-001 ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+
+### Added
+
+- Add `bin/pan-unstick` so an agent can release a stalled Cursor launcher `cat` ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+- Print `# heartbeat` progress lines from the failures-only reporter, and copy them through `--quiet` capture and `pan tests impacted` ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+- Refuse a `bin/pan-run -c` string of 900 bytes or more with `ARGV_ELEMENT_TOO_LARGE` ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+
+### Fixed
+
+- Copy a quiet-mode heartbeat through the redaction filter so a secret in that line stays masked ([867deb44](https://github.com/alenlukic/pancreator/commit/867deb44)).
+
 ## [8.5.0] - 2026-10-01
 
 This release makes every file reference in operator chat a clickable Markdown link.
