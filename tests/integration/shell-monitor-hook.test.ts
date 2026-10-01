@@ -111,6 +111,36 @@ test('AC-18: shell-monitor hook allow and deny cases', async (t) => {
     assert.equal(permission('pwd'), 'allow')
   })
 
+  await t.test('allows ps piped to rg', () => {
+    assert.equal(permission('ps -axo pid,ppid,etime,command | rg cat'), 'allow')
+    assert.equal(permission('rg -n foo README.md | cat'), 'allow')
+  })
+
+  await t.test('allows ps option values that contain the letter e', () => {
+    assert.equal(permission('ps -o etime -p 1'), 'allow')
+    assert.equal(permission('ps -U someone -o pid='), 'allow')
+    assert.equal(permission('ps axo etime'), 'allow')
+  })
+
+  await t.test('denies ps environment-display forms', () => {
+    assert.equal(permission('ps -E'), 'deny')
+    assert.equal(permission('ps -axe'), 'deny')
+    assert.equal(permission('ps eww'), 'deny')
+    assert.equal(permission('ps axe'), 'deny')
+    assert.equal(permission('ps auxe'), 'deny')
+    assert.equal(permission('ps wwe'), 'deny')
+    assert.equal(permission('ps -o pid axe'), 'deny')
+    assert.equal(permission('ps -ott axe'), 'deny')
+    assert.equal(permission('ps eU501'), 'deny')
+    assert.equal(permission('ps axep1'), 'deny')
+    assert.equal(permission('ps ep1'), 'deny')
+    assert.equal(permission('ps e1'), 'deny')
+    assert.equal(permission('ps axu e'), 'deny')
+    assert.equal(permission('ps -M e'), 'deny')
+    assert.equal(permission('ps -N e'), 'deny')
+    assert.equal(permission('ps -ax | xargs kill'), 'deny')
+  })
+
   await t.test('allows chains of allowlisted commands', () => {
     assert.equal(permission('git status && ls'), 'allow')
   })

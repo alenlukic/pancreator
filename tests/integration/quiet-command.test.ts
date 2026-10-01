@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process'
+import { once } from 'node:events'
 import path from 'node:path'
 import test from 'node:test'
 
 import { createTestTempDirectory } from '../temp.js'
 
 const QUIET_RUNNER = path.join(process.cwd(), 'bin', 'run-quiet')
+const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
 const PROCESS_TIMEOUT_MS = 30_000
 const PROCESS_MAX_BUFFER = 4 * 1024 * 1024
 
@@ -167,6 +169,74 @@ test('progress ticks mark intervals in which the command produced output', () =>
     /\[pan-run\] node running \d+s pid=\d+ \+\d+B\n {2}first\n/u,
   )
   assert.match(result.progress, /\+\d+B\n(?: {2}first\n)? {2}second\n/u)
+})
+
+test('AC-11: quiet mode forwards captured heartbeat lines to the progress sink', () => {
+  const result = runQuiet(
+    "process.stdout.write('# heartbeat 1s: 0 passed, 0 failed, 0 files done\\n')",
+    { progressSeconds: '30' },
+  )
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+  assert.match(
+    result.progress,
+    /# heartbeat 1s: 0 passed, 0 failed, 0 files done/u,
+  )
+})
+
+test('AC-11: quiet mode with no progress sink copies heartbeat lines to stderr as they arrive', async () => {
+  const root = createTestTempDirectory('pan-run-quiet-no-sink-')
+  const seen = path.join(root, 'heartbeat-seen')
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    PANCREATOR_ROOT: root,
+    PAN_REVIEW_TOKEN: 'fake-heartbeat-value-123',
+  }
+  delete env.PAN_VERBOSE
+  delete env.PAN_PROGRESS_FD
+  delete env.PAN_RUN_HEARTBEAT_SECONDS
+  // The command finishes only after the test saw its heartbeat on stderr, so
+  // a copy made at exit instead of on arrival fails the run.
+  const source = [
+    "const fs = require('node:fs')",
+    "process.stdout.write('captured line\\n# heartbeat 1s: 2 passed, 0 failed, 1 files done ' + process.env.PAN_REVIEW_TOKEN + '\\n')",
+    'const deadline = Date.now() + 20000',
+    'const poll = setInterval(() => {',
+    `  if (fs.existsSync(${JSON.stringify(seen)})) { clearInterval(poll); process.stdout.write('after\\n') }`,
+    '  else if (Date.now() > deadline) { clearInterval(poll); process.exit(9) }',
+    '}, 25)',
+  ].join('\n')
+  const child = spawn(
+    PAN_RUN,
+    ['--quiet', '--', process.execPath, '-e', source],
+    {
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  )
+  let stdout = ''
+  let stderr = ''
+
+  child.stdout.on('data', (chunk: Buffer) => (stdout += chunk))
+  child.stderr.on('data', (chunk: Buffer) => {
+    stderr += chunk
+
+    if (stderr.includes('# heartbeat ')) {
+      writeFileSync(seen, '')
+    }
+  })
+
+  const guard = setTimeout(() => child.kill('SIGKILL'), PROCESS_TIMEOUT_MS)
+  const [status] = (await once(child, 'close')) as [number | null]
+  clearTimeout(guard)
+
+  assert.equal(status, 0, stderr)
+  assert.equal(stdout, '')
+  assert.equal(
+    stderr,
+    '# heartbeat 1s: 2 passed, 0 failed, 1 files done [REDACTED:PAN_REVIEW_TOKEN]\n',
+  )
 })
 
 test('a nested quiet wrapper beats to the sink the outer wrapper exported', () => {

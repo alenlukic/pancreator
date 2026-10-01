@@ -7,9 +7,10 @@ usage() {
   echo "Usage: bin/run-built --build-only | -- <command> [args...]" >&2
 }
 
-# run-quiet captures stderr, so send a wait notice straight to the terminal.
 notify() {
-  if ! { echo "$1" >/dev/tty; } 2>/dev/null; then
+  if [[ "${PAN_PROGRESS_FD:-}" =~ ^[0-9]+$ ]] && (: >&"$PAN_PROGRESS_FD") 2>/dev/null; then
+    echo "$1" >&"$PAN_PROGRESS_FD"
+  else
     echo "$1" >&2
   fi
 }
@@ -115,13 +116,6 @@ acquire_lock() {
 }
 
 run_build() {
-  # The common path is already fresh. Check it directly so every pan command
-  # does not allocate run-quiet capture files before dispatch.
-  if PATH="$ROOT/node_modules/.bin:$PATH" \
-    "$ROOT/bin/build" --stamp-fresh; then
-    return
-  fi
-
   PATH="$ROOT/node_modules/.bin:$PATH" \
     "$ROOT/bin/run-quiet" -- "$ROOT/bin/build"
 }
@@ -192,6 +186,15 @@ fi
 # strict serialization for liveness, and bin/build swaps a complete dist into
 # place rather than mutating one, so a concurrent compile stays safe.
 SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
+
+if PATH="$ROOT/node_modules/.bin:$PATH" \
+  "$ROOT/bin/build" --stamp-fresh; then
+  if [[ "$mode" == 'run' ]]; then
+    export PANCREATOR_BUILD_READY="$ROOT"
+    exec "$@"
+  fi
+  exit 0
+fi
 
 # The lock serializes builds only. Release it before the wrapped command runs.
 acquire_lock

@@ -2579,3 +2579,7 @@ Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run
 ```sh
 ./bin/pan schedule uninstall-agent
 ```
+
+### Wrapper start, stall release, and test heartbeats
+
+`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper refuses a `-c` string at or above 900 UTF-8 bytes with `ARGV_ELEMENT_TOO_LARGE`. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.

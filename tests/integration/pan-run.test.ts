@@ -381,11 +381,20 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
       const banner = BANNER.exec(result.stderr)
 
       assert.ok(banner, `stderr must carry the banner: ${result.stderr}`)
+      const panRunLines = result.stderr
+        .split('\n')
+        .filter((line) => line.startsWith('[pan-run]'))
+
+      assert.ok(
+        panRunLines.some((line) =>
+          /^\[pan-run\] started wrapper_pid=\d+$/u.test(line),
+        ),
+        `stderr must carry the early wrapper line: ${result.stderr}`,
+      )
       assert.equal(
-        result.stderr.split('\n').filter((line) => line.startsWith('[pan-run]'))
-          .length,
+        panRunLines.filter((line) => BANNER.test(line)).length,
         1,
-        'the banner is one line',
+        'the observe banner is one line',
       )
       const record = readRecord(root)
 
@@ -788,6 +797,104 @@ test('AC-004: a start helper killed twice still prints the observe line and the 
     recovered: false,
     stderr: 'helper killed for the test',
   })
+})
+
+test('AC-01: wrapper start line precedes external work and arrives quickly', async () => {
+  const root = createTestTempDirectory('pan-run-early-start-')
+  const shimDirectory = path.join(root, 'shim')
+  mkdirSync(shimDirectory, { recursive: true })
+  writeFileSync(
+    path.join(shimDirectory, 'node'),
+    [
+      '#!/usr/bin/env bash',
+      'if [[ "${2:-}" == record-start ]]; then sleep 3; fi',
+      `exec "${process.execPath}" "$@"`,
+      '',
+    ].join('\n'),
+  )
+  chmodSync(path.join(shimDirectory, 'node'), 0o755)
+
+  const startedAt = Date.now()
+  const child = spawn(PAN_RUN, ['--', 'echo', 'hi'], {
+    env: {
+      ...runEnv(root),
+      PATH: `${shimDirectory}:${process.env.PATH ?? ''}`,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  let stderr = ''
+  child.stderr.on('data', (chunk: Buffer) => {
+    stderr += chunk.toString('utf8')
+  })
+  await waitFor(() => /\[pan-run\] started wrapper_pid=\d+/u.test(stderr), 5000)
+  assert.ok(
+    Date.now() - startedAt < 1000,
+    'the early start line must arrive within one second',
+  )
+  child.kill('SIGTERM')
+  await once(child, 'close')
+})
+
+test('AC-02: first heartbeat arrives by five seconds with default cadence', () => {
+  const root = createTestTempDirectory('pan-run-first-beat-')
+  const result = runPanRun(['--', 'bash', '-c', 'sleep 7'], { root })
+  assert.equal(result.status, 0)
+  const beats = result.stderr
+    .split('\n')
+    .filter((line) => /^\[pan-run\] \S+ running \d+s pid=\d+/u.test(line))
+  assert.equal(beats.length, 1, `expected one heartbeat line: ${result.stderr}`)
+})
+
+test('AC-08: SIGTERM and SIGINT stop a grandchild inside a nested shell', async (t) => {
+  for (const [signal, name, code] of [
+    ['SIGTERM', 'TERM', 143],
+    ['SIGINT', 'INT', 130],
+  ] as const) {
+    await t.test(
+      `${signal} ends the grandchild and exits ${code}`,
+      async () => {
+        const root = createTestTempDirectory('pan-run-tree-')
+        const pidFile = path.join(root, 'grandchild.pid')
+        const run = await startPanRun(root, [
+          '-c',
+          `( bash -c 'echo $$ >${pidFile}; exec sleep 60' ) & wait`,
+        ])
+        await waitFor(
+          () =>
+            existsSync(pidFile) && readFileSync(pidFile, 'utf8').trim() !== '',
+        )
+        const grandchild = Number(readFileSync(pidFile, 'utf8').trim())
+
+        assert.equal(processAlive(grandchild), true)
+        run.child.kill(signal)
+
+        const [status] = await run.closed
+
+        assert.equal(status, code)
+        assert.equal(readRecord(root).signal, name)
+        await waitFor(() => !processAlive(grandchild), 10_000)
+      },
+    )
+  }
+})
+
+test('AC-09: -c refuses oversized strings before running', () => {
+  const root = createTestTempDirectory('pan-run-argv-limit-')
+  const big = 'x'.repeat(900)
+  const almost = `: ${'x'.repeat(897)}`
+  const utf8 = '€'.repeat(300)
+
+  const refused = runPanRun(['-c', big], { root })
+  assert.equal(refused.status, 2)
+  assert.match(refused.stderr, /ARGV_ELEMENT_TOO_LARGE/u)
+  assert.match(refused.stderr, /900/u)
+  assert.equal(findLatestLogDir(root), null)
+
+  const refusedUtf8 = runPanRun(['-c', utf8], { root })
+  assert.equal(refusedUtf8.status, 2)
+
+  const allowed = runPanRun(['-c', almost], { root })
+  assert.equal(allowed.status, 0)
 })
 
 test('AC-004: a start helper killed once is retried, and the record keeps the first failure', () => {

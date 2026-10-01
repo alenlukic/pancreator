@@ -36,6 +36,8 @@ import {
   fileDurationRecordPath,
   fixtureSidecarDirectory,
   fixtureSidecarPrefix,
+  TEST_HEARTBEAT_PREFIX,
+  TEST_HEARTBEAT_SECONDS_ENV,
 } from '../../src/lib/suite-profile-env.js'
 
 const SLOWEST_TEST_LIMIT = 15
@@ -320,6 +322,31 @@ class ProfileCollector {
   }
 }
 
+function readHeartbeatIntervalSeconds(
+  environment: NodeJS.ProcessEnv = process.env,
+): number {
+  const raw = environment[TEST_HEARTBEAT_SECONDS_ENV]?.trim()
+  const parsed = raw ? Number(raw) : Number.NaN
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 30
+  }
+
+  return parsed
+}
+
+function heartbeatLine(
+  elapsedSeconds: number,
+  passed: number,
+  failed: number,
+  filesDone: number,
+): string {
+  return (
+    `${TEST_HEARTBEAT_PREFIX}${elapsedSeconds}s: ${passed} passed, ` +
+    `${failed} failed, ${filesDone} files done\n`
+  )
+}
+
 function readJson(target: string): unknown {
   try {
     return JSON.parse(readFileSync(target, 'utf8')) as unknown
@@ -368,6 +395,66 @@ function writeJsonAtomic(
   }
 }
 
+function noteHeartbeatCounts(
+  event: TestEvent,
+  counts: { passed: number; failed: number; filesDone: number },
+): void {
+  if (event.type === 'test:pass' || event.type === 'test:fail') {
+    const data = event.data as PassData
+
+    if (data.details.type === 'suite') {
+      return
+    }
+
+    if (event.type === 'test:pass') {
+      counts.passed += 1
+    } else {
+      counts.failed += 1
+    }
+
+    return
+  }
+
+  if (event.type === 'test:summary') {
+    const data = event.data as SummaryData
+
+    if (data.file) {
+      counts.filesDone += 1
+    }
+  }
+}
+
+function* formatEvent(event: TestEvent): Generator<string> {
+  switch (event.type) {
+    case 'test:fail': {
+      const data = event.data as FailureData
+      const location =
+        data.file !== undefined ? ` (${data.file}:${data.line ?? 0})` : ''
+      yield `\nnot ok - ${data.name}${location}\n`
+      yield `${formatError(data.details.error)
+        .split('\n')
+        .map((line) => `    ${line}`)
+        .join('\n')}\n`
+      break
+    }
+    case 'test:diagnostic': {
+      if (
+        /^(tests|pass|fail|cancelled|skipped|todo|duration_ms) /u.test(
+          event.data.message,
+        )
+      ) {
+        yield `# ${event.data.message}\n`
+      }
+      break
+    }
+    case 'test:stderr':
+    case 'test:stdout':
+      break
+    default:
+      break
+  }
+}
+
 // style: allow style.default_export Node loads a test reporter through its default export.
 export default async function* failuresOnly(
   source: AsyncIterable<TestEvent>,
@@ -376,39 +463,50 @@ export default async function* failuresOnly(
   const absoluteProfileTarget =
     profileTarget && path.isAbsolute(profileTarget) ? profileTarget : null
   const collector = new ProfileCollector(absoluteProfileTarget)
+  const intervalSeconds = readHeartbeatIntervalSeconds()
+  const started = Date.now()
+  const counts = { passed: 0, failed: 0, filesDone: 0 }
+  const iterator = source[Symbol.asyncIterator]()
+  let pending: Promise<IteratorResult<TestEvent>> = iterator.next()
+  let nextBeatMs = started + intervalSeconds * 1000
 
-  for await (const event of source) {
-    collector.record(event)
+  while (true) {
+    const now = Date.now()
+    const waitMs = Math.max(0, nextBeatMs - now)
+    let beatTimer: NodeJS.Timeout | undefined
+    const raced = await Promise.race([
+      pending.then((value) => ({ kind: 'event' as const, value })),
+      new Promise<{ kind: 'timeout' }>((resolve) => {
+        beatTimer = setTimeout(() => resolve({ kind: 'timeout' }), waitMs)
+      }),
+    ])
 
-    switch (event.type) {
-      case 'test:fail': {
-        const data = event.data as FailureData
-        const location =
-          data.file !== undefined ? ` (${data.file}:${data.line ?? 0})` : ''
-        yield `\nnot ok - ${data.name}${location}\n`
-        yield `${formatError(data.details.error)
-          .split('\n')
-          .map((line) => `    ${line}`)
-          .join('\n')}\n`
-        break
-      }
-      case 'test:diagnostic': {
-        if (
-          /^(tests|pass|fail|cancelled|skipped|todo|duration_ms) /u.test(
-            event.data.message,
-          )
-        ) {
-          yield `# ${event.data.message}\n`
-        }
-        break
-      }
-      // Drop test output. The failure block carries what the reader needs.
-      case 'test:stderr':
-      case 'test:stdout':
-        break
-      default:
-        break
+    // A timer left armed after an event wins holds the process open until the
+    // next interval boundary once the last test ends.
+    clearTimeout(beatTimer)
+
+    if (raced.kind === 'timeout') {
+      const elapsed = Math.floor((Date.now() - started) / 1000)
+      yield heartbeatLine(
+        elapsed,
+        counts.passed,
+        counts.failed,
+        counts.filesDone,
+      )
+      nextBeatMs += intervalSeconds * 1000
+      continue
     }
+
+    const { value } = raced
+
+    if (value.done) {
+      break
+    }
+
+    pending = iterator.next()
+    noteHeartbeatCounts(value.value, counts)
+    collector.record(value.value)
+    yield* formatEvent(value.value)
   }
 
   const durationRecord = fileDurationRecordPath()

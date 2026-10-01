@@ -17,7 +17,7 @@ import os
 import re
 
 # SHELL-MONITOR-VALIDATE-001 compares this list with the DELEGATE-001 allowlist.
-ALLOWLIST = ["git status", "git log", "git diff", "git show", "git rev-parse", "ls", "rg", "cat", "pwd"]
+ALLOWLIST = ["git status", "git log", "git diff", "git show", "git rev-parse", "ls", "rg", "cat", "pwd", "ps"]
 
 ALLOWED_COMMANDS = {entry.split()[0] for entry in ALLOWLIST}
 ALLOWED_GIT_SUBCOMMANDS = {entry.split()[1] for entry in ALLOWLIST if entry.startswith("git ")}
@@ -25,6 +25,10 @@ GIT_REFUSED_LONG = {"--config-env", "--exec-path", "--output", "--ext-diff", "--
 GIT_REFUSED_EXACT = {"-c"}
 RG_REFUSED_LONG = {"--pre", "--pre-glob", "--search-zip", "--hostname-bin"}
 RG_REFUSED_SHORT = {"z"}
+# ps options whose value may follow as the next argument, such as -o etime.
+# Each takes a value on macOS and in Linux procps, dashed or not. M, N, g, and
+# u take none on at least one of them, so the argument after them stays checked.
+PS_VALUE_OPTIONS = set("GOoptU")
 # Real options that are also prefixes of a refused option.
 SAFE_LONG_PREFIXES = {"--text"}
 OPERATORS = sorted(
@@ -195,7 +199,30 @@ def allowlisted_segment(words):
                 return False
             if arg.startswith("-") and not arg.startswith("--") and RG_REFUSED_SHORT & set(arg[1:]):
                 return False
+    if command == "ps":
+        expects_value = False
+        for arg in args:
+            if expects_value:
+                expects_value = False
+                continue
+            if refuses_ps_environment(arg):
+                return False
+            expects_value = ps_takes_next_value(arg.lstrip("-"))
     return True
+
+
+def ps_takes_next_value(cluster):
+    for index, letter in enumerate(cluster):
+        if letter in PS_VALUE_OPTIONS:
+            return index == len(cluster) - 1
+    return False
+
+
+def refuses_ps_environment(arg):
+    # ps reads e or E as the environment option in any cluster, dashed or not,
+    # and next to digits (ps eU501, ps axep1), so every argument that is not an
+    # option value is refused when it holds either letter.
+    return "e" in arg or "E" in arg
 
 
 def is_allowlisted(tokens):

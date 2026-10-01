@@ -30,8 +30,6 @@
 # The script targets Bash 3.2, the macOS system shell.
 set -euo pipefail
 
-SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 MAX_CAPTURE_BYTES=$((16 * 1024 * 1024))
 
 # A linked worktree logs to its main worktree, where `pan watch` looks.
@@ -107,6 +105,20 @@ elif [[ ${#COMMAND_ARGV[@]} -eq 0 ]]; then
   usage_error "no command given. Use -- <argv...> or -c '<string>'"
 fi
 
+byte_length() {
+  local LC_ALL=C
+  printf '%s' "${#1}"
+}
+
+if [[ "$HAS_SHELL_STRING" -eq 1 ]]; then
+  C_STRING_BYTES="$(byte_length "$SHELL_STRING")"
+  if (( C_STRING_BYTES >= 900 )); then
+    printf 'pan-run: ARGV_ELEMENT_TOO_LARGE: -c string is %s bytes (limit 900); endpoint security SIGKILLs argv elements at 1000 bytes; write the command to a script file and run bin/pan-run -- bash <file>\n' \
+      "$C_STRING_BYTES" >&2
+    exit 2
+  fi
+fi
+
 is_verbose && QUIET=0
 
 if [[ -n "$CWD" ]]; then
@@ -119,7 +131,33 @@ if ! [[ "$HB_SECONDS" =~ ^[0-9]+$ ]] || (( 10#$HB_SECONDS < 1 )); then
 fi
 HB_SECONDS=$((10#$HB_SECONDS))
 (( HB_SECONDS > 60 )) && HB_SECONDS=60
+FIRST_HB_SECONDS=$(( HB_SECONDS < 5 ? HB_SECONDS : 5 ))
 
+# Progress sink: stderr when streaming. In quiet mode, PAN_PROGRESS_FD or a
+# terminal stderr, exported so nested quiet wrappers beat to the same sink.
+PROGRESS_FD=""
+if [[ "$QUIET" -eq 0 ]]; then
+  PROGRESS_FD=2
+elif [[ "${PAN_PROGRESS_FD:-}" =~ ^[0-9]+$ ]] && (: >&"$PAN_PROGRESS_FD") 2>/dev/null; then
+  exec 7>&"$PAN_PROGRESS_FD"
+  PROGRESS_FD=7
+elif [[ -t 2 ]]; then
+  exec 7>&2
+  PROGRESS_FD=7
+fi
+if [[ "$PROGRESS_FD" == 7 ]]; then
+  export PAN_PROGRESS_FD=7
+else
+  unset PAN_PROGRESS_FD
+fi
+
+WRAPPER_PID=$$
+if [[ -n "$PROGRESS_FD" ]]; then
+  printf '[pan-run] started wrapper_pid=%s\n' "$WRAPPER_PID" >&"$PROGRESS_FD"
+fi
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 ROOT="$(resolve_root)"
 HEX="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 SHELL_LOG_DIR="$ROOT/runtime/logs/shell"
@@ -367,13 +405,24 @@ function filter(logPath) {
   let lastEmit = Date.now();
   let passThrough = true;
 
+  const forwardHeartbeat = env.PAN_RUN_FORWARD_HEARTBEAT === "1";
+  const progressFd = forwardHeartbeat ? Number(env.PAN_RUN_PROGRESS_FD || 0) : 0;
+
   const emitUpTo = (cut) => {
     cut = safeCut(pending, cut, secrets);
     if (cut <= 0) return;
-    const out = redact(pending.slice(0, cut), secrets);
+    const chunk = pending.slice(0, cut);
+    const out = redact(chunk, secrets);
     pending = pending.slice(cut);
     lastEmit = Date.now();
     fs.writeSync(log, out);
+    if (forwardHeartbeat && progressFd > 0) {
+      for (const line of out.split(/\r?\n/)) {
+        if (line.startsWith("# heartbeat ")) {
+          try { fs.writeSync(progressFd, `${line}\n`); } catch {}
+        }
+      }
+    }
     if (!passThrough) return;
     try { fs.writeSync(1, out); } catch { passThrough = false; }
   };
@@ -599,33 +648,19 @@ mkfifo "$FIFO_OUT" "$FIFO_ERR"
 if [[ "$QUIET" -eq 1 ]]; then
   : >"$STDOUT_LOG"
   : >"$STDERR_LOG"
-  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >"$STDOUT_LOG" &
+  FILTER_ENV=(PAN_RUN_ENV_FILES="$ENV_FILES")
+  # With no progress sink, heartbeat lines go to fd 2, which each filter
+  # inherits from the wrapper and never redirects.
+  FILTER_ENV+=(PAN_RUN_FORWARD_HEARTBEAT=1 PAN_RUN_PROGRESS_FD="${PROGRESS_FD:-2}")
+  cat "$FIFO_OUT" | env "${FILTER_ENV[@]}" node "$HELPER" filter "$LOG_PATH" >"$STDOUT_LOG" &
   OUT_FILTER_PID=$!
-  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >"$STDERR_LOG" &
+  cat "$FIFO_ERR" | env "${FILTER_ENV[@]}" node "$HELPER" filter "$LOG_PATH" >"$STDERR_LOG" &
   ERR_FILTER_PID=$!
 else
   cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" &
   OUT_FILTER_PID=$!
   cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >&2 &
   ERR_FILTER_PID=$!
-fi
-
-# Progress sink: stderr when streaming. In quiet mode, PAN_PROGRESS_FD or a
-# terminal stderr, exported so nested quiet wrappers beat to the same sink.
-PROGRESS_FD=""
-if [[ "$QUIET" -eq 0 ]]; then
-  PROGRESS_FD=2
-elif [[ "${PAN_PROGRESS_FD:-}" =~ ^[0-9]+$ ]] && (: >&"$PAN_PROGRESS_FD") 2>/dev/null; then
-  exec 7>&"$PAN_PROGRESS_FD"
-  PROGRESS_FD=7
-elif [[ -t 2 ]]; then
-  exec 7>&2
-  PROGRESS_FD=7
-fi
-if [[ "$PROGRESS_FD" == 7 ]]; then
-  export PAN_PROGRESS_FD=7
-else
-  unset PAN_PROGRESS_FD
 fi
 
 # From here on the command runs, so a failed bookkeeping step must not abandon
@@ -642,18 +677,50 @@ exec 5>"$FIFO_OUT" 6>"$FIFO_ERR"
 ) <&8 >&5 2>&6 5>&- 6>&- 8<&- &
 CMD_PID=$!
 exec 5>&- 6>&- 8<&-
-WRAPPER_PID=$$
 
 # SIGINT reaches the command as SIGTERM: a background job in a non-interactive
 # shell ignores SIGINT.
 WRAPPER_SIGNAL=""
 WRAPPER_SIGNAL_NUMBER=0
 INTERRUPTED=0
+
+kill_descendants_of() {
+  local root="$1"
+  local snapshot ids pid ppid id added
+
+  snapshot="$(ps -A -o pid= -o ppid= 2>/dev/null)" || return 0
+  ids="$root"
+  added=1
+  while (( added )); do
+    added=0
+    while read -r pid ppid; do
+      [[ -z "$pid" ]] && continue
+      for id in $ids; do
+        if [[ "$ppid" == "$id" && "$pid" != "$root" ]]; then
+          case " $ids " in
+            *" $pid "*) ;;
+            *)
+              ids="$ids $pid"
+              added=1
+              ;;
+          esac
+        fi
+      done
+    done <<EOF
+$snapshot
+EOF
+  done
+  for pid in $ids; do
+    [[ "$pid" == "$root" ]] && continue
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+}
+
 forward_signal() {
   WRAPPER_SIGNAL="$1"
   WRAPPER_SIGNAL_NUMBER="$2"
   INTERRUPTED=1
-  pkill -TERM -P "$CMD_PID" 2>/dev/null
+  kill_descendants_of "$CMD_PID"
   kill -TERM "$CMD_PID" 2>/dev/null
 }
 trap 'forward_signal INT 2' INT
@@ -709,6 +776,10 @@ fi
   exec 2>/dev/null
   # The sleep holds no inherited descriptor, so a parent reading our output
   # never waits on it.
+  sleep "$FIRST_HB_SECONDS" </dev/null >/dev/null 2>&1 7>&- || exit 0
+  kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
+  PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" \
+    node "$HELPER" beat || true
   while sleep "$HB_SECONDS" </dev/null >/dev/null 2>&1 7>&-; do
     kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
     PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" \
