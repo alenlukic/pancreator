@@ -191,7 +191,7 @@ function readNumberOption(value: string | null, name: string): number | null {
 
 /** Parse `pan tests impacted` arguments. */
 export function parseImpactArgs(args: string[]): ImpactOptions {
-  const options: ImpactOptions = { files: [], include: [] }
+  const options: ImpactOptions = { files: [], include: [], ignore: [] }
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] as string
@@ -224,6 +224,9 @@ export function parseImpactArgs(args: string[]): ImpactOptions {
         break
       case '--include':
         options.include?.push(valueOf())
+        break
+      case '--ignore':
+        options.ignore?.push(valueOf().replace(/^\.\//u, ''))
         break
       case '--list':
         options.list = true
@@ -366,7 +369,10 @@ export async function runTestsImpacted(
   const impactOptions = parseImpactArgs(args)
 
   const graph = await buildModuleGraph(workspace)
-  const changed = resolveChangeSet(workspace, impactOptions)
+  const ignored = new Set(impactOptions.ignore ?? [])
+  const changed = resolveChangeSet(workspace, impactOptions).filter(
+    (file) => !ignored.has(file),
+  )
   const selection = selectImpactedTests(graph, changed, {
     include: impactOptions.include,
     advisoryRatio: impactOptions.advisoryRatio,
