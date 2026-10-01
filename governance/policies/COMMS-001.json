@@ -22,6 +22,8 @@
     "A section heading in operator-facing output MUST use a concise title.",
     "Operator-facing output MUST avoid unnecessary nesting, decorative clutter, and raw-log substitution.",
     "An operator-facing report MUST keep an evidence link close to the statement it supports.",
+    "A file reference in an operator chat report MUST be a clickable Markdown link to that file. A file path in prose, in a table cell, or in an inline code span is a file reference. A fenced code block is exempt.",
+    "The link text MUST be the repository-relative path when the file is inside the workspace repository, and the fully qualified path otherwise. The link target MUST be the absolute path of the file.",
     "When an agent reports an issue, the report SHOULD state the issue concisely, existing consequences, anticipated consequences, and applied remediations. The report SHOULD give mitigation options, tradeoffs, and a recommendation in proportion to the issue.",
     "When a task reaches a terminal state, the report MUST state each outcome concisely.",
     "The terminal report MUST name each incomplete part of the task and the reason remediation did not succeed.",
