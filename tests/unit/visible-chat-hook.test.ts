@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import {
+  AGENTS_DIR,
+  newAgentEntry,
+  SCHEMA_VERSION,
+  writeIndex,
+} from '../../src/lib/agent-index/store.js'
 import {
   currentTurnSteps,
   resolveVisibleChatHook,
@@ -112,6 +118,58 @@ test('a transcript longer than the tail bound skips the cut first line', () => {
   const file = transcript(user, padding, user, step(tool))
 
   assert.deepEqual(currentTurnSteps(file), [{ text: false, tool: true }])
+})
+
+test('a subagent payload with a null transcript_path resolves through the agent index', () => {
+  const root = createTestTempDirectory('visible-chat-root-')
+  const parentTranscript = transcript(user)
+  const childFile = path.join(
+    path.dirname(parentTranscript),
+    'subagents',
+    'child-conv.jsonl',
+  )
+  const now = new Date().toISOString()
+  const payload = JSON.stringify({
+    transcript_path: null,
+    conversation_id: 'child-conv',
+    parent_tool_call_id: 'toolu_launch',
+  })
+
+  mkdirSync(path.dirname(childFile), { recursive: true })
+  writeFileSync(
+    childFile,
+    [user, step(tool)].map((r) => JSON.stringify(r)).join('\n') + '\n',
+  )
+  mkdirSync(path.join(root, AGENTS_DIR), { recursive: true })
+  writeIndex(
+    root,
+    {
+      schema_version: SCHEMA_VERSION,
+      updated_at: now,
+      agents: [
+        {
+          ...newAgentEntry('toolu_launch', now),
+          parent_transcript_path: parentTranscript,
+        },
+      ],
+      aliases: {},
+      pending_launches: [],
+    },
+    now,
+  )
+
+  assert.deepEqual(resolveVisibleChatHook('postToolUse', payload, root), {
+    additional_context: TOOL_UPDATE_REMINDER,
+  })
+  assert.deepEqual(resolveVisibleChatHook('postToolUse', payload, null), {})
+  assert.deepEqual(
+    resolveVisibleChatHook(
+      'postToolUse',
+      JSON.stringify({ ...JSON.parse(payload), conversation_id: '../x' }),
+      root,
+    ),
+    {},
+  )
 })
 
 test('missing, relative, or malformed input never produces a response', () => {

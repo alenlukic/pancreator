@@ -7,11 +7,37 @@
 # text it returns a followup_message. Always exits 0 with one JSON document.
 set -u
 
-DIST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/dist/src/visible-chat-hook.js"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
+DIST="$HARNESS_ROOT/dist/src/visible-chat-hook.js"
+
+# The agent index that maps a subagent to its transcript lives at the root
+# bin/pan-hook-agent-index resolves; a linked worktree uses the main checkout.
+resolve_root() {
+  if [[ -n "${PANCREATOR_ROOT:-}" ]]; then
+    printf '%s' "$PANCREATOR_ROOT"
+    return
+  fi
+  local candidate common main
+  candidate="$HARNESS_ROOT"
+  if [[ -f "$candidate/.git" ]]; then
+    common="$(git -C "$candidate" rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common" ]]; then
+      [[ "$common" == /* ]] || common="$candidate/$common"
+      main="$(dirname "$common")"
+      if [[ -f "$main/bin/pan-run" && -f "$main/config.json" ]]; then
+        printf '%s' "$main"
+        return
+      fi
+    fi
+  fi
+  printf '%s' "$candidate"
+}
+
 PAYLOAD="$(cat 2>/dev/null || true)"
 
 if [[ -f "$DIST" ]] && command -v node >/dev/null 2>&1 &&
-  response="$(printf '%s' "$PAYLOAD" | node "$DIST" "${1:-}" 2>/dev/null)" &&
+  response="$(printf '%s' "$PAYLOAD" | PANCREATOR_ROOT="$(resolve_root)" node "$DIST" "${1:-}" 2>/dev/null)" &&
   [[ -n "$response" ]]; then
   printf '%s\n' "$response"
 else

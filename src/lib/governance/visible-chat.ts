@@ -11,6 +11,14 @@
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
 import path from 'node:path'
 
+import {
+  findAgent,
+  readIndex,
+  resolveCanonicalId,
+} from '../agent-index/store.js'
+
+const CHILD_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u
+
 /** Tail bytes read to find the current turn; bounds hook latency. */
 export const TURN_TAIL_BYTES = 262_144
 
@@ -131,23 +139,68 @@ export function currentTurnSteps(transcriptPath: string): TurnStep[] | null {
 }
 
 /**
+ * The transcript a hook payload belongs to. Inside a subagent Cursor sends a
+ * null `transcript_path`, so the child's own file is resolved through the
+ * agent index: `subagentStart` stored the parent transcript under the launch
+ * id the child's payload names as `parent_tool_call_id`, and the child file is
+ * `<parent dir>/subagents/<conversation_id>.jsonl`.
+ */
+export function payloadTranscriptPath(
+  payload: Record<string, unknown>,
+  root: string | null,
+): string | null {
+  if (typeof payload.transcript_path === 'string') {
+    return payload.transcript_path
+  }
+
+  const launchId = payload.parent_tool_call_id
+  const childId = payload.conversation_id
+
+  if (
+    root === null ||
+    typeof launchId !== 'string' ||
+    typeof childId !== 'string' ||
+    !CHILD_ID_PATTERN.test(childId)
+  ) {
+    return null
+  }
+
+  const index = readIndex(root)
+  const canonical =
+    resolveCanonicalId(index, launchId) ?? resolveCanonicalId(index, childId)
+  const parentTranscript =
+    canonical === null
+      ? null
+      : findAgent(index, canonical)?.parent_transcript_path
+
+  return typeof parentTranscript === 'string'
+    ? path.join(path.dirname(parentTranscript), 'subagents', `${childId}.jsonl`)
+    : null
+}
+
+/**
  * Respond to a visible-chat hook event. After a tool result, remind the agent
  * when its latest tool-calling step carried no text. When the main loop ends
  * on its first stop, ask for a visible report when the whole turn carried no
  * text. Every other case, and any error, returns `{}` so a hook never blocks.
+ * `root` locates the agent index that resolves a subagent's transcript.
  */
 export function resolveVisibleChatHook(
   event: VisibleChatEvent,
   payloadText: string,
+  root: string | null = null,
 ): VisibleChatResponse {
   try {
     const payload: unknown = JSON.parse(payloadText)
+    const transcriptPath = isRecord(payload)
+      ? payloadTranscriptPath(payload, root)
+      : null
 
-    if (!isRecord(payload) || typeof payload.transcript_path !== 'string') {
+    if (!isRecord(payload) || transcriptPath === null) {
       return {}
     }
 
-    const steps = currentTurnSteps(payload.transcript_path)
+    const steps = currentTurnSteps(transcriptPath)
 
     if (steps === null || steps.length === 0) {
       return {}
