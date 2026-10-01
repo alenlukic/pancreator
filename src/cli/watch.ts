@@ -40,6 +40,8 @@ import {
 import { watchTimer } from '../lib/watch/timer.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
+  DEFAULT_WATCH_CADENCE_SECONDS,
+  DEFAULT_WATCH_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
   type WatchRecordEntry,
 } from '../lib/watch/types.js'
@@ -110,14 +112,12 @@ export async function watchCommand({
   args,
   json,
 }: CliContext): Promise<void> {
-  const interactive = process.stderr.isTTY
   const watchCallbacks = {
-    // OUTPUT-001: repeated per-wake progress lines only on an interactive
-    // terminal. Stdout carries the result either way.
-    onWake: interactive
-      ? (entry: WatchRecordEntry) =>
-          process.stderr.write(`${formatWakeLine(entry)}\n`)
-      : undefined,
+    // One line per wake on every stderr: an agent shell has no terminal, and
+    // a wait that prints nothing between arming and its verdict is
+    // indistinguishable from a hung one. Stdout carries the result.
+    onWake: (entry: WatchRecordEntry) =>
+      process.stderr.write(`${formatWakeLine(entry)}\n`),
     // The arming bound and a discovered gap print once per session on
     // every stderr: agent shells have no terminal, and they are the
     // supervisors that must see both. The gap line comes first.
@@ -178,6 +178,7 @@ export async function watchCommand({
         option(args, '--cadence-seconds'),
         attachAuthority,
       ),
+      untilTerminal: hasFlag(args, '--until-terminal'),
       ...(attachAuthority?.trim()
         ? { cadenceAuthority: attachAuthority.trim() }
         : {}),
@@ -186,17 +187,24 @@ export async function watchCommand({
     print(
       json
         ? result
-        : `attach ${result.state}: ${result.ledgers.length} session(s) ` +
-            `after ${result.elapsed_seconds.toFixed(1)}s\n` +
-            result.ledgers
-              .map(
-                (s) =>
-                  `  ${s.ledger}: ${s.state ?? 'pending'}` +
-                  (s.session_terminal_state
-                    ? ` (session: ${s.session_terminal_state})`
-                    : ''),
+        : [
+            `attach ${result.state}: ${result.ledgers.length} session(s) after ${result.elapsed_seconds.toFixed(1)}s`,
+            `block bound: ${result.block_bound_ms} ms`,
+            ...result.ledgers.map((s) => {
+              const wake = s.latest_wake
+              const liveness = wake?.liveness
+              return (
+                `  ${s.ledger}: ${s.state ?? 'pending'}` +
+                (s.session_terminal_state
+                  ? ` (session: ${s.session_terminal_state})`
+                  : '') +
+                (wake
+                  ? ` wake ${wake.wake} liveness=${liveness?.state ?? 'unknown'}`
+                  : '')
               )
-              .join('\n'),
+            }),
+            `re-attach with: ${result.reattach_command}`,
+          ].join('\n'),
       json,
     )
     process.exitCode = result.exit_code
@@ -271,25 +279,23 @@ export async function watchCommand({
             '\n',
         )
       },
-      onWake: interactive
-        ? (info: WatchAgentWakeInfo) => {
-            const activity = info.agent_activity
-            const age =
-              activity?.last_event_age_seconds != null
-                ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
-                : ''
-            process.stderr.write(
-              `[pan watch:agent:${info.subject}] wake ${info.wake}` +
-                (activity ? '' : ' not registered') +
-                formatOpenCallSuffix(activity) +
-                (activity?.last_event_kind
-                  ? ` last:${activity.last_event_kind}${age}`
-                  : '') +
-                (info.terminal_state ? ` -> ${info.terminal_state}` : '') +
-                '\n',
-            )
-          }
-        : undefined,
+      onWake: (info: WatchAgentWakeInfo) => {
+        const activity = info.agent_activity
+        const age =
+          activity?.last_event_age_seconds != null
+            ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
+            : ''
+        process.stderr.write(
+          `[pan watch:agent:${info.subject}] wake ${info.wake}` +
+            (activity ? '' : ' not registered') +
+            formatOpenCallSuffix(activity) +
+            (activity?.last_event_kind
+              ? ` last:${activity.last_event_kind}${age}`
+              : '') +
+            (info.terminal_state ? ` -> ${info.terminal_state}` : '') +
+            '\n',
+        )
+      },
     })
 
     print(
@@ -376,10 +382,9 @@ export async function watchCommand({
       option(args, '--cadence-directed-by-operator'),
     )
     const genericRecord = option(args, '--record') ?? undefined
-    const genericOnWake = interactive
-      ? (entry: GenericWatchRecordEntry) =>
-          process.stderr.write(`${formatProcessWakeLines(entry)}\n`)
-      : undefined
+    const genericOnWake = (entry: GenericWatchRecordEntry): void => {
+      process.stderr.write(`${formatProcessWakeLines(entry)}\n`)
+    }
 
     if (timerMode) {
       const result = await watchTimer(root, {
@@ -405,6 +410,16 @@ export async function watchCommand({
     const exitRecordArg = option(args, '--exit-record')
     const shell =
       shellRecordArg !== null ? resolveShellRecord(root, shellRecordArg) : null
+    const processTimeout = parseTimeoutSeconds(
+      option(args, '--timeout-seconds'),
+    )
+
+    process.stderr.write(
+      `[pan watch:${shell ? shell.label : (option(args, '--label') ?? processPid)}] ` +
+        `armed pid ${shell ? shell.pid : processPid}; wake every ` +
+        `${genericCadence ?? DEFAULT_WATCH_CADENCE_SECONDS}s, bound ` +
+        `${processTimeout ?? DEFAULT_WATCH_TIMEOUT_SECONDS}s\n`,
+    )
 
     const result = await watchProcess(shell ? shell.root : root, {
       ...(shell
@@ -427,7 +442,7 @@ export async function watchCommand({
           }),
       ...(genericRecord ? { recordPath: genericRecord } : {}),
       cadenceSeconds: genericCadence,
-      timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
+      timeoutSeconds: processTimeout,
       onWake: genericOnWake,
     })
 

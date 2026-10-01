@@ -67,7 +67,7 @@ test('release prefetch rejects every ineligible submission state', () => {
 
   withEnv({ PAN_PREFETCH_FULL: undefined, PAN_GATE_CACHE: undefined }, () => {
     assert.deepEqual(candidate(), {
-      profile: 'full',
+      profile: 'impacted-release',
       workspace_fingerprint: fingerprint,
     })
     assert.equal(candidate(running, implement, 'failure'), null)

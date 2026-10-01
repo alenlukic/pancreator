@@ -23,8 +23,10 @@ import {
   DEFAULT_WATCH_TIMEOUT_SECONDS,
   WATCH_TIMEOUT_BELOW_CADENCE,
   type WatchStallEvidence,
+  type WatchStallCause,
 } from './types.js'
 import { processStartIdentity } from './process-evidence.js'
+import { deterministicStallCause, quietStallApplies } from './liveness.js'
 import { stallEvidenceFrom } from './record.js'
 import { defaultSleep, installInterruptionHandlers } from './session.js'
 
@@ -96,6 +98,8 @@ export interface WatchAgentWakeInfo {
   interrupted_reason?: string
   /** Recorded again on the `unregistered` verdict so the ledger's last line carries the likely cause. */
   hooks_projection?: AgentIndexHooksStatus | null
+  stall_cause?: WatchStallCause
+  completion_hold?: string
 }
 
 export interface WatchAgentResult {
@@ -176,6 +180,7 @@ export async function watchAgent(
   // quiet" the same verdict, and DELEGATE-001's stall recovery instruction
   // does not apply to the former.
   let unregisteredWakes = 0
+  let priorAgentActivity: AgentActivity | null = null
   let previousSignature = activity?.signature ?? null
   const hooksProjection = agentIndexHooksStatus(root)
 
@@ -316,18 +321,34 @@ export async function watchAgent(
           changed || activity.stall_suppressed === true ? 0 : unchangedWakes + 1
       }
 
-      const verdict: AgentWatchVerdict | null =
-        stopVerdict() ??
-        (unregisteredWakes >= maxStallWakes
-          ? 'unregistered'
-          : unchangedWakes >= maxStallWakes
-            ? 'stalled'
-            : now() - startedMs >= timeoutSeconds * 1000
-              ? 'timed_out'
-              : null)
+      let stallCause: WatchStallCause | undefined
+      const deterministic = deterministicStallCause(
+        activity,
+        priorAgentActivity,
+      )
+      let verdict: AgentWatchVerdict | null = stopVerdict()
+
+      if (!verdict && deterministic) {
+        verdict = 'stalled'
+        stallCause = deterministic
+      } else if (!verdict && unregisteredWakes >= maxStallWakes) {
+        verdict = 'unregistered'
+      } else if (
+        !verdict &&
+        unchangedWakes >= maxStallWakes &&
+        quietStallApplies(activity)
+      ) {
+        verdict = 'stalled'
+        stallCause = 'quiet_fallback'
+      } else if (!verdict && now() - startedMs >= timeoutSeconds * 1000) {
+        verdict = 'timed_out'
+      }
+
+      priorAgentActivity = activity
 
       record({
         changed,
+        ...(stallCause ? { stall_cause: stallCause } : {}),
         ...(verdict ? { terminal_state: verdict } : {}),
         ...(verdict === 'completed'
           ? { terminal_basis: 'agent_state' as const }

@@ -99,6 +99,7 @@ import { recordOperatorFeedback } from './recovery.js'
 import {
   incompleteEvidenceReports,
   observeSubmissionDelegation,
+  assertWorkerNotStillActive,
 } from './submit-checks.js'
 
 export interface SubmitOutputResult {
@@ -247,6 +248,8 @@ export function submitOutput(
     advise('evidence_report', incompleteReports)
 
     const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+
+    assertWorkerNotStillActive(root, invocation, personaExecutor, stage)
 
     const delegationObservation = observeSubmissionDelegation(
       root,

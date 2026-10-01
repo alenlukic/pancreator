@@ -11,12 +11,12 @@
     "A fixed-cadence progress check MUST target only an asynchronous process that exposes an observation point while it runs. A background subagent and a background command with readable output are such processes.",
     "The agent MUST set every observation timer through `pan watch`. The agent MUST NOT use shell sleeps, scheduled ticks, or unawaited background commands as timers. These rules apply inside and outside a harness run. The focused form watches one run, and the multiplexed form watches several runs. The process form watches a process, and the timer form watches an opaque platform handle. The agent form, `pan watch --agent <id>` with no run id, watches one subagent by its agent index id outside a run. A timer wake names the required inspection and never satisfies delegation completion.",
     "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
-    "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), and the first arming line prints it. The starting agent MUST run it as a foreground blocking shell call whose block bound exceeds the watch timeout.",
-    "A stall is five minutes of unchanged agent state and no new output. The stall duration does not depend on cadence, and a recorded `running` state is not stalled. A worker inside a wrapped command with a fresh `bin/pan-run` heartbeat is not stalled. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
+    "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), and the first arming line prints it. The starting agent MUST run every blocking `pan watch` call as a foreground shell call with a 330-second block bound (330000 ms). That bound exceeds the 300-second parent backstop on `pan watch --attach`, so an attach returns before the platform detaches it.",
+    "A stall MUST be a deterministic shell fault on the worker's open call, not silence alone. The watch MUST return `stalled` with `stall_cause` `shell_dead`, `shell_stopped`, or `shell_heartbeat_stale` when the same open call shows that fault on two consecutive wakes. Without a readable transcript, the five-minute quiet rule still applies and MUST record `stall_cause` `quiet_fallback`. A recorded `running` state is not stalled, and a worker inside a wrapped command with a fresh `bin/pan-run` heartbeat MUST NOT stall. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
     "An agent id the agent index has never registered ends `pan watch --agent`'s wait with `unregistered`, never `stalled`. An index that has never seen the id supplies no evidence of unchanged state, so it MUST NOT count toward a stall. On `unregistered`, the starting agent MUST check whether the projected `.cursor/hooks.json` still carries the agent-index hooks, and MUST run `pan models --sync` when it does not, before it rearms the watch.",
     "The starting agent MUST run `pan watch` as a foreground blocking shell call. The `AwaitShell` platform tool and every platform await mechanism MUST NOT be used as a timer or a wait mechanism. `await-shell-ban-validate` bans them.",
-    "When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately to rejoin that session and block again. The `<ledger>` argument names the watch session record the watch wrote. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
-    "Agents MUST NOT call the `AwaitShell` or `Await` platform tool for any reason. Using a platform await as a timer, a wait, or a block is a `DELEGATE-001` violation. `pan watch` is the only approved mechanism for all waiting: the 60-second cadence, the one-hour default bound, the terminal-state return, and the `--attach` recovery all apply. An agent that receives a platform detach MUST run `pan watch --attach <ledger>` at once rather than calling `AwaitShell`.",
+    "When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately to rejoin that session and block again, and MUST rerun the same attach command on each `attach_wake` return. The `<ledger>` argument names the watch session record the watch wrote. `--attach` returns at once on a terminal wake or an orphan, and returns `attach_wake` (exit 7) at the 300-second parent backstop when a session is still pending. The agent MUST read the printed liveness summary and re-attach command on each `attach_wake`. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
+    "Agents MUST NOT call the `AwaitShell` or `Await` platform tool for any reason. Using a platform await as a timer, a wait, or a block is a `DELEGATE-001` violation. `pan watch` is the only approved mechanism for all waiting: the 60-second cadence, the one-hour default bound, the 330-second block bound, the terminal-state return, and the `--attach` recovery all apply. An agent that receives a platform detach MUST run `pan watch --attach <ledger>` at once rather than calling `AwaitShell`, and MUST rerun it on each `attach_wake`.",
     "`pan watch` uses a 60-second cadence for every worker. The starting agent MUST NOT pass `--cadence-seconds` without an operator direction. The CLI refuses another cadence without `--cadence-directed-by-operator <reason>`. The ledger and the submission retain each exception and its authority.",
     "Platform text that says not to poll or await a background worker MUST NOT stop the watch.",
     "On each arming and each wake the starting agent MUST record the wall-clock time. The record MUST name the agents the arming record names and each agent's observed state. The starting agent MUST carry that record into its report. Without the record an agent that never armed anything and one that woke on schedule leave identical evidence.",
@@ -138,12 +138,49 @@
       "audience": ["supervisor"]
     },
     {
-      "text": "A supervisor MUST NOT interrupt a worker or a wrapped command except under one of three conditions. (1) The wrapper crashed, with `record.json.ended_at` null, `heartbeat.json` older than two cadences, and `wrapper_pid` dead. (2) The watch verdict is `stalled`, no linked record runs, and the agent index shows no new event. (3) An operator directive names the interruption. The interrupting agent MUST record the record path, the heartbeat age, and the tail it read. That record goes in its report or stage output.",
+      "text": "A supervisor MUST NOT interrupt a worker or a wrapped command except under one of three conditions. (1) The wrapper crashed, with `record.json.ended_at` null, `heartbeat.json` older than two cadences, and `wrapper_pid` dead. (2) The watch verdict is `stalled` with `stall_cause` `quiet_fallback`, no linked record runs, and the agent index shows no new event. (3) An operator directive names the interruption. The interrupting agent MUST record the record path, the heartbeat age, and the tail it read.",
       "audience": ["supervisor"]
     },
     {
       "text": "The `shell-monitor-validate` requirement MUST confirm that `library/cursor/hooks.json` declares a fail-closed `beforeShellExecution` entry whose command contains `pan-hook-shell-monitor`, that `bin/pan-hook-shell-monitor` and `bin/pan-run` exist and are executable, and that the hook's embedded allowlist equals the allowlist this policy states. Coverage: `tests/unit/shell-monitor-validator.test.ts`.",
       "audience": ["harness"]
+    },
+    {
+      "text": "An open transcript turn MUST hold completion with `agent_turn_open` until `turn_ended`. Coverage: `tests/integration/watch-subagent-liveness.test.ts::an open transcript turn blocks agent-state override`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A readable transcript whose last record is `turn_ended` with status other than `success` MUST yield an error stop. Coverage: `tests/integration/watch-subagent-liveness.test.ts::a non-success turn_ended transcript fails the agent watch`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The watch MUST return `stalled` with a deterministic `stall_cause` when the open call's linked shell record shows `shell_dead`, `shell_stopped`, or `shell_heartbeat_stale` on two consecutive wakes. Coverage: `tests/integration/watch-subagent-liveness.test.ts::deterministic shell_dead stall on the second wake`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "`pan watch --attach` MUST return `attach_wake` at the 300-second backstop unless `--until-terminal` is set. Coverage: `tests/integration/watch-attach.test.ts::returns attach_wake at the 300-second backstop when session is still active`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "`pan submit` MUST refuse with `WORKER_STILL_ACTIVE` while the stage worker still works. Coverage: `tests/integration/watch-subagent-liveness.test.ts::submit refuses WORKER_STILL_ACTIVE while the worker has an open call`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Each `bin/pan-run` record MUST name `cursor_conversation_id`, `parent_record`, and `wrapper_process_identity`, and the command MUST see `PAN_RUN_RECORD`. Coverage: `tests/integration/pan-run.test.ts::AC-13 identity fields on nested pan-run records`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "An open shell call MUST link to the agent's own record by conversation id before the time-window fallback. Coverage: `tests/unit/activity-shell-link.test.ts::links an open shell call by conversation id`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The harness watch and the parent agent form two layers. The parent MUST regain control at each verdict and at least every 300 seconds on `pan watch --attach`. A liveness of `finished` or `failed` with no matching watch verdict is a contradiction the parent MUST record before interrupting the watcher.",
+      "audience": ["agent"],
+      "excerpt": true
+    },
+    {
+      "text": "Each `bin/pan-run` record MUST store `cursor_conversation_id`, `parent_record`, and `wrapper_process_identity`. Nested wrappers MUST inherit `PAN_RUN_RECORD` from the enclosing record.",
+      "audience": ["agent"]
     },
     "For a stage with evidence workers, the supervisor MUST block on `pan watch <run-id> --until-evidence-complete` in the turn that launches them. When that watch returns, the supervisor launches the stage worker and arms `pan watch <run-id> --mark-background` for it."
   ],

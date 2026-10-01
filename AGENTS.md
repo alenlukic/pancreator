@@ -130,6 +130,8 @@ The release steward owns the version decision and synchronized metadata inside a
 
 Run every agent shell command inside `bin/pan-run`. Allowlisted read-only commands (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`) may run unwrapped but must not chain or pipe into a non-allowlisted command.
 
+Give every blocking `pan watch` call a 330-second block bound (330000 ms). When the platform detaches it, run `pan watch --attach <ledger>` at once and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Never call `AwaitShell` or any platform await tool as a timer.
+
 ## Validation
 
 Use `runtime/repository-checks.json` as command authority. Do not infer a package manager, interpreter, runtime, or verification profile.

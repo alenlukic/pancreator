@@ -22,6 +22,9 @@ import {
 } from '../watch.js'
 import { panCommand } from '../project-config.js'
 import { evidenceWorkerAttempts, readEvidenceReportState } from '../render.js'
+import { watchedAgentActivity } from '../watch.js'
+import { WORKER_STILL_ACTIVE } from '../watch/types.js'
+import { workerActivityRefusal } from '../watch/liveness.js'
 import type {
   Invocation,
   PersonaExecutorKind,
@@ -235,4 +238,28 @@ export function observeSubmissionDelegation(
   }
 
   return delegationObservation
+}
+
+/** Refuse submission while the stage worker's turn or open call is still active. */
+export function assertWorkerNotStillActive(
+  root: string,
+  invocation: Invocation,
+  personaExecutor: PersonaExecutorKind,
+  stage: StageDefinition,
+): void {
+  if (stage.persona === 'orchestrator' || personaExecutor !== 'cursor') {
+    return
+  }
+
+  const activity = watchedAgentActivity(
+    root,
+    invocation,
+    Date.now(),
+    DEFAULT_WATCH_CADENCE_SECONDS,
+  )
+  const reason = workerActivityRefusal(activity)
+
+  invariant(reason === null, reason ?? 'Worker still active.', {
+    code: WORKER_STILL_ACTIVE,
+  })
 }

@@ -18,9 +18,12 @@ import {
   type WatchOptions,
   type WatchRecordEntry,
   type WatchResult,
+  type WatchStallCause,
   type WatchTerminalState,
   type WeakCompletionReason,
 } from './types.js'
+import type { AgentActivity } from '../agent-index/activity.js'
+import { deterministicStallCause, quietStallApplies } from './liveness.js'
 import { resolveWatchedInvocation, watchRecordPath } from './paths.js'
 import {
   agentStopVerdict,
@@ -294,10 +297,12 @@ export async function watchInvocation(
       cadenceSeconds,
       agentState,
       agentStateEvidence,
+      null,
     )
     // The output signature the confirming wake compares against. Non-null means
     // a finished-looking output is being held for one more observation.
     let heldOutput: string | null = null
+    let priorOutputSignature: string | null = outputSignature(initial)
     const initialStop = agentStopVerdict(initial)
 
     if (initialStop) {
@@ -375,6 +380,7 @@ export async function watchInvocation(
 
     let armings = 0
     let wakes = 0
+    let priorAgentActivity: AgentActivity | null = null
 
     // Wakes keep an absolute schedule so the time an observation takes does not
     // push every later wake back. A wake that already fell due is taken at once;
@@ -439,13 +445,17 @@ export async function watchInvocation(
       let terminalBasis: WatchRecordEntry['terminal_basis']
       let hold: WeakCompletionReason | undefined
       let unverifiedReason: AgentStopReason | undefined
+      let stallCause: WatchStallCause | undefined
+      const activityNow = observation.agent_activity ?? null
       const evidence = completionEvidenceForObservation(
         observation,
         launchToOutputSeconds(root, runId, invocationId),
         cadenceSeconds,
         agentState,
         agentStateEvidence,
+        priorOutputSignature,
       )
+      priorOutputSignature = outputSignature(observation)
       const stopVerdict = agentStopVerdict(observation)
 
       if (stopVerdict?.terminal === 'completed') {
@@ -457,35 +467,51 @@ export async function watchInvocation(
       } else if (evidence.strength === 'strong') {
         terminal = 'completed'
         terminalBasis = evidence.basis
-      } else if (evidence.strength === 'weak') {
-        const signature = outputSignature(observation)
-
-        if (heldOutput === signature) {
-          // This is the confirming wake the held observation bought, and the
-          // output did not move across it.
-          terminal = 'completed'
-          terminalBasis = 'confirming_wake'
-        } else {
-          heldOutput = signature
-          hold = evidence.reason
-        }
       } else {
-        heldOutput = null
+        const deterministic = deterministicStallCause(
+          activityNow,
+          priorAgentActivity,
+        )
 
-        if (unchangedWakes >= stallWakes && agentState !== 'running') {
-          // A worker that scaffolded its output and then died leaves the same
-          // still files as one that is thinking. The harness cannot tell those
-          // apart, so it reports what it knows and sends the supervisor to the
-          // agent rather than calling a working worker stalled — unless the
-          // supervisor already looked and said the agent is running, which is
-          // the answer the stall check was asking for.
-          if (observation.output_is_scaffold) {
-            terminal = 'unverified'
+        if (deterministic) {
+          terminal = 'stalled'
+          stallCause = deterministic
+        } else if (evidence.strength === 'weak') {
+          const signature = outputSignature(observation)
+
+          if (heldOutput === signature) {
+            if (
+              evidence.reason !== 'agent_active' &&
+              evidence.reason !== 'agent_turn_open'
+            ) {
+              terminal = 'completed'
+              terminalBasis = 'confirming_wake'
+            } else {
+              hold = evidence.reason
+            }
           } else {
-            terminal = 'stalled'
+            heldOutput = signature
+            hold = evidence.reason
+          }
+        } else {
+          heldOutput = null
+
+          if (
+            unchangedWakes >= stallWakes &&
+            agentState !== 'running' &&
+            quietStallApplies(activityNow)
+          ) {
+            if (observation.output_is_scaffold) {
+              terminal = 'unverified'
+            } else {
+              terminal = 'stalled'
+              stallCause = 'quiet_fallback'
+            }
           }
         }
       }
+
+      priorAgentActivity = activityNow
 
       if (terminal === undefined && now() - startedMs >= timeoutMs) {
         // A watch that ran out of time while still holding a finished-looking
@@ -516,6 +542,7 @@ export async function watchInvocation(
           : {}),
         changed,
         unchanged_wakes: unchangedWakes,
+        ...(stallCause ? { stall_cause: stallCause } : {}),
         ...(terminal ? { terminal_state: terminal } : {}),
       }
 

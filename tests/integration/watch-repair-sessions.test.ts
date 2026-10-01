@@ -643,9 +643,10 @@ test('AC-025: terminal-only multiplex', async () => {
   )
 
   // One awaited watch survived three cadences of intermediate movement and
-  // returned when the target reached its terminal state.
+  // returned when the target reached its terminal state. The output first
+  // seen at wake 3 holds one confirming wake before it completes.
   assert.equal(result.state, 'changed')
-  assert.equal(result.wakes, 3)
+  assert.equal(result.wakes, 4)
   assert.deepEqual(
     result.moved.map((item) => [item.invocation_id, item.terminal_state]),
     [[completing.invocationId, 'completed']],
@@ -659,7 +660,7 @@ test('AC-025: terminal-only multiplex', async () => {
     const recordedWakes = entries.filter((entry) => entry.event === 'wake')
 
     assert.equal(sessions.length, 1, 'one session survived the whole wait')
-    assert.equal(recordedWakes.length, 3, 'every wake is recorded')
+    assert.equal(recordedWakes.length, 4, 'every wake is recorded')
   }
 })
 

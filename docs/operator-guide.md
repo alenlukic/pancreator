@@ -291,6 +291,8 @@ the ordinary cause. Each wake records whether the stop left a transcript.
 Its ledger at `runtime/logs/watch/agent-<id>.jsonl` starts with a
 `session_started` entry, so `pan watch --attach` follows it.
 
+`pan watch --attach` polls the ledger every second. It returns at once on a terminal wake or an orphan, and returns `attach_wake` (exit 7) at the 300-second parent backstop when a session is still pending, printing each session's latest wake, its liveness summary, the 330000 ms block bound, and the reattach command. `--until-terminal` holds through routine movement and never returns `attach_wake` before a terminal wake.
+
 `--mark-background` records that the launch is a background subagent. As
 recovery only, a worker call that still returned in the foreground with the
 output already present exposes no observation point to watch, so the

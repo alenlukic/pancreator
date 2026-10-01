@@ -28,6 +28,7 @@ const COMMON = [
   'principles-priority',
   'principles-judgment',
   'principles-escalation',
+  'principles-no-permission',
   'principles-verdict',
   'card-invariants',
 ]

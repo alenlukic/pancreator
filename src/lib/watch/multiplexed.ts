@@ -15,9 +15,11 @@ import {
   type WatchGap,
   type WatchObservation,
   type WatchRecordEntry,
+  type WatchStallCause,
   type WatchTerminalState,
   type WeakCompletionReason,
 } from './types.js'
+import { deterministicStallCause, quietStallApplies } from './liveness.js'
 import { resolveWatchedInvocation, watchRecordPath } from './paths.js'
 import {
   agentStopVerdict,
@@ -238,6 +240,10 @@ export async function watchInvocations(
       // Non-null means a finished-looking output is held for one more
       // observation, exactly as the focused watch holds one.
       heldOutput: null as string | null,
+      priorOutputSignature: null as string | null,
+      priorAgentActivity: null as
+        | import('../agent-index/activity.js').AgentActivity
+        | null,
     }
   })
   type WatchedTarget = (typeof watched)[number]
@@ -439,6 +445,9 @@ export async function watchInvocations(
           item.invocation.invocation_id,
         ),
         cadenceSeconds,
+        undefined,
+        null,
+        item.priorOutputSignature,
       )
     const initiallyMoved: MultiplexedWatchMovement[] = []
     const initiallyUnverified: MultiplexedWatchMovement[] = []
@@ -446,6 +455,7 @@ export async function watchInvocations(
     for (const item of watched) {
       const initial = item.initial as WatchObservation
       const evidence = evidenceFor(item, initial)
+      item.priorOutputSignature = outputSignature(initial)
       const stopVerdict = agentStopVerdict(initial)
 
       if (evidence.strength === 'none' && stopVerdict === null) {
@@ -586,11 +596,14 @@ export async function watchInvocations(
             : item.unchangedWakes + 1
 
         const evidence = evidenceFor(item, observation)
+        item.priorOutputSignature = outputSignature(observation)
         const stopVerdict = agentStopVerdict(observation)
         let terminal: WatchTerminalState | undefined
         let terminalBasis: WatchRecordEntry['terminal_basis']
         let hold: WeakCompletionReason | undefined
         let unverifiedReason: AgentStopReason | undefined
+        let stallCause: WatchStallCause | undefined
+        const activityNow = observation.agent_activity ?? null
 
         if (stopVerdict?.terminal === 'completed') {
           terminal = 'completed'
@@ -601,28 +614,50 @@ export async function watchInvocations(
         } else if (evidence.strength === 'strong') {
           terminal = 'completed'
           terminalBasis = evidence.basis
-        } else if (evidence.strength === 'weak') {
-          const signature = outputSignature(observation)
-
-          if (item.heldOutput === signature) {
-            // The confirming wake the held observation bought, across which
-            // the output did not move.
-            terminal = 'completed'
-            terminalBasis = 'confirming_wake'
-          } else {
-            item.heldOutput = signature
-            hold = evidence.reason
-          }
         } else {
-          item.heldOutput = null
+          const deterministic = deterministicStallCause(
+            activityNow,
+            item.priorAgentActivity,
+          )
 
-          if (item.unchangedWakes >= stallWakes) {
-            // A scaffold that stopped moving is the case the focused watch
-            // refuses to call a stall: the supervisor must inspect the agent
-            // itself, which a group wait cannot report for one member.
-            terminal = observation.output_is_scaffold ? 'unverified' : 'stalled'
+          if (deterministic) {
+            terminal = 'stalled'
+            stallCause = deterministic
+          } else if (evidence.strength === 'weak') {
+            const signature = outputSignature(observation)
+
+            if (item.heldOutput === signature) {
+              if (
+                evidence.reason !== 'agent_active' &&
+                evidence.reason !== 'agent_turn_open'
+              ) {
+                terminal = 'completed'
+                terminalBasis = 'confirming_wake'
+              } else {
+                hold = evidence.reason
+              }
+            } else {
+              item.heldOutput = signature
+              hold = evidence.reason
+            }
+          } else {
+            item.heldOutput = null
+
+            if (
+              item.unchangedWakes >= stallWakes &&
+              quietStallApplies(activityNow)
+            ) {
+              terminal = observation.output_is_scaffold
+                ? 'unverified'
+                : 'stalled'
+              if (terminal === 'stalled') {
+                stallCause = 'quiet_fallback'
+              }
+            }
           }
         }
+
+        item.priorAgentActivity = activityNow
 
         // A terminal-only wait records routine movement without returning for
         // it; the first completed, stalled, or unverifiable target — or the
@@ -653,6 +688,7 @@ export async function watchInvocations(
             : {}),
           changed,
           unchanged_wakes: item.unchangedWakes,
+          ...(stallCause ? { stall_cause: stallCause } : {}),
           ...(terminal ? { terminal_state: terminal } : {}),
         }
 
