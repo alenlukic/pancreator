@@ -1,5 +1,17 @@
 # Changelog
 
+## [8.3.0] - 2026-10-01
+
+This release makes the `bin/pan-run` start line readable and gives it a watch command that works from a linked worktree.
+
+### Changed
+
+- Print the `bin/pan-run` start line as the label, the pid, and one `./bin/pan watch --shell <record>` command, in place of a seven-flag `pan watch --process` command that repeated the record path three times. The explicit form prints only when the start helper wrote no `record.json` ([0c17c4e1](https://github.com/alenlukic/pancreator/commit/0c17c4e1)).
+
+### Added
+
+- Add `pan watch --shell <record>`, which takes a record directory, its bare name, or `latest`, reads the pid and label from `record.json`, and reports the command's exit status. It finds a record that a linked worktree's `bin/pan-run` wrote to the main checkout ([0c17c4e1](https://github.com/alenlukic/pancreator/commit/0c17c4e1)).
+
 ## [8.2.0] - 2026-10-01
 
 This release bounds `runtime/logs/shell`, gives an agent and a supervisor the evidence a wrapped command's heartbeat and a watch verdict carry, and states when a supervisor may interrupt a live worker.
