@@ -1,5 +1,14 @@
 # Changelog
 
+## [8.8.1] - 2026-10-01
+
+This release makes `pan watch` return within seconds of a subagent stop. A resumed subagent no longer reads as complete from its earlier stop.
+
+### Fixed
+
+- Return `pan watch` within 5 seconds of an agent stop for the focused, agent, and multiplexed forms, instead of at the next 60-second wake ([5c50029a](https://github.com/alenlukic/pancreator/commit/5c50029a)).
+- Ignore a stop record older than the watched invocation or older than the agent's last tool call, so a resumed subagent stays running until its new turn ends ([5c50029a](https://github.com/alenlukic/pancreator/commit/5c50029a)).
+
 ## [8.8.0] - 2026-10-01
 
 This release makes agent answers and tool context visible in operator chat. Hidden reasoning and a Thinking block never satisfy a response duty.
