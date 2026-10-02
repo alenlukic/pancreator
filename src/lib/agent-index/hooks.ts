@@ -47,6 +47,19 @@ import { validatedParentTranscriptPath } from './transcript.js'
 // Public event handlers
 // ---------------------------------------------------------------------------
 
+const AGENT_HANDLE_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u
+
+/** The agent a `Task` call's `resume` names, or null for a fresh or self-forked launch. */
+function resumeTarget(value: unknown): string | null {
+  const target = nonEmptyString(value)
+
+  return target !== null &&
+    target !== 'self' &&
+    AGENT_HANDLE_PATTERN.test(target)
+    ? target
+    : null
+}
+
 function canonicalAgentId(
   index: ReturnType<typeof readIndex>,
   rawId: string,
@@ -130,6 +143,7 @@ export function handlePreToolUse(
             ? boundedSummary(input.description as string, secrets)
             : null,
         requested_at: nowIso,
+        resume_of: resumeTarget(input?.resume),
         handle: null,
         resolved_agent_id: null,
       }
@@ -245,7 +259,10 @@ export function handlePostToolUse(
 /**
  * Handle `subagentStart`: register the child, parse its run and invocation,
  * and link the parent's pending launch by `tool_call_id` equality or by
- * parent plus prompt digest.
+ * parent plus prompt digest. A launch that resumed an indexed agent
+ * re-registers that agent under the new tool call id and clears its earlier
+ * stop; one that resumed an unindexed agent links the resumed id to the new
+ * entry.
  */
 export function handleSubagentStart(
   root: string,
@@ -302,12 +319,37 @@ export function handleSubagentStart(
       parentId !== null
         ? (resolveCanonicalId(index, parentId) ?? parentId)
         : null
-    const canonical = resolveCanonicalId(index, childId)
+    const open =
+      parentCanonical !== null
+        ? index.pending_launches.filter(
+            (pl) =>
+              pl.parent_agent_id === parentCanonical &&
+              (pl.resolved_agent_id ?? null) === null,
+          )
+        : []
+    const launch =
+      (toolCallId
+        ? open.find((pl) => pl.tool_use_id === toolCallId)
+        : undefined) ??
+      (digest ? open.find((pl) => pl.prompt_digest === digest) : undefined)
+    const resumeOf = launch?.resume_of ?? null
+    // A resumed child keeps its conversation and transcript, so the resume
+    // launch joins the entry it resumes rather than starting an empty one.
+    const resumed =
+      resumeOf !== null ? resolveCanonicalId(index, resumeOf) : null
+    const canonical = resolveCanonicalId(index, childId) ?? resumed
     let child = canonical !== null ? findAgent(index, canonical) : null
 
     if (!child) {
       child = newAgentEntry(childId, nowIso)
       index.agents.push(child)
+    }
+
+    if (resumed !== null && child.agent_id === resumed) {
+      linkAlias(index, childId, child.agent_id)
+      child.stop = null
+    } else if (resumeOf !== null) {
+      linkAlias(index, resumeOf, child.agent_id)
     }
 
     child.parent_agent_id = parentCanonical ?? child.parent_agent_id
@@ -333,31 +375,18 @@ export function handleSubagentStart(
       }
     }
 
-    if (parentCanonical !== null) {
-      const open = index.pending_launches.filter(
-        (pl) =>
-          pl.parent_agent_id === parentCanonical &&
-          (pl.resolved_agent_id ?? null) === null,
-      )
-      const launch =
-        (toolCallId
-          ? open.find((pl) => pl.tool_use_id === toolCallId)
-          : undefined) ??
-        (digest ? open.find((pl) => pl.prompt_digest === digest) : undefined)
+    if (launch) {
+      launch.resolved_agent_id = child.agent_id
 
-      if (launch) {
-        launch.resolved_agent_id = child.agent_id
-
-        if (launch.tool_use_id) {
-          linkAlias(index, launch.tool_use_id, child.agent_id)
-        }
-
-        if (launch.handle) {
-          linkAlias(index, launch.handle, child.agent_id)
-        }
-
-        child.subagent_type = child.subagent_type ?? launch.subagent_type
+      if (launch.tool_use_id) {
+        linkAlias(index, launch.tool_use_id, child.agent_id)
       }
+
+      if (launch.handle) {
+        linkAlias(index, launch.handle, child.agent_id)
+      }
+
+      child.subagent_type = child.subagent_type ?? launch.subagent_type
     }
 
     writeIndex(root, index, nowIso)

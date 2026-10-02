@@ -118,6 +118,8 @@ export interface PendingLaunch {
   subagent_type: string | null
   description: string | null
   requested_at: string
+  /** Agent id the parent's Task call resumed, when it named one. */
+  resume_of?: string | null
   /** Handle the parent's Task call returned, once seen. */
   handle?: string | null
   /** Child the launch linked to, once `subagentStart` matched it. */

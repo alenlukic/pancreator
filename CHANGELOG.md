@@ -1,5 +1,17 @@
 # Changelog
 
+## [8.11.1] - 2026-10-02
+
+This release makes `pan watch` detect the end of a subagent or a wrapped shell command reliably. A subagent that calls no tool and a command that leaves a background process now end their watch.
+
+### Fixed
+
+- Link a launch to its subagent transcript by prompt digest when the subagent calls no tool. Link only one unclaimed transcript to one launch inside a bounded time window ([eba40e7e](https://github.com/alenlukic/pancreator/commit/eba40e7e)).
+- Resolve a subagent id that the agent index never registered through its transcript, so `pan watch --agent` returns its stop and does not time out as `unregistered` ([eba40e7e](https://github.com/alenlukic/pancreator/commit/eba40e7e)).
+- Merge a resumed `Task` launch into the agent it resumes, and ignore a stop older than the latest registration. Report an aborted subagent turn as `aborted` ([eba40e7e](https://github.com/alenlukic/pancreator/commit/eba40e7e)).
+- Wake `pan watch --process` and `pan watch --shell` at the exit of the command. End the watch on a recorded exit code even when the operating system reused the pid ([eba40e7e](https://github.com/alenlukic/pancreator/commit/eba40e7e)).
+- Record the exit in `bin/pan-run` after a bounded output drain (`PAN_RUN_DRAIN_SECONDS`, default 2) when a background process keeps the output open. Mark that record `output_drained: false`, and keep it in `pan cleanup` while the wrapper lives ([eba40e7e](https://github.com/alenlukic/pancreator/commit/eba40e7e)).
+
 ## [8.11.0] - 2026-10-02
 
 This release splits Cursor spend into on-demand usage and included usage. The `/pan-spend` canvas shows each part and keeps its layout.
