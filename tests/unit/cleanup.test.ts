@@ -231,6 +231,32 @@ test('shell-logs planning holds a live wrapper past the compact age', () => {
   )
 })
 
+test('shell-logs planning holds a wrapper still streaming after the command exited', () => {
+  const root = createTestTempDirectory('cleanup-shell-streaming-')
+  const name = '20260921T120000Z-streaming-aaaaaaaa'
+
+  writeShellRecord(root, name, {
+    'record.json': JSON.stringify({
+      ended_at: '2026-09-21T12:00:05.000Z',
+      exit_code: 0,
+      output_drained: false,
+      wrapper_pid: process.pid,
+    }),
+    'output.log': 'a background process still writes\n',
+  })
+
+  const plan = planCleanup(root, {
+    classes: ['shell-logs'],
+    now: SHELL_NOW,
+  })
+
+  assert.deepEqual(plan.actions, [])
+  assert.match(
+    plan.skipped.find((entry) => entry.path.endsWith(name))?.reason ?? '',
+    /wrapper process .* is still running/u,
+  )
+})
+
 test('shell-logs planning deletes rather than compacting when the retention window is at most 7 days', () => {
   const root = createTestTempDirectory('cleanup-shell-short-window-')
   const name = '20260921T120000Z-midlife-aaaaaaaa'

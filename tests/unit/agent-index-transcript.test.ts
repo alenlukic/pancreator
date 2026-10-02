@@ -3,7 +3,10 @@ import { mkdirSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { readAgentActivity } from '../../src/lib/agent-index/activity.js'
+import {
+  getAgentEntry,
+  readAgentActivity,
+} from '../../src/lib/agent-index/activity.js'
 import { handleSubagentStart } from '../../src/lib/agent-index/hooks.js'
 import { newAgentEntry } from '../../src/lib/agent-index/store.js'
 import {
@@ -51,7 +54,10 @@ test('a turn_ended transcript record is a completed stop without subagentStop', 
 
   // The same ended turn, read for an invocation created after it, is the
   // earlier attempt's stop rather than this one's.
-  const endedMs = Math.floor(Date.parse('2026-10-01T00:30:00.000Z') / 1000)
+  const registeredMs = Date.parse(
+    getAgentEntry(root, 'canonical-child')?.registered_at ?? '',
+  )
+  const endedMs = Math.ceil(registeredMs / 1000) + 30
   utimesSync(childPath, endedMs, endedMs)
 
   assert.equal(

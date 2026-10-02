@@ -1,16 +1,130 @@
 /**
- * Read-only subagent transcript inspection: path derivation and bounded tail
- * reads that expose only metadata and the last record's type and status.
+ * Read-only subagent transcript inspection: path derivation, bounded tail
+ * reads that expose only metadata and the last record's type and status, and
+ * a digest of the first task that never exposes its text.
  */
 
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-import { MAX_TRANSCRIPT_PATH_CHARS, type AgentEntry } from './store.js'
+import {
+  MAX_TRANSCRIPT_PATH_CHARS,
+  promptDigest,
+  type AgentEntry,
+} from './store.js'
 
 export const TRANSCRIPT_TAIL_BYTES = 4096
 
-const CHILD_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u
+// Cost-backed bound on the first record read: a task longer than this
+// cannot be matched to its launch by digest.
+const TRANSCRIPT_HEAD_BYTES = 128 * 1024
+const USER_QUERY_OPEN = '<user_query>\n'
+const USER_QUERY_CLOSE = '\n</user_query>'
+// The first record never changes once its line ends, so a watch that polls
+// every few seconds reads each transcript head once. Cost-backed bound.
+const TASK_DIGEST_CACHE_LIMIT = 1024
+const taskDigestCache = new Map<string, string | null>()
+
+export const CHILD_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u
+
+/**
+ * The directory Cursor writes a parent's subagent transcripts to, or null
+ * when the entry carries no parent transcript path.
+ */
+export function subagentTranscriptDirectory(agent: AgentEntry): string | null {
+  return agent.parent_transcript_path
+    ? path.join(path.dirname(agent.parent_transcript_path), 'subagents')
+    : null
+}
+
+/**
+ * The `promptDigest` of the task a subagent transcript's first user record
+ * carries inside its `<user_query>` block, or null when that record is
+ * unreadable, longer than the head bound, or carries no query.
+ */
+export function transcriptTaskDigest(file: string): string | null {
+  const cached = taskDigestCache.get(file)
+
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const buffer = Buffer.alloc(TRANSCRIPT_HEAD_BYTES)
+  let read: number
+
+  try {
+    const fd = openSync(file, 'r')
+
+    try {
+      read = readSync(fd, buffer, 0, TRANSCRIPT_HEAD_BYTES, 0)
+    } finally {
+      closeSync(fd)
+    }
+  } catch {
+    return null
+  }
+
+  const newline = buffer.subarray(0, read).indexOf(0x0a)
+
+  // A first record still being written gets no answer yet; one past the
+  // head bound never will.
+  if (newline === -1) {
+    return read >= TRANSCRIPT_HEAD_BYTES ? cacheTaskDigest(file, null) : null
+  }
+
+  return cacheTaskDigest(
+    file,
+    firstRecordTaskDigest(buffer.subarray(0, newline).toString('utf8')),
+  )
+}
+
+function cacheTaskDigest(file: string, digest: string | null): string | null {
+  if (taskDigestCache.size >= TASK_DIGEST_CACHE_LIMIT) {
+    taskDigestCache.clear()
+  }
+
+  taskDigestCache.set(file, digest)
+
+  return digest
+}
+
+function firstRecordTaskDigest(line: string): string | null {
+  let record: unknown
+
+  try {
+    record = JSON.parse(line) as unknown
+  } catch {
+    return null
+  }
+
+  const content =
+    record !== null &&
+    typeof record === 'object' &&
+    (record as { role?: unknown }).role === 'user'
+      ? (record as { message?: { content?: unknown } }).message?.content
+      : undefined
+
+  if (!Array.isArray(content)) {
+    return null
+  }
+
+  const text = content
+    .map((part: unknown) =>
+      part !== null &&
+      typeof part === 'object' &&
+      (part as { type?: unknown }).type === 'text' &&
+      typeof (part as { text?: unknown }).text === 'string'
+        ? (part as { text: string }).text
+        : '',
+    )
+    .join('')
+  const open = text.lastIndexOf(USER_QUERY_OPEN)
+  const close = text.lastIndexOf(USER_QUERY_CLOSE)
+
+  return open !== -1 && close > open
+    ? promptDigest(text.slice(open + USER_QUERY_OPEN.length, close))
+    : null
+}
 
 export interface TranscriptState {
   path: string
@@ -50,16 +164,12 @@ export function subagentTranscriptCandidates(agent: AgentEntry): string[] {
 
   push(agent.transcript_path)
 
-  const parentDir =
-    agent.parent_transcript_path !== null &&
-    agent.parent_transcript_path !== undefined
-      ? path.dirname(agent.parent_transcript_path)
-      : null
+  const directory = subagentTranscriptDirectory(agent)
 
-  if (parentDir) {
+  if (directory) {
     for (const id of [agent.agent_id, ...agent.aliases]) {
       if (CHILD_ID_PATTERN.test(id)) {
-        push(path.join(parentDir, 'subagents', `${id}.jsonl`))
+        push(path.join(directory, `${id}.jsonl`))
       }
     }
   }

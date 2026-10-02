@@ -56,6 +56,7 @@ import {
   type CleanupSkip,
   type CleanupWorktree,
 } from './classes.js'
+import { processIsAlive, shellRecordHold } from './holds.js'
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1_000
 
@@ -94,19 +95,6 @@ function toPosix(value: string): string {
 
 function ageInDays(now: Date, at: number): number {
   return Math.floor((now.getTime() - at) / MILLISECONDS_PER_DAY)
-}
-
-function processIsAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) {
-    return false
-  }
-
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
 }
 
 function ownerPid(target: string, isDirectory: boolean): number | null {
@@ -230,37 +218,6 @@ function artifactTimestampMs(
   }
 
   return mtimeMs
-}
-
-/** Marker `bin/pan-run` keeps in a record directory while its helper runs. */
-const PAN_RUN_HELPER_MARKER = '.pan-run.cjs'
-
-/**
- * Why a `bin/pan-run` record must stay untouched: its wrapper is still alive,
- * or its record is unreadable while the helper marker remains. Mirrors the
- * wrapper's own compaction judgment.
- */
-function shellRecordHold(target: string): string | null {
-  let record: unknown = null
-
-  try {
-    record = JSON.parse(readFileSync(path.join(target, 'record.json'), 'utf8'))
-  } catch {
-    // An absent or partial record is judged by the helper marker below.
-  }
-
-  if (isRecord(record)) {
-    const wrapperPid = Number(record.wrapper_pid)
-    const running =
-      (record.ended_at === null || record.ended_at === undefined) &&
-      processIsAlive(wrapperPid)
-
-    return running ? `wrapper process ${wrapperPid} is still running` : null
-  }
-
-  return existsSync(path.join(target, PAN_RUN_HELPER_MARKER))
-    ? 'record.json is unreadable while the pan-run helper marker remains'
-    : null
 }
 
 function uncompactedLogNames(entries: readonly Dirent[]): string[] {

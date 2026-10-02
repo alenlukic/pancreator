@@ -20,11 +20,16 @@ import { appendJsonLine, isRecord, resolveInside } from '../io.js'
 import {
   DEFAULT_WATCH_CADENCE_SECONDS,
   DEFAULT_WATCH_TIMEOUT_SECONDS,
+  WATCH_STOP_POLL_MS,
   WATCH_TIMEOUT_BELOW_CADENCE,
 } from './types.js'
 import { processRunning, processStartIdentity } from './process-evidence.js'
 import { shellSingleQuote } from './completion.js'
-import { defaultSleep, installInterruptionHandlers } from './session.js'
+import {
+  defaultSleep,
+  installInterruptionHandlers,
+  stopAwareSleep,
+} from './session.js'
 
 /**
  * Where a generic watch writes when the caller names no record. The directory
@@ -120,7 +125,10 @@ export interface GenericWatchResult {
   rearm_command?: string
 }
 
-const EXIT_RECORD_SETTLE_ATTEMPTS = 10
+// While the wrapper lives, the settle window must outlast bin/pan-run's
+// output drain bound (PAN_RUN_DRAIN_SECONDS, clamped to 60 seconds), after
+// which the wrapper writes the code.
+const EXIT_RECORD_SETTLE_ATTEMPTS = 325
 
 const EXIT_RECORD_SETTLE_INTERVAL_MS = 200
 const WATCH_OUTPUT_TAIL_LINES = 5
@@ -222,6 +230,13 @@ export interface ProcessWatchOptions {
   cadenceSeconds?: number
   timeoutSeconds?: number
   sleep?: (milliseconds: number) => Promise<void>
+  /**
+   * How often a cadence sleep checks for an exit, so the watch wakes when the
+   * process ends rather than at the next cadence. Defaults to
+   * `WATCH_STOP_POLL_MS`. An injected `sleep` without `pollMs` runs whole
+   * cadence sleeps.
+   */
+  pollMs?: number
   now?: () => number
   /** Injected for tests. Defaults to `processStartIdentity`. */
   identityProbe?: (pid: number) => string | null
@@ -437,9 +452,10 @@ export function genericWatchRecordPath(
 
 /**
  * Watch one process by PID and start identity until it exits, its identity
- * changes, or the bound arrives. Liveness that cannot be observed is
- * `unverified`, never `completed`; an observed exit is reported as an exit,
- * never as a success.
+ * changes, or the bound arrives. A numeric `exit_code` in the exit record is
+ * an exit whatever the PID now names, because the PID can be reused. Liveness
+ * that cannot be observed is `unverified`, never `completed`; an observed
+ * exit is reported as an exit, never as a success.
  */
 export async function watchProcess(
   root: string,
@@ -536,6 +552,17 @@ export async function watchProcess(
 
     return { exitCode: null, wrapperPid: 0 }
   }
+
+  const recordedExitCode = (): number | null =>
+    exitRecordAbsolute === null ? null : readExitRecord().exitCode
+  const waitForWake =
+    options.sleep !== undefined && options.pollMs === undefined
+      ? sleep
+      : stopAwareSleep(
+          () => recordedExitCode() !== null || !processRunning(options.pid),
+          options.pollMs ?? WATCH_STOP_POLL_MS,
+          sleep,
+        )
 
   /**
    * The wrapper writes the exit code after its output drains, so a record
@@ -676,20 +703,14 @@ export async function watchProcess(
       }
     }
 
-    if (!aliveAtArm) {
-      // The process was already gone when the watch armed. When the caller
-      // supplied an exit record, read it: an integer exit code means the
-      // process exited cleanly and the caller can rely on the status.
-      // Without a readable integer code the observation stays unverified.
-      let deadAtArmExitStatus: number | null = null
+    const exitCodeAtArm = recordedExitCode()
 
-      if (exitRecordAbsolute !== null) {
-        const { exitCode } = readExitRecord()
-
-        if (typeof exitCode === 'number') {
-          deadAtArmExitStatus = exitCode
-        }
-      }
+    if (!aliveAtArm || exitCodeAtArm !== null) {
+      // The process was already gone when the watch armed, or its exit
+      // record already holds a code. An integer exit code means the process
+      // exited and the caller can rely on the status. Without one the
+      // observation stays unverified.
+      const deadAtArmExitStatus = exitCodeAtArm
 
       wakes += 1
       const armWakeMs = now()
@@ -706,7 +727,7 @@ export async function watchProcess(
         cadence_seconds: cadenceSeconds,
         wake: wakes,
         watch_session_id: sessionId,
-        process_alive: false,
+        process_alive: aliveAtArm,
         process_identity_match: false,
         ...(output ? { output } : {}),
         ...(heartbeat ? { heartbeat } : {}),
@@ -746,10 +767,11 @@ export async function watchProcess(
         timeout_seconds: timeoutSeconds,
       })
 
-      await sleep(Math.max(0, dueMs - now()))
+      await waitForWake(Math.max(0, dueMs - now()))
       dueMs += cadenceMs
       wakes += 1
 
+      const recordedExit = recordedExitCode()
       const alive = processRunning(options.pid)
       const identityNow = alive ? identityProbe(options.pid) : null
       // A change is only claimed on evidence: both identities known and
@@ -765,14 +787,15 @@ export async function watchProcess(
 
       let terminal: GenericWatchTerminalState | undefined
 
-      if (!alive || identityChanged) {
+      if (recordedExit !== null || !alive || identityChanged) {
         terminal = 'exited'
       } else if (timedOut) {
         terminal = 'timed_out'
       }
 
       const exitStatus =
-        terminal === 'exited' ? await settleExitStatus() : undefined
+        recordedExit ??
+        (terminal === 'exited' ? await settleExitStatus() : undefined)
       const wakeMs = now()
       const output = observeOutput(wakeMs)
       const heartbeat = readSiblingHeartbeat(exitRecordAbsolute, wakeMs)

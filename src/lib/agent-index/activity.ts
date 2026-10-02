@@ -24,6 +24,10 @@ import {
 } from './store.js'
 import { readTranscriptState, type TranscriptState } from './transcript.js'
 import {
+  entryFromSubagentTranscript,
+  linkUnclaimedTranscript,
+} from './transcript-link.js'
+import {
   readAgentShellRecords,
   type AgentShellRecord,
 } from './shell-records.js'
@@ -119,8 +123,20 @@ export function getStopRecord(
 }
 
 /**
- * Look up an agent's index entry by its canonical id or any alias. Returns null
- * when the index holds no matching agent.
+ * Look up an agent's index entry by its canonical id or any alias.
+ *
+ * The hooks key a subagent by its launch's tool call id, while the parent
+ * holds the child's conversation id, which also names its transcript. A
+ * background launch never returns its handle to a hook, and a child that
+ * calls no tool never names its conversation, so the two ids can meet only
+ * in the transcript. An entry no transcript candidate names is linked to the
+ * unclaimed transcript whose first task matches its launch digest and whose
+ * creation fits its registration, and an unindexed id that names a subagent
+ * transcript resolves to the entry that transcript matches, only when that
+ * pairing is unique both ways. Each link is recorded as an alias. An
+ * unindexed transcript no entry uniquely matches yields an unsaved entry
+ * that carries only that transcript. Returns null when neither the index nor
+ * a transcript knows the id.
  */
 export function getAgentEntry(
   root: string,
@@ -128,8 +144,11 @@ export function getAgentEntry(
 ): AgentEntry | null {
   const index = readIndex(root)
   const canonical = resolveCanonicalId(index, agentId)
+  const entry = canonical !== null ? findAgent(index, canonical) : null
 
-  return canonical !== null ? findAgent(index, canonical) : null
+  return entry
+    ? linkUnclaimedTranscript(root, index, entry)
+    : entryFromSubagentTranscript(root, index, agentId)
 }
 
 /** The newest agent registered for one run invocation. */
@@ -541,6 +560,14 @@ function transcriptPresent(transcriptPath: string | null): boolean {
   }
 }
 
+function transcriptStopStatus(turnStatus: string | null): AgentStatus {
+  if (turnStatus === 'success') {
+    return 'completed'
+  }
+
+  return turnStatus === 'aborted' ? 'aborted' : 'error'
+}
+
 type ResolvedStop = {
   status: AgentStatus
   recorded_at: string
@@ -554,10 +581,10 @@ type ResolvedStop = {
  * from a transcript whose last turn ended.
  *
  * A resumed subagent keeps its earlier stop and its ended transcript turn
- * until it stops again, so a stop is current only when no call started after
- * it and it is not older than `notBeforeMs`. A watch passes the creation time
- * of the invocation it observes there, because a stop recorded before that
- * invocation existed belongs to an earlier attempt.
+ * until it stops again, so a stop is current only when no registration or
+ * call started after it and it is not older than `notBeforeMs`. A watch
+ * passes the creation time of the invocation it observes there, because a
+ * stop recorded before that invocation existed belongs to an earlier attempt.
  */
 function resolveStop(
   agent: AgentEntry,
@@ -565,9 +592,9 @@ function resolveStop(
   nowMs: number,
   notBeforeMs: number | null,
 ): ResolvedStop | null {
-  const lastCallStartedMs = events.reduce(
+  const lastStartMs = events.reduce(
     (latest, event) =>
-      event.kind === 'call_started'
+      event.kind === 'call_started' || event.kind === 'registered'
         ? Math.max(latest, Date.parse(event.timestamp))
         : latest,
     Number.NEGATIVE_INFINITY,
@@ -576,7 +603,7 @@ function resolveStop(
     const recordedMs = Date.parse(recordedAt)
 
     return (
-      !(recordedMs < lastCallStartedMs) &&
+      !(recordedMs < lastStartMs) &&
       (notBeforeMs === null || !(recordedMs < notBeforeMs))
     )
   }
@@ -614,7 +641,7 @@ function resolveStop(
     current(transcriptRecordedAt)
   ) {
     return {
-      status: transcript.turn_status === 'success' ? 'completed' : 'error',
+      status: transcriptStopStatus(transcript.turn_status),
       recorded_at: transcriptRecordedAt,
       transcript_path: transcript.path,
       source: 'transcript',
