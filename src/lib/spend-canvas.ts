@@ -28,6 +28,8 @@ export interface SpendCanvasResult {
     total_tokens: number
     cost_cents: number
     cursor_fee_cents: number
+    on_demand_cost_cents: number
+    included_cost_cents: number
   }
   lowest_coverage: { dimension: string; known_token_percent: number } | null
 }
@@ -94,6 +96,12 @@ export function writeSpendCanvas(
       total_tokens: report.totals.total_tokens,
       cost_cents: report.totals.cost_cents,
       cursor_fee_cents: report.totals.cursor_fee_cents,
+      on_demand_cost_cents: Number(
+        (report.totals.cost_cents - report.totals.included_cost_cents).toFixed(
+          6,
+        ),
+      ),
+      included_cost_cents: report.totals.included_cost_cents,
     },
     lowest_coverage: lowestCoverage(report.coverage),
   }

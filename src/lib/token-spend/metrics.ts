@@ -5,6 +5,15 @@ import type { SpendMetrics, SpendSliceRow } from './model.js'
 
 export const MAX_SLICE_ROWS = 10
 
+// The dashboard reports `USAGE_EVENT_KIND_INCLUDED_IN_<PLAN>` and the Admin
+// API reports `Included in <Plan>`; every other kind is on-demand usage.
+const INCLUDED_KIND_RE = /included/iu
+
+/** True when Cursor billed the event against the plan's included usage rather than on demand. */
+export function isIncludedUsage(event: CursorUsageEvent): boolean {
+  return INCLUDED_KIND_RE.test(event.kind)
+}
+
 /** A spend metrics record with every counter at zero. */
 export function emptyMetrics(): SpendMetrics {
   return {
@@ -17,10 +26,16 @@ export function emptyMetrics(): SpendMetrics {
     total_tokens: 0,
     cost_cents: 0,
     cursor_fee_cents: 0,
+    included_cost_cents: 0,
+    included_fee_cents: 0,
   }
 }
 
-/** Spend metrics of one usage event: one event, its request units, token counts (missing usage counts as zero), charge, and Cursor fee. */
+/**
+ * Spend metrics of one usage event: one event, its request units, token
+ * counts (missing usage counts as zero), charge, Cursor fee, and the share of
+ * both billed against included usage.
+ */
 export function eventMetrics(event: CursorUsageEvent): SpendMetrics {
   const usage = event.token_usage
 
@@ -28,6 +43,7 @@ export function eventMetrics(event: CursorUsageEvent): SpendMetrics {
   const output = usage?.output_tokens ?? 0
   const cacheWrite = usage?.cache_write_tokens ?? 0
   const cacheRead = usage?.cache_read_tokens ?? 0
+  const included = isIncludedUsage(event)
 
   return {
     events: 1,
@@ -39,6 +55,8 @@ export function eventMetrics(event: CursorUsageEvent): SpendMetrics {
     total_tokens: input + output + cacheWrite + cacheRead,
     cost_cents: event.charged_cents,
     cursor_fee_cents: event.cursor_token_fee_cents,
+    included_cost_cents: included ? event.charged_cents : 0,
+    included_fee_cents: included ? event.cursor_token_fee_cents : 0,
   }
 }
 
@@ -53,6 +71,8 @@ export function addMetrics(target: SpendMetrics, addition: SpendMetrics): void {
   target.total_tokens += addition.total_tokens
   target.cost_cents += addition.cost_cents
   target.cursor_fee_cents += addition.cursor_fee_cents
+  target.included_cost_cents += addition.included_cost_cents
+  target.included_fee_cents += addition.included_fee_cents
 }
 
 /** Adds the metrics into the group under `key`, creating a zeroed group first when absent. Mutates `groups`. */
@@ -103,13 +123,15 @@ export function foldedRows(
   return [...retained, { key: 'Other', metrics: other }]
 }
 
-/** Copy of the metrics with request units rounded to 4 decimals and cost and fee cents to 6. */
+/** Copy of the metrics with request units rounded to 4 decimals and every cents field to 6. */
 export function roundedMetrics(metrics: SpendMetrics): SpendMetrics {
   return {
     ...metrics,
     request_units: Number(metrics.request_units.toFixed(4)),
     cost_cents: Number(metrics.cost_cents.toFixed(6)),
     cursor_fee_cents: Number(metrics.cursor_fee_cents.toFixed(6)),
+    included_cost_cents: Number(metrics.included_cost_cents.toFixed(6)),
+    included_fee_cents: Number(metrics.included_fee_cents.toFixed(6)),
   }
 }
 

@@ -60,6 +60,8 @@ function emptyMultiInstanceReport(
       total_tokens: 0,
       cost_cents: 0,
       cursor_fee_cents: 0,
+      included_cost_cents: 0,
+      included_fee_cents: 0,
     },
     token_categories: {
       input: 0,
@@ -268,6 +270,16 @@ export function combineSpendSnapshots(
   if (feeDerived > 0) {
     warnings.push(
       `${feeDerived} event(s) were synced before Cursor fees were recorded. Their fee is derived at $0.25 per million tokens for models Cursor does not own.`,
+    )
+  }
+
+  const billingUnrecorded = selected.filter(
+    (meta) => meta.record.billing_unrecorded === true,
+  ).length
+
+  if (billingUnrecorded > 0) {
+    warnings.push(
+      `${billingUnrecorded} event(s) were synced before included usage was recorded. Their whole cost counts as on-demand.`,
     )
   }
 

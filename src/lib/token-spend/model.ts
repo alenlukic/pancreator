@@ -18,6 +18,13 @@ export interface SpendMetrics {
   cost_cents: number
   /** Cursor's token fee, already included in `cost_cents`. */
   cursor_fee_cents: number
+  /**
+   * Charged cost Cursor billed against the plan's included usage, already
+   * included in `cost_cents`. The rest of `cost_cents` is on-demand usage.
+   */
+  included_cost_cents: number
+  /** The Cursor fee on included usage, part of `included_cost_cents` and `cursor_fee_cents`. */
+  included_fee_cents: number
 }
 
 export interface SpendSliceRow {
@@ -117,6 +124,8 @@ export interface SpendRecord {
   conversation_key: string | null
   /** True when the fee was derived because the record predates fee syncing. */
   fee_derived?: true
+  /** True when the record predates billing-kind syncing, so its whole cost counts as on-demand. */
+  billing_unrecorded?: true
 }
 
 export interface CollectSpendRecordsOptions {

@@ -20,7 +20,11 @@ const TEMPLATE = readFileSync(
   'utf8',
 )
 
-function metrics(costCents: number, feeCents: number): SpendMetrics {
+function metrics(
+  costCents: number,
+  feeCents: number,
+  includedCents = 0,
+): SpendMetrics {
   return {
     events: 2,
     request_units: 1,
@@ -31,6 +35,8 @@ function metrics(costCents: number, feeCents: number): SpendMetrics {
     total_tokens: 1000,
     cost_cents: costCents,
     cursor_fee_cents: feeCents,
+    included_cost_cents: includedCents,
+    included_fee_cents: 0,
   }
 }
 
@@ -61,7 +67,7 @@ function report(): RenderableSpendReport {
       embedded_installations_scanned: 0,
     },
     instances: [],
-    totals: metrics(500, 100),
+    totals: metrics(500, 100, 150),
     token_categories: {
       input: 10,
       output: 20,
@@ -140,6 +146,8 @@ test('writing the canvas returns its path, totals, and the lowest coverage', () 
     total_tokens: 1000,
     cost_cents: 500,
     cursor_fee_cents: 100,
+    on_demand_cost_cents: 350,
+    included_cost_cents: 150,
   })
   assert.deepEqual(result.lowest_coverage, {
     dimension: 'persona',
