@@ -298,6 +298,8 @@ function snapshotRecord(
       total_tokens: 120,
       cost_cents: 2,
       cursor_fee_cents: 0.5,
+      included_cost_cents: 0,
+      included_fee_cents: 0,
     },
     attribution: {
       command,

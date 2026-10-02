@@ -6,4 +6,4 @@ Generate a Cursor token spend report for the period in `$ARGUMENTS`.
 4. Otherwise, read and apply `{{PANCREATOR_HARNESS_PATH}}library/skills/spend-canvas.md` and the Cursor Canvas skill. Resolve the canvas path `cursor-spend-<days>d.canvas.tsx` in Cursor's managed canvas directory for this workspace.
 5. Run `{{PANCREATOR_PAN_COMMAND}} spend --days <days> --canvas <absolute-path> --json`. The harness renders the standard spend canvas from the aggregate report.
 6. Confirm the Canvas TypeScript check reports no errors. If Canvas creation fails, return the concise aggregate summary and the concrete failure. Otherwise open the canvas as the skill directs.
-7. Link the Canvas with its absolute path and state the total tokens, labeled cost, Cursor fee, date range, and lowest attribution coverage. Name the Canvas as the operator's next read.
+7. Link the Canvas with its absolute path and state the total tokens, labeled cost split into on-demand cost and included usage, Cursor fee, date range, and lowest attribution coverage. Name the Canvas as the operator's next read.

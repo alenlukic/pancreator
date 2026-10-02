@@ -2298,6 +2298,12 @@ totals as `cursor_fee_cents`. An event synced before fees were recorded gets a
 fee derived at $0.25 per million tokens for models Cursor does not own, from
 2026-08-27 17:10 UTC, and the report notes how many events that covers.
 
+Charged cost also splits by billing kind. `included_cost_cents` and
+`included_fee_cents` total the events Cursor billed against the plan's included
+usage, and the rest of charged cost is on-demand usage. An event synced before
+the split was recorded counts as on-demand, and the report notes how many
+events that covers.
+
 Use `/pan-cost [--days <1..365>]` to render that combined report as a Canvas
 and open it beside the chat. `--canvas` writes the standard spend canvas from
 `library/templates/spend-report.canvas.tsx` to the absolute path you name, and

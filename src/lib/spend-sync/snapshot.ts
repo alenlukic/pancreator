@@ -17,6 +17,13 @@ const METRIC_FIELDS = [
   'cost_cents',
 ] as const
 
+// Records synced by an older harness lack these fields.
+const OPTIONAL_METRIC_FIELDS = [
+  'cursor_fee_cents',
+  'included_cost_cents',
+  'included_fee_cents',
+] as const
+
 const ATTRIBUTION_STRING_FIELDS = [
   'command',
   'persona_model',
@@ -53,8 +60,9 @@ function isSpendRecord(value: unknown): value is SpendRecord {
   return (
     isRecord(metrics) &&
     METRIC_FIELDS.every((field) => isFiniteNumber(metrics[field])) &&
-    (metrics.cursor_fee_cents === undefined ||
-      isFiniteNumber(metrics.cursor_fee_cents)) &&
+    OPTIONAL_METRIC_FIELDS.every(
+      (field) => metrics[field] === undefined || isFiniteNumber(metrics[field]),
+    ) &&
     isRecord(attribution) &&
     ATTRIBUTION_STRING_FIELDS.every(
       (field) => typeof attribution[field] === 'string',
@@ -84,24 +92,48 @@ export function derivedCursorFeeCents(
     : totalTokens * CURSOR_FEE_CENTS_PER_TOKEN
 }
 
-/** Parse stored records, deriving the fee of records synced before fees were. */
-export function parseSpendRecords(values: unknown[]): SpendRecord[] {
-  return values.filter(isSpendRecord).map((record) =>
-    isFiniteNumber(record.metrics.cursor_fee_cents)
-      ? record
-      : {
-          ...record,
-          metrics: {
-            ...record.metrics,
-            cursor_fee_cents: derivedCursorFeeCents(
-              record.model,
-              record.timestamp_ms,
-              record.metrics.total_tokens,
-            ),
-          },
-          fee_derived: true,
+function withRecordedFee(record: SpendRecord): SpendRecord {
+  return isFiniteNumber(record.metrics.cursor_fee_cents)
+    ? record
+    : {
+        ...record,
+        metrics: {
+          ...record.metrics,
+          cursor_fee_cents: derivedCursorFeeCents(
+            record.model,
+            record.timestamp_ms,
+            record.metrics.total_tokens,
+          ),
         },
-  )
+        fee_derived: true,
+      }
+}
+
+// The billing kind is not stored on a record, so an older record's split
+// cannot be derived; its whole cost stays on-demand.
+function withRecordedBilling(record: SpendRecord): SpendRecord {
+  return isFiniteNumber(record.metrics.included_cost_cents) &&
+    isFiniteNumber(record.metrics.included_fee_cents)
+    ? record
+    : {
+        ...record,
+        metrics: {
+          ...record.metrics,
+          included_cost_cents: 0,
+          included_fee_cents: 0,
+        },
+        billing_unrecorded: true,
+      }
+}
+
+/**
+ * Parse stored records, deriving the fee of records synced before fees were
+ * and counting records synced before billing kinds were as on-demand.
+ */
+export function parseSpendRecords(values: unknown[]): SpendRecord[] {
+  return values
+    .filter(isSpendRecord)
+    .map((record) => withRecordedBilling(withRecordedFee(record)))
 }
 
 /**

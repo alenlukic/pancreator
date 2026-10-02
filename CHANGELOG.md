@@ -1,5 +1,19 @@
 # Changelog
 
+## [8.11.0] - 2026-10-02
+
+This release splits Cursor spend into on-demand usage and included usage. The `/pan-spend` canvas shows each part and keeps its layout.
+
+### Changed
+
+- Split charged cost into on-demand cost and included usage in spend metrics, multi-instance snapshots, and the canvas totals ([da773a02](https://github.com/alenlukic/pancreator/commit/da773a02)).
+- Show an on-demand cost stat and an included usage stat in the canvas KPI row, and stack included usage under on-demand model cost and Cursor fee in each cost chart ([da773a02](https://github.com/alenlukic/pancreator/commit/da773a02)).
+- Add on-demand and included columns to the canvas tables when the period carries included usage ([da773a02](https://github.com/alenlukic/pancreator/commit/da773a02)).
+
+### Fixed
+
+- Read a legacy spend snapshot record that has no included usage as on-demand usage, and warn in the combined report ([da773a02](https://github.com/alenlukic/pancreator/commit/da773a02)).
+
 ## [8.10.0] - 2026-10-01
 
 This release installs Cursor hooks that enforce visible operator chat. The same hooks reach a subagent turn.

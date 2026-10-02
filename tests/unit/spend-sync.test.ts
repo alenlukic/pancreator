@@ -41,6 +41,8 @@ function makeRecord(overrides: Partial<SpendRecord> = {}): SpendRecord {
       total_tokens: 150,
       cost_cents: 0.01,
       cursor_fee_cents: 0.002,
+      included_cost_cents: 0,
+      included_fee_cents: 0,
     },
     attribution: {
       command: 'Unattributed',
@@ -255,7 +257,15 @@ test('counts each event once when snapshots share an event key, and instance tot
     [
       snapshotOf(INSTANCE_A, [
         attributedRecord({ key: shared, timestamp_ms: recent }),
-        makeRecord({ key: hex('only-a'), timestamp_ms: recent }),
+        makeRecord({
+          key: hex('only-a'),
+          timestamp_ms: recent,
+          metrics: {
+            ...makeRecord().metrics,
+            included_cost_cents: 0.01,
+            included_fee_cents: 0.002,
+          },
+        }),
       ]),
       snapshotOf(INSTANCE_B, [
         makeRecord({ key: shared, timestamp_ms: recent }),
@@ -287,6 +297,7 @@ test('counts each event once when snapshots share an event key, and instance tot
     'total_tokens',
     'cost_cents',
     'cursor_fee_cents',
+    'included_cost_cents',
   ] as const) {
     assert.equal(
       report.instances.reduce(
@@ -485,6 +496,59 @@ test('a record synced before fees were recorded gets a derived fee and the repor
   assert.ok(
     report.warnings.some((warning) =>
       warning.startsWith('1 event(s) were synced before Cursor fees'),
+    ),
+  )
+})
+
+test('a record synced before included usage was recorded counts as on-demand and the report warns', () => {
+  const recent = NOW.getTime() - DAY_MS
+  const current = makeRecord({
+    key: hex('current'),
+    timestamp_ms: recent,
+    metrics: {
+      ...makeRecord().metrics,
+      included_cost_cents: 0.01,
+      included_fee_cents: 0.002,
+    },
+  })
+  const {
+    included_cost_cents: _cost,
+    included_fee_cents: _fee,
+    ...legacyMetrics
+  } = current.metrics
+  const parsed = parseSpendSnapshot({
+    ...snapshotOf(INSTANCE_A, []),
+    records: [
+      current,
+      { ...current, key: hex('legacy'), metrics: legacyMetrics },
+    ],
+  })
+
+  assert.equal(parsed?.skipped_records, 0)
+  assert.deepEqual(
+    parsed?.snapshot.records.map((record) => [
+      record.metrics.included_cost_cents,
+      record.metrics.included_fee_cents,
+      record.billing_unrecorded,
+    ]),
+    [
+      [0.01, 0.002, undefined],
+      [0, 0, true],
+    ],
+  )
+
+  const report = combineSpendSnapshots(
+    parsed === null ? [] : [parsed.snapshot],
+    { days: 14, now: NOW },
+  )
+
+  assert.equal(report.totals.cost_cents, 0.02)
+  assert.equal(report.totals.included_cost_cents, 0.01)
+  assert.ok(
+    report.warnings.some((warning) =>
+      warning.startsWith(
+        '1 event(s) were synced before included usage was recorded',
+      ),
     ),
   )
 })

@@ -24,6 +24,8 @@ interface Metrics {
   total_tokens: number
   cost_cents: number
   cursor_fee_cents?: number
+  included_cost_cents?: number
+  included_fee_cents?: number
 }
 
 interface SliceRow {
@@ -91,6 +93,9 @@ const COVERAGE_LABELS: Record<string, string> = {
 }
 
 const fee = (m: Metrics) => m.cursor_fee_cents ?? 0
+const included = (m: Metrics) => m.included_cost_cents ?? 0
+const onDemand = (m: Metrics) => m.cost_cents - included(m)
+const onDemandFee = (m: Metrics) => fee(m) - (m.included_fee_cents ?? 0)
 const usd = (cents: number) =>
   `$${(cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 const usd2 = (cents: number) =>
@@ -120,6 +125,12 @@ const totals = REPORT.totals
 const total = totals.cost_cents
 const totalFee = fee(totals)
 const hasFee = totalFee > 0
+const totalIncluded = included(totals)
+const hasIncluded = totalIncluded > 0
+const stackedCost = hasFee || hasIncluded
+const includedSentence = hasIncluded
+  ? ` Included usage covered ${usd(totalIncluded)} (${pct(totalIncluded, total)}) of charged cost, leaving ${usd(onDemand(totals))} on demand.`
+  : ''
 const cacheRead = totals.cache_read_tokens
 const endHour = Number(REPORT.period.end.slice(11, 13))
 const lastDay = REPORT.daily.at(-1)
@@ -165,18 +176,16 @@ const scopeCaption =
     : `${n(REPORT.attribution_sources.workspaces_scanned)} workspaces and ${n(REPORT.attribution_sources.embedded_installations_scanned)} embedded installations scanned`
 
 function sliceTable(rows: SliceRow[], label: string) {
-  const headers = hasFee
-    ? [
-        label,
-        'Events',
-        'Charged cost',
-        'Share',
-        'Cursor fee',
-        'Fee share',
-        '$ / event',
-        'Tokens (M)',
-      ]
-    : [label, 'Events', 'Charged cost', 'Share', '$ / event', 'Tokens (M)']
+  const headers = [
+    label,
+    'Events',
+    'Charged cost',
+    ...(hasIncluded ? ['On-demand', 'Included'] : []),
+    'Share',
+    ...(hasFee ? ['Cursor fee', 'Fee share'] : []),
+    '$ / event',
+    'Tokens (M)',
+  ]
 
   return (
     <Table
@@ -185,6 +194,7 @@ function sliceTable(rows: SliceRow[], label: string) {
         key,
         n(m.events),
         usd(m.cost_cents),
+        ...(hasIncluded ? [usd(onDemand(m)), usd(included(m))] : []),
         pct(m.cost_cents, total),
         ...(hasFee ? [usd(fee(m)), pct(fee(m), m.cost_cents)] : []),
         usd2(m.cost_cents / m.events),
@@ -195,31 +205,45 @@ function sliceTable(rows: SliceRow[], label: string) {
   )
 }
 
-function costChart(rows: SliceRow[], horizontal: boolean, height: number) {
-  const series = hasFee
+// Stacked segments that sum to charged cost: included usage, then on-demand
+// usage split into model cost and Cursor fee when the report carries fees.
+function costSeries(items: Metrics[]) {
+  const includedSeries = hasIncluded
     ? [
         {
-          name: 'Model cost (USD)',
-          data: rows.map((r) => dollars(r.metrics.cost_cents - fee(r.metrics))),
+          name: 'Included usage (USD)',
+          data: items.map((m) => dollars(included(m))),
+        },
+      ]
+    : []
+  const onDemandSeries = hasFee
+    ? [
+        {
+          name: hasIncluded ? 'On-demand model cost (USD)' : 'Model cost (USD)',
+          data: items.map((m) => dollars(onDemand(m) - onDemandFee(m))),
         },
         {
-          name: 'Cursor fee (USD)',
-          data: rows.map((r) => dollars(fee(r.metrics))),
+          name: hasIncluded ? 'On-demand Cursor fee (USD)' : 'Cursor fee (USD)',
+          data: items.map((m) => dollars(onDemandFee(m))),
         },
       ]
     : [
         {
-          name: 'Charged cost (USD)',
-          data: rows.map((r) => dollars(r.metrics.cost_cents)),
+          name: hasIncluded ? 'On-demand cost (USD)' : 'Charged cost (USD)',
+          data: items.map((m) => dollars(onDemand(m))),
         },
       ]
 
+  return [...includedSeries, ...onDemandSeries]
+}
+
+function costChart(rows: SliceRow[], horizontal: boolean, height: number) {
   return (
     <BarChart
       categories={rows.map((r) => r.key)}
-      series={series}
+      series={costSeries(rows.map((r) => r.metrics))}
       horizontal={horizontal}
-      stacked={hasFee}
+      stacked={stackedCost}
       valuePrefix="$"
       height={height}
     />
@@ -290,13 +314,30 @@ export default function SpendReportCanvas() {
         <Text tone="secondary" size="small">
           Source: {REPORT.period.source} · {stamp(REPORT.period.start)} →{' '}
           {stamp(REPORT.period.end)} · charged cost
-          {hasFee ? ' is model cost plus the Cursor token fee' : ''} ·{' '}
-          {scopeCaption}
+          {hasFee ? ' is model cost plus the Cursor token fee' : ''}
+          {hasIncluded
+            ? ', split into included usage and on-demand cost'
+            : ''}{' '}
+          · {scopeCaption}
         </Text>
       </Stack>
 
-      <Grid columns={hasFee ? 5 : 4} gap={16}>
-        <Stat value={usd(total)} label="Charged cost" tone="info" />
+      <Grid columns={4 + Number(hasFee) + Number(hasIncluded)} gap={16}>
+        {hasIncluded ? (
+          <>
+            <Stat
+              value={usd(onDemand(totals))}
+              label="On-demand cost"
+              tone="info"
+            />
+            <Stat
+              value={usd(totalIncluded)}
+              label={`Included usage (${pct(totalIncluded, total)} of ${usd(total)} charged)`}
+            />
+          </>
+        ) : (
+          <Stat value={usd(total)} label="Charged cost" tone="info" />
+        )}
         {hasFee && (
           <Stat
             value={usd(totalFee)}
@@ -326,6 +367,7 @@ export default function SpendReportCanvas() {
           {supervisor && stageWorker
             ? ` The supervisor pays ${usd(fee(supervisor.metrics))} in fees against ${usd(fee(stageWorker.metrics))} for stage workers.`
             : ''}
+          {includedSentence}
         </Callout>
       ) : (
         busiestDay && (
@@ -335,6 +377,7 @@ export default function SpendReportCanvas() {
           >
             It cost {usd(busiestDay.cost_cents)},{' '}
             {pct(busiestDay.cost_cents, total)} of the period.
+            {includedSentence}
           </Callout>
         )
       )}
@@ -345,33 +388,13 @@ export default function SpendReportCanvas() {
             <H2>Daily charged cost</H2>
             <BarChart
               categories={REPORT.daily.map((d) => dayLabel(d.date))}
-              series={
-                hasFee
-                  ? [
-                      {
-                        name: 'Model cost (USD)',
-                        data: REPORT.daily.map((d) =>
-                          dollars(d.cost_cents - fee(d)),
-                        ),
-                      },
-                      {
-                        name: 'Cursor fee (USD)',
-                        data: REPORT.daily.map((d) => dollars(fee(d))),
-                      },
-                    ]
-                  : [
-                      {
-                        name: 'Charged cost (USD)',
-                        data: REPORT.daily.map((d) => dollars(d.cost_cents)),
-                      },
-                    ]
-              }
-              stacked={hasFee}
+              series={costSeries(REPORT.daily)}
+              stacked={stackedCost}
               valuePrefix="$"
               height={240}
             />
             <Text tone="tertiary" size="small">
-              X axis: UTC day. Y axis: USD{hasFee ? ', stacked' : ''}.
+              X axis: UTC day. Y axis: USD{stackedCost ? ', stacked' : ''}.
               {busiestDay
                 ? ` The busiest day, ${day(busiestDay.date)}, cost ${usd(busiestDay.cost_cents)}.`
                 : ''}
@@ -419,7 +442,7 @@ export default function SpendReportCanvas() {
               <H2>Cost by workflow stage</H2>
               {costChart(stages, true, 230)}
               <Text tone="tertiary" size="small">
-                Y axis: stage. X axis: USD{hasFee ? ', stacked' : ''}.
+                Y axis: stage. X axis: USD{stackedCost ? ', stacked' : ''}.
                 {stageUnattributed
                   ? ` Unattributed events (${usd(stageUnattributed.metrics.cost_cents)}) are omitted.`
                   : ''}
@@ -431,7 +454,7 @@ export default function SpendReportCanvas() {
               <H2>Cost by workflow role</H2>
               {costChart(roles, true, 230)}
               <Text tone="tertiary" size="small">
-                Y axis: role. X axis: USD{hasFee ? ', stacked' : ''}.
+                Y axis: role. X axis: USD{stackedCost ? ', stacked' : ''}.
                 Unattributed events came from sessions without Pancreator
                 transcripts.
               </Text>
@@ -500,6 +523,7 @@ export default function SpendReportCanvas() {
                 'Synced',
                 'Selected events',
                 'Cost',
+                ...(hasIncluded ? ['Included'] : []),
                 ...(hasFee ? ['Cursor fee'] : []),
               ]}
               rows={instances.map((i) => [
@@ -508,6 +532,7 @@ export default function SpendReportCanvas() {
                 stamp(i.synced_at),
                 `${n(i.records_selected)} of ${n(i.records_in_window)}`,
                 usd(i.totals.cost_cents),
+                ...(hasIncluded ? [usd(included(i.totals))] : []),
                 ...(hasFee ? [usd(fee(i.totals))] : []),
               ])}
               columnAlign={[
@@ -516,6 +541,7 @@ export default function SpendReportCanvas() {
                 'left',
                 'right',
                 'right',
+                ...(hasIncluded ? ['right' as const] : []),
                 ...(hasFee ? ['right' as const] : []),
               ]}
             />
