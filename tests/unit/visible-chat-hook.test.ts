@@ -72,6 +72,44 @@ test('a step that names its action before the tool call gets no reminder', () =>
   assert.deepEqual(hook('postToolUse', file), {})
 })
 
+test('a Copilot CLI or VS Code transcript yields the same steps and reminders', () => {
+  const copilotUser = { type: 'user.message', data: { content: 'go' } }
+  const message = (content: string, tools: number) => ({
+    type: 'assistant.message',
+    data: {
+      content,
+      toolRequests: Array.from({ length: tools }, () => ({ name: 'bash' })),
+    },
+  })
+  const silent = transcript(
+    message('', 1),
+    copilotUser,
+    { type: 'assistant.turn_start', data: {} },
+    message('Reading the rows.', 1),
+    { type: 'tool.execution_start', data: {} },
+    message('  ', 1),
+  )
+
+  assert.deepEqual(currentTurnSteps(silent), [
+    { text: true, tool: true },
+    { text: false, tool: true },
+  ])
+  assert.deepEqual(hook('postToolUse', silent), {
+    additional_context: TOOL_UPDATE_REMINDER,
+  })
+  assert.deepEqual(
+    hook('stop', transcript(copilotUser, message('', 1)), {
+      status: 'completed',
+      loop_count: 0,
+    }),
+    { followup_message: SILENT_TURN_FOLLOWUP },
+  )
+  assert.deepEqual(
+    hook('postToolUse', transcript(copilotUser, message('Running.', 1))),
+    {},
+  )
+})
+
 test('only the current turn counts: steps before the last user record are ignored', () => {
   const file = transcript(user, step(tool), user, step(say('Checking.'), tool))
 

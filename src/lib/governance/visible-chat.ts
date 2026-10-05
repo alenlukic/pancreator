@@ -67,6 +67,19 @@ function readTail(file: string): { text: string; truncated: boolean } | null {
   }
 }
 
+/**
+ * A Copilot CLI or VS Code transcript step: `assistant.message` carries its
+ * text in `data.content` and its tool calls in `data.toolRequests`.
+ */
+function copilotStepOf(record: Record<string, unknown>): TurnStep {
+  const data = isRecord(record.data) ? record.data : {}
+
+  return {
+    text: typeof data.content === 'string' && data.content.trim().length > 0,
+    tool: Array.isArray(data.toolRequests) && data.toolRequests.length > 0,
+  }
+}
+
 function stepOf(record: Record<string, unknown>): TurnStep {
   const message = isRecord(record.message) ? record.message : null
   const parts = Array.isArray(message?.content) ? message.content : []
@@ -85,8 +98,9 @@ function stepOf(record: Record<string, unknown>): TurnStep {
 
 /**
  * The assistant steps of the transcript's current turn, oldest first: every
- * assistant record after the last user record. Returns null when the path is
- * not an absolute `.jsonl` file or cannot be read.
+ * assistant record after the last user record, in the Cursor or the Copilot
+ * CLI and VS Code record shape. Returns null when the path is not an
+ * absolute `.jsonl` file or cannot be read.
  */
 export function currentTurnSteps(transcriptPath: string): TurnStep[] | null {
   if (!path.isAbsolute(transcriptPath) || !transcriptPath.endsWith('.jsonl')) {
@@ -126,12 +140,14 @@ export function currentTurnSteps(transcriptPath: string): TurnStep[] | null {
       continue
     }
 
-    if (record.role === 'user') {
+    if (record.role === 'user' || record.type === 'user.message') {
       break
     }
 
     if (record.role === 'assistant') {
       steps.push(stepOf(record))
+    } else if (record.type === 'assistant.message') {
+      steps.push(copilotStepOf(record))
     }
   }
 

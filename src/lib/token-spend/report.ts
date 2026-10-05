@@ -14,6 +14,7 @@ import { invariant } from '../errors.js'
 import { attributionRoots, readTranscripts } from './transcripts.js'
 import {
   attributionForEvent,
+  copilotSessionCount,
   readSupervisorCommands,
   resolveTranscriptWorkflow,
 } from './attribution.js'
@@ -216,8 +217,24 @@ export async function collectSpendRecords(
       embedded_installations_scanned: roots.filter((item) => item.embedded)
         .length,
     },
-    warnings: attributionWarnings,
+    warnings: [
+      ...attributionWarnings,
+      ...copilotSessionWarnings(
+        copilotSessionCount(workflow.storages, startDateMs, endDateMs),
+      ),
+    ],
   }
+}
+
+/** The unattributed host `copilot` line, empty when no Copilot session ran. */
+export function copilotSessionWarnings(count: number): string[] {
+  return count === 0
+    ? []
+    : [
+        `Unattributed host copilot: ${count} GitHub Copilot worker ` +
+          `session${count === 1 ? '' : 's'} ran in this period. Copilot ` +
+          `usage is unmetered, so these sessions are absent from every total.`,
+      ]
 }
 
 /** Aggregate spend records into totals, daily series, slices, and coverage. */

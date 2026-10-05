@@ -23,6 +23,18 @@
         "type": "command",
         "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-agent-index postToolUse",
         "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-visible-chat postToolUse",
+        "timeoutSec": 10
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter stop pan-hook-visible-chat stop",
+        "timeoutSec": 10
       }
     ],
     "subagentStart": [
