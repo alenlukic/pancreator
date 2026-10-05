@@ -121,8 +121,8 @@ export const HELP_BODY = `Usage:
   pan worktree remove <name> [--force] [--delete-branch] [--json]
       --delete-branch deletes the worktree branch when it is an ancestor of the default branch, and reports a refusal when it is not.
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
-  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--resolve <citation>] [--json]
-      --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
+  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--host cursor|vscode-local|vscode-agent-host|copilot-cli] [--host-version <version>] [--resolve <citation>] [--json]
+      --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative. Each declaration names its host (from --host, PAN_HOST, or a Cursor conversation id) and copies that host's platform guidance catalog entries.
       --resolve reads a citation of this run's artifacts — a path or a bare invocation id — through the run's invocation alias map and names the current path. Resequencing at finalization is what leaves a citation stale; the alias map is written then.
   pan list [--json]
   pan inbox [--json]

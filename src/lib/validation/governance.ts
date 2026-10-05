@@ -19,7 +19,15 @@ import {
   hostToolPolicyIssues,
   loadHostToolRegistry,
 } from '../host-tools.js'
+import {
+  PLATFORM_GUIDANCE_CATALOG_PATH,
+  loadPlatformGuidanceCatalog,
+} from '../platform-guidance.js'
 import { loadPolicyCatalog, resolvePolicies } from '../policies.js'
+import {
+  PLATFORM_ACTION_CATEGORY,
+  REDLINE_CATEGORIES,
+} from '../watch/redline.js'
 import { collectAwaitShellBanIssues } from '../validators/await-shell-ban.js'
 import { collectShellMonitorIssues } from '../validators/shell-monitor.js'
 import type { Policy, PolicyLookupRow, PolicyLookupTable } from '../types.js'
@@ -670,6 +678,37 @@ export function validateHostToolRegistry(root: string): string[] {
         ].join('\n')
       : null
   })
+}
+
+/**
+ * Check the platform guidance catalog shape, and that every entry names a
+ * redline category or the platform action category.
+ */
+export function validatePlatformGuidanceCatalog(root: string): string[] {
+  let catalog
+
+  try {
+    catalog = loadPlatformGuidanceCatalog(root)
+  } catch (error) {
+    return [error instanceof Error ? error.message : String(error)]
+  }
+
+  if (catalog === null) {
+    return [`missing required file: ${PLATFORM_GUIDANCE_CATALOG_PATH}`]
+  }
+
+  const categories = new Set([
+    ...REDLINE_CATEGORIES.map((category) => category.id),
+    PLATFORM_ACTION_CATEGORY.id,
+  ])
+
+  return catalog.entries
+    .filter((entry) => !categories.has(entry.category))
+    .map(
+      (entry) =>
+        `${PLATFORM_GUIDANCE_CATALOG_PATH}: ${entry.id} names unknown ` +
+        `category ${entry.category}`,
+    )
 }
 
 /** Check that canonical Cursor agent frontmatter does not name a host question tool. */

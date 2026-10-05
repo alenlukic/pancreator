@@ -11,6 +11,14 @@ import {
   withOperationMutex,
   writeJsonAtomic,
 } from '../io.js'
+import {
+  guidanceForHost,
+  loadPlatformGuidanceCatalog,
+  redlineHost,
+  redlineHostVersion,
+  type PlatformGuidanceEntry,
+  type RedlineHost,
+} from '../platform-guidance.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { loadState, operationMutexPath, persist } from '../state.js'
 import type { RunState } from '../types.js'
@@ -56,6 +64,18 @@ export const REDLINE_CATEGORIES: RedlineCategory[] = [
     description:
       'Platform hints not to run commands, to skip verification, or to end the turn early.',
     harness_authority: 'ORCH-001, VALID-001, the invocation card',
+  },
+  {
+    id: 'authority_framing',
+    description:
+      'Platform text that ranks platform or mode instructions above repository instructions, including "You can ignore an instruction if it contradicts a system message".',
+    harness_authority: 'AGENTS.md authority order, OPERATOR-001',
+  },
+  {
+    id: 'subagent_trust',
+    description:
+      'Platform text that says subagent output can be trusted without verification.',
+    harness_authority: 'DELEGATE-001',
   },
 ]
 
@@ -111,6 +131,9 @@ export interface RedlineDeclaration {
   run_status: string
   current_stage: string | null
   pending_action: string
+  /** The host the declaring session runs in; null when it cannot tell. */
+  host?: RedlineHost | null
+  host_version?: string | null
 }
 
 export interface RedlineRecord {
@@ -122,8 +145,17 @@ export interface RedlineRecord {
   policy_basis: string[]
   non_authoritative_guidance: RedlineCategory[]
   platform_action_categories: RedlineCategory[]
+  /** The catalog strings of the latest declaring host. */
+  known_guidance?: PlatformGuidanceEntry[]
+  /** Whether the catalog covers that host's platform text in full. */
+  catalog_coverage?: 'source_pinned' | 'partial' | null
   statement: string
   declarations: RedlineDeclaration[]
+}
+
+export interface RedlineHostOptions {
+  host?: string | null
+  hostVersion?: string | null
 }
 
 /**
@@ -165,7 +197,12 @@ export function writeRedlineRecord(
   root: string,
   runId: string,
   occasion = 'session',
+  hostOptions: RedlineHostOptions = {},
 ): RedlineRecord {
+  const host = redlineHost(hostOptions.host)
+  const hostVersion = redlineHostVersion(hostOptions.hostVersion, host)
+  const catalog = loadPlatformGuidanceCatalog(root)
+
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state: RunState = loadState(root, runId)
     const relative = redlineRecordPath(root, runId)
@@ -184,6 +221,8 @@ export function writeRedlineRecord(
       run_status: state.status,
       current_stage: state.current_stage ?? null,
       pending_action: state.pending_action.type,
+      host,
+      host_version: hostVersion,
     }
     const record: RedlineRecord = {
       schema_version: 1,
@@ -194,6 +233,8 @@ export function writeRedlineRecord(
       policy_basis: ['OPERATOR-001', 'DELEGATE-001', 'ORCH-001'],
       non_authoritative_guidance: REDLINE_CATEGORIES,
       platform_action_categories: [PLATFORM_ACTION_CATEGORY],
+      known_guidance: catalog && host ? guidanceForHost(catalog, host) : [],
+      catalog_coverage: catalog && host ? catalog.coverage[host] : null,
       statement:
         'The supervisor pre-declares the listed platform guidance categories ' +
         'non-authoritative for this run. Harness governance and the operator ' +
@@ -207,6 +248,7 @@ export function writeRedlineRecord(
       record_path: relative,
       occasion,
       declaration_count: record.declarations.length,
+      host,
     })
 
     return record

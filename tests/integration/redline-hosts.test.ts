@@ -1,0 +1,129 @@
+import assert from 'node:assert/strict'
+import path from 'node:path'
+import test from 'node:test'
+
+import { createRun as createEngineRun } from '../../src/lib/engine.js'
+import { attestSupervisorCard } from '../../src/lib/governance/supervisor-card.js'
+import {
+  guidanceMatches,
+  loadPlatformGuidanceCatalog,
+  parsePlatformGuidanceCatalog,
+  redlineHost,
+  redlineHostVersion,
+} from '../../src/lib/platform-guidance.js'
+import { validatePlatformGuidanceCatalog } from '../../src/lib/validation/governance.js'
+import { writeRedlineRecord } from '../../src/lib/watch/redline.js'
+import { read, writeJson } from '../helpers.js'
+import { checkpoint } from './delivery-helpers.js'
+
+test('each redline declaration names its host and copies its catalog entries', () => {
+  const created = checkpoint('delivery@created', {
+    key: 'redline-hosts',
+    createRun: (root) =>
+      createEngineRun(root, {
+        workflowSlug: 'delivery',
+        requestPath: 'request.md',
+        title: 'Redline host fixture',
+      }),
+  })
+  const { root, state } = created
+  const card = state.supervisor_card
+
+  assert.ok(card)
+  attestSupervisorCard(root, state.run_id, card.sha256)
+
+  const cursor = writeRedlineRecord(root, state.run_id, 'pan-start', {
+    host: 'cursor',
+    hostVersion: '3.2.0',
+  })
+
+  assert.equal(cursor.declarations[0]?.host, 'cursor')
+  assert.equal(cursor.declarations[0]?.host_version, '3.2.0')
+  assert.ok(cursor.known_guidance?.some((entry) => entry.id === 'CG-03'))
+  assert.equal(cursor.catalog_coverage, 'partial')
+  assert.ok(
+    cursor.non_authoritative_guidance.some(
+      (category) => category.id === 'subagent_trust',
+    ),
+  )
+
+  const vscode = writeRedlineRecord(root, state.run_id, 'pan-resume', {
+    host: 'vscode-local',
+  })
+
+  assert.equal(vscode.declarations.length, 2)
+  assert.equal(vscode.declarations[1]?.host, 'vscode-local')
+  assert.ok(vscode.known_guidance?.every((entry) => entry.id.startsWith('VG-')))
+  assert.equal(vscode.catalog_coverage, 'source_pinned')
+  assert.throws(
+    () => writeRedlineRecord(root, state.run_id, 'pan-resume', { host: 'x' }),
+    /--host MUST be one of/u,
+  )
+
+  const catalogPath = path.join(
+    root,
+    'governance/registries/platform_guidance_catalog.json',
+  )
+  const catalog = read(catalogPath) as { entries: Array<{ category: string }> }
+
+  assert.deepEqual(validatePlatformGuidanceCatalog(root), [])
+  catalog.entries[0] = { ...catalog.entries[0], category: 'made_up' }
+  writeJson(catalogPath, catalog)
+  assert.match(
+    validatePlatformGuidanceCatalog(root)[0] ?? '',
+    /names unknown category made_up/u,
+  )
+})
+
+test('the catalog matches host text and the host is inferred from the session', () => {
+  const catalog = loadPlatformGuidanceCatalog(process.cwd())
+
+  assert.ok(catalog)
+
+  const byId = new Map(catalog.entries.map((entry) => [entry.id, entry]))
+  const detach = byId.get('VG-05')
+  const steering = byId.get('VG-07')
+
+  assert.ok(detach && steering)
+  assert.equal(
+    guidanceMatches(
+      detach,
+      'Note: The command produced no new output and was moved to background terminal ID 4.',
+    ),
+    true,
+  )
+  assert.equal(
+    guidanceMatches(steering, '[Terminal 4 notification: command completed]'),
+    true,
+  )
+  assert.equal(guidanceMatches(steering, 'a [Terminal 4 notification'), false)
+  assert.throws(
+    () => parsePlatformGuidanceCatalog({ ...catalog, schema_version: 2 }),
+    /schema_version MUST be 1/u,
+  )
+
+  assert.equal(redlineHost(undefined, { PAN_HOST: 'vscode' }), 'vscode-local')
+  assert.equal(
+    redlineHost(undefined, { PAN_HOST: 'copilot-cli' }),
+    'copilot-cli',
+  )
+  assert.equal(
+    redlineHost(undefined, { CURSOR_CONVERSATION_ID: 'c' }),
+    'cursor',
+  )
+  assert.equal(redlineHost(undefined, {}), null)
+  assert.equal(
+    redlineHostVersion(undefined, 'vscode-local', {
+      TERM_PROGRAM: 'vscode',
+      TERM_PROGRAM_VERSION: '1.120.0',
+    }),
+    '1.120.0',
+  )
+  assert.equal(
+    redlineHostVersion(undefined, 'copilot-cli', {
+      TERM_PROGRAM: 'vscode',
+      TERM_PROGRAM_VERSION: '1.120.0',
+    }),
+    null,
+  )
+})
