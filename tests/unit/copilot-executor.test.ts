@@ -158,7 +158,10 @@ test('hook commands that reach the harness through a relative prefix become abso
     rewritten.hooks.preToolUse?.[0]?.bash,
     `${path.resolve(root)}/bin/pan-hook-adapter preToolUse x`,
   )
-  assert.equal(rewritten.hooks.preToolUse?.[1]?.bash, '/usr/local/bin/other-hook')
+  assert.equal(
+    rewritten.hooks.preToolUse?.[1]?.bash,
+    '/usr/local/bin/other-hook',
+  )
   assert.equal(
     rewritten.hooks.agentStop?.[0]?.command,
     `${path.resolve(root)}/bin/pan-hook-adapter stop y`,

@@ -232,7 +232,10 @@ test('a worktree worker launches with the projected hooks and its persona agent 
     `${path.resolve(root)}/bin/pan-hook-adapter --fail-closed preToolUse pan-hook-deny-await-shell`,
   )
   assert.equal(
-    readFileSync(path.join(workspace, '.github/agents/pan-coder.agent.md'), 'utf8'),
+    readFileSync(
+      path.join(workspace, '.github/agents/pan-coder.agent.md'),
+      'utf8',
+    ),
     '---\n',
   )
   assert.match(argv, /^--agent\npan-coder$/mu)

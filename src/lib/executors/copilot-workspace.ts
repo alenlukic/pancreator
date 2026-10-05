@@ -73,7 +73,10 @@ export function provisionCopilotWorkspace(
       target: COPILOT_HOOKS_TARGET,
       render: (content: string) => absoluteHookCommands(root, content),
     },
-    { target: copilotAgentTarget(persona), render: (content: string) => content },
+    {
+      target: copilotAgentTarget(persona),
+      render: (content: string) => content,
+    },
   ]
 
   for (const surface of surfaces) {
