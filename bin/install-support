@@ -507,13 +507,16 @@ const HOST_TARGET_PREFIXES = {
 const PROJECT_HOSTS = ['cursor', 'vscode']
 const DEFAULT_PROJECT_HOSTS = ['cursor']
 
-/** Hosts a target config enables, `["cursor"]` when it is absent or names none. */
+/**
+ * Hosts a target config and its overrides file enable, `["cursor"]` when they
+ * name none.
+ */
 function enabledHostsFromConfig(configPath) {
   if (!configPath || !existsSync(configPath)) {
     return [...DEFAULT_PROJECT_HOSTS]
   }
 
-  const hosts = readJson(configPath).hosts
+  const hosts = readConfigWithOverrides(configPath).hosts
 
   if (hosts === undefined) {
     return [...DEFAULT_PROJECT_HOSTS]

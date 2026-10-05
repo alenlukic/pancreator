@@ -99,7 +99,10 @@ export function copilotDiagnostics(
     credentials,
     workspace_trust:
       'Each worker launches with COPILOT_ALLOW_ALL=true, which trusts its ' +
-      'working directory, so the CLI loads .github/hooks/pan-hooks.json there.',
+      'working directory, so the CLI loads .github/hooks/pan-hooks.json there. ' +
+      'A worker in a worktree first receives a copy of the projected hook ' +
+      'file, with absolute adapter paths, and of its persona agent. With ' +
+      'no vscode host projection, no hook loads.',
     pan_unstick:
       'bin/pan-unstick releases only stalled Cursor shell launchers. A VS ' +
       'Code or Copilot CLI shell has no launcher it can release.',

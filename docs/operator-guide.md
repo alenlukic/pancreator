@@ -1281,7 +1281,8 @@ and updates project the same enabled hosts.
 `AGENTS.md`, governance, workflows, run state, and every `./bin/pan` command are
 shared. Cursor keeps `.cursor/commands` until probes show it invokes
 `.agents/skills` the same way. To disable VS Code, remove `vscode` from `hosts`
-and sync again. Sync removes every `pan-*` file the host left behind.
+and sync again. Sync removes every `pan-*` file the host left behind, except a
+file the repository tracks.
 
 To supervise a run in VS Code, select the `pan-supervisor` agent in the chat
 mode picker, then run `/pan-start` or `/pan-resume <run-id>`. VS Code renders
@@ -1295,8 +1296,13 @@ Known limits, each tracked by a probe in the host-support spec:
 
 - The VS Code Agent Host discards `UserPromptSubmit` and `Stop` hook output, so
   the per-turn reminder and the turn guard work only in the local agent.
-- VS Code reads `.github/hooks/` only from the opened workspace, so a Copilot
-  worker inside a worktree checkout runs without the Pancreator hooks.
+- The Copilot CLI reads `.github/hooks/` and `.github/agents/` from its
+  working directory. Before a worker launches in a worktree checkout, the
+  harness copies the projected hook file, with absolute adapter paths, and the
+  persona agent into that checkout.
+- Cursor also reads `.agents/skills`, so with both hosts enabled Cursor lists
+  each `/pan-*` command twice. Both entries run the same command. Keep `vscode`
+  out of `hosts` in a checkout you only open in Cursor.
 - `SubagentStart` carries no prompt, so the agent index cannot link a VS Code
   subagent to its launch.
 - Copilot usage is unmetered. `pan spend` reports the Copilot sessions of the

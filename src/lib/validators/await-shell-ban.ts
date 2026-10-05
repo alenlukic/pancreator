@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
+import { projectionTargetPath } from '../projection/manifest.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 const AGENTS_DIR = 'library/cursor/agents'
@@ -424,10 +425,14 @@ function vscodeHooksIssues(root: string): Issue[] {
     ]
   }
 
+  const projectedHooks = fileExists(path.join(root, 'config.json'))
+    ? path.relative(root, projectionTargetPath(root, VSCODE_HOOKS_TARGET))
+    : VSCODE_HOOKS_TARGET
+
   return [
     ...vscodeHookFileIssues(root, VSCODE_HOOKS_SOURCE),
-    ...(fileExists(path.join(root, VSCODE_HOOKS_TARGET))
-      ? vscodeHookFileIssues(root, VSCODE_HOOKS_TARGET)
+    ...(fileExists(path.join(root, projectedHooks))
+      ? vscodeHookFileIssues(root, projectedHooks)
       : []),
   ]
 }

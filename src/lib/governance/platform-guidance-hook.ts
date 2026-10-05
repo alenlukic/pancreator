@@ -211,7 +211,9 @@ function onStop(
   payload: Record<string, unknown>,
   options: PlatformGuidanceHookOptions,
 ): PlatformGuidanceHookResponse {
-  if (!hookHost(payload) || payload.loop_count !== 0) {
+  const host = hookHost(payload)
+
+  if (!host || payload.loop_count !== 0) {
     return {}
   }
 
@@ -222,7 +224,9 @@ function onStop(
   )
   // Until probe PR-23 names a session variable a VS Code terminal inherits,
   // a record can carry no session; one started in this workspace by a
-  // non-Cursor host counts. stop_hook_active bounds a wrong block to one.
+  // non-Cursor host counts. A Copilot CLI worker's record belongs to that
+  // worker, never to a VS Code supervisor. stop_hook_active bounds a wrong
+  // block to one.
   const roots = Array.isArray(payload.workspace_roots)
     ? payload.workspace_roots.filter(
         (value): value is string => typeof value === 'string',
@@ -235,6 +239,7 @@ function onStop(
           (record) =>
             record.sessions.length === 0 &&
             record.host !== 'cursor' &&
+            (record.host !== 'copilot-cli' || host === 'copilot-cli') &&
             inside(roots, record.cwd),
         )
 

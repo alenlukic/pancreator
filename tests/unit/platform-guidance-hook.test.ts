@@ -134,11 +134,20 @@ test('the stop guard blocks the first stop while a session command still runs', 
 
   shellRecord(root, 'unnamed', { host: null, cwd: workspace })
   shellRecord(root, 'cursor', { host: 'cursor', cwd: workspace })
+  shellRecord(root, 'worker', { host: 'copilot-cli', cwd: workspace })
 
   const fallback = stop({ conversation_id: 's2', workspace_roots: [workspace] })
 
   assert.ok(fallback.followup_message?.includes('runtime/logs/shell/unnamed'))
   assert.ok(!fallback.followup_message?.includes('runtime/logs/shell/cursor'))
+  assert.ok(!fallback.followup_message?.includes('runtime/logs/shell/worker'))
+  assert.ok(
+    stop({
+      host: 'copilot-cli',
+      conversation_id: 's3',
+      workspace_roots: [workspace],
+    }).followup_message?.includes('runtime/logs/shell/worker'),
+  )
 })
 
 test('the debug log scan reports catalog ids and files, never content', () => {

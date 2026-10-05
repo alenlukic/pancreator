@@ -106,6 +106,13 @@ test('the installer projects a host-bound target only for enabled hosts and remo
     existsSync(path.join(target, '.cursor', 'rules', 'pancreator.mdc')),
     true,
   )
+
+  writeFileSync(
+    path.join(work, 'config_overrides.json'),
+    JSON.stringify({ hosts: ['cursor', 'vscode'] }),
+  )
+  project(undefined, true)
+  assert.equal(existsSync(path.join(target, VSCODE_TARGET)), true)
 })
 
 test('installer and compiled VS Code renderers stay byte-identical', () => {

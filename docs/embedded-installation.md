@@ -476,11 +476,14 @@ this clone. Then reproject:
 A refresh with `./bin/install --target <path> --yes` reads the same list, and
 an update keeps it. To disable the host, remove `vscode` from the list and run
 `models --sync` again. Sync removes every `pan-*` file the host left behind and
-any directory it left empty. Cursor projections stay the same either way.
+any directory it left empty, except a file the target repository tracks.
+Cursor projections stay the same either way.
 
 The VS Code surfaces resolve at the target root, the same root Cursor uses.
-VS Code reads `.github/hooks/` only from the workspace it opened, so a Copilot
-worker launched inside a worktree checkout runs without the Pancreator hooks.
+The Copilot CLI reads `.github/hooks/` and `.github/agents/` from its working
+directory, so before a worker launches inside a worktree checkout the harness
+copies the projected hook file and persona agent there. The clone-local
+exclusions keep those copies out of the worktree's Git status.
 `pan doctor` reports Copilot CLI readiness, `vscode_worktree_protection`, and
 `vscode_debug_log` while the host is enabled.
 

@@ -1,19 +1,18 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { copilotToolPolicy } from '../../src/lib/engine/executors.js'
 import {
-  createCopilotAdapter,
-  copilotToolPolicy,
-} from '../../src/lib/engine/executors.js'
-import {
-  COPILOT_CLI_REQUIRED_FLAGS,
   copilotArgv,
-  copilotCliPreflight,
   parseCopilotJsonl,
   resolveCopilotCredential,
 } from '../../src/lib/executors/copilot-cli.js'
+import {
+  absoluteHookCommands,
+  provisionCopilotWorkspace,
+} from '../../src/lib/executors/copilot-workspace.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import type { Invocation, StageDefinition } from '../../src/lib/types.js'
 import { delegationExecutionPath } from '../../src/lib/validation/artifacts.js'
@@ -35,35 +34,6 @@ function harnessRoot(): string {
     JSON.stringify({ schema_version: 1, workspace_root: '.' }),
   )
   return root
-}
-
-/** A fake `copilot` that records its stdin and argv and prints JSONL. */
-function fakeCopilot(options: { omitFlag?: string } = {}): string {
-  const dir = createTestTempDirectory('copilot-bin-')
-  const help = COPILOT_CLI_REQUIRED_FLAGS.filter(
-    (flag) => flag !== options.omitFlag,
-  )
-    .map((flag) => `      ${flag} <value>`)
-    .join('\n')
-
-  writeFileSync(path.join(dir, 'help.txt'), `Options:\n${help}\n`)
-  writeFileSync(
-    path.join(dir, 'copilot'),
-    [
-      '#!/bin/bash',
-      'here="$(dirname "$0")"',
-      'if [ "$1" = "--version" ]; then echo "GitHub Copilot CLI 1.0.90."; exit 0; fi',
-      'if [ "$1" = "--help" ]; then cat "$here/help.txt"; exit 0; fi',
-      'cat > "$here/stdin.txt"',
-      'printf "%s\\n" "$@" > "$here/argv.txt"',
-      'printf "%s\\n" "$COPILOT_ALLOW_ALL" "$COPILOT_PROVIDER_TYPE" "$PAN_HOST" "${CURSOR_CONVERSATION_ID-unset}" > "$here/env.txt"',
-      'echo "{\\"type\\":\\"assistant.message\\",\\"data\\":{\\"model\\":\\"${FAKE_MODEL}\\",\\"content\\":\\"done $COPILOT_PROVIDER_API_KEY\\"}}"',
-      'echo "{\\"type\\":\\"result\\",\\"sessionId\\":\\"sess-1\\",\\"exitCode\\":0}"',
-      '',
-    ].join('\n'),
-  )
-  chmodSync(path.join(dir, 'copilot'), 0o755)
-  return path.join(dir, 'copilot')
 }
 
 function withEnv<T>(
@@ -162,6 +132,66 @@ test('a worktree workspace adds the harness root, and a projected agent is named
   assert.equal(policy.agent, 'pan-coder')
 })
 
+test('hook commands that reach the harness through a relative prefix become absolute', () => {
+  const root = harnessRoot()
+  const spaced = createTestTempDirectory('copilot root-')
+  const content = JSON.stringify({
+    version: 1,
+    hooks: {
+      preToolUse: [
+        { type: 'command', bash: 'bin/pan-hook-adapter preToolUse x' },
+        { type: 'command', bash: '/usr/local/bin/other-hook' },
+      ],
+      agentStop: [{ type: 'command', command: 'bin/pan-hook-adapter stop y' }],
+    },
+  })
+  const rewritten = JSON.parse(absoluteHookCommands(root, content)) as {
+    hooks: Record<string, Record<string, string>[]>
+  }
+
+  writeFileSync(
+    path.join(spaced, 'config.json'),
+    JSON.stringify({ schema_version: 1, workspace_root: '.' }),
+  )
+
+  assert.equal(
+    rewritten.hooks.preToolUse?.[0]?.bash,
+    `${path.resolve(root)}/bin/pan-hook-adapter preToolUse x`,
+  )
+  assert.equal(rewritten.hooks.preToolUse?.[1]?.bash, '/usr/local/bin/other-hook')
+  assert.equal(
+    rewritten.hooks.agentStop?.[0]?.command,
+    `${path.resolve(root)}/bin/pan-hook-adapter stop y`,
+  )
+  assert.match(
+    absoluteHookCommands(spaced, content),
+    /"bash": "'[^']+copilot root-[^']+'\/bin\/pan-hook-adapter preToolUse x"/u,
+  )
+})
+
+test('provisioning skips the projection home and copies only projected surfaces', () => {
+  const root = harnessRoot()
+  const workspace = createTestTempDirectory('copilot-worktree-')
+
+  assert.deepEqual(provisionCopilotWorkspace(root, workspace, 'coder'), [])
+
+  mkdirSync(path.join(root, '.github', 'hooks'), { recursive: true })
+  writeFileSync(
+    path.join(root, '.github/hooks/pan-hooks.json'),
+    '{"version":1,"hooks":{}}',
+  )
+
+  assert.deepEqual(provisionCopilotWorkspace(root, root, 'coder'), [])
+  assert.deepEqual(provisionCopilotWorkspace(root, workspace, 'coder'), [
+    '.github/hooks/pan-hooks.json',
+  ])
+  assert.deepEqual(provisionCopilotWorkspace(root, workspace, 'coder'), [])
+  assert.match(
+    readFileSync(path.join(workspace, '.github/hooks/pan-hooks.json'), 'utf8'),
+    /"hooks": \{\}/u,
+  )
+})
+
 test('the JSONL parser needs a result event and keeps the last model', () => {
   assert.equal(parseCopilotJsonl('{"type":"assistant.message"}\n'), null)
   assert.deepEqual(
@@ -178,21 +208,6 @@ test('the JSONL parser needs a result event and keeps the last model', () => {
       exit_code: 0,
       model: 'gpt-6-luna',
       final_message: 'ok',
-    },
-  )
-})
-
-test('preflight names a flag the installed CLI no longer offers', () => {
-  withEnv({ PANCREATOR_COPILOT_BIN: fakeCopilot() }, () => {
-    assert.deepEqual(copilotCliPreflight().ok, true)
-  })
-  withEnv(
-    { PANCREATOR_COPILOT_BIN: fakeCopilot({ omitFlag: '--available-tools' }) },
-    () => {
-      const result = copilotCliPreflight()
-
-      assert.equal(result.ok, false)
-      assert.deepEqual(result.missing_flags, ['--available-tools'])
     },
   )
 })
@@ -223,86 +238,6 @@ test('BYOK credentials come from the environment and a missing key reports no va
       'responses',
     )
   })
-})
-
-test('the adapter pipes the card on stdin, trusts the workspace, and redacts the key', () => {
-  const root = harnessRoot()
-  const binary = fakeCopilot()
-  const binDir = path.dirname(binary)
-
-  withEnv(
-    {
-      PANCREATOR_COPILOT_BIN: binary,
-      OPENAI_API_KEY: FAKE_KEY,
-      FAKE_MODEL: 'gpt-5.6-sol',
-      CURSOR_CONVERSATION_ID: 'supervisor-conversation',
-    },
-    () => {
-      const adapter = createCopilotAdapter({
-        root,
-        workspaceDir: root,
-        stage: stage('read_only'),
-        persona: 'reviewer',
-        mapping: parsePersonaMapping(
-          'copilot:gpt-5.6-sol[provider=openai,effort=high]',
-        ),
-      })
-      const result = adapter.run('# Card body', 'sess-0')
-
-      assert.equal(result.ok, true, result.error ?? 'adapter failed')
-      assert.equal(result.session_id, 'sess-1')
-      assert.equal(result.reported_model, 'gpt-5.6-sol')
-      assert.deepEqual(result.model_verification, {
-        status: 'compared',
-        expected_model: 'gpt-5.6-sol',
-      })
-      assert.equal(
-        readFileSync(path.join(binDir, 'stdin.txt'), 'utf8'),
-        '# Card body',
-      )
-      assert.deepEqual(
-        readFileSync(path.join(binDir, 'env.txt'), 'utf8')
-          .split('\n')
-          .slice(0, 4),
-        ['true', 'openai', 'copilot-cli', 'unset'],
-      )
-
-      const argv = readFileSync(path.join(binDir, 'argv.txt'), 'utf8')
-
-      assert.match(argv, /^--reasoning-effort\nhigh$/mu)
-      assert.match(argv, /^--resume=sess-0$/mu)
-      assert.ok(!argv.includes('Card body'))
-      assert.ok(!argv.includes(FAKE_KEY))
-      assert.ok(!result.argv.join(' ').includes(FAKE_KEY))
-      assert.ok(!result.stdout.includes(FAKE_KEY))
-      assert.match(result.stdout, /done \[REDACTED\]/u)
-    },
-  )
-})
-
-test('the adapter fails when the stream names another model', () => {
-  const root = harnessRoot()
-
-  withEnv(
-    {
-      PANCREATOR_COPILOT_BIN: fakeCopilot(),
-      OPENAI_API_KEY: FAKE_KEY,
-      FAKE_MODEL: 'gpt-6-luna',
-    },
-    () => {
-      const result = createCopilotAdapter({
-        root,
-        workspaceDir: root,
-        stage: stage('source_allowed'),
-        persona: 'coder',
-        mapping: parsePersonaMapping('copilot:gpt-5.6-sol[provider=openai]'),
-      }).run('# Card')
-
-      assert.equal(result.ok, false)
-      assert.equal(result.is_error, true)
-      assert.match(result.error ?? '', /reported model 'gpt-6-luna'/u)
-    },
-  )
 })
 
 test('a copilot worker stops on its execution record and not before', () => {

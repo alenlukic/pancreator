@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -181,6 +188,42 @@ test('enabling VS Code projects its surfaces and leaves the Cursor tree unchange
   assert.equal(existsSync(path.join(root, '.agents')), false)
   assert.equal(existsSync(path.join(root, '.github')), false)
   assert.deepEqual(cursorTree(), cursorOnly)
+})
+
+test('a sync sweeps an ignored host orphan and keeps a tracked pan file', () => {
+  const root = createFixture()
+  const git = (...args: string[]) => {
+    const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' })
+
+    assert.equal(result.status, 0, result.stderr)
+  }
+  const tracked = '.github/hooks/pan-ci.json'
+  const stale = '.github/agents/pan-stale.agent.md'
+
+  if (!existsSync(path.join(root, '.git'))) {
+    git('init', '--quiet')
+  }
+
+  mkdirSync(path.join(root, '.git', 'info'), { recursive: true })
+  appendFileSync(
+    path.join(root, '.git', 'info', 'exclude'),
+    '\n/.github/agents/pan-*.agent.md\n/.github/hooks/pan-*.json\n',
+  )
+  mkdirSync(path.join(root, '.github', 'hooks'), { recursive: true })
+  mkdirSync(path.join(root, '.github', 'agents'), { recursive: true })
+  writeFileSync(path.join(root, tracked), '{}\n')
+  writeFileSync(path.join(root, stale), '---\n')
+  git('add', '--force', tracked)
+  setHosts(root, ['cursor'])
+
+  const removed = syncCursorProjection(root, { write: true })
+    .filter((change) => change.removed)
+    .map((change) => change.path)
+
+  assert.ok(removed.includes(stale))
+  assert.ok(!removed.includes(tracked))
+  assert.equal(existsSync(path.join(root, stale)), false)
+  assert.equal(existsSync(path.join(root, tracked)), true)
 })
 
 test('the manifest rejects a host target outside its projection roots', () => {

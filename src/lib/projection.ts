@@ -40,6 +40,7 @@ import {
   projectsForHosts,
   readProjectionManifest,
 } from './projection/manifest.js'
+import { sweepableCandidates } from './projection/sweep.js'
 
 function variableFor(id: string, variable: string | null): string {
   invariant(variable !== null, `projection ${id} requires a name variable`, {
@@ -678,23 +679,29 @@ export function syncCursorProjection(
     }
 
     const skills = relativeDirectory === '.agents/skills'
+    const orphans = readdirSync(absoluteDirectory, { withFileTypes: true })
+      .filter(
+        (entry) =>
+          (skills ? entry.isDirectory() : entry.isFile()) &&
+          isPancreatorOwnedCursorBasename(entry.name) &&
+          !entry.name.includes(VARIANT_SEPARATOR),
+      )
+      .map((entry) => (skills ? `${entry.name}/SKILL.md` : entry.name))
+      .filter((name) => {
+        const target = `${relativeDirectory}/${name}`
 
-    for (const entry of readdirSync(absoluteDirectory, {
-      withFileTypes: true,
-    })) {
-      if (
-        !(skills ? entry.isDirectory() : entry.isFile()) ||
-        !isPancreatorOwnedCursorBasename(entry.name) ||
-        entry.name.includes(VARIANT_SEPARATOR)
-      ) {
-        continue
-      }
+        return !expected.has(target) && !explicitRemovals.has(target)
+      })
+    // A target repository may track its own `pan-*` file under a shared
+    // host directory; only `.cursor/` reserves the namespace for Pancreator.
+    const sweepable = relativeDirectory.startsWith('.cursor/')
+      ? new Set(orphans)
+      : sweepableCandidates(absoluteDirectory, orphans)
 
-      const target = skills
-        ? `${relativeDirectory}/${entry.name}/SKILL.md`
-        : `${relativeDirectory}/${entry.name}`
+    for (const name of orphans) {
+      const target = `${relativeDirectory}/${name}`
 
-      if (expected.has(target) || explicitRemovals.has(target)) {
+      if (!sweepable.has(name)) {
         continue
       }
 

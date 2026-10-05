@@ -51,12 +51,13 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 0
 fi
 
-PAN_HOOK_PAYLOAD="$input" \
-  PAN_HOOK_EVENT="$event" \
+# The payload travels on descriptor 3: an environment string is capped at
+# 128 KB on Linux, and a large file edit would exceed it.
+PAN_HOOK_EVENT="$event" \
   PAN_HOOK_SCRIPT="$SCRIPT_DIR/$script" \
   PAN_HOOK_FAIL_CLOSED="$fail_closed" \
   PAN_HOOK_HOST_TOOLS="$HARNESS_ROOT/governance/registries/host_tools.json" \
-  python3 - "$@" <<'PYTHON_EOF'
+  python3 - "$@" 3<<<"$input" <<'PYTHON_EOF'
 import json
 import os
 import subprocess
@@ -168,7 +169,15 @@ def subagent_fields(payload, dialect, cursor):
             cursor.pop("conversation_id", None)
 
 
-payload = parse_json(os.environ.get("PAN_HOOK_PAYLOAD", ""))
+def read_payload():
+    try:
+        with os.fdopen(3, encoding="utf-8") as handle:
+            return handle.read()
+    except Exception:
+        return ""
+
+
+payload = parse_json(read_payload())
 if not isinstance(payload, dict):
     if fail_closed:
         deny("Pancreator hook could not read the hook payload; denying as fail-closed.")

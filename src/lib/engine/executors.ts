@@ -12,6 +12,10 @@ import { PanError } from '../errors.js'
 import type { ParsedPersonaMapping } from '../executors/mapping.js'
 import { cursorAuthenticationReadiness } from '../executors/cursor-probe.js'
 import { cursorAgentBinaryReadiness } from '../executors/cursor-agent.js'
+import {
+  copilotAgentTarget,
+  provisionCopilotWorkspace,
+} from '../executors/copilot-workspace.js'
 import { fileExists, isRecord, resolveInside } from '../io.js'
 import { panCommand } from '../project-config.js'
 import {
@@ -696,9 +700,10 @@ export function copilotToolPolicy(
   const workspaceWritable = stageWriteRoots(root, workspaceDir, stage).includes(
     workspaceDir,
   )
-  const agentFile = path.resolve(
-    projectionTargetPath(root, `.github/agents/pan-${persona}.agent.md`),
-  )
+  const workspaceAgent = path.join(workspaceDir, copilotAgentTarget(persona))
+  const agentFile = fileExists(workspaceAgent)
+    ? path.resolve(workspaceAgent)
+    : path.resolve(projectionTargetPath(root, copilotAgentTarget(persona)))
   const agentHome = path.resolve(path.dirname(agentFile), '..', '..')
   const agentProjected = fileExists(agentFile)
   const outside = (directory: string): boolean =>
@@ -755,13 +760,6 @@ export function createCopilotAdapter(context: {
   const secret = credential.ok ? credential.credential.secret : null
   const sanitize = (text: string): string =>
     secret && secret.length > 0 ? text.replaceAll(secret, '[REDACTED]') : text
-  const policy = copilotToolPolicy(
-    context.root,
-    context.workspaceDir,
-    context.stage,
-    context.persona,
-  )
-
   return {
     kind: 'copilot',
     sanitize,
@@ -780,6 +778,17 @@ export function createCopilotAdapter(context: {
         }
       }
 
+      provisionCopilotWorkspace(
+        context.root,
+        context.workspaceDir,
+        context.persona,
+      )
+      const policy = copilotToolPolicy(
+        context.root,
+        context.workspaceDir,
+        context.stage,
+        context.persona,
+      )
       const result = runCopilotCli({
         prompt,
         cwd: context.workspaceDir,

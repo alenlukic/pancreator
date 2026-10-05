@@ -228,6 +228,31 @@ test('Cursor context responses become VS Code hookSpecificOutput and Copilot CLI
   })
 })
 
+test('a payload larger than the environment limit still reaches a fail-closed hook', () => {
+  const bin = stubBin('{}')
+
+  writeFileSync(
+    path.join(bin, 'pan-hook-stub'),
+    '#!/usr/bin/env bash\nbytes="$(wc -c | tr -d " ")"\nprintf \'{"permission":"allow","additional_context":"%s"}\\n\' "$bytes"\n',
+    { mode: 0o755 },
+  )
+
+  const content = 'x'.repeat(1_500_000)
+  const result = runAdapter(
+    ['--fail-closed', 'postToolUse', 'pan-hook-stub'],
+    vscodeTool('create_file', { filePath: 'big.txt', content }),
+    bin,
+  )
+  const context = (
+    JSON.parse(result.stdout) as {
+      hookSpecificOutput: { additionalContext: string }
+    }
+  ).hookSpecificOutput.additionalContext
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.ok(Number(context) > content.length)
+})
+
 test('the adapter hands the script a Cursor payload with the host dialect', () => {
   const bin = stubBin('{}')
 
