@@ -23,6 +23,7 @@ import {
   harnessPathPrefix,
   loadProjectConfig,
   panCommand,
+  type ProjectHost,
 } from './project-config.js'
 import { mergeCursorHooksText } from './cursor-hooks-merge.js'
 import { hostToolTranslations, loadHostToolRegistry } from './host-tools.js'
@@ -178,19 +179,20 @@ function projectionMode(
 }
 
 /**
- * The always-apply rule each projected policy reaches a Cursor session
+ * The always-apply rule each projected policy reaches a `host` session
  * through in `mode`, keyed by policy id.
  */
 export function projectedPolicyRuleTargets(
   root: string,
   mode: CursorInstallationMode = installationMode(root),
+  host: ProjectHost = 'cursor',
 ): Map<string, string> {
   const projected = projectionMode(mode)
   const targets = new Map<string, string>()
 
   for (const projection of readProjectionManifest(root).projections) {
     if (
-      projection.host === 'cursor' &&
+      projection.host === host &&
       projection.transforms.includes('policy-rule') &&
       projection.installation_modes.includes(projected)
     ) {
@@ -202,26 +204,71 @@ export function projectedPolicyRuleTargets(
 }
 
 /**
+ * The host whose projected instructions an in-host worker reads, or null
+ * when the session cannot tell. `PAN_HOST` names it outright, a Cursor
+ * conversation id marks a Cursor session, and a single enabled host leaves
+ * no doubt.
+ */
+export function workerCardHost(
+  root: string,
+  env: NodeJS.ProcessEnv = process.env,
+): ProjectHost | null {
+  const named = env.PAN_HOST
+
+  if ((PROJECT_HOSTS as readonly unknown[]).includes(named)) {
+    return named as ProjectHost
+  }
+
+  if (named !== undefined && named !== '') {
+    return null
+  }
+
+  if ((env.CURSOR_CONVERSATION_ID ?? '') !== '') {
+    return 'cursor'
+  }
+
+  const hosts = enabledHosts(root)
+
+  return hosts.length === 1 ? (hosts[0] as ProjectHost) : null
+}
+
+/**
  * How each policy reaches a worker card, keyed by policy id.
  *
- * A Cursor executor already receives every projected policy as an
- * always-apply rule, so its card carries a digest pointer for those policies
- * instead of a second copy. An external executor receives no Cursor rules,
- * so every policy stays inline for it. An unreadable manifest inlines
- * everything rather than point at a rule that may not exist.
+ * An in-host worker already receives every projected policy as an
+ * always-apply instruction of its host, so its card carries a digest pointer
+ * for those policies instead of a second copy. A Cursor session reads
+ * `.cursor/rules`; a VS Code session reads `.github/instructions`, and a
+ * policy whose VS Code file is not projected stays inline. An external
+ * executor, or a session whose host is unknown (`host: null`), receives every
+ * policy inline. An unreadable manifest inlines everything rather than point
+ * at a rule that may not exist.
  */
 export function policyDeliveryPlan(
   root: string,
   policies: Policy[],
-  options: { executor: string; mode: CursorInstallationMode },
+  options: {
+    executor: string
+    mode: CursorInstallationMode
+    host?: ProjectHost | null
+  },
 ): Record<string, PolicyDelivery> {
+  const host = options.host === undefined ? 'cursor' : options.host
   let targets = new Map<string, string>()
 
-  if (options.executor === 'cursor') {
+  if (options.executor === 'cursor' && host !== null) {
     try {
-      targets = projectedPolicyRuleTargets(root, options.mode)
+      targets = projectedPolicyRuleTargets(root, options.mode, host)
     } catch {
       targets = new Map()
+    }
+
+    if (host !== 'cursor') {
+      targets = new Map(
+        [...targets].filter(([, target]) =>
+          fileExists(projectionTargetPath(root, target)),
+        ),
+      )
     }
   }
 
@@ -236,6 +283,7 @@ export function policyDeliveryPlan(
               mode: 'pointer',
               target,
               sha256: policySectionDigest(policy, 'agent'),
+              host: host as ProjectHost,
             }
           : { mode: 'inline' },
       ]
