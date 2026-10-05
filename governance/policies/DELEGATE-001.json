@@ -13,7 +13,7 @@
     "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
     "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), and the first arming line prints it. The starting agent MUST run every blocking `pan watch` call as a foreground shell call with a 330-second block bound (330000 ms). That bound exceeds the 300-second parent backstop on `pan watch --attach`, so an attach returns before the platform detaches it.",
     "A stall MUST be a deterministic shell fault on the worker's open call, not silence alone. The watch MUST return `stalled` with `stall_cause` `shell_dead`, `shell_stopped`, or `shell_heartbeat_stale` when the same open call shows that fault on two consecutive wakes. Without a readable transcript, the five-minute quiet rule still applies and MUST record `stall_cause` `quiet_fallback`. A recorded `running` state is not stalled, and a worker inside a wrapped command with a fresh `bin/pan-run` heartbeat MUST NOT stall. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
-    "An agent id the agent index has never registered ends `pan watch --agent`'s wait with `unregistered`, never `stalled`. An index that has never seen the id supplies no evidence of unchanged state, so it MUST NOT count toward a stall. On `unregistered`, the starting agent MUST check whether the projected `.cursor/hooks.json` still carries the agent-index hooks, and MUST run `pan models --sync` when it does not, before it rearms the watch.",
+    "An agent id the agent index has never registered ends `pan watch --agent`'s wait with `unregistered`, never `stalled`. An index that has never seen the id supplies no evidence of unchanged state, so it MUST NOT count toward a stall. On `unregistered`, the starting agent MUST check whether each enabled host's projected hooks file (`.cursor/hooks.json`, and `.github/hooks/pan-hooks.json` for VS Code) still carries the agent-index hooks, and MUST run `pan models --sync` when one does not, before it rearms the watch.",
     "The starting agent MUST run `pan watch` as a foreground blocking shell call. The `AwaitShell` platform tool and every platform await mechanism MUST NOT be used as a timer or a wait mechanism. `await-shell-ban-validate` bans them.",
     "When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately to rejoin that session and block again, and MUST rerun the same attach command on each `attach_wake` return. The `<ledger>` argument names the watch session record the watch wrote. `--attach` returns at once on a terminal wake or an orphan, and returns `attach_wake` (exit 7) at the 300-second parent backstop when a session is still pending. The agent MUST read the printed liveness summary and re-attach command on each `attach_wake`. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
     "Agents MUST NOT call a platform await tool for any reason. The platform await tools are `AwaitShell` and `Await` in Cursor, and `governance/registries/host_tools.json` lists each host's await tools. Using a platform await as a timer, a wait, or a block is a `DELEGATE-001` violation. `pan watch` is the only approved mechanism for all waiting: the 60-second cadence, the one-hour default bound, the 330-second block bound, the terminal-state return, and the `--attach` recovery all apply. An agent that receives a platform detach MUST run `pan watch --attach <ledger>` at once rather than calling `AwaitShell`, and MUST rerun it on each `attach_wake`.",
@@ -105,7 +105,7 @@
       "excerpt": true
     },
     {
-      "text": "On a stalled launch the agent MUST run `bin/pan-run -- bin/pan-unstick` at once. When it releases nothing, the agent MUST report the stalled call with its terminal and elapsed time.",
+      "text": "On a stalled launch the agent MUST run `bin/pan-run -- bin/pan-unstick` at once. When it releases nothing, the agent MUST report the stalled call with its terminal and elapsed time. `bin/pan-unstick` releases only a stalled Cursor shell launcher. In VS Code and Copilot CLI the agent MUST report the stalled call instead, because their shell tools have no launcher it can release.",
       "audience": ["agent"],
       "excerpt": true
     },
@@ -172,7 +172,11 @@
       "audience": ["harness"]
     },
     {
-      "text": "Each `bin/pan-run` record MUST name `cursor_conversation_id`, `parent_record`, and `wrapper_process_identity`, and the command MUST see `PAN_RUN_RECORD`. Coverage: `tests/integration/pan-run.test.ts::AC-13 identity fields on nested pan-run records`.",
+      "text": "A `copilot:` worker's execution record, written when its process exits with a JSONL `result` event, MUST stand in for its agent stop, so a watch completes on `agent_state`. Without that record, `pan submit` MUST refuse with `WORKER_STILL_ACTIVE`. Coverage: `tests/unit/copilot-executor.test.ts::a copilot worker stops on its execution record and not before`.",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Each `bin/pan-run` record MUST name `cursor_conversation_id`, `host`, `host_session_id`, `parent_record`, and `wrapper_process_identity`, and the command MUST see `PAN_RUN_RECORD`. Coverage: `tests/integration/pan-run.test.ts::AC-13 identity fields on nested pan-run records` and `tests/integration/pan-run-host.test.ts::pan-run records the host and its session id`.",
       "audience": ["harness"]
     },
     {

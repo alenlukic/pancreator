@@ -1,12 +1,28 @@
 /**
- * Whether the projected Cursor hooks configuration still carries the
+ * Whether each enabled host's projected hooks configuration still carries the
  * agent-index hooks.
  */
 
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { enabledHosts } from '../project-config/resolve.js'
+
 const AGENT_INDEX_HOOK_MARKER = 'pan-hook-agent-index'
+
+/** Each host's canonical hook source and the file projection writes from it. */
+const HOOK_PROJECTIONS = [
+  {
+    host: 'cursor',
+    source: 'library/cursor/hooks.json',
+    target: '.cursor/hooks.json',
+  },
+  {
+    host: 'vscode',
+    source: 'library/vscode/hooks.json',
+    target: '.github/hooks/pan-hooks.json',
+  },
+] as const
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -37,11 +53,13 @@ function hookEventsWithMarker(document: unknown, marker: string): string[] {
       continue
     }
 
+    // Cursor entries name the script in `command`, VS Code ones in `bash`.
     const carriesMarker = entries.some(
       (entry) =>
         isPlainObject(entry) &&
-        typeof entry.command === 'string' &&
-        entry.command.includes(marker),
+        [entry.command, entry.bash].some(
+          (command) => typeof command === 'string' && command.includes(marker),
+        ),
     )
 
     if (carriesMarker) {
@@ -52,28 +70,27 @@ function hookEventsWithMarker(document: unknown, marker: string): string[] {
   return events
 }
 
-export interface AgentIndexHooksStatus {
-  /** True when the projected file carries every canonical agent-index hook. */
+export interface AgentIndexHooksProjection {
+  /** The projected hooks file, relative to the root. */
+  path: string
   projected: boolean
-  /** Canonical hook events whose agent-index entry the projected file lacks. */
   missing_events: string[]
 }
 
-/**
- * Whether the checkout's projected `.cursor/hooks.json` still wires the
- * agent-index hooks (`bin/pan-hook-agent-index`) that `library/cursor/hooks.json`
- * declares. Without them, no subagent ever registers in the agent index, and
- * `pan watch --agent` cannot tell an unregistered agent apart from a stalled
- * one. Returns null when the canonical source is absent, which happens in a
- * unit-test temp root that carries no `library/` tree and therefore has
- * nothing to compare against.
- */
-export function agentIndexHooksStatus(
+export interface AgentIndexHooksStatus {
+  /** True when every checked projection carries every canonical hook. */
+  projected: boolean
+  /** Canonical hook events some checked projection lacks. */
+  missing_events: string[]
+  projections: AgentIndexHooksProjection[]
+}
+
+function projectionStatus(
   root: string,
-): AgentIndexHooksStatus | null {
-  const canonical = readJsonFileOrNull(
-    path.join(root, 'library', 'cursor', 'hooks.json'),
-  )
+  source: string,
+  target: string,
+): AgentIndexHooksProjection | null {
+  const canonical = readJsonFileOrNull(path.join(root, source))
 
   if (canonical === null) {
     return null
@@ -83,26 +100,60 @@ export function agentIndexHooksStatus(
     canonical,
     AGENT_INDEX_HOOK_MARKER,
   )
-
-  if (requiredEvents.length === 0) {
-    return { projected: true, missing_events: [] }
-  }
-
-  const projected = readJsonFileOrNull(path.join(root, '.cursor', 'hooks.json'))
-
-  if (projected === null) {
-    return { projected: false, missing_events: requiredEvents }
-  }
-
   const projectedEvents = new Set(
-    hookEventsWithMarker(projected, AGENT_INDEX_HOOK_MARKER),
+    hookEventsWithMarker(
+      readJsonFileOrNull(path.join(root, target)),
+      AGENT_INDEX_HOOK_MARKER,
+    ),
   )
   const missingEvents = requiredEvents.filter(
     (event) => !projectedEvents.has(event),
   )
 
   return {
+    path: target,
     projected: missingEvents.length === 0,
     missing_events: missingEvents,
+  }
+}
+
+function hostsToCheck(root: string): string[] {
+  try {
+    return enabledHosts(root)
+  } catch {
+    return ['cursor']
+  }
+}
+
+/**
+ * Whether the checkout's projected hooks files (`.cursor/hooks.json`, and
+ * `.github/hooks/pan-hooks.json` when the vscode host is enabled) still wire
+ * the agent-index hooks (`bin/pan-hook-agent-index`) their canonical sources
+ * declare. Without them, no subagent ever registers in the agent index, and
+ * `pan watch --agent` cannot tell an unregistered agent apart from a stalled
+ * one. Returns null when no canonical source is present, which happens in a
+ * unit-test temp root that carries no `library/` tree and therefore has
+ * nothing to compare against.
+ */
+export function agentIndexHooksStatus(
+  root: string,
+): AgentIndexHooksStatus | null {
+  const hosts = hostsToCheck(root)
+  const projections = HOOK_PROJECTIONS.filter((entry) =>
+    hosts.includes(entry.host),
+  )
+    .map((entry) => projectionStatus(root, entry.source, entry.target))
+    .filter((entry): entry is AgentIndexHooksProjection => entry !== null)
+
+  if (projections.length === 0) {
+    return null
+  }
+
+  return {
+    projected: projections.every((entry) => entry.projected),
+    missing_events: [
+      ...new Set(projections.flatMap((entry) => entry.missing_events)),
+    ],
+    projections,
   }
 }

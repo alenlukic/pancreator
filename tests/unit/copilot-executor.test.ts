@@ -17,6 +17,7 @@ import {
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import type { Invocation, StageDefinition } from '../../src/lib/types.js'
 import { delegationExecutionPath } from '../../src/lib/validation/artifacts.js'
+import { assertWorkerNotStillActive } from '../../src/lib/engine/submit-checks.js'
 import { executorProcessActivity } from '../../src/lib/watch/executor-process.js'
 import { watchedAgentActivity } from '../../src/lib/watch/observe.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -55,7 +56,7 @@ function fakeCopilot(options: { omitFlag?: string } = {}): string {
       'if [ "$1" = "--help" ]; then cat "$here/help.txt"; exit 0; fi',
       'cat > "$here/stdin.txt"',
       'printf "%s\\n" "$@" > "$here/argv.txt"',
-      'printf "%s\\n" "$COPILOT_ALLOW_ALL" "$COPILOT_PROVIDER_TYPE" > "$here/env.txt"',
+      'printf "%s\\n" "$COPILOT_ALLOW_ALL" "$COPILOT_PROVIDER_TYPE" "$PAN_HOST" "${CURSOR_CONVERSATION_ID-unset}" > "$here/env.txt"',
       'echo "{\\"type\\":\\"assistant.message\\",\\"data\\":{\\"model\\":\\"${FAKE_MODEL}\\",\\"content\\":\\"done $COPILOT_PROVIDER_API_KEY\\"}}"',
       'echo "{\\"type\\":\\"result\\",\\"sessionId\\":\\"sess-1\\",\\"exitCode\\":0}"',
       '',
@@ -234,6 +235,7 @@ test('the adapter pipes the card on stdin, trusts the workspace, and redacts the
       PANCREATOR_COPILOT_BIN: binary,
       OPENAI_API_KEY: FAKE_KEY,
       FAKE_MODEL: 'gpt-5.6-sol',
+      CURSOR_CONVERSATION_ID: 'supervisor-conversation',
     },
     () => {
       const adapter = createCopilotAdapter({
@@ -261,8 +263,8 @@ test('the adapter pipes the card on stdin, trusts the workspace, and redacts the
       assert.deepEqual(
         readFileSync(path.join(binDir, 'env.txt'), 'utf8')
           .split('\n')
-          .slice(0, 2),
-        ['true', 'openai'],
+          .slice(0, 4),
+        ['true', 'openai', 'copilot-cli', 'unset'],
       )
 
       const argv = readFileSync(path.join(binDir, 'argv.txt'), 'utf8')
@@ -332,10 +334,17 @@ test('a copilot worker stops on its execution record and not before', () => {
     )
   }
 
+  const submitStage = { persona: 'coder' } as StageDefinition
   assert.equal(executorProcessActivity(root, invocation, Date.now()), null)
   assert.equal(watchedAgentActivity(root, invocation, Date.now(), 60), null)
+  assert.throws(
+    () => assertWorkerNotStillActive(root, invocation, 'copilot', submitStage),
+    (error: unknown) =>
+      (error as { code?: string }).code === 'WORKER_STILL_ACTIVE',
+  )
 
   writeRecord({})
+  assertWorkerNotStillActive(root, invocation, 'copilot', submitStage)
   const stop = watchedAgentActivity(root, invocation, Date.now(), 60)?.stop
   assert.equal(stop?.status, 'completed')
   assert.equal(stop?.source, 'process')

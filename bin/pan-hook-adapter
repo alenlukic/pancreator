@@ -128,7 +128,44 @@ def normalize(payload, dialect):
     if event == "stop":
         cursor["status"] = "completed"
         cursor["loop_count"] = 1 if payload.get("stop_hook_active") is True else 0
+    if event in ("subagentStart", "subagentStop"):
+        subagent_fields(payload, dialect, cursor)
     return {key: value for key, value in cursor.items() if value is not None}
+
+
+def copilot_session_key(transcript):
+    """A Copilot CLI transcript is session-state/<sessionId>/events.jsonl."""
+    if not isinstance(transcript, str) or not transcript:
+        return None
+    parent, name = os.path.split(transcript)
+    if name == "events.jsonl":
+        return os.path.basename(parent) or None
+    return os.path.splitext(name)[0] or None
+
+
+def subagent_fields(payload, dialect, cursor):
+    """Name the parent and the child the way the agent index keys them.
+
+    The event fires in the parent's session. VS Code names the child with
+    `agent_id`; Copilot CLI sends no child id, so its transcript directory
+    names the child and the launch links by parent and prompt digest.
+    """
+    parent = cursor.get("conversation_id")
+    if dialect == "copilot-cli":
+        transcript = cursor.pop("transcript_path", None)
+        cursor["subagent_id"] = copilot_session_key(transcript)
+        if event == "subagentStop":
+            cursor["agent_transcript_path"] = transcript
+        task = first(payload, "prompt", "agentPrompt", "task")
+        if isinstance(task, str):
+            cursor["task"] = task
+    if cursor.get("subagent_id") is None:
+        # Without a child key the parent's own id would register as the child.
+        cursor.pop("conversation_id", None)
+    elif parent is not None:
+        cursor["parent_conversation_id"] = parent
+        if event == "subagentStop":
+            cursor.pop("conversation_id", None)
 
 
 payload = parse_json(os.environ.get("PAN_HOOK_PAYLOAD", ""))

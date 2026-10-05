@@ -85,3 +85,53 @@ test('agentIndexHooksStatus reports every event missing when the projected file 
   assert.equal(status?.projected, false)
   assert.deepEqual(status?.missing_events, ['subagentStart'])
 })
+
+test('agentIndexHooksStatus names a stale VS Code projection when the vscode host is enabled', () => {
+  const root = createTestTempDirectory('agent-index-hooks-')
+  const vscodeSource = (events: string[]): unknown => ({
+    version: 1,
+    hooks: Object.fromEntries(
+      events.map((event) => [
+        event,
+        [{ type: 'command', bash: `bin/pan-hook-agent-index ${event}` }],
+      ]),
+    ),
+  })
+
+  writeFileSync(
+    path.join(root, 'config.json'),
+    JSON.stringify({
+      schema_version: 1,
+      workspace_root: '.',
+      hosts: ['cursor', 'vscode'],
+    }),
+  )
+  writeHooksJson(path.join(root, 'library', 'cursor', 'hooks.json'), {
+    subagentStart: ['bin/pan-hook-agent-index subagentStart'],
+  })
+  writeHooksJson(path.join(root, '.cursor', 'hooks.json'), {
+    subagentStart: ['bin/pan-hook-agent-index subagentStart'],
+  })
+  mkdirSync(path.join(root, 'library', 'vscode'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'library', 'vscode', 'hooks.json'),
+    JSON.stringify(vscodeSource(['preToolUse', 'subagentStop'])),
+  )
+  mkdirSync(path.join(root, '.github', 'hooks'), { recursive: true })
+  writeFileSync(
+    path.join(root, '.github', 'hooks', 'pan-hooks.json'),
+    JSON.stringify(vscodeSource(['preToolUse'])),
+  )
+
+  const status = agentIndexHooksStatus(root)
+
+  assert.equal(status?.projected, false)
+  assert.deepEqual(status?.missing_events, ['subagentStop'])
+  assert.deepEqual(
+    status?.projections.map((entry) => [entry.path, entry.projected]),
+    [
+      ['.cursor/hooks.json', true],
+      ['.github/hooks/pan-hooks.json', false],
+    ],
+  )
+})

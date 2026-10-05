@@ -484,6 +484,8 @@ function recordStart(commandArgv) {
     heartbeat_path: `${rel}/heartbeat.json`,
     heartbeat_seconds: Number(env.PAN_RUN_CADENCE),
     cursor_conversation_id: env.PAN_RUN_CURSOR_CONVERSATION_ID || null,
+    host: env.PAN_RUN_HOST || null,
+    host_session_id: env.PAN_RUN_HOST_SESSION_ID || null,
     parent_record: env.PAN_RUN_PARENT_RECORD || null,
     wrapper_process_identity: env.PAN_RUN_WRAPPER_IDENTITY || null,
   });
@@ -515,6 +517,8 @@ function recordEnd(commandArgv) {
     heartbeat_path: `${env.PAN_RUN_RECORD_REL}/heartbeat.json`,
     heartbeat_seconds: Number(env.PAN_RUN_CADENCE),
     cursor_conversation_id: env.PAN_RUN_CURSOR_CONVERSATION_ID || null,
+    host: env.PAN_RUN_HOST || null,
+    host_session_id: env.PAN_RUN_HOST_SESSION_ID || null,
     parent_record: env.PAN_RUN_PARENT_RECORD || null,
     wrapper_process_identity: env.PAN_RUN_WRAPPER_IDENTITY || null,
   };
@@ -762,8 +766,24 @@ CURSOR_CONV_ID=""
 if [[ "${CURSOR_CONVERSATION_ID:-}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
   CURSOR_CONV_ID="$CURSOR_CONVERSATION_ID"
 fi
+# The host-neutral session: Cursor names it natively; another host's launcher
+# or executor sets PAN_HOST and, when it knows one, PAN_HOST_SESSION_ID.
+HOST_NAME=""
+HOST_SESSION_ID=""
+if [[ -n "$CURSOR_CONV_ID" ]]; then
+  HOST_NAME="cursor"
+  HOST_SESSION_ID="$CURSOR_CONV_ID"
+else
+  if [[ "${PAN_HOST:-}" =~ ^(cursor|vscode|copilot-cli)$ ]]; then
+    HOST_NAME="$PAN_HOST"
+  fi
+  if [[ "${PAN_HOST_SESSION_ID:-}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+    HOST_SESSION_ID="$PAN_HOST_SESSION_ID"
+  fi
+fi
 
 run_record_start() {
+  PAN_RUN_HOST="$HOST_NAME" PAN_RUN_HOST_SESSION_ID="$HOST_SESSION_ID" \
   PAN_RUN_CURSOR_CONVERSATION_ID="$CURSOR_CONV_ID" PAN_RUN_PARENT_RECORD="$PARENT_RECORD" \
     PAN_RUN_WRAPPER_IDENTITY="$WRAPPER_IDENTITY" \
   PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_RECORD_REL="$RECORD_DIR_REL" \
@@ -873,6 +893,7 @@ PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_EXIT_CODE="$EXIT_CODE" PAN_RUN_SIGNAL="
   PAN_RUN_START_STATUS="$START_STATUS" PAN_RUN_START_SIGNAL="$START_SIGNAL" \
   PAN_RUN_START_RECOVERED="$START_RECOVERED" PAN_RUN_START_STDERR="$START_STDERR" \
   PAN_RUN_CURSOR_CONVERSATION_ID="$CURSOR_CONV_ID" PAN_RUN_PARENT_RECORD="$PARENT_RECORD" \
+  PAN_RUN_HOST="$HOST_NAME" PAN_RUN_HOST_SESSION_ID="$HOST_SESSION_ID" \
   PAN_RUN_WRAPPER_IDENTITY="$WRAPPER_IDENTITY" PAN_RUN_OUTPUT_DRAINED="$OUTPUT_DRAINED" \
   node "$HELPER" record-end -- "${COMMAND_ARGV[@]}"
 

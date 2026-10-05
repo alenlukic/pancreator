@@ -137,6 +137,28 @@ test('a checkout without a local .cursor projection never syncs', () => {
   assert.deepEqual(syncCalls(root), [])
 })
 
+test('a VS Code projection alone resyncs when a VS Code source changes', () => {
+  const { root } = createRepo({ cursor: false })
+
+  mkdirSync(path.join(root, 'library', 'vscode'), { recursive: true })
+  writeFileSync(path.join(root, 'library', 'vscode', 'hooks.json'), '{}\n')
+  gitOk(root, ['add', '.'])
+  gitOk(root, ['commit', '-q', '-m', 'vscode source'])
+  mkdirSync(path.join(root, '.github', 'hooks'), { recursive: true })
+  writeFileSync(path.join(root, '.github', 'hooks', 'pan-hooks.json'), '{}\n')
+  writeFileSync(
+    path.join(root, '.gitignore'),
+    `.cursor/\n.github/\n${SYNC_MARKER}\n`,
+  )
+  gitOk(root, ['commit', '-q', '-am', 'ignore projection'])
+
+  commitOnBranch(root, 'hooks', 'library/vscode/hooks.json')
+  const before = syncCalls(root).length
+
+  gitOk(root, ['checkout', '-q', 'hooks'])
+  assert.deepEqual(syncCalls(root).slice(before), ['models --sync'])
+})
+
 test('a failed sync reports the manual command and never fails the merge', () => {
   const { root } = createRepo({ panExit: 1 })
 

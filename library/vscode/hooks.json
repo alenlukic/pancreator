@@ -11,6 +11,32 @@
         "type": "command",
         "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter --fail-closed beforeShellExecution pan-hook-shell-monitor",
         "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter preToolUse pan-hook-agent-index preToolUse",
+        "timeoutSec": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-agent-index postToolUse",
+        "timeoutSec": 10
+      }
+    ],
+    "subagentStart": [
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter subagentStart pan-hook-agent-index subagentStart",
+        "timeoutSec": 10
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter subagentStop pan-hook-agent-index subagentStop",
+        "timeoutSec": 10
       }
     ],
     "userPromptSubmitted": [

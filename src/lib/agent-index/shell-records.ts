@@ -383,10 +383,13 @@ export function readAgentShellRecords(
       continue
     }
 
+    // Another host's session id links its records the same way.
     const conversationId =
       typeof recordJson.cursor_conversation_id === 'string'
         ? recordJson.cursor_conversation_id
-        : null
+        : typeof recordJson.host_session_id === 'string'
+          ? recordJson.host_session_id
+          : null
 
     if (!conversationId || !agentIds.has(conversationId)) {
       continue

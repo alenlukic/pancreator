@@ -4,6 +4,7 @@ import { chmodSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { readIndex } from '../../src/lib/agent-index/store.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const BIN = path.join(process.cwd(), 'bin')
@@ -268,4 +269,100 @@ test('the adapter hands the script a Cursor payload with the host dialect', () =
     tool_output: 'out',
     workspace_roots: [],
   })
+})
+
+test('both hosts feed the agent index a launch, a linked child, and its stop', async (t) => {
+  const indexRoot = (): string => {
+    const root = createTestTempDirectory('hook-adapter-index-')
+    mkdirSync(path.join(root, 'governance/registries'), { recursive: true })
+    copyFileSync(
+      path.join(process.cwd(), 'governance/registries/host_tools.json'),
+      path.join(root, 'governance/registries/host_tools.json'),
+    )
+    writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ name: 'pancreator-v2-prototype' }),
+    )
+    return root
+  }
+  const feed = (root: string, event: string, payload: unknown): void => {
+    const result = spawnSync(
+      path.join(BIN, 'pan-hook-adapter'),
+      [event, 'pan-hook-agent-index', event],
+      {
+        input: JSON.stringify(payload),
+        encoding: 'utf8',
+        timeout: 20_000,
+        env: { ...process.env, PANCREATOR_ROOT: root },
+      },
+    )
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, '')
+  }
+
+  await t.test('VS Code runSubagent', () => {
+    const root = indexRoot()
+    feed(root, 'preToolUse', vscodeTool('runSubagent', { prompt: 'Explore' }))
+    feed(root, 'subagentStart', {
+      hook_event_name: 'SubagentStart',
+      session_id: 'session-2',
+      agent_id: 'child-v',
+      agent_type: 'Explore',
+    })
+    feed(root, 'subagentStop', {
+      hook_event_name: 'SubagentStop',
+      session_id: 'session-2',
+      agent_id: 'child-v',
+    })
+
+    const index = readIndex(root)
+    const child = index.agents.find((agent) => agent.agent_id === 'child-v')
+    assert.equal(index.pending_launches.length, 1)
+    assert.equal(child?.parent_agent_id, 'session-2')
+    assert.equal(child?.subagent_type, 'Explore')
+    assert.equal(child?.stop?.status, 'completed')
+  })
+
+  await t.test('Copilot CLI task, linked by prompt digest', () => {
+    const root = indexRoot()
+    const transcriptPath = '/home/u/.copilot/session-state/child-c/events.jsonl'
+    feed(root, 'preToolUse', {
+      sessionId: 'parent-c',
+      toolName: 'task',
+      toolArgs: { prompt: 'Map the repo', agent_type: 'explore' },
+    })
+    feed(root, 'subagentStart', {
+      sessionId: 'parent-c',
+      transcriptPath,
+      agentName: 'explore',
+      prompt: 'Map the repo',
+    })
+    feed(root, 'subagentStop', {
+      sessionId: 'parent-c',
+      transcriptPath,
+      agentName: 'explore',
+    })
+
+    const index = readIndex(root)
+    const child = index.agents.find((agent) => agent.agent_id === 'child-c')
+    assert.equal(child?.parent_agent_id, 'parent-c')
+    assert.equal(index.pending_launches[0]?.resolved_agent_id, 'child-c')
+    assert.equal(child?.stop?.status, 'completed')
+    assert.equal(
+      index.agents.some((agent) => agent.agent_id === 'events'),
+      false,
+    )
+  })
+
+  await t.test(
+    'a Copilot CLI start without a transcript registers nothing',
+    () => {
+      const root = indexRoot()
+      feed(root, 'subagentStart', { sessionId: 'parent-c', agentName: 'x' })
+      assert.equal(
+        readIndex(root).agents.some((agent) => agent.agent_id === 'parent-c'),
+        false,
+      )
+    },
+  )
 })

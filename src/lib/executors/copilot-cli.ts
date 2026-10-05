@@ -435,6 +435,27 @@ export interface CopilotInvocationResult {
   error?: string
 }
 
+/**
+ * The worker's environment. `COPILOT_ALLOW_ALL` approves tools and trusts the
+ * workspace so project hooks load. `PAN_HOST` labels the worker's `bin/pan-run`
+ * records, and the supervisor's Cursor conversation id is withheld so those
+ * records never name a session the worker does not run in.
+ */
+export function copilotEnvironment(
+  credentialEnvironment: Record<string, string>,
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...credentialEnvironment,
+    COPILOT_ALLOW_ALL: 'true',
+    PAN_HOST: 'copilot-cli',
+  }
+
+  delete environment.CURSOR_CONVERSATION_ID
+  delete environment.PAN_HOST_SESSION_ID
+  return environment
+}
+
 /** Run one non-interactive Copilot CLI invocation and parse its JSONL stream. */
 export function runCopilotCli(
   request: CopilotInvocationRequest,
@@ -448,11 +469,7 @@ export function runCopilotCli(
     input: request.prompt,
     timeout: request.timeoutMs ?? DEFAULT_INVOCATION_TIMEOUT_MS,
     maxBuffer: MAX_OUTPUT_BYTES,
-    env: {
-      ...process.env,
-      ...request.environment,
-      COPILOT_ALLOW_ALL: 'true',
-    },
+    env: copilotEnvironment(request.environment),
   })
   const durationMs = Date.now() - startedAt
   const timedOut =
