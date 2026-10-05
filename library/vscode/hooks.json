@@ -28,12 +28,22 @@
         "type": "command",
         "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-visible-chat postToolUse",
         "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-platform-guidance postToolUse",
+        "timeoutSec": 15
       }
     ],
     "agentStop": [
       {
         "type": "command",
         "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter stop pan-hook-visible-chat stop",
+        "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter stop pan-hook-platform-guidance stop",
         "timeoutSec": 10
       }
     ],

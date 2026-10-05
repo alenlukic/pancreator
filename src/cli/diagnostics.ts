@@ -11,6 +11,7 @@ import { cursorAuthenticationReadiness } from '../lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from '../lib/executors/claude-code.js'
 import { openAiExecutorPreflight } from '../lib/executors/openai-auth.js'
 import { copilotDiagnostics } from '../lib/executors/copilot-diagnostics.js'
+import { vscodeDebugLogState } from '../lib/vscode-debug-log.js'
 import { vscodeWorktreeProtection } from '../lib/vscode-worktree-protection.js'
 import { browserReadiness } from '../lib/browser-readiness.js'
 import { errorMessage, PanError } from '../lib/errors.js'
@@ -580,7 +581,10 @@ export function doctorCommand({ root, args }: CliContext): void {
       ? { copilot: copilotDiagnostics(root, pipelineConfig.config.personas) }
       : {}),
     ...(enabledHosts(root).includes('vscode')
-      ? { vscode_worktree_protection: vscodeWorktreeProtection(root) }
+      ? {
+          vscode_worktree_protection: vscodeWorktreeProtection(root),
+          vscode_debug_log: vscodeDebugLogState(root),
+        }
       : {}),
     validation,
     constraints: {

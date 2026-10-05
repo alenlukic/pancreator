@@ -35,11 +35,13 @@ export const GUIDANCE_SURFACES = [
   'behaviour',
 ] as const
 
+export type GuidanceSurface = (typeof GUIDANCE_SURFACES)[number]
+
 export interface PlatformGuidanceEntry {
   id: string
   hosts: RedlineHost[]
   category: string
-  surface: (typeof GUIDANCE_SURFACES)[number]
+  surface: GuidanceSurface
   /** A literal substring to match, or null for guidance no text carries. */
   match: { literal: string | null; regex?: string }
   source: {

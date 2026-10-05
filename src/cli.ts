@@ -73,6 +73,7 @@ import {
   spotfixCommand,
   workerCommand,
 } from './cli/stage.js'
+import { redlineCommand } from './cli/redline.js'
 import { watchCommand } from './cli/watch.js'
 import {
   doctorCommand,
@@ -177,6 +178,8 @@ async function main(): Promise<void> {
       return worktreeCommand(context)
     case 'status':
       return statusCommand(context)
+    case 'redline':
+      return redlineCommand(context)
     case 'list':
       return listCommand(context)
     case 'installs':

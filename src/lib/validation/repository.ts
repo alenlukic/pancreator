@@ -63,6 +63,7 @@ import {
   validateHarnessInstructionCoverage,
   validateHostToolRegistry,
   validatePlatformGuidanceCatalog,
+  validateSupervisorAgentAuthority,
   validateLookupRowDelivery,
   validatePolicyAudienceDelivery,
   validatePolicyLookupCoverage,
@@ -188,6 +189,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   errors.push(...validateHostToolRegistry(root))
   errors.push(...validatePlatformGuidanceCatalog(root))
+  errors.push(...validateSupervisorAgentAuthority(root))
   errors.push(...validateQuestionToolAccess(root))
   errors.push(...validateAwaitShellBan(root))
   errors.push(...validateShellMonitor(root))

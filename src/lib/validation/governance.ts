@@ -27,6 +27,7 @@ import { loadPolicyCatalog, resolvePolicies } from '../policies.js'
 import {
   PLATFORM_ACTION_CATEGORY,
   REDLINE_CATEGORIES,
+  readAuthorityOrder,
 } from '../watch/redline.js'
 import { collectAwaitShellBanIssues } from '../validators/await-shell-ban.js'
 import { collectShellMonitorIssues } from '../validators/shell-monitor.js'
@@ -709,6 +710,44 @@ export function validatePlatformGuidanceCatalog(root: string): string[] {
         `${PLATFORM_GUIDANCE_CATALOG_PATH}: ${entry.id} names unknown ` +
         `category ${entry.category}`,
     )
+}
+
+const SUPERVISOR_AGENT_SOURCE = 'library/vscode/agents/supervisor.agent.md'
+
+/**
+ * Check that the VS Code supervisor agent lists the `AGENTS.md` authority
+ * order verbatim, because VS Code ranks its body above every earlier system
+ * instruction.
+ */
+export function validateSupervisorAgentAuthority(root: string): string[] {
+  const absolute = path.join(root, SUPERVISOR_AGENT_SOURCE)
+
+  if (!fileExists(absolute)) {
+    return []
+  }
+
+  const lines = readText(absolute).split('\n')
+  const start = lines.findIndex((line) => line === '## Authority order')
+  const listed: string[] = []
+
+  for (const line of start === -1 ? [] : lines.slice(start + 1)) {
+    if (line.startsWith('## ')) {
+      break
+    }
+
+    const match = /^\d+\.\s+(.+)$/u.exec(line)
+
+    if (match) {
+      listed.push(match[1].trim())
+    }
+  }
+
+  return JSON.stringify(listed) === JSON.stringify(readAuthorityOrder(root))
+    ? []
+    : [
+        `${SUPERVISOR_AGENT_SOURCE}: the "## Authority order" list MUST match ` +
+          'the AGENTS.md authority order verbatim',
+      ]
 }
 
 /** Check that canonical Cursor agent frontmatter does not name a host question tool. */

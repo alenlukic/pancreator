@@ -124,6 +124,10 @@ export const HELP_BODY = `Usage:
   pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--host cursor|vscode-local|vscode-agent-host|copilot-cli] [--host-version <version>] [--resolve <citation>] [--json]
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative. Each declaration names its host (from --host, PAN_HOST, or a Cursor conversation id) and copies that host's platform guidance catalog entries.
       --resolve reads a citation of this run's artifacts — a path or a bare invocation id — through the run's invocation alias map and names the current path. Resequencing at finalization is what leaves a citation stale; the alias map is written then.
+  pan redline observe [<run-id>] --host cursor|vscode-local|vscode-agent-host|copilot-cli --guidance-id <id> [--action platform_initiated_detach] [--evidence <path-or-id>] [--session-id <id>] [--json]
+      Appends a sighting of a platform guidance catalog entry to agent/evidence/platform-guidance-sightings.jsonl and records a run event. Without a run id it uses the single live run whose latest redline declaration names the host. A sighting is evidence, never a platform_guidance_conflicts entry.
+  pan redline scan --vscode-debug-log <dir> [--host vscode-local|vscode-agent-host] [--json]
+      Matches every JSON and JSONL file under a VS Code debug log directory against the platform guidance catalog. Reports entry ids, file names, and counts, never the logged content.
   pan list [--json]
   pan inbox [--json]
       List every regular file directly under each runtime/inbox/ lifecycle directory, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status. Unreadable items remain visible with a reason.

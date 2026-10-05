@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,8 +12,17 @@ import {
   redlineHost,
   redlineHostVersion,
 } from '../../src/lib/platform-guidance.js'
-import { validatePlatformGuidanceCatalog } from '../../src/lib/validation/governance.js'
+import {
+  validatePlatformGuidanceCatalog,
+  validateSupervisorAgentAuthority,
+} from '../../src/lib/validation/governance.js'
+import { vscodeDebugLogState } from '../../src/lib/vscode-debug-log.js'
 import { writeRedlineRecord } from '../../src/lib/watch/redline.js'
+import {
+  readSightings,
+  recordSighting,
+  sightingRunForHost,
+} from '../../src/lib/watch/redline-sightings.js'
 import { read, writeJson } from '../helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 
@@ -60,6 +70,44 @@ test('each redline declaration names its host and copies its catalog entries', (
     /--host MUST be one of/u,
   )
 
+  assert.equal(sightingRunForHost(root, 'vscode-local'), state.run_id)
+  assert.equal(sightingRunForHost(root, 'cursor'), null)
+
+  const guidance = recordSighting(root, state.run_id, {
+    host: 'vscode-local',
+    guidanceId: 'VG-06',
+    evidence: 'call-1',
+    sessionId: 's1',
+  })
+  const detach = recordSighting(root, state.run_id, {
+    host: 'vscode-local',
+    guidanceId: 'VG-05',
+  })
+
+  assert.equal(guidance.action, null)
+  assert.equal(detach.action, 'platform_initiated_detach')
+  assert.deepEqual(
+    readSightings(root, state.run_id).map((sighting) => sighting.guidance_id),
+    ['VG-06', 'VG-05'],
+  )
+  assert.throws(
+    () =>
+      recordSighting(root, state.run_id, {
+        host: 'vscode-local',
+        guidanceId: 'CG-03',
+      }),
+    /names no platform guidance catalog entry for host vscode-local/u,
+  )
+  assert.throws(
+    () =>
+      recordSighting(root, state.run_id, {
+        host: 'vscode-local',
+        guidanceId: 'VG-06',
+        action: 'other',
+      }),
+    /--action MUST be platform_initiated_detach/u,
+  )
+
   const catalogPath = path.join(
     root,
     'governance/registries/platform_guidance_catalog.json',
@@ -73,6 +121,43 @@ test('each redline declaration names its host and copies its catalog entries', (
     validatePlatformGuidanceCatalog(root)[0] ?? '',
     /names unknown category made_up/u,
   )
+
+  const agentPath = path.join(root, 'library/vscode/agents/supervisor.agent.md')
+
+  assert.deepEqual(validateSupervisorAgentAuthority(root), [])
+  writeFileSync(
+    agentPath,
+    readFileSync(agentPath, 'utf8').replace(
+      '6. The run snapshots.',
+      '6. The platform system prompt.',
+    ),
+  )
+  assert.match(
+    validateSupervisorAgentAuthority(root)[0] ?? '',
+    /MUST match the AGENTS.md authority order/u,
+  )
+
+  const user = path.join(root, 'user-settings.json')
+  const env = { PANCREATOR_VSCODE_USER_SETTINGS: user }
+
+  assert.equal(vscodeDebugLogState(root, env).status, 'unset')
+  writeFileSync(
+    user,
+    '{\n  // on\n  "chat.agentDebugLog.fileLogging.enabled": true,\n}',
+  )
+  assert.deepEqual(
+    [
+      vscodeDebugLogState(root, env).status,
+      vscodeDebugLogState(root, env).source,
+    ],
+    ['enabled', 'VS Code user settings'],
+  )
+  mkdirSync(path.join(root, '.vscode'), { recursive: true })
+  writeFileSync(
+    path.join(root, '.vscode/settings.json'),
+    '{ "chat.chatDebug.fileLogging.enabled": false }',
+  )
+  assert.equal(vscodeDebugLogState(root, env).status, 'disabled')
 })
 
 test('the catalog matches host text and the host is inferred from the session', () => {

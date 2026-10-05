@@ -260,6 +260,34 @@ const GUIDANCE_MENTION =
   /platform[- ](guidance|instruction|injected)|session[- ]mode|platform-injected/iu
 
 const REDLINE_FILE = 'platform-guidance-redline.json'
+const SIGHTINGS_FILENAME = 'platform-guidance-sightings.jsonl'
+
+function readSightingLines(
+  absolute: string,
+): Array<{ guidance_id: string; action: string | null }> {
+  if (!fileExists(absolute)) {
+    return []
+  }
+
+  return readText(absolute)
+    .split('\n')
+    .flatMap((line) => {
+      try {
+        const value: unknown = JSON.parse(line)
+
+        return isRecord(value) && typeof value.guidance_id === 'string'
+          ? [
+              {
+                guidance_id: value.guidance_id,
+                action: typeof value.action === 'string' ? value.action : null,
+              },
+            ]
+          : []
+      } catch {
+        return []
+      }
+    })
+}
 
 /**
  * Grader that fails when a stage output or decision record mentions platform
@@ -281,9 +309,21 @@ export const platformGuidanceConflictRecorded: Grader = (context) => {
   )
   const eventInvocations = new Set(
     records.events
-      .filter((event) => /platform_guidance/u.test(event.type))
+      .filter(
+        (event) =>
+          /platform_guidance/u.test(event.type) &&
+          event.type !== 'platform_guidance_sighted',
+      )
       .map((event) => String(event.invocation_id ?? '')),
   )
+  const sightingsRelative = relativeEvidence(
+    records,
+    'evidence',
+    SIGHTINGS_FILENAME,
+  )
+  const guidanceSightings = readSightingLines(
+    path.join(records.root, sightingsRelative),
+  ).filter((sighting) => sighting.action === null)
 
   const evidence: string[] = []
   const failures: string[] = []
@@ -349,6 +389,20 @@ export const platformGuidanceConflictRecorded: Grader = (context) => {
     )
   }
 
+  // A hook sighting proves the guidance reached the session; the agent still
+  // owes the conflict record. A platform action sighting owes none.
+  if (guidanceSightings.length > 0) {
+    evidence.push(sightingsRelative)
+
+    if (recorded === 0 && advisoryInvocations.size === 0) {
+      failures.push(
+        `${guidanceSightings.length} platform guidance sighting(s) in ${sightingsRelative} ` +
+          `(${[...new Set(guidanceSightings.map((sighting) => sighting.guidance_id))].join(', ')}) ` +
+          'but the run has no conflict record',
+      )
+    }
+  }
+
   return {
     passed: failures.length === 0,
     summary:
@@ -360,12 +414,14 @@ export const platformGuidanceConflictRecorded: Grader = (context) => {
       min_recorded: minRecorded,
       recorded,
       redline_record: redlineExists ? redlineRelative : null,
+      guidance_sightings: guidanceSightings.length,
       outputs: rows,
       failures,
     },
     observability:
       'Records are platform_guidance_conflicts[] entries in a submitted output, platform_guidance advisories in state.json, platform_guidance_conflict events, and agent/evidence/platform-guidance-redline.json. ' +
       'Mentions are matched in output strings and decision records by the phrases platform guidance, platform instruction, platform-injected, and session mode. ' +
+      'A guidance sighting in agent/evidence/platform-guidance-sightings.jsonl, which a VS Code or Copilot CLI hook writes through pan redline observe, also needs a conflict record. ' +
       'A conflict the supervisor met in chat and never wrote into a run record is not observable.',
   }
 }

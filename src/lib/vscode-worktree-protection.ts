@@ -31,7 +31,7 @@ export interface VscodeWorktreeProtection {
 }
 
 /** Strip comments and trailing commas from VS Code's JSONC settings. */
-function stripJsonc(text: string): string {
+export function stripJsonc(text: string): string {
   let output = ''
   let index = 0
 

@@ -124,6 +124,16 @@
       "transforms": ["installation-paths", "vscode-agent"]
     },
     {
+      "id": "vscode-supervisor-agent",
+      "host": "vscode",
+      "format_difference": "VS Code renders a selected custom agent's body as mode instructions that claim precedence over earlier system text, so the supervisor agent carries the AGENTS.md authority order; Cursor has no equivalent surface.",
+      "source": "library/vscode/agents/supervisor.agent.md",
+      "target": ".github/agents/pan-supervisor.agent.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["installation-paths"]
+    },
+    {
       "id": "vscode-self-development-instructions",
       "host": "vscode",
       "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
