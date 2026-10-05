@@ -318,6 +318,7 @@ function expandProjection(sourceRoot, projection) {
         source: path.join(sourceRoot, projection.source),
         relative: projection.target,
         variable: null,
+        host: projection.host,
         generatedFields: projection.generated_fields ?? [],
         transforms: projection.transforms ?? [],
       },
@@ -347,14 +348,157 @@ function expandProjection(sourceRoot, projection) {
         source: path.join(absoluteDirectory, entry.name),
         relative: projection.target.replace(token, variable),
         variable,
+        host: projection.host,
         generatedFields: projection.generated_fields ?? [],
         transforms: projection.transforms ?? [],
       }
     })
 }
 
+// Mirrors src/lib/projection/host-content.ts. This script runs before the
+// harness is built, so it cannot import that module. Keep the two in step.
+const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/u
+const DESCRIPTION_LIMIT = 1024
+const SKILLS_ROOT = '.agents/skills/'
+
+function unquoteYaml(value) {
+  const trimmed = value.trim()
+
+  if (trimmed.startsWith('"')) {
+    return JSON.parse(trimmed)
+  }
+
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1).replaceAll("''", "'")
+  }
+
+  return trimmed
+}
+
+function splitFrontmatter(content) {
+  const match = FRONTMATTER.exec(content)
+
+  if (!match) {
+    return { description: null, body: content }
+  }
+
+  const description = /^description:\s*(.+)$/mu.exec(match[1] ?? '')?.[1]
+
+  return {
+    description: description === undefined ? null : unquoteYaml(description),
+    body: content.slice(match[0].length),
+  }
+}
+
+function limitDescription(value) {
+  return value.length <= DESCRIPTION_LIMIT
+    ? value
+    : `${value.slice(0, DESCRIPTION_LIMIT - 1)}…`
+}
+
+function firstSentence(body) {
+  const paragraph = (body.trim().split(/\n\s*\n/u)[0] ?? '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+  const sentence = /^(.+?[.!?])(?:\s|$)/u.exec(paragraph)?.[1]
+
+  return sentence ?? paragraph
+}
+
+function renderVscodeInstructions(content) {
+  const { description, body } = splitFrontmatter(content)
+
+  return [
+    '---',
+    ...(description === null
+      ? []
+      : [`description: ${JSON.stringify(limitDescription(description))}`]),
+    "applyTo: '**'",
+    '---',
+    body,
+  ].join('\n')
+}
+
+function renderCommandSkill(name, content) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name)) {
+    fail(
+      `skill name '${name}' MUST be lowercase alphanumeric with single hyphens`,
+    )
+  }
+
+  const argumentsLine = content.includes('$ARGUMENTS')
+    ? [
+        `\`$ARGUMENTS\` in these instructions stands for the text the operator typed after \`/${name}\`.`,
+        '',
+      ]
+    : []
+
+  return [
+    '---',
+    `name: ${name}`,
+    `description: ${JSON.stringify(limitDescription(firstSentence(content)))}`,
+    'disable-model-invocation: true',
+    '---',
+    '',
+    ...argumentsLine,
+    content,
+  ].join('\n')
+}
+
+function renderVscodeAgent(persona, content) {
+  const { description, body } = splitFrontmatter(content)
+
+  if (description === null) {
+    fail(`persona ${persona} agent source MUST carry a description`)
+  }
+
+  return [
+    '---',
+    `name: pan-${persona}`,
+    `description: ${JSON.stringify(limitDescription(description))}`,
+    'user-invocable: false',
+    '---',
+    body,
+  ].join('\n')
+}
+
+// Mirrors TRANSLATED_HOST_TOOL_TERMS and hostToolTranslations in
+// src/lib/host-tools.ts.
+const TRANSLATED_HOST_TOOL_TERMS = ['question_tool']
+
+function hostToolTranslations(sourceRoot, host) {
+  const registry = readJson(
+    path.join(sourceRoot, 'governance', 'registries', 'host_tools.json'),
+  )
+
+  return TRANSLATED_HOST_TOOL_TERMS.flatMap((term) => {
+    const tools = registry.terms?.[term]?.tools ?? {}
+    const cursorName = tools.cursor?.[0]
+    const hostName = tools[host]?.[0]
+
+    return cursorName && hostName && cursorName !== hostName
+      ? [[cursorName, hostName]]
+      : []
+  })
+}
+
+function translateHostToolNames(content, replacements) {
+  return replacements.reduce(
+    (text, [cursorName, hostName]) =>
+      text.replaceAll(`\`${cursorName}\``, `\`${hostName}\``),
+    content,
+  )
+}
+
+/** Mirrors projectionOwnedName in src/lib/projection/manifest.ts. */
+function projectionOwnedName(target) {
+  return target.startsWith(SKILLS_ROOT)
+    ? (target.slice(SKILLS_ROOT.length).split('/')[0] ?? '')
+    : path.basename(target)
+}
+
 // Mirrors HOST_TARGET_PREFIXES and DEFAULT_PROJECT_HOSTS in
-// src/lib/projection.ts and src/lib/project-config/files.ts.
+// src/lib/projection/manifest.ts and src/lib/project-config/files.ts.
 const HOST_TARGET_PREFIXES = {
   shared: ['.agents/skills/'],
   cursor: ['.cursor/'],
@@ -439,7 +583,7 @@ function cursorSourceFiles(sourceRoot, hosts = DEFAULT_PROJECT_HOSTS) {
   // with a target-authored agent, command, or rule.
   for (const entry of expanded) {
     if (
-      !/^pan(-|creator\.)/u.test(path.basename(entry.relative)) &&
+      !/^pan(-|creator\.)/u.test(projectionOwnedName(entry.relative)) &&
       !entry.transforms.includes('hooks-merge')
     ) {
       fail(
@@ -1520,6 +1664,25 @@ function projectCursor() {
       content = projectCursorContent(content, entry.relative, harnessPrefix)
     }
 
+    if (entry.transforms.includes('vscode-instructions')) {
+      content = renderVscodeInstructions(content)
+    }
+
+    if (entry.transforms.includes('vscode-agent')) {
+      content = renderVscodeAgent(entry.variable, content)
+    }
+
+    if (entry.transforms.includes('skill-command')) {
+      content = renderCommandSkill(entry.variable, content)
+    }
+
+    if (entry.host !== 'cursor' && entry.host !== 'shared') {
+      content = translateHostToolNames(
+        content,
+        hostToolTranslations(sourceRoot, entry.host),
+      )
+    }
+
     if (mergesHooks) {
       content = mergeCursorHooksText(
         existsSync(destination) ? readFileSync(destination, 'utf8') : null,
@@ -1574,6 +1737,21 @@ function projectCursor() {
 
     if (existingDigest === previousDigest) {
       rmSync(destination)
+
+      // Mirrors removeEmptySkillFolder and pruneEmptyHostDirectories in
+      // src/lib/projection.ts: an emptied non-Cursor directory and its emptied
+      // parents go too, up to the target root.
+      let folder = path.dirname(destination)
+
+      while (
+        !relative.startsWith('.cursor/') &&
+        folder.startsWith(`${targetRoot}${path.sep}`) &&
+        existsSync(folder) &&
+        readdirSync(folder).length === 0
+      ) {
+        rmSync(folder, { recursive: true, force: true })
+        folder = path.dirname(folder)
+      }
     }
   }
 

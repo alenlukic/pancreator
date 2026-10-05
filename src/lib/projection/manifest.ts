@@ -28,6 +28,36 @@ export const HOST_TARGET_PREFIXES: Record<ProjectionHost, readonly string[]> = {
   vscode: ['.github/', '.vscode/', '.agents/skills/'],
 }
 
+/**
+ * `installation-paths` resolves harness path tokens, `policy-rule` renders a
+ * policy as a Cursor rule, and `hooks-merge` merges `.cursor/hooks.json`. The
+ * VS Code renderers convert a Cursor source: `vscode-instructions` turns a rule
+ * into an instruction file, `vscode-agent` a persona into a custom agent, and
+ * `skill-command` an operator command into a slash-only skill.
+ */
+export const PROJECTION_TRANSFORMS = [
+  'installation-paths',
+  'policy-rule',
+  'hooks-merge',
+  'vscode-instructions',
+  'vscode-agent',
+  'skill-command',
+] as const
+
+/** Skill folders hold the projected name; every other target is a file. */
+const SKILLS_ROOT = '.agents/skills/'
+
+/**
+ * The name a target claims in its host directory: the skill folder under
+ * `.agents/skills/`, else the file basename. It MUST carry the `pan` namespace
+ * in a target repository.
+ */
+export function projectionOwnedName(target: string): string {
+  return target.startsWith(SKILLS_ROOT)
+    ? (target.slice(SKILLS_ROOT.length).split('/')[0] ?? '')
+    : path.basename(target)
+}
+
 export interface ProjectionDefinition {
   id: string
   host: ProjectionHost
@@ -156,11 +186,8 @@ export function readProjectionManifest(root: string): ProjectionManifest {
       { code: 'INVALID_PROJECTION_MANIFEST' },
     )
     invariant(
-      transforms.every(
-        (transform) =>
-          transform === 'installation-paths' ||
-          transform === 'policy-rule' ||
-          transform === 'hooks-merge',
+      transforms.every((transform) =>
+        (PROJECTION_TRANSFORMS as readonly string[]).includes(transform),
       ),
       `projection ${entry.id}.transforms contains an unsupported transform`,
       { code: 'INVALID_PROJECTION_MANIFEST' },

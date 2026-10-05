@@ -213,6 +213,30 @@ export function allHostToolNames(
 }
 
 /**
+ * Terms whose Cursor tool name projected prose MAY rewrite to another host's
+ * name. Each maps one tool to one tool with the same contract; the subagent,
+ * await, and shell terms differ in contract per host, so prose names them.
+ */
+export const TRANSLATED_HOST_TOOL_TERMS = [
+  'question_tool',
+] as const satisfies readonly HostToolTerm[]
+
+/** Cursor-to-host tool name pairs for every translated term `host` names. */
+export function hostToolTranslations(
+  registry: HostToolRegistry,
+  host: AgentHost,
+): Array<[string, string]> {
+  return TRANSLATED_HOST_TOOL_TERMS.flatMap((term): Array<[string, string]> => {
+    const cursorName = registry.terms[term].tools.cursor[0]
+    const hostName = registry.terms[term].tools[host][0]
+
+    return cursorName && hostName && cursorName !== hostName
+      ? [[cursorName, hostName]]
+      : []
+  })
+}
+
+/**
  * Registry drift against the owning policy: each host tool name MUST appear in
  * that policy's summary or instructions, so the rule an agent reads names the
  * tool the hooks enforce.

@@ -121,6 +121,68 @@ test('a host-bound projection renders only while its host is enabled', () => {
   assert.deepEqual(validateProjectionDrift(root).errors, [])
 })
 
+test('enabling VS Code projects its surfaces and leaves the Cursor tree unchanged', () => {
+  const root = createFixture()
+  const cursorTree = () =>
+    syncCursorProjection(root)
+      .filter((change) => change.path.startsWith('.cursor/'))
+      .map((change) => [change.path, change.sha256])
+
+  setHosts(root, ['cursor'])
+  syncCursorProjection(root, { write: true })
+
+  const cursorOnly = cursorTree()
+
+  setHosts(root, ['cursor', 'vscode'])
+  syncCursorProjection(root, { write: true })
+  assert.deepEqual(cursorTree(), cursorOnly)
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+
+  const read = (relative: string) =>
+    readFileSync(path.join(root, relative), 'utf8')
+
+  assert.match(
+    read('.agents/skills/pan-status/SKILL.md'),
+    /^---\nname: pan-status\ndescription: ".+"\ndisable-model-invocation: true\n---\n/u,
+  )
+  assert.match(
+    read('.agents/skills/pan-status/SKILL.md'),
+    /\.\/bin\/pan status/u,
+  )
+  assert.match(
+    read('.github/agents/pan-coder.agent.md'),
+    /^---\nname: pan-coder\ndescription: ".+"\nuser-invocable: false\n---\n/u,
+  )
+
+  const rule = read('.github/instructions/pancreator.instructions.md')
+
+  assert.match(rule, /^---\ndescription: ".+"\napplyTo: '\*\*'\n---\n/u)
+  assert.match(rule, /`vscode\/askQuestions`/u)
+  assert.doesNotMatch(rule, /`cursor\/ask_question`/u)
+  assert.match(
+    read('.github/instructions/pan-chat-output.instructions.md'),
+    /^# COMMS-001 · /mu,
+  )
+
+  const hooks = JSON.parse(read('.github/hooks/pan-hooks.json')) as {
+    version: number
+    hooks: Record<string, Array<{ bash: string }>>
+  }
+
+  assert.equal(hooks.version, 1)
+  assert.ok(
+    Object.values(hooks.hooks)
+      .flat()
+      .every((entry) => entry.bash.startsWith('bin/pan-hook-adapter ')),
+  )
+
+  setHosts(root, ['cursor'])
+  syncCursorProjection(root, { write: true })
+  assert.equal(existsSync(path.join(root, '.agents')), false)
+  assert.equal(existsSync(path.join(root, '.github')), false)
+  assert.deepEqual(cursorTree(), cursorOnly)
+})
+
 test('the manifest rejects a host target outside its projection roots', () => {
   const root = createFixture()
 

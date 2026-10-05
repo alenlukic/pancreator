@@ -4,6 +4,21 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import {
+  projectCursorContent,
+  renderPolicyCursorRule,
+} from '../../src/lib/cursor-content.js'
+import {
+  hostToolTranslations,
+  loadHostToolRegistry,
+} from '../../src/lib/host-tools.js'
+import { loadPolicyCatalog } from '../../src/lib/policies.js'
+import {
+  renderCommandSkill,
+  renderVscodeAgent,
+  renderVscodeInstructions,
+  translateHostToolNames,
+} from '../../src/lib/projection/host-content.js'
 import { createFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -86,10 +101,95 @@ test('the installer projects a host-bound target only for enabled hosts and remo
   assert.equal(existsSync(path.join(target, VSCODE_TARGET)), true)
 
   project(['cursor'], true)
-  assert.equal(existsSync(path.join(target, VSCODE_TARGET)), false)
+  assert.equal(existsSync(path.join(target, '.github')), false)
   assert.equal(
     existsSync(path.join(target, '.cursor', 'rules', 'pancreator.mdc')),
     true,
+  )
+})
+
+test('installer and compiled VS Code renderers stay byte-identical', () => {
+  const source = createFixture()
+  const work = createTestTempDirectory('pancreator-installer-vscode-')
+  const target = path.join(work, 'target')
+  const config = path.join(work, 'config.json')
+
+  mkdirSync(target, { recursive: true })
+  writeFileSync(
+    config,
+    JSON.stringify({
+      ...readJson(path.join(source, 'config.json')),
+      hosts: ['cursor', 'vscode'],
+    }),
+  )
+  installSupport([
+    'project-cursor',
+    '--source-root',
+    source,
+    '--target-root',
+    target,
+    '--manifest-out',
+    path.join(work, 'cursor-manifest.json'),
+    '--persona-config',
+    config,
+  ])
+
+  const read = (root: string, relative: string) =>
+    readFileSync(path.join(root, relative), 'utf8')
+  const translations = hostToolTranslations(
+    loadHostToolRegistry(source),
+    'vscode',
+  )
+  const policy = loadPolicyCatalog(source).get('COMMS-001')
+
+  assert.ok(policy)
+  assert.equal(
+    read(target, '.agents/skills/pan-status/SKILL.md'),
+    translateHostToolNames(
+      renderCommandSkill(
+        'pan-status',
+        projectCursorContent(
+          read(source, 'library/cursor/commands/pan-status.md'),
+          '.agents/skills/pan-status/SKILL.md',
+          'embedded',
+        ),
+      ),
+      translations,
+    ),
+  )
+  assert.equal(
+    read(target, '.github/agents/pan-coder.agent.md'),
+    translateHostToolNames(
+      renderVscodeAgent(
+        'coder',
+        projectCursorContent(
+          read(source, 'library/cursor/agents/coder.md'),
+          '.github/agents/pan-coder.agent.md',
+          'embedded',
+        ),
+      ),
+      translations,
+    ),
+  )
+  assert.equal(
+    read(target, '.github/instructions/pancreator.instructions.md'),
+    translateHostToolNames(
+      renderVscodeInstructions(
+        read(source, 'library/cursor/rules/pancreator-embedded.mdc'),
+      ),
+      translations,
+    ),
+  )
+  assert.equal(
+    read(target, '.github/instructions/pan-chat-output.instructions.md'),
+    translateHostToolNames(
+      renderVscodeInstructions(renderPolicyCursorRule(policy)),
+      translations,
+    ),
+  )
+  assert.match(
+    read(target, '.github/hooks/pan-hooks.json'),
+    /"bash": "\.pancreator\/bin\/pan-hook-adapter --fail-closed preToolUse/u,
   )
 })
 

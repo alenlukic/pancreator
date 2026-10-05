@@ -25,12 +25,28 @@ import {
   panCommand,
 } from './project-config.js'
 import { mergeCursorHooksText } from './cursor-hooks-merge.js'
+import { hostToolTranslations, loadHostToolRegistry } from './host-tools.js'
+import {
+  renderCommandSkill,
+  renderVscodeAgent,
+  renderVscodeInstructions,
+  translateHostToolNames,
+} from './projection/host-content.js'
 import {
   expandProjection,
+  projectionOwnedName,
   projectionTargetPath,
   projectsForHosts,
   readProjectionManifest,
 } from './projection/manifest.js'
+
+function variableFor(id: string, variable: string | null): string {
+  invariant(variable !== null, `projection ${id} requires a name variable`, {
+    code: 'INVALID_PROJECTION_MANIFEST',
+  })
+
+  return variable
+}
 
 export {
   projectionTargetPath,
@@ -52,7 +68,42 @@ const PANCREATOR_OWNED_DIRECTORIES = [
   '.github/agents',
   '.github/hooks',
   '.github/instructions',
+  '.agents/skills',
 ] as const
+
+/**
+ * Remove each non-Cursor owned directory a sync left empty, then its parent
+ * when that is empty too. An empty directory carries no target content, and
+ * `.cursor/` keeps its existing layout.
+ */
+function pruneEmptyHostDirectories(root: string): void {
+  for (const relativeDirectory of PANCREATOR_OWNED_DIRECTORIES) {
+    if (relativeDirectory.startsWith('.cursor/')) {
+      continue
+    }
+
+    const directory = projectionTargetPath(root, relativeDirectory)
+
+    for (const candidate of [directory, path.dirname(directory)]) {
+      if (fileExists(candidate) && readdirSync(candidate).length === 0) {
+        rmSync(candidate, { recursive: true, force: true })
+      }
+    }
+  }
+}
+
+/** A removed skill leaves its `pan-*` folder behind unless it is now empty. */
+function removeEmptySkillFolder(target: string, targetPath: string): void {
+  const folder = path.dirname(targetPath)
+
+  if (
+    target.startsWith('.agents/skills/') &&
+    fileExists(folder) &&
+    readdirSync(folder).length === 0
+  ) {
+    rmSync(folder, { recursive: true, force: true })
+  }
+}
 
 /** True when a Cursor basename belongs to Pancreator's reserved namespace. */
 export function isPancreatorOwnedCursorBasename(basename: string): boolean {
@@ -264,7 +315,7 @@ function renderProjections(
       // Cursor fixes some filenames (`mcp.json`) that cannot be namespaced.
       invariant(
         !projection.installation_modes.includes('embedded') ||
-          PANCREATOR_OWNED_BASENAME.test(path.basename(entry.target)) ||
+          PANCREATOR_OWNED_BASENAME.test(projectionOwnedName(entry.target)) ||
           projection.transforms.includes('hooks-merge'),
         `projection ${projection.id} target MUST use a pan-namespaced filename: ${entry.target}`,
         { code: 'INVALID_PROJECTION_MANIFEST' },
@@ -322,6 +373,31 @@ function renderProjections(
           entry.target,
           mode,
           harnessPrefix,
+        )
+      }
+
+      if (projection.transforms.includes('vscode-instructions')) {
+        content = renderVscodeInstructions(content)
+      }
+
+      if (projection.transforms.includes('vscode-agent')) {
+        content = renderVscodeAgent(
+          variableFor(projection.id, entry.variable),
+          content,
+        )
+      }
+
+      if (projection.transforms.includes('skill-command')) {
+        content = renderCommandSkill(
+          variableFor(projection.id, entry.variable),
+          content,
+        )
+      }
+
+      if (projection.host !== 'cursor' && projection.host !== 'shared') {
+        content = translateHostToolNames(
+          content,
+          hostToolTranslations(loadHostToolRegistry(root), projection.host),
         )
       }
 
@@ -553,18 +629,22 @@ export function syncCursorProjection(
       continue
     }
 
+    const skills = relativeDirectory === '.agents/skills'
+
     for (const entry of readdirSync(absoluteDirectory, {
       withFileTypes: true,
     })) {
       if (
-        !entry.isFile() ||
+        !(skills ? entry.isDirectory() : entry.isFile()) ||
         !isPancreatorOwnedCursorBasename(entry.name) ||
         entry.name.includes(VARIANT_SEPARATOR)
       ) {
         continue
       }
 
-      const target = `${relativeDirectory}/${entry.name}`
+      const target = skills
+        ? `${relativeDirectory}/${entry.name}/SKILL.md`
+        : `${relativeDirectory}/${entry.name}`
 
       if (expected.has(target) || explicitRemovals.has(target)) {
         continue
@@ -608,6 +688,7 @@ export function syncCursorProjection(
 
     if (options.write) {
       rmSync(targetPath, { force: true })
+      removeEmptySkillFolder(removal.target, targetPath)
     }
 
     changes.push({
@@ -619,6 +700,10 @@ export function syncCursorProjection(
       sha256: '',
       removed: true,
     })
+  }
+
+  if (options.write && changes.some((change) => change.removed)) {
+    pruneEmptyHostDirectories(root)
   }
 
   return changes.sort((left, right) => left.path.localeCompare(right.path))

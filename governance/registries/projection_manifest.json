@@ -102,6 +102,96 @@
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
       "transforms": ["installation-paths", "hooks-merge"]
+    },
+    {
+      "id": "vscode-command-skills",
+      "host": "vscode",
+      "format_difference": "Cursor also reads .agents/skills, so this target becomes shared and replaces .cursor/commands once probes PR-1 and PR-2 show Cursor invokes it identically; until then a shared target would list each command twice in Cursor.",
+      "source": "library/cursor/commands/{command}.md",
+      "target": ".agents/skills/{command}/SKILL.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["installation-paths", "skill-command"]
+    },
+    {
+      "id": "vscode-agents",
+      "host": "vscode",
+      "format_difference": "VS Code and Copilot CLI custom agents are .agent.md files with name and user-invocable; the copilot executor passes the model and the tool allowlist on its command line.",
+      "source": "library/cursor/agents/{persona}.md",
+      "target": ".github/agents/pan-{persona}.agent.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["installation-paths", "vscode-agent"]
+    },
+    {
+      "id": "vscode-self-development-instructions",
+      "host": "vscode",
+      "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
+      "source": "library/cursor/rules/pancreator-self-development.mdc",
+      "target": ".github/instructions/pancreator.instructions.md",
+      "installation_modes": ["self_development"],
+      "generated_fields": [],
+      "transforms": ["vscode-instructions"]
+    },
+    {
+      "id": "vscode-embedded-instructions",
+      "host": "vscode",
+      "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
+      "source": "library/cursor/rules/pancreator-embedded.mdc",
+      "target": ".github/instructions/pancreator.instructions.md",
+      "installation_modes": ["embedded"],
+      "generated_fields": [],
+      "transforms": ["vscode-instructions"]
+    },
+    {
+      "id": "vscode-principles-policy-instructions",
+      "host": "vscode",
+      "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
+      "source": "governance/policies/PRINCIPLES-001.json",
+      "target": ".github/instructions/pan-operating-principles.instructions.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule", "vscode-instructions"]
+    },
+    {
+      "id": "vscode-delegation-policy-instructions",
+      "host": "vscode",
+      "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
+      "source": "governance/policies/DELEGATE-001.json",
+      "target": ".github/instructions/pan-subagent-supervision.instructions.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule", "vscode-instructions"]
+    },
+    {
+      "id": "vscode-browser-policy-instructions",
+      "host": "vscode",
+      "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
+      "source": "governance/policies/BROWSER-001.json",
+      "target": ".github/instructions/pan-browser-isolation.instructions.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule", "vscode-instructions"]
+    },
+    {
+      "id": "vscode-comms-policy-instructions",
+      "host": "vscode",
+      "format_difference": "VS Code instruction files are .instructions.md with applyTo frontmatter.",
+      "source": "governance/policies/COMMS-001.json",
+      "target": ".github/instructions/pan-chat-output.instructions.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule", "vscode-instructions"]
+    },
+    {
+      "id": "vscode-hooks",
+      "host": "vscode",
+      "format_difference": "Copilot hook files use lowerCamel event names, a bash command, and timeoutSec, and route every script through bin/pan-hook-adapter.",
+      "source": "library/vscode/hooks.json",
+      "target": ".github/hooks/pan-hooks.json",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["installation-paths"]
     }
   ]
 }

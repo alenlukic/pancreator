@@ -851,6 +851,11 @@ ensure_target_git_exclude() {
 /.cursor/hooks/state/
 /.cursor/rules/pan-*.mdc
 /.cursor/rules/pancreator.mdc
+/.agents/skills/pan-*/
+/.github/agents/pan-*.agent.md
+/.github/hooks/pan-*.json
+/.github/instructions/pan-*.instructions.md
+/.github/instructions/pancreator.instructions.md
 EXCLUDE
 
     printf '%s\n' "$GIT_EXCLUDE_END"
