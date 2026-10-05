@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -18,6 +18,28 @@ function createAgentFixture(frontmatter: string): string {
 
   return root
 }
+
+test('a registry root also rejects the question tools of other hosts', () => {
+  const root = createAgentFixture("disallowedTools: ['ask_user']")
+  const registry = path.join(root, 'governance', 'registries')
+
+  try {
+    assert.deepEqual(validateQuestionToolAccess(root), [])
+
+    mkdirSync(registry, { recursive: true })
+    copyFileSync(
+      path.join(process.cwd(), 'governance/registries/host_tools.json'),
+      path.join(registry, 'host_tools.json'),
+    )
+
+    const errors = validateQuestionToolAccess(root)
+
+    assert.equal(errors.length, 1)
+    assert.match(errors[0] ?? '', /'ask_user'/u)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 test('a disallowed question method fails with the file and identifier', () => {
   const disallowed = createAgentFixture(

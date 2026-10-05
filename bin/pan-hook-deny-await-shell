@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-# Deny the AwaitShell (and Await) tool for every Pancreator agent.
-# Also deny a Task call unless tool_input.run_in_background is true.
-# Reads a Cursor preToolUse JSON payload from stdin and prints a preToolUse
-# permission response to stdout. Exits 0 always; Cursor blocks the action on
-# invalid output from a permission hook. A fault in the Task path allows the
-# Task, while AwaitShell and Await stay denied.
+# Deny every platform await tool for every Pancreator agent, and deny a
+# subagent launch that does not run in the background.
+# Reads a Cursor-shaped preToolUse JSON payload from stdin and prints a
+# Cursor preToolUse permission response to stdout. Exits 0 always; Cursor
+# blocks the action on invalid output from a permission hook.
+#
+# PAN_HOOK_HOST names the host whose tool names apply (default cursor).
+# bin/pan-hook-adapter sets it and translates another host's payload and
+# response. governance/registries/host_tools.json maps each host's tools.
+#
+# A fault in a background-capable subagent path allows the launch, while
+# the await tools stay denied. A subagent tool with no background mode is
+# always denied.
 set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
 
 input="$(cat 2>/dev/null || true)"
 
@@ -17,13 +27,36 @@ deny_await() {
 
 # The payload travels in the environment because the program itself is the
 # python3 -c argument; stdin cannot carry both.
-PAN_HOOK_PAYLOAD="$input" PAN_HOOK_AWAIT_MESSAGE="$await_message" python3 -c '
+PAN_HOOK_PAYLOAD="$input" PAN_HOOK_AWAIT_MESSAGE="$await_message" \
+  PAN_HOOK_HOST_TOOLS="$HARNESS_ROOT/governance/registries/host_tools.json" python3 -c '
 import json, os, sys
+
+# Used only when the registry is unreadable. tests/regression/await-shell-hook
+# asserts that it equals governance/registries/host_tools.json.
+FALLBACK = {
+    "cursor": {"await": ["AwaitShell", "Await"], "subagent": ["Task"],
+               "background": {"argument": "run_in_background", "value": True}},
+    "vscode": {"await": [], "subagent": ["runSubagent"], "background": None},
+    "copilot-cli": {"await": [], "subagent": ["task"], "background": None},
+}
 
 allow = json.dumps({"permission": "allow"})
 
 def deny(user_message, agent_message):
     print(json.dumps({"permission": "deny", "user_message": user_message, "agent_message": agent_message}))
+
+def host_rules(host):
+    try:
+        with open(os.environ["PAN_HOOK_HOST_TOOLS"], encoding="utf-8") as handle:
+            terms = json.load(handle)["terms"]
+        launch = terms["subagent_launch"]
+        return {
+            "await": list(terms["platform_await"]["tools"][host]),
+            "subagent": list(launch["tools"][host]),
+            "background": (launch.get("background") or {}).get(host),
+        }
+    except Exception:
+        return FALLBACK.get(host, FALLBACK["cursor"])
 
 try:
     payload = json.loads(os.environ.get("PAN_HOOK_PAYLOAD", ""))
@@ -32,12 +65,29 @@ except Exception:
 if not isinstance(payload, dict):
     sys.exit(3)
 
+host = os.environ.get("PAN_HOOK_HOST", "cursor")
+rules = host_rules(host)
 tool_name = payload.get("tool_name")
-if tool_name in ("AwaitShell", "Await"):
-    deny("AwaitShell is banned for Pancreator agents.", os.environ["PAN_HOOK_AWAIT_MESSAGE"])
+
+if tool_name in rules["await"]:
+    message = os.environ["PAN_HOOK_AWAIT_MESSAGE"]
+    if host == "cursor":
+        deny("AwaitShell is banned for Pancreator agents.", message)
+    else:
+        message = message.replace("AwaitShell is banned", tool_name + " is a platform await and is banned", 1)
+        deny(tool_name + " is banned for Pancreator agents.", message)
     sys.exit(0)
 
-if tool_name == "Task":
+if tool_name in rules["subagent"]:
+    background = rules["background"]
+    if background is None:
+        message = (
+            tool_name + " waits on the subagent in the foreground, which DELEGATE-001 forbids. "
+            "Launch a stage worker with `pan delegate <run-id> --headless` as a wrapped background "
+            "command and observe it with `pan watch <run-id>`."
+        )
+        deny("A foreground " + tool_name + " launch is denied; use pan delegate --headless.", message)
+        sys.exit(0)
     tool_input = payload.get("tool_input", {})
     if tool_input is None:
         tool_input = {}
@@ -50,14 +100,16 @@ if tool_name == "Task":
     if not isinstance(tool_input, dict):
         print(allow)
         sys.exit(0)
-    if tool_input.get("run_in_background") is not True:
+    argument = background["argument"]
+    if tool_input.get(argument) is not background["value"]:
+        flag = argument + ": " + json.dumps(background["value"])
         message = (
-            "Task must be launched with run_in_background: true. "
-            "Relaunch with run_in_background: true, then observe the subagent: "
+            tool_name + " must be launched with " + flag + ". "
+            "Relaunch with " + flag + ", then observe the subagent: "
             "for a run worker use `pan watch <run-id> --mark-background --handle <agent-id>`; "
             "for a standalone subagent use `pan watch --agent <agent-id>`."
         )
-        deny("A foreground Task launch is denied; relaunch with run_in_background: true.", message)
+        deny("A foreground " + tool_name + " launch is denied; relaunch with " + flag + ".", message)
         sys.exit(0)
 
 print(allow)

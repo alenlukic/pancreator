@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+# Run a Cursor-shaped Pancreator hook for a VS Code or Copilot CLI hook event.
+# Usage: pan-hook-adapter [--fail-closed] <event> <pan-hook-script> [args...]
+# <event> is the Cursor event name the script expects: preToolUse,
+# postToolUse, postToolUseFailure, beforeShellExecution, beforeSubmitPrompt,
+# stop, subagentStart, or subagentStop.
+#
+# The adapter reads the host payload from stdin, detects its dialect
+# (Copilot CLI camelCase or VS Code snake_case), rewrites it into the Cursor
+# payload the script reads, and runs the script with PAN_HOOK_HOST set to the
+# dialect. It then translates the script's Cursor response:
+#   - allow, `{}`, and `{"continue":true}` print nothing, because a Copilot
+#     `permissionDecision: allow` would pre-approve the call;
+#   - a deny prints the agent message on stderr and exits 2, which both hosts
+#     honour as a deny;
+#   - additional context and a stop follow-up become the VS Code
+#     `hookSpecificOutput` and `decision: block` shapes. Copilot CLI gets
+#     nothing until probe PR-24 confirms its output contract.
+# With --fail-closed, a script that crashes or prints no valid JSON denies.
+# VS Code discards hook matchers, so beforeShellExecution runs the script
+# only for the host's shell tool from governance/registries/host_tools.json.
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
+
+fail_closed=false
+if [[ "${1:-}" == "--fail-closed" ]]; then
+  fail_closed=true
+  shift
+fi
+
+event="${1:-}"
+script="${2:-}"
+shift 2 2>/dev/null || true
+
+input="$(cat 2>/dev/null || true)"
+
+if [[ ! "$script" =~ ^pan-hook-[a-z-]+$ ]] || [[ "$script" == "pan-hook-adapter" ]] ||
+  [[ ! -x "$SCRIPT_DIR/$script" ]]; then
+  printf 'pan-hook-adapter: unknown hook script %s\n' "$script" >&2
+  [[ "$fail_closed" == true ]] && exit 2
+  exit 0
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  if [[ "$fail_closed" == true ]]; then
+    printf '%s\n' 'pan-hook-adapter: python3 is unavailable; denying as fail-closed.' >&2
+    exit 2
+  fi
+  exit 0
+fi
+
+PAN_HOOK_PAYLOAD="$input" \
+  PAN_HOOK_EVENT="$event" \
+  PAN_HOOK_SCRIPT="$SCRIPT_DIR/$script" \
+  PAN_HOOK_FAIL_CLOSED="$fail_closed" \
+  PAN_HOOK_HOST_TOOLS="$HARNESS_ROOT/governance/registries/host_tools.json" \
+  python3 - "$@" <<'PYTHON_EOF'
+import json
+import os
+import subprocess
+import sys
+
+# Used only when the registry is unreadable; mirrors its `shell` term.
+FALLBACK_SHELL_TOOLS = {"vscode": ["run_in_terminal"], "copilot-cli": ["bash"]}
+COPILOT_KEYS = ("toolName", "toolArgs", "toolResult", "sessionId", "transcriptPath")
+
+event = os.environ.get("PAN_HOOK_EVENT", "")
+fail_closed = os.environ.get("PAN_HOOK_FAIL_CLOSED") == "true"
+
+
+def deny(message):
+    sys.stderr.write(message.strip() + "\n")
+    sys.exit(2)
+
+
+def finish_without_output():
+    sys.exit(0)
+
+
+def parse_json(text):
+    try:
+        return json.loads(text)
+    except Exception:
+        return None
+
+
+def shell_tools(dialect):
+    try:
+        with open(os.environ["PAN_HOOK_HOST_TOOLS"], encoding="utf-8") as handle:
+            return list(json.load(handle)["terms"]["shell"]["tools"][dialect])
+    except Exception:
+        return FALLBACK_SHELL_TOOLS.get(dialect, [])
+
+
+def first(payload, *keys):
+    for key in keys:
+        if payload.get(key) is not None:
+            return payload[key]
+    return None
+
+
+def tool_input_of(value):
+    if isinstance(value, str):
+        parsed = parse_json(value)
+        return parsed if isinstance(parsed, dict) else value
+    return value
+
+
+def normalize(payload, dialect):
+    """Rewrite a host payload into the Cursor fields the scripts read."""
+    cwd = payload.get("cwd")
+    cursor = {
+        "hook_event_name": event,
+        "host": dialect,
+        "conversation_id": first(payload, "sessionId", "session_id"),
+        "transcript_path": first(payload, "transcriptPath", "transcript_path"),
+        "tool_name": first(payload, "toolName", "tool_name"),
+        "tool_input": tool_input_of(first(payload, "toolArgs", "tool_input")),
+        "tool_use_id": first(payload, "toolCallId", "tool_use_id"),
+        "tool_output": first(payload, "toolResult", "tool_response"),
+        "subagent_id": first(payload, "agentId", "agent_id"),
+        "subagent_type": first(payload, "agentName", "agent_type"),
+        "prompt": payload.get("prompt"),
+        "workspace_roots": [cwd] if isinstance(cwd, str) else [],
+    }
+    if event == "stop":
+        cursor["status"] = "completed"
+        cursor["loop_count"] = 1 if payload.get("stop_hook_active") is True else 0
+    return {key: value for key, value in cursor.items() if value is not None}
+
+
+payload = parse_json(os.environ.get("PAN_HOOK_PAYLOAD", ""))
+if not isinstance(payload, dict):
+    if fail_closed:
+        deny("Pancreator hook could not read the hook payload; denying as fail-closed.")
+    finish_without_output()
+
+dialect = "copilot-cli" if any(key in payload for key in COPILOT_KEYS) else "vscode"
+cursor_payload = normalize(payload, dialect)
+
+if event == "beforeShellExecution":
+    if cursor_payload.get("tool_name") not in shell_tools(dialect):
+        finish_without_output()
+    tool_input = cursor_payload.get("tool_input")
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    cursor_payload = {
+        "hook_event_name": event,
+        "host": dialect,
+        "command": command if isinstance(command, str) else "",
+    }
+
+try:
+    result = subprocess.run(
+        [os.environ["PAN_HOOK_SCRIPT"], *sys.argv[1:]],
+        input=json.dumps(cursor_payload),
+        capture_output=True,
+        text=True,
+        timeout=25,
+        env={**os.environ, "PAN_HOOK_HOST": dialect},
+    )
+    response = parse_json(result.stdout.strip().splitlines()[-1]) if result.stdout.strip() else None
+except Exception:
+    response = None
+
+if not isinstance(response, dict):
+    if fail_closed:
+        deny("Pancreator hook failed to evaluate the call; denying as fail-closed.")
+    finish_without_output()
+
+if response.get("permission") == "deny":
+    deny(str(response.get("agent_message") or response.get("user_message") or "Denied by a Pancreator hook."))
+
+output = None
+context = response.get("additional_context")
+followup = response.get("followup_message")
+
+if dialect == "vscode" and isinstance(context, str) and context:
+    hook_event = "UserPromptSubmit" if event == "beforeSubmitPrompt" else "PostToolUse"
+    output = {"hookSpecificOutput": {"hookEventName": hook_event, "additionalContext": context}}
+elif dialect == "vscode" and event == "stop" and isinstance(followup, str) and followup:
+    output = {"decision": "block", "reason": followup}
+
+if output is not None:
+    print(json.dumps(output))
+PYTHON_EOF
+status=$?
+
+if [[ "$status" -ne 0 && "$status" -ne 2 ]]; then
+  [[ "$fail_closed" == true ]] && {
+    printf '%s\n' 'pan-hook-adapter: internal error; denying as fail-closed.' >&2
+    exit 2
+  }
+  exit 0
+fi
+
+exit "$status"

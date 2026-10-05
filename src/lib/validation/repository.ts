@@ -61,6 +61,7 @@ import {
   validateAwaitShellBan,
   validateGovernance,
   validateHarnessInstructionCoverage,
+  validateHostToolRegistry,
   validateLookupRowDelivery,
   validatePolicyAudienceDelivery,
   validatePolicyLookupCoverage,
@@ -184,6 +185,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     warnings.push(primerFreshness.message)
   }
 
+  errors.push(...validateHostToolRegistry(root))
   errors.push(...validateQuestionToolAccess(root))
   errors.push(...validateAwaitShellBan(root))
   errors.push(...validateShellMonitor(root))

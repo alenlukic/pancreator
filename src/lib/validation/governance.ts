@@ -13,7 +13,13 @@ import {
   policyInstructionAppliesToCard,
 } from '../policy-instructions.js'
 import { STANDALONE_MODES } from '../governance-card/modes.js'
-import { resolvePolicies } from '../policies.js'
+import {
+  HOST_TOOLS_PATH,
+  allHostToolNames,
+  hostToolPolicyIssues,
+  loadHostToolRegistry,
+} from '../host-tools.js'
+import { loadPolicyCatalog, resolvePolicies } from '../policies.js'
 import { collectAwaitShellBanIssues } from '../validators/await-shell-ban.js'
 import { collectShellMonitorIssues } from '../validators/shell-monitor.js'
 import type { Policy, PolicyLookupRow, PolicyLookupTable } from '../types.js'
@@ -615,7 +621,7 @@ export function validatePolicyLookupDependencies(
   }
 }
 
-const QUESTION_TOOL_IDENTIFIERS = [
+const FALLBACK_QUESTION_TOOL_IDENTIFIERS = [
   'cursor/ask_question',
   'ask_question',
   'askquestion',
@@ -624,7 +630,49 @@ const QUESTION_TOOL_IDENTIFIERS = [
 const CURSOR_AGENT_FRONTMATTER_PATTERN =
   /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u
 
-/** Check that canonical Cursor agent frontmatter does not name the ACP method. */
+/**
+ * Lowercased question-tool identifiers of every host, from the host tool
+ * registry. A root without the registry falls back to the Cursor names;
+ * `validateHostToolRegistry` reports the missing file.
+ */
+function questionToolIdentifiers(root: string): string[] {
+  if (!fileExists(path.join(root, HOST_TOOLS_PATH))) {
+    return [...FALLBACK_QUESTION_TOOL_IDENTIFIERS]
+  }
+
+  const registry = loadHostToolRegistry(root)
+
+  return [
+    ...allHostToolNames(registry, 'question_tool'),
+    ...registry.terms.question_tool.aliases,
+  ].map((identifier) => identifier.toLowerCase())
+}
+
+/** Check the host tool registry shape and its agreement with each owning policy. */
+export function validateHostToolRegistry(root: string): string[] {
+  let registry
+
+  try {
+    registry = loadHostToolRegistry(root)
+  } catch (error) {
+    return [error instanceof Error ? error.message : String(error)]
+  }
+
+  const catalog = loadPolicyCatalog(root)
+
+  return hostToolPolicyIssues(registry, (policyId) => {
+    const policy = catalog.get(policyId)
+
+    return policy
+      ? [
+          policy.summary,
+          ...policy.instructions.map((instruction) => instruction.text),
+        ].join('\n')
+      : null
+  })
+}
+
+/** Check that canonical Cursor agent frontmatter does not name a host question tool. */
 export function validateQuestionToolAccess(root: string): string[] {
   const directory = path.join(root, 'library', 'cursor', 'agents')
 
@@ -641,6 +689,7 @@ export function validateQuestionToolAccess(root: string): string[] {
   }
 
   const errors: string[] = []
+  const identifiers = questionToolIdentifiers(root)
 
   for (const filename of filenames) {
     const absolute = path.join(directory, filename)
@@ -653,7 +702,7 @@ export function validateQuestionToolAccess(root: string): string[] {
     }
 
     const normalized = frontmatter.toLowerCase()
-    const identifier = QUESTION_TOOL_IDENTIFIERS.find((candidate) =>
+    const identifier = identifiers.find((candidate) =>
       normalized.includes(candidate),
     )
 
