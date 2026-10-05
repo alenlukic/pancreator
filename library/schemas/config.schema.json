@@ -475,6 +475,14 @@
       "description": "self_development is the Pancreator source checkout. embedded installs the harness at <target>/.pancreator. detached installs it outside the target tree, requiring an absolute workspace_root.",
       "enum": ["self_development", "embedded", "detached"]
     },
+    "hosts": {
+      "type": "array",
+      "description": "Operator clients that receive Pancreator projections. Shared targets project for every host. Absent means [\"cursor\"]. After a change, run `pan models --sync` in self-development or `./bin/update` in a target.",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["cursor", "vscode"] },
+      "default": ["cursor"]
+    },
     "worktrees": {
       "type": "object",
       "description": "Defaults for operator worktrees created by `pan worktree create` and `pan init --worktree`. Every field is optional. New worktrees use their exact names as branches. The code defaults to worktrees/operator and no setup commands.",

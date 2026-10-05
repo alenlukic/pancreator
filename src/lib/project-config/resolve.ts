@@ -19,12 +19,15 @@ import type {
 } from '../types.js'
 import {
   DEFAULT_AWAY_MODE_ACTIONS,
+  DEFAULT_PROJECT_HOSTS,
   DEFAULT_RETENTION_DAYS,
   DEFAULT_WORKTREE_BRANCH_PREFIX,
   DEFAULT_WORKTREE_ROOT,
   PROJECT_CONFIG_PATH,
+  PROJECT_HOSTS,
   harnessConfigName,
   readHarnessConfig,
+  type ProjectHost,
 } from './files.js'
 import {
   DEFAULT_HANDOFF_EFFORT,
@@ -115,6 +118,17 @@ export function readProjectConfig(root: string): ProjectConfig | null {
       value.installation_mode === 'embedded' ||
       value.installation_mode === 'detached',
     `${PROJECT_CONFIG_PATH}.installation_mode MUST be self_development, embedded, or detached when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.hosts === undefined ||
+      (Array.isArray(value.hosts) &&
+        value.hosts.length > 0 &&
+        new Set(value.hosts).size === value.hosts.length &&
+        value.hosts.every((host) =>
+          (PROJECT_HOSTS as readonly unknown[]).includes(host),
+        )),
+    `${PROJECT_CONFIG_PATH}.hosts MUST be a non-empty list of distinct hosts from ${PROJECT_HOSTS.join(', ')} when present.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
 
@@ -213,6 +227,11 @@ export function readInstallationIdentity(root: string): {
  */
 export function configuredWorkspaceRoot(root: string): string {
   return loadProjectConfig(root).workspace_root ?? '.'
+}
+
+/** Hosts `config.json` enables, `["cursor"]` when it names none. */
+export function enabledHosts(root: string): ProjectHost[] {
+  return [...(loadProjectConfig(root).hosts ?? DEFAULT_PROJECT_HOSTS)]
 }
 
 /**

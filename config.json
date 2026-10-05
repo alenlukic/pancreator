@@ -194,6 +194,7 @@
     "enabled": false
   },
   "installation_mode": "self_development",
+  "hosts": ["cursor"],
   "test_scratch": {
     "root": "~/Dev/scratch"
   },

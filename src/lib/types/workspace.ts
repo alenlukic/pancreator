@@ -279,6 +279,8 @@ export interface ProjectConfig {
    * the target's absolute path.
    */
   installation_mode?: 'self_development' | 'embedded' | 'detached'
+  /** Operator clients that receive projections. Absent means `["cursor"]`. */
+  hosts?: Array<'cursor' | 'vscode'>
   /** Autonomous blocker handling, snapshotted into each new run. */
   away_mode?: AwayModeConfig
   /** Calendar-triggered unattended work. Disabled in the shipped config. */

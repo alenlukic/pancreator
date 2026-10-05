@@ -1,10 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "policy": "CONTRACT-001",
   "regeneration_command": "./bin/pan models --sync",
   "projections": [
     {
       "id": "cursor-agents",
+      "host": "cursor",
+      "format_difference": "Cursor subagent frontmatter carries a Cursor model id and disallowedTools; VS Code .agent.md files take a tools list and user-invocable.",
       "source": "library/cursor/agents/{persona}.md",
       "target": ".cursor/agents/pan-{persona}.md",
       "installation_modes": ["self_development", "embedded"],
@@ -13,6 +15,8 @@
     },
     {
       "id": "cursor-commands",
+      "host": "cursor",
+      "format_difference": "Cursor lists operator commands from .cursor/commands; the shared .agents/skills target waits until probes PR-1 and PR-2 show Cursor invokes it identically.",
       "source": "library/cursor/commands/{command}.md",
       "target": ".cursor/commands/{command}.md",
       "installation_modes": ["self_development", "embedded"],
@@ -21,6 +25,8 @@
     },
     {
       "id": "cursor-self-development-rule",
+      "host": "cursor",
+      "format_difference": "Cursor rules are .mdc files with alwaysApply frontmatter.",
       "source": "library/cursor/rules/pancreator-self-development.mdc",
       "target": ".cursor/rules/pancreator.mdc",
       "installation_modes": ["self_development"],
@@ -29,6 +35,8 @@
     },
     {
       "id": "cursor-embedded-rule",
+      "host": "cursor",
+      "format_difference": "Cursor rules are .mdc files with alwaysApply frontmatter.",
       "source": "library/cursor/rules/pancreator-embedded.mdc",
       "target": ".cursor/rules/pancreator.mdc",
       "installation_modes": ["embedded"],
@@ -37,6 +45,8 @@
     },
     {
       "id": "cursor-principles-policy-rule",
+      "host": "cursor",
+      "format_difference": "Cursor rules are .mdc files with alwaysApply frontmatter.",
       "source": "governance/policies/PRINCIPLES-001.json",
       "target": ".cursor/rules/pan-operating-principles.mdc",
       "installation_modes": ["self_development", "embedded"],
@@ -45,6 +55,8 @@
     },
     {
       "id": "cursor-delegation-policy-rule",
+      "host": "cursor",
+      "format_difference": "Cursor rules are .mdc files with alwaysApply frontmatter.",
       "source": "governance/policies/DELEGATE-001.json",
       "target": ".cursor/rules/pan-subagent-supervision.mdc",
       "installation_modes": ["self_development", "embedded"],
@@ -53,6 +65,8 @@
     },
     {
       "id": "cursor-browser-policy-rule",
+      "host": "cursor",
+      "format_difference": "Cursor rules are .mdc files with alwaysApply frontmatter.",
       "source": "governance/policies/BROWSER-001.json",
       "target": ".cursor/rules/pan-browser-isolation.mdc",
       "installation_modes": ["self_development", "embedded"],
@@ -61,6 +75,8 @@
     },
     {
       "id": "cursor-comms-policy-rule",
+      "host": "cursor",
+      "format_difference": "Cursor rules are .mdc files with alwaysApply frontmatter.",
       "source": "governance/policies/COMMS-001.json",
       "target": ".cursor/rules/pan-chat-output.mdc",
       "installation_modes": ["self_development", "embedded"],
@@ -69,6 +85,8 @@
     },
     {
       "id": "cursor-mcp",
+      "host": "cursor",
+      "format_difference": "Cursor reads workspace MCP servers only from .cursor/mcp.json.",
       "source": "library/cursor/mcp.json",
       "target": ".cursor/mcp.json",
       "installation_modes": ["self_development"],
@@ -77,6 +95,8 @@
     },
     {
       "id": "cursor-hooks",
+      "host": "cursor",
+      "format_difference": "Cursor hooks use one merged .cursor/hooks.json with Cursor event names and payloads; Copilot hook files use other event names and route through bin/pan-hook-adapter.",
       "source": "library/cursor/hooks.json",
       "target": ".cursor/hooks.json",
       "installation_modes": ["self_development", "embedded"],

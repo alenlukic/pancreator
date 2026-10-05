@@ -353,7 +353,43 @@ function expandProjection(sourceRoot, projection) {
     })
 }
 
-function cursorSourceFiles(sourceRoot) {
+// Mirrors HOST_TARGET_PREFIXES and DEFAULT_PROJECT_HOSTS in
+// src/lib/projection.ts and src/lib/project-config/files.ts.
+const HOST_TARGET_PREFIXES = {
+  shared: ['.agents/skills/'],
+  cursor: ['.cursor/'],
+  vscode: ['.github/', '.vscode/', '.agents/skills/'],
+}
+const PROJECT_HOSTS = ['cursor', 'vscode']
+const DEFAULT_PROJECT_HOSTS = ['cursor']
+
+/** Hosts a target config enables, `["cursor"]` when it is absent or names none. */
+function enabledHostsFromConfig(configPath) {
+  if (!configPath || !existsSync(configPath)) {
+    return [...DEFAULT_PROJECT_HOSTS]
+  }
+
+  const hosts = readJson(configPath).hosts
+
+  if (hosts === undefined) {
+    return [...DEFAULT_PROJECT_HOSTS]
+  }
+
+  if (
+    !Array.isArray(hosts) ||
+    hosts.length === 0 ||
+    new Set(hosts).size !== hosts.length ||
+    !hosts.every((host) => PROJECT_HOSTS.includes(host))
+  ) {
+    fail(
+      `config.json hosts MUST be a non-empty list of distinct hosts from ${PROJECT_HOSTS.join(', ')}`,
+    )
+  }
+
+  return hosts
+}
+
+function cursorSourceFiles(sourceRoot, hosts = DEFAULT_PROJECT_HOSTS) {
   const manifest = readJson(
     path.join(
       sourceRoot,
@@ -363,20 +399,27 @@ function cursorSourceFiles(sourceRoot) {
     ),
   )
 
-  if (manifest.schema_version !== 2 || !Array.isArray(manifest.projections)) {
+  if (manifest.schema_version !== 3 || !Array.isArray(manifest.projections)) {
     fail('Invalid governance/registries/projection_manifest.json')
   }
 
+  const targetPrefixes = Object.values(HOST_TARGET_PREFIXES).flat()
+
   for (const projection of manifest.projections) {
+    const prefixes = projection
+      ? HOST_TARGET_PREFIXES[projection.host]
+      : undefined
+
     if (
       !projection ||
+      !prefixes ||
       typeof projection.source !== 'string' ||
-      projection.source.startsWith('.cursor/') ||
+      targetPrefixes.some((prefix) => projection.source.startsWith(prefix)) ||
       typeof projection.target !== 'string' ||
-      !projection.target.startsWith('.cursor/')
+      !prefixes.some((prefix) => projection.target.startsWith(prefix))
     ) {
       fail(
-        'Projection sources MUST be canonical and targets MUST be under .cursor/',
+        "Projection sources MUST be canonical and targets MUST sit under their host's projection roots",
       )
     }
   }
@@ -385,7 +428,8 @@ function cursorSourceFiles(sourceRoot) {
     .filter(
       (projection) =>
         Array.isArray(projection.installation_modes) &&
-        projection.installation_modes.includes('embedded'),
+        projection.installation_modes.includes('embedded') &&
+        (projection.host === 'shared' || hosts.includes(projection.host)),
     )
     .flatMap((projection) => expandProjection(sourceRoot, projection))
     .sort((left, right) => left.relative.localeCompare(right.relative))
@@ -732,6 +776,11 @@ function mergeEmbeddedProjectConfig(source, existing) {
       : source.active_config
 
   merged.active_config = activeConfig
+
+  // Host selection is an operator choice, so an update keeps it.
+  if (existing.hosts !== undefined) {
+    merged.hosts = existing.hosts
+  }
 
   for (const [name, sourceConfig] of Object.entries(source.configs ?? {})) {
     if (typeof sourceConfig !== 'object' || sourceConfig === null) {
@@ -1418,7 +1467,11 @@ function projectCursor() {
     sourceRoot,
   )
 
-  for (const entry of cursorSourceFiles(sourceRoot)) {
+  const hosts = enabledHostsFromConfig(
+    personaConfigPath ? path.resolve(personaConfigPath) : null,
+  )
+
+  for (const entry of cursorSourceFiles(sourceRoot, hosts)) {
     const destination = path.join(targetRoot, entry.relative)
     const mergesHooks = entry.transforms.includes('hooks-merge')
 

@@ -12,27 +12,47 @@ import { createCursorModelResolver } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
 import { policySectionDigest } from './policy-guidance.js'
 import type { Policy, PolicyDelivery } from './types.js'
-import {
-  fileExists,
-  isRecord,
-  readJson,
-  readText,
-  sha256,
-  writeTextAtomic,
-} from './io.js'
+import { fileExists, readText, sha256, writeTextAtomic } from './io.js'
 import {
   loadPipelineConfig,
   type LoadedPipelineConfig,
 } from './pipeline-config.js'
 import {
+  PROJECT_HOSTS,
+  enabledHosts,
   harnessPathPrefix,
   loadProjectConfig,
   panCommand,
 } from './project-config.js'
 import { mergeCursorHooksText } from './cursor-hooks-merge.js'
+import {
+  expandProjection,
+  projectionTargetPath,
+  projectsForHosts,
+  readProjectionManifest,
+} from './projection/manifest.js'
+
+export {
+  projectionTargetPath,
+  type ProjectionHost,
+} from './projection/manifest.js'
 
 /** Filenames Pancreator may own inside a target repository's `.cursor/`. */
 const PANCREATOR_OWNED_BASENAME = /^pan(-|creator\.)/u
+
+/**
+ * Projection directories whose `pan`-namespaced files Pancreator owns. A full
+ * sync removes each such file no enabled projection renders, which is also how
+ * disabling a host removes that host's projections.
+ */
+const PANCREATOR_OWNED_DIRECTORIES = [
+  '.cursor/agents',
+  '.cursor/commands',
+  '.cursor/rules',
+  '.github/agents',
+  '.github/hooks',
+  '.github/instructions',
+] as const
 
 /** True when a Cursor basename belongs to Pancreator's reserved namespace. */
 export function isPancreatorOwnedCursorBasename(basename: string): boolean {
@@ -45,22 +65,6 @@ export function isPancreatorOwnedCursorBasename(basename: string): boolean {
  * hyphen, such as `design-qa`.
  */
 const VARIANT_SEPARATOR = '--'
-
-interface ProjectionDefinition {
-  id: string
-  source: string
-  target: string
-  installation_modes: CursorInstallationMode[]
-  generated_fields: string[]
-  transforms: string[]
-}
-
-interface ProjectionManifest {
-  schema_version: 2
-  policy: string
-  regeneration_command: string
-  projections: ProjectionDefinition[]
-}
 
 interface RenderedProjection {
   id: string
@@ -93,187 +97,6 @@ export interface CursorProjectionChange {
 export interface ProjectionDriftResult {
   errors: string[]
   regeneration_command: string
-}
-
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === 'string')
-    : []
-}
-
-function readProjectionManifest(root: string): ProjectionManifest {
-  const manifestPath = path.join(
-    root,
-    'governance',
-    'registries',
-    'projection_manifest.json',
-  )
-  const value = readJson(manifestPath)
-
-  invariant(
-    isRecord(value) && value.schema_version === 2,
-    'projection manifest schema_version MUST be 2',
-    { code: 'INVALID_PROJECTION_MANIFEST' },
-  )
-  invariant(
-    value.policy === 'CONTRACT-001',
-    'projection manifest policy MUST be CONTRACT-001',
-    { code: 'INVALID_PROJECTION_MANIFEST' },
-  )
-  invariant(
-    typeof value.regeneration_command === 'string' &&
-      value.regeneration_command.length > 0,
-    'projection manifest regeneration_command MUST be non-empty',
-    { code: 'INVALID_PROJECTION_MANIFEST' },
-  )
-  invariant(
-    Array.isArray(value.projections),
-    'projection manifest projections MUST be an array',
-    { code: 'INVALID_PROJECTION_MANIFEST' },
-  )
-
-  const projections = value.projections.map((entry, index) => {
-    invariant(isRecord(entry), `projection ${index} MUST be an object`, {
-      code: 'INVALID_PROJECTION_MANIFEST',
-    })
-    invariant(
-      typeof entry.id === 'string' && entry.id.length > 0,
-      `projection ${index}.id MUST be non-empty`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-    invariant(
-      typeof entry.source === 'string' && entry.source.length > 0,
-      `projection ${entry.id}.source MUST be non-empty`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-    invariant(
-      typeof entry.target === 'string' && entry.target.startsWith('.cursor/'),
-      `projection ${entry.id}.target MUST be under .cursor/`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-    invariant(
-      !entry.source.startsWith('.cursor/'),
-      `projection ${entry.id}.source MUST NOT be under .cursor/`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-
-    const installationModes = stringArray(entry.installation_modes)
-    const generatedFields = stringArray(entry.generated_fields)
-    const transforms = stringArray(entry.transforms)
-
-    const sourceVariables = [...entry.source.matchAll(/\{([a-z_]+)\}/gu)].map(
-      (match) => match[1],
-    )
-    const targetVariables = [...entry.target.matchAll(/\{([a-z_]+)\}/gu)].map(
-      (match) => match[1],
-    )
-
-    invariant(
-      installationModes.length > 0 &&
-        installationModes.every(
-          (mode) => mode === 'self_development' || mode === 'embedded',
-        ),
-      `projection ${entry.id}.installation_modes MUST contain supported modes`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-    invariant(
-      generatedFields.every((field) => field === 'frontmatter.model'),
-      `projection ${entry.id}.generated_fields contains an unsupported field`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-    invariant(
-      transforms.every(
-        (transform) =>
-          transform === 'installation-paths' ||
-          transform === 'policy-rule' ||
-          transform === 'hooks-merge',
-      ),
-      `projection ${entry.id}.transforms contains an unsupported transform`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-    invariant(
-      sourceVariables.length <= 1 &&
-        targetVariables.length === sourceVariables.length &&
-        sourceVariables.every(
-          (variable, variableIndex) =>
-            variable === targetVariables[variableIndex],
-        ),
-      `projection ${entry.id} source and target variables MUST match`,
-      { code: 'INVALID_PROJECTION_MANIFEST' },
-    )
-
-    return {
-      id: entry.id,
-      source: entry.source,
-      target: entry.target,
-      installation_modes: installationModes as CursorInstallationMode[],
-      generated_fields: generatedFields,
-      transforms,
-    }
-  })
-
-  invariant(
-    new Set(projections.map((projection) => projection.id)).size ===
-      projections.length,
-    'projection manifest ids MUST be unique',
-    { code: 'INVALID_PROJECTION_MANIFEST' },
-  )
-
-  return {
-    schema_version: 2,
-    policy: value.policy,
-    regeneration_command: value.regeneration_command,
-    projections,
-  }
-}
-
-function expandProjection(
-  root: string,
-  projection: ProjectionDefinition,
-): Array<{ source: string; target: string; variable: string | null }> {
-  const match = /\{([a-z_]+)\}/u.exec(projection.source)
-
-  if (!match) {
-    return [
-      {
-        source: projection.source,
-        target: projection.target,
-        variable: null,
-      },
-    ]
-  }
-
-  const token = match[0]
-  const sourceDirectory = path.dirname(projection.source)
-  const basename = path.basename(projection.source)
-  const [prefix, suffix] = basename.split(token)
-
-  const absoluteDirectory = path.join(root, sourceDirectory)
-
-  if (!fileExists(absoluteDirectory)) {
-    return []
-  }
-
-  return readdirSync(absoluteDirectory, { withFileTypes: true })
-    .filter(
-      (entry) =>
-        entry.isFile() &&
-        entry.name.startsWith(prefix ?? '') &&
-        entry.name.endsWith(suffix ?? ''),
-    )
-    .map((entry) => {
-      const variable = entry.name.slice(
-        (prefix ?? '').length,
-        entry.name.length - (suffix ?? '').length,
-      )
-
-      return {
-        source: projection.source.replace(token, variable),
-        target: projection.target.replace(token, variable),
-        variable,
-      }
-    })
-    .sort((left, right) => left.target.localeCompare(right.target))
 }
 
 /** Resolve the policy a `policy-rule` projection generates from. */
@@ -316,6 +139,7 @@ export function projectedPolicyRuleTargets(
 
   for (const projection of readProjectionManifest(root).projections) {
     if (
+      projection.host === 'cursor' &&
       projection.transforms.includes('policy-rule') &&
       projection.installation_modes.includes(projected)
     ) {
@@ -396,6 +220,7 @@ function renderProjections(
   const mode = installationMode(root)
   const manifestMode = projectionMode(mode)
   const harnessPrefix = harnessPathPrefix(root)
+  const hosts = enabledHosts(root)
 
   const pipeline =
     options.pipeline ??
@@ -409,7 +234,10 @@ function renderProjections(
   const removals: ProjectionRemoval[] = []
 
   for (const projection of manifest.projections) {
-    if (!projection.installation_modes.includes(manifestMode)) {
+    if (
+      !projection.installation_modes.includes(manifestMode) ||
+      !projectsForHosts(projection, hosts)
+    ) {
       continue
     }
 
@@ -716,9 +544,10 @@ export function syncCursorProjection(
   // alone, which is how the drift advisory reads the tree.
   const sweepOrphans = options.only === undefined
 
-  for (const directory of sweepOrphans ? ['agents', 'commands', 'rules'] : []) {
-    const relativeDirectory = `.cursor/${directory}`
-    const absoluteDirectory = path.join(root, relativeDirectory)
+  for (const relativeDirectory of sweepOrphans
+    ? PANCREATOR_OWNED_DIRECTORIES
+    : []) {
+    const absoluteDirectory = projectionTargetPath(root, relativeDirectory)
 
     if (!fileExists(absoluteDirectory)) {
       continue
@@ -751,7 +580,7 @@ export function syncCursorProjection(
   }
 
   const changes: CursorProjectionChange[] = rendered.map((entry) => {
-    const targetPath = path.join(root, entry.target)
+    const targetPath = projectionTargetPath(root, entry.target)
     const previous = fileExists(targetPath) ? readText(targetPath) : null
     const changed = previous !== entry.content
 
@@ -770,7 +599,7 @@ export function syncCursorProjection(
   })
 
   for (const removal of removals) {
-    const targetPath = path.join(root, removal.target)
+    const targetPath = projectionTargetPath(root, removal.target)
     const previous = fileExists(targetPath) ? readText(targetPath) : null
 
     if (previous === null) {
@@ -895,7 +724,7 @@ export function validateProjectionDrift(root: string): ProjectionDriftResult {
       }
     }
 
-    const targetModes = new Map<string, Set<CursorInstallationMode>>()
+    const targetModes = new Map<string, Set<string>>()
 
     for (const projection of manifest.projections) {
       const expanded = expandProjection(root, projection)
@@ -910,25 +739,36 @@ export function validateProjectionDrift(root: string): ProjectionDriftResult {
         }
       }
 
+      // A shared target projects alongside every host, so it collides with a
+      // host-bound projection of the same path.
       const modes = targetModes.get(projection.target) ?? new Set()
+      const hostKeys =
+        projection.host === 'shared' ? PROJECT_HOSTS : [projection.host]
 
       for (const mode of projection.installation_modes) {
-        if (modes.has(mode)) {
-          errors.push(
-            `multiple projections target ${projection.target} in ${mode} mode`,
-          )
-        }
+        for (const host of hostKeys) {
+          const key = `${mode}:${host}`
 
-        modes.add(mode)
+          if (modes.has(key)) {
+            errors.push(
+              `multiple projections target ${projection.target} in ${mode} mode for ${host}`,
+            )
+          }
+
+          modes.add(key)
+        }
       }
 
       targetModes.set(projection.target, modes)
     }
 
-    if (fileExists(path.join(root, '.cursor'))) {
+    if (
+      fileExists(path.join(root, '.cursor')) ||
+      enabledHosts(root).some((host) => host !== 'cursor')
+    ) {
       const changes = syncCursorProjection(root)
       const hasManagedProjection = changes.some((change) =>
-        fileExists(path.join(root, change.path)),
+        fileExists(projectionTargetPath(root, change.path)),
       )
 
       if (hasManagedProjection) {
