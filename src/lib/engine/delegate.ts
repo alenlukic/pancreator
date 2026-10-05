@@ -47,6 +47,7 @@ import {
 import {
   claudeCodeToolPolicy,
   createClaudeCodeAdapter,
+  createCopilotAdapter,
   createOpenAiAdapter,
   ensureExecutorReady,
   pauseForExecutorPreflight,
@@ -143,7 +144,7 @@ export function delegateInvocation(
       { code: 'INVOCATION_VALIDATION_FAILED' },
     )
 
-    const preflight = ensureExecutorReady(root, state, executor)
+    const preflight = ensureExecutorReady(root, state, executor, mapping)
 
     if (!preflight.ok) {
       pauseForExecutorPreflight(root, state, stage, executor, preflight.error)
@@ -192,6 +193,15 @@ export function delegateInvocation(
             ...(options.timeoutMs !== undefined
               ? { timeoutOverrideMs: options.timeoutMs }
               : {}),
+          })
+        case 'copilot':
+          return createCopilotAdapter({
+            root,
+            workspaceDir,
+            stage,
+            persona: invocation.stage.persona,
+            mapping,
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
           })
         default: {
           const exhaustive: never = executor

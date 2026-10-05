@@ -9,8 +9,8 @@
     "modelSpec": {
       "type": "string",
       "minLength": 1,
-      "description": "A model spec, optionally prefixed with one of the closed persona-executor set: cursor, claude-code, openai. An absent prefix means cursor.",
-      "pattern": "^((cursor|claude-code|openai):)?[^:]+$"
+      "description": "A model spec, optionally prefixed with one of the closed persona-executor set: cursor, claude-code, openai, copilot. An absent prefix means cursor.",
+      "pattern": "^((cursor|claude-code|openai|copilot):)?[^:]+$"
     },
     "modelAlias": {
       "type": "string",
@@ -31,6 +31,7 @@
         { "$ref": "#/$defs/modelSpec" },
         { "not": { "pattern": "^claude-code:" } },
         { "not": { "pattern": "^openai:" } },
+        { "not": { "pattern": "^copilot:" } },
         {
           "not": {
             "pattern": "^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$"
@@ -232,7 +233,7 @@
     },
     "defaults": {
       "type": "object",
-      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code, openai); no prefix means cursor. A mapping MAY also reference a tier alias (for example anthropic:balanced).",
+      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code, openai, copilot); no prefix means cursor. A mapping MAY also reference a tier alias (for example anthropic:balanced).",
       "additionalProperties": { "$ref": "#/$defs/modelSpecOrAlias" }
     },
     "$operator": {

@@ -10,10 +10,12 @@ import { personaExecutorOf } from '../lib/executors/mapping.js'
 import { cursorAuthenticationReadiness } from '../lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from '../lib/executors/claude-code.js'
 import { openAiExecutorPreflight } from '../lib/executors/openai-auth.js'
+import { copilotDiagnostics } from '../lib/executors/copilot-diagnostics.js'
 import { browserReadiness } from '../lib/browser-readiness.js'
 import { errorMessage, PanError } from '../lib/errors.js'
 import {
   configuredWorkspaceRoot,
+  enabledHosts,
   readProjectConfig,
   resolveHandoffConfig,
 } from '../lib/project-config/resolve.js'
@@ -570,6 +572,12 @@ export function doctorCommand({ root, args }: CliContext): void {
     )
       ? { openai: openAiExecutorPreflight(root) }
       : {}),
+    ...(enabledHosts(root).includes('vscode') ||
+    Object.values(pipelineConfig.config.personas).some(
+      (model) => personaExecutorOf(model) === 'copilot',
+    )
+      ? { copilot: copilotDiagnostics(root, pipelineConfig.config.personas) }
+      : {}),
     validation,
     constraints: {
       runtime_dependencies: 0,
@@ -582,6 +590,7 @@ export function doctorCommand({ root, args }: CliContext): void {
         'MCP tools available to Cursor',
         'Claude Code CLI (external stage executor)',
         'OpenAI Responses API (external stage executor)',
+        'GitHub Copilot CLI (external stage executor)',
       ],
     },
   }

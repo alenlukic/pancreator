@@ -12,7 +12,7 @@ import { PanError } from '../errors.js'
 import type { ParsedPersonaMapping } from '../executors/mapping.js'
 import { cursorAuthenticationReadiness } from '../executors/cursor-probe.js'
 import { cursorAgentBinaryReadiness } from '../executors/cursor-agent.js'
-import { isRecord, resolveInside } from '../io.js'
+import { fileExists, isRecord, resolveInside } from '../io.js'
 import { panCommand } from '../project-config.js'
 import {
   claudeCodeCredentialPreflight,
@@ -31,6 +31,17 @@ import {
   OPENAI_SESSION_DEFAULTS,
   redactOpenAiKey,
 } from '../executors/openai-session.js'
+import {
+  COPILOT_READ_TOOLS,
+  COPILOT_SHELL_TOOLS,
+  COPILOT_WRITE_TOOLS,
+  copilotCliBinary,
+  copilotCliPreflight,
+  copilotProviderOf,
+  resolveCopilotCredential,
+  runCopilotCli,
+} from '../executors/copilot-cli.js'
+import { projectionTargetPath } from '../projection/manifest.js'
 import { now, writeDecision } from '../state.js'
 import type {
   ExternalExecutorAdapter,
@@ -109,6 +120,43 @@ function ensureOpenAiReady(
 }
 
 /**
+ * Verify the copilot executor can run: the binary, its version, every flag the
+ * adapter passes, and the credential the mapping's provider needs. Each check
+ * is local, so no request is spent.
+ */
+function ensureCopilotReady(
+  root: string,
+  state: RunState,
+  mapping: ParsedPersonaMapping | undefined,
+): { ok: true } | { ok: false; error: string } {
+  if (
+    state.copilot_preflight === undefined ||
+    state.copilot_preflight.binary !== copilotCliBinary()
+  ) {
+    const preflight = copilotCliPreflight()
+
+    if (!preflight.ok) {
+      return { ok: false, error: preflight.error ?? 'preflight failed' }
+    }
+
+    state.copilot_preflight = {
+      binary: preflight.binary,
+      version: preflight.version ?? 'unknown',
+      verified_at: now(),
+    }
+  }
+
+  const credential = resolveCopilotCredential(
+    root,
+    copilotProviderOf(mapping?.options ?? {}),
+  )
+
+  return credential.ok
+    ? { ok: true }
+    : { ok: false, error: credential.report.error ?? 'no credential' }
+}
+
+/**
  * Checks that the `cursor-agent` binary is installed and a Cursor API key is
  * available. Returns an error message instead of throwing when either is
  * missing.
@@ -131,15 +179,17 @@ export function ensureCursorReady(
 
 /**
  * Runs the readiness preflight for one persona executor (Cursor, Claude Code,
- * or OpenAI) and returns an error message instead of throwing when it fails.
- * The Claude Code and OpenAI checks cache a successful result on the run state,
- * which the caller persists. Throws `EXECUTOR_UNSUPPORTED` for an unknown
- * executor kind.
+ * OpenAI, or Copilot) and returns an error message instead of throwing when it
+ * fails. The Claude Code, OpenAI, and Copilot checks cache a successful result
+ * on the run state, which the caller persists. The Copilot check also resolves
+ * the credential of the provider `mapping` names. Throws
+ * `EXECUTOR_UNSUPPORTED` for an unknown executor kind.
  */
 export function ensureExecutorReady(
   root: string,
   state: RunState,
   executor: PersonaExecutorKind,
+  mapping?: ParsedPersonaMapping,
 ): { ok: true } | { ok: false; error: string } {
   switch (executor) {
     case 'cursor':
@@ -148,6 +198,8 @@ export function ensureExecutorReady(
       return ensureClaudeCodeReady(state)
     case 'openai':
       return ensureOpenAiReady(root, state)
+    case 'copilot':
+      return ensureCopilotReady(root, state, mapping)
     default: {
       const exhaustive: never = executor
 
@@ -164,6 +216,8 @@ const EXECUTOR_PREFLIGHT_REMEDY: Record<PersonaExecutorKind, string> = {
     'Install cursor-agent and provide CURSOR_API_KEY in the process environment or repository-local .env file',
   'claude-code': 'Install and authenticate the Claude Code CLI on this machine',
   openai: 'Export OPENAI_API_KEY, or add it to the repository-local .env file',
+  copilot:
+    'Install the GitHub Copilot CLI and sign in with copilot login, or add the key the mapping provider names (OPENAI_API_KEY or ANTHROPIC_API_KEY) to the repository-local .env file',
 }
 
 function executorPreflightRemedy(executor: PersonaExecutorKind): string {
@@ -612,6 +666,175 @@ export function createClaudeCodeAdapter(context: {
         ...(result.parsed?.is_error !== undefined
           ? { is_error: result.parsed.is_error }
           : {}),
+      }
+    },
+  }
+}
+
+export interface CopilotToolPolicy {
+  availableTools: string[]
+  addDirs: string[]
+  /** The projected custom agent, when `.github/agents` carries one. */
+  agent?: string
+}
+
+/**
+ * Stage-derived tool policy for a copilot invocation. A stage whose write
+ * roots exclude the workspace gets no shell tool, and no stage gets the
+ * `task` subagent tool, the question tool, or a built-in MCP server. The
+ * CLI verifies file paths against its working directory and `--add-dir`
+ * roots, so the harness root and the projected agents directory join them
+ * when they sit outside the workspace. `scope.no_unapproved_changes` remains
+ * the gate of record for workspace mutation.
+ */
+export function copilotToolPolicy(
+  root: string,
+  workspaceDir: string,
+  stage: StageDefinition,
+  persona: string,
+): CopilotToolPolicy {
+  const workspaceWritable = stageWriteRoots(root, workspaceDir, stage).includes(
+    workspaceDir,
+  )
+  const agentFile = path.resolve(
+    projectionTargetPath(root, `.github/agents/pan-${persona}.agent.md`),
+  )
+  const agentHome = path.resolve(path.dirname(agentFile), '..', '..')
+  const agentProjected = fileExists(agentFile)
+  const outside = (directory: string): boolean =>
+    path.relative(workspaceDir, directory).startsWith('..')
+  const addDirs = [
+    ...new Set(
+      [path.resolve(root), ...(agentProjected ? [agentHome] : [])].filter(
+        outside,
+      ),
+    ),
+  ]
+
+  return {
+    availableTools: [
+      ...COPILOT_READ_TOOLS,
+      ...COPILOT_WRITE_TOOLS,
+      ...(workspaceWritable ? COPILOT_SHELL_TOOLS : []),
+    ],
+    addDirs,
+    ...(agentProjected ? { agent: `pan-${persona}` } : {}),
+  }
+}
+
+/**
+ * Pancreator offers a Copilot-executed persona no MCP-backed tool until the
+ * VS Code MCP projection lands, so a stage that owes a browser verdict reports
+ * the case as environment-blocked under BROWSER-001.
+ */
+const COPILOT_MCP_CAPABILITIES: ExternalMcpCapabilities = {
+  offered: [],
+  reason:
+    'The copilot executor runs with --disable-builtin-mcps and receives no ' +
+    'Pancreator MCP configuration, so no MCP-backed tool, including isolated ' +
+    'browser inspection, is offered to it.',
+}
+
+/**
+ * Returns an external executor adapter that runs a prompt through the Copilot
+ * CLI in the stage workspace. Each `run` call spawns one `copilot` process
+ * synchronously, with the card on stdin, the mapping's model, provider, and
+ * effort, and the stage's tool policy. A model the JSONL stream names that
+ * differs from the requested model fails the delegation.
+ */
+export function createCopilotAdapter(context: {
+  root: string
+  workspaceDir: string
+  stage: StageDefinition
+  persona: string
+  mapping: ParsedPersonaMapping
+  timeoutMs?: number
+}): ExternalExecutorAdapter {
+  const provider = copilotProviderOf(context.mapping.options)
+  const credential = resolveCopilotCredential(context.root, provider)
+  const secret = credential.ok ? credential.credential.secret : null
+  const sanitize = (text: string): string =>
+    secret && secret.length > 0 ? text.replaceAll(secret, '[REDACTED]') : text
+  const policy = copilotToolPolicy(
+    context.root,
+    context.workspaceDir,
+    context.stage,
+    context.persona,
+  )
+
+  return {
+    kind: 'copilot',
+    sanitize,
+    run: (prompt, resumeSessionId) => {
+      if (!credential.ok) {
+        return {
+          ok: false,
+          binary: copilotCliBinary(),
+          argv: [],
+          exit_code: null,
+          timed_out: false,
+          duration_ms: 0,
+          stdout: '',
+          stderr: '',
+          error: credential.report.error ?? 'no Copilot CLI credential',
+        }
+      }
+
+      const result = runCopilotCli({
+        prompt,
+        cwd: context.workspaceDir,
+        model: context.mapping.model,
+        ...(policy.agent ? { agent: policy.agent } : {}),
+        ...(context.mapping.options.effort
+          ? { effort: context.mapping.options.effort }
+          : {}),
+        availableTools: policy.availableTools,
+        addDirs: policy.addDirs,
+        ...(resumeSessionId ? { resumeSessionId } : {}),
+        ...(context.timeoutMs !== undefined
+          ? { timeoutMs: context.timeoutMs }
+          : {}),
+        environment: credential.credential.environment,
+      })
+      const reported = result.parsed?.model
+      const modelError =
+        result.ok &&
+        reported !== undefined &&
+        reported !== context.mapping.model
+          ? `Copilot CLI reported model '${reported}' but the mapping requested '${context.mapping.model}'.`
+          : null
+
+      const ok = result.ok && modelError === null
+
+      return {
+        ok,
+        is_error: !ok,
+        binary: result.binary,
+        argv: result.argv,
+        exit_code: result.exit_code,
+        timed_out: result.timed_out,
+        duration_ms: result.duration_ms,
+        stdout: sanitize(result.stdout),
+        stderr: sanitize(result.stderr),
+        ...(result.session_id ? { session_id: result.session_id } : {}),
+        ...(reported ? { reported_model: reported } : {}),
+        model_verification: reported
+          ? { status: 'compared', expected_model: context.mapping.model }
+          : {
+              status: 'unverifiable',
+              reason: 'the Copilot CLI JSONL stream named no model',
+            },
+        mcp_capabilities: COPILOT_MCP_CAPABILITIES,
+        tool_policy: {
+          granted_roots: [context.workspaceDir, ...policy.addDirs],
+          per_path_write_policy: false,
+          scope_gate: 'scope.no_unapproved_changes',
+        },
+        ...(modelError !== null
+          ? { error: modelError }
+          : result.error
+            ? { error: sanitize(result.error) }
+            : {}),
       }
     },
   }

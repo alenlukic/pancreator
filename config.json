@@ -113,6 +113,30 @@
       "reviewer": "",
       "verifier": "",
       "qa-tester": ""
+    },
+    "copilot": {
+      "summary": "VS Code host: every stage worker runs as a GitHub Copilot CLI process on BYOK OpenAI and Anthropic keys from .env.",
+      "planner": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
+      "coder": "copilot:claude-opus-5-5[provider=anthropic,effort=medium]",
+      "metacritic": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
+      "reviewer": "copilot:gpt-5.6-sol[provider=openai,effort=high]",
+      "verifier": "copilot:gpt-5.6-sol[provider=openai,effort=high]",
+      "remediator": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "remediator-severe": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
+      "shepherd-reviewer": "copilot:gpt-5.6-sol[provider=openai,effort=high]",
+      "qa-tester": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "designer": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
+      "design-reviewer": "copilot:gpt-5.6-sol[provider=openai,effort=xhigh]",
+      "design-qa": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "release-steward": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "librarian": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "decomposer": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "investigator": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "spotfixer": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "harness-technician": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "repo-technician": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+      "harness-workflow-qa": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
+      "debloater": "copilot:claude-sonnet-5[provider=anthropic,effort=high]"
     }
   },
   "operator_involvement": {
