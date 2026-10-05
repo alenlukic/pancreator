@@ -9,7 +9,6 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { homedir } from 'node:os'
 import path from 'node:path'
 
 import { isNodeError, PanError } from './errors.js'
@@ -23,6 +22,7 @@ import {
   writeJsonAtomic,
 } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
+import { cursorTranscriptsRoot } from './transcripts/source.js'
 import type {
   AgentHealth,
   AgentHealthView,
@@ -39,7 +39,6 @@ const REGISTRY_FILE = 'registry.json'
 const EVENTS_FILE = 'events.jsonl'
 const PID_FILE = 'hypervisor.pid'
 const LEDGER_LOCK_FILE = 'registry.lock'
-const CURSOR_TRANSCRIPTS_ENV = 'PANCREATOR_CURSOR_TRANSCRIPTS_DIR'
 const TRANSCRIPT_PREFIX_BYTES = 256 * 1024
 
 export interface AgentRegistry {
@@ -407,29 +406,6 @@ interface CursorTranscriptEvidence {
   sessionId: string
   transcriptPath: string
   modifiedAt: string
-}
-
-function cursorProjectKey(root: string): string {
-  return path
-    .resolve(root)
-    .replace(/^[/\\]+/u, '')
-    .replace(/[:/\\]+/gu, '-')
-}
-
-function cursorTranscriptsRoot(root: string): string {
-  const configured = process.env[CURSOR_TRANSCRIPTS_ENV]?.trim()
-
-  if (configured) {
-    return path.resolve(configured)
-  }
-
-  return path.join(
-    homedir(),
-    '.cursor',
-    'projects',
-    cursorProjectKey(root),
-    'agent-transcripts',
-  )
 }
 
 function transcriptCandidates(root: string): string[] {

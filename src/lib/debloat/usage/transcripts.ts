@@ -3,10 +3,10 @@
  * window.
  */
 
-import os from 'node:os'
 import path from 'node:path'
 
 import { isRecord } from '../../io.js'
+import { cursorProjectDirectory } from '../../transcripts/source.js'
 import { listFilesInWindow, readEvidenceText, safeStatMs } from './files.js'
 
 /** Shortest assistant line that can identify a pasted report. */
@@ -66,15 +66,7 @@ export const ASSISTANT_RECORD_PREFIX = '{"role":"assistant"'
  * workspace path with separators replaced by hyphens.
  */
 export function defaultTranscriptsRoot(root: string): string {
-  const slug = path.resolve(root).split(path.sep).filter(Boolean).join('-')
-
-  return path.join(
-    os.homedir(),
-    '.cursor',
-    'projects',
-    slug,
-    'agent-transcripts',
-  )
+  return path.join(cursorProjectDirectory(root), 'agent-transcripts')
 }
 
 /** One content block of a transcript record. */

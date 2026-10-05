@@ -4,6 +4,7 @@ import path from 'node:path'
 import { getAgentByRunInvocation } from './agent-index/activity.js'
 import { isRecord, readJson, resolveInside, writeTextAtomic } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
+import { executorTranscript } from './transcripts/source.js'
 import type { RunState, StageHistoryItem } from './types.js'
 import {
   findInvocationTranscripts,
@@ -261,6 +262,12 @@ function transcriptFor(
 
   if (indexed && existsSync(indexed)) {
     return indexed
+  }
+
+  const external = executorTranscript(root, runId, item.invocation_id)
+
+  if (external) {
+    return external
   }
 
   const invocation = readJson(

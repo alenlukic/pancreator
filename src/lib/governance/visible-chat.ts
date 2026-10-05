@@ -16,6 +16,7 @@ import {
   readIndex,
   resolveCanonicalId,
 } from '../agent-index/store.js'
+import { transcriptStep } from '../transcripts/records.js'
 
 const CHILD_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u
 
@@ -68,35 +69,6 @@ function readTail(file: string): { text: string; truncated: boolean } | null {
 }
 
 /**
- * A Copilot CLI or VS Code transcript step: `assistant.message` carries its
- * text in `data.content` and its tool calls in `data.toolRequests`.
- */
-function copilotStepOf(record: Record<string, unknown>): TurnStep {
-  const data = isRecord(record.data) ? record.data : {}
-
-  return {
-    text: typeof data.content === 'string' && data.content.trim().length > 0,
-    tool: Array.isArray(data.toolRequests) && data.toolRequests.length > 0,
-  }
-}
-
-function stepOf(record: Record<string, unknown>): TurnStep {
-  const message = isRecord(record.message) ? record.message : null
-  const parts = Array.isArray(message?.content) ? message.content : []
-
-  return {
-    text: parts.some(
-      (part) =>
-        isRecord(part) &&
-        part.type === 'text' &&
-        typeof part.text === 'string' &&
-        part.text.trim().length > 0,
-    ),
-    tool: parts.some((part) => isRecord(part) && part.type === 'tool_use'),
-  }
-}
-
-/**
  * The assistant steps of the transcript's current turn, oldest first: every
  * assistant record after the last user record, in the Cursor or the Copilot
  * CLI and VS Code record shape. Returns null when the path is not an
@@ -136,18 +108,17 @@ export function currentTurnSteps(transcriptPath: string): TurnStep[] | null {
       continue
     }
 
-    if (!isRecord(record)) {
-      continue
-    }
+    const step = transcriptStep(record)
 
-    if (record.role === 'user' || record.type === 'user.message') {
+    if (step?.role === 'user') {
       break
     }
 
-    if (record.role === 'assistant') {
-      steps.push(stepOf(record))
-    } else if (record.type === 'assistant.message') {
-      steps.push(copilotStepOf(record))
+    if (step) {
+      steps.push({
+        text: step.text.trim().length > 0,
+        tool: step.tools.length > 0,
+      })
     }
   }
 

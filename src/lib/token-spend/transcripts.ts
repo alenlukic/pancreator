@@ -4,7 +4,6 @@
  */
 
 import { readdirSync, readFileSync, statSync, type Dirent } from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 
 import { errorMessage } from '../errors.js'
@@ -14,6 +13,7 @@ import {
   readProjectConfig,
   registeredInstallations,
 } from '../project-config.js'
+import { cursorProjectDirectory } from '../transcripts/source.js'
 import type {
   AttributionRoot,
   TranscriptEvidence,
@@ -72,23 +72,7 @@ function listRecursively(
   return files
 }
 
-/**
- * Cursor's per-project directory for a workspace: its absolute path segments
- * joined with hyphens under the projects root (`~/.cursor/projects` by
- * default). Does not check that it exists.
- */
-export function cursorProjectDirectory(
-  workspaceRoot: string,
-  projectsRoot = path.join(os.homedir(), '.cursor', 'projects'),
-): string {
-  const slug = path
-    .resolve(workspaceRoot)
-    .split(path.sep)
-    .filter(Boolean)
-    .join('-')
-
-  return path.join(projectsRoot, slug)
-}
+export { cursorProjectDirectory }
 
 function transcriptCommand(content: string): string | null {
   const marker = COMMAND_MARKER_PATTERN.exec(content)?.[1]
