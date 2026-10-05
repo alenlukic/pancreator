@@ -412,19 +412,43 @@ subagent's. What it can do is pre-commit, in a harness record, that named
 categories of platform guidance are non-authoritative before it meets them:
 
 ```bash
-./bin/pan status <run-id> --redline [--occasion pan-start|pan-resume]
+./bin/pan status <run-id> --redline [--occasion pan-start|pan-resume] [--host <host>] [--host-version <version>]
 ```
 
 The command writes `agent/evidence/platform-guidance-redline.json` and appends
 one declaration per call. The record names the categories (polling, awaiting,
 and backgrounding text, session-mode text, model and tool suggestions, hints
-not to run commands), the authority order from `AGENTS.md`, and the policies
-that own the duty. `OPERATOR-001` requires the supervisor to write it at
-`/pan-start` and every `/pan-resume` and to quote the path in its first
-report. The duty is enforced: each `pan governance attest-supervisor` opens a
-supervisor session generation, and `pan prepare` and `pan submit` refuse with
-`REDLINE_MISSING` until the record carries a declaration for the current
-generation. A later conflict is still recorded under `OPERATOR-001`.
+not to run commands, authority framing, and subagent trust), the authority
+order from `AGENTS.md`, and the policies that own the duty. Each declaration
+names its host: `cursor`, `vscode-local`, `vscode-agent-host`, or
+`copilot-cli`. Without `--host`, the command reads `PAN_HOST` and then a Cursor
+conversation id. The record copies that host's entries from
+`governance/registries/platform_guidance_catalog.json` into `known_guidance`,
+each with its source, category, and governing authority, and states the
+catalog coverage for the host.
+
+On VS Code the hooks also observe platform guidance as it arrives:
+
+- After a tool result that carries a catalogued string, such as the
+  background-terminal note, the hook runs `pan redline observe`. That appends a
+  sighting to `agent/evidence/platform-guidance-sightings.jsonl` and tells the
+  agent which authority governs and which watch to run. A sighting is
+  evidence. The agent still records the conflict, and the
+  `platform-guidance-conflict-recorded` grader fails a run with a guidance
+  sighting and no conflict record.
+- On the first stop of a turn, the hook blocks while a `bin/pan-run` command of
+  the same session still runs, and names its `pan watch --shell` command. A
+  second stop passes, so the guard never loops.
+- `pan redline scan --vscode-debug-log <dir>` matches the opt-in VS Code debug
+  log against the catalog. It reports entry ids, files, and counts, and never
+  copies logged content. Turn the log on with
+  `chat.agentDebugLog.fileLogging.enabled`, and turn it off afterwards, because
+  it records prompts. `pan doctor` reports the setting. `OPERATOR-001` requires the supervisor to write it at
+  `/pan-start` and every `/pan-resume` and to quote the path in its first
+  report. The duty is enforced: each `pan governance attest-supervisor` opens a
+  supervisor session generation, and `pan prepare` and `pan submit` refuse with
+  `REDLINE_MISSING` until the record carries a declaration for the current
+  generation. A later conflict is still recorded under `OPERATOR-001`.
 
 ### Run top-level workflow QA
 
@@ -1231,6 +1255,56 @@ instead. Embedded target repositories own their own MCP config; Pancreator
 documents the hardening above but does not install or overwrite target
 `.cursor/mcp.json`.
 
+## Choose editor hosts
+
+Pancreator runs in Cursor and in VS Code with GitHub Copilot. The `hosts` list
+in `config.json` names the editors it projects into. A configuration without
+the key behaves as `["cursor"]`:
+
+```json
+{ "hosts": ["cursor", "vscode"] }
+```
+
+Put the key in `config_overrides.json` to keep the choice local to a checkout.
+Run `./bin/pan models --sync` after every change. `pan validate`, the installer,
+and updates project the same enabled hosts.
+
+| Surface               | Cursor                         | VS Code and Copilot CLI                                                   |
+| --------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| Operator commands     | `.cursor/commands/pan-*.md`    | `.agents/skills/pan-*/SKILL.md`                                           |
+| Stage personas        | `.cursor/agents/pan-*.md`      | `.github/agents/pan-*.agent.md`, hidden from the agent picker             |
+| Supervisor mode       | none                           | `.github/agents/pan-supervisor.agent.md`                                  |
+| Operating rule        | `.cursor/rules/pancreator.mdc` | `.github/instructions/pancreator.instructions.md`                         |
+| Always-apply policies | `.cursor/rules/pan-*.mdc`      | `.github/instructions/pan-*.instructions.md`                              |
+| Hooks                 | `.cursor/hooks.json`           | `.github/hooks/pan-hooks.json`, each script behind `bin/pan-hook-adapter` |
+
+`AGENTS.md`, governance, workflows, run state, and every `./bin/pan` command are
+shared. Cursor keeps `.cursor/commands` until probes show it invokes
+`.agents/skills` the same way. To disable VS Code, remove `vscode` from `hosts`
+and sync again. Sync removes every `pan-*` file the host left behind.
+
+To supervise a run in VS Code, select the `pan-supervisor` agent in the chat
+mode picker, then run `/pan-start` or `/pan-resume <run-id>`. VS Code renders
+that agent's body as mode instructions, which carry the `AGENTS.md` authority
+order. Set `PAN_HOST=vscode` in the integrated terminal environment
+(`terminal.integrated.env.osx` or its platform twin) so `bin/pan-run` records
+and redline declarations name the host. A launcher that knows its session id
+also sets `PAN_HOST_SESSION_ID`.
+
+Known limits, each tracked by a probe in the host-support spec:
+
+- The VS Code Agent Host discards `UserPromptSubmit` and `Stop` hook output, so
+  the per-turn reminder and the turn guard work only in the local agent.
+- VS Code reads `.github/hooks/` only from the opened workspace, so a Copilot
+  worker inside a worktree checkout runs without the Pancreator hooks.
+- `SubagentStart` carries no prompt, so the agent index cannot link a VS Code
+  subagent to its launch.
+- Copilot usage is unmetered. `pan spend` reports the Copilot sessions of the
+  period as unattributed.
+
+`pan doctor` reports Copilot CLI readiness, `vscode_worktree_protection`, and
+`vscode_debug_log` while the host is enabled.
+
 ## Select pipeline models
 
 `config.json` is the source of truth for named persona-to-model mappings and carries the recommended defaults a release can update. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
@@ -1274,7 +1348,7 @@ Each new run snapshots the active configuration in `runtime/logs/workflows/<run-
 
 ## Route a persona to an external executor
 
-A persona mapping may name its executor with a prefix from a closed set — `cursor` (the default), `claude-code`, or `openai`:
+A persona mapping may name its executor with a prefix from a closed set — `cursor` (the default), `claude-code`, `openai`, or `copilot`:
 
 ```json
 {
@@ -1339,6 +1413,27 @@ Requirements and behavior:
 - The API is called with retention disabled, so no conversation is stored server-side. Continuation for a `revise` decision is local: the harness replays the prior conversation from a transcript under the run's evidence directory. A transcript that outgrows its cap drops its oldest turns and says so; one that is missing or unreadable falls back to a fresh full-card delegation.
 - The author gets no MCP tool, which means no isolated browser inspection. Route a stage that owes a browser verdict to a Cursor persona, which `BROWSER-001` requires. The delegation record states the offered capability set on every run.
 - A delegation that exhausts its round limit, session timeout, or tool-result cap fails with that reason named in the record rather than returning a partial result.
+
+### `copilot`
+
+A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[effort=high]`. `configs.copilot` in `config.json` maps every persona this way. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
+
+Supported bracket options:
+
+| Option           | Values                                                     | Default                 |
+| ---------------- | ---------------------------------------------------------- | ----------------------- |
+| `effort`         | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` | the model's own default |
+| `provider`       | `github`, `openai`, `anthropic`                            | `github`                |
+| `session-resume` | `true`, `false`                                            | `true`                  |
+| `timeout-ms`     | an integer of at least `1000`                              | the adapter default     |
+
+Requirements and behavior:
+
+- The `github` provider uses the CLI's own sign-in. `openai` and `anthropic` read `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` from the environment or `.env`, and every record redacts the key.
+- The adapter passes the projected `.github/agents/pan-<persona>.agent.md` with `--agent` when it exists, sends the canonical card on stdin, and compares the model the CLI reports with the mapping.
+- Read-only stages get no shell tool. A worktree run adds the harness root and the projected agent directory with `--add-dir`.
+- The execution record stands in for the Cursor agent-index stop, so `pan watch` completes on agent state. `pan submit` refuses with `WORKER_STILL_ACTIVE` while the delegate process is open.
+- A `copilot` worker card inlines every policy, like every external executor's card. A subagent that a VS Code supervisor launches gets pointers to the `.github/instructions` files VS Code loads, and inlines any policy without a projected file.
 
 ## Targeting a deliverable outside the repository root
 

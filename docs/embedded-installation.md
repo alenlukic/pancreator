@@ -135,6 +135,13 @@ without mutating target-owned files or creating a copied target-policy snapshot.
     rules/pancreator.mdc    # embedded operating rule
     rules/pan-browser-isolation.mdc    # always-apply rule generated from BROWSER-001
     rules/pan-chat-output.mdc          # always-apply rule generated from COMMS-001
+  .agents/skills/pan-*/SKILL.md        # /pan-* commands for VS Code (vscode host only)
+  .github/                             # VS Code and Copilot CLI surfaces (vscode host only)
+    agents/pan-*.agent.md              # personas as hidden custom agents
+    agents/pan-supervisor.agent.md     # the supervisor mode, with the authority order
+    instructions/pancreator.instructions.md  # embedded operating rule
+    instructions/pan-*.instructions.md       # always-apply policy rules
+    hooks/pan-hooks.json               # hooks routed through bin/pan-hook-adapter
   .pancreator/
     AGENTS.md               # installed-harness operating card
     VERSION
@@ -166,10 +173,20 @@ block in `.git/info/exclude`, which is local to the clone and never committed:
 /.pancreator/
 /.cursor/agents/pan-*.md
 /.cursor/commands/pan-*.md
+/.cursor/hooks.json
+/.cursor/hooks/state/
 /.cursor/rules/pan-*.mdc
 /.cursor/rules/pancreator.mdc
+/.agents/skills/pan-*/
+/.github/agents/pan-*.agent.md
+/.github/hooks/pan-*.json
+/.github/instructions/pan-*.instructions.md
+/.github/instructions/pancreator.instructions.md
 # <<< pancreator <<<
 ```
+
+The VS Code lines are present whatever the enabled hosts, so enabling the
+`vscode` host later never shows a projected file in `git status`.
 
 The block is rewritten on every refresh, so it never accumulates duplicates. A
 detached installation omits the `/.pancreator/` line, because nothing is
@@ -212,6 +229,15 @@ commands, and `pan-*.mdc` or `pancreator.mdc` for rules. Both
 keeping its own `.cursor/agents/coder.md` is unaffected. A target file that
 occupies a Pancreator-owned name is reported as a takeover and backed up under
 `.pancreator/backups/cursor/` before it is replaced.
+
+The VS Code surfaces follow the same rule. Every projected file under
+`.agents/skills/`, `.github/agents/`, `.github/hooks/`, and
+`.github/instructions/` is named `pan-*` or `pancreator.*`. With the `vscode`
+host enabled, the installer reports the target's own files in those
+directories and its `.vscode/` settings, both on first install and on every
+refresh. `pan doctor` adds `vscode_worktree_protection`, which reads
+`.vscode/settings.json` and reports a setting that would load instructions or
+agents from a worktree checkout. The installer never writes `.vscode/`.
 
 The target root does **not** receive a Pancreator `config.json`. The installed
 configuration lives at `.pancreator/config.json` with:
@@ -428,6 +454,35 @@ path spaces:
 - CLI request/output arguments remain harness-relative, such as
   `runtime/inbox/queue/request.md`, because `./.pancreator/bin/pan` resolves
   them from the installation root
+
+## VS Code host
+
+The `hosts` list in `.pancreator/config.json` names the editors Pancreator
+projects into. An installation without the key behaves as `["cursor"]`.
+Add `vscode` to also project the VS Code and GitHub Copilot CLI surfaces
+listed under [Installed layout](#installed-layout):
+
+```json
+{ "hosts": ["cursor", "vscode"] }
+```
+
+Put the key in `.pancreator/config_overrides.json` instead to keep it local to
+this clone. Then reproject:
+
+```sh
+./.pancreator/bin/pan models --sync
+```
+
+A refresh with `./bin/install --target <path> --yes` reads the same list, and
+an update keeps it. To disable the host, remove `vscode` from the list and run
+`models --sync` again. Sync removes every `pan-*` file the host left behind and
+any directory it left empty. Cursor projections stay the same either way.
+
+The VS Code surfaces resolve at the target root, the same root Cursor uses.
+VS Code reads `.github/hooks/` only from the workspace it opened, so a Copilot
+worker launched inside a worktree checkout runs without the Pancreator hooks.
+`pan doctor` reports Copilot CLI readiness, `vscode_worktree_protection`, and
+`vscode_debug_log` while the host is enabled.
 
 ## Refresh, repair, and clean install
 
