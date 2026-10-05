@@ -2020,29 +2020,53 @@ const FOREIGN_HARNESS_SURFACES = [
   { path: '.amazonq', label: 'Amazon Q configuration' },
   { path: '.zed', label: 'Zed configuration' },
   { path: '.trae', label: 'Trae configuration' },
+  { path: '.vscode', label: 'VS Code workspace settings' },
 ]
 
-/** Target-owned `.cursor/` entries that Pancreator does not project. */
-function foreignCursorEntries(targetRoot) {
+/**
+ * Host directories Pancreator projects `pan-*` entries into. Every other
+ * entry there belongs to the target. A skill is a directory; every other
+ * entry is a file.
+ */
+const HOST_ENTRY_GROUPS = [
+  { directory: '.cursor/agents', label: 'target-owned Cursor file' },
+  { directory: '.cursor/commands', label: 'target-owned Cursor file' },
+  { directory: '.cursor/rules', label: 'target-owned Cursor file' },
+  { directory: '.agents/skills', label: 'target-owned skill', skill: true },
+  { directory: '.github/agents', label: 'target-owned VS Code agent' },
+  { directory: '.github/hooks', label: 'target-owned hook file' },
+  {
+    directory: '.github/instructions',
+    label: 'target-owned VS Code instructions',
+  },
+]
+
+/** Target-owned entries in the host directories Pancreator projects into. */
+function foreignHostEntries(targetRoot) {
   const found = []
 
-  for (const group of ['agents', 'commands', 'rules']) {
-    const directory = path.join(targetRoot, '.cursor', group)
+  for (const group of HOST_ENTRY_GROUPS) {
+    const directory = path.join(targetRoot, group.directory)
 
     if (!existsSync(directory)) {
       continue
     }
 
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (!entry.isFile() || /^pan(-|creator\.)/u.test(entry.name)) {
+      const kindMatches = group.skill ? entry.isDirectory() : entry.isFile()
+
+      if (!kindMatches || /^pan(-|creator\.)/u.test(entry.name)) {
         continue
       }
 
-      found.push(`.cursor/${group}/${entry.name}`)
+      found.push({
+        path: `${group.directory}/${entry.name}`,
+        label: group.label,
+      })
     }
   }
 
-  return found.sort()
+  return found.sort((left, right) => left.path.localeCompare(right.path))
 }
 
 function stripHarnessTestScripts() {
@@ -2108,17 +2132,24 @@ function detectExistingHarness() {
   const sourceRoot = path.resolve(requiredOption('--source-root'))
   const previousMarker = option('--previous-marker')
   const installationMode = option('--installation-mode') ?? 'embedded'
+  const hosts = enabledHostsFromConfig(option('--persona-config'))
+
+  // A refresh reports again only while VS Code is enabled, because enabling
+  // it later makes the target's .github and .agents surfaces matter.
+  if (option('--first-install') === 'false' && !hosts.includes('vscode')) {
+    return
+  }
 
   const detected = FOREIGN_HARNESS_SURFACES.filter((surface) =>
     existsSync(path.join(targetRoot, surface.path)),
   )
-  const cursorEntries = foreignCursorEntries(targetRoot)
+  const hostEntries = foreignHostEntries(targetRoot)
 
   // A collision is a Pancreator-owned projection target that already exists and
   // is not recorded as Pancreator-installed. Namespacing makes this rare; when
   // it happens the operator MUST be told which file is being taken over.
   const previous = previousCursorFiles(previousMarker)
-  const collisions = cursorSourceFiles(sourceRoot)
+  const collisions = cursorSourceFiles(sourceRoot, hosts)
     .filter((entry) => !entry.transforms.includes('hooks-merge'))
     .map((entry) => entry.relative)
     .filter(
@@ -2127,7 +2158,11 @@ function detectExistingHarness() {
     )
     .sort()
 
-  if (detected.length === 0 && cursorEntries.length === 0) {
+  if (
+    detected.length === 0 &&
+    hostEntries.length === 0 &&
+    collisions.length === 0
+  ) {
     return
   }
 
@@ -2135,7 +2170,7 @@ function detectExistingHarness() {
     '',
     'Existing agentic harness configuration detected in the target repository.',
     'Pancreator installs alongside it and does not modify or remove it.',
-    'Pancreator-owned Cursor files are namespaced `pan-*`.',
+    'Pancreator-owned host files are namespaced `pan-*`.',
     '',
   ]
 
@@ -2158,8 +2193,8 @@ function detectExistingHarness() {
     lines.push(`  retained  ${surface.path}  (${surface.label})`)
   }
 
-  for (const relative of cursorEntries) {
-    lines.push(`  retained  ${relative}  (target-owned Cursor file)`)
+  for (const entry of hostEntries) {
+    lines.push(`  retained  ${entry.path}  (${entry.label})`)
   }
 
   if (collisions.length > 0) {
