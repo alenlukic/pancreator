@@ -33,11 +33,34 @@ function writeAgentFile(root: string, name: string, frontmatter: string): void {
   )
 }
 
-function writeHooksJson(root: string, content: unknown): void {
-  const dir = path.join(root, 'library', 'cursor')
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(path.join(dir, 'hooks.json'), JSON.stringify(content, null, 2))
+function writeJson(root: string, relativePath: string, content: unknown): void {
+  const file = path.join(root, relativePath)
+  mkdirSync(path.dirname(file), { recursive: true })
+  writeFileSync(file, JSON.stringify(content, null, 2))
 }
+
+function writeHooksJson(root: string, content: unknown): void {
+  writeJson(root, 'library/cursor/hooks.json', content)
+  writeJson(root, 'library/vscode/hooks.json', VALID_VSCODE_HOOKS)
+}
+
+function vscodeHooks(...guards: string[]) {
+  return {
+    version: 1,
+    hooks: {
+      preToolUse: guards.map((guard) => ({
+        type: 'command',
+        bash: `{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter ${guard}`,
+        timeoutSec: 10,
+      })),
+    },
+  }
+}
+
+const VALID_VSCODE_HOOKS = vscodeHooks(
+  '--fail-closed preToolUse pan-hook-deny-await-shell',
+  '--fail-closed beforeShellExecution pan-hook-shell-monitor',
+)
 
 const VALID_HOOKS = {
   version: 1,
@@ -338,4 +361,52 @@ test('AC-003: deny matcher must include Task', () => {
   const resultWith = validateAwaitShellBan(makeInput(root))
   assert.equal(resultWith.status, 'passed')
   assert.equal(resultWith.issues.length, 0)
+})
+
+test('the VS Code hooks and their projection run both guards fail-closed', () => {
+  const root = createTestTempDirectory('ban-validator-vscode-')
+  writeAgentFile(
+    root,
+    'agent.md',
+    'description: A\ndisallowedTools: [AwaitShell]',
+  )
+  writeHooksJson(root, VALID_HOOKS)
+  writeJson(
+    root,
+    'library/vscode/hooks.json',
+    vscodeHooks(
+      'preToolUse pan-hook-deny-await-shell',
+      '--fail-closed beforeShellExecution pan-hook-shell-monitor',
+    ),
+  )
+  const openSource = validateAwaitShellBan(makeInput(root))
+  assert.deepEqual(
+    openSource.issues.map((issue) => [issue.code, issue.pointer]),
+    [
+      [
+        'await_shell_ban.pre_tool_use_hook_missing',
+        'library/vscode/hooks.json',
+      ],
+    ],
+  )
+  assert.match(openSource.issues[0]?.message ?? '', /--fail-closed preToolUse/u)
+
+  writeJson(root, 'library/vscode/hooks.json', VALID_VSCODE_HOOKS)
+  writeJson(
+    root,
+    '.github/hooks/pan-hooks.json',
+    vscodeHooks('--fail-closed preToolUse pan-hook-deny-await-shell'),
+  )
+  const staleProjection = validateAwaitShellBan(makeInput(root))
+  assert.deepEqual(
+    staleProjection.issues.map((issue) => issue.pointer),
+    ['.github/hooks/pan-hooks.json'],
+  )
+  assert.match(
+    staleProjection.issues[0]?.message ?? '',
+    /pan-hook-shell-monitor/u,
+  )
+
+  writeJson(root, '.github/hooks/pan-hooks.json', VALID_VSCODE_HOOKS)
+  assert.equal(validateAwaitShellBan(makeInput(root)).status, 'passed')
 })

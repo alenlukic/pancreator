@@ -361,15 +361,93 @@ function hooksIssues(root: string): Issue[] {
   return []
 }
 
+const VSCODE_HOOKS_SOURCE = 'library/vscode/hooks.json'
+const VSCODE_HOOKS_TARGET = '.github/hooks/pan-hooks.json'
+
+/**
+ * Hook guards a VS Code or Copilot CLI registration MUST run fail-closed on
+ * `preToolUse`. Those hosts discard a matcher, so each guard filters on the
+ * tool name inside the adapter instead.
+ */
+const VSCODE_REQUIRED_GUARDS = [
+  `--fail-closed preToolUse ${DENY_HOOK_COMMAND}`,
+  '--fail-closed beforeShellExecution pan-hook-shell-monitor',
+]
+
+function vscodeHookFileIssues(root: string, relativePath: string): Issue[] {
+  let hooks: unknown
+
+  try {
+    hooks = readJson(path.join(root, relativePath))
+  } catch {
+    return [
+      {
+        code: 'await_shell_ban.hooks_source_unreadable',
+        message: `${relativePath}: could not be read or parsed.`,
+        pointer: relativePath,
+      },
+    ]
+  }
+
+  const preToolUse =
+    isRecord(hooks) && isRecord(hooks.hooks) ? hooks.hooks.preToolUse : null
+  const commands = Array.isArray(preToolUse)
+    ? preToolUse.flatMap((entry) =>
+        isRecord(entry) && typeof entry.bash === 'string' ? [entry.bash] : [],
+      )
+    : []
+
+  return VSCODE_REQUIRED_GUARDS.filter(
+    (guard) =>
+      !commands.some(
+        (command) =>
+          command.includes('pan-hook-adapter ') && command.endsWith(guard),
+      ),
+  ).map((guard) => ({
+    code: 'await_shell_ban.pre_tool_use_hook_missing',
+    message:
+      `${relativePath}: no preToolUse entry runs 'pan-hook-adapter ${guard}'. ` +
+      'VS Code and Copilot CLI enforce the ban only through that fail-closed guard.',
+    pointer: relativePath,
+  }))
+}
+
+/** The canonical VS Code hooks, and their projection when one exists. */
+function vscodeHooksIssues(root: string): Issue[] {
+  if (!fileExists(path.join(root, VSCODE_HOOKS_SOURCE))) {
+    return [
+      {
+        code: 'await_shell_ban.hooks_source_missing',
+        message: `${VSCODE_HOOKS_SOURCE} is missing; cannot verify the VS Code preToolUse guards.`,
+        pointer: VSCODE_HOOKS_SOURCE,
+      },
+    ]
+  }
+
+  return [
+    ...vscodeHookFileIssues(root, VSCODE_HOOKS_SOURCE),
+    ...(fileExists(path.join(root, VSCODE_HOOKS_TARGET))
+      ? vscodeHookFileIssues(root, VSCODE_HOOKS_TARGET)
+      : []),
+  ]
+}
+
 /**
  * Collect every AwaitShell ban violation under `root`:
  *  - Every agent file in `library/cursor/agents/` has parsable frontmatter,
  *    lists `AwaitShell` in `disallowedTools`, and does not list it in `tools`.
  *  - `library/cursor/hooks.json` declares a `preToolUse` entry whose command
  *    contains `pan-hook-deny-await-shell`.
+ *  - `library/vscode/hooks.json`, and `.github/hooks/pan-hooks.json` when
+ *    projected, run the deny hook and the shell guard fail-closed through
+ *    `bin/pan-hook-adapter`.
  */
 export function collectAwaitShellBanIssues(root: string): Issue[] {
-  return [...agentDirectoryIssues(root), ...hooksIssues(root)]
+  return [
+    ...agentDirectoryIssues(root),
+    ...hooksIssues(root),
+    ...vscodeHooksIssues(root),
+  ]
 }
 
 /** Registry handler for `AWAIT-SHELL-BAN-VALIDATE-001`; `targetPath` is unused. */
