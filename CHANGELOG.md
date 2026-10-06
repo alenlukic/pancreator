@@ -22,6 +22,14 @@ This release folds operator user rules into governance. Browser inspection prefe
 
 - Remove duplicated browser blocks from the delivery and delivery-chunk design stage scopes ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
 
+## [8.12.1] - 2026-10-06
+
+This release adds a goodbye export to the toy-node eval fixture.
+
+### Added
+
+- Add `goodbye(name)` next to `greet` in the toy-node fixture and one test for `goodbye('toy')` ([174f3d50](https://github.com/alenlukic/pancreator/commit/174f3d50)).
+
 ## [8.12.0] - 2026-10-06
 
 This release adds VS Code as an editor host. The same release adds a GitHub Copilot CLI executor and projected surfaces for that host.
