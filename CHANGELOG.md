@@ -1,5 +1,27 @@
 # Changelog
 
+## [8.13.0] - 2026-10-06
+
+This release folds operator user rules into governance. Browser inspection prefers one shared headless Chrome for Testing instance.
+
+### Changed
+
+- Prefer the shared headless Chrome for Testing instance for browser inspection ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+- Record a missing bundle or `chrome-devtools` server as a gap and continue with another headless tool ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+- Report `environment-blocked` only when no permitted browser tool is reachable ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+- Attach the canonical `chrome-devtools` server with `--browserUrl=http://127.0.0.1:9222` ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+- Change `PRINCIPLES-001` so an agent takes a named next action in the same turn ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+- Read `.pancreator/AGENTS.md` before repository work in an embedded install, even when no workflow is active ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+
+### Added
+
+- Add a `BROWSER-001` requirement on a subagent brief that may open a browser ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+- Keep session tokens and cookie values inside the page ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+
+### Removed
+
+- Remove duplicated browser blocks from the delivery and delivery-chunk design stage scopes ([61b5c72f](https://github.com/alenlukic/pancreator/commit/61b5c72f)).
+
 ## [8.12.0] - 2026-10-06
 
 This release adds VS Code as an editor host. The same release adds a GitHub Copilot CLI executor and projected surfaces for that host.
