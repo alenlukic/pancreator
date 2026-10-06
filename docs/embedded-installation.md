@@ -21,8 +21,9 @@ target repository tracks.
 - npm
 - Git
 - Cursor with project commands and subagents enabled
-- Chrome for Testing and a `chrome-devtools` MCP server — required only for targets
-  with a web UI, because `BROWSER-001` blocks browser verdicts without them. The
+- Chrome for Testing and a `chrome-devtools` MCP server — preferred for targets
+  with a web UI. Without them, `BROWSER-001` records the gap and browser
+  inspection uses another headless tool, such as the Playwright MCP server. The
   installer reports whether they are configured; it never installs a browser or
   writes target MCP config. See `./bin/pan doctor`.
 - The Claude Code CLI (`claude`), installed and authenticated per machine —
@@ -264,8 +265,9 @@ is generated output — change the policy, not the rule. `COMMS-001`, the
 operator-facing chat output policy, is generated the same way into
 `.cursor/rules/pan-chat-output.mdc`.
 
-Pancreator never overwrites target-owned `.cursor/mcp.json`. The policy requires a
-Chrome for Testing bundle, which operators configure locally:
+Pancreator never overwrites target-owned `.cursor/mcp.json`. The policy prefers
+one shared headless Chrome for Testing instance, which operators run locally,
+with a server that attaches to it:
 
 ```json
 {
@@ -274,8 +276,7 @@ Chrome for Testing bundle, which operators configure locally:
       "command": "npx",
       "args": [
         "chrome-devtools-mcp@latest",
-        "--executablePath=/path/to/chrome-for-testing",
-        "--isolated"
+        "--browserUrl=http://127.0.0.1:9222"
       ]
     }
   }
@@ -283,8 +284,9 @@ Chrome for Testing bundle, which operators configure locally:
 ```
 
 Run `./.pancreator/bin/pan doctor` to see whether the bundle and server are
-detected. Without them, stages that owe a browser verdict report
-environment-blocked rather than guessing.
+detected. Without them, browser inspection records the gap and uses another
+headless tool. A stage that owes a browser verdict reports environment-blocked
+only when no permitted browser tool is reachable.
 
 ## Target repository checks
 
@@ -536,7 +538,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `8.12.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `8.13.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

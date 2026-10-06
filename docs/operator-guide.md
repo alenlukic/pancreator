@@ -1223,31 +1223,20 @@ Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 ./bin/pan models --sync
 ```
 
-Installed servers: `chrome-devtools` (primary) and `playwright` (explicit fallback
-only). Both fetch on first `npx` run, so the first use needs network.
+Installed servers: `chrome-devtools` (preferred) and `playwright` (fallback). Both
+fetch on first `npx` run, so the first use needs network.
 
-`BROWSER-001` requires a Chrome for Testing bundle — a distinct install, never the
-operator's personal `com.google.Chrome` identity. Point the server at it and check
-readiness:
+`BROWSER-001` prefers one shared headless Chrome for Testing instance on
+`http://127.0.0.1:9222` — a distinct install, never the operator's personal
+`com.google.Chrome` identity. The canonical `chrome-devtools` server attaches to it
+with `--browserUrl=http://127.0.0.1:9222`. Check readiness:
 
 ```sh
 ./bin/pan doctor   # reports browser_automation.chrome_for_testing
 ```
 
-```json
-{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": [
-        "chrome-devtools-mcp@latest",
-        "--executablePath=/path/to/chrome-for-testing",
-        "--isolated"
-      ]
-    }
-  }
-}
-```
+A missing bundle or server does not block browser work. The agent records the gap
+in case evidence and uses another headless tool, such as the `playwright` server.
 
 Do not put long-lived MCP customizations only in `.cursor/mcp.json`; that file is
 projection-owned and will be overwritten on sync. Edit `library/cursor/mcp.json`

@@ -502,8 +502,8 @@ export function doctorCommand({ root, args }: CliContext): void {
       worktree: worktreeWorkspace?.name ?? null,
     },
     // Advisory: a repository without a web UI needs no browser, so an
-    // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
-    // into an environment-blocked case at the point a verdict is owed.
+    // unready browser stack MUST NOT fail doctor. BROWSER-001 records the gap
+    // and falls back to another headless tool when a verdict is owed.
     browser_automation: browserReadiness([root, workspaceRoot]),
     // Advisory: a missing credential MUST NOT fail doctor. An interactive
     // `cursor-agent login` authenticates the CLI with no environment key.

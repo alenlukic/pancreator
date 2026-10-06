@@ -45,7 +45,23 @@ test('missing MCP configuration is reported as not ready', () => {
   assert.equal(readiness.chrome_devtools_mcp.config_path, null)
   assert.ok(
     readiness.advisories.some((advisory) =>
-      advisory.includes('environment-blocked'),
+      advisory.includes('falls back to another headless tool'),
+    ),
+  )
+})
+
+test('a missing Chrome for Testing bundle advises a fallback tool', () => {
+  const root = makeRoot()
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: null, source: 'test' },
+  })
+
+  assert.equal(readiness.ready, false)
+  assert.ok(
+    readiness.advisories.some(
+      (advisory) =>
+        advisory.includes('Chrome for Testing was not found') &&
+        advisory.includes('falls back to another headless tool'),
     ),
   )
 })

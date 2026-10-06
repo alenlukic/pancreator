@@ -5,10 +5,11 @@ import { fileExists, isRecord, readJson } from './io.js'
 /**
  * Standard install locations for a Chrome for Testing bundle.
  *
- * `BROWSER-001` requires MCP automation to drive this bundle rather than the
+ * `BROWSER-001` prefers MCP automation to drive this bundle rather than the
  * operator's personal browser. Pancreator installs neither the browser nor target
- * MCP configuration, so readiness is reported rather than assumed, and a stage
- * that owes a browser verdict reports environment-blocked when it is missing.
+ * MCP configuration, so readiness is reported rather than assumed. A missing
+ * bundle is an advisory: inspection records the gap and uses another headless
+ * tool.
  */
 const CHROME_FOR_TESTING_CANDIDATES = [
   '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
@@ -21,14 +22,21 @@ const MCP_CONFIG_PATHS = ['.cursor/mcp.json', '.mcp.json']
 
 /**
  * A shared Chrome for Testing instance exposes its DevTools port on loopback
- * only. `BROWSER-001` requires every server to attach to that one instance
+ * only. `BROWSER-001` prefers every server to attach to that one instance
  * rather than launch its own, so a remote or non-loopback URL is not ready.
  */
 const LOOPBACK_BROWSER_URL =
   /^http:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+\/?$/u
 
+const FALLBACK_ADVISORY =
+  'Until then, browser inspection records the gap and falls back to another ' +
+  'headless tool, such as the Playwright MCP server, under BROWSER-001.'
+
 export interface BrowserReadiness {
-  /** Whether a browser verdict can be produced in this environment. */
+  /**
+   * Whether the preferred shared Chrome for Testing path is configured. A false
+   * value is advisory, because another headless tool can still give a verdict.
+   */
   ready: boolean
   chrome_for_testing: { path: string | null; source: string }
   chrome_devtools_mcp: {
@@ -178,7 +186,7 @@ export function browserReadiness(
     advisories.push(
       'Chrome for Testing was not found. Install it and set ' +
         'PANCREATOR_CHROME_FOR_TESTING or the chrome-devtools --executablePath ' +
-        'argument; BROWSER-001 blocks browser verdicts until then.',
+        `argument. ${FALLBACK_ADVISORY}`,
     )
 
     return readiness
@@ -187,14 +195,13 @@ export function browserReadiness(
   if (!readiness.chrome_devtools_mcp.configured) {
     advisories.push(
       'No chrome-devtools MCP server is configured in .cursor/mcp.json or ' +
-        '.mcp.json. Browser inspection cases MUST be reported as ' +
-        'environment-blocked.',
+        `.mcp.json. ${FALLBACK_ADVISORY}`,
     )
   } else if (browserUrl !== null) {
     if (!attachesToSharedInstance) {
       advisories.push(
         `The chrome-devtools MCP server passes --browserUrl=${browserUrl}, ` +
-          'which is not a loopback DevTools URL. BROWSER-001 requires attaching ' +
+          'which is not a loopback DevTools URL. BROWSER-001 prefers attaching ' +
           'to the one shared Chrome for Testing instance on 127.0.0.1.',
       )
     }
@@ -211,7 +218,7 @@ export function browserReadiness(
   } else if (!readiness.chrome_devtools_mcp.isolated) {
     advisories.push(
       'The chrome-devtools MCP server passes neither --browserUrl nor ' +
-        '--isolated. BROWSER-001 requires attaching to the shared Chrome for ' +
+        '--isolated. BROWSER-001 prefers attaching to the shared Chrome for ' +
         'Testing instance with --browserUrl=http://127.0.0.1:<port>.',
     )
   }
