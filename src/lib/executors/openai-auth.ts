@@ -96,7 +96,10 @@ function credentialSearchRoots(cwd: string): string[] {
   ]
 }
 
-function inspectDotEnv(filePath: string): DotEnvCandidate {
+function inspectDotEnv(
+  filePath: string,
+  name: string = OPENAI_API_KEY,
+): DotEnvCandidate {
   if (!fileExists(filePath)) {
     return {
       path: filePath,
@@ -121,7 +124,7 @@ function inspectDotEnv(filePath: string): DotEnvCandidate {
     }
   }
 
-  const declared = parsed[OPENAI_API_KEY]
+  const declared = parsed[name]
   const key =
     typeof declared === 'string' && declared.length > 0 ? declared : null
 
@@ -134,9 +137,12 @@ function inspectDotEnv(filePath: string): DotEnvCandidate {
   }
 }
 
-function candidatesFor(cwd: string): DotEnvCandidate[] {
+function candidatesFor(
+  cwd: string,
+  name: string = OPENAI_API_KEY,
+): DotEnvCandidate[] {
   return credentialSearchRoots(cwd).map((root) =>
-    inspectDotEnv(path.join(root, '.env')),
+    inspectDotEnv(path.join(root, '.env'), name),
   )
 }
 
@@ -151,7 +157,20 @@ function withoutSecret(candidate: DotEnvCandidate): OpenAiDotEnvInspection {
 
 /** Resolve the process key first, then the first repository-local `.env`. */
 export function resolveOpenAiApiKey(cwd: string): ResolvedOpenAiApiKey {
-  const processKey = process.env[OPENAI_API_KEY]
+  return resolveEnvironmentKey(cwd, OPENAI_API_KEY)
+}
+
+/**
+ * Resolve one credential variable from the process environment, then from the
+ * first repository-local `.env` that declares it. The result carries the value
+ * for the caller to hand to a child process, and the caller MUST NOT print or
+ * persist it.
+ */
+export function resolveEnvironmentKey(
+  cwd: string,
+  name: string,
+): ResolvedOpenAiApiKey {
+  const processKey = process.env[name]
 
   if (typeof processKey === 'string' && processKey.length > 0) {
     return {
@@ -161,7 +180,7 @@ export function resolveOpenAiApiKey(cwd: string): ResolvedOpenAiApiKey {
     }
   }
 
-  const supplying = candidatesFor(cwd).find(
+  const supplying = candidatesFor(cwd, name).find(
     (candidate) => candidate.key !== null,
   )
 

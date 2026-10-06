@@ -110,12 +110,19 @@ export interface PolicyInstruction {
 
 /**
  * How one policy reaches a worker card. `pointer` names the projected
- * always-apply Cursor rule that carries the policy text and the digest of
- * the agent-audience section the pointer stands for.
+ * always-apply instruction that carries the policy text, the digest of the
+ * agent-audience section the pointer stands for, and the host whose session
+ * loads that instruction. A pointer recorded before hosts existed has no
+ * `host` and names a Cursor rule.
  */
 export type PolicyDelivery =
   | { mode: 'inline' }
-  | { mode: 'pointer'; target: string; sha256: string }
+  | {
+      mode: 'pointer'
+      target: string
+      sha256: string
+      host?: 'cursor' | 'vscode'
+    }
 
 export interface Policy {
   id: string

@@ -48,6 +48,7 @@ import {
   cursorAgentName,
   cursorAgentTarget,
   policyDeliveryPlan,
+  workerCardHost,
 } from '../projection.js'
 import { evidenceWorkerAttempts } from '../render.js'
 import {
@@ -687,6 +688,7 @@ export function prepareInvocation(
       policies,
       policy_delivery: policyDeliveryPlan(root, policies, {
         executor: externalExecutor ?? 'cursor',
+        host: workerCardHost(root),
         mode: isSelfDevelopmentInstallation(root)
           ? 'self_development'
           : isDetachedInstallation(root)

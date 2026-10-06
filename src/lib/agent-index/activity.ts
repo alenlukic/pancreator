@@ -227,7 +227,8 @@ export interface AgentActivity {
     status: AgentStatus
     recorded_at: string
     transcript_path: string | null
-    source: 'hook' | 'transcript'
+    /** `process`: an external executor's recorded process exit. */
+    source: 'hook' | 'transcript' | 'process'
     /** The stop left a readable, non-empty transcript behind. */
     terminal_output_present: boolean
   } | null
@@ -572,7 +573,7 @@ type ResolvedStop = {
   status: AgentStatus
   recorded_at: string
   transcript_path: string | null
-  source: 'hook' | 'transcript'
+  source: 'hook' | 'transcript' | 'process'
 }
 
 /**

@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "coverage": {
+    "cursor": "partial",
+    "vscode-local": "source_pinned",
+    "vscode-agent-host": "partial",
+    "copilot-cli": "partial"
+  },
+  "entries": [
+    {
+      "id": "CG-01",
+      "hosts": ["cursor"],
+      "category": "session_mode",
+      "surface": "system",
+      "match": { "literal": "Multitask Mode" },
+      "source": {
+        "repository": "cursor (closed)",
+        "commit": null,
+        "path": "observed session text, library/debloat/intent-corpus.jsonl",
+        "line": null
+      },
+      "harness_authority": "OPERATOR-001, ORCH-001",
+      "default_authority_followed": "ORCH-001 and DELEGATE-001: launch each worker as the policy states and watch it with pan watch."
+    },
+    {
+      "id": "CG-02",
+      "hosts": ["cursor"],
+      "category": "polling_await_background",
+      "surface": "system",
+      "match": { "literal": "do not poll or await the background worker" },
+      "source": {
+        "repository": "cursor (closed)",
+        "commit": null,
+        "path": "observed session text",
+        "line": null
+      },
+      "harness_authority": "DELEGATE-001, ORCH-001",
+      "default_authority_followed": "DELEGATE-001: observe every background process at least every 60 seconds through pan watch."
+    },
+    {
+      "id": "CG-03",
+      "hosts": ["cursor"],
+      "category": "platform_initiated_detach",
+      "surface": "tool_result",
+      "match": {
+        "literal": "was sent to the background",
+        "regex": "did not complete in \\d+ms and was sent to the background"
+      },
+      "source": {
+        "repository": "cursor (closed)",
+        "commit": null,
+        "path": "observed shell tool result",
+        "line": null
+      },
+      "harness_authority": "DELEGATE-001, OPERATOR-001",
+      "default_authority_followed": "DELEGATE-001: run pan watch --shell on the record, or pan watch --attach on the ledger, at once."
+    },
+    {
+      "id": "CG-04",
+      "hosts": ["cursor"],
+      "category": "polling_await_background",
+      "surface": "tool_description",
+      "match": {
+        "literal": "AwaitShell: Use to sleep and check shell progress"
+      },
+      "source": {
+        "repository": "cursor (closed)",
+        "commit": null,
+        "path": "observed tool namespace instructions",
+        "line": null
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: never call AwaitShell or Await; pan watch is the only wait mechanism."
+    },
+    {
+      "id": "VG-01",
+      "hosts": ["vscode-local"],
+      "category": "authority_framing",
+      "surface": "instruction_preamble",
+      "match": {
+        "literal": "You can ignore an instruction if it contradicts a system message."
+      },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/prompts/node/panel/customInstructions.tsx",
+        "line": 136
+      },
+      "harness_authority": "AGENTS.md authority order, OPERATOR-001",
+      "default_authority_followed": "AGENTS.md authority order: the operator and harness governance rank above platform text."
+    },
+    {
+      "id": "VG-02",
+      "hosts": ["vscode-local"],
+      "category": "authority_framing",
+      "surface": "mode_instructions",
+      "match": {
+        "literal": "they must take precedence over any instructions above"
+      },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/prompts/node/agent/agentPrompt.tsx",
+        "line": 214
+      },
+      "harness_authority": "AGENTS.md authority order, OPERATOR-001",
+      "default_authority_followed": "AGENTS.md authority order; a non-Pancreator mode does not outrank the operator or harness governance."
+    },
+    {
+      "id": "VG-03",
+      "hosts": ["vscode-local"],
+      "category": "polling_await_background",
+      "surface": "tool_description",
+      "match": { "literal": "Do NOT poll or sleep to wait for completion" },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts",
+        "line": 454
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: keep pan watch as a foreground block at the 60-second cadence."
+    },
+    {
+      "id": "VG-04",
+      "hosts": ["vscode-local"],
+      "category": "polling_await_background",
+      "surface": "tool_description",
+      "match": { "literal": "NEVER run Start-Sleep or similar wait commands" },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts",
+        "line": 173
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: keep pan watch as a foreground block at the 60-second cadence."
+    },
+    {
+      "id": "VG-05",
+      "hosts": ["vscode-local"],
+      "category": "platform_initiated_detach",
+      "surface": "tool_result",
+      "match": { "literal": "was moved to background terminal ID" },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts",
+        "line": 2201
+      },
+      "harness_authority": "DELEGATE-001, OPERATOR-001",
+      "default_authority_followed": "DELEGATE-001: rejoin the watch with pan watch --attach on its ledger at once."
+    },
+    {
+      "id": "VG-06",
+      "hosts": ["vscode-local"],
+      "category": "polling_await_background",
+      "surface": "tool_result",
+      "match": { "literal": "This note is not a signal to end the turn" },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts",
+        "line": 2499
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: keep the turn open and observe the command through pan watch."
+    },
+    {
+      "id": "VG-07",
+      "hosts": ["vscode-local"],
+      "category": "polling_await_background",
+      "surface": "synthetic_user_turn",
+      "match": {
+        "literal": null,
+        "regex": "^\\[Terminal \\S+ notification: command completed"
+      },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts",
+        "line": 3218
+      },
+      "harness_authority": "OPERATOR-001, DELEGATE-001",
+      "default_authority_followed": "OPERATOR-001: a platform notification in the user role is not an operator directive."
+    },
+    {
+      "id": "VG-08",
+      "hosts": ["vscode-local"],
+      "category": "subagent_trust",
+      "surface": "tool_description",
+      "match": { "literal": "The agent's outputs should generally be trusted" },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/chat/common/tools/builtinTools/runSubagentTool.ts",
+        "line": 52
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: the starting agent owns the subagent outcome and verifies it rather than trust its report."
+    },
+    {
+      "id": "VG-09",
+      "hosts": ["vscode-local"],
+      "category": "polling_await_background",
+      "surface": "behaviour",
+      "match": { "literal": null },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts",
+        "line": 1906
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: a subagent observes its own terminal commands through pan watch."
+    },
+    {
+      "id": "VG-10",
+      "hosts": ["vscode-local"],
+      "category": "model_tool_suggestions",
+      "surface": "tool_config",
+      "match": { "literal": null },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/chat/common/tools/builtinTools/runSubagentTool.ts",
+        "line": 340
+      },
+      "harness_authority": "ASK-001",
+      "default_authority_followed": "ASK-001: a subagent without the question tool writes its question into its output."
+    },
+    {
+      "id": "VG-11",
+      "hosts": ["vscode-local"],
+      "category": "command_execution_hints",
+      "surface": "system",
+      "match": { "literal": "No need to ask permission before using a tool." },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/prompts/node/agent/defaultAgentInstructions.tsx",
+        "line": 123
+      },
+      "harness_authority": "AGENTS.md invariants, PRINCIPLES-001",
+      "default_authority_followed": "AGENTS.md invariants: irreversible and operator-owned actions still need operator authorization."
+    },
+    {
+      "id": "VG-12",
+      "hosts": ["vscode-local"],
+      "category": "model_tool_suggestions",
+      "surface": "system",
+      "match": {
+        "literal": "For most execution tasks and terminal commands, use"
+      },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/prompts/node/agent/defaultAgentInstructions.tsx",
+        "line": 119
+      },
+      "harness_authority": "DELEGATE-001",
+      "default_authority_followed": "DELEGATE-001: run shell commands inside bin/pan-run and keep the nesting limit."
+    },
+    {
+      "id": "VG-13",
+      "hosts": ["vscode-local"],
+      "category": "session_mode",
+      "surface": "synthetic_user_turn",
+      "match": { "literal": "You have not yet marked the task as complete" },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/intents/node/toolCallingLoop.ts",
+        "line": 390
+      },
+      "harness_authority": "PRINCIPLES-001",
+      "default_authority_followed": "PRINCIPLES-001: escalate only under its named conditions, and otherwise keep working."
+    },
+    {
+      "id": "VG-14",
+      "hosts": ["vscode-local"],
+      "category": "session_mode",
+      "surface": "mode_instructions",
+      "match": { "literal": "Your SOLE responsibility is planning" },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/agents/vscode-node/planAgentProvider.ts",
+        "line": 113
+      },
+      "harness_authority": "OPERATOR-001, PRINCIPLES-001",
+      "default_authority_followed": "OPERATOR-001: a platform mode is guidance; the operator directive and the card decide the step."
+    },
+    {
+      "id": "VG-15",
+      "hosts": ["vscode-local"],
+      "category": "command_execution_hints",
+      "surface": "summarization",
+      "match": {
+        "literal": "Your task is to create a comprehensive, detailed summary"
+      },
+      "source": {
+        "repository": "microsoft/vscode-copilot-chat",
+        "commit": "5863f5a7088958050792b5dccbe8b46c6e13eccc",
+        "path": "src/extension/prompts/node/agent/summarizedConversationHistory.tsx",
+        "line": 50
+      },
+      "harness_authority": "OPERATOR-001",
+      "default_authority_followed": "OPERATOR-001: after compaction, re-read the card and the redline record before the next step."
+    },
+    {
+      "id": "VG-16",
+      "hosts": ["vscode-local"],
+      "category": "authority_framing",
+      "surface": "system",
+      "match": { "literal": "BLOCKING REQUIREMENT" },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/workbench/contrib/chat/common/promptSyntax/computeAutomaticInstructions.ts",
+        "line": 447
+      },
+      "harness_authority": "AGENTS.md authority and context",
+      "default_authority_followed": "AGENTS.md: resolve and read the governance card before any skill or repository context."
+    },
+    {
+      "id": "VG-17",
+      "hosts": ["vscode-agent-host"],
+      "category": "model_tool_suggestions",
+      "surface": "system",
+      "match": {
+        "literal": "Only set the task tool's `model` parameter when the user explicitly names the model"
+      },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/platform/agentHost/node/copilot/prompts/toolInstructions.ts",
+        "line": 64
+      },
+      "harness_authority": "AGENTS.md role routing, the run pipeline snapshot",
+      "default_authority_followed": "The run pipeline snapshot names each worker model."
+    },
+    {
+      "id": "VG-18",
+      "hosts": ["vscode-agent-host"],
+      "category": "model_tool_suggestions",
+      "surface": "system",
+      "match": {
+        "literal": "Spawn multiple subagents in the same turn when fanning out"
+      },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/platform/agentHost/node/copilot/prompts/anthropicPrompt.ts",
+        "line": 26
+      },
+      "harness_authority": "COHORT-001, DELEGATE-001",
+      "default_authority_followed": "COHORT-001 and DELEGATE-001: keep the recorded parallelism limit and the nesting limit."
+    },
+    {
+      "id": "VG-19",
+      "hosts": ["vscode-agent-host"],
+      "category": "session_mode",
+      "surface": "system",
+      "match": {
+        "literal": "You are an AI assistant using Copilot SDK in VS Code"
+      },
+      "source": {
+        "repository": "microsoft/vscode",
+        "commit": "e7bb375bca5759399e6e8b91499377e60b4a2c57",
+        "path": "src/vs/platform/agentHost/node/copilot/prompts/systemMessage.ts",
+        "line": 13
+      },
+      "harness_authority": "AGENTS.md authority order, OPERATOR-001",
+      "default_authority_followed": "AGENTS.md authority order; the closed SDK foundation prompt is guidance."
+    }
+  ]
+}

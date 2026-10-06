@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, symlinkSync } from 'node:fs'
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -152,6 +159,56 @@ test('C-013: a fault in the Task path allows the Task and keeps the AwaitShell b
       'deny',
     )
   })
+})
+
+test('the deny hook applies each host tool registry entry, and its built-in fallback matches the registry', () => {
+  const registry = JSON.parse(
+    readFileSync(
+      path.join(process.cwd(), 'governance/registries/host_tools.json'),
+      'utf8',
+    ),
+  ) as {
+    terms: Record<string, { tools: Record<string, string[]> }>
+  }
+  const bin = path.join(createTestTempDirectory('deny-hook-fallback-'), 'bin')
+
+  mkdirSync(bin, { recursive: true })
+  copyFileSync(HOOK, path.join(bin, 'pan-hook-deny-await-shell'))
+  chmodSync(path.join(bin, 'pan-hook-deny-await-shell'), 0o755)
+
+  const decide = (hook: string, host: string, toolName: string): unknown => {
+    const result = spawnSync(hook, [], {
+      input: payload(toolName),
+      encoding: 'utf8',
+      env: { ...process.env, PAN_HOOK_HOST: host },
+      timeout: 10_000,
+    })
+
+    return (JSON.parse(result.stdout) as { permission: unknown }).permission
+  }
+
+  for (const host of ['cursor', 'vscode', 'copilot-cli']) {
+    const awaitTools = registry.terms.platform_await?.tools[host] ?? []
+    const launchTools = registry.terms.subagent_launch?.tools[host] ?? []
+
+    for (const toolName of [...awaitTools, ...launchTools, 'Read']) {
+      const expected =
+        awaitTools.includes(toolName) || launchTools.includes(toolName)
+          ? 'deny'
+          : 'allow'
+
+      assert.equal(
+        decide(HOOK, host, toolName),
+        expected,
+        `${host} ${toolName}`,
+      )
+      assert.equal(
+        decide(path.join(bin, 'pan-hook-deny-await-shell'), host, toolName),
+        expected,
+        `fallback ${host} ${toolName}`,
+      )
+    }
+  }
 })
 
 test('AC-002: the hooks source routes AwaitShell, Await, and Task to the fail-closed deny hook', () => {

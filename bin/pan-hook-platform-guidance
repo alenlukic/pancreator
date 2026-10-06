@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# VS Code and Copilot CLI hook: record platform guidance sightings and hold
+# the DELEGATE-001 turn guard. Runs behind bin/pan-hook-adapter.
+# Usage: pan-hook-platform-guidance <postToolUse | stop>
+#
+# After a tool result that carries a catalogued platform string, it records a
+# sighting through `pan redline observe` and returns additional_context naming
+# the governing authority. On the first stop of a turn while a bin/pan-run
+# command of the session still runs, it returns a followup_message. Always
+# exits 0 with one JSON document.
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(dirname "$SCRIPT_DIR")"
+DIST="$HARNESS_ROOT/dist/src/platform-guidance-hook.js"
+
+# Runs and shell records live at the root bin/pan-run resolves; a linked
+# worktree uses the main checkout.
+resolve_root() {
+  if [[ -n "${PANCREATOR_ROOT:-}" ]]; then
+    printf '%s' "$PANCREATOR_ROOT"
+    return
+  fi
+  local candidate common main
+  candidate="$HARNESS_ROOT"
+  if [[ -f "$candidate/.git" ]]; then
+    common="$(git -C "$candidate" rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common" ]]; then
+      [[ "$common" == /* ]] || common="$candidate/$common"
+      main="$(dirname "$common")"
+      if [[ -f "$main/bin/pan-run" && -f "$main/config.json" ]]; then
+        printf '%s' "$main"
+        return
+      fi
+    fi
+  fi
+  printf '%s' "$candidate"
+}
+
+PAYLOAD="$(cat 2>/dev/null || true)"
+
+if [[ -f "$DIST" ]] && command -v node >/dev/null 2>&1 &&
+  response="$(printf '%s' "$PAYLOAD" | PANCREATOR_ROOT="$(resolve_root)" PAN_HOOK_PAN="$HARNESS_ROOT/bin/pan" node "$DIST" "${1:-}" 2>/dev/null)" &&
+  [[ -n "$response" ]]; then
+  printf '%s\n' "$response"
+else
+  printf '%s\n' '{}'
+fi
+
+exit 0

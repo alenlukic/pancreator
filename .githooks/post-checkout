@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Refresh the ignored .cursor projection when HEAD moves across a change to
-# its sources. Cursor loads .cursor/rules at session start, so a stale
-# projection hides every policy change from new agent sessions until someone
-# runs `pan models --sync` by hand. Best effort: a git operation never fails here.
+# Refresh the ignored .cursor and .github host projections when HEAD moves
+# across a change to their sources. Cursor loads .cursor/rules and VS Code
+# loads .github/instructions at session start, so a stale projection hides
+# every policy change from new agent sessions until someone runs
+# `pan models --sync` by hand. Best effort: a git operation never fails here.
 #
 #   post-checkout <old-head> <new-head> <branch-flag>
 #   post-merge delegates here with ORIG_HEAD and HEAD.
@@ -11,23 +12,33 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 old="${1:-}"
 new="${2:-HEAD}"
 
+vscode_projected() {
+  [ -e "$root/.github/hooks/pan-hooks.json" ] && return 0
+  for agent in "$root"/.github/agents/pan-*.agent.md; do
+    [ -e "$agent" ] && return 0
+  done
+  return 1
+}
+
 [ "${3:-1}" = 1 ] || exit 0
-[ -d "$root/.cursor" ] || exit 0
+[ -d "$root/.cursor" ] || vscode_projected || exit 0
 [ -x "$root/bin/pan" ] || exit 0
 [ -n "$old" ] && [ "$old" != "$new" ] || exit 0
 case "$old" in *[!0]*) ;; *) exit 0 ;; esac
 
 git -C "$root" diff --quiet "$old" "$new" -- \
   library/cursor \
+  library/vscode \
   governance/policies \
   governance/registries/projection_manifest.json \
+  governance/registries/host_tools.json \
   config.json 2>/dev/null
 [ "$?" = 1 ] || exit 0
 
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
 
-echo "pancreator: Cursor projection sources changed; running pan models --sync" >&2
+echo "pancreator: host projection sources changed; running pan models --sync" >&2
 if ! (cd "$root" && ./bin/pan models --sync >/dev/null 2>&1); then
-  echo "pancreator: pan models --sync failed; run ./bin/pan models --sync to refresh .cursor/" >&2
+  echo "pancreator: pan models --sync failed; run ./bin/pan models --sync to refresh the host projections" >&2
 fi
 exit 0

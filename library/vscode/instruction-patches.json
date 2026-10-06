@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "summary": "Machine-level changes that remove VS Code and Copilot Chat agent instructions that conflict with Pancreator governance. The operator applies them with the cursor-to-vscode-migration skill: scripts/vscode_prompt_patch.py applies the patches, and migrate.py action P0.prompt-settings applies the settings. Audit: runtime/research/20260927T2100Z-vscode-instruction-audit.md.",
+  "authority": "Operator directive (Alen, 2026-09-27): remove conflicting aspects of VS Code's agent instructions through a compiled workbench patch, and document every such modification in the VS Code-specific Pancreator config.",
+  "scope": "Every patch and setting applies to the whole machine, in every workspace, so an entry removes or rewrites only text whose removal is safe outside Pancreator. Safety and security guidance (secrets, elevation, destructive actions, irreversible-action confirmation) stays.",
+  "verified_against": {
+    "vscode": "1.139.1",
+    "commit": "04c0d99f4fb0d8afe6ce4f0c58e31e183ac3e4b1",
+    "copilot_chat": "0.67.0",
+    "verified_on": "2026-09-27"
+  },
+  "app_bundle": "/Applications/Visual Studio Code.app",
+  "app_root": "Contents/Resources/app",
+  "integrity": {
+    "checksum_file": "product.json",
+    "checksum_algorithm": "sha256 digest, base64, trailing '=' removed",
+    "checksum_keys_are_relative_to": "out/",
+    "behaviour": "At startup the workbench hashes every file listed in product.json checksums and shows 'Your Code installation appears to be corrupt. Please reinstall.' when any hash differs. The tool rewrites the checksum of each patched file that product.json lists, so the prompt does not appear. The Copilot extension bundle and the Agent Host are not listed.",
+    "sources": [
+      "microsoft/vscode e7bb375 src/vs/workbench/services/integrity/electron-browser/integrityService.ts:104-143",
+      "microsoft/vscode e7bb375 src/vs/platform/checksum/node/checksumService.ts:18-29"
+    ]
+  },
+  "code_signature": "Patching a file under Contents/ breaks the resource seal of the Microsoft code signature, so 'codesign --verify' fails until the patch is reverted or VS Code updates. Validation on a /tmp copy of 1.139.1 confirmed the failure and the clean result after revert. Writing into /Applications requires App Management permission (System Settings, Privacy and Security) for the terminal that runs the tool. Launch, the updater, and Keychain access after patching are not tested.",
+  "reapply": "An update replaces the app bundle and removes every patch, so run the tool again after each VS Code update. A restart does not undo the patch: nothing rewrites the app files at launch, and the integrity service only reads them. Quit VS Code fully after apply or revert so the workbench, the Agents window, the extension host, and the Agent Host reload. A marketplace copy of Copilot Chat in ~/.vscode/extensions would replace the patched built-in bundle; --check reports it.",
+  "patches": [
+    {
+      "id": "VSP-01",
+      "audit_id": "VG-03",
+      "targets": [
+        "out/vs/workbench/workbench.desktop.main.js",
+        "out/vs/sessions/sessions.desktop.main.js"
+      ],
+      "surface": "run_in_terminal tool description",
+      "find": "You will also be notified if the terminal needs input. Do NOT poll or sleep to wait for completion.",
+      "replace": "You will also be notified if the terminal needs input.",
+      "occurrences": 1,
+      "rationale": "Removes the ban on polling. The agent must observe each background process at least every 60 seconds, and platform text that says not to poll is not a reason to stop. The notification fact stays.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode e7bb375 src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts:454",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSP-02",
+      "audit_id": "VG-20",
+      "targets": [
+        "out/vs/workbench/workbench.desktop.main.js",
+        "out/vs/sessions/sessions.desktop.main.js",
+        "out/vs/platform/agentHost/node/agentHostMain.js"
+      ],
+      "surface": "run_in_terminal guidance for bash, zsh, and fish; Agent Host shell guidance",
+      "find": "- NEVER run sleep or similar wait commands in a terminal. You will be automatically notified on your next turn when async terminal commands or timed-out sync commands complete or need input. Do NOT poll for completion.",
+      "replace": "- Do not run bare sleep commands as timers in a terminal. You will be automatically notified on your next turn when async terminal commands or timed-out sync commands complete or need input.",
+      "occurrences": 1,
+      "rationale": "Keeps the ban on sleep as a timer, which matches DELEGATE-001. Removes 'or similar wait commands', which covers the required foreground 'pan watch' call, and removes the ban on polling.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode e7bb375 src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts:320",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSP-03",
+      "audit_id": "VG-04",
+      "targets": [
+        "out/vs/workbench/workbench.desktop.main.js",
+        "out/vs/sessions/sessions.desktop.main.js"
+      ],
+      "surface": "run_in_terminal guidance for PowerShell",
+      "find": "- NEVER run Start-Sleep or similar wait commands. You will be automatically notified on your next turn when async terminal commands or timed-out sync commands complete or need input. Do NOT poll for completion.",
+      "replace": "- Do not run bare Start-Sleep commands as timers. You will be automatically notified on your next turn when async terminal commands or timed-out sync commands complete or need input.",
+      "occurrences": 1,
+      "rationale": "The PowerShell form of VSP-02, with the same reason.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode e7bb375 src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts:173",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSP-04",
+      "audit_id": "VG-21",
+      "targets": [
+        "out/vs/workbench/workbench.desktop.main.js",
+        "out/vs/sessions/sessions.desktop.main.js"
+      ],
+      "surface": "get_terminal_output tool description",
+      "find": "you will be automatically notified when it finishes \\u2014 do NOT poll; end your turn and wait.",
+      "replace": "you will be automatically notified when it finishes.",
+      "occurrences": 1,
+      "rationale": "Removes the instruction to end the turn and wait. The agent must not end its turn while a process it observes is unfinished, and must observe it at least every 60 seconds. The compiled text carries the em dash as the literal escape \\u2014.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode e7bb375 src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/getTerminalOutputTool.ts:23",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSP-05",
+      "audit_id": "VG-08",
+      "targets": [
+        "out/vs/workbench/workbench.desktop.main.js",
+        "out/vs/sessions/sessions.desktop.main.js",
+        "out/vs/workbench/api/node/extensionHostProcess.js",
+        "out/vs/workbench/api/worker/extensionHostWorkerMain.js"
+      ],
+      "surface": "runSubagent tool description",
+      "find": "\n- The agent's outputs should generally be trusted\n- Clearly tell the agent",
+      "replace": "\n- Clearly tell the agent",
+      "occurrences": 1,
+      "rationale": "Removes the claim that subagent output can be trusted. The starting agent owns the subagent outcome, must detect a crash, stall, or silent exit, and must not depend on the subagent to report back.",
+      "policy": ["DELEGATE-001", "COMMS-001"],
+      "source": "microsoft/vscode e7bb375 src/vs/workbench/contrib/chat/common/tools/builtinTools/runSubagentTool.ts:57",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSP-06",
+      "audit_id": "VG-22",
+      "targets": ["extensions/copilot/dist/extension.js"],
+      "surface": "Copilot Chat GenericEditingTips, rendered in the default, default OpenAI (every gpt model without a dedicated prompt), and apply_patch prompts",
+      "find": "Do not loop more than 3 times attempting to fix errors in the same file. If the third try fails, you should stop and ask the user what to do next.",
+      "replace": "Do not loop more than 3 times attempting to fix errors in the same file. If the third try fails, change your approach instead of repeating the same fix.",
+      "occurrences": 1,
+      "rationale": "Removes stop-and-ask on errors the agent introduced. An agent must repair a condition it caused itself, and asking on a matter it may decide is a mission failure. The three-try loop cap stays.",
+      "policy": ["PRINCIPLES-001"],
+      "source": "microsoft/vscode-copilot-chat 5863f5a src/extension/prompts/node/agent/defaultAgentInstructions.tsx:495",
+      "verified_against": "1.139.1 (Copilot Chat 0.67.0)"
+    }
+  ],
+  "settings": [
+    {
+      "id": "VSS-01",
+      "audit_id": "VG-05",
+      "key": "chat.tools.terminal.idleSilenceTimeoutMs",
+      "value": 0,
+      "rationale": "Stops the platform from moving a silent foreground command, such as 'pan watch', to the background after 5 minutes. 0 disables the idle-silence detach. A command that hangs with no output then blocks until the operator cancels it.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode e7bb375 runInTerminalTool.ts:2197-2208; terminalChatAgentToolsConfiguration.ts:766-776",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSS-02",
+      "audit_id": "VG-12",
+      "key": "github.copilot.chat.executionSubagent.enabled",
+      "value": false,
+      "rationale": "Pins off the experiment that tells the agent to run most terminal commands through execution_subagent. A nested subagent breaks the foreground 'pan watch' block and the bin/pan-run wrapping, and adds a nesting level.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode-copilot-chat 5863f5a defaultAgentInstructions.tsx:119; configurationService.ts:653",
+      "verified_against": "1.139.1 (Copilot Chat 0.67.0)"
+    },
+    {
+      "id": "VSS-03",
+      "audit_id": "VG-16",
+      "key": "chat.experimental.useSkillAdherencePrompt",
+      "value": false,
+      "rationale": "Pins off the experiment that tells the agent to load a matching skill as its first action. The agent must read its governance card first.",
+      "policy": ["PRINCIPLES-001", "AGENTS.md authority order"],
+      "source": "microsoft/vscode e7bb375 src/vs/workbench/contrib/chat/common/promptSyntax/computeAutomaticInstructions.ts:443-451",
+      "verified_against": "1.139.1"
+    },
+    {
+      "id": "VSS-04",
+      "audit_id": "VG-01",
+      "key": "github.copilot.chat.customInstructionsInSystemMessage",
+      "value": true,
+      "rationale": "Pins the default. When false, AGENTS.md and every instruction file arrive in the user message behind 'You can ignore an instruction if it contradicts a system message.'",
+      "policy": ["OPERATOR-001", "AGENTS.md authority order"],
+      "source": "microsoft/vscode-copilot-chat 5863f5a src/extension/prompts/node/panel/customInstructions.tsx:136",
+      "verified_against": "1.139.1 (Copilot Chat 0.67.0)"
+    },
+    {
+      "id": "VSS-05",
+      "audit_id": "VG-14",
+      "key": "github.copilot.chat.switchAgent.enabled",
+      "value": false,
+      "rationale": "Pins off the experiment that lets the agent switch itself into the Plan agent, whose body says to ask clarifying questions freely. Plan mode stays available when the operator selects it.",
+      "policy": ["PRINCIPLES-001", "OPERATOR-001"],
+      "source": "microsoft/vscode-copilot-chat 5863f5a src/extension/tools/vscode-node/switchAgentTool.ts:29-39",
+      "verified_against": "1.139.1 (Copilot Chat 0.67.0)"
+    },
+    {
+      "id": "VSS-06",
+      "audit_id": "VG-18",
+      "key": "chat.agentHost.opus48Prompt.enabled",
+      "value": false,
+      "rationale": "Pins off the opt-in Agent Host guidance to spawn several subagents in one turn, which ignores the one-worker-per-run and parallelism limits.",
+      "policy": ["DELEGATE-001"],
+      "source": "microsoft/vscode e7bb375 src/vs/platform/agentHost/node/copilot/prompts/anthropicPrompt.ts:26-41",
+      "verified_against": "1.139.1"
+    }
+  ],
+  "rejected_levers": [
+    {
+      "lever": "github.copilot.chat.omitBaseAgentInstructions = true",
+      "reason": "Removes the identity, safety, and model-family prompts together, including safety rules the directive keeps."
+    },
+    {
+      "lever": "chat.agentHost.modelCapabilityOverrides promptOverride with systemPrompt in replace mode",
+      "reason": "VS Code documents that replace mode drops every Copilot SDK guardrail."
+    }
+  ]
+}

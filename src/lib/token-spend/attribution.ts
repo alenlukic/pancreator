@@ -190,6 +190,53 @@ function workerIdentity(
   }
 }
 
+/**
+ * The GitHub Copilot worker sessions the harness dispatched inside the
+ * window, counted from their delegation execution records. Copilot usage
+ * never reaches Cursor's usage events, so the report labels these sessions
+ * host `copilot` and leaves them out of every total.
+ */
+export function copilotSessionCount(
+  storages: Map<string, RunStorage>,
+  startMs: number,
+  endMs: number,
+): number {
+  let count = 0
+
+  for (const storage of storages.values()) {
+    const directory = path.dirname(storage.invocation('_'))
+    let names: string[]
+
+    try {
+      names = readdirSync(directory)
+    } catch {
+      continue
+    }
+
+    for (const name of names) {
+      if (!name.endsWith('.delegation-execution.json')) {
+        continue
+      }
+
+      const record = safeReadJson(path.join(directory, name))
+      const recordedMs =
+        typeof record?.recorded_at === 'string'
+          ? Date.parse(record.recorded_at)
+          : Number.NaN
+
+      if (
+        record?.executor === 'copilot' &&
+        recordedMs >= startMs &&
+        recordedMs <= endMs
+      ) {
+        count += 1
+      }
+    }
+  }
+
+  return count
+}
+
 function readWorkflowEvidence(root: string): WorkflowEvidence {
   const runs: RunEvidence[] = []
   const workers = new Map<string, WorkflowIdentity>()

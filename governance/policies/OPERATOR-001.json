@@ -18,7 +18,7 @@
       "audience": ["supervisor"]
     },
     {
-      "text": "The redline record MUST name the guidance categories pre-declared non-authoritative and the authority order from `AGENTS.md`. The guidance categories cover text about polling, awaiting, and backgrounding, plus session-mode text, model and tool suggestions, and hints not to run commands. The record MUST carry a platform-started detach separately as a platform action, rather than as guidance the supervisor accepted or declined.",
+      "text": "The redline record MUST name the guidance categories pre-declared non-authoritative and the authority order from `AGENTS.md`. The guidance categories cover text about polling, awaiting, and backgrounding, plus session-mode text, model and tool suggestions, and hints not to run commands. They also cover authority framing, which ranks platform text above repository instructions, and subagent trust, which says subagent output needs no verification. The record MUST carry a platform-started detach separately as a platform action, rather than as guidance the supervisor accepted or declined. Each declaration MUST name its host and host version when the session can tell them. The record MUST copy that host's entries from `governance/registries/platform_guidance_catalog.json` and state whether the catalog covers the host in full.",
       "audience": ["supervisor"]
     },
     {

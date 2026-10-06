@@ -318,6 +318,59 @@ test('platform-guidance-conflict-recorded reports the redline but never lets it 
   }
 })
 
+test('platform-guidance-conflict-recorded fails a guidance sighting without a conflict record', () => {
+  const sightings = [
+    { schema_version: 1, guidance_id: 'VG-06', action: null },
+    {
+      schema_version: 1,
+      guidance_id: 'VG-05',
+      action: 'platform_initiated_detach',
+    },
+  ]
+    .map((line) => JSON.stringify(line))
+    .join('\n')
+  const run = new SyntheticRun()
+    .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+    .output('i1', 'success', { implementation: {} })
+    .evidenceFile('platform-guidance-sightings.jsonl', sightings)
+    .write()
+
+  try {
+    const verdict = grade(run, { id: 'platform-guidance-conflict-recorded' })
+
+    assert.equal(verdict.passed, false, verdict.summary)
+    assert.equal(verdict.details.guidance_sightings, 1)
+    assert.match(
+      String((verdict.details.failures as string[])[0]),
+      /1 platform guidance sighting\(s\) .*\(VG-06\) but the run has no conflict record/u,
+    )
+  } finally {
+    run.dispose()
+  }
+
+  const detachOnly = new SyntheticRun()
+    .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+    .output('i1', 'success', { implementation: {} })
+    .evidenceFile(
+      'platform-guidance-sightings.jsonl',
+      JSON.stringify({
+        schema_version: 1,
+        guidance_id: 'VG-05',
+        action: 'platform_initiated_detach',
+      }),
+    )
+    .write()
+
+  try {
+    assert.equal(
+      grade(detachOnly, { id: 'platform-guidance-conflict-recorded' }).passed,
+      true,
+    )
+  } finally {
+    detachOnly.dispose()
+  }
+})
+
 test('attempts-not-spent-on-mechanics flags a validator-only failure and ignores gate failures', () => {
   const run = new SyntheticRun()
     .addHistory({

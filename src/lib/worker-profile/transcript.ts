@@ -5,7 +5,7 @@
 
 import path from 'node:path'
 
-import { isRecord } from '../io.js'
+import { transcriptSteps } from '../transcripts/records.js'
 
 /**
  * Programs that only show file content or a directory listing. A Shell call
@@ -108,49 +108,15 @@ export function increment(
   counts.set(key, (counts.get(key) ?? 0) + by)
 }
 
-/** Tool uses of each assistant turn in a JSONL transcript, one list per assistant record in order; unparseable lines are skipped. */
+/**
+ * Tool uses of each assistant turn in a JSONL transcript, one list per
+ * assistant record in order, in the Cursor or the Copilot SDK record shape;
+ * unparseable lines are skipped.
+ */
 export function assistantTurns(content: string): ToolUse[][] {
-  const turns: ToolUse[][] = []
-
-  for (const line of content.split('\n')) {
-    if (line.trim().length === 0) {
-      continue
-    }
-
-    let record: unknown
-
-    try {
-      record = JSON.parse(line)
-    } catch {
-      continue
-    }
-
-    if (!isRecord(record) || record.role !== 'assistant') {
-      continue
-    }
-
-    const blocks = isRecord(record.message) ? record.message.content : null
-    const tools: ToolUse[] = []
-
-    if (Array.isArray(blocks)) {
-      for (const block of blocks) {
-        if (
-          isRecord(block) &&
-          block.type === 'tool_use' &&
-          typeof block.name === 'string'
-        ) {
-          tools.push({
-            name: block.name,
-            input: isRecord(block.input) ? block.input : {},
-          })
-        }
-      }
-    }
-
-    turns.push(tools)
-  }
-
-  return turns
+  return transcriptSteps(content)
+    .filter((step) => step.role === 'assistant')
+    .map((step) => step.tools)
 }
 
 interface ShellWord {

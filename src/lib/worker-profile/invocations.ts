@@ -13,16 +13,16 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
-import { readInstallationIdentity } from '../project-config.js'
 import { agentGateProfileRuns } from '../repository-checks/ledger.js'
+import { transcriptBrief } from '../token-spend/transcripts.js'
 import {
-  cursorProjectDirectory,
-  transcriptBrief,
-} from '../token-spend/transcripts.js'
+  CURSOR_TRANSCRIPTS_ENV,
+  cursorTranscriptsRoot,
+  executorTranscript,
+} from '../transcripts/source.js'
 import { shellBrowsingCalls } from './transcript.js'
 
-/** The hypervisor's override for the Cursor transcript directory. */
-export const CURSOR_TRANSCRIPTS_ENV = 'PANCREATOR_CURSOR_TRANSCRIPTS_DIR'
+export { CURSOR_TRANSCRIPTS_ENV }
 
 /**
  * Bounds of the per-invocation submit scan: the newest candidates opened, the
@@ -37,18 +37,7 @@ const INVOCATION_TRANSCRIPT_MAX_BYTES = 32 * 1024 * 1024
 
 /** Transcript directory the submit advisory scans for one invocation. */
 export function invocationTranscriptsRoot(root: string): string {
-  const configured = process.env[CURSOR_TRANSCRIPTS_ENV]?.trim()
-
-  if (configured) {
-    return path.resolve(configured)
-  }
-
-  const workspaceRoot = readInstallationIdentity(root)?.workspace_root ?? '.'
-
-  return path.join(
-    cursorProjectDirectory(path.resolve(root, workspaceRoot)),
-    'agent-transcripts',
-  )
+  return cursorTranscriptsRoot(root)
 }
 
 function openingChunk(absolute: string): string {
@@ -183,6 +172,7 @@ export function workerInvocationSuiteCost(
       root,
       invocationId,
       Number.isFinite(preparedAtMs) ? preparedAtMs : 0,
+      runId,
     )
     const gateRuns = Object.values(profiles).reduce(
       (total, value) => total + value,
@@ -222,19 +212,26 @@ export function workerInvocationSuiteCost(
 
 /**
  * Shell browsing calls across the worker transcripts of one invocation, or
- * `null` when no transcript names it. A transcript above the size bound is
+ * `null` when no transcript names it. With `runId`, a copilot worker's
+ * session transcript counts too. A transcript above the size bound is
  * skipped rather than read.
  */
 export function invocationShellBrowsingCalls(
   root: string,
   invocationId: string,
   sinceMs: number,
+  runId?: string,
 ): { transcripts: number; shell_browsing_calls: number | null } {
-  const found = findInvocationTranscripts(
-    invocationTranscriptsRoot(root),
-    invocationId,
-    sinceMs,
-  ).filter((absolute) => {
+  const external =
+    runId === undefined ? null : executorTranscript(root, runId, invocationId)
+  const found = [
+    ...findInvocationTranscripts(
+      invocationTranscriptsRoot(root),
+      invocationId,
+      sinceMs,
+    ),
+    ...(external === null ? [] : [external]),
+  ].filter((absolute) => {
     try {
       return statSync(absolute).size <= INVOCATION_TRANSCRIPT_MAX_BYTES
     } catch {

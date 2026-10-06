@@ -42,12 +42,27 @@ import {
   type AgentEvent,
 } from './store.js'
 import { validatedParentTranscriptPath } from './transcript.js'
+import { allHostToolNames, loadHostToolRegistry } from '../host-tools.js'
 
 // ---------------------------------------------------------------------------
 // Public event handlers
 // ---------------------------------------------------------------------------
 
 const AGENT_HANDLE_PATTERN = /^[A-Za-z0-9_-]{1,128}$/u
+
+/**
+ * Every host's subagent launch tool. A hook must still record a Cursor
+ * launch when the registry is unreadable, so `Task` is the fallback.
+ */
+function subagentLaunchTools(root: string): ReadonlySet<string> {
+  try {
+    return new Set(
+      allHostToolNames(loadHostToolRegistry(root), 'subagent_launch'),
+    )
+  } catch {
+    return new Set(['Task'])
+  }
+}
 
 /** The agent a `Task` call's `resume` names, or null for a fresh or self-forked launch. */
 function resumeTarget(value: unknown): string | null {
@@ -131,13 +146,16 @@ export function handlePreToolUse(
       nowIso,
     )
 
-    if (toolName === 'Task') {
+    if (subagentLaunchTools(root).has(toolName)) {
       const input = parseToolInput(payload.tool_input)
       const launch: PendingLaunch = {
         parent_agent_id: entry.agent_id,
         tool_use_id: toolUseId,
         prompt_digest: promptDigest(nonEmptyString(input?.prompt)),
-        subagent_type: nonEmptyString(input?.subagent_type),
+        subagent_type:
+          nonEmptyString(input?.subagent_type) ??
+          nonEmptyString(input?.agent_type) ??
+          nonEmptyString(input?.agentName),
         description:
           input && nonEmptyString(input.description)
             ? boundedSummary(input.description as string, secrets)
@@ -205,7 +223,7 @@ export function handlePostToolUse(
   })
 
   const handle =
-    toolName === 'Task' && !failed
+    !failed && subagentLaunchTools(root).has(toolName)
       ? extractTaskHandle(payload.tool_output)
       : null
 
@@ -398,7 +416,11 @@ function transcriptKey(transcriptPath: string | null): string | null {
     return null
   }
 
-  const key = path.basename(transcriptPath).replace(/\.jsonl?$/u, '')
+  // A Copilot CLI transcript is session-state/<sessionId>/events.jsonl.
+  const key =
+    path.basename(transcriptPath) === 'events.jsonl'
+      ? path.basename(path.dirname(transcriptPath))
+      : path.basename(transcriptPath).replace(/\.jsonl?$/u, '')
 
   return key.length > 0 ? key : null
 }

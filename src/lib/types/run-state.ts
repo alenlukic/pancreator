@@ -219,6 +219,16 @@ export interface RunState {
     key_source: string
     verified_at: string
   }
+  /**
+   * Cached copilot binary preflight for this run. The version and `--help`
+   * checks are local; the credential is resolved again at each delegation
+   * because each persona mapping can name its own provider.
+   */
+  copilot_preflight?: {
+    binary: string
+    version: string
+    verified_at: string
+  }
   governance_artifact_issues?: GovernanceArtifactIssue[]
   governance_artifact_issues_path?: string
   /**

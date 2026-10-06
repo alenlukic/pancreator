@@ -158,6 +158,37 @@ test('readAgentShellRecords classifies busy then idle against the previous wake'
   )
 })
 
+test('readAgentShellRecords links a record by host_session_id when no Cursor id is set', () => {
+  const root = createTestTempDirectory('shell-records-host-')
+  const directory = path.join(
+    root,
+    'runtime/logs/shell/20261001T000000Z-probe-abcdef02',
+  )
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(
+    path.join(directory, 'record.json'),
+    JSON.stringify({
+      ...baseRecord({
+        cursor_conversation_id: null,
+        started_at: new Date().toISOString(),
+      }),
+      host: 'copilot-cli',
+      host_session_id: 'copilot-session-1',
+    }),
+  )
+  const nowMs = Date.now()
+  const records = readAgentShellRecords(
+    root,
+    new Set(['copilot-session-1']),
+    nowMs - 60_000,
+    nowMs,
+    new Map(),
+  )
+
+  assert.equal(records.length, 1)
+  assert.equal(records[0]?.cursor_conversation_id, 'copilot-session-1')
+})
+
 test('parseProcessTable keeps the full lstart so a live wrapper matches its identity', () => {
   const table = parseProcessTable(
     [

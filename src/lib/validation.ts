@@ -65,6 +65,7 @@ export {
 export { evaluateDeterministicCriteria } from './validation/deterministic-criteria.js'
 export {
   validateHarnessInstructionCoverage,
+  validateHostToolRegistry,
   validateQuestionToolAccess,
   validateAwaitShellBan,
   validateShellMonitor,

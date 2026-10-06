@@ -24,6 +24,10 @@ import { panCommand } from '../project-config.js'
 import { evidenceWorkerAttempts, readEvidenceReportState } from '../render.js'
 import { watchedAgentActivity } from '../watch.js'
 import { WORKER_STILL_ACTIVE } from '../watch/types.js'
+import {
+  executorProcessActivity,
+  processBackedExecutor,
+} from '../watch/executor-process.js'
 import { workerActivityRefusal } from '../watch/liveness.js'
 import type {
   Invocation,
@@ -247,7 +251,22 @@ export function assertWorkerNotStillActive(
   personaExecutor: PersonaExecutorKind,
   stage: StageDefinition,
 ): void {
-  if (stage.persona === 'orchestrator' || personaExecutor !== 'cursor') {
+  if (stage.persona === 'orchestrator') {
+    return
+  }
+
+  if (processBackedExecutor(invocation)) {
+    invariant(
+      executorProcessActivity(root, invocation, Date.now()) !== null,
+      `The ${personaExecutor} worker for ${invocation.invocation_id} has no ` +
+        `execution record, so its pan delegate process is still open. Wait ` +
+        `for that process to exit, then submit.`,
+      { code: WORKER_STILL_ACTIVE },
+    )
+    return
+  }
+
+  if (personaExecutor !== 'cursor') {
     return
   }
 

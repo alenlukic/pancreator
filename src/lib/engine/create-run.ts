@@ -50,6 +50,7 @@ import {
   type LoadedPipelineConfig,
 } from '../pipeline-config.js'
 import { claudeCodeVersionPreflight } from '../executors/claude-code.js'
+import { copilotCliPreflight } from '../executors/copilot-cli.js'
 import { openAiExecutorPreflight } from '../executors/openai-auth.js'
 import {
   applyOperatorInvolvement,
@@ -385,7 +386,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     const preflight =
       executor === 'claude-code'
         ? claudeCodeVersionPreflight()
-        : openAiExecutorPreflight(root)
+        : executor === 'copilot'
+          ? copilotCliPreflight()
+          : openAiExecutorPreflight(root)
 
     invariant(
       preflight.ok,

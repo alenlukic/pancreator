@@ -9,6 +9,13 @@
 .cursor/
 .claude/
 .vscode/
+
+# VS Code and Copilot CLI projections, written when config hosts names vscode.
+.agents/skills/pan-*/
+.github/agents/pan-*.agent.md
+.github/hooks/pan-*.json
+.github/instructions/pan-*.instructions.md
+.github/instructions/pancreator.instructions.md
 governance/registries/cursor_model_catalog.json
 
 projects/

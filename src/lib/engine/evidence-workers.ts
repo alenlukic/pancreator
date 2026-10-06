@@ -30,7 +30,9 @@ import {
 } from './core.js'
 import {
   claudeCodeToolPolicy,
+  createCopilotAdapter,
   ensureCursorReady,
+  ensureExecutorReady,
   pauseForExecutorPreflight,
 } from './executors.js'
 
@@ -85,7 +87,7 @@ export function delegateEvidenceWorkers(
   const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
 
   const results: EvidenceWorkerDelegation[] = []
-  let cursorPreflighted = false
+  const preflighted = new Set<string>()
 
   for (const worker of invocation.evidence_workers ?? []) {
     if (options.roles && !options.roles.includes(worker.role)) {
@@ -115,8 +117,9 @@ export function delegateEvidenceWorkers(
     const mapping = resolvePersonaMapping(pipelineConfig, worker.persona)
     const headlessCursor =
       mapping.executor === 'cursor' && options.headless === true
+    const copilot = mapping.executor === 'copilot'
 
-    if (mapping.executor !== 'claude-code' && !headlessCursor) {
+    if (mapping.executor !== 'claude-code' && !copilot && !headlessCursor) {
       results.push({
         ...base,
         skipped: 'cursor_persona',
@@ -129,17 +132,19 @@ export function delegateEvidenceWorkers(
       continue
     }
 
-    if (headlessCursor && !cursorPreflighted) {
-      const preflight = ensureCursorReady(root)
+    if ((headlessCursor || copilot) && !preflighted.has(mapping.raw)) {
+      const preflight = headlessCursor
+        ? ensureCursorReady(root)
+        : ensureExecutorReady(root, state, 'copilot', mapping)
 
       if (!preflight.ok) {
         // EXECUTOR-001 makes a failed preflight an operator-visible stop that
         // names its remedy. These workers run before the stage delegation that
-        // carries that check, so an unready Cursor has to pause the run here
-        // or it reaches the operator as a spawn error with no remedy. The
-        // claude-code path keeps its existing behaviour: its readiness probe
-        // spends a real invocation, and the run state that caches one is not
-        // written from here.
+        // carries that check, so an unready Cursor or Copilot CLI has to pause
+        // the run here or it reaches the operator as a spawn error with no
+        // remedy. The claude-code path keeps its existing behaviour: its
+        // readiness probe spends a real invocation, and the run state that
+        // caches one is not written from here.
         withOperationMutex(operationMutexPath(root, runId), () => {
           const paused = loadState(root, runId)
 
@@ -147,7 +152,7 @@ export function delegateEvidenceWorkers(
             root,
             paused,
             stage,
-            'cursor',
+            mapping.executor,
             preflight.error,
           )
           persistRun(root, paused, 'run_paused', {
@@ -168,7 +173,7 @@ export function delegateEvidenceWorkers(
         break
       }
 
-      cursorPreflighted = true
+      preflighted.add(mapping.raw)
     }
 
     const brief = readText(resolveInside(root, worker.brief_path))
@@ -197,15 +202,24 @@ export function delegateEvidenceWorkers(
           ),
           ...(timeoutMs !== undefined ? { timeoutMs } : {}),
         }).run(prompt)
-      : runClaudeCode({
-          prompt,
-          cwd: workspaceDir,
-          model: mapping.model,
-          permissionMode: mapping.options['permission-mode'] ?? 'default',
-          allowedTools: policy.allowedTools,
-          addDirs: policy.addDirs,
-          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-        })
+      : copilot
+        ? createCopilotAdapter({
+            root,
+            workspaceDir,
+            stage,
+            persona: worker.persona,
+            mapping,
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          }).run(prompt)
+        : runClaudeCode({
+            prompt,
+            cwd: workspaceDir,
+            model: mapping.model,
+            permissionMode: mapping.options['permission-mode'] ?? 'default',
+            allowedTools: policy.allowedTools,
+            addDirs: policy.addDirs,
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          })
     const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stdout.json`
     const stderrPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stderr.log`
 

@@ -37,6 +37,7 @@ import {
   watchLockPath,
   watchRecordPath,
 } from './paths.js'
+import { executorProcessActivity } from './executor-process.js'
 import { launchedMsFromRecord, readLaunchRecord } from './launch.js'
 import { BLOCKED_OUTPUT_SNAPSHOT_PATTERN } from './blocked-snapshot.js'
 
@@ -314,7 +315,7 @@ export function watchedAgentActivity(
         cadenceSeconds,
         invocationNotBeforeMs(invocation),
       )
-    : null
+    : executorProcessActivity(root, invocation, nowMs)
 }
 
 /**
@@ -328,8 +329,11 @@ export function watchedAgentStopped(
 ): boolean {
   const agentId = watchedAgentId(root, invocation)
 
+  if (agentId === null) {
+    return executorProcessActivity(root, invocation, Date.now())?.stop != null
+  }
+
   return (
-    agentId !== null &&
     readAgentStop(
       root,
       agentId,

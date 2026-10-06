@@ -29,11 +29,13 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 
 - Node.js 22 or newer
 - Git
-- Cursor with project commands and subagents enabled
+- Cursor with project commands and subagents enabled, or VS Code with GitHub
+  Copilot agent mode, or both
 - Optional MCP servers configured in Cursor for teams that want them
 - Optional external stage executors, each needed only when the active persona
-  mapping routes a persona to one: the Claude Code CLI for `claude-code:`, and
-  an `OPENAI_API_KEY` for `openai:`
+  mapping routes a persona to one: the Claude Code CLI for `claude-code:`, an
+  `OPENAI_API_KEY` for `openai:`, and the GitHub Copilot CLI 1.0.88 or later
+  for `copilot:`
 - Optional `CURSOR_SESSION_TOKEN` for personal `/pan-spend` reports, or
   `CURSOR_ADMIN_API_KEY` with `admin:*` scope for team reports; either
   credential may live in the process environment or repository `.env`
@@ -75,6 +77,24 @@ creates final PR copy after local release commits. Pass
 current stage. Use `pan briefs generate --run <run-id> [--stage <slug>]` after
 submission to create validated HTML from retained stage records.
 
+## Use In VS Code
+
+1. Add `vscode` to the `hosts` list in `config.json` (or `config_overrides.json` to keep it local):
+
+   ```json
+   { "hosts": ["cursor", "vscode"] }
+   ```
+
+2. Project the VS Code skills, agents, instructions, and hooks:
+
+   ```sh
+   ./bin/pan models --sync
+   ```
+
+3. In VS Code chat, select the `pan-supervisor` agent, then run `/pan-start <request>` or `/pan-resume <run-id>`.
+
+Remove `vscode` from `hosts` and sync again to remove those files. See [Choose editor hosts](docs/operator-guide.md#choose-editor-hosts) for the surfaces and the known limits.
+
 ## Install Into Another Repository
 
 Use Pancreator from this source checkout to install the workflow harness into a target repository:
@@ -86,7 +106,7 @@ cd /path/to/your-project
 ./.pancreator/bin/pan validate
 ```
 
-Pancreator installs into `.pancreator/` and projects its Cursor commands and agents into the target repository, so the workflow travels with the codebase you actually want to manage.
+Pancreator installs into `.pancreator/` and projects its commands and agents for each enabled host into the target repository, so the workflow travels with the codebase you actually want to manage.
 
 For indexed release updates:
 

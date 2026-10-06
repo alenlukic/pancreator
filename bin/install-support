@@ -318,6 +318,7 @@ function expandProjection(sourceRoot, projection) {
         source: path.join(sourceRoot, projection.source),
         relative: projection.target,
         variable: null,
+        host: projection.host,
         generatedFields: projection.generated_fields ?? [],
         transforms: projection.transforms ?? [],
       },
@@ -347,13 +348,195 @@ function expandProjection(sourceRoot, projection) {
         source: path.join(absoluteDirectory, entry.name),
         relative: projection.target.replace(token, variable),
         variable,
+        host: projection.host,
         generatedFields: projection.generated_fields ?? [],
         transforms: projection.transforms ?? [],
       }
     })
 }
 
-function cursorSourceFiles(sourceRoot) {
+// Mirrors src/lib/projection/host-content.ts. This script runs before the
+// harness is built, so it cannot import that module. Keep the two in step.
+const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/u
+const DESCRIPTION_LIMIT = 1024
+const SKILLS_ROOT = '.agents/skills/'
+
+function unquoteYaml(value) {
+  const trimmed = value.trim()
+
+  if (trimmed.startsWith('"')) {
+    return JSON.parse(trimmed)
+  }
+
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1).replaceAll("''", "'")
+  }
+
+  return trimmed
+}
+
+function splitFrontmatter(content) {
+  const match = FRONTMATTER.exec(content)
+
+  if (!match) {
+    return { description: null, body: content }
+  }
+
+  const description = /^description:\s*(.+)$/mu.exec(match[1] ?? '')?.[1]
+
+  return {
+    description: description === undefined ? null : unquoteYaml(description),
+    body: content.slice(match[0].length),
+  }
+}
+
+function limitDescription(value) {
+  return value.length <= DESCRIPTION_LIMIT
+    ? value
+    : `${value.slice(0, DESCRIPTION_LIMIT - 1)}…`
+}
+
+function firstSentence(body) {
+  const paragraph = (body.trim().split(/\n\s*\n/u)[0] ?? '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+  const sentence = /^(.+?[.!?])(?:\s|$)/u.exec(paragraph)?.[1]
+
+  return sentence ?? paragraph
+}
+
+function renderVscodeInstructions(content) {
+  const { description, body } = splitFrontmatter(content)
+
+  return [
+    '---',
+    ...(description === null
+      ? []
+      : [`description: ${JSON.stringify(limitDescription(description))}`]),
+    "applyTo: '**'",
+    '---',
+    body,
+  ].join('\n')
+}
+
+function renderCommandSkill(name, content) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name)) {
+    fail(
+      `skill name '${name}' MUST be lowercase alphanumeric with single hyphens`,
+    )
+  }
+
+  const argumentsLine = content.includes('$ARGUMENTS')
+    ? [
+        `\`$ARGUMENTS\` in these instructions stands for the text the operator typed after \`/${name}\`.`,
+        '',
+      ]
+    : []
+
+  return [
+    '---',
+    `name: ${name}`,
+    `description: ${JSON.stringify(limitDescription(firstSentence(content)))}`,
+    'disable-model-invocation: true',
+    '---',
+    '',
+    ...argumentsLine,
+    content,
+  ].join('\n')
+}
+
+function renderVscodeAgent(persona, content) {
+  const { description, body } = splitFrontmatter(content)
+
+  if (description === null) {
+    fail(`persona ${persona} agent source MUST carry a description`)
+  }
+
+  return [
+    '---',
+    `name: pan-${persona}`,
+    `description: ${JSON.stringify(limitDescription(description))}`,
+    'user-invocable: false',
+    '---',
+    body,
+  ].join('\n')
+}
+
+// Mirrors TRANSLATED_HOST_TOOL_TERMS and hostToolTranslations in
+// src/lib/host-tools.ts.
+const TRANSLATED_HOST_TOOL_TERMS = ['question_tool']
+
+function hostToolTranslations(sourceRoot, host) {
+  const registry = readJson(
+    path.join(sourceRoot, 'governance', 'registries', 'host_tools.json'),
+  )
+
+  return TRANSLATED_HOST_TOOL_TERMS.flatMap((term) => {
+    const tools = registry.terms?.[term]?.tools ?? {}
+    const cursorName = tools.cursor?.[0]
+    const hostName = tools[host]?.[0]
+
+    return cursorName && hostName && cursorName !== hostName
+      ? [[cursorName, hostName]]
+      : []
+  })
+}
+
+function translateHostToolNames(content, replacements) {
+  return replacements.reduce(
+    (text, [cursorName, hostName]) =>
+      text.replaceAll(`\`${cursorName}\``, `\`${hostName}\``),
+    content,
+  )
+}
+
+/** Mirrors projectionOwnedName in src/lib/projection/manifest.ts. */
+function projectionOwnedName(target) {
+  return target.startsWith(SKILLS_ROOT)
+    ? (target.slice(SKILLS_ROOT.length).split('/')[0] ?? '')
+    : path.basename(target)
+}
+
+// Mirrors HOST_TARGET_PREFIXES and DEFAULT_PROJECT_HOSTS in
+// src/lib/projection/manifest.ts and src/lib/project-config/files.ts.
+const HOST_TARGET_PREFIXES = {
+  shared: ['.agents/skills/'],
+  cursor: ['.cursor/'],
+  vscode: ['.github/', '.vscode/', '.agents/skills/'],
+}
+const PROJECT_HOSTS = ['cursor', 'vscode']
+const DEFAULT_PROJECT_HOSTS = ['cursor']
+
+/**
+ * Hosts a target config and its overrides file enable, `["cursor"]` when they
+ * name none.
+ */
+function enabledHostsFromConfig(configPath) {
+  if (!configPath || !existsSync(configPath)) {
+    return [...DEFAULT_PROJECT_HOSTS]
+  }
+
+  const hosts = readConfigWithOverrides(configPath).hosts
+
+  if (hosts === undefined) {
+    return [...DEFAULT_PROJECT_HOSTS]
+  }
+
+  if (
+    !Array.isArray(hosts) ||
+    hosts.length === 0 ||
+    new Set(hosts).size !== hosts.length ||
+    !hosts.every((host) => PROJECT_HOSTS.includes(host))
+  ) {
+    fail(
+      `config.json hosts MUST be a non-empty list of distinct hosts from ${PROJECT_HOSTS.join(', ')}`,
+    )
+  }
+
+  return hosts
+}
+
+function cursorSourceFiles(sourceRoot, hosts = DEFAULT_PROJECT_HOSTS) {
   const manifest = readJson(
     path.join(
       sourceRoot,
@@ -363,20 +546,27 @@ function cursorSourceFiles(sourceRoot) {
     ),
   )
 
-  if (manifest.schema_version !== 2 || !Array.isArray(manifest.projections)) {
+  if (manifest.schema_version !== 3 || !Array.isArray(manifest.projections)) {
     fail('Invalid governance/registries/projection_manifest.json')
   }
 
+  const targetPrefixes = Object.values(HOST_TARGET_PREFIXES).flat()
+
   for (const projection of manifest.projections) {
+    const prefixes = projection
+      ? HOST_TARGET_PREFIXES[projection.host]
+      : undefined
+
     if (
       !projection ||
+      !prefixes ||
       typeof projection.source !== 'string' ||
-      projection.source.startsWith('.cursor/') ||
+      targetPrefixes.some((prefix) => projection.source.startsWith(prefix)) ||
       typeof projection.target !== 'string' ||
-      !projection.target.startsWith('.cursor/')
+      !prefixes.some((prefix) => projection.target.startsWith(prefix))
     ) {
       fail(
-        'Projection sources MUST be canonical and targets MUST be under .cursor/',
+        "Projection sources MUST be canonical and targets MUST sit under their host's projection roots",
       )
     }
   }
@@ -385,7 +575,8 @@ function cursorSourceFiles(sourceRoot) {
     .filter(
       (projection) =>
         Array.isArray(projection.installation_modes) &&
-        projection.installation_modes.includes('embedded'),
+        projection.installation_modes.includes('embedded') &&
+        (projection.host === 'shared' || hosts.includes(projection.host)),
     )
     .flatMap((projection) => expandProjection(sourceRoot, projection))
     .sort((left, right) => left.relative.localeCompare(right.relative))
@@ -395,7 +586,7 @@ function cursorSourceFiles(sourceRoot) {
   // with a target-authored agent, command, or rule.
   for (const entry of expanded) {
     if (
-      !/^pan(-|creator\.)/u.test(path.basename(entry.relative)) &&
+      !/^pan(-|creator\.)/u.test(projectionOwnedName(entry.relative)) &&
       !entry.transforms.includes('hooks-merge')
     ) {
       fail(
@@ -732,6 +923,11 @@ function mergeEmbeddedProjectConfig(source, existing) {
       : source.active_config
 
   merged.active_config = activeConfig
+
+  // Host selection is an operator choice, so an update keeps it.
+  if (existing.hosts !== undefined) {
+    merged.hosts = existing.hosts
+  }
 
   for (const [name, sourceConfig] of Object.entries(source.configs ?? {})) {
     if (typeof sourceConfig !== 'object' || sourceConfig === null) {
@@ -1418,7 +1614,11 @@ function projectCursor() {
     sourceRoot,
   )
 
-  for (const entry of cursorSourceFiles(sourceRoot)) {
+  const hosts = enabledHostsFromConfig(
+    personaConfigPath ? path.resolve(personaConfigPath) : null,
+  )
+
+  for (const entry of cursorSourceFiles(sourceRoot, hosts)) {
     const destination = path.join(targetRoot, entry.relative)
     const mergesHooks = entry.transforms.includes('hooks-merge')
 
@@ -1465,6 +1665,25 @@ function projectCursor() {
 
     if (entry.transforms.includes('installation-paths')) {
       content = projectCursorContent(content, entry.relative, harnessPrefix)
+    }
+
+    if (entry.transforms.includes('vscode-instructions')) {
+      content = renderVscodeInstructions(content)
+    }
+
+    if (entry.transforms.includes('vscode-agent')) {
+      content = renderVscodeAgent(entry.variable, content)
+    }
+
+    if (entry.transforms.includes('skill-command')) {
+      content = renderCommandSkill(entry.variable, content)
+    }
+
+    if (entry.host !== 'cursor' && entry.host !== 'shared') {
+      content = translateHostToolNames(
+        content,
+        hostToolTranslations(sourceRoot, entry.host),
+      )
     }
 
     if (mergesHooks) {
@@ -1521,6 +1740,21 @@ function projectCursor() {
 
     if (existingDigest === previousDigest) {
       rmSync(destination)
+
+      // Mirrors removeEmptySkillFolder and pruneEmptyHostDirectories in
+      // src/lib/projection.ts: an emptied non-Cursor directory and its emptied
+      // parents go too, up to the target root.
+      let folder = path.dirname(destination)
+
+      while (
+        !relative.startsWith('.cursor/') &&
+        folder.startsWith(`${targetRoot}${path.sep}`) &&
+        existsSync(folder) &&
+        readdirSync(folder).length === 0
+      ) {
+        rmSync(folder, { recursive: true, force: true })
+        folder = path.dirname(folder)
+      }
     }
   }
 
@@ -1789,29 +2023,53 @@ const FOREIGN_HARNESS_SURFACES = [
   { path: '.amazonq', label: 'Amazon Q configuration' },
   { path: '.zed', label: 'Zed configuration' },
   { path: '.trae', label: 'Trae configuration' },
+  { path: '.vscode', label: 'VS Code workspace settings' },
 ]
 
-/** Target-owned `.cursor/` entries that Pancreator does not project. */
-function foreignCursorEntries(targetRoot) {
+/**
+ * Host directories Pancreator projects `pan-*` entries into. Every other
+ * entry there belongs to the target. A skill is a directory; every other
+ * entry is a file.
+ */
+const HOST_ENTRY_GROUPS = [
+  { directory: '.cursor/agents', label: 'target-owned Cursor file' },
+  { directory: '.cursor/commands', label: 'target-owned Cursor file' },
+  { directory: '.cursor/rules', label: 'target-owned Cursor file' },
+  { directory: '.agents/skills', label: 'target-owned skill', skill: true },
+  { directory: '.github/agents', label: 'target-owned VS Code agent' },
+  { directory: '.github/hooks', label: 'target-owned hook file' },
+  {
+    directory: '.github/instructions',
+    label: 'target-owned VS Code instructions',
+  },
+]
+
+/** Target-owned entries in the host directories Pancreator projects into. */
+function foreignHostEntries(targetRoot) {
   const found = []
 
-  for (const group of ['agents', 'commands', 'rules']) {
-    const directory = path.join(targetRoot, '.cursor', group)
+  for (const group of HOST_ENTRY_GROUPS) {
+    const directory = path.join(targetRoot, group.directory)
 
     if (!existsSync(directory)) {
       continue
     }
 
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (!entry.isFile() || /^pan(-|creator\.)/u.test(entry.name)) {
+      const kindMatches = group.skill ? entry.isDirectory() : entry.isFile()
+
+      if (!kindMatches || /^pan(-|creator\.)/u.test(entry.name)) {
         continue
       }
 
-      found.push(`.cursor/${group}/${entry.name}`)
+      found.push({
+        path: `${group.directory}/${entry.name}`,
+        label: group.label,
+      })
     }
   }
 
-  return found.sort()
+  return found.sort((left, right) => left.path.localeCompare(right.path))
 }
 
 function stripHarnessTestScripts() {
@@ -1877,17 +2135,24 @@ function detectExistingHarness() {
   const sourceRoot = path.resolve(requiredOption('--source-root'))
   const previousMarker = option('--previous-marker')
   const installationMode = option('--installation-mode') ?? 'embedded'
+  const hosts = enabledHostsFromConfig(option('--persona-config'))
+
+  // A refresh reports again only while VS Code is enabled, because enabling
+  // it later makes the target's .github and .agents surfaces matter.
+  if (option('--first-install') === 'false' && !hosts.includes('vscode')) {
+    return
+  }
 
   const detected = FOREIGN_HARNESS_SURFACES.filter((surface) =>
     existsSync(path.join(targetRoot, surface.path)),
   )
-  const cursorEntries = foreignCursorEntries(targetRoot)
+  const hostEntries = foreignHostEntries(targetRoot)
 
   // A collision is a Pancreator-owned projection target that already exists and
   // is not recorded as Pancreator-installed. Namespacing makes this rare; when
   // it happens the operator MUST be told which file is being taken over.
   const previous = previousCursorFiles(previousMarker)
-  const collisions = cursorSourceFiles(sourceRoot)
+  const collisions = cursorSourceFiles(sourceRoot, hosts)
     .filter((entry) => !entry.transforms.includes('hooks-merge'))
     .map((entry) => entry.relative)
     .filter(
@@ -1896,7 +2161,11 @@ function detectExistingHarness() {
     )
     .sort()
 
-  if (detected.length === 0 && cursorEntries.length === 0) {
+  if (
+    detected.length === 0 &&
+    hostEntries.length === 0 &&
+    collisions.length === 0
+  ) {
     return
   }
 
@@ -1904,7 +2173,7 @@ function detectExistingHarness() {
     '',
     'Existing agentic harness configuration detected in the target repository.',
     'Pancreator installs alongside it and does not modify or remove it.',
-    'Pancreator-owned Cursor files are namespaced `pan-*`.',
+    'Pancreator-owned host files are namespaced `pan-*`.',
     '',
   ]
 
@@ -1927,8 +2196,8 @@ function detectExistingHarness() {
     lines.push(`  retained  ${surface.path}  (${surface.label})`)
   }
 
-  for (const relative of cursorEntries) {
-    lines.push(`  retained  ${relative}  (target-owned Cursor file)`)
+  for (const entry of hostEntries) {
+    lines.push(`  retained  ${entry.path}  (${entry.label})`)
   }
 
   if (collisions.length > 0) {

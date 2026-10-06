@@ -66,6 +66,14 @@ export const AWAY_MODE_ACTIONS = [
 export const DEFAULT_AWAY_MODE_ACTIONS = [...AWAY_MODE_ACTIONS]
 export const DEFAULT_RETENTION_DAYS = 30
 
+/** Operator clients `config.json` `hosts` can enable. */
+export const PROJECT_HOSTS = ['cursor', 'vscode'] as const
+
+export type ProjectHost = (typeof PROJECT_HOSTS)[number]
+
+/** An installation without a `hosts` value behaves as Cursor only. */
+export const DEFAULT_PROJECT_HOSTS: readonly ProjectHost[] = ['cursor']
+
 /**
  * Untracked operator-local overrides, merged over the checked-in harness
  * configuration. The checked-in `config.json` carries the recommended defaults

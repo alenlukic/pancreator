@@ -214,6 +214,10 @@ export function statusCommand({ root, args, json }: CliContext): void {
       root,
       runId,
       option(args, '--occasion') ?? 'session',
+      {
+        host: option(args, '--host'),
+        hostVersion: option(args, '--host-version'),
+      },
     )
     print(
       json

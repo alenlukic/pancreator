@@ -62,10 +62,12 @@ mapping before resuming the run.
 ## Executor seam
 
 A persona keeps one executor identity from the run's pipeline snapshot:
-`cursor`, `claude-code`, or `openai`. Ordinary Cursor-session delegation stays
-operator-session owned. The harness-owned headless driver may dispatch the same
-`cursor` identity through `delegateInvocation(..., { headless: true })`; this is
-who delegated the worker changing, not a fourth executor kind.
+`cursor`, `claude-code`, `openai`, or `copilot`. Ordinary session delegation
+stays operator-session owned, and `cursor` names that delegation in VS Code
+too: the session's own host launches the subagent. The harness-owned headless
+driver may dispatch the same `cursor` identity through
+`delegateInvocation(..., { headless: true })`; this is who delegated the worker
+changing, not another executor kind.
 
 Every harness-dispatched adapter implements the shared `ExternalExecutorAdapter`
 shape and returns the shared normalized execution result. The delegation record
@@ -384,6 +386,12 @@ that policy as a pointer: its header, the rule path, and the section digest
 that `policySectionDigest` computes over the inline form. An external executor
 receives no Cursor rules, so its card keeps every policy inline.
 
+The pointer names the instruction file of the host that prepared the card:
+`.cursor/rules/` for Cursor and `.github/instructions/` for VS Code.
+`workerCardHost` reads `PAN_HOST`, then a Cursor conversation id, then the
+single enabled host. When it cannot tell, every policy stays inline. A VS Code
+pointer appears only when its projected file exists.
+
 A structured instruction MAY set `excerpt: true`. The card then quotes that
 instruction under the pointer, for a clause a worker has to meet on the card
 itself. Keep excerpts few: each one grows every Cursor worker card.
@@ -438,11 +446,23 @@ Policy applicability belongs only in
 `governance/registries/policy_lookup_table.json`. Requirements derive from the
 resolved policy set.
 
-Canonical Cursor sources live under `library/cursor/`. The projection manifest
-declares every Pancreator-owned target under `.cursor/`.
+Canonical Cursor sources live under `library/cursor/`; VS Code-only sources
+live under `library/vscode/`. The projection manifest declares every
+Pancreator-owned target. Each entry is shared or bound to one `host`, and a
+host-bound entry states its `format_difference` and writes only under that
+host's roots: `.cursor/` for Cursor, and `.agents/skills/`, `.github/agents/`,
+`.github/hooks/`, and `.github/instructions/` for VS Code. Projection renders
+only the hosts that `config.json` `hosts` enables.
 
-Treat the local `.cursor/` tree as ignored and disposable. Run
-`./bin/pan models --sync` after a canonical projection or mapped-model change.
+A hook script reads the Cursor payload. A VS Code hook registration in
+`library/vscode/hooks.json` runs the same script behind `bin/pan-hook-adapter`,
+which rewrites the payload and the response for the host. Name host tools
+through `governance/registries/host_tools.json` rather than by one host's tool
+name.
+
+Treat the local `.cursor/` tree and the projected VS Code files as ignored and
+disposable. Run `./bin/pan models --sync` after a canonical projection, a
+mapped-model change, or a `hosts` change.
 
 TypeScript and TSX changes MUST apply the normative sections referenced by
 `TS-001`. Code style lives in `TSTYLE-001`, which only the `/pan-style` batch

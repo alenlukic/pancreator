@@ -88,22 +88,24 @@ function resolveStallTimeoutSeconds(
 }
 
 /**
- * A hint naming the agent-index hooks a stale `.cursor/hooks.json` is
- * missing, or null when there is nothing to report. `pan watch --agent`
- * surfaces this both at arming and on an `unregistered` verdict, because a
- * stale hook projection is the ordinary reason no subagent ever registers.
+ * A hint naming the agent-index hooks each stale projected hooks file
+ * (`.cursor/hooks.json`, `.github/hooks/pan-hooks.json`) is missing, or null
+ * when there is nothing to report. `pan watch --agent` surfaces this both at
+ * arming and on an `unregistered` verdict, because a stale hook projection is
+ * the ordinary reason no subagent ever registers.
  */
 function agentIndexHooksHint(
   status: WatchAgentSessionEntry['hooks_projection'],
 ): string | null {
-  if (status === null || status.projected) {
+  if (!status || status.projected) {
     return null
   }
 
-  return (
-    `hooks: agent-index hooks missing from .cursor/hooks.json ` +
-    `(${status.missing_events.join(', ')}); run ./bin/pan models --sync`
-  )
+  const stale = status.projections
+    .filter((entry) => !entry.projected)
+    .map((entry) => `${entry.path} (${entry.missing_events.join(', ')})`)
+
+  return `hooks: agent-index hooks missing from ${stale.join('; ')}; run ./bin/pan models --sync`
 }
 
 /** `pan watch`. */

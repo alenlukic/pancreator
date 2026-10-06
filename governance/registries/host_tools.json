@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "policy": "CONTRACT-001",
+  "hosts": ["cursor", "vscode", "copilot-cli"],
+  "terms": {
+    "question_tool": {
+      "description": "The structured operator question tool.",
+      "owning_policy": "ASK-001",
+      "tools": {
+        "cursor": ["cursor/ask_question"],
+        "vscode": ["vscode/askQuestions"],
+        "copilot-cli": ["ask_user"]
+      },
+      "aliases": ["ask_question", "askquestion", "ask-question", "askquestions"]
+    },
+    "platform_await": {
+      "description": "A platform tool that blocks on, or detaches, a shell call or a subagent in place of `pan watch`. Every hook denies it.",
+      "owning_policy": "DELEGATE-001",
+      "tools": {
+        "cursor": ["AwaitShell", "Await"],
+        "vscode": [],
+        "copilot-cli": []
+      },
+      "pending_probes": {
+        "copilot-cli": "PR-25 decides whether `read_bash` with a delay is a platform await."
+      }
+    },
+    "subagent_launch": {
+      "description": "The platform tool that launches a subagent. A call that cannot run in the background is denied, because DELEGATE-001 forbids a wait on the platform subagent.",
+      "owning_policy": "DELEGATE-001",
+      "tools": {
+        "cursor": ["Task"],
+        "vscode": ["runSubagent"],
+        "copilot-cli": ["task"]
+      },
+      "background": {
+        "cursor": { "argument": "run_in_background", "value": true },
+        "vscode": null,
+        "copilot-cli": null
+      },
+      "pending_probes": {
+        "copilot-cli": "PR-22 decides whether the `task` tool accepts a background `mode`."
+      }
+    },
+    "shell": {
+      "description": "The platform shell tool that `bin/pan-hook-shell-monitor` guards.",
+      "owning_policy": "DELEGATE-001",
+      "tools": {
+        "cursor": ["Shell"],
+        "vscode": ["run_in_terminal"],
+        "copilot-cli": ["bash"]
+      }
+    }
+  }
+}

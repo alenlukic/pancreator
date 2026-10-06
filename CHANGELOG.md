@@ -1,5 +1,36 @@
 # Changelog
 
+## [8.12.0] - 2026-10-06
+
+This release adds VS Code as an editor host. The same release adds a GitHub Copilot CLI executor and projected surfaces for that host.
+
+### Changed
+
+- Raise the projection manifest to schema 3 and add a host field on each projection ([99a00c13](https://github.com/alenlukic/pancreator/commit/99a00c13)).
+- Route host hooks through `bin/pan-hook-adapter` ([5ba006fb](https://github.com/alenlukic/pancreator/commit/5ba006fb)).
+- Read transcripts from every host through one transcript source ([3a411019](https://github.com/alenlukic/pancreator/commit/3a411019)).
+- Point worker cards at the instructions their host loads ([2dbb580c](https://github.com/alenlukic/pancreator/commit/2dbb580c)).
+- Name the host on each redline declaration ([221b1d43](https://github.com/alenlukic/pancreator/commit/221b1d43)).
+- Feed the agent index and `pan-run` records from every host ([6480d2d6](https://github.com/alenlukic/pancreator/commit/6480d2d6)).
+- Label Copilot spend as an unmetered session ([6f2e45e6](https://github.com/alenlukic/pancreator/commit/6f2e45e6)).
+
+### Added
+
+- Add VS Code projections for skills, agents, instructions, and hooks ([37ad87e5](https://github.com/alenlukic/pancreator/commit/37ad87e5)).
+- Add `config.json.hosts` so an operator can enable `cursor`, `vscode`, or both ([99a00c13](https://github.com/alenlukic/pancreator/commit/99a00c13)).
+- Add the `copilot:` persona executor for GitHub Copilot CLI 1.0.88 or later ([111bea66](https://github.com/alenlukic/pancreator/commit/111bea66)).
+- Add the host tool registry ([5ba006fb](https://github.com/alenlukic/pancreator/commit/5ba006fb)).
+- Add VS Code workbench instruction patches ([0ae3bc10](https://github.com/alenlukic/pancreator/commit/0ae3bc10)).
+- Add platform guidance sightings and a Stop hook turn guard for VS Code ([369068de](https://github.com/alenlukic/pancreator/commit/369068de)).
+- Report target-owned host surfaces and VS Code worktree exposure in `pan doctor` ([67d2273e](https://github.com/alenlukic/pancreator/commit/67d2273e)).
+- Add VS Code hook guards to `await-shell-ban-validate` ([b99fb9d7](https://github.com/alenlukic/pancreator/commit/b99fb9d7)).
+
+### Fixed
+
+- Copy projected hooks and persona agents into a worktree before a Copilot worker launch ([3436c72b](https://github.com/alenlukic/pancreator/commit/3436c72b)).
+- Keep a target-tracked `pan-*` file during the orphan sweep ([3436c72b](https://github.com/alenlukic/pancreator/commit/3436c72b)).
+- Pass the hook adapter payload on descriptor 3, not the environment ([3436c72b](https://github.com/alenlukic/pancreator/commit/3436c72b)).
+
 ## [8.11.1] - 2026-10-02
 
 This release makes `pan watch` detect the end of a subagent or a wrapped shell command reliably. A subagent that calls no tool and a command that leaves a background process now end their watch.

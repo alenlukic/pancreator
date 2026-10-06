@@ -1,14 +1,17 @@
 import { invariant } from '../errors.js'
 import type { PersonaExecutorKind } from '../types.js'
 
+import { COPILOT_PROVIDERS } from './copilot-cli.js'
+
 /**
  * Closed set of persona executors. The seam is generic — one interface, one
- * registry — but only these three are registered; other CLIs are out of scope.
+ * registry — but only these four are registered; other CLIs are out of scope.
  */
 export const PERSONA_EXECUTOR_KINDS: readonly PersonaExecutorKind[] = [
   'cursor',
   'claude-code',
   'openai',
+  'copilot',
 ]
 
 export const DEFAULT_PERSONA_EXECUTOR: PersonaExecutorKind = 'cursor'
@@ -97,6 +100,13 @@ export const OPENAI_OPTION_KEYS = [
  * Enum-valued options share one rejection shape, so each new Responses
  * parameter is a table row rather than another branch in the validator.
  */
+/** Sorted so the rejection message always lists the set the same way. */
+export const COPILOT_OPTION_KEYS = [
+  'effort',
+  'provider',
+  'session-resume',
+  'timeout-ms',
+] as const
 const OPENAI_ENUM_OPTIONS: Record<string, Set<string>> = {
   context: OPENAI_REASONING_CONTEXTS,
   effort: OPENAI_REASONING_EFFORTS,
@@ -243,6 +253,49 @@ function validateOpenAiOptions(
   }
 }
 
+function validateCopilotOptions(
+  options: Record<string, string>,
+  source: string,
+): void {
+  const supported = `Supported options: ${COPILOT_OPTION_KEYS.join(', ')}.`
+
+  for (const [key, value] of Object.entries(options)) {
+    invariant(
+      (COPILOT_OPTION_KEYS as readonly string[]).includes(key),
+      `${source} uses unknown copilot option '${key}'. ${supported}`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+
+    const allowedValues =
+      key === 'provider'
+        ? new Set<string>(COPILOT_PROVIDERS)
+        : key === 'effort'
+          ? OPENAI_REASONING_EFFORTS
+          : key === 'session-resume'
+            ? new Set(['true', 'false'])
+            : undefined
+
+    if (allowedValues !== undefined) {
+      invariant(
+        allowedValues.has(value),
+        `${source} ${key} '${value}' is not supported. Supported values: ` +
+          `${[...allowedValues].join(', ')}. ${supported}`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+
+    if (key === 'timeout-ms') {
+      const parsed = Number(value)
+
+      invariant(
+        Number.isInteger(parsed) && parsed >= 1_000,
+        `${source} timeout-ms MUST be an integer of at least 1000. ${supported}`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+  }
+}
+
 // Cursor option names and values are validated against the model catalog
 // registry at resolution time (resolveCursorModelSlug), never here: which
 // parameters exist, and with which values, is per-model data owned by Cursor.
@@ -302,6 +355,10 @@ export function parsePersonaMapping(
 
   if (executor === 'openai') {
     validateOpenAiOptions(options, source)
+  }
+
+  if (executor === 'copilot') {
+    validateCopilotOptions(options, source)
   }
 
   return {
