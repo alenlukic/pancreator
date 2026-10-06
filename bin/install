@@ -1340,9 +1340,9 @@ install_payload() {
   configure_install_shell_aliases
 }
 
-# BROWSER-001 requires a Chrome for Testing bundle and a chrome-devtools MCP
+# BROWSER-001 prefers a Chrome for Testing bundle and a chrome-devtools MCP
 # server. Pancreator installs neither a browser nor target MCP config, so the gap
-# is reported rather than silently deferred to a stage that owes a verdict.
+# is reported here; browser inspection records it and uses a fallback tool.
 report_browser_readiness() {
   local found=""
   local candidate
@@ -1381,7 +1381,7 @@ report_browser_readiness() {
     echo "  - No chrome-devtools MCP server is configured in the target's .cursor/mcp.json."
   fi
 
-  echo "  Until both are present, browser verdicts report environment-blocked."
+  echo "  Until both are present, browser inspection falls back to another headless tool."
   echo "  Details: pan doctor, and docs/embedded-installation.md"
 }
 
