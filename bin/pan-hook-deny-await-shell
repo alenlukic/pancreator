@@ -40,7 +40,7 @@ FALLBACK = {
                "background": {"argument": "run_in_background", "value": True}, "session": []},
     "vscode": {"await": [], "await_when": {}, "subagent": ["runSubagent"], "background": None,
                "session": []},
-    "copilot-cli": {"await": ["read_bash"], "await_when": {"read_bash": "delay"}, "subagent": ["task"],
+    "copilot-cli": {"await": ["read_bash", "read_agent"], "await_when": {"read_bash": "delay", "read_agent": "wait"}, "subagent": ["task"],
                     "background": {"argument": "mode", "value": "background"},
                     "session": ["create_session", "send_message"]},
 }

@@ -38,7 +38,7 @@ test('the shipped registry parses and agrees with its owning policies', () => {
     value: 'background',
   })
   assert.deepEqual(registry.terms.platform_await.when_argument, {
-    'copilot-cli': { read_bash: 'delay' },
+    'copilot-cli': { read_bash: 'delay', read_agent: 'wait' },
   })
   assert.deepEqual(allHostToolNames(registry, 'agent_session'), [
     'create_session',
