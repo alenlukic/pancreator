@@ -1,5 +1,14 @@
 # Changelog
 
+## [8.13.2] - 2026-10-08
+
+This release repairs vscode and Copilot hook delivery. It also denies Copilot `read_agent` wait.
+
+### Fixed
+
+- Parse the full stdout of a hook script so a multi-line governance reminder reaches vscode and Copilot ([c4dd856f](https://github.com/alenlukic/pancreator/commit/c4dd856f)).
+- Deny Copilot `read_agent` with `wait: true`, because that call is a platform await ([c4dd856f](https://github.com/alenlukic/pancreator/commit/c4dd856f)).
+
 ## [8.13.1] - 2026-10-08
 
 This release repairs VS Code and Copilot host findings. It also restores BROWSER-001 shared-instance text that 8.13.0 dropped.
