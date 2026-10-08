@@ -15,7 +15,9 @@ import {
   parsePipelineConfig,
   resolveConfigPersonas,
 } from '../../src/lib/pipeline-config.js'
+import { createTestTempDirectory } from '../temp.js'
 import {
+  REPO_ROOT,
   RELEASE_FIXTURE_VERSION,
   type InstallMarker,
   git,
@@ -514,9 +516,20 @@ test('embedded installer merges project hooks and keeps the result byte stable',
   }
 })
 
-test('embedded installer reports and preserves a tracked project hooks file', () => {
+test('embedded installer preserves a tracked project hooks file and registers user-level hooks', () => {
   const project = makeSkeletonProject()
+  const userDirectory = createTestTempDirectory('pancreator-cursor-user-')
   const hooksPath = path.join(project, '.cursor', 'hooks.json')
+  const userHooksPath = path.join(userDirectory, 'hooks.json')
+  const operatorEntry = {
+    command: './hooks/deny-process-kill.py',
+    matcher: 'kill',
+    timeout: 10,
+    failClosed: true,
+  }
+  const previousUserDirectory = process.env.PANCREATOR_CURSOR_USER_DIR
+
+  process.env.PANCREATOR_CURSOR_USER_DIR = userDirectory
 
   try {
     gitInit(project)
@@ -524,6 +537,10 @@ test('embedded installer reports and preserves a tracked project hooks file', ()
     writeFileSync(
       hooksPath,
       '{"version":1,"hooks":{"beforeSubmitPrompt":[{"command":"./target"}]}}\n',
+    )
+    writeFileSync(
+      userHooksPath,
+      `${JSON.stringify({ version: 1, hooks: { beforeShellExecution: [operatorEntry] } }, null, 2)}\n`,
     )
     git(project, ['add', 'README.md', '.cursor/hooks.json'])
     git(project, ['commit', '-qm', 'tracked hooks'])
@@ -534,12 +551,57 @@ test('embedded installer reports and preserves a tracked project hooks file', ()
     assert.equal(result.status, 0, result.stderr)
     assert.match(
       result.stdout,
-      /Readiness gap: target tracks \.cursor\/hooks\.json/u,
+      /Target tracks \.cursor\/hooks\.json; Pancreator Cursor hooks run from .*hooks\.json \(updated\)/u,
     )
     assert.equal(readFileSync(hooksPath, 'utf8'), before)
     assert.equal(git(project, ['status', '--porcelain']), '')
+
+    const userHooks = readJson<{
+      hooks: Record<string, Array<{ command: string }>>
+    }>(userHooksPath)
+    const canonical = readJson<{
+      hooks: Record<string, Array<{ command: string }>>
+    }>(path.join(REPO_ROOT, 'library', 'cursor', 'hooks.json'))
+
+    assert.deepEqual(userHooks.hooks.beforeShellExecution?.[0], operatorEntry)
+
+    for (const [event, entries] of Object.entries(canonical.hooks)) {
+      assert.deepEqual(
+        userHooks.hooks[event]
+          ?.filter((entry) => entry.command.includes('pan-cursor-user-hook'))
+          .map((entry) => entry.command),
+        entries.map((entry) =>
+          entry.command.replace(
+            '{{PANCREATOR_HARNESS_PATH}}bin/',
+            './hooks/pan-cursor-user-hook ',
+          ),
+        ),
+        event,
+      )
+    }
+
+    const dispatcher = path.join(userDirectory, 'hooks', 'pan-cursor-user-hook')
+
+    assert.equal(lstatSync(dispatcher).mode & 0o111, 0o111)
+
+    const userContent = readFileSync(userHooksPath, 'utf8')
+
+    git(project, ['rm', '-q', '--cached', '.cursor/hooks.json'])
+    const second = runInstaller(project, ['--yes'])
+
+    assert.equal(second.status, 0, second.stderr)
+    assert.doesNotMatch(second.stdout, /\(updated\)/u)
+    assert.equal(readFileSync(hooksPath, 'utf8'), before)
+    assert.equal(readFileSync(userHooksPath, 'utf8'), userContent)
   } finally {
+    if (previousUserDirectory === undefined) {
+      delete process.env.PANCREATOR_CURSOR_USER_DIR
+    } else {
+      process.env.PANCREATOR_CURSOR_USER_DIR = previousUserDirectory
+    }
+
     rmSync(project, { recursive: true, force: true })
+    rmSync(userDirectory, { recursive: true, force: true })
   }
 })
 

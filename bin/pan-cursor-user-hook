@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Run a Pancreator Cursor hook registered in the user-level ~/.cursor/hooks.json.
+
+The installer registers Pancreator's Cursor hooks here when a target repository
+tracks its own .cursor/hooks.json, which Pancreator must not change. Cursor runs
+user-level hooks from ~/.cursor in every project, and only the payload's
+workspace_roots names the project. This script runs the named hook from the
+first workspace root holding an embedded installation, from that root, with the
+original payload on stdin.
+
+It answers with the neutral response for the event instead when no root holds
+an installation, or when that root's own .cursor/hooks.json already registers
+Pancreator hooks, so a hook never runs twice. Cursor blocks the action on
+invalid output from a permission hook, so the neutral response is never empty.
+
+Usage: pan-cursor-user-hook <pan-hook-name> [hook arguments...]
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+HOOK_NAME = re.compile(r"^pan-hook-[a-z][a-z-]*$")
+PERMISSION_EVENTS = {
+    "beforeShellExecution",
+    "beforeMCPExecution",
+    "beforeReadFile",
+    "preToolUse",
+}
+PROJECT_REGISTRATION_MARKER = "bin/pan-hook-"
+
+
+def neutral_response(payload):
+    event = payload.get("hook_event_name") if isinstance(payload, dict) else None
+    if event == "beforeSubmitPrompt":
+        return {"continue": True}
+    if event in PERMISSION_EVENTS:
+        return {"permission": "allow"}
+    return {}
+
+
+def workspace_roots(payload):
+    roots = payload.get("workspace_roots") if isinstance(payload, dict) else None
+    if not isinstance(roots, list):
+        return []
+    return [root for root in roots if isinstance(root, str) and root]
+
+
+def project_registers_hooks(root):
+    try:
+        with open(os.path.join(root, ".cursor", "hooks.json"), encoding="utf-8") as handle:
+            return PROJECT_REGISTRATION_MARKER in handle.read()
+    except OSError:
+        return False
+
+
+def main(argv):
+    raw = sys.stdin.buffer.read()
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        payload = {}
+
+    if len(argv) < 2 or not HOOK_NAME.match(argv[1]):
+        print(json.dumps(neutral_response(payload)))
+        return 0
+
+    hook, arguments = argv[1], argv[2:]
+
+    for root in workspace_roots(payload):
+        script = os.path.join(root, ".pancreator", "bin", hook)
+        if not os.access(script, os.X_OK):
+            continue
+        if project_registers_hooks(root):
+            break
+        sys.stdout.flush()
+        return subprocess.run([script, *arguments], input=raw, cwd=root).returncode
+
+    print(json.dumps(neutral_response(payload)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

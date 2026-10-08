@@ -26,6 +26,7 @@ import {
   type ProjectHost,
 } from './project-config.js'
 import { mergeCursorHooksText } from './cursor-hooks-merge.js'
+import { gitTracksFile } from './git/core.js'
 import { hostToolTranslations, loadHostToolRegistry } from './host-tools.js'
 import {
   renderCommandSkill,
@@ -461,6 +462,13 @@ function renderProjections(
         options.mergeHooks !== false
       ) {
         const targetPath = path.join(root, entry.target)
+
+        // A target-tracked hooks file belongs to the target repository. The
+        // installer registers these hooks in the user-level Cursor file.
+        if (gitTracksFile(targetPath)) {
+          continue
+        }
+
         const existing = fileExists(targetPath) ? readText(targetPath) : null
 
         content = mergeCursorHooksText(existing, content, entry.target)

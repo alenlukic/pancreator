@@ -43,6 +43,32 @@ export function runGit(
 }
 
 /**
+ * Whether the repository holding `filePath` tracks it, in the index or at
+ * HEAD. HEAD counts too, so a staged deletion does not hand a committed file
+ * over to a generator. False outside a repository.
+ */
+export function gitTracksFile(filePath: string): boolean {
+  let directory: string
+
+  try {
+    directory = realpathSync(path.dirname(filePath))
+  } catch {
+    return false
+  }
+
+  const name = path.basename(filePath)
+
+  return (
+    runGit(directory, ['ls-files', '--error-unmatch', '--', name], {
+      allowFailure: true,
+    }).status === 0 ||
+    runGit(directory, ['cat-file', '-e', `HEAD:./${name}`], {
+      allowFailure: true,
+    }).status === 0
+  )
+}
+
+/**
  * Digest of the workspace's source content: every tracked and untracked
  * non-ignored file, by path and blob hash, outside `runtime/` and the
  * `excluded` paths. Staging and commit state do not enter it, so a tree the
