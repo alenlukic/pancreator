@@ -4,18 +4,30 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
+import { gitTracksFile } from '../git/core.js'
 import { enabledHosts } from '../project-config/resolve.js'
 
 const AGENT_INDEX_HOOK_MARKER = 'pan-hook-agent-index'
+const CURSOR_HOOKS_TARGET = '.cursor/hooks.json'
+
+/** The user-level Cursor hooks file; `bin/install-support` resolves it the same way. */
+function userCursorHooksPath(): string {
+  return path.join(
+    process.env.PANCREATOR_CURSOR_USER_DIR ||
+      path.join(os.homedir(), '.cursor'),
+    'hooks.json',
+  )
+}
 
 /** Each host's canonical hook source and the file projection writes from it. */
 const HOOK_PROJECTIONS = [
   {
     host: 'cursor',
     source: 'library/cursor/hooks.json',
-    target: '.cursor/hooks.json',
+    target: CURSOR_HOOKS_TARGET,
   },
   {
     host: 'vscode',
@@ -100,12 +112,23 @@ function projectionStatus(
     canonical,
     AGENT_INDEX_HOOK_MARKER,
   )
-  const projectedEvents = new Set(
-    hookEventsWithMarker(
-      readJsonFileOrNull(path.join(root, target)),
+  const targetPath = path.join(root, target)
+  // The installer registers Cursor hooks in the user-level file when the
+  // target repository tracks its own `.cursor/hooks.json`.
+  const userLevel =
+    target === CURSOR_HOOKS_TARGET && gitTracksFile(targetPath)
+      ? hookEventsWithMarker(
+          readJsonFileOrNull(userCursorHooksPath()),
+          AGENT_INDEX_HOOK_MARKER,
+        )
+      : []
+  const projectedEvents = new Set([
+    ...hookEventsWithMarker(
+      readJsonFileOrNull(targetPath),
       AGENT_INDEX_HOOK_MARKER,
     ),
-  )
+    ...userLevel,
+  ])
   const missingEvents = requiredEvents.filter(
     (event) => !projectedEvents.has(event),
   )

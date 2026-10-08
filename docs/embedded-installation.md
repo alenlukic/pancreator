@@ -198,6 +198,19 @@ installed there. The patterns are deliberately narrow: excluding `.cursor/`
 wholesale would hide the target's own agent configuration from its operators.
 Installing into a clean Git target therefore leaves `git status` empty.
 
+A target that tracks its own `.cursor/hooks.json` keeps that file exactly as
+committed, because Cursor reads only one project hooks file. Git counts the file
+as tracked while either the index or `HEAD` holds it, so a staged deletion does
+not hand it over to Pancreator. The installer instead registers Pancreator's
+Cursor hooks in the user-level `~/.cursor/hooks.json` and copies the dispatcher
+`bin/pan-cursor-user-hook` to `~/.cursor/hooks/`. It keeps every entry the
+operator wrote there. Cursor runs user-level hooks in every project, so the
+dispatcher runs a hook only from a workspace root that holds `.pancreator/`, and
+only when that root's own hooks file does not already register Pancreator
+hooks. Elsewhere it returns the neutral response. A detached installation
+cannot be found from the workspace root, so it reports the tracked file as a
+readiness gap instead.
+
 Historical installations may still contain a tracked `.pancreator/` line in the
 target `.gitignore`. The installer never rewrites that tracked file; it reports
 the legacy line for optional operator cleanup and uses `.git/info/exclude` going
@@ -541,7 +554,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `8.13.2`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `8.13.3`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

@@ -17,7 +17,7 @@ import {
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { resolveCursorModelSlug } from '../../src/lib/executors/cursor-catalog.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
-import { createFixture } from '../fixture-template.js'
+import { createFixture, fixtureGit } from '../fixture-template.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
   const { cliPath, harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
@@ -412,4 +412,38 @@ test('Cursor hook projection merges managed entries and detects their drift', ()
     { command: './target-after-edit' },
   ])
   assert.deepEqual(validateProjectionDrift(root).errors, [])
+})
+
+test('Cursor sync leaves a hooks file the repository tracks untouched, even when its deletion is staged', () => {
+  const root = createFixture()
+  const hooksPath = path.join(root, '.cursor', 'hooks.json')
+  const tracked = '{"version":1,"hooks":{"stop":[{"command":"./team-stop"}]}}\n'
+  const gitIn = (args: string[]) =>
+    fixtureGit(args, { cwd: root, encoding: 'utf8' })
+
+  writeFileSync(hooksPath, tracked)
+  gitIn(['add', '-f', '.cursor/hooks.json'])
+  gitIn(['commit', '-qm', 'team hooks'])
+
+  for (const stage of ['tracked', 'deletion staged']) {
+    if (stage === 'deletion staged') {
+      gitIn(['rm', '-q', '--cached', '.cursor/hooks.json'])
+    }
+
+    const changes = syncCursorProjection(root, { write: true })
+
+    assert.equal(readFileSync(hooksPath, 'utf8'), tracked, stage)
+    assert.equal(
+      changes.some((change) => change.path === '.cursor/hooks.json'),
+      false,
+      stage,
+    )
+    assert.deepEqual(
+      validateProjectionDrift(root).errors.filter((error) =>
+        error.includes('.cursor/hooks.json'),
+      ),
+      [],
+      stage,
+    )
+  }
 })

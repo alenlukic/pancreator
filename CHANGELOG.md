@@ -1,5 +1,14 @@
 # Changelog
 
+## [8.13.3] - 2026-10-08
+
+This release keeps a target-tracked `.cursor/hooks.json` file unchanged. The installer then registers Pancreator Cursor hooks in the user-level hooks file.
+
+### Fixed
+
+- Leave a target-tracked `.cursor/hooks.json` file unchanged, even when Git stages its deletion ([1d036b8c](https://github.com/alenlukic/pancreator/commit/1d036b8c)).
+- Register Pancreator Cursor hooks in `~/.cursor/hooks.json` for an embedded target that tracks that file ([1d036b8c](https://github.com/alenlukic/pancreator/commit/1d036b8c), [docs/embedded-installation.md](docs/embedded-installation.md)).
+
 ## [8.13.2] - 2026-10-08
 
 This release repairs vscode and Copilot hook delivery. It also denies Copilot `read_agent` wait.

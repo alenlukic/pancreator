@@ -368,6 +368,9 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   ) as Record<string, unknown>
 
   fixtureConfig.away_mode = { enabled: false }
+  // Enabling the vscode host is an operator choice too; a test that needs it
+  // enables it on its own fixture.
+  fixtureConfig.hosts = ['cursor']
   pinFixtureCursorExecutors(fixtureConfig)
   // Worktree provisioning on this checkout is a real dependency install and
   // build. A fixture's stub package scripts need neither, so the block is
