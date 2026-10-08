@@ -1,5 +1,22 @@
 # Changelog
 
+## [8.13.1] - 2026-10-08
+
+This release repairs VS Code and Copilot host findings. It also restores BROWSER-001 shared-instance text that 8.13.0 dropped.
+
+### Changed
+
+- Move VS Code command skills to `.github/skills` so Cursor lists each `/pan-*` command once ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+- Record `COPILOT_AGENT_SESSION_ID` as the host session in `bin/pan-run` ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+- Deny Copilot `read_bash` with a delay, require Copilot `task` in background mode, and deny Agent Host session tools ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+
+### Fixed
+
+- Print one hook-adapter object that carries the Copilot top-level shape and the VS Code `hookSpecificOutput` shape ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+- Register a Copilot child agent on `subagentStop.agentId`. A `subagentStart` event carries no child id ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+- Fire the governance reminder on `sessionStart`, because the VS Code Agent Host can replace first-prompt hook context ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+- Restore the BROWSER-001 shared-instance text in `docs/embedded-installation.md` that 8.13.0 dropped ([0d142801](https://github.com/alenlukic/pancreator/commit/0d142801)).
+
 ## [8.13.0] - 2026-10-06
 
 This release folds operator user rules into governance. Browser inspection prefers one shared headless Chrome for Testing instance.

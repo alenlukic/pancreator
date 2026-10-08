@@ -19,10 +19,10 @@
       "tools": {
         "cursor": ["AwaitShell", "Await"],
         "vscode": [],
-        "copilot-cli": []
+        "copilot-cli": ["read_bash"]
       },
-      "pending_probes": {
-        "copilot-cli": "PR-25 decides whether `read_bash` with a delay is a platform await."
+      "when_argument": {
+        "copilot-cli": { "read_bash": "delay" }
       }
     },
     "subagent_launch": {
@@ -36,10 +36,16 @@
       "background": {
         "cursor": { "argument": "run_in_background", "value": true },
         "vscode": null,
-        "copilot-cli": null
-      },
-      "pending_probes": {
-        "copilot-cli": "PR-22 decides whether the `task` tool accepts a background `mode`."
+        "copilot-cli": { "argument": "mode", "value": "background" }
+      }
+    },
+    "agent_session": {
+      "description": "A platform tool that starts or messages a separate agent session the agent index cannot observe. Every hook denies it.",
+      "owning_policy": "DELEGATE-001",
+      "tools": {
+        "cursor": [],
+        "vscode": [],
+        "copilot-cli": ["create_session", "send_message"]
       }
     },
     "shell": {

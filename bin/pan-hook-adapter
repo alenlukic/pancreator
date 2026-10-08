@@ -3,7 +3,7 @@
 # Usage: pan-hook-adapter [--fail-closed] <event> <pan-hook-script> [args...]
 # <event> is the Cursor event name the script expects: preToolUse,
 # postToolUse, postToolUseFailure, beforeShellExecution, beforeSubmitPrompt,
-# stop, subagentStart, or subagentStop.
+# sessionStart, stop, subagentStart, or subagentStop.
 #
 # The adapter reads the host payload from stdin, detects its dialect
 # (Copilot CLI camelCase or VS Code snake_case), rewrites it into the Cursor
@@ -13,9 +13,10 @@
 #     `permissionDecision: allow` would pre-approve the call;
 #   - a deny prints the agent message on stderr and exits 2, which both hosts
 #     honour as a deny;
-#   - additional context and a stop follow-up become the VS Code
-#     `hookSpecificOutput` and `decision: block` shapes. Copilot CLI gets
-#     nothing until probe PR-24 confirms its output contract.
+#   - additional context and a stop follow-up print one object carrying both
+#     the top-level shape the Copilot runtime reads and the
+#     `hookSpecificOutput` shape the VS Code local agent reads; each host
+#     ignores the other's keys.
 # With --fail-closed, a script that crashes or prints no valid JSON denies.
 # VS Code discards hook matchers, so beforeShellExecution runs the script
 # only for the host's shell tool from governance/registries/host_tools.json.
@@ -123,7 +124,7 @@ def normalize(payload, dialect):
         "tool_output": first(payload, "toolResult", "tool_response"),
         "subagent_id": first(payload, "agentId", "agent_id"),
         "subagent_type": first(payload, "agentName", "agent_type"),
-        "prompt": payload.get("prompt"),
+        "prompt": first(payload, "prompt", "initialPrompt"),
         "workspace_roots": [cwd] if isinstance(cwd, str) else [],
     }
     if event == "stop":
@@ -134,29 +135,18 @@ def normalize(payload, dialect):
     return {key: value for key, value in cursor.items() if value is not None}
 
 
-def copilot_session_key(transcript):
-    """A Copilot CLI transcript is session-state/<sessionId>/events.jsonl."""
-    if not isinstance(transcript, str) or not transcript:
-        return None
-    parent, name = os.path.split(transcript)
-    if name == "events.jsonl":
-        return os.path.basename(parent) or None
-    return os.path.splitext(name)[0] or None
-
-
 def subagent_fields(payload, dialect, cursor):
     """Name the parent and the child the way the agent index keys them.
 
     The event fires in the parent's session. VS Code names the child with
-    `agent_id`; Copilot CLI sends no child id, so its transcript directory
-    names the child and the launch links by parent and prompt digest.
+    `agent_id` on both events. The Copilot runtime names it with `agentId`
+    on `subagentStop` only, and both of its events carry the parent's
+    transcript, so a Copilot start registers nothing and the stop registers
+    the child.
     """
     parent = cursor.get("conversation_id")
     if dialect == "copilot-cli":
-        transcript = cursor.pop("transcript_path", None)
-        cursor["subagent_id"] = copilot_session_key(transcript)
-        if event == "subagentStop":
-            cursor["agent_transcript_path"] = transcript
+        cursor.pop("transcript_path", None)
         task = first(payload, "prompt", "agentPrompt", "task")
         if isinstance(task, str):
             cursor["task"] = task
@@ -222,11 +212,21 @@ output = None
 context = response.get("additional_context")
 followup = response.get("followup_message")
 
-if dialect == "vscode" and isinstance(context, str) and context:
-    hook_event = "UserPromptSubmit" if event == "beforeSubmitPrompt" else "PostToolUse"
-    output = {"hookSpecificOutput": {"hookEventName": hook_event, "additionalContext": context}}
-elif dialect == "vscode" and event == "stop" and isinstance(followup, str) and followup:
-    output = {"decision": "block", "reason": followup}
+if isinstance(context, str) and context:
+    hook_event = {
+        "beforeSubmitPrompt": "UserPromptSubmit",
+        "sessionStart": "SessionStart",
+    }.get(event, "PostToolUse")
+    output = {
+        "additionalContext": context,
+        "hookSpecificOutput": {"hookEventName": hook_event, "additionalContext": context},
+    }
+elif event == "stop" and isinstance(followup, str) and followup:
+    output = {
+        "decision": "block",
+        "reason": followup,
+        "hookSpecificOutput": {"hookEventName": "Stop", "decision": "block", "reason": followup},
+    }
 
 if output is not None:
     print(json.dumps(output))

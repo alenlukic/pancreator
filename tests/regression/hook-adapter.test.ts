@@ -108,20 +108,54 @@ test('the shell guard denies an unwrapped command with exit 2 for both hosts and
   }
 })
 
-test('the deny hook refuses a foreground subagent tool on hosts without a background mode', async (t) => {
+test('the deny hook refuses foreground subagents, waits, and agent session tools', async (t) => {
   const guard = ['--fail-closed', 'preToolUse', 'pan-hook-deny-await-shell']
+  const copilotTool = (toolName: string, toolArgs: unknown) => ({
+    sessionId: 's',
+    toolName,
+    toolArgs,
+  })
 
-  for (const [label, payload] of [
-    ['VS Code runSubagent', vscodeTool('runSubagent', { prompt: 'x' })],
-    [
-      'Copilot CLI task',
-      { sessionId: 's', toolName: 'task', toolArgs: { mode: 'sync' } },
-    ],
-  ] as const) {
-    await t.test(label, () => {
-      const result = runAdapter(guard, payload)
+  await t.test('VS Code runSubagent', () => {
+    const result = runAdapter(guard, vscodeTool('runSubagent', { prompt: 'x' }))
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /pan delegate <run-id> --headless/u)
+  })
+
+  await t.test('Copilot task in sync mode', () => {
+    const result = runAdapter(guard, copilotTool('task', { mode: 'sync' }))
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /mode: "background"/u)
+  })
+
+  await t.test('Copilot task in background mode allows', () => {
+    const result = runAdapter(
+      guard,
+      copilotTool('task', { prompt: 'x', mode: 'background' }),
+    )
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, '')
+  })
+
+  await t.test('Copilot read_bash with a delay', () => {
+    const result = runAdapter(
+      guard,
+      copilotTool('read_bash', { shellId: '2', delay: 30 }),
+    )
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /platform await/u)
+  })
+
+  await t.test('Copilot read_bash without a delay allows', () => {
+    const result = runAdapter(guard, copilotTool('read_bash', { shellId: '2' }))
+    assert.equal(result.status, 0, result.stderr)
+  })
+
+  for (const toolName of ['create_session', 'send_message']) {
+    await t.test(`Agent Host ${toolName}`, () => {
+      const result = runAdapter(guard, copilotTool(toolName, {}))
       assert.equal(result.status, 2)
-      assert.match(result.stderr, /pan delegate <run-id> --headless/u)
+      assert.match(result.stderr, /cannot observe/u)
     })
   }
 
@@ -160,55 +194,82 @@ test('a crashing guard denies only when registered fail-closed', () => {
   )
 })
 
-test('Cursor context responses become VS Code hookSpecificOutput and Copilot CLI gets none', async (t) => {
-  await t.test('postToolUse additional_context', () => {
+test('Cursor context and stop responses print both host shapes in one object', async (t) => {
+  const contextOutput = (hookEventName: string, text: string) => ({
+    additionalContext: text,
+    hookSpecificOutput: { hookEventName, additionalContext: text },
+  })
+
+  await t.test('postToolUse additional_context on both hosts', () => {
     const bin = stubBin('{"additional_context":"say something"}')
-    const vscode = runAdapter(
-      ['postToolUse', 'pan-hook-stub'],
-      vscodeTool('x'),
-      bin,
-    )
-    assert.deepEqual(JSON.parse(vscode.stdout), {
-      hookSpecificOutput: {
-        hookEventName: 'PostToolUse',
-        additionalContext: 'say something',
-      },
-    })
-    const copilot = runAdapter(
-      ['postToolUse', 'pan-hook-stub'],
-      copilotShell('ls'),
-      bin,
-    )
-    assert.equal(copilot.status, 0)
-    assert.equal(copilot.stdout, '')
+
+    for (const payload of [vscodeTool('x'), copilotShell('ls')]) {
+      const result = runAdapter(['postToolUse', 'pan-hook-stub'], payload, bin)
+      assert.equal(result.status, 0, result.stderr)
+      assert.deepEqual(
+        JSON.parse(result.stdout),
+        contextOutput('PostToolUse', 'say something'),
+      )
+    }
   })
 
   await t.test('beforeSubmitPrompt additional_context', () => {
     const bin = stubBin('{"continue":true,"additional_context":"card"}')
-    const result = runAdapter(
-      ['beforeSubmitPrompt', 'pan-hook-stub'],
+
+    for (const payload of [
       { hook_event_name: 'UserPromptSubmit', session_id: 's', prompt: 'hi' },
-      bin,
-    )
-    assert.deepEqual(JSON.parse(result.stdout), {
-      hookSpecificOutput: {
-        hookEventName: 'UserPromptSubmit',
-        additionalContext: 'card',
-      },
-    })
+      { sessionId: 's', prompt: 'hi', timestamp: 1 },
+    ]) {
+      const result = runAdapter(
+        ['beforeSubmitPrompt', 'pan-hook-stub'],
+        payload,
+        bin,
+      )
+      assert.deepEqual(
+        JSON.parse(result.stdout),
+        contextOutput('UserPromptSubmit', 'card'),
+      )
+    }
   })
 
-  await t.test('stop followup_message', () => {
+  await t.test('sessionStart additional_context', () => {
+    const bin = stubBin('{"continue":true,"additional_context":"card"}')
+
+    for (const payload of [
+      { hook_event_name: 'SessionStart', session_id: 's', source: 'new' },
+      { sessionId: 's', source: 'new', initialPrompt: '/pan-start x' },
+    ]) {
+      const result = runAdapter(['sessionStart', 'pan-hook-stub'], payload, bin)
+      assert.deepEqual(
+        JSON.parse(result.stdout),
+        contextOutput('SessionStart', 'card'),
+      )
+    }
+  })
+
+  await t.test('stop followup_message on both hosts', () => {
     const bin = stubBin('{"followup_message":"report now"}')
-    const result = runAdapter(
-      ['stop', 'pan-hook-stub'],
+
+    for (const payload of [
       { hook_event_name: 'Stop', session_id: 's', stop_hook_active: false },
-      bin,
-    )
-    assert.deepEqual(JSON.parse(result.stdout), {
-      decision: 'block',
-      reason: 'report now',
-    })
+      {
+        sessionId: 's',
+        transcriptPath: '/u/.copilot/session-state/s/events.jsonl',
+        stopReason: 'end_turn',
+        stop_hook_active: false,
+      },
+    ]) {
+      const result = runAdapter(['stop', 'pan-hook-stub'], payload, bin)
+      assert.deepEqual(JSON.parse(result.stdout), {
+        decision: 'block',
+        reason: 'report now',
+        hookSpecificOutput: {
+          hookEventName: 'Stop',
+          decision: 'block',
+          reason: 'report now',
+        },
+      })
+    }
   })
 
   await t.test('allow and continue print nothing', () => {
@@ -348,46 +409,57 @@ test('both hosts feed the agent index a launch, a linked child, and its stop', a
     assert.equal(child?.stop?.status, 'completed')
   })
 
-  await t.test('Copilot CLI task, linked by prompt digest', () => {
+  await t.test('Copilot task, keyed on the stop agentId', () => {
+    // Payload shapes captured from Copilot CLI 1.0.88 and the VS Code Agent
+    // Host on 2026-10-07: both events carry the parent's transcript, and only
+    // the stop names the child.
     const root = indexRoot()
-    const transcriptPath = '/home/u/.copilot/session-state/child-c/events.jsonl'
+    const parentTranscript =
+      '/home/u/.copilot/session-state/parent-c/events.jsonl'
     feed(root, 'preToolUse', {
       sessionId: 'parent-c',
       toolName: 'task',
-      toolArgs: { prompt: 'Map the repo', agent_type: 'explore' },
+      toolArgs: {
+        prompt: 'Map the repo',
+        agent_type: 'explore',
+        mode: 'background',
+      },
     })
     feed(root, 'subagentStart', {
       sessionId: 'parent-c',
-      transcriptPath,
+      transcriptPath: parentTranscript,
       agentName: 'explore',
-      prompt: 'Map the repo',
     })
     feed(root, 'subagentStop', {
       sessionId: 'parent-c',
-      transcriptPath,
+      transcriptPath: parentTranscript,
+      agentId: 'child-c',
+      agentType: 'explore',
       agentName: 'explore',
+      response: 'pong',
+      stopReason: 'end_turn',
     })
 
     const index = readIndex(root)
     const child = index.agents.find((agent) => agent.agent_id === 'child-c')
     assert.equal(child?.parent_agent_id, 'parent-c')
-    assert.equal(index.pending_launches[0]?.resolved_agent_id, 'child-c')
     assert.equal(child?.stop?.status, 'completed')
-    assert.equal(
-      index.agents.some((agent) => agent.agent_id === 'events'),
-      false,
+    assert.equal(child?.transcript_path ?? null, null)
+    assert.deepEqual(
+      index.agents
+        .filter((agent) => agent.parent_agent_id !== null)
+        .map((agent) => agent.agent_id),
+      ['child-c'],
     )
   })
 
-  await t.test(
-    'a Copilot CLI start without a transcript registers nothing',
-    () => {
-      const root = indexRoot()
-      feed(root, 'subagentStart', { sessionId: 'parent-c', agentName: 'x' })
-      assert.equal(
-        readIndex(root).agents.some((agent) => agent.agent_id === 'parent-c'),
-        false,
-      )
-    },
-  )
+  await t.test('a Copilot start registers nothing', () => {
+    const root = indexRoot()
+    feed(root, 'subagentStart', {
+      sessionId: 'parent-c',
+      transcriptPath: '/home/u/.copilot/session-state/parent-c/events.jsonl',
+      agentName: 'x',
+    })
+    assert.deepEqual(readIndex(root).agents, [])
+  })
 })

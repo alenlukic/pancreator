@@ -168,7 +168,13 @@ test('the deny hook applies each host tool registry entry, and its built-in fall
       'utf8',
     ),
   ) as {
-    terms: Record<string, { tools: Record<string, string[]> }>
+    terms: Record<
+      string,
+      {
+        tools: Record<string, string[]>
+        when_argument?: Record<string, Record<string, string>>
+      }
+    >
   }
   const bin = path.join(createTestTempDirectory('deny-hook-fallback-'), 'bin')
 
@@ -176,9 +182,14 @@ test('the deny hook applies each host tool registry entry, and its built-in fall
   copyFileSync(HOOK, path.join(bin, 'pan-hook-deny-await-shell'))
   chmodSync(path.join(bin, 'pan-hook-deny-await-shell'), 0o755)
 
-  const decide = (hook: string, host: string, toolName: string): unknown => {
+  const decide = (
+    hook: string,
+    host: string,
+    toolName: string,
+    toolInput: Record<string, unknown> = {},
+  ): unknown => {
     const result = spawnSync(hook, [], {
-      input: payload(toolName),
+      input: payload(toolName, toolInput),
       encoding: 'utf8',
       env: { ...process.env, PAN_HOOK_HOST: host },
       timeout: 10_000,
@@ -186,27 +197,39 @@ test('the deny hook applies each host tool registry entry, and its built-in fall
 
     return (JSON.parse(result.stdout) as { permission: unknown }).permission
   }
+  const fallbackHook = path.join(bin, 'pan-hook-deny-await-shell')
 
   for (const host of ['cursor', 'vscode', 'copilot-cli']) {
     const awaitTools = registry.terms.platform_await?.tools[host] ?? []
+    const awaitWhen = registry.terms.platform_await?.when_argument?.[host] ?? {}
     const launchTools = registry.terms.subagent_launch?.tools[host] ?? []
+    const sessionTools = registry.terms.agent_session?.tools[host] ?? []
 
-    for (const toolName of [...awaitTools, ...launchTools, 'Read']) {
-      const expected =
-        awaitTools.includes(toolName) || launchTools.includes(toolName)
-          ? 'deny'
-          : 'allow'
+    for (const toolName of [
+      ...awaitTools,
+      ...launchTools,
+      ...sessionTools,
+      'Read',
+    ]) {
+      const condition = awaitWhen[toolName]
+      const toolInput = condition ? { [condition]: 30 } : {}
+      const expected = toolName === 'Read' ? 'allow' : 'deny'
 
-      assert.equal(
-        decide(HOOK, host, toolName),
-        expected,
-        `${host} ${toolName}`,
-      )
-      assert.equal(
-        decide(path.join(bin, 'pan-hook-deny-await-shell'), host, toolName),
-        expected,
-        `fallback ${host} ${toolName}`,
-      )
+      for (const hook of [HOOK, fallbackHook]) {
+        assert.equal(
+          decide(hook, host, toolName, toolInput),
+          expected,
+          `${hook === HOOK ? '' : 'fallback '}${host} ${toolName}`,
+        )
+
+        if (condition) {
+          assert.equal(
+            decide(hook, host, toolName),
+            'allow',
+            `${host} ${toolName} without ${condition}`,
+          )
+        }
+      }
     }
   }
 })

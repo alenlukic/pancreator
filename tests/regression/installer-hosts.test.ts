@@ -151,13 +151,13 @@ test('installer and compiled VS Code renderers stay byte-identical', () => {
 
   assert.ok(policy)
   assert.equal(
-    read(target, '.agents/skills/pan-status/SKILL.md'),
+    read(target, '.github/skills/pan-status/SKILL.md'),
     translateHostToolNames(
       renderCommandSkill(
         'pan-status',
         projectCursorContent(
           read(source, 'library/cursor/commands/pan-status.md'),
-          '.agents/skills/pan-status/SKILL.md',
+          '.github/skills/pan-status/SKILL.md',
           'embedded',
         ),
       ),

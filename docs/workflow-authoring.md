@@ -450,8 +450,10 @@ Canonical Cursor sources live under `library/cursor/`; VS Code-only sources
 live under `library/vscode/`. The projection manifest declares every
 Pancreator-owned target. Each entry is shared or bound to one `host`, and a
 host-bound entry states its `format_difference` and writes only under that
-host's roots: `.cursor/` for Cursor, and `.agents/skills/`, `.github/agents/`,
-`.github/hooks/`, and `.github/instructions/` for VS Code. Projection renders
+host's roots: `.cursor/` for Cursor, and `.github/` and `.vscode/` for VS Code.
+A shared entry writes under `.agents/skills/`, which every host reads, so a
+command must not land there while Cursor also projects it to
+`.cursor/commands/`. Projection renders
 only the hosts that `config.json` `hosts` enables.
 
 A hook script reads the Cursor payload. A VS Code hook registration in

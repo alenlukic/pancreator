@@ -25,7 +25,7 @@ export type ProjectionHost = 'shared' | ProjectHost
 export const HOST_TARGET_PREFIXES: Record<ProjectionHost, readonly string[]> = {
   shared: ['.agents/skills/'],
   cursor: ['.cursor/'],
-  vscode: ['.github/', '.vscode/', '.agents/skills/'],
+  vscode: ['.github/', '.vscode/'],
 }
 
 /**
@@ -45,16 +45,18 @@ export const PROJECTION_TRANSFORMS = [
 ] as const
 
 /** Skill folders hold the projected name; every other target is a file. */
-const SKILLS_ROOT = '.agents/skills/'
+export const SKILLS_ROOTS = ['.agents/skills/', '.github/skills/'] as const
 
 /**
- * The name a target claims in its host directory: the skill folder under
- * `.agents/skills/`, else the file basename. It MUST carry the `pan` namespace
- * in a target repository.
+ * The name a target claims in its host directory: the skill folder under a
+ * skills root, else the file basename. It MUST carry the `pan` namespace in a
+ * target repository.
  */
 export function projectionOwnedName(target: string): string {
-  return target.startsWith(SKILLS_ROOT)
-    ? (target.slice(SKILLS_ROOT.length).split('/')[0] ?? '')
+  const root = SKILLS_ROOTS.find((prefix) => target.startsWith(prefix))
+
+  return root
+    ? (target.slice(root.length).split('/')[0] ?? '')
     : path.basename(target)
 }
 

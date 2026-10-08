@@ -51,7 +51,14 @@ export interface PromptContextResponse {
   continue: true
   additional_context?: string
 }
-const HOOK_EVENTS = new Set(['beforeSubmitPrompt', 'UserPromptSubmit'])
+// The Copilot runtime in VS Code replaces a project hook's context on the
+// first prompt with its own, so session start carries the reminder too.
+const HOOK_EVENTS = new Set([
+  'beforeSubmitPrompt',
+  'UserPromptSubmit',
+  'sessionStart',
+  'SessionStart',
+])
 const HORIZON_SESSION_ROOT = 'runtime/logs/horizon'
 
 const SUPERVISOR_COMMAND_ROLES: Record<string, TurnReminderRole> = {

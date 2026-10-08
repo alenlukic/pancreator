@@ -1260,7 +1260,7 @@ and updates project the same enabled hosts.
 
 | Surface               | Cursor                         | VS Code and Copilot CLI                                                   |
 | --------------------- | ------------------------------ | ------------------------------------------------------------------------- |
-| Operator commands     | `.cursor/commands/pan-*.md`    | `.agents/skills/pan-*/SKILL.md`                                           |
+| Operator commands     | `.cursor/commands/pan-*.md`    | `.github/skills/pan-*/SKILL.md`                                           |
 | Stage personas        | `.cursor/agents/pan-*.md`      | `.github/agents/pan-*.agent.md`, hidden from the agent picker             |
 | Supervisor mode       | none                           | `.github/agents/pan-supervisor.agent.md`                                  |
 | Operating rule        | `.cursor/rules/pancreator.mdc` | `.github/instructions/pancreator.instructions.md`                         |
@@ -1268,8 +1268,8 @@ and updates project the same enabled hosts.
 | Hooks                 | `.cursor/hooks.json`           | `.github/hooks/pan-hooks.json`, each script behind `bin/pan-hook-adapter` |
 
 `AGENTS.md`, governance, workflows, run state, and every `./bin/pan` command are
-shared. Cursor keeps `.cursor/commands` until probes show it invokes
-`.agents/skills` the same way. To disable VS Code, remove `vscode` from `hosts`
+shared. The command skills live in `.github/skills`, which Cursor does not read,
+so Cursor lists each `/pan-*` command once. To disable VS Code, remove `vscode` from `hosts`
 and sync again. Sync removes every `pan-*` file the host left behind, except a
 file the repository tracks.
 
@@ -1283,15 +1283,13 @@ also sets `PAN_HOST_SESSION_ID`.
 
 Known limits, each tracked by a probe in the host-support spec:
 
-- The VS Code Agent Host discards `UserPromptSubmit` and `Stop` hook output, so
-  the per-turn reminder and the turn guard work only in the local agent.
+- The VS Code Agent Host, a chat session whose target is Copilot CLI, can
+  replace the first prompt's hook context with its own. Pancreator also
+  delivers the reminder on `sessionStart`, so the first turn can show it twice.
 - The Copilot CLI reads `.github/hooks/` and `.github/agents/` from its
   working directory. Before a worker launches in a worktree checkout, the
   harness copies the projected hook file, with absolute adapter paths, and the
   persona agent into that checkout.
-- Cursor also reads `.agents/skills`, so with both hosts enabled Cursor lists
-  each `/pan-*` command twice. Both entries run the same command. Keep `vscode`
-  out of `hosts` in a checkout you only open in Cursor.
 - `SubagentStart` carries no prompt, so the agent index cannot link a VS Code
   subagent to its launch.
 - Copilot usage is unmetered. `pan spend` reports the Copilot sessions of the
