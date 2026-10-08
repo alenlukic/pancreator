@@ -58,7 +58,7 @@ test('a stale catalog leaves the model diagnostic working', () => {
       present: boolean
       stale: boolean
       freshness: string
-      refresh_command: string
+      refresh: string
     }
   }
 
@@ -66,10 +66,7 @@ test('a stale catalog leaves the model diagnostic working', () => {
   assert.equal(report.cursor_model_catalog.present, true)
   assert.equal(report.cursor_model_catalog.stale, true)
   assert.equal(report.cursor_model_catalog.freshness, 'incomplete')
-  assert.equal(
-    report.cursor_model_catalog.refresh_command,
-    './bin/pan models --sync --force',
-  )
+  assert.match(report.cursor_model_catalog.refresh, /Cursor\.models\.list/u)
 
   // The exemption covers diagnosis only. A sync writes projections, so it
   // still enforces the catalog unless the operator waives it by name.
@@ -97,7 +94,7 @@ test('a stale catalog leaves the doctor diagnostic reporting the refresh', () =>
     cursor_model_catalog?: {
       present: boolean
       stale: boolean
-      refresh_command: string
+      refresh: string
     }
   }
 
@@ -105,8 +102,8 @@ test('a stale catalog leaves the doctor diagnostic reporting the refresh', () =>
   // the whole sweep. The catalog block is the contract here.
   assert.equal(report.cursor_model_catalog?.present, true)
   assert.equal(report.cursor_model_catalog?.stale, true)
-  assert.equal(
-    report.cursor_model_catalog?.refresh_command,
-    './bin/pan models --sync --force',
+  assert.match(
+    report.cursor_model_catalog?.refresh ?? '',
+    /Cursor\.models\.list/u,
   )
 })
