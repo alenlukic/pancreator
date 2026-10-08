@@ -188,10 +188,17 @@ function buildReleaseFixtureTemplate(): string {
 
   // The tracked config.json blanks its model values. The effective specs live
   // in the untracked overrides file that a real operator checkout carries.
+  // The operator's enabled hosts stay out, so every installer test starts
+  // from the tracked default.
   if (existsSync(path.join(REPO_ROOT, 'config_overrides.json'))) {
-    cpSync(
+    const overrides = readJson<Record<string, unknown>>(
       path.join(REPO_ROOT, 'config_overrides.json'),
+    )
+
+    delete overrides.hosts
+    writeFileSync(
       path.join(fixture, 'config_overrides.json'),
+      `${JSON.stringify(overrides, null, 2)}\n`,
     )
   }
 
