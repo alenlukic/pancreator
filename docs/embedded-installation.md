@@ -21,8 +21,9 @@ target repository tracks.
 - npm
 - Git
 - Cursor with project commands and subagents enabled
-- Chrome for Testing and a `chrome-devtools` MCP server — required only for targets
-  with a web UI, because `BROWSER-001` blocks browser verdicts without them. The
+- Chrome for Testing and a `chrome-devtools` MCP server — preferred for targets
+  with a web UI. Without them, `BROWSER-001` records the gap and browser
+  inspection uses another headless tool, such as the Playwright MCP server. The
   installer reports whether they are configured; it never installs a browser or
   writes target MCP config. See `./bin/pan doctor`.
 - The Claude Code CLI (`claude`), installed and authenticated per machine —
@@ -135,8 +136,8 @@ without mutating target-owned files or creating a copied target-policy snapshot.
     rules/pancreator.mdc    # embedded operating rule
     rules/pan-browser-isolation.mdc    # always-apply rule generated from BROWSER-001
     rules/pan-chat-output.mdc          # always-apply rule generated from COMMS-001
-  .agents/skills/pan-*/SKILL.md        # /pan-* commands for VS Code (vscode host only)
   .github/                             # VS Code and Copilot CLI surfaces (vscode host only)
+    skills/pan-*/SKILL.md              # /pan-* commands
     agents/pan-*.agent.md              # personas as hidden custom agents
     agents/pan-supervisor.agent.md     # the supervisor mode, with the authority order
     instructions/pancreator.instructions.md  # embedded operating rule
@@ -178,6 +179,7 @@ block in `.git/info/exclude`, which is local to the clone and never committed:
 /.cursor/rules/pan-*.mdc
 /.cursor/rules/pancreator.mdc
 /.agents/skills/pan-*/
+/.github/skills/pan-*/
 /.github/agents/pan-*.agent.md
 /.github/hooks/pan-*.json
 /.github/instructions/pan-*.instructions.md
@@ -186,7 +188,9 @@ block in `.git/info/exclude`, which is local to the clone and never committed:
 ```
 
 The VS Code lines are present whatever the enabled hosts, so enabling the
-`vscode` host later never shows a projected file in `git status`.
+`vscode` host later never shows a projected file in `git status`. The
+`.agents/skills` line covers the command skills that releases through 8.13.0
+projected there; a full sync removes them.
 
 The block is rewritten on every refresh, so it never accumulates duplicates. A
 detached installation omits the `/.pancreator/` line, because nothing is
@@ -231,7 +235,7 @@ occupies a Pancreator-owned name is reported as a takeover and backed up under
 `.pancreator/backups/cursor/` before it is replaced.
 
 The VS Code surfaces follow the same rule. Every projected file under
-`.agents/skills/`, `.github/agents/`, `.github/hooks/`, and
+`.github/skills/`, `.github/agents/`, `.github/hooks/`, and
 `.github/instructions/` is named `pan-*` or `pancreator.*`. With the `vscode`
 host enabled, the installer reports the target's own files in those
 directories and its `.vscode/` settings, both on first install and on every
@@ -264,8 +268,9 @@ is generated output — change the policy, not the rule. `COMMS-001`, the
 operator-facing chat output policy, is generated the same way into
 `.cursor/rules/pan-chat-output.mdc`.
 
-Pancreator never overwrites target-owned `.cursor/mcp.json`. The policy requires a
-Chrome for Testing bundle, which operators configure locally:
+Pancreator never overwrites target-owned `.cursor/mcp.json`. The policy prefers
+one shared headless Chrome for Testing instance, which operators run locally,
+with a server that attaches to it:
 
 ```json
 {
@@ -274,8 +279,7 @@ Chrome for Testing bundle, which operators configure locally:
       "command": "npx",
       "args": [
         "chrome-devtools-mcp@latest",
-        "--executablePath=/path/to/chrome-for-testing",
-        "--isolated"
+        "--browserUrl=http://127.0.0.1:9222"
       ]
     }
   }
@@ -283,8 +287,9 @@ Chrome for Testing bundle, which operators configure locally:
 ```
 
 Run `./.pancreator/bin/pan doctor` to see whether the bundle and server are
-detected. Without them, stages that owe a browser verdict report
-environment-blocked rather than guessing.
+detected. Without them, browser inspection records the gap and uses another
+headless tool. A stage that owes a browser verdict reports environment-blocked
+only when no permitted browser tool is reachable.
 
 ## Target repository checks
 

@@ -858,6 +858,7 @@ ensure_target_git_exclude() {
 /.cursor/rules/pan-*.mdc
 /.cursor/rules/pancreator.mdc
 /.agents/skills/pan-*/
+/.github/skills/pan-*/
 /.github/agents/pan-*.agent.md
 /.github/hooks/pan-*.json
 /.github/instructions/pan-*.instructions.md

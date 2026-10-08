@@ -25,6 +25,8 @@ test('the installer reports target-owned host surfaces and per-host collisions',
 
   write(target, '.agents/skills/team-skill/SKILL.md')
   write(target, '.agents/skills/pan-status/SKILL.md')
+  write(target, '.github/skills/team-gh-skill/SKILL.md')
+  write(target, '.github/skills/pan-status/SKILL.md')
   write(target, '.github/agents/reviewer.agent.md')
   write(target, '.github/hooks/team.json')
   write(target, '.github/instructions/style.instructions.md')
@@ -60,6 +62,7 @@ test('the installer reports target-owned host surfaces and per-host collisions',
 
   for (const retained of [
     '.agents/skills/team-skill  (target-owned skill)',
+    '.github/skills/team-gh-skill  (target-owned skill)',
     '.github/agents/reviewer.agent.md  (target-owned VS Code agent)',
     '.github/hooks/team.json  (target-owned hook file)',
     '.github/instructions/style.instructions.md  (target-owned VS Code instructions)',
@@ -70,6 +73,7 @@ test('the installer reports target-owned host surfaces and per-host collisions',
   }
 
   assert.ok(!first.includes('.agents/skills/pan-status'))
+  assert.ok(!first.includes('.github/skills/pan-status'))
   assert.ok(!first.includes('replaced'))
   assert.equal(detect(['cursor'], false), '')
 

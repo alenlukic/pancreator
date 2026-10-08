@@ -359,7 +359,7 @@ function expandProjection(sourceRoot, projection) {
 // harness is built, so it cannot import that module. Keep the two in step.
 const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/u
 const DESCRIPTION_LIMIT = 1024
-const SKILLS_ROOT = '.agents/skills/'
+const SKILLS_ROOTS = ['.agents/skills/', '.github/skills/']
 
 function unquoteYaml(value) {
   const trimmed = value.trim()
@@ -492,8 +492,10 @@ function translateHostToolNames(content, replacements) {
 
 /** Mirrors projectionOwnedName in src/lib/projection/manifest.ts. */
 function projectionOwnedName(target) {
-  return target.startsWith(SKILLS_ROOT)
-    ? (target.slice(SKILLS_ROOT.length).split('/')[0] ?? '')
+  const root = SKILLS_ROOTS.find((prefix) => target.startsWith(prefix))
+
+  return root
+    ? (target.slice(root.length).split('/')[0] ?? '')
     : path.basename(target)
 }
 
@@ -502,7 +504,7 @@ function projectionOwnedName(target) {
 const HOST_TARGET_PREFIXES = {
   shared: ['.agents/skills/'],
   cursor: ['.cursor/'],
-  vscode: ['.github/', '.vscode/', '.agents/skills/'],
+  vscode: ['.github/', '.vscode/'],
 }
 const PROJECT_HOSTS = ['cursor', 'vscode']
 const DEFAULT_PROJECT_HOSTS = ['cursor']
@@ -2036,6 +2038,7 @@ const HOST_ENTRY_GROUPS = [
   { directory: '.cursor/commands', label: 'target-owned Cursor file' },
   { directory: '.cursor/rules', label: 'target-owned Cursor file' },
   { directory: '.agents/skills', label: 'target-owned skill', skill: true },
+  { directory: '.github/skills', label: 'target-owned skill', skill: true },
   { directory: '.github/agents', label: 'target-owned VS Code agent' },
   { directory: '.github/hooks', label: 'target-owned hook file' },
   {

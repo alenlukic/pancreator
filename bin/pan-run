@@ -767,7 +767,9 @@ if [[ "${CURSOR_CONVERSATION_ID:-}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
   CURSOR_CONV_ID="$CURSOR_CONVERSATION_ID"
 fi
 # The host-neutral session: Cursor names it natively; another host's launcher
-# or executor sets PAN_HOST and, when it knows one, PAN_HOST_SESSION_ID.
+# or executor sets PAN_HOST and, when it knows one, PAN_HOST_SESSION_ID. The
+# Copilot runtime's shell tool exports COPILOT_AGENT_SESSION_ID, which equals
+# its hook `sessionId`, and sets no PAN_HOST inside VS Code.
 HOST_NAME=""
 HOST_SESSION_ID=""
 if [[ -n "$CURSOR_CONV_ID" ]]; then
@@ -779,6 +781,9 @@ else
   fi
   if [[ "${PAN_HOST_SESSION_ID:-}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
     HOST_SESSION_ID="$PAN_HOST_SESSION_ID"
+  elif [[ "${COPILOT_AGENT_SESSION_ID:-}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+    HOST_SESSION_ID="$COPILOT_AGENT_SESSION_ID"
+    HOST_NAME="${HOST_NAME:-copilot-cli}"
   fi
 fi
 

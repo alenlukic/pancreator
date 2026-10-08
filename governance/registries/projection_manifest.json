@@ -16,7 +16,7 @@
     {
       "id": "cursor-commands",
       "host": "cursor",
-      "format_difference": "Cursor lists operator commands from .cursor/commands; the shared .agents/skills target waits until probes PR-1 and PR-2 show Cursor invokes it identically.",
+      "format_difference": "Cursor lists operator commands from .cursor/commands and passes their arguments; probe PR-1 left Cursor's argument passing to a skill unconfirmed, so Cursor keeps the command form.",
       "source": "library/cursor/commands/{command}.md",
       "target": ".cursor/commands/{command}.md",
       "installation_modes": ["self_development", "embedded"],
@@ -106,9 +106,9 @@
     {
       "id": "vscode-command-skills",
       "host": "vscode",
-      "format_difference": "Cursor also reads .agents/skills, so this target becomes shared and replaces .cursor/commands once probes PR-1 and PR-2 show Cursor invokes it identically; until then a shared target would list each command twice in Cursor.",
+      "format_difference": "VS Code and the Copilot runtime read operator commands as slash-only skills. The target is .github/skills, which Cursor does not read, because probe PR-2 showed Cursor lists a .agents/skills copy beside its .cursor/commands copy.",
       "source": "library/cursor/commands/{command}.md",
-      "target": ".agents/skills/{command}/SKILL.md",
+      "target": ".github/skills/{command}/SKILL.md",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
       "transforms": ["installation-paths", "skill-command"]

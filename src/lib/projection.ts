@@ -34,6 +34,7 @@ import {
   translateHostToolNames,
 } from './projection/host-content.js'
 import {
+  SKILLS_ROOTS,
   expandProjection,
   projectionOwnedName,
   projectionTargetPath,
@@ -70,8 +71,13 @@ const PANCREATOR_OWNED_DIRECTORIES = [
   '.github/agents',
   '.github/hooks',
   '.github/instructions',
+  '.github/skills',
   '.agents/skills',
 ] as const
+
+function isSkillsDirectory(relativeDirectory: string): boolean {
+  return SKILLS_ROOTS.some((root) => root === `${relativeDirectory}/`)
+}
 
 /**
  * Remove each non-Cursor owned directory a sync left empty, then its parent
@@ -99,7 +105,7 @@ function removeEmptySkillFolder(target: string, targetPath: string): void {
   const folder = path.dirname(targetPath)
 
   if (
-    target.startsWith('.agents/skills/') &&
+    SKILLS_ROOTS.some((root) => target.startsWith(root)) &&
     fileExists(folder) &&
     readdirSync(folder).length === 0
   ) {
@@ -678,7 +684,7 @@ export function syncCursorProjection(
       continue
     }
 
-    const skills = relativeDirectory === '.agents/skills'
+    const skills = isSkillsDirectory(relativeDirectory)
     const orphans = readdirSync(absoluteDirectory, { withFileTypes: true })
       .filter(
         (entry) =>

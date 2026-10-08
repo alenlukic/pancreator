@@ -33,6 +33,17 @@ test('the shipped registry parses and agrees with its owning policies', () => {
     value: true,
   })
   assert.equal(registry.terms.subagent_launch.background?.vscode, null)
+  assert.deepEqual(registry.terms.subagent_launch.background?.['copilot-cli'], {
+    argument: 'mode',
+    value: 'background',
+  })
+  assert.deepEqual(registry.terms.platform_await.when_argument, {
+    'copilot-cli': { read_bash: 'delay' },
+  })
+  assert.deepEqual(allHostToolNames(registry, 'agent_session'), [
+    'create_session',
+    'send_message',
+  ])
   assert.deepEqual(validateHostToolRegistry(process.cwd()), [])
 })
 
@@ -73,6 +84,16 @@ test('a malformed registry fails with INVALID_HOST_TOOLS', async (t) => {
         >
         if (terms.subagent_launch)
           terms.subagent_launch.background.cursor = { value: true }
+      },
+    ],
+    [
+      'a when_argument for a tool the host does not list',
+      (value) => {
+        const terms = value.terms as Record<string, Record<string, unknown>>
+        if (terms.platform_await)
+          terms.platform_await.when_argument = {
+            vscode: { read_bash: 'delay' },
+          }
       },
     ],
   ]

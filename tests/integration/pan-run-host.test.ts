@@ -23,6 +23,7 @@ function recordFor(
       CURSOR_CONVERSATION_ID: '',
       PAN_HOST: '',
       PAN_HOST_SESSION_ID: '',
+      COPILOT_AGENT_SESSION_ID: '',
       ...env,
       PANCREATOR_ROOT: root,
     },
@@ -64,6 +65,38 @@ test('pan-run records the host and its session id', async (t) => {
       [null, 'copilot-cli', 'sess-7'],
     )
   })
+
+  await t.test('the Copilot runtime session id names host copilot-cli', () => {
+    assert.deepEqual(
+      fields(recordFor(root, { COPILOT_AGENT_SESSION_ID: 'copilot-1' })),
+      [null, 'copilot-cli', 'copilot-1'],
+    )
+  })
+
+  await t.test(
+    'PAN_HOST and PAN_HOST_SESSION_ID win over the Copilot id',
+    () => {
+      assert.deepEqual(
+        fields(
+          recordFor(root, {
+            PAN_HOST: 'vscode',
+            PAN_HOST_SESSION_ID: 'sess-8',
+            COPILOT_AGENT_SESSION_ID: 'copilot-2',
+          }),
+        ),
+        [null, 'vscode', 'sess-8'],
+      )
+      assert.deepEqual(
+        fields(
+          recordFor(root, {
+            PAN_HOST: 'vscode',
+            COPILOT_AGENT_SESSION_ID: 'copilot-3',
+          }),
+        ),
+        [null, 'vscode', 'copilot-3'],
+      )
+    },
+  )
 
   await t.test('an unknown host and a malformed session id record null', () => {
     assert.deepEqual(

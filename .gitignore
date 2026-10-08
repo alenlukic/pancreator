@@ -12,6 +12,7 @@
 
 # VS Code and Copilot CLI projections, written when config hosts names vscode.
 .agents/skills/pan-*/
+.github/skills/pan-*/
 .github/agents/pan-*.agent.md
 .github/hooks/pan-*.json
 .github/instructions/pan-*.instructions.md

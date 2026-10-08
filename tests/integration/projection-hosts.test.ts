@@ -149,13 +149,24 @@ test('enabling VS Code projects its surfaces and leaves the Cursor tree unchange
     readFileSync(path.join(root, relative), 'utf8')
 
   assert.match(
-    read('.agents/skills/pan-status/SKILL.md'),
+    read('.github/skills/pan-status/SKILL.md'),
     /^---\nname: pan-status\ndescription: ".+"\ndisable-model-invocation: true\n---\n/u,
   )
   assert.match(
-    read('.agents/skills/pan-status/SKILL.md'),
+    read('.github/skills/pan-status/SKILL.md'),
     /\.\/bin\/pan status/u,
   )
+
+  // Releases before the .github/skills move projected commands to
+  // .agents/skills, which Cursor also lists; a full sync removes them.
+  const legacySkill = projectionTargetPath(
+    root,
+    '.agents/skills/pan-status/SKILL.md',
+  )
+  mkdirSync(path.dirname(legacySkill), { recursive: true })
+  writeFileSync(legacySkill, 'legacy\n')
+  syncCursorProjection(root, { write: true })
+  assert.equal(existsSync(path.dirname(legacySkill)), false)
   assert.match(
     read('.github/agents/pan-coder.agent.md'),
     /^---\nname: pan-coder\ndescription: ".+"\nuser-invocable: false\n---\n/u,

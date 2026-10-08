@@ -13,6 +13,7 @@ export const HOST_TOOL_TERMS = [
   'question_tool',
   'platform_await',
   'subagent_launch',
+  'agent_session',
   'shell',
 ] as const
 
@@ -30,6 +31,11 @@ export interface HostToolEntry {
   aliases: string[]
   /** Per host, the launch argument that runs a subagent in the background. */
   background: Record<AgentHost, BackgroundLaunch | null> | null
+  /**
+   * Per host, tools the term covers only when the named argument is set; a
+   * tool absent here is covered on every call.
+   */
+  when_argument: Partial<Record<AgentHost, Record<string, string>>>
   pending_probes: Partial<Record<AgentHost, string>>
 }
 
@@ -125,12 +131,32 @@ function parseEntry(term: HostToolTerm, value: unknown): HostToolEntry {
     { code: 'INVALID_HOST_TOOLS' },
   )
 
+  const tools = perHost(value.tools, `${term}.tools`, (entry, host) =>
+    nameList(entry ?? null, `${term}.tools.${host}`),
+  )
+  const conditions = value.when_argument ?? {}
+
+  invariant(
+    isRecord(conditions) &&
+      Object.entries(conditions).every(
+        ([host, byTool]) =>
+          isAgentHost(host) &&
+          isRecord(byTool) &&
+          Object.entries(byTool).every(
+            ([tool, argument]) =>
+              tools[host].includes(tool) &&
+              typeof argument === 'string' &&
+              argument.length > 0,
+          ),
+      ),
+    `${HOST_TOOLS_PATH}: ${term}.when_argument MUST map hosts to { tool: argument } for tools the host lists`,
+    { code: 'INVALID_HOST_TOOLS' },
+  )
+
   return {
     description: value.description,
     owning_policy: value.owning_policy,
-    tools: perHost(value.tools, `${term}.tools`, (entry, host) =>
-      nameList(entry ?? null, `${term}.tools.${host}`),
-    ),
+    tools,
     aliases:
       value.aliases === undefined
         ? []
@@ -141,6 +167,9 @@ function parseEntry(term: HostToolTerm, value: unknown): HostToolEntry {
         : perHost(value.background, `${term}.background`, (entry, host) =>
             backgroundLaunch(entry ?? null, `${term}.background.${host}`),
           ),
+    when_argument: conditions as Partial<
+      Record<AgentHost, Record<string, string>>
+    >,
     pending_probes: pending as Partial<Record<AgentHost, string>>,
   }
 }
