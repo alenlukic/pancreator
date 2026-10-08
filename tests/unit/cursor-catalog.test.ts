@@ -267,7 +267,8 @@ test('catalog status reports staleness and never throws on a broken catalog', ()
   assert.equal(absent.present, false)
   assert.equal(absent.freshness, 'absent')
   assert.equal(absent.stale, false)
-  assert.equal(absent.refresh_command, './bin/pan models --sync --force')
+  assert.match(absent.refresh, /Cursor\.models\.list\(\)/u)
+  assert.match(absent.refresh, /does not update the catalog/u)
 
   // A catalog with no recorded capture is unknown, not fresh.
   const unrecorded = cursorCatalogStatus(root, [mappings[0]])
@@ -277,15 +278,23 @@ test('catalog status reports staleness and never throws on a broken catalog', ()
 
   // A model the catalog does not hold makes the catalog incomplete, and the
   // report names the mapping rather than raising.
-  const incomplete = cursorCatalogStatus(root, mappings)
+  const incomplete = cursorCatalogStatus(root, [
+    ...mappings,
+    { source: 'ultra.planner', mapping: parsePersonaMapping('missing-model') },
+  ])
 
   assert.equal(incomplete.freshness, 'incomplete')
   assert.equal(incomplete.stale, true)
+  // One entry per unresolved spec, naming every mapping that uses it.
   assert.deepEqual(
-    incomplete.unresolved.map((entry) => entry.source),
-    ['balanced.planner'],
+    incomplete.unresolved.map((entry) => [entry.spec, entry.sources]),
+    [['missing-model', ['balanced.planner', 'ultra.planner']]],
   )
-  assert.match(incomplete.unresolved[0]?.reason ?? '', /--sync --force/u)
+  const reason = incomplete.unresolved[0]?.reason ?? ''
+
+  assert.match(reason, /'missing-model' is not in the Cursor model catalog/u)
+  assert.match(reason, /Cursor\.models\.list\(\)/u)
+  assert.doesNotMatch(reason, /example-gpt/u, 'reason lists no catalog models')
 
   const datedRoot = createTestTempDirectory('pancreator-catalog-status-aged-')
   const catalogPath = path.join(datedRoot, LOCAL_CATALOG_RELATIVE_PATH)

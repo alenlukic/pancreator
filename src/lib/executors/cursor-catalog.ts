@@ -9,11 +9,14 @@ export const LOCAL_CATALOG_RELATIVE_PATH =
   'governance/registries/cursor_model_catalog.json'
 
 /**
- * The one command an operator runs when the catalog no longer resolves the
- * configured specs. Hand-editing the account-local catalog is not a remedy,
- * so every catalog diagnostic names this command instead of the file.
+ * The remedy every catalog diagnostic states. No pan command fetches the
+ * catalog: it is one Cursor account's `Cursor.models.list()` result, and
+ * `--force` only waives the check for one projection sync.
  */
-export const CURSOR_CATALOG_REFRESH_COMMAND = './bin/pan models --sync --force'
+export const CURSOR_CATALOG_REFRESH =
+  `Replace ${LOCAL_CATALOG_RELATIVE_PATH} with a current ` +
+  'Cursor.models.list() result. `./bin/pan models --sync --force` writes ' +
+  'projections without the catalog check but does not update the catalog.'
 
 /** Age past which a recorded catalog capture is reported as stale. */
 export const CURSOR_CATALOG_MAX_AGE_DAYS = 30
@@ -283,9 +286,9 @@ export interface CursorCatalogStatus {
   age_days: number | null
   freshness: CursorCatalogFreshness
   stale: boolean
-  /** Persona mappings the catalog cannot resolve, with the reason each gave. */
-  unresolved: Array<{ source: string; spec: string; reason: string }>
-  refresh_command: string
+  /** Each spec the catalog cannot resolve, once, with the mappings naming it. */
+  unresolved: Array<{ spec: string; sources: string[]; reason: string }>
+  refresh: string
 }
 
 /**
@@ -303,7 +306,7 @@ export function cursorCatalogStatus(
 ): CursorCatalogStatus {
   const base = {
     path: LOCAL_CATALOG_RELATIVE_PATH,
-    refresh_command: CURSOR_CATALOG_REFRESH_COMMAND,
+    refresh: CURSOR_CATALOG_REFRESH,
   }
   let catalog: CursorCatalog | null = null
 
@@ -336,18 +339,35 @@ export function cursorCatalogStatus(
   }
 
   const unresolved: CursorCatalogStatus['unresolved'] = []
+  const bySpec = new Map<
+    string,
+    { mapping: ParsedPersonaMapping; sources: string[] }
+  >()
 
   for (const { source, mapping } of personaMappings) {
     if (mapping.executor !== 'cursor') {
       continue
     }
 
+    const group = bySpec.get(mapping.model_spec)
+
+    if (group) {
+      group.sources.push(source)
+    } else {
+      bySpec.set(mapping.model_spec, { mapping, sources: [source] })
+    }
+  }
+
+  for (const [spec, { mapping, sources }] of bySpec) {
+    const label =
+      sources.length === 1 ? sources[0] : `${sources.length} persona mappings`
+
     try {
-      resolveAgainstCatalog(catalog, mapping, source)
+      resolveAgainstCatalog(catalog, mapping, label)
     } catch (error) {
       unresolved.push({
-        source,
-        spec: mapping.model_spec,
+        spec,
+        sources,
         reason: error instanceof Error ? error.message : String(error),
       })
     }
@@ -389,12 +409,8 @@ function catalogModel(
 
   invariant(
     holders.length > 0,
-    `${source} names Cursor model '${requested}', which is not in the ` +
-      `Cursor model catalog. Known models: ` +
-      `${[...catalog.models.keys()].sort().join(', ')}. The catalog at ` +
-      `${LOCAL_CATALOG_RELATIVE_PATH} is stale; refresh it with ` +
-      `\`${CURSOR_CATALOG_REFRESH_COMMAND}\`. \`./bin/pan doctor --json\` ` +
-      `reports the catalog state and keeps working while it is stale.`,
+    `${source}: Cursor model '${requested}' is not in the Cursor model ` +
+      `catalog. ${CURSOR_CATALOG_REFRESH}`,
     { code: 'UNRESOLVED_CURSOR_MODEL' },
   )
 
@@ -540,11 +556,11 @@ function resolveAgainstCatalog(
           `${source}: Cursor model '${model.id}' declares no variant ` +
             `matching '${variantCombinationKey(mapping.options)}'. Valid ` +
             `combinations are not the full product of parameter values. ` +
-            `Declared combinations: ` +
-            `${declared.slice(0, 24).join('; ')}` +
-            `${declared.length > 24 ? '; …' : ''}. If Cursor has shipped ` +
-            `new variants, the catalog at ${LOCAL_CATALOG_RELATIVE_PATH} is ` +
-            `stale; refresh it with \`${CURSOR_CATALOG_REFRESH_COMMAND}\`.`,
+            `Declared combinations include: ` +
+            `${declared.slice(0, 6).join('; ')}` +
+            `${declared.length > 6 ? '; …' : ''}. If Cursor has shipped ` +
+            `new variants, the catalog is out of date. ` +
+            `${CURSOR_CATALOG_REFRESH}`,
           { code: 'UNRESOLVED_CURSOR_MODEL' },
         )
       }
