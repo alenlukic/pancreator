@@ -1,5 +1,20 @@
 # Changelog
 
+## [8.13.4] - 2026-10-08
+
+This release repairs catalog diagnostics. The diagnostics now name the catalog file and `Cursor.models.list()` as the refresh.
+
+### Changed
+
+- Rename catalog status `refresh_command` to `refresh` ([a1975c79](https://github.com/alenlukic/pancreator/commit/a1975c79)).
+- Report each unresolved catalog spec once, with the persona mappings that name it in `unresolved[].sources` ([a1975c79](https://github.com/alenlukic/pancreator/commit/a1975c79)).
+
+### Fixed
+
+- Tell the operator to replace the catalog with a current `Cursor.models.list()` result. `./bin/pan models --sync --force` only waives the check for one sync ([a1975c79](https://github.com/alenlukic/pancreator/commit/a1975c79)).
+- Stop listing every catalog model in an error for an unknown model ([a1975c79](https://github.com/alenlukic/pancreator/commit/a1975c79)).
+- Show at most 6 declared combinations in an error for a variant mismatch ([a1975c79](https://github.com/alenlukic/pancreator/commit/a1975c79)).
+
 ## [8.13.3] - 2026-10-08
 
 This release keeps a target-tracked `.cursor/hooks.json` file unchanged. The installer then registers Pancreator Cursor hooks in the user-level hooks file.
