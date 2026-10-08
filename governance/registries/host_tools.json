@@ -19,10 +19,10 @@
       "tools": {
         "cursor": ["AwaitShell", "Await"],
         "vscode": [],
-        "copilot-cli": ["read_bash"]
+        "copilot-cli": ["read_bash", "read_agent"]
       },
       "when_argument": {
-        "copilot-cli": { "read_bash": "delay" }
+        "copilot-cli": { "read_bash": "delay", "read_agent": "wait" }
       }
     },
     "subagent_launch": {

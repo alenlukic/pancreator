@@ -151,6 +151,23 @@ test('the deny hook refuses foreground subagents, waits, and agent session tools
     assert.equal(result.status, 0, result.stderr)
   })
 
+  await t.test('Copilot read_agent with wait', () => {
+    const result = runAdapter(
+      guard,
+      copilotTool('read_agent', { agent_id: 'a', wait: true, timeout: 120 }),
+    )
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /platform await/u)
+  })
+
+  await t.test('Copilot read_agent without wait allows', () => {
+    const result = runAdapter(
+      guard,
+      copilotTool('read_agent', { agent_id: 'a', wait: false }),
+    )
+    assert.equal(result.status, 0, result.stderr)
+  })
+
   for (const toolName of ['create_session', 'send_message']) {
     await t.test(`Agent Host ${toolName}`, () => {
       const result = runAdapter(guard, copilotTool(toolName, {}))
@@ -243,6 +260,27 @@ test('Cursor context and stop responses print both host shapes in one object', a
       assert.deepEqual(
         JSON.parse(result.stdout),
         contextOutput('SessionStart', 'card'),
+      )
+    }
+  })
+
+  await t.test('a hook response printed across several lines', () => {
+    const bin = stubBin(
+      JSON.stringify({ continue: true, additional_context: 'card' }, null, 2),
+    )
+
+    for (const payload of [
+      { hook_event_name: 'UserPromptSubmit', session_id: 's', prompt: 'hi' },
+      { sessionId: 's', prompt: 'hi', timestamp: 1 },
+    ]) {
+      const result = runAdapter(
+        ['beforeSubmitPrompt', 'pan-hook-stub'],
+        payload,
+        bin,
+      )
+      assert.deepEqual(
+        JSON.parse(result.stdout),
+        contextOutput('UserPromptSubmit', 'card'),
       )
     }
   })

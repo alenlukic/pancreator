@@ -196,7 +196,8 @@ try:
         timeout=25,
         env={**os.environ, "PAN_HOOK_HOST": dialect},
     )
-    response = parse_json(result.stdout.strip().splitlines()[-1]) if result.stdout.strip() else None
+    stdout = result.stdout.strip()
+    response = (parse_json(stdout) or parse_json(stdout.splitlines()[-1])) if stdout else None
 except Exception:
     response = None
 
