@@ -5,7 +5,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import type { SpendRecord } from '../../src/lib/token-spend.js'
+import { resolvedFastMode } from '../../src/lib/token-spend/attribution.js'
 import { emptyMetrics } from '../../src/lib/token-spend/metrics.js'
+import { spendModelName } from '../../src/lib/token-spend/model-names.js'
 import {
   MAX_TREND_KEYS,
   modelProvider,
@@ -71,6 +73,43 @@ test('each dimension aligns daily cost with its costliest keys', () => {
   ])
   assert.deepEqual(trends.dimensions.persona.keys, ['coder'])
   assert.deepEqual(trends.dimensions.provider.keys, ['Anthropic', 'OpenAI'])
+})
+
+test('an event without a Fast declaration or -fast model counts as not Fast', () => {
+  const trends = spendTrends([
+    record('2026-09-01', 'claude-opus-5-thinking-high-fast', 400),
+    record('2026-09-01', 'claude-opus-5-thinking-high', 100),
+  ])
+
+  assert.deepEqual(trends.dimensions.fast_mode.keys, ['fast', 'non-fast'])
+  assert.equal(resolvedFastMode('gpt-5.6-sol[reasoning=high]', 'fast'), 'fast')
+  assert.equal(resolvedFastMode('gpt-5.6-sol-high', 'unknown'), 'non-fast')
+})
+
+test('model ids read as human names', () => {
+  assert.equal(
+    spendModelName('claude-opus-5-thinking-high-fast'),
+    'Claude Opus 5 (high thinking, Fast)',
+  )
+  assert.equal(
+    spendModelName('claude-fable-5-1-thinking-high'),
+    'Claude Fable 5.1 (high thinking)',
+  )
+  assert.equal(
+    spendModelName('claude-opus-5-5-high'),
+    'Claude Opus 5.5 (high effort)',
+  )
+  assert.equal(
+    spendModelName('gpt-5.6-sol-high-fast'),
+    'GPT-5.6 Sol (high effort, Fast)',
+  )
+  assert.equal(
+    spendModelName('cursor-grok-4.6-high-fast'),
+    'Grok 4.6 (high effort, Fast)',
+  )
+  assert.equal(spendModelName('kimi-k3-max'), 'Kimi K3 Max')
+  assert.equal(spendModelName('default'), 'Auto')
+  assert.equal(spendModelName('Other'), 'Other')
 })
 
 test('keys past the cap fold into one trailing Other', () => {

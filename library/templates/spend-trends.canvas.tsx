@@ -23,10 +23,7 @@ interface Metrics {
   cost_cents: number
   cursor_fee_cents?: number
   included_cost_cents?: number
-}
-
-interface Coverage {
-  known_token_percent: number | null
+  included_fee_cents?: number
 }
 
 interface TrendSeries {
@@ -38,7 +35,6 @@ interface SpendReport {
   period: { days: number; start: string; end: string; source: string }
   totals: Metrics
   daily: Array<Metrics & { date: string }>
-  coverage: Record<string, Coverage>
   trends?: { dimensions: Record<string, TrendSeries> }
   brackets?: Bracket[]
 }
@@ -48,35 +44,23 @@ interface SpendReport {
 const REPORT_DATA = __SPEND_REPORT__
 const REPORT: SpendReport = REPORT_DATA
 
-const DIMENSION_LABELS: Record<string, string> = {
-  model: 'Model',
-  provider: 'Provider',
-  fast_mode: 'Fast mode',
-  workflow_role: 'Workflow role',
-  stage: 'Stage',
-  command: 'Command',
-  persona: 'Persona',
-  governance: 'Governance',
-}
 const KEY_LABELS: Record<string, string> = {
-  stage: 'stage worker',
   fast: 'Fast',
-  'non-fast': 'not Fast',
-  unknown: 'unknown',
+  'non-fast': 'Not Fast',
+  unknown: 'Not Fast',
 }
+// The acceleration chart compares 7-day average daily cost with the 7 days
+// before it, so it starts on the window's fourteenth day.
+const SMOOTHING_DAYS = 7
 
 const usd = (cents: number) =>
   `$${(cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-const usd2 = (cents: number) =>
-  `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const pct = (part: number, whole: number) =>
   whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '0.0%'
 const share = (part: number, whole: number) => (whole > 0 ? part / whole : 0)
 const n = (v: number) => v.toLocaleString('en-US')
 const dollars = (cents: number) => Number((cents / 100).toFixed(2))
 const percent = (value: number) => Number((value * 100).toFixed(1))
-const signed = (value: number, suffix: string) =>
-  `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(1)}${suffix}`
 const stamp = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`
 const keyLabel = (key: string) => KEY_LABELS[key] ?? key
 const sum = (values: number[]) => values.reduce((total, v) => total + v, 0)
@@ -96,10 +80,16 @@ const daily = dates.map((date) => {
     cost: point?.cost_cents ?? 0,
     fee: point?.cursor_fee_cents ?? 0,
     included: point?.included_cost_cents ?? 0,
+    includedFee: point?.included_fee_cents ?? 0,
   }
 })
 const hasIncluded = daily.some((point) => point.included > 0)
 const hasFee = daily.some((point) => point.fee > 0)
+const total = REPORT.totals.cost_cents
+const windowRate = total / Math.max(dates.length, 1)
+const busiest = [...daily].sort((a, b) => b.cost - a.cost)[0]
+// Days above $1,000 read best on $500 gridlines; smaller reports pick their own.
+const dailyTick = (busiest?.cost ?? 0) >= 100_000 ? 500 : undefined
 
 // Windows longer than three weeks read better in weekly buckets that start
 // on the window's first UTC day.
@@ -157,11 +147,35 @@ function keyTrends(dimension: string): KeyTrend[] {
   })
 }
 
+/** Folds keys that share a display label, such as old `unknown` Fast rows. */
+function mergedByLabel(trends: KeyTrend[]): KeyTrend[] {
+  const merged = new Map<string, KeyTrend>()
+
+  for (const trend of trends) {
+    const key = keyLabel(trend.key)
+    const into = merged.get(key)
+
+    if (into === undefined) {
+      merged.set(key, { ...trend, key, byDate: new Map(trend.byDate) })
+    } else {
+      for (const [date, cost] of trend.byDate) {
+        into.byDate.set(date, (into.byDate.get(date) ?? 0) + cost)
+      }
+
+      into.first += trend.first
+      into.second += trend.second
+      into.total += trend.total
+    }
+  }
+
+  return [...merged.values()]
+}
+
 function bucketSeries(trends: KeyTrend[]) {
   return trends
     .filter((trend) => trend.total > 0)
     .map((trend) => ({
-      name: keyLabel(trend.key),
+      name: trend.key,
       data: buckets.map((bucket) =>
         dollars(sum(bucket.members.map((date) => trend.byDate.get(date) ?? 0))),
       ),
@@ -169,12 +183,7 @@ function bucketSeries(trends: KeyTrend[]) {
 }
 
 const models = keyTrends('model')
-const providers = keyTrends('provider')
-const fastModes = keyTrends('fast_mode')
-const roles = keyTrends('workflow_role')
-const stages = keyTrends('stage').filter(
-  (trend) => trend.key !== 'Unattributed',
-)
+const fastModes = mergedByLabel(keyTrends('fast_mode'))
 const commands = keyTrends('command')
 
 const firstCost = sum(daily.slice(0, half).map((point) => point.cost))
@@ -182,26 +191,18 @@ const secondCost = sum(daily.slice(half).map((point) => point.cost))
 const firstRate = firstCost / firstDays
 const secondRate = secondCost / secondDays
 const rateChange = firstRate > 0 ? (secondRate / firstRate - 1) * 100 : 0
-const top = (trends: KeyTrend[], side: 'first' | 'second') =>
+const top = (trends: KeyTrend[], side: 'first' | 'second' | 'total') =>
   [...trends]
     .filter((trend) => trend.key !== 'Other')
     .sort((a, b) => b[side] - a[side])[0]
+const topModel = top(models, 'total')
 const topModelNow = top(models, 'second')
 const topModelThen = top(models, 'first')
-
-function keyShare(trends: KeyTrend[], key: string, side: 'first' | 'second') {
-  const whole = sum(
-    trends.filter((t) => t.key !== 'unknown').map((t) => t[side]),
-  )
-
-  return share(trends.find((t) => t.key === key)?.[side] ?? 0, whole)
-}
-
-const fastThen = keyShare(fastModes, 'fast', 'first')
-const fastNow = keyShare(fastModes, 'fast', 'second')
-const fastKnown = sum(
-  fastModes.filter((t) => t.key !== 'unknown').map((t) => t.total),
-)
+const fast = fastModes.find((t) => t.key === 'Fast')
+const fastShare = share(fast?.total ?? 0, total)
+const fastThen = share(fast?.first ?? 0, firstCost)
+const fastNow = share(fast?.second ?? 0, secondCost)
+const totalIncluded = sum(daily.map((point) => point.included))
 const includedThen = share(
   sum(daily.slice(0, half).map((point) => point.included)),
   firstCost,
@@ -210,61 +211,91 @@ const includedNow = share(
   sum(daily.slice(half).map((point) => point.included)),
   secondCost,
 )
-const attributedRoles = roles.filter((t) => t.key !== 'unattributed')
-const supervisorThen = share(
-  roles.find((t) => t.key === 'supervisor')?.first ?? 0,
-  sum(attributedRoles.map((t) => t.first)),
+const periods = bracketStats(
+  brackets,
+  dates,
+  daily.map((point) => point.cost),
 )
-const supervisorNow = share(
-  roles.find((t) => t.key === 'supervisor')?.second ?? 0,
-  sum(attributedRoles.map((t) => t.second)),
-)
-
-const movers = [
-  ...['model', 'command', 'stage', 'workflow_role', 'persona'].flatMap(
-    (dimension) =>
-      keyTrends(dimension)
-        .filter((t) => t.key !== 'Other')
-        .map((t) => ({
-          dimension: DIMENSION_LABELS[dimension] ?? dimension,
-          key: keyLabel(t.key),
-          then: t.first / firstDays,
-          now: t.second / secondDays,
-        })),
-  ),
-]
-  .map((mover) => ({ ...mover, change: mover.now - mover.then }))
-  .filter((mover) => Math.abs(mover.change) >= 100)
-  .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
-  .slice(0, 10)
+const costliestPeriod = [...periods]
+  .filter((p) => p.days > 0)
+  .sort((a, b) => b.perDay - a.perDay)[0]
+const busiestPeriods = brackets
+  .filter(
+    (b) =>
+      busiest !== undefined && busiest.date >= b.start && busiest.date <= b.end,
+  )
+  .map((b) => b.name)
 
 const headlines = [
   firstRate > 0 &&
-    `Daily charged cost ${rateChange >= 0 ? 'rose' : 'fell'} ${Math.abs(rateChange).toFixed(0)}%, from ${usd(firstRate)} to ${usd(secondRate)} a day, between the first and second half of the window.`,
+    `Daily charged cost ${rateChange >= 0 ? 'rose' : 'fell'} ${Math.abs(rateChange).toFixed(0)}%, from ${usd(firstRate)} to ${usd(secondRate)} a day, between the first ${firstDays} days and the last ${secondDays}.`,
+  costliestPeriod &&
+    `${costliestPeriod.bracket.name} (${bracketSpan(costliestPeriod.bracket)}) ran at ${usd(costliestPeriod.perDay)} a day, ${costliestPeriod.lift.toFixed(1)}× the window average.`,
   topModelNow &&
     topModelThen &&
     topModelNow.key !== topModelThen.key &&
     `${topModelNow.key} overtook ${topModelThen.key} as the costliest model.`,
-  topModelNow &&
-    topModelThen &&
-    topModelNow.key === topModelThen.key &&
-    `${topModelNow.key} stayed the costliest model, at ${pct(topModelNow.second, secondCost)} of recent cost.`,
+  topModel &&
+    topModelNow?.key === topModelThen?.key &&
+    `${topModel.key} was the costliest model in both halves, at ${pct(topModel.total, total)} of window cost.`,
+  fast !== undefined &&
+    Math.abs(fastNow - fastThen) >= 0.05 &&
+    `Fast mode went from ${pct(fastThen, 1)} to ${pct(fastNow, 1)} of charged cost.`,
   hasIncluded &&
     Math.abs(includedNow - includedThen) >= 0.05 &&
     `Included usage went from ${pct(includedThen, 1)} to ${pct(includedNow, 1)} of charged cost.`,
-  movers[0] &&
-    `The largest single shift is ${movers[0].key} (${movers[0].dimension.toLowerCase()}), ${movers[0].change >= 0 ? 'up' : 'down'} ${usd(Math.abs(movers[0].change))} a day.`,
 ].filter((line): line is string => typeof line === 'string')
 
-const cumulative = daily.reduce<{ included: number[]; onDemand: number[] }>(
-  (acc, point) => {
-    acc.included.push((acc.included.at(-1) ?? 0) + point.included)
-    acc.onDemand.push((acc.onDemand.at(-1) ?? 0) + point.cost - point.included)
+// Stacked segments that sum to charged cost: included usage, then on-demand
+// usage split into model cost and Cursor fee when the report carries fees.
+const costSeries = [
+  ...(hasIncluded
+    ? [
+        {
+          name: 'Included usage (USD)',
+          data: daily.map((p) => dollars(p.included)),
+        },
+      ]
+    : []),
+  ...(hasFee
+    ? [
+        {
+          name: hasIncluded ? 'On-demand model cost (USD)' : 'Model cost (USD)',
+          data: daily.map((p) =>
+            dollars(p.cost - p.included - (p.fee - p.includedFee)),
+          ),
+        },
+        {
+          name: hasIncluded ? 'On-demand Cursor fee (USD)' : 'Cursor fee (USD)',
+          data: daily.map((p) => dollars(p.fee - p.includedFee)),
+        },
+      ]
+    : [
+        {
+          name: hasIncluded ? 'On-demand cost (USD)' : 'Charged cost (USD)',
+          data: daily.map((p) => dollars(p.cost - p.included)),
+        },
+      ]),
+]
 
-    return acc
-  },
-  { included: [], onDemand: [] },
+const trailing = daily.map((_, index) =>
+  index + 1 >= SMOOTHING_DAYS
+    ? sum(
+        daily
+          .slice(index + 1 - SMOOTHING_DAYS, index + 1)
+          .map((point) => point.cost),
+      ) / SMOOTHING_DAYS
+    : null,
 )
+const acceleration = dates.flatMap((date, index) => {
+  const now = trailing[index]
+  const before = trailing[index - SMOOTHING_DAYS]
+
+  return now === null || before === null || before === undefined
+    ? []
+    : [{ date, value: (now - before) / SMOOTHING_DAYS }]
+})
+
 const bucketDaily = buckets.map((bucket) => {
   const points = daily.filter((point) => bucket.members.includes(point.date))
 
@@ -276,8 +307,6 @@ const bucketDaily = buckets.map((bucket) => {
     fee: sum(points.map((p) => p.fee)),
   }
 })
-const coverage = (dimension: string) =>
-  `${(REPORT.coverage[dimension]?.known_token_percent ?? 0).toFixed(1)}%`
 const bucketWord = weekly ? 'week' : 'day'
 
 function mixChart(title: string, trends: KeyTrend[], caption: string) {
@@ -291,6 +320,29 @@ function mixChart(title: string, trends: KeyTrend[], caption: string) {
         series={series}
         normalized
         height={240}
+      />
+      <Text tone="tertiary" size="small">
+        {caption}
+      </Text>
+    </Stack>
+  )
+}
+
+function shareChart(
+  title: string,
+  name: string,
+  data: number[],
+  caption: string,
+) {
+  return (
+    <Stack gap={10}>
+      <H2>{title}</H2>
+      <LineChart
+        categories={bucketLabels}
+        series={[{ name, data }]}
+        beginAtZero={false}
+        valueSuffix="%"
+        height={220}
       />
       <Text tone="tertiary" size="small">
         {caption}
@@ -318,41 +370,42 @@ export default function SpendTrendsCanvas() {
         </Callout>
       ) : (
         <>
-          <Grid columns={5} gap={16}>
+          <Grid columns={costliestPeriod ? 5 : 4} gap={16}>
             <Stat
-              value={`${usd(secondRate)}/day`}
-              label={`Recent daily cost, ${signed(rateChange, '%')} vs ${usd(firstRate)}`}
-              tone={
-                rateChange > 10
-                  ? 'danger'
-                  : rateChange < -10
-                    ? 'success'
-                    : 'info'
-              }
+              value={usd(total)}
+              label={`Charged cost, ${usd(windowRate)}/day over ${dates.length} days`}
+              tone="info"
             />
             <Stat
-              value={topModelNow?.key ?? '—'}
-              label={`Costliest recent model${topModelThen && topModelThen.key !== topModelNow?.key ? `, was ${topModelThen.key}` : ''}`}
-            />
-            <Stat
-              value={fastKnown > 0 ? pct(fastNow, 1) : '—'}
+              value={busiest ? usd(busiest.cost) : '—'}
               label={
-                fastKnown > 0
-                  ? `Fast share of known cost, ${signed((fastNow - fastThen) * 100, ' pts')}`
-                  : 'Fast mode share is unknown'
+                busiest
+                  ? `Busiest day, ${bracketDay(busiest.date)}${busiestPeriods.length > 0 ? ` (${busiestPeriods.join(', ')})` : ''}`
+                  : 'No usage in this window'
+              }
+            />
+            {costliestPeriod && (
+              <Stat
+                value={`${usd(costliestPeriod.perDay)}/day`}
+                label={`Costliest period: ${costliestPeriod.bracket.name}, ${costliestPeriod.lift.toFixed(1)}× average`}
+                tone={costliestPeriod.lift >= 1.5 ? 'danger' : undefined}
+              />
+            )}
+            <Stat
+              value={topModel?.key ?? '—'}
+              label={
+                topModel
+                  ? `Costliest model, ${pct(topModel.total, total)} of cost`
+                  : 'No model series'
               }
             />
             <Stat
-              value={hasIncluded ? pct(includedNow, 1) : '—'}
+              value={pct(fastShare, 1)}
               label={
                 hasIncluded
-                  ? `Recent cost on included usage, ${signed((includedNow - includedThen) * 100, ' pts')}`
-                  : 'No included usage in this window'
+                  ? `Fast mode share of cost; included usage covered ${pct(totalIncluded, total)}`
+                  : 'Fast mode share of cost'
               }
-            />
-            <Stat
-              value={attributedRoles.length > 0 ? pct(supervisorNow, 1) : '—'}
-              label={`Supervisor share of attributed cost, ${signed((supervisorNow - supervisorThen) * 100, ' pts')}`}
             />
           </Grid>
 
@@ -366,92 +419,58 @@ export default function SpendTrendsCanvas() {
             </Callout>
           )}
 
-          <Grid columns={brackets.length > 0 ? 1 : 2} gap={24}>
-            <Stack gap={10}>
-              <H2>Daily cost, included and on-demand</H2>
-              {brackets.length > 0 ? (
-                <BracketedDailyChart
-                  dates={dates}
-                  categories={dates.map(bracketDay)}
-                  series={[
-                    ...(hasIncluded
-                      ? [
-                          {
-                            name: 'Included usage (USD)',
-                            data: daily.map((p) => dollars(p.included)),
-                          },
-                        ]
-                      : []),
-                    {
-                      name: hasIncluded
-                        ? 'On-demand cost (USD)'
-                        : 'Charged cost (USD)',
-                      data: daily.map((p) => dollars(p.cost - p.included)),
-                    },
-                  ]}
-                  brackets={brackets}
-                  height={240}
-                />
-              ) : (
-                <BarChart
-                  categories={dates.map(bracketDay)}
-                  series={[
-                    ...(hasIncluded
-                      ? [
-                          {
-                            name: 'Included usage (USD)',
-                            data: daily.map((p) => dollars(p.included)),
-                          },
-                        ]
-                      : []),
-                    {
-                      name: hasIncluded
-                        ? 'On-demand cost (USD)'
-                        : 'Charged cost (USD)',
-                      data: daily.map((p) => dollars(p.cost - p.included)),
-                    },
-                  ]}
-                  stacked
-                  valuePrefix="$"
-                  height={240}
-                />
-              )}
-              <Text tone="tertiary" size="small">
-                X axis: UTC day. Y axis: USD, stacked.
-                {brackets.length > 0
-                  ? ' Red brackets mark labeled periods.'
-                  : ''}
-              </Text>
-            </Stack>
-            <Stack gap={10}>
-              <H2>Cumulative charged cost</H2>
-              <LineChart
+          <Stack gap={10}>
+            <H2>Daily charged cost</H2>
+            {brackets.length > 0 ? (
+              <BracketedDailyChart
+                dates={dates}
                 categories={dates.map(bracketDay)}
+                series={costSeries}
+                brackets={brackets}
+                height={480}
+                tickStep={dailyTick}
+              />
+            ) : (
+              <BarChart
+                categories={dates.map(bracketDay)}
+                series={costSeries}
+                stacked
+                valuePrefix="$"
+                height={480}
+              />
+            )}
+            <Text tone="tertiary" size="small">
+              X axis: UTC day. Y axis: USD, stacked
+              {hasFee ? '; the Cursor fee is its own segment' : ''}.
+              {brackets.length > 0 ? ' Red brackets mark labeled periods.' : ''}
+            </Text>
+          </Stack>
+
+          {acceleration.length > 1 && (
+            <Stack gap={10}>
+              <H2>Cost acceleration</H2>
+              <LineChart
+                categories={acceleration.map((point) => bracketDay(point.date))}
                 series={[
-                  ...(hasIncluded
-                    ? [
-                        {
-                          name: 'Included usage (USD)',
-                          data: cumulative.included.map(dollars),
-                        },
-                      ]
-                    : []),
                   {
-                    name: hasIncluded ? 'On-demand (USD)' : 'Charged (USD)',
-                    data: cumulative.onDemand.map(dollars),
+                    name: 'Change in daily cost ($ per day, each day)',
+                    data: acceleration.map((point) => dollars(point.value)),
                   },
                 ]}
+                beginAtZero={false}
+                referenceLines={[{ value: 0, label: 'steady' }]}
                 valuePrefix="$"
+                fill
                 height={240}
               />
               <Text tone="tertiary" size="small">
-                X axis: UTC day. Y axis: running USD total.
-                {hasIncluded
-                  ? ' A flat included line means the plan allowance ran out and usage billed on demand.'
-                  : ''}
+                The second derivative of charged cost: how fast daily cost is
+                rising or falling. Each point is the 7-day average daily cost
+                minus the average of the 7 days before it, divided by 7. Above
+                zero, spending is speeding up; below zero, it is slowing down.
               </Text>
             </Stack>
-          </Grid>
+          )}
 
           <Grid columns={2} gap={24}>
             {mixChart(
@@ -463,14 +482,14 @@ export default function SpendTrendsCanvas() {
               <Stack gap={10}>
                 <H2>Model change, first half to second</H2>
                 <Table
-                  headers={['Model', 'Then $/day', 'Now $/day', 'Share now']}
+                  headers={['Model', 'Then $/day', 'Now $/day', 'Share']}
                   rows={models
                     .filter((t) => t.total > 0)
                     .map((t) => [
                       t.key,
                       usd(t.first / firstDays),
                       usd(t.second / secondDays),
-                      pct(t.second, secondCost),
+                      pct(t.total, total),
                     ])}
                   columnAlign={['left', 'right', 'right', 'right']}
                   rowTone={models
@@ -482,37 +501,20 @@ export default function SpendTrendsCanvas() {
                         : undefined,
                     )}
                 />
+                <Text tone="tertiary" size="small">
+                  Then is the first {firstDays} days, now the last {secondDays};
+                  share is of the whole window.
+                </Text>
               </Stack>
             )}
           </Grid>
 
           <Grid columns={2} gap={24}>
             {mixChart(
-              'Provider mix',
-              providers,
-              `Share of each ${bucketWord}'s charged cost by model vendor.`,
-            )}
-            {mixChart(
               'Fast mode',
               fastModes,
-              `Share of each ${bucketWord}'s cost by Fast mode. Fast mode is known for ${coverage('fast_mode')} of tokens, only from exact fast= model declarations; Max mode is not Fast mode.`,
+              `Share of each ${bucketWord}'s cost by Fast mode. An event is Fast when its model name ends in -fast or its declared model sets fast=true; every other event is not Fast.`,
             )}
-          </Grid>
-
-          <Grid columns={2} gap={24}>
-            {mixChart(
-              'Supervisor and stage worker allocation',
-              roles,
-              `Share of each ${bucketWord}'s cost by workflow role. Roles are known for ${coverage('workflow_role')} of tokens; unattributed sessions ran outside Pancreator runs.`,
-            )}
-            {mixChart(
-              'Stage mix',
-              stages,
-              `Share of each ${bucketWord}'s attributed stage cost. Stages are known for ${coverage('stage')} of tokens.`,
-            )}
-          </Grid>
-
-          <Grid columns={2} gap={24}>
             <Stack gap={10}>
               <H2>Cost per event</H2>
               <LineChart
@@ -526,78 +528,34 @@ export default function SpendTrendsCanvas() {
                   },
                 ]}
                 valuePrefix="$"
-                height={220}
+                height={240}
               />
               <Text tone="tertiary" size="small">
                 Charged cost divided by usage events, per {bucketWord}.
               </Text>
             </Stack>
-            <Stack gap={10}>
-              <H2>Fee and cache shares</H2>
-              <LineChart
-                categories={bucketLabels}
-                series={[
-                  ...(hasFee
-                    ? [
-                        {
-                          name: 'Cursor fee share of cost',
-                          data: bucketDaily.map((b) =>
-                            percent(share(b.fee, b.cost)),
-                          ),
-                        },
-                      ]
-                    : []),
-                  {
-                    name: 'Cache reads share of tokens',
-                    data: bucketDaily.map((b) =>
-                      percent(share(b.cacheRead, b.tokens)),
-                    ),
-                  },
-                ]}
-                valueSuffix="%"
-                height={220}
-              />
-              <Text tone="tertiary" size="small">
-                Per {bucketWord}. Long cached contexts raise both lines, because
-                the fee is charged on every token, cache reads included.
-              </Text>
-            </Stack>
+          </Grid>
+
+          <Grid columns={hasFee ? 2 : 1} gap={24}>
+            {hasFee &&
+              shareChart(
+                'Cursor fee share of cost',
+                'Cursor fee share',
+                bucketDaily.map((b) => percent(share(b.fee, b.cost))),
+                `Cursor fee as a share of each ${bucketWord}'s charged cost. The axis fits the data range.`,
+              )}
+            {shareChart(
+              'Cache read share of tokens',
+              'Cache read share',
+              bucketDaily.map((b) => percent(share(b.cacheRead, b.tokens))),
+              `Cache reads as a share of each ${bucketWord}'s tokens. Long cached contexts raise it, and the fee is charged on cache reads too. The axis fits the data range.`,
+            )}
           </Grid>
 
           {mixChart(
             'Command mix',
             commands,
             `Share of each ${bucketWord}'s charged cost by the command that opened the conversation.`,
-          )}
-
-          {movers.length > 0 && (
-            <Stack gap={10}>
-              <H2>Biggest movers</H2>
-              <Table
-                headers={[
-                  'Dimension',
-                  'Key',
-                  'Then $/day',
-                  'Now $/day',
-                  'Change $/day',
-                ]}
-                rows={movers.map((m) => [
-                  m.dimension,
-                  m.key,
-                  usd(m.then),
-                  usd(m.now),
-                  `${m.change >= 0 ? '+' : '−'}${usd2(Math.abs(m.change))}`,
-                ])}
-                columnAlign={['left', 'left', 'right', 'right', 'right']}
-                rowTone={movers.map((m) =>
-                  m.change > 0 ? 'warning' : 'success',
-                )}
-              />
-              <Text tone="tertiary" size="small">
-                Average daily charged cost in the first {firstDays} days against
-                the last {secondDays}, for keys that moved at least $1 a day.
-              </Text>
-            </Stack>
           )}
 
           <Row gap={6} wrap>

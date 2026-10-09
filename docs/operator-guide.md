@@ -2150,8 +2150,8 @@ contributes its workflow records and the target workspace's Cursor transcripts,
 so worker conversation ids can resolve to the correct persona and stage.
 
 Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
-uses an exact `fast=true` or `fast=false` model declaration when one is
-available and reports `unknown` otherwise. The tool view reports token spend
+counts an event as Fast when its model name ends in `-fast` or its declared
+model sets `fast=true`, and counts every other event as not Fast. The tool view reports token spend
 for conversations that used each tool, so those totals overlap. Each inferred
 view shows its attribution coverage.
 Cursor's personal endpoint does not expose authoritative billed charges.
@@ -2399,9 +2399,10 @@ and open it beside the chat. `--canvas` writes the standard spend canvas from
 `library/skills/spend-canvas.md` describes the layout.
 
 Add `--trends` beside `--canvas` to write a second canvas,
-`<name>-trends.canvas.tsx`. It shows how the model mix, model vendors, Fast mode,
-included and on-demand usage, workflow roles, stages, commands, and cost
-efficiency changed between the first and second half of the window.
+`<name>-trends.canvas.tsx`. It shows how daily cost, cost acceleration, the
+model mix, Fast mode, included and on-demand usage, the Cursor fee, commands,
+and cost efficiency changed across the window. Both canvases show readable
+model names.
 
 Add `--brackets <label,...>` to mark labeled periods with red brackets above the
 daily charged cost chart. `/pan-spend --brackets athene-demo,eclipse-demo`

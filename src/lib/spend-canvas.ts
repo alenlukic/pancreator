@@ -15,6 +15,7 @@ import { readText, writeTextAtomic } from './io.js'
 import type { SpendBracket, SpendBrackets } from './spend-brackets.js'
 import type { MultiInstanceSpendReport } from './spend-sync/model.js'
 import type { SpendCoverage, TokenSpendReport } from './token-spend/model.js'
+import { spendModelName } from './token-spend/model-names.js'
 
 export const SPEND_CANVAS_TEMPLATE = 'library/templates/spend-report.canvas.tsx'
 export const SPEND_TRENDS_TEMPLATE = 'library/templates/spend-trends.canvas.tsx'
@@ -49,6 +50,45 @@ export interface SpendCanvasResult {
   }
   lowest_coverage: { dimension: string; known_token_percent: number } | null
   brackets?: SpendBrackets
+}
+
+const PERSONA_SEPARATOR = ' · '
+
+function personaModelName(key: string): string {
+  const at = key.indexOf(PERSONA_SEPARATOR)
+
+  return at < 0
+    ? key
+    : `${key.slice(0, at + PERSONA_SEPARATOR.length)}${spendModelName(key.slice(at + PERSONA_SEPARATOR.length))}`
+}
+
+/** The report with readable model names in place of Cursor model ids. */
+export function withSpendModelNames<T extends RenderableSpendReport>(
+  report: T,
+): T {
+  const models = report.trends?.dimensions.model
+
+  return {
+    ...report,
+    slices: {
+      ...report.slices,
+      persona_models: report.slices.persona_models.map((row) => ({
+        ...row,
+        key: personaModelName(row.key),
+      })),
+    },
+    ...(report.trends === undefined || models === undefined
+      ? {}
+      : {
+          trends: {
+            ...report.trends,
+            dimensions: {
+              ...report.trends.dimensions,
+              model: { ...models, keys: models.keys.map(spendModelName) },
+            },
+          },
+        }),
+  }
 }
 
 /** Fill a canvas template with one report and the shared chart code. */
@@ -118,10 +158,11 @@ export function writeSpendCanvas(
   const template = (relativePath: string) =>
     readText(path.join(templateRoot, relativePath))
   const shared = template(SPEND_CANVAS_SHARED)
+  const named = withSpendModelNames(report)
   const data =
     options.brackets === undefined
-      ? report
-      : { ...report, brackets: options.brackets.brackets }
+      ? named
+      : { ...named, brackets: options.brackets.brackets }
 
   writeTextAtomic(
     canvasPath,

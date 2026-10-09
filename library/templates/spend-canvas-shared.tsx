@@ -196,6 +196,7 @@ function BracketedDailyChart({
   brackets,
   valuePrefix = '$',
   height = 240,
+  tickStep,
 }: {
   dates: string[]
   categories: string[]
@@ -203,6 +204,8 @@ function BracketedDailyChart({
   brackets: Bracket[]
   valuePrefix?: string
   height?: number
+  /** Value-axis tick spacing; without it the chart picks about four ticks. */
+  tickStep?: number
 }) {
   const theme = useHostTheme()
   const [hovered, setHovered] = useState<number | null>(null)
@@ -229,7 +232,7 @@ function BracketedDailyChart({
   const totals = dates.map((_, index) =>
     series.reduce((sum, item) => sum + (item.data[index] ?? 0), 0),
   )
-  const step = niceStep(Math.max(...totals, 1) / 4)
+  const step = tickStep ?? niceStep(Math.max(...totals, 1) / 4)
   const top = step * Math.max(1, Math.ceil(Math.max(...totals, 1) / step))
   const y = (value: number) => plotBottom - (value / top) * height
   const ticks = Array.from(

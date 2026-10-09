@@ -165,6 +165,11 @@ const days = utcDays(REPORT.period.start, REPORT.period.end).map(
       cost_cents: 0,
     },
 )
+// Days above $1,000 read best on $500 gridlines; smaller reports pick their own.
+const dailyTick =
+  Math.max(...days.map((point) => point.cost_cents), 0) >= 100_000
+    ? 500
+    : undefined
 const periods = bracketStats(
   brackets,
   days.map((point) => point.date),
@@ -184,7 +189,10 @@ const roles = byCost(REPORT.slices.workflow_role).map((row) =>
 )
 const supervisor = roles.find((row) => row.key === 'supervisor')
 const stageWorker = roles.find((row) => row.key === 'stage worker')
-const fast = byCost(REPORT.slices.fast_mode)
+const fast = byCost(REPORT.slices.fast_mode).map((row) => ({
+  ...row,
+  key: row.key === 'fast' ? 'Fast' : 'Not Fast',
+}))
 const governance = byCost(REPORT.slices.governance)
 const remediation = byCost(REPORT.slices.remediation)
 const coverage = Object.entries(REPORT.coverage)
@@ -314,7 +322,7 @@ const cards = [
       'Fast mode',
       fast,
       perEvent,
-      'Fast mode is known only from an exact fast=true or fast=false model declaration. Max mode is not Fast mode.',
+      'An event is Fast when its model name ends in -fast or its declared model sets fast=true; every other event is not Fast. Max mode is not Fast mode.',
     ),
   governance.length > 0 &&
     summaryCard(
@@ -419,7 +427,8 @@ export default function SpendReportCanvas() {
                 categories={days.map((d) => dayLabel(d.date))}
                 series={costSeries(days)}
                 brackets={brackets}
-                height={260}
+                height={520}
+                tickStep={dailyTick}
               />
             ) : (
               <BarChart
@@ -427,7 +436,7 @@ export default function SpendReportCanvas() {
                 series={costSeries(days)}
                 stacked={stackedCost}
                 valuePrefix="$"
-                height={240}
+                height={480}
               />
             )}
             <Text tone="tertiary" size="small">

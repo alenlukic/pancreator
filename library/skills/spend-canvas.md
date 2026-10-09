@@ -104,19 +104,23 @@ With brackets, the daily cost chart takes the full width, carries the red
 brackets, and adds the period table.
 
 The trends canvas compares the first half of the window with the second. It
-buckets by UTC day up to 21 days and by week beyond that.
+buckets by UTC day up to 21 days and by week beyond that. Its headline figures
+cover the whole window, never only its last days.
 
-| Section            | Content                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------------------- |
-| KPI row            | Recent daily cost against the earlier rate, top model, Fast share, included share, supervisor share. |
-| What changed       | Generated sentences on the cost rate, the top model, included usage, and the largest single shift.   |
-| Cost               | Daily included and on-demand cost, bracketed when brackets exist, and cumulative cost.               |
-| Model and provider | Share of cost by model and by vendor per bucket, and a per-model then-and-now table.                 |
-| Fast mode          | Share of cost by Fast mode per bucket, with its token coverage.                                      |
-| Allocation         | Share of cost by workflow role and by attributed stage per bucket.                                   |
-| Efficiency         | Cost per event, Cursor fee share of cost, and cache-read share of tokens per bucket.                 |
-| Commands           | Share of cost by command per bucket.                                                                 |
-| Movers             | The ten keys whose daily cost moved most between the halves, at least $1 a day.                      |
+| Section      | Content                                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| KPI row      | Window cost and daily average, busiest day, costliest labeled period, costliest model, and Fast share.  |
+| What changed | Generated sentences on the cost rate, the costliest period, the top model, Fast mode, and included use. |
+| Cost         | Daily included cost, on-demand model cost, and Cursor fee, stacked and bracketed when brackets exist.   |
+| Acceleration | Change in 7-day average daily cost against the 7 days before, per day, around a zero line.              |
+| Model        | Share of cost by model per bucket, and a per-model then-and-now table.                                  |
+| Fast mode    | Share of cost by Fast mode per bucket, beside cost per event.                                           |
+| Shares       | Cursor fee share of cost and cache-read share of tokens per bucket, each on an axis fitted to its data. |
+| Commands     | Share of cost by command per bucket.                                                                    |
+
+Both canvases show readable model names, such as `Claude Opus 5 (high
+thinking, Fast)`, in place of Cursor model ids. The daily cost charts use $500
+gridlines when the busiest day reaches $1,000.
 
 ## Edge cases
 
@@ -129,8 +133,8 @@ buckets by UTC day up to 21 days and by week beyond that.
   and `Other` would dwarf the named tools.
 - The Cursor fee is already included in charged cost. A fee derived for events
   that were synced before fees were recorded appears in the report notes.
-- Fast mode is known only from an exact `fast=true` or `fast=false` model
-  declaration. Max mode is not Fast mode.
+- An event is Fast when its model name ends in `-fast` or its declared model
+  sets `fast=true`. Every other event is not Fast. Max mode is not Fast mode.
 
 ## Hard constraints
 

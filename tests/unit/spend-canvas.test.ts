@@ -11,6 +11,7 @@ import {
   SPEND_CANVAS_SHARED,
   SPEND_CANVAS_TEMPLATE,
   SPEND_TRENDS_TEMPLATE,
+  withSpendModelNames,
   writeSpendCanvas,
   type RenderableSpendReport,
 } from '../../src/lib/spend-canvas.js'
@@ -130,6 +131,27 @@ test('both canvases paste the shared chart code in place of its marker', () => {
         SHARED,
       ),
     { code: 'SPEND_CANVAS_TEMPLATE_INVALID' },
+  )
+})
+
+test('canvas data carries readable model names in place of model ids', () => {
+  const base = report()
+  const named = withSpendModelNames({
+    ...base,
+    slices: {
+      ...base.slices,
+      persona_models: [
+        {
+          key: 'coder · claude-opus-5-thinking-high-fast',
+          metrics: metrics(500, 100),
+        },
+      ],
+    },
+  })
+
+  assert.equal(
+    named.slices.persona_models[0]?.key,
+    'coder · Claude Opus 5 (high thinking, Fast)',
   )
 })
 

@@ -1,5 +1,6 @@
 /** Per-day spend series by dimension, read by the spend trends canvas. */
 
+import { resolvedFastMode } from './attribution.js'
 import type {
   SpendRecord,
   SpendTrendDimension,
@@ -36,7 +37,7 @@ function dimensionKey(
     case 'provider':
       return modelProvider(record.model)
     case 'fast_mode':
-      return attribution.fast_mode
+      return resolvedFastMode(record.model, attribution.fast_mode)
     case 'workflow_role':
       return attribution.workflow_role
     case 'stage':
