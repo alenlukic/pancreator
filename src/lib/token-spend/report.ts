@@ -12,6 +12,7 @@ import {
 } from '../cursor-usage.js'
 import { invariant } from '../errors.js'
 import { attributionRoots, readTranscripts } from './transcripts.js'
+import { spendTrends } from './trends.js'
 import {
   attributionForEvent,
   copilotSessionCount,
@@ -428,6 +429,8 @@ export async function generateTokenSpendReport(
     collected.records,
     collected.tool_calls,
   )
+  const trends =
+    options.trends === true ? { trends: spendTrends(collected.records) } : {}
 
   const endDateMs = now.getTime()
   const startDateMs = endDateMs - days * DAY_MS
@@ -450,6 +453,7 @@ export async function generateTokenSpendReport(
     daily: aggregated.daily,
     slices: aggregated.slices,
     coverage: aggregated.coverage,
+    ...trends,
     warnings: [
       ...collected.warnings,
       ...aggregated.warnings,

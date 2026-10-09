@@ -8,17 +8,20 @@ import { test } from 'node:test'
 
 import {
   renderSpendCanvas,
+  SPEND_CANVAS_SHARED,
   SPEND_CANVAS_TEMPLATE,
+  SPEND_TRENDS_TEMPLATE,
   writeSpendCanvas,
   type RenderableSpendReport,
 } from '../../src/lib/spend-canvas.js'
 import type { SpendMetrics } from '../../src/lib/token-spend.js'
 import { createTestTempDirectory } from '../temp.js'
 
-const TEMPLATE = readFileSync(
-  path.join(process.cwd(), SPEND_CANVAS_TEMPLATE),
-  'utf8',
-)
+const read = (relativePath: string) =>
+  readFileSync(path.join(process.cwd(), relativePath), 'utf8')
+const TEMPLATE = read(SPEND_CANVAS_TEMPLATE)
+const TRENDS_TEMPLATE = read(SPEND_TRENDS_TEMPLATE)
+const SHARED = read(SPEND_CANVAS_SHARED)
 
 function metrics(
   costCents: number,
@@ -109,6 +112,57 @@ test('the canvas embeds the report once and imports only from cursor/canvas', ()
   assert.ok(!source.includes('__SPEND_REPORT__'))
   assert.equal(source.split('"Pancreator spend sync"').length, 2)
   assert.deepEqual([...new Set(imports)], ['cursor/canvas'])
+})
+
+test('both canvases paste the shared chart code in place of its marker', () => {
+  for (const template of [TEMPLATE, TRENDS_TEMPLATE]) {
+    const source = renderSpendCanvas(template, report(), SHARED)
+
+    assert.ok(!source.includes('__SPEND_CANVAS_SHARED__'))
+    assert.ok(source.includes('function BracketedDailyChart('))
+  }
+
+  assert.throws(
+    () =>
+      renderSpendCanvas(
+        '// __SPEND_CANVAS_SHARED__\n// __SPEND_CANVAS_SHARED__\n__SPEND_REPORT__',
+        report(),
+        SHARED,
+      ),
+    { code: 'SPEND_CANVAS_TEMPLATE_INVALID' },
+  )
+})
+
+test('brackets travel in the canvas data and trends write a second canvas', () => {
+  const directory = createTestTempDirectory('pancreator-spend-canvas-')
+  const canvas = path.join(directory, 'cost.canvas.tsx')
+  const brackets = {
+    brackets: [
+      {
+        label: 'carlyle-demo',
+        name: 'Carlyle demo',
+        start: '2026-09-20',
+        end: '2026-09-23',
+        source: 'calendar' as const,
+      },
+    ],
+    skipped: [{ label: 'later', reason: 'unresolved' as const }],
+  }
+  const result = writeSpendCanvas(process.cwd(), canvas, report(), {
+    brackets,
+    trends: true,
+  })
+  const trendsCanvas = path.join(directory, 'cost-trends.canvas.tsx')
+
+  assert.equal(result.trends_canvas, trendsCanvas)
+  assert.deepEqual(result.brackets, brackets)
+
+  for (const written of [canvas, trendsCanvas]) {
+    const source = readFileSync(written, 'utf8')
+
+    assert.ok(source.includes('"name": "Carlyle demo"'))
+    assert.ok(!source.includes('"later"'))
+  }
 })
 
 test('a template without exactly one report placeholder is refused', () => {

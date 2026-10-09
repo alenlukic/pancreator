@@ -1,27 +1,43 @@
 /**
- * Render an aggregate spend report into a Cursor Canvas file.
+ * Render an aggregate spend report into Cursor Canvas files.
  *
- * The canvas layout lives in `library/templates/spend-report.canvas.tsx` and
- * derives every figure from the embedded report, so a canvas never carries a
- * number that was copied by hand.
+ * The report layout lives in `library/templates/spend-report.canvas.tsx`, the
+ * trends layout in `library/templates/spend-trends.canvas.tsx`, and the chart
+ * code both share in `library/templates/spend-canvas-shared.tsx`. Every figure
+ * derives from the embedded report, so a canvas never carries a number that
+ * was copied by hand.
  */
 import path from 'node:path'
 
 import { executingSourceRoot } from './build-identity.js'
 import { invariant } from './errors.js'
 import { readText, writeTextAtomic } from './io.js'
+import type { SpendBracket, SpendBrackets } from './spend-brackets.js'
 import type { MultiInstanceSpendReport } from './spend-sync/model.js'
 import type { SpendCoverage, TokenSpendReport } from './token-spend/model.js'
 
 export const SPEND_CANVAS_TEMPLATE = 'library/templates/spend-report.canvas.tsx'
+export const SPEND_TRENDS_TEMPLATE = 'library/templates/spend-trends.canvas.tsx'
+export const SPEND_CANVAS_SHARED = 'library/templates/spend-canvas-shared.tsx'
 const REPORT_PLACEHOLDER = '__SPEND_REPORT__'
+const SHARED_PLACEHOLDER = '// __SPEND_CANVAS_SHARED__'
 const CANVAS_EXTENSION = '.canvas.tsx'
 
-export type RenderableSpendReport = TokenSpendReport | MultiInstanceSpendReport
+export type RenderableSpendReport = (
+  | TokenSpendReport
+  | MultiInstanceSpendReport
+) & { brackets?: SpendBracket[] }
+
+export interface SpendCanvasOptions {
+  brackets?: SpendBrackets
+  /** Also write the trends canvas beside the report canvas. */
+  trends?: boolean
+}
 
 export interface SpendCanvasResult {
   status: 'rendered'
   canvas: string
+  trends_canvas?: string
   period: { days: number; start: string; end: string }
   totals: {
     events: number
@@ -32,18 +48,28 @@ export interface SpendCanvasResult {
     included_cost_cents: number
   }
   lowest_coverage: { dimension: string; known_token_percent: number } | null
+  brackets?: SpendBrackets
 }
 
-/** Fill the canvas template with one report. */
+/** Fill a canvas template with one report and the shared chart code. */
 export function renderSpendCanvas(
   template: string,
   report: RenderableSpendReport,
+  shared = '',
 ): string {
-  const parts = template.split(REPORT_PLACEHOLDER)
+  const sections = template.split(SHARED_PLACEHOLDER)
+
+  invariant(
+    sections.length <= 2,
+    `A spend canvas template MUST contain ${SHARED_PLACEHOLDER} at most once.`,
+    { code: 'SPEND_CANVAS_TEMPLATE_INVALID' },
+  )
+
+  const parts = sections.join(shared.trimEnd()).split(REPORT_PLACEHOLDER)
 
   invariant(
     parts.length === 2,
-    `The spend canvas template MUST contain ${REPORT_PLACEHOLDER} exactly once.`,
+    `A spend canvas template MUST contain ${REPORT_PLACEHOLDER} exactly once.`,
     { code: 'SPEND_CANVAS_TEMPLATE_INVALID' },
   )
 
@@ -66,11 +92,21 @@ function lowestCoverage(
   return lowest
 }
 
-/** Write the report canvas to an absolute `.canvas.tsx` path. */
+/** The trends canvas path beside a report canvas: `<name>-trends.canvas.tsx`. */
+export function trendsCanvasPath(canvasPath: string): string {
+  return `${canvasPath.slice(0, -CANVAS_EXTENSION.length)}-trends${CANVAS_EXTENSION}`
+}
+
+/**
+ * Write the report canvas to an absolute `.canvas.tsx` path, with any
+ * brackets drawn over its daily cost chart, and the trends canvas beside it
+ * when requested.
+ */
 export function writeSpendCanvas(
   root: string,
   canvasPath: string,
   report: RenderableSpendReport,
+  options: SpendCanvasOptions = {},
 ): SpendCanvasResult {
   invariant(
     path.isAbsolute(canvasPath) && canvasPath.endsWith(CANVAS_EXTENSION),
@@ -79,13 +115,33 @@ export function writeSpendCanvas(
   )
 
   const templateRoot = executingSourceRoot() ?? root
-  const template = readText(path.join(templateRoot, SPEND_CANVAS_TEMPLATE))
+  const template = (relativePath: string) =>
+    readText(path.join(templateRoot, relativePath))
+  const shared = template(SPEND_CANVAS_SHARED)
+  const data =
+    options.brackets === undefined
+      ? report
+      : { ...report, brackets: options.brackets.brackets }
 
-  writeTextAtomic(canvasPath, renderSpendCanvas(template, report))
+  writeTextAtomic(
+    canvasPath,
+    renderSpendCanvas(template(SPEND_CANVAS_TEMPLATE), data, shared),
+  )
+
+  const trendsCanvas =
+    options.trends === true ? trendsCanvasPath(canvasPath) : null
+
+  if (trendsCanvas !== null) {
+    writeTextAtomic(
+      trendsCanvas,
+      renderSpendCanvas(template(SPEND_TRENDS_TEMPLATE), data, shared),
+    )
+  }
 
   return {
     status: 'rendered',
     canvas: canvasPath,
+    ...(trendsCanvas === null ? {} : { trends_canvas: trendsCanvas }),
     period: {
       days: report.period.days,
       start: report.period.start,
@@ -104,5 +160,6 @@ export function writeSpendCanvas(
       included_cost_cents: report.totals.included_cost_cents,
     },
     lowest_coverage: lowestCoverage(report.coverage),
+    ...(options.brackets === undefined ? {} : { brackets: options.brackets }),
   }
 }

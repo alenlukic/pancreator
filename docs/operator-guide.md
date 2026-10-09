@@ -2398,6 +2398,26 @@ and open it beside the chat. `--canvas` writes the standard spend canvas from
 `pan spend --canvas` does the same for the local report that `/pan-spend` uses.
 `library/skills/spend-canvas.md` describes the layout.
 
+Add `--trends` beside `--canvas` to write a second canvas,
+`<name>-trends.canvas.tsx`. It shows how the model mix, model vendors, Fast mode,
+included and on-demand usage, workflow roles, stages, commands, and cost
+efficiency changed between the first and second half of the window.
+
+Add `--brackets <label,...>` to mark labeled periods with red brackets above the
+daily charged cost chart. `/pan-spend --brackets athene-demo,eclipse-demo`
+dates each label from transcripts and connected integrations such as meeting
+notes, calendar, mail, and Slack. It then passes the periods in a
+`--brackets-file`. On the command line, a label can carry its own period:
+
+```sh
+pan spend --days 60 --canvas <absolute-path.canvas.tsx> --trends \
+  --brackets 'athene-demo@2026-08-31..2026-09-08,pal-slack-message@2026-09-22'
+```
+
+A bracket carries only its label, a readable name, UTC dates, and a source
+kind. A label without a period, or with a period outside the window, is
+reported as skipped.
+
 ## Supervisor handoff
 
 `pan handoff` moves supervision of one run into a fresh Cursor Agents chat. The command opens a new chat (no focus change, no deeplink), writes `/pan-resume <run-id>`, selects the model and effort, verifies both, and presses Send.
