@@ -1335,7 +1335,7 @@ Known limits, each tracked by a probe in the host-support spec:
 
 ## Select pipeline models
 
-`config.json` is the source of truth for environment-independent persona mappings and recommended defaults. Persona values use `provider:tier` references; concrete executor-specific model strings belong in the untracked `config_overrides.json`. Canonical artifacts live under `library/cursor/`; sync renders commands, personas, instructions, and hooks for every enabled host, while `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the host surfaces:
+`config.json` is the source of truth for environment-independent persona mappings and recommended defaults. Its `executor`, `provider`, and `tier` arrays declare the complete supported values: `copilot`, `cursor`, `cursor-cli`; `anthropic`, `oai`, `cursor`, `open`; and `balanced`, `advanced`, `ultra`, respectively. These declarations do not select a model or executor. Older configurations that omit them receive the same arrays by default; supplied arrays must contain every supported value exactly once. Persona values use `provider:tier` references; concrete executor-specific model strings belong in the untracked `config_overrides.json`. Canonical artifacts live under `library/cursor/`; sync renders commands, personas, instructions, and hooks for every enabled host, while `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the host surfaces:
 
 ```sh
 ./bin/pan models --sync

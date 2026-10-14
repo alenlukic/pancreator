@@ -1,5 +1,8 @@
 {
   "schema_version": 1,
+  "executor": ["copilot", "cursor", "cursor-cli"],
+  "provider": ["anthropic", "oai", "cursor", "open"],
+  "tier": ["balanced", "advanced", "ultra"],
   "workspace_id": "pancreator-self-dev",
   "workspace_root": ".",
   "state_root": "runtime",
