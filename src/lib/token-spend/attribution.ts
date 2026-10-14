@@ -359,6 +359,18 @@ function fastMode(modelSpec: string | null): EventAttribution['fast_mode'] {
 }
 
 /**
+ * Fast when the billed model name ends in `-fast` or the declared model sets
+ * fast=true. Cursor usage events carry no Fast flag, so every other event,
+ * including one a snapshot recorded as `unknown`, counts as not Fast.
+ */
+export function resolvedFastMode(
+  model: string,
+  declared: EventAttribution['fast_mode'],
+): 'fast' | 'non-fast' {
+  return declared === 'fast' || /-fast$/u.test(model) ? 'fast' : 'non-fast'
+}
+
+/**
  * The supervisor command names from the command governance registry, or null
  * when the registry is unreadable or its list is not all strings. Null means
  * any command may be a supervisor.
@@ -434,7 +446,10 @@ export function attributionForEvent(
         ? `Unattributed · ${event.model}`
         : `${persona} · ${event.model}`,
     tools: transcript === undefined ? [] : [...transcript.tools.keys()],
-    fast_mode: fastMode(identity?.model_spec ?? null),
+    fast_mode: resolvedFastMode(
+      event.model,
+      fastMode(identity?.model_spec ?? null),
+    ),
     // An event with no transcript has no command to govern it, so it is
     // unattributed; `transcript?.command` is undefined there, not null.
     governance:

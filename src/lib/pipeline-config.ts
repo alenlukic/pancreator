@@ -253,7 +253,7 @@ export function resolveConfigPersonas(
  * Validates a pipeline config document and returns it normalized, with model
  * alias tiers checked and persona aliases expanded to explicit specs. Throws
  * `INVALID_PIPELINE_CONFIG` on a bad shape, an unsupported or recursive
- * alias, a non-cursor alias executor, an empty `configs`, or an undefined
+ * alias, an invalid executor mapping, an empty `configs`, or an undefined
  * `active_config`.
  */
 export function parsePipelineConfig(
@@ -310,13 +310,11 @@ export function parsePipelineConfig(
       )
 
       const mapping = parsePersonaMapping(spec, `${source}.${family}.${tier}`)
-      invariant(
-        mapping.executor === 'cursor',
-        `${source}.${family}.${tier} MUST use the cursor executor.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
 
-      resolveCursorModelSlug(mapping, `${source}.${family}.${tier}`)
+      if (mapping.executor === 'cursor') {
+        resolveCursorModelSlug(mapping, `${source}.${family}.${tier}`)
+      }
+
       parsed[tier] = spec
     }
 

@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -436,7 +437,7 @@ test('beat prints growth with an indented tail, then silence once output stops c
   assert.equal(second.status, 0)
   assert.match(
     second.stdout,
-    /^\[pan-run\] beattest running \d+s pid=4242 no new output for \d+s \(last: line1\)\n$/u,
+    /^\[pan-run\] beattest running \d+s pid=4242 no new output for \d+s\n$/u,
   )
 
   const hbAfterSecond = JSON.parse(
@@ -444,6 +445,236 @@ test('beat prints growth with an indented tail, then silence once output stops c
   ) as Record<string, unknown>
 
   assert.equal(hbAfterSecond.last_beat_bytes, 6)
+
+  writeFileSync(path.join(dir, 'output.log'), 'line1\nline2\n')
+  const third = runHelper(helper, ['beat'], beatEnv)
+
+  assert.match(third.stdout, /\n {2}line2\n$/u)
+  assert.ok(!third.stdout.includes('line1'))
+})
+
+test('AC-10 through AC-12: beat bounds new lines, redacts before summarizing, and suppresses streamed output', () => {
+  const root = createTestTempDirectory('pan-run-helper-summary-')
+  const helper = writeHelper(root)
+  const dir = seedRecord(root, `${stamp(0)}-summary-12345678`, {
+    record: { started_at: new Date().toISOString() },
+  })
+  const env = {
+    PAN_RUN_RECORD_DIR: dir,
+    PAN_RUN_LABEL: 'summary',
+    PAN_RUN_PID: '4242',
+    PAN_RUN_LINE_WIDTH: '80',
+    PAN_RUN_TAIL_LINES: '2',
+    MY_TOKEN: 'fixture-secret-value',
+  }
+  const line = `  minified: \t ${'x'.repeat(200)} fixture-secret-value`
+
+  writeFileSync(path.join(dir, 'output.log'), `old\n${line}\nnew\n`)
+  const first = runHelper(helper, ['beat'], env)
+
+  assert.equal(first.status, 0)
+  assert.ok(!first.stdout.includes('  old'))
+  assert.match(first.stdout, /minified: x+ \[truncated; original=\d+\]/u)
+  assert.ok(!first.stdout.includes('fixture-secret-value'))
+  assert.ok(
+    first.stdout
+      .trimEnd()
+      .split('\n')
+      .every((value) => value.length <= 80),
+  )
+  assert.equal(
+    first.stdout.split('\n').filter((value) => value.startsWith('  ')).length,
+    2,
+  )
+
+  writeFileSync(path.join(dir, 'output.log'), `old\n${line}\nnew\nstreamed\n`)
+  const streamed = runHelper(helper, ['beat'], {
+    ...env,
+    PAN_RUN_QUIET: '0',
+  })
+
+  assert.ok(!streamed.stdout.includes('streamed'))
+  assert.equal(streamed.stdout.trimEnd().split('\n').length, 1)
+})
+
+test('AC-10: quiet beats exclude heartbeat lines the filter already forwarded', () => {
+  const root = createTestTempDirectory('pan-run-helper-forwarded-')
+  const helper = writeHelper(root)
+  const dir = seedRecord(root, `${stamp(0)}-forwarded-12345678`, {
+    record: { started_at: new Date().toISOString() },
+  })
+
+  writeFileSync(
+    path.join(dir, 'output.log'),
+    '# heartbeat 1s: forwarded\nordinary\n',
+  )
+  const result = runHelper(helper, ['beat'], {
+    PAN_RUN_RECORD_DIR: dir,
+    PAN_RUN_QUIET: '1',
+    PAN_RUN_LABEL: 'forwarded',
+    PAN_RUN_PID: '1234',
+  })
+
+  assert.match(result.stdout, /\n {2}ordinary\n$/u)
+  assert.ok(!result.stdout.includes('# heartbeat'))
+})
+
+test('summarize preserves empty output on failure replay', () => {
+  const root = createTestTempDirectory('pan-run-helper-empty-summary-')
+  const helper = writeHelper(root)
+  const stdout = execFileSync('node', [helper, 'summarize'], {
+    input: '',
+    encoding: 'utf8',
+    timeout: 5000,
+  })
+
+  assert.equal(stdout, '')
+})
+
+test('R-02: filter bounds newline-free display storage while retaining the full durable log', () => {
+  const root = createTestTempDirectory('pan-run-helper-large-line-')
+  const helper = writeHelper(root)
+  const log = path.join(root, 'output.log')
+  const size = 64 * 1024 * 1024
+  const input = Buffer.alloc(size, 'x')
+  const stdout = execFileSync(
+    'node',
+    ['--max-old-space-size=32', helper, 'filter', log],
+    {
+      input,
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, PAN_RUN_LINE_WIDTH: '80' },
+      timeout: 30_000,
+      maxBuffer: 1024 * 1024,
+    },
+  )
+  const lines = stdout.trimEnd().split('\n')
+
+  assert.ok(lines.every((line) => line.length <= 80))
+  assert.ok(lines.every((line) => /\[truncated; original=\d+\]$/u.test(line)))
+  assert.equal(
+    lines.reduce((total, line) => {
+      const match = /original=(\d+)/u.exec(line)
+
+      assert.ok(match)
+
+      return total + Number(match[1])
+    }, 0),
+    size,
+  )
+  assert.deepEqual(readFileSync(log), input)
+})
+
+test('R-02: quiet beat scans bursts in capped reads and preserves offsets, redaction, and recent lines', () => {
+  const root = createTestTempDirectory('pan-run-helper-burst-')
+  const helper = writeHelper(root)
+  const dir = seedRecord(root, `${stamp(0)}-burst-12345678`, {
+    record: { started_at: new Date().toISOString() },
+  })
+  const log = path.join(dir, 'output.log')
+  const preload = path.join(root, 'bounded-reads.cjs')
+
+  writeFileSync(
+    preload,
+    `const fs = require('node:fs');
+const alloc = Buffer.alloc;
+Buffer.alloc = function(size, ...args) {
+  if (size > 65536) throw new Error('unbounded buffer: ' + size);
+  return alloc(size, ...args);
+};
+const read = fs.readSync;
+fs.readSync = function(fd, buffer, offset, length, position) {
+  if (length > 65536) throw new Error('unbounded read: ' + length);
+  return read(fd, buffer, offset, length, position);
+};
+`,
+  )
+  writeFileSync(log, 'old\n')
+  const previousBytes = Buffer.byteLength('old\n')
+
+  writeFileSync(
+    path.join(dir, 'heartbeat.json'),
+    JSON.stringify({ log_bytes: previousBytes }),
+  )
+  appendFileSync(log, 'x'.repeat(2 * 1024 * 1024) + '\n')
+  appendFileSync(log, 'noise\n'.repeat(200_000))
+  const boundarySecret = 'synthetic-boundary-secret'
+  const padding =
+    (65536 - ((readFileSync(log).length - previousBytes + 1 + 8) % 65536)) %
+    65536
+  const secretLine = boundarySecret + ': ' + 'z'.repeat(200)
+
+  appendFileSync(log, 'y'.repeat(padding) + '\n' + secretLine + '\n')
+  appendFileSync(log, '# heartbeat 1s: forwarded\nlast\n')
+  const result = execFileSync('node', ['--require', preload, helper, 'beat'], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env.PATH,
+      PAN_RUN_RECORD_DIR: dir,
+      PAN_RUN_QUIET: '1',
+      PAN_RUN_LINE_WIDTH: '80',
+      PAN_RUN_TAIL_LINES: '2',
+      MY_TOKEN: boundarySecret,
+    },
+    timeout: 30_000,
+    maxBuffer: 1024 * 1024,
+  })
+
+  assert.ok(result.split('\n').every((line) => line.length <= 80))
+  assert.match(result, /\[truncated; original=\d+\]/u)
+  assert.match(result, /\n {2}\[REDACTED:MY_TOKEN\]: z+/u)
+  assert.match(result, /\n {2}last\n$/u)
+  assert.ok(!result.includes(boundarySecret))
+  assert.ok(!result.includes('# heartbeat'))
+  assert.ok(!result.includes('  old'))
+  assert.equal(
+    result.split('\n').filter((line) => line.startsWith('  ')).length,
+    2,
+  )
+
+  const heartbeat = JSON.parse(
+    readFileSync(path.join(dir, 'heartbeat.json'), 'utf8'),
+  ) as unknown
+
+  assert.ok(isRecord(heartbeat))
+  assert.equal(heartbeat.log_bytes, readFileSync(log).length)
+  assert.equal(heartbeat.last_beat_bytes, previousBytes)
+  assert.deepEqual(heartbeat.recent_lines, [
+    'noise',
+    'y'.repeat(padding),
+    secretLine,
+    '# heartbeat 1s: forwarded',
+    'last',
+  ])
+})
+
+test('R-02: overlapping secret matches cannot retain an entire newline-free stream', () => {
+  const root = createTestTempDirectory('pan-run-helper-overlapping-secret-')
+  const helper = writeHelper(root)
+  const log = path.join(root, 'output.log')
+  const size = 64 * 1024 * 1024
+  const secret = 'x'.repeat(32)
+  const expected = '[REDACTED:MY_TOKEN]'.repeat(size / secret.length)
+  const stdout = execFileSync(
+    'node',
+    ['--max-old-space-size=32', helper, 'filter', log],
+    {
+      input: Buffer.alloc(size, 'x'),
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        PAN_RUN_LINE_WIDTH: '80',
+        MY_TOKEN: secret,
+        SECOND_TOKEN: 'x'.repeat(31),
+      },
+      timeout: 30_000,
+      maxBuffer: 1024 * 1024,
+    },
+  )
+
+  assert.ok(stdout.split('\n').every((line) => line.length <= 80))
+  assert.ok(!stdout.includes(secret))
+  assert.equal(readFileSync(log, 'utf8'), expected)
 })
 
 test('beat reports "no output yet" for an empty log', () => {

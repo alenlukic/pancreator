@@ -1,6 +1,6 @@
 # Pancreator
 
-Pancreator is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
+Pancreator is a workflow harness that helps teams use VS Code with GitHub Copilot or Cursor agents as an engineering workflow. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
 It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
@@ -79,13 +79,13 @@ submission to create validated HTML from retained stage records.
 
 ## Use In VS Code
 
-1. Add `vscode` to the `hosts` list in `config.json` (or `config_overrides.json` to keep it local):
+1. The source checkout enables both editors and ships Copilot model profiles. In an installation that enables only Cursor, add `vscode` to the `hosts` list in `config.json` (or `config_overrides.json` to keep it local):
 
    ```json
    { "hosts": ["cursor", "vscode"] }
    ```
 
-2. Project the VS Code skills, agents, instructions, and hooks:
+2. Choose `balanced`, `advanced`, or `ultra` with `active_config`. Model aliases include the Copilot executor, provider, and effort, for example `copilot:claude-opus-5-5[provider=anthropic,effort=high]`. Set `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in the environment or repository `.env`, then project the skills, agents, instructions, and hooks:
 
    ```sh
    ./bin/pan models --sync

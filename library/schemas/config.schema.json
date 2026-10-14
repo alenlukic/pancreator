@@ -26,12 +26,9 @@
       "anyOf": [{ "const": "" }, { "$ref": "#/$defs/modelSpecOrAlias" }]
     },
     "aliasValue": {
-      "description": "A tier alias resolves to a Cursor model spec. An external executor prefix is refused here so an alias family never changes which runtime executes a persona.",
+      "description": "A tier alias resolves to an explicit model spec, including its executor and options. The mapping is validated by that executor; recursive aliases are refused.",
       "allOf": [
         { "$ref": "#/$defs/modelSpec" },
-        { "not": { "pattern": "^claude-code:" } },
-        { "not": { "pattern": "^openai:" } },
-        { "not": { "pattern": "^copilot:" } },
         {
           "not": {
             "pattern": "^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$"

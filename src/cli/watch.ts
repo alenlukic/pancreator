@@ -10,6 +10,7 @@ import {
   type WatchAgentWakeInfo,
 } from '../lib/watch/agent.js'
 import { watchAttach } from '../lib/watch/attach.js'
+import { WatchDisplay } from '../lib/watch/display.js'
 import { recordForegroundReturn } from '../lib/watch/completion.js'
 import { launchRecordPath } from '../lib/watch/launch.js'
 import {
@@ -33,7 +34,6 @@ import {
 import {
   formatGapLine,
   formatOpenCallSuffix,
-  formatSessionStartLine,
   formatStallEvidenceLine,
   formatWakeLine,
 } from '../lib/watch/record.js'
@@ -114,19 +114,21 @@ export async function watchCommand({
   args,
   json,
 }: CliContext): Promise<void> {
+  let display: WatchDisplay | undefined
+  const workerDisplay = () => (display ??= new WatchDisplay(root))
   const watchCallbacks = {
-    // One line per wake on every stderr: an agent shell has no terminal, and
-    // a wait that prints nothing between arming and its verdict is
-    // indistinguishable from a hung one. Stdout carries the result.
+    // Stderr carries progress even in agent shells; stdout carries the result.
     onWake: (entry: WatchRecordEntry) =>
-      process.stderr.write(`${formatWakeLine(entry)}\n`),
+      process.stderr.write(workerDisplay().wake(entry)),
     // The arming bound and a discovered gap print once per session on
     // every stderr: agent shells have no terminal, and they are the
     // supervisors that must see both. The gap line comes first.
     onSessionStart: (entry: WatchRecordEntry) =>
-      process.stderr.write(`${formatSessionStartLine(entry)}\n`),
+      process.stderr.write(workerDisplay().start(entry)),
     onGap: (entry: WatchRecordEntry) =>
-      process.stderr.write(`${formatGapLine(entry)}\n`),
+      process.stderr.write(
+        `${display?.finish() ?? ''}${formatGapLine(entry)}\n`,
+      ),
   }
 
   if (args[0] === 'audit') {
@@ -528,6 +530,7 @@ export async function watchCommand({
     const named = (items: typeof result.moved): string =>
       items.map((item) => `${item.run_id}:${item.invocation_id}`).join(', ')
 
+    process.stderr.write(display?.finish() ?? '')
     print(
       json
         ? result
@@ -592,7 +595,7 @@ export async function watchCommand({
         : {}),
       stallTimeoutSeconds: resolveStallTimeoutSeconds(args, evidenceCadence),
       timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
-      ...(watchCallbacks.onWake ? { onWake: watchCallbacks.onWake } : {}),
+      onWake: (entry) => process.stderr.write(`${formatWakeLine(entry)}\n`),
     })
 
     print(json ? result : formatEvidenceWatchResult(result), json)
@@ -668,6 +671,7 @@ export async function watchCommand({
     ...watchCallbacks,
   })
 
+  process.stderr.write(display?.finish() ?? '')
   print(
     json
       ? result

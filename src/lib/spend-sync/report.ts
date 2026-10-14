@@ -7,6 +7,7 @@ import { PanError, errorMessage, invariant } from '../errors.js'
 import { isRecord } from '../io.js'
 import { readProjectConfig, resolveSpendSyncOrigin } from '../project-config.js'
 import { aggregateSpendRecords } from '../token-spend/report.js'
+import { spendTrends } from '../token-spend/trends.js'
 import {
   DAY_MS,
   type InstanceSummary,
@@ -144,6 +145,7 @@ export interface CombineSpendSnapshotsOptions {
   now: Date
   /** Warnings gathered while fetching; they lead the report warnings. */
   warnings?: string[]
+  trends?: boolean
 }
 
 /**
@@ -305,6 +307,9 @@ export function combineSpendSnapshots(
     daily: aggregated.daily,
     slices: aggregated.slices,
     coverage: aggregated.coverage,
+    ...(options.trends === true
+      ? { trends: spendTrends(selected.map((meta) => meta.record)) }
+      : {}),
     warnings,
   }
 }
@@ -420,5 +425,10 @@ export async function reportMultiInstanceSpend(
     }
   }
 
-  return combineSpendSnapshots(snapshots, { days, now, warnings })
+  return combineSpendSnapshots(snapshots, {
+    days,
+    now,
+    warnings,
+    ...(options.trends === true ? { trends: true } : {}),
+  })
 }

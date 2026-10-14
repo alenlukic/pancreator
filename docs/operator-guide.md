@@ -240,8 +240,43 @@ names the invocation. `2` and `stalled` after `--stall-timeout-seconds` (default
 seconds with no change. The harness converts that duration to wakes at the active
 cadence, so a cadence override does not change the effective stall window. `3` and `timed_out` at `--timeout-seconds`.
 The command is safe to await in the foreground and safe to re-run. It returns
-`completed` at once when the output already exists. Wake lines print to
-stderr only on an interactive terminal.
+`completed` at once when the output already exists.
+
+On stderr, each session header names the run, invocation,
+persona, model, cadence and bound once. Wake lines report only new assistant
+chat, tool names in call order (consecutive repeats use `xN`), and wrapper byte
+growth with its newest line. Assistant text comes from the worker transcript;
+user prompts and tool arguments are omitted. Complete new assistant messages
+and all tool names appear in message order on indented lines. Text is redacted
+and terminal controls are removed before rendering. Paragraph breaks are
+preserved. Chat content wraps at 600 characters and tool content at 240,
+with indented continuation lines instead of truncation. Wrapper summaries
+remain truncated at 160 characters, including the `...` marker.
+The environment variables `PANCREATOR_WATCH_TEXT_CHARS`,
+`PANCREATOR_WATCH_TOOL_CHARS` and `PANCREATOR_WATCH_WRAPPER_CHARS` override these
+bounds with integers from 80 to 4096. Chat and tool bounds apply to content
+on each line, excluding labels and indentation. Invalid values fail explicitly.
+
+Consecutive unchanged wakes update one carriage-return progress line with an
+advancing `unchanged xN` counter. Shorter updates overwrite the full preceding
+line with space padding so multiplexed counters cannot leave stale digits.
+Progress or a verdict closes that line.
+Multiplexed watches use numbered labels in header order. Each wake drains its
+snapshot of appended transcript records in chunks of at most 1 MiB, including
+on a terminal wake. Incomplete records, even larger than one chunk, are retained
+until complete. Arming establishes the cursor at the end of existing history,
+without replaying it or the remainder of an incomplete historical record.
+Later discovery reads the available records from the beginning. New records
+are never skipped to catch up; unusually large messages or intervals can
+increase the memory and rendering time needed to show their full output.
+Display cursors are local to the watch process. JSON output and durable ledgers retain
+their existing observation and verdict contracts.
+
+Copilot's execution audit is written after the worker exits. While it runs,
+the display checks at most the 32 most recently modified session transcripts
+since launch, reading at most the first 1 MiB of each to match a user prompt
+that names this run and its exact invocation output path. Only a unique match
+is displayed. Cursor workers use the transcript linked by the agent index.
 
 Only `stalled` is a stall signal. `unverified` means the watch could not
 settle a completion, and `timed_out` means the bound passed; neither says the
@@ -1300,7 +1335,7 @@ Known limits, each tracked by a probe in the host-support spec:
 
 ## Select pipeline models
 
-`config.json` is the source of truth for named persona-to-model mappings and carries the recommended defaults a release can update. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
+`config.json` is the source of truth for named persona-to-model mappings and carries the recommended defaults a release can update. The shipped profiles use the Copilot executor with explicit OpenAI or Anthropic providers. Canonical projection templates live under `library/cursor/`; sync renders the commands, personas, instructions, and hooks for every enabled host. Set `active_config` to one of the declared configurations, then regenerate the host surfaces:
 
 ```sh
 ./bin/pan models --sync
@@ -1313,27 +1348,27 @@ Run `./bin/pan models` without `--sync` to preview the active mapping and any dr
 
 Per-checkout preferences belong in `config_overrides.json` next to `config.json` (the legacy name `config.local.json` still reads until you rename it). The file is untracked (keep it out of version control, e.g. via `.gitignore` or `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs. An empty string in a named config inherits the `defaults` entry for that persona, so `config_overrides.json` needs to name only the personas a config changes. An empty string in `defaults` is rejected.
 
-Define aliases in the four top-level family maps. Each map accepts the optional keys `balanced`, `advanced`, and `ultra`:
+Define aliases in the optional top-level family maps `anthropic`, `oai`, `open`, and `cursor`. Each map accepts the optional keys `balanced`, `advanced`, and `ultra`. An alias preserves the complete executor mapping, including provider and effort:
 
 ```json
 {
   "anthropic": {
-    "balanced": "claude-sonnet-5",
-    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]"
+    "balanced": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+    "advanced": "copilot:claude-opus-5-5[provider=anthropic,effort=high]"
   },
   "oai": {
-    "balanced": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]"
+    "balanced": "copilot:gpt-5.6-terra[provider=openai,effort=high]",
+    "advanced": "copilot:gpt-5.6-sol[provider=openai,effort=high]"
   },
-  "open": {
-    "balanced": "glm-5.2"
-  },
-  "cursor": {
-    "balanced": "composer-2.5"
+  "defaults": {
+    "planner": "anthropic:advanced",
+    "coder": "anthropic:balanced",
+    "reviewer": "oai:advanced"
   }
 }
 ```
 
-A `config.json` persona mapping can reference tier aliases such as `anthropic:balanced`, `oai:advanced`, `open:balanced`, and `cursor:advanced`. Pancreator expands those aliases into explicit model specs before it snapshots runs, projects Cursor agents, or delegates to executors.
+A `config.json` persona mapping can reference tier aliases such as `anthropic:balanced` and `oai:advanced`. Pancreator expands aliases before it snapshots runs, renders host projections, or delegates to executors. The selected executor validates its own options. Copilot uses `provider` and `effort`; Cursor options such as `thinking`, `context`, `reasoning`, and `fast` are rejected on a Copilot mapping. Explicit Cursor mappings and the legacy `open` and `cursor` alias families remain supported for existing installations. Aliases cannot reference another alias.
 
 In `config.json` Pancreator always reserves exact `cursor:balanced`, `cursor:advanced`, and `cursor:ultra` values for alias resolution. A reference to an undefined tier is a configuration error. Every other `cursor:<model>` value keeps its existing executor-routing behavior. The best-of-N configs file accepts no tier alias and rejects an alias-shaped value. That file is `best-of-n-config.json` in the repository root, or another path that `pan best-of-n init --configs` names. A best-of-N candidate map MUST name an explicit model spec. The file is operator-local and untracked, and no command generates it: copy [`library/templates/best-of-n-config.example.json`](../library/templates/best-of-n-config.example.json) to create it, and see [`docs/best-of-n.md`](best-of-n.md) for the full shape.
 
@@ -1357,9 +1392,9 @@ A persona mapping may name its executor with a prefix from a closed set — `cur
 
 For compatibility, Pancreator still reads a legacy nested `personas` object in a named configuration. A nested entry wins over a flat key for the same persona. Pancreator emits only the flat shape.
 
-An external-executor persona is executed by that runtime instead of a Cursor subagent, so the same model can author a stage under another harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona is the exception — it is the supervisor itself and must stay on `cursor`.
+An external-executor persona is executed by that runtime instead of a Cursor subagent, so the same model can author a stage under another harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona records the supervisor's model but always stays in the operator's editor session. It accepts `cursor`, or `copilot` when the `vscode` host is enabled; it cannot launch a separate supervisor process.
 
-Note that `openai:` names a runtime, while `oai:` names a tier alias family of Cursor models. They are unrelated, and an alias family value may never carry an executor prefix.
+`openai:` names a runtime, while `oai:` names a tier alias family. The alias value selects its runtime explicitly; for example, `oai:advanced` can resolve to `copilot:gpt-5.6-sol[provider=openai,effort=high]`.
 
 Behavior shared by every harness-dispatched executor:
 
@@ -1409,7 +1444,7 @@ Requirements and behavior:
 
 ### `copilot`
 
-A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[effort=high]`. `configs.copilot` in `config.json` maps every persona this way. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
+A `copilot` stage persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[effort=high]`. Every shipped profile in `config.json` uses this executor; `configs.copilot` remains a compatibility name for the default mapping. The supervisor stays in the operator's editor session. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
 
 Supported bracket options:
 
@@ -2150,8 +2185,8 @@ contributes its workflow records and the target workspace's Cursor transcripts,
 so worker conversation ids can resolve to the correct persona and stage.
 
 Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
-uses an exact `fast=true` or `fast=false` model declaration when one is
-available and reports `unknown` otherwise. The tool view reports token spend
+counts an event as Fast when its model name ends in `-fast` or its declared
+model sets `fast=true`, and counts every other event as not Fast. The tool view reports token spend
 for conversations that used each tool, so those totals overlap. Each inferred
 view shows its attribution coverage.
 Cursor's personal endpoint does not expose authoritative billed charges.
@@ -2398,6 +2433,27 @@ and open it beside the chat. `--canvas` writes the standard spend canvas from
 `pan spend --canvas` does the same for the local report that `/pan-spend` uses.
 `library/skills/spend-canvas.md` describes the layout.
 
+Add `--trends` beside `--canvas` to write a second canvas,
+`<name>-trends.canvas.tsx`. It shows how daily cost, cost acceleration, the
+model mix, Fast mode, included and on-demand usage, the Cursor fee, commands,
+and cost efficiency changed across the window. Both canvases show readable
+model names.
+
+Add `--brackets <label,...>` to mark labeled periods with red brackets above the
+daily charged cost chart. `/pan-spend --brackets athene-demo,eclipse-demo`
+dates each label from transcripts and connected integrations such as meeting
+notes, calendar, mail, and Slack. It then passes the periods in a
+`--brackets-file`. On the command line, a label can carry its own period:
+
+```sh
+pan spend --days 60 --canvas <absolute-path.canvas.tsx> --trends \
+  --brackets 'athene-demo@2026-08-31..2026-09-08,pal-slack-message@2026-09-22'
+```
+
+A bracket carries only its label, a readable name, UTC dates, and a source
+kind. A label without a period, or with a period outside the window, is
+reported as skipped.
+
 ## Supervisor handoff
 
 `pan handoff` moves supervision of one run into a fresh Cursor Agents chat. The command opens a new chat (no focus change, no deeplink), writes `/pan-resume <run-id>`, selects the model and effort, verifies both, and presses Send.
@@ -2590,6 +2646,41 @@ Run that command to observe a wrapped agent command. `--shell` also takes the re
 - `heartbeat.json`: rewritten every beat (30 seconds by default, never more than 60). A file younger than two cadences means the wrapper is alive. `log_bytes` and `last_output_at` grow with output; `recent_lines` holds the last five non-empty output lines, which is the tail to read before any interruption.
 - `output.log`: the full redacted output.
 
+The `-c '<body>'` form writes `script.sh` inside that record directory and
+executes `bash <file>`, so the command's argument vector contains the path
+instead of the body. There is no 900-byte body limit. `record.json` adds
+`script_path` and `script_descriptor` (`interpreter`, `lines`, and UTF-8
+`bytes`); its `command` contains the interpreter and path, never the body.
+The start output also prints this descriptor. The script is private (mode 0600) and retained with the record. When the body contains a known secret,
+the stored script contains redaction tokens and delegates to an inherited
+anonymous pipe that carries the original body. This preserves literal
+execution without writing the secret to disk or passing the body in argv.
+
+Terminal output collapses whitespace and limits each line to
+`PAN_RUN_LINE_WIDTH` characters (default 240, minimum 80). A cut line ends
+with `[truncated; original=<n>]`, where `<n>` is its length after redaction
+and before whitespace normalization. The full redacted text remains in
+`output.log`. The same rendering applies to failure replay and heartbeat
+output. Heartbeats in quiet mode show only new output since the preceding
+beat, up to `PAN_RUN_TAIL_LINES` non-empty lines (default 5, range 1–20).
+Older lines beyond that budget stay in the log. Streaming mode prints no
+heartbeat tail because those lines already reached the terminal. An idle
+beat prints one status line without repeating old output. These display
+rules do not change the existing heartbeat record fields or their meanings.
+The width also bounds status and descriptor lines; increase it when you need
+an unabridged watch command. Heartbeat lines that a quiet filter already
+forwarded are excluded from the next beat's display.
+
+Streaming also exposes unterminated prompts during the 500 ms flush and
+treats carriage returns as display boundaries. A partial fragment is printed
+once; later output continues in a new display fragment. Its truncation marker
+counts that fragment's redacted length. Display storage retains only a prefix
+bounded by the configured width and length counters. Quiet heartbeats scan
+new output in chunks of at most 64 KiB and retain only the configured line
+budget. Redaction can retain a secret-sized suffix across chunks. The complete
+redacted bytes, including carriage returns, remain in `output.log`; heartbeat
+byte offsets and `recent_lines` retain their existing meanings.
+
 Silence in `output.log` is not a hang while `heartbeat.json` stays fresh: a long test or build is the ordinary cause. `pan watch --process` has no stall state; `timed_out` is its bound and prints a re-arm command. A heartbeat older than two cadences with `ended_at` null means the wrapper died (a crash or a host suspend). `DELEGATE-001` states when a supervisor may interrupt a wrapped command and what evidence it records.
 
 ### Shell hook
@@ -2680,4 +2771,4 @@ Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run
 
 ### Wrapper start, stall release, and test heartbeats
 
-`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper refuses a `-c` string at or above 900 UTF-8 bytes with `ARGV_ELEMENT_TOO_LARGE`. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.
+`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper spools `-c` bodies to the record's script file, including bodies above 900 UTF-8 bytes. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.

@@ -4,6 +4,7 @@ import type {
   AggregateSpendRecordsResult,
   CollectSpendRecordsOptions,
   SpendRecord,
+  SpendTrends,
 } from '../token-spend/model.js'
 
 export const DAY_MS = 24 * 60 * 60 * 1_000
@@ -77,6 +78,8 @@ export interface MultiInstanceSpendReport {
   daily: AggregateSpendRecordsResult['daily']
   slices: AggregateSpendRecordsResult['slices']
   coverage: AggregateSpendRecordsResult['coverage']
+  /** Present only when the report was generated with `trends`. */
+  trends?: SpendTrends
   warnings: string[]
 }
 
@@ -86,6 +89,8 @@ export interface SyncSpendOptions extends CollectSpendRecordsOptions {
 
 export interface ReportMultiInstanceSpendOptions {
   days?: number
+  /** Add the per-day dimension series the trends canvas reads. */
+  trends?: boolean
   now?: Date
   fetchImpl?: typeof fetch
 }
