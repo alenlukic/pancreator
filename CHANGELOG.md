@@ -1,5 +1,19 @@
 # Changelog
 
+## [8.17.0] - 2026-10-14
+
+Keep model routing portable across hosts and give VS Code workers access to Cursor models.
+
+### Changed
+
+- Keep persona defaults portable: use provider-tier aliases in tracked `config.json` and executor-specific models in local `config_overrides.json` ([docs/operator-guide.md](docs/operator-guide.md)).
+- Preserve local choices for each model when installation refresh moves settings into overrides ([docs/operator-guide.md](docs/operator-guide.md)).
+
+### Added
+
+- Add the `cursor-cli` executor so VS Code workers can use Cursor models such as Composer and Grok ([docs/operator-guide.md](docs/operator-guide.md)).
+- Allow Copilot to supervise runs when VS Code is enabled ([docs/operator-guide.md](docs/operator-guide.md)).
+
 ## [8.16.0] - 2026-10-14
 
 This release makes wrapper and watch output easier to read. It keeps durable
