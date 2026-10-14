@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.17.1] - 2026-10-14
+
+### Fixed
+
+- Declare the complete executor, provider, and tier arrays in `config.json` and validate their values ([docs/operator-guide.md](docs/operator-guide.md)).
+- Preserve model defaults and generated projections when configurations omit or add these arrays ([tests/integration/projection-hosts.test.ts](tests/integration/projection-hosts.test.ts)).
+- Allow Cursor test fixtures to run when local model preferences select Copilot ([61db0c26](https://github.com/alenlukic/pancreator/commit/61db0c26dd5c4a9da75761e583bd47d307b5a10f)).
+
 ## [8.17.0] - 2026-10-14
 
 Keep model routing portable across hosts and give VS Code workers access to Cursor models.
