@@ -529,6 +529,7 @@ export function runCursorAgentSession(
 }
 
 export interface CursorAgentAdapterOptions {
+  kind?: 'cursor' | 'cursor-cli'
   workspaceDir: string
   installationRoot: string
   runtimeDir: string
@@ -660,7 +661,7 @@ export function createCursorAgentAdapter(
     apiKey ? text.split(apiKey).join('[redacted CURSOR_API_KEY]') : text
 
   return {
-    kind: 'cursor',
+    kind: options.kind ?? 'cursor',
     sanitize,
     run: (prompt, resumeSessionId) => {
       const result = runCursorAgentSession({

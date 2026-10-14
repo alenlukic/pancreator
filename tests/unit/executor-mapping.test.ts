@@ -11,6 +11,7 @@ import {
 test('the eval runner drives every external executor and hands back only cursor', () => {
   assert.equal(evalDrivesExecutor('openai'), true)
   assert.equal(evalDrivesExecutor('claude-code'), true)
+  assert.equal(evalDrivesExecutor('cursor-cli'), true)
   assert.equal(evalDrivesExecutor('cursor'), false)
 })
 
@@ -64,6 +65,13 @@ test('a plain model string parses as a cursor mapping', () => {
       model_spec: 'composer-2.5[fast=false]',
       options: { fast: 'false' },
     },
+    {
+      spec: 'cursor-cli:grok-4.6[effort=high]',
+      executor: 'cursor-cli',
+      model: 'grok-4.6',
+      model_spec: 'grok-4.6[effort=high]',
+      options: { effort: 'high' },
+    },
   ]
 
   for (const expected of cases) {
@@ -83,7 +91,7 @@ test('a plain model string parses as a cursor mapping', () => {
 test('unknown executor prefixes are rejected against the closed set', () => {
   assert.throws(
     () => parsePersonaMapping('codex:gpt-5.6-sol'),
-    /unknown executor 'codex'.*cursor, claude-code, openai/su,
+    /unknown executor 'codex'.*cursor, cursor-cli, claude-code, openai/su,
   )
 })
 

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://config-overrides/v1",
+  "title": "Pancreator local configuration overrides",
+  "description": "Untracked per-checkout preferences and executor-specific model configuration merged over config.json.",
+  "type": "object",
+  "required": ["model_config"],
+  "$defs": {
+    "executor": {
+      "type": "string",
+      "enum": ["copilot", "cursor", "cursor-cli"]
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["anthropic", "oai", "cursor", "open"]
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["balanced", "advanced", "ultra"]
+    },
+    "modelConfigValue": {
+      "type": "string",
+      "description": "Executor prefix followed by an executor-specific model string.",
+      "pattern": "^(copilot|cursor|cursor-cli):[^:]+$"
+    },
+    "modelConfiguration": {
+      "type": "object",
+      "description": "Per-checkout executor-specific model strings keyed by provider and tier.",
+      "propertyNames": { "pattern": "^(anthropic|oai|cursor|open)$" },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": { "pattern": "^(balanced|advanced|ultra)$" },
+        "additionalProperties": { "$ref": "#/$defs/modelConfigValue" }
+      }
+    },
+    "modelSpec": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An executor-specific persona mapping retained in this local override file.",
+      "pattern": "^((cursor|claude-code|openai|copilot|cursor-cli):)?[^:]+$"
+    },
+    "modelAlias": {
+      "type": "string",
+      "pattern": "^(anthropic|oai|cursor|open):(balanced|advanced|ultra)$"
+    },
+    "modelSpecOrAlias": {
+      "anyOf": [
+        { "$ref": "#/$defs/modelSpec" },
+        { "$ref": "#/$defs/modelAlias" }
+      ]
+    },
+    "inheritableMapping": {
+      "anyOf": [{ "const": "" }, { "$ref": "#/$defs/modelSpecOrAlias" }]
+    }
+  },
+  "properties": {
+    "model_config": { "$ref": "#/$defs/modelConfiguration" },
+    "active_config": { "type": "string", "minLength": 1 },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/modelSpecOrAlias" }
+    },
+    "configs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "summary": { "type": "string" },
+          "personas": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/$defs/inheritableMapping" }
+          }
+        },
+        "additionalProperties": { "$ref": "#/$defs/inheritableMapping" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

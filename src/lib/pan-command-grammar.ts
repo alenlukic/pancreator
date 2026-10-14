@@ -247,8 +247,8 @@ export const HELP_BODY = `Usage:
 
 Cursor's supervisor reads invocation cards, delegates cursor-executor stages to
 named Cursor subagents, and returns structured output to this CLI. Stages whose
-persona mapping carries an external executor prefix (claude-code:<model>,
-openai:<model>, or copilot:<model>) are delegated by the harness itself:
+persona mapping carries an external executor prefix (cursor-cli:<model>,
+claude-code:<model>, openai:<model>, or copilot:<model>) are delegated by the harness itself:
 'pan delegate' runs the
 executor with the canonical card and authors the delegation evidence.
 `

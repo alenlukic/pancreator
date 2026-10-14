@@ -25,14 +25,16 @@ export type StageExecutor = 'agent' | 'harness'
 
 /**
  * Which harness runs a persona's worker process. `cursor` delegates to a
- * projected Cursor subagent; `claude-code` spawns the operator-installed
- * Claude Code CLI; `openai` runs a bounded Responses API tool loop in a
- * harness-owned child process; `copilot` spawns the GitHub Copilot CLI.
- * Distinct from `StageExecutor`, which says whether a stage is performed by an
- * agent at all — this says which agent runtime performs it.
+ * projected Cursor subagent; `cursor-cli` invokes the Cursor CLI; `claude-code`
+ * spawns the operator-installed Claude Code CLI; `openai` runs a bounded
+ * Responses API tool loop in a harness-owned child process; `copilot` spawns
+ * the GitHub Copilot CLI. Distinct from `StageExecutor`, which says whether a
+ * stage is performed by an agent at all — this says which agent runtime
+ * performs it.
  */
 export type PersonaExecutorKind =
   | 'cursor'
+  | 'cursor-cli'
   | 'claude-code'
   | 'openai'
   | 'copilot'

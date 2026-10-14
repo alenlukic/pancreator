@@ -5,10 +5,12 @@ import { COPILOT_PROVIDERS } from './copilot-cli.js'
 
 /**
  * Closed set of persona executors. The seam is generic — one interface, one
- * registry — but only these four are registered; other CLIs are out of scope.
+ * registry. The Cursor CLI entry is distinct from an in-host projected Cursor
+ * agent so a VS Code worker can invoke Cursor models explicitly.
  */
 export const PERSONA_EXECUTOR_KINDS: readonly PersonaExecutorKind[] = [
   'cursor',
+  'cursor-cli',
   'claude-code',
   'openai',
   'copilot',

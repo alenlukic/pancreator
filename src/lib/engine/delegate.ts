@@ -163,7 +163,9 @@ export function delegateInvocation(
     const selectAdapter = (): ExternalExecutorAdapter => {
       switch (executor) {
         case 'cursor':
+        case 'cursor-cli':
           return createCursorAgentAdapter({
+            kind: executor,
             workspaceDir,
             installationRoot: root,
             runtimeDir: path.join(root, 'runtime'),

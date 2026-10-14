@@ -161,18 +161,20 @@ function pinFixtureInvolvement(root: string): void {
 }
 
 /**
- * Route every persona the operator maps to an external executor back to Cursor.
+ * Route fixture persona mappings through an in-host Cursor model.
  *
- * A fixture copies this checkout's effective configuration, so an operator's
- * External personas, including executor-valued aliases, must not make every
- * fixture preflight an operator's credentials. Prefer an existing Cursor spec,
- * or use a deterministic fallback when the checkout maps every persona to
- * Copilot. Executor tests opt in on their own fixture.
+ * Fixture builds pass a provider alias backed by their local model_config.
+ * Direct callers without that alias retain the shared Cursor fallback.
  */
 export function pinFixtureCursorExecutors(
   config: Record<string, unknown>,
+  cursorAlias?: string,
 ): void {
   const defaults = config.defaults as Record<string, unknown> | undefined
+  if (!defaults) {
+    return
+  }
+
   const resolveAlias = (value: string): string => {
     const match =
       /^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$/u.exec(value)
@@ -182,17 +184,13 @@ export function pinFixtureCursorExecutors(
     return typeof resolved === 'string' ? resolved : value
   }
   const cursorSpec =
-    Object.values(defaults ?? {})
+    Object.values(defaults)
       .filter(
         (value): value is string =>
           typeof value === 'string' && value.length > 0,
       )
       .map(resolveAlias)
       .find((value) => personaExecutorOf(value) === 'cursor') ?? 'gpt-5.6-sol'
-
-  if (!defaults) {
-    return
-  }
 
   const pin = (mapping: unknown): void => {
     if (!mapping || typeof mapping !== 'object') {
@@ -202,10 +200,13 @@ export function pinFixtureCursorExecutors(
     const entries = mapping as Record<string, unknown>
 
     for (const [persona, value] of Object.entries(entries)) {
-      if (
-        typeof value === 'string' &&
-        personaExecutorOf(resolveAlias(value)) !== 'cursor'
-      ) {
+      if (persona === 'summary' || typeof value !== 'string' || value === '') {
+        continue
+      }
+
+      if (cursorAlias) {
+        entries[persona] = cursorAlias
+      } else if (personaExecutorOf(resolveAlias(value)) !== 'cursor') {
         entries[persona] = cursorSpec
       }
     }
@@ -282,11 +283,14 @@ export function pinFixturePersonaModel(
 ): void {
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-    defaults?: Record<string, string>
     configs?: Record<string, Record<string, unknown>>
   }
+  const overridePath = path.join(root, 'config_overrides.json')
+  const override = JSON.parse(readFileSync(overridePath, 'utf8')) as {
+    defaults?: Record<string, string>
+  }
 
-  config.defaults = { ...config.defaults, [persona]: model }
+  override.defaults = { ...override.defaults, [persona]: model }
 
   for (const entry of Object.values(config.configs ?? {})) {
     if (!entry || typeof entry !== 'object') {
@@ -301,6 +305,7 @@ export function pinFixturePersonaModel(
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridePath, `${JSON.stringify(override, null, 2)}\n`)
   syncCursorProjection(root, { write: true })
 }
 
@@ -369,13 +374,10 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
     cpSync(path.join(REPO_ROOT, entry), path.join(root, entry))
   }
 
-  // The checked-in config.json intentionally blanks its model values; the
-  // real specs live in the untracked config_overrides.json. Fixtures need a
-  // complete standalone config, so they receive this checkout's effective
-  // merged configuration. Operator toggles that an operator flips on a live
-  // checkout are pinned to their defaults, so a checkout with away mode
-  // enabled does not flip every fixture that asserts the disabled baseline;
-  // a test that wants away mode calls enableAwayMode on its own fixture.
+  // Fixtures receive this checkout's effective configuration, but keep model
+  // aliases in config.json and the concrete model in config_overrides.json.
+  // Operator toggles are pinned to defaults so a live checkout's preferences
+  // do not change every fixture; a test that wants away mode enables it.
   const fixtureConfig = readHarnessConfig(
     REPO_ROOT,
     path.join(REPO_ROOT, 'config.json'),
@@ -385,7 +387,17 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   // Enabling the vscode host is an operator choice too; a test that needs it
   // enables it on its own fixture.
   fixtureConfig.hosts = ['cursor']
-  pinFixtureCursorExecutors(fixtureConfig)
+  const modelConfig = fixtureConfig.model_config as
+    | Record<string, Record<string, string>>
+    | undefined
+  const fixtureModel = modelConfig?.anthropic?.balanced
+
+  if (typeof fixtureModel !== 'string' || !fixtureModel.startsWith('cursor:')) {
+    throw new Error('Fixture requires a Cursor executor model in model_config.')
+  }
+
+  delete fixtureConfig.model_config
+  pinFixtureCursorExecutors(fixtureConfig, 'anthropic:balanced')
   // Worktree provisioning on this checkout is a real dependency install and
   // build. A fixture's stub package scripts need neither, so the block is
   // dropped; a test that wants setup commands declares its own.
@@ -401,6 +413,17 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   writeFileSync(
     path.join(root, 'config.json'),
     `${JSON.stringify(fixtureConfig, null, 2)}\n`,
+  )
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    `${JSON.stringify(
+      {
+        active_config: fixtureConfig.active_config,
+        model_config: { anthropic: { balanced: fixtureModel } },
+      },
+      null,
+      2,
+    )}\n`,
   )
 
   pinFixtureInvolvement(root)

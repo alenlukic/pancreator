@@ -263,16 +263,14 @@ test('only the reviewer and coordinator mappings count as a model-routing change
   assert.equal(reviewerMappingChanged(base, base), false)
 })
 
-test('an alias redefinition counts as reviewer model routing change', () => {
+test('a provider-tier change counts as reviewer model routing change', () => {
   const base = JSON.stringify({
-    anthropic: { advanced: 'claude-opus-5[effort=high]' },
     defaults: { reviewer: 'anthropic:advanced' },
     configs: { balanced: { reviewer: 'anthropic:advanced' } },
   })
   const head = JSON.stringify({
-    anthropic: { advanced: 'claude-opus-5[effort=xhigh]' },
-    defaults: { reviewer: 'anthropic:advanced' },
-    configs: { balanced: { reviewer: 'anthropic:advanced' } },
+    defaults: { reviewer: 'oai:advanced' },
+    configs: { balanced: { reviewer: 'oai:advanced' } },
   })
 
   assert.equal(reviewerMappingChanged(base, head), true)

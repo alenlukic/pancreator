@@ -155,13 +155,19 @@ test('Cursor sync expands aliases before writing agent frontmatter', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-    oai?: Record<string, string>
     defaults: Record<string, string>
     configs: Record<string, Record<string, unknown>>
   }
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as {
+    model_config: Record<string, Record<string, string>>
+  }
   const expanded = 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'
 
-  config.oai = { ...config.oai, advanced: expanded }
+  overrides.model_config.oai = {
+    ...overrides.model_config.oai,
+    advanced: `cursor:${expanded}`,
+  }
   config.defaults.coder = 'oai:advanced'
 
   for (const namedConfig of Object.values(config.configs)) {
@@ -175,6 +181,7 @@ test('Cursor sync expands aliases before writing agent frontmatter', () => {
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
   rmSync(
     path.join(root, 'governance', 'registries', 'cursor_model_catalog.json'),
     { force: true },

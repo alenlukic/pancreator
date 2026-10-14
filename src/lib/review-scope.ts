@@ -565,8 +565,6 @@ export function diffPolicyTexts(
 }
 
 const REVIEW_MAPPING_KEYS = ['reviewer', 'shepherd-reviewer'] as const
-const REVIEW_ALIAS_FAMILIES = ['anthropic', 'oai', 'open', 'cursor'] as const
-const REVIEW_ALIAS_TIERS = ['balanced', 'advanced', 'ultra'] as const
 
 function reviewMappings(text: string | null): string {
   if (text === null) {
@@ -586,14 +584,6 @@ function reviewMappings(text: string | null): string {
   }
 
   const picked: Record<string, unknown> = {}
-
-  for (const family of REVIEW_ALIAS_FAMILIES) {
-    const map = isRecord(value[family]) ? value[family] : {}
-
-    for (const tier of REVIEW_ALIAS_TIERS) {
-      picked[`${family}.${tier}`] = map[tier]
-    }
-  }
 
   const defaults = isRecord(value.defaults) ? value.defaults : {}
 

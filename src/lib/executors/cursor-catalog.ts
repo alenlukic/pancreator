@@ -345,7 +345,7 @@ export function cursorCatalogStatus(
   >()
 
   for (const { source, mapping } of personaMappings) {
-    if (mapping.executor !== 'cursor') {
+    if (mapping.executor !== 'cursor' && mapping.executor !== 'cursor-cli') {
       continue
     }
 
@@ -427,8 +427,8 @@ function catalogModel(
 }
 
 /**
- * Validate a Cursor persona mapping against an available local catalog and
- * return the spec to project. Without one, syntax remains grammar-only. The
+ * Validate a Cursor or Cursor CLI persona mapping against an available local
+ * catalog and return the spec to project. Without one, syntax remains grammar-only. The
  * configured spec is emitted verbatim: bracket notation is Cursor's documented
  * grammar for the subagent `model:` field, a bare id and empty brackets are
  * distinct valid forms, and any rewriting here has historically produced
@@ -477,8 +477,8 @@ function resolveAgainstCatalog(
   source: string,
 ): string {
   invariant(
-    mapping.executor === 'cursor',
-    `${source} MUST use the cursor executor before model resolution.`,
+    mapping.executor === 'cursor' || mapping.executor === 'cursor-cli',
+    `${source} MUST use the cursor or cursor-cli executor before model resolution.`,
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 

@@ -152,13 +152,17 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
   const configPath = path.join(root, 'config.json')
   const original = readFileSync(configPath, 'utf8')
   const config = JSON.parse(original) as {
-    defaults: Record<string, string>
     configs?: Record<string, Record<string, unknown>>
   }
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const originalOverrides = readFileSync(overridesPath, 'utf8')
+  const overrides = JSON.parse(originalOverrides) as {
+    defaults?: Record<string, string>
+  }
+  overrides.defaults ??= {}
 
-  // A named entry under `configs` overrides `defaults`, so the persona is
-  // cleared there too.
-  config.defaults.planner = CLAUDE_CODE_SPEC
+  // A named entry under `configs` overrides local defaults, so clear it there.
+  overrides.defaults.planner = CLAUDE_CODE_SPEC
 
   for (const named of Object.values(config.configs ?? {})) {
     delete named.planner
@@ -169,6 +173,7 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
 
   const changes = syncCursorProjection(root, { write: true })
   const removal = changes.find(
@@ -188,6 +193,7 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
 
   // Moving back re-projects the identical file.
   writeFileSync(configPath, original)
+  writeFileSync(overridesPath, originalOverrides)
   syncCursorProjection(root, { write: true })
   assert.equal(readFileSync(agentPath, 'utf8'), before)
 
@@ -293,7 +299,7 @@ test('a Copilot supervisor requires the VS Code host and stays in the operator s
   )
 })
 
-test('the orchestrator persona rejects external executors', () => {
+test('the orchestrator persona rejects unsupported external executors', () => {
   const root = createFixture()
   const stubPath = installClaudeCodeFixture(root, ['orchestrator'])
 
@@ -304,7 +310,43 @@ test('the orchestrator persona rejects external executors', () => {
           workflowSlug: 'delivery',
           requestPath: 'request.md',
         }),
-      /orchestrator.*MUST use the cursor executor/u,
+      /orchestrator.*MUST use the active in-host executor/u,
     )
   })
+})
+
+test('the orchestrator may use Copilot when VS Code is enabled', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    defaults: Record<string, string>
+    configs: Record<string, Record<string, unknown>>
+    hosts?: string[]
+  }
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as {
+    model_config: Record<string, Record<string, string>>
+  }
+
+  config.hosts = ['cursor', 'vscode']
+  config.defaults.orchestrator = 'open:ultra'
+
+  for (const named of Object.values(config.configs)) {
+    delete named.orchestrator
+  }
+
+  overrides.model_config.open = {
+    ultra: 'copilot:gpt-6-astra[provider=openai]',
+  }
+
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
+  syncCursorProjection(root, { write: true })
+
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  assert.equal(state.status, 'running')
 })

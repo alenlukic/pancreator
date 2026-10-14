@@ -186,10 +186,9 @@ function buildReleaseFixtureTemplate(): string {
     recursive: true,
   })
 
-  // The tracked config.json blanks its model values. The effective specs live
-  // in the untracked overrides file that a real operator checkout carries.
-  // The operator's enabled hosts stay out, so every installer test starts
-  // from the tracked default.
+  // The tracked config.json uses provider-tier aliases, with executor-specific
+  // model strings in the untracked overrides. Keep the operator's enabled
+  // hosts out so installer tests start from the tracked default.
   if (existsSync(path.join(REPO_ROOT, 'config_overrides.json'))) {
     const overrides = readJson<Record<string, unknown>>(
       path.join(REPO_ROOT, 'config_overrides.json'),

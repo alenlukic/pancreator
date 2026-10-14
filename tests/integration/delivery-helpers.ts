@@ -278,6 +278,7 @@ export function installClaudeCodeFixture(
   routePersonas(root, personas, CLAUDE_CODE_SPEC)
   syncCursorProjection(root, { write: true })
   execFileSync('git', ['add', 'config.json', 'claude-stub.cjs'], { cwd: root })
+  execFileSync('git', ['add', '-f', 'config_overrides.json'], { cwd: root })
   // Amend instead of commit. The ship-stage release validator needs the
   // baseline commit to be the one that introduced the current VERSION.
   execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
@@ -287,7 +288,7 @@ export function installClaudeCodeFixture(
   return stubPath
 }
 
-/** Route `personas` to the given executor spec in the fixture's config.json. */
+/** Route `personas` to a local executor-specific mapping. */
 export function routePersonas(
   root: string,
   personas: string[],
@@ -295,14 +296,18 @@ export function routePersonas(
 ): void {
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-    defaults: Record<string, string>
     configs?: Record<string, Record<string, unknown>>
   }
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as {
+    defaults?: Record<string, string>
+  }
+  overrides.defaults ??= {}
 
   // A named entry under `configs` overrides `defaults`, so clear the routing
   // there too. Otherwise the fixture depends on the checked-in `active_config`.
   for (const persona of personas) {
-    config.defaults[persona] = spec
+    overrides.defaults[persona] = spec
 
     for (const named of Object.values(config.configs ?? {})) {
       delete named[persona]
@@ -314,6 +319,7 @@ export function routePersonas(
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
 }
 
 /**
@@ -330,6 +336,7 @@ export function installOpenAiFixture(
   routePersonas(root, personas, spec)
   syncCursorProjection(root, { write: true })
   execFileSync('git', ['add', 'config.json'], { cwd: root })
+  execFileSync('git', ['add', '-f', 'config_overrides.json'], { cwd: root })
   // Amend instead of commit. The ship-stage release validator needs the
   // baseline commit to be the one that introduced the current VERSION.
   execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
