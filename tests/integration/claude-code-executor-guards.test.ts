@@ -247,6 +247,52 @@ test('prepare skips frontmatter drift for external personas and still catches cu
   })
 })
 
+test('a Copilot supervisor requires the VS Code host and stays in the operator session', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    hosts: string[]
+    active_config: string
+    defaults: Record<string, string>
+    configs: Record<
+      string,
+      { personas?: Record<string, string>; orchestrator?: string }
+    >
+  }
+
+  config.defaults.orchestrator =
+    'copilot:gpt-5.6-sol[provider=openai,effort=high]'
+  for (const profile of Object.values(config.configs)) {
+    delete profile.orchestrator
+    if (profile.personas) delete profile.personas.orchestrator
+  }
+  writeFileSync(configPath, JSON.stringify(config))
+  syncCursorProjection(root, { write: true })
+
+  assert.throws(
+    () =>
+      createRun(root, {
+        workflowSlug: 'planning',
+        requestPath: 'request.md',
+      }),
+    /orchestrator.*copilot executor with the vscode host enabled/u,
+  )
+
+  config.hosts = ['cursor', 'vscode']
+  writeFileSync(configPath, JSON.stringify(config))
+  syncCursorProjection(root, { write: true })
+  const run = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+  const state = getRunState(root, run.run_id)
+  assert.equal(state.pending_action.type, 'prepare_invocation')
+  assert.equal(
+    existsSync(path.join(root, '.github/agents/pan-supervisor.agent.md')),
+    true,
+  )
+})
+
 test('the orchestrator persona rejects external executors', () => {
   const root = createFixture()
   const stubPath = installClaudeCodeFixture(root, ['orchestrator'])

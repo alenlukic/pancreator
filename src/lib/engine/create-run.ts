@@ -39,6 +39,7 @@ import {
 } from '../design-composition.js'
 import {
   configuredWorkspaceRoot,
+  enabledHosts,
   isDetachedInstallation,
   panCommand,
   resolveAwayModeConfig,
@@ -338,18 +339,18 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     : loadPipelineConfig(root, options.pipelineConfigName ?? undefined)
   const workflowExternalExecutors = new Set<ExternalPersonaExecutorKind>()
 
-  // The orchestrator persona is the supervisor running in the Cursor chat, so it
-  // cannot be handed to an external process. Every run has a supervisor, whether
-  // or not this workflow also delegates a stage to that persona, so the check
-  // does not belong inside the stage loop.
+  // The supervisor stays in the operator's editor session. A Copilot mapping
+  // records its model in VS Code; it does not dispatch another supervisor.
   const supervisor = resolvePersonaMapping(
     pipelineConfig.config,
     'orchestrator',
   )
+  const copilotSupervisor =
+    supervisor.executor === 'copilot' && enabledHosts(root).includes('vscode')
 
   invariant(
-    supervisor.executor === 'cursor',
-    `Persona 'orchestrator' MUST use the cursor executor; ` +
+    supervisor.executor === 'cursor' || copilotSupervisor,
+    `Persona 'orchestrator' MUST use the cursor executor or the copilot executor with the vscode host enabled; ` +
       `'${supervisor.raw}' routes it to '${supervisor.executor}'.`,
     { code: 'INVALID_PIPELINE_CONFIG' },
   )

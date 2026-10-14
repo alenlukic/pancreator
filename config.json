@@ -30,113 +30,78 @@
     "max_load_average_per_cpu": 1,
     "minimum_qualified_samples": 5
   },
-  "active_config": "balanced",
+  "active_config": "default",
   "anthropic": {
-    "balanced": "claude-sonnet-5",
-    "advanced": "claude-opus-5-5[context=1m,effort=high,fast=false]",
-    "ultra": "claude-fable-5-1[thinking=true,context=300k,effort=high]"
+    "balanced": "copilot:claude-sonnet-5-5[provider=anthropic,effort=high]",
+    "advanced": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
+    "ultra": "copilot:claude-opus-5[provider=anthropic,effort=high]"
   },
   "oai": {
-    "balanced": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-    "advanced": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
-  },
-  "open": {
-    "balanced": "glm-5.2",
-    "advanced": "kimi-k3[reasoning=max]"
-  },
-  "cursor": {
-    "balanced": "composer-2.5",
-    "advanced": "grok-4.6[effort=high,fast=false]"
+    "balanced": "copilot:gpt-6-luna[provider=openai,effort=high]",
+    "advanced": "copilot:gpt-6.1-sol[provider=openai,effort=high]",
+    "ultra": "copilot:gpt-6-astra[provider=openai,effort=medium]"
   },
   "defaults": {
-    "orchestrator": "open:advanced",
-    "meta-orchestrator": "anthropic:advanced",
+    "orchestrator": "oai:advanced",
+    "meta-orchestrator": "anthropic:ultra",
     "planner": "anthropic:ultra",
-    "coder": "claude-opus-5-5[context=1m,effort=medium,fast=false]",
+    "coder": "copilot:gpt-6.1-sol[provider=openai,effort=medium]",
     "metacritic": "anthropic:ultra",
-    "reviewer": "anthropic:advanced",
-    "verifier": "anthropic:advanced",
-    "remediator": "anthropic:advanced",
-    "remediator-severe": "anthropic:ultra",
-    "shepherd-reviewer": "anthropic:advanced",
-    "qa-tester": "open:advanced",
-    "designer": "claude-fable-5-1[thinking=true,context=1m,effort=high]",
-    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]",
-    "design-qa": "claude-opus-5-5[context=1m,effort=medium,fast=false]",
-    "release-steward": "cursor:advanced",
-    "librarian": "anthropic:advanced",
-    "decomposer": "anthropic:advanced",
-    "investigator": "anthropic:advanced",
-    "spotfixer": "anthropic:advanced",
-    "harness-technician": "anthropic:advanced",
-    "repo-technician": "anthropic:advanced",
-    "harness-workflow-qa": "anthropic:ultra",
-    "debloater": "anthropic:advanced"
+    "reviewer": "oai:advanced",
+    "verifier": "copilot:gpt-6.1-sol[provider=openai,effort=medium]",
+    "remediator": "oai:advanced",
+    "remediator-severe": "copilot:gpt-6-astra[provider=openai,effort=high]",
+    "shepherd-reviewer": "oai:advanced",
+    "qa-tester": "copilot:gpt-6.1-sol[provider=openai,effort=medium]",
+    "designer": "oai:ultra",
+    "design-reviewer": "oai:ultra",
+    "design-qa": "oai:advanced",
+    "release-steward": "oai:balanced",
+    "librarian": "oai:advanced",
+    "decomposer": "oai:advanced",
+    "spotfixer": "oai:advanced",
+    "harness-technician": "oai:advanced",
+    "harness-workflow-qa": "oai:ultra",
+    "debloater": "oai:advanced"
   },
   "$operator": {
-    "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
-    "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config_overrides.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
+    "summary": "Named Copilot model configurations for every canonical persona in VS Code. The supervisor stays in the operator session.",
+    "note": "Aliases include the executor, provider, and reasoning effort. Put per-checkout preferences in config_overrides.json, then run ./bin/pan models --sync. New runs snapshot the resolved mapping; existing runs keep their snapshot. Cursor remains available through explicit cursor: model mappings."
   },
   "configs": {
     "default": {},
     "balanced": {
-      "summary": "Balance of focused coding, strong review, and frontier planning.",
-      "coder": "",
-      "remediator": "",
-      "reviewer": "",
-      "verifier": "",
-      "qa-tester": ""
+      "summary": "Copilot with focused coding, strong review, and frontier planning.",
+      "coder": "anthropic:balanced",
+      "remediator": "anthropic:balanced",
+      "reviewer": "anthropic:advanced",
+      "verifier": "oai:advanced",
+      "qa-tester": "oai:balanced"
     },
     "advanced": {
-      "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
-      "coder": "",
-      "remediator": "",
-      "reviewer": "",
-      "verifier": "",
-      "qa-tester": ""
+      "summary": "Copilot with stronger coding and QA for complex work.",
+      "coder": "copilot:claude-opus-5-5[provider=anthropic,effort=medium]",
+      "remediator": "anthropic:advanced",
+      "reviewer": "oai:advanced",
+      "verifier": "oai:advanced",
+      "qa-tester": "oai:advanced"
     },
     "ultra": {
-      "summary": "Extreme configuration for the most demanding tasks.",
-      "planner": "",
-      "coder": "",
-      "remediator": "",
-      "remediator-severe": "",
-      "reviewer": "",
-      "verifier": "",
-      "shepherd-reviewer": "",
-      "qa-tester": ""
+      "summary": "Copilot with maximum supported reasoning for demanding work.",
+      "planner": "anthropic:ultra",
+      "coder": "oai:ultra",
+      "remediator": "anthropic:ultra",
+      "remediator-severe": "anthropic:ultra",
+      "reviewer": "anthropic:ultra",
+      "verifier": "anthropic:ultra",
+      "shepherd-reviewer": "anthropic:ultra",
+      "qa-tester": "oai:ultra"
     },
     "auto": {
-      "summary": "Cursor-managed routing except for the bounded coding workhorse.",
-      "planner": "",
-      "decomposer": "",
-      "reviewer": "",
-      "verifier": "",
-      "qa-tester": ""
+      "summary": "Inherit the default Copilot persona mapping."
     },
     "copilot": {
-      "summary": "VS Code host: every stage worker runs as a GitHub Copilot CLI process on BYOK OpenAI and Anthropic keys from .env.",
-      "planner": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
-      "coder": "copilot:claude-opus-5-5[provider=anthropic,effort=medium]",
-      "metacritic": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
-      "reviewer": "copilot:gpt-5.6-sol[provider=openai,effort=high]",
-      "verifier": "copilot:gpt-5.6-sol[provider=openai,effort=high]",
-      "remediator": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "remediator-severe": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
-      "shepherd-reviewer": "copilot:gpt-5.6-sol[provider=openai,effort=high]",
-      "qa-tester": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "designer": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
-      "design-reviewer": "copilot:gpt-5.6-sol[provider=openai,effort=xhigh]",
-      "design-qa": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "release-steward": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "librarian": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "decomposer": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "investigator": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "spotfixer": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "harness-technician": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "repo-technician": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
-      "harness-workflow-qa": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
-      "debloater": "copilot:claude-sonnet-5[provider=anthropic,effort=high]"
+      "summary": "Compatibility name for the default Copilot persona mapping."
     }
   },
   "operator_involvement": {
@@ -218,7 +183,7 @@
     "enabled": false
   },
   "installation_mode": "self_development",
-  "hosts": ["cursor"],
+  "hosts": ["cursor", "vscode"],
   "test_scratch": {
     "root": "~/Dev/scratch"
   },

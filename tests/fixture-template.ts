@@ -26,6 +26,7 @@ import { sharedTemplate } from './shared-template.js'
 import { createTestTempDirectory } from './temp.js'
 
 import { personaExecutorOf } from '../src/lib/executors/mapping.js'
+import { isRecord } from '../src/lib/io.js'
 import { readHarnessConfig } from '../src/lib/project-config.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
 
@@ -163,23 +164,33 @@ function pinFixtureInvolvement(root: string): void {
  * Route every persona the operator maps to an external executor back to Cursor.
  *
  * A fixture copies this checkout's effective configuration, so an operator's
- * `openai:` or `claude-code:` persona in the untracked `config_overrides.json`
- * would make every fixture run preflight that executor's credentials. The
- * persona takes the first Cursor spec in `defaults` instead; a test that
- * exercises an external executor maps it on its own fixture.
+ * External personas, including executor-valued aliases, must not make every
+ * fixture preflight an operator's credentials. Prefer an existing Cursor spec,
+ * or use a deterministic fallback when the checkout maps every persona to
+ * Copilot. Executor tests opt in on their own fixture.
  */
 export function pinFixtureCursorExecutors(
   config: Record<string, unknown>,
 ): void {
   const defaults = config.defaults as Record<string, unknown> | undefined
-  const cursorSpec = Object.values(defaults ?? {}).find(
-    (value): value is string =>
-      typeof value === 'string' &&
-      value.length > 0 &&
-      personaExecutorOf(value) === 'cursor',
-  )
+  const resolveAlias = (value: string): string => {
+    const match =
+      /^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$/u.exec(value)
+    const aliases = match ? config[match[1]] : undefined
+    const resolved = match && isRecord(aliases) ? aliases[match[2]] : undefined
 
-  if (!defaults || !cursorSpec) {
+    return typeof resolved === 'string' ? resolved : value
+  }
+  const cursorSpec =
+    Object.values(defaults ?? {})
+      .filter(
+        (value): value is string =>
+          typeof value === 'string' && value.length > 0,
+      )
+      .map(resolveAlias)
+      .find((value) => personaExecutorOf(value) === 'cursor') ?? 'gpt-5.6-sol'
+
+  if (!defaults) {
     return
   }
 
@@ -191,7 +202,10 @@ export function pinFixtureCursorExecutors(
     const entries = mapping as Record<string, unknown>
 
     for (const [persona, value] of Object.entries(entries)) {
-      if (typeof value === 'string' && personaExecutorOf(value) !== 'cursor') {
+      if (
+        typeof value === 'string' &&
+        personaExecutorOf(resolveAlias(value)) !== 'cursor'
+      ) {
         entries[persona] = cursorSpec
       }
     }

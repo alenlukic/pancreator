@@ -1300,7 +1300,7 @@ Known limits, each tracked by a probe in the host-support spec:
 
 ## Select pipeline models
 
-`config.json` is the source of truth for named persona-to-model mappings and carries the recommended defaults a release can update. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
+`config.json` is the source of truth for named persona-to-model mappings and carries the recommended defaults a release can update. The shipped profiles use the Copilot executor with explicit OpenAI or Anthropic providers. Canonical projection templates live under `library/cursor/`; sync renders the commands, personas, instructions, and hooks for every enabled host. Set `active_config` to one of the declared configurations, then regenerate the host surfaces:
 
 ```sh
 ./bin/pan models --sync
@@ -1313,27 +1313,27 @@ Run `./bin/pan models` without `--sync` to preview the active mapping and any dr
 
 Per-checkout preferences belong in `config_overrides.json` next to `config.json` (the legacy name `config.local.json` still reads until you rename it). The file is untracked (keep it out of version control, e.g. via `.gitignore` or `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs. An empty string in a named config inherits the `defaults` entry for that persona, so `config_overrides.json` needs to name only the personas a config changes. An empty string in `defaults` is rejected.
 
-Define aliases in the four top-level family maps. Each map accepts the optional keys `balanced`, `advanced`, and `ultra`:
+Define aliases in the optional top-level family maps `anthropic`, `oai`, `open`, and `cursor`. Each map accepts the optional keys `balanced`, `advanced`, and `ultra`. An alias preserves the complete executor mapping, including provider and effort:
 
 ```json
 {
   "anthropic": {
-    "balanced": "claude-sonnet-5",
-    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]"
+    "balanced": "copilot:claude-sonnet-5[provider=anthropic,effort=high]",
+    "advanced": "copilot:claude-opus-5-5[provider=anthropic,effort=high]"
   },
   "oai": {
-    "balanced": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]"
+    "balanced": "copilot:gpt-5.6-terra[provider=openai,effort=high]",
+    "advanced": "copilot:gpt-5.6-sol[provider=openai,effort=high]"
   },
-  "open": {
-    "balanced": "glm-5.2"
-  },
-  "cursor": {
-    "balanced": "composer-2.5"
+  "defaults": {
+    "planner": "anthropic:advanced",
+    "coder": "anthropic:balanced",
+    "reviewer": "oai:advanced"
   }
 }
 ```
 
-A `config.json` persona mapping can reference tier aliases such as `anthropic:balanced`, `oai:advanced`, `open:balanced`, and `cursor:advanced`. Pancreator expands those aliases into explicit model specs before it snapshots runs, projects Cursor agents, or delegates to executors.
+A `config.json` persona mapping can reference tier aliases such as `anthropic:balanced` and `oai:advanced`. Pancreator expands aliases before it snapshots runs, renders host projections, or delegates to executors. The selected executor validates its own options. Copilot uses `provider` and `effort`; Cursor options such as `thinking`, `context`, `reasoning`, and `fast` are rejected on a Copilot mapping. Explicit Cursor mappings and the legacy `open` and `cursor` alias families remain supported for existing installations. Aliases cannot reference another alias.
 
 In `config.json` Pancreator always reserves exact `cursor:balanced`, `cursor:advanced`, and `cursor:ultra` values for alias resolution. A reference to an undefined tier is a configuration error. Every other `cursor:<model>` value keeps its existing executor-routing behavior. The best-of-N configs file accepts no tier alias and rejects an alias-shaped value. That file is `best-of-n-config.json` in the repository root, or another path that `pan best-of-n init --configs` names. A best-of-N candidate map MUST name an explicit model spec. The file is operator-local and untracked, and no command generates it: copy [`library/templates/best-of-n-config.example.json`](../library/templates/best-of-n-config.example.json) to create it, and see [`docs/best-of-n.md`](best-of-n.md) for the full shape.
 
@@ -1357,9 +1357,9 @@ A persona mapping may name its executor with a prefix from a closed set — `cur
 
 For compatibility, Pancreator still reads a legacy nested `personas` object in a named configuration. A nested entry wins over a flat key for the same persona. Pancreator emits only the flat shape.
 
-An external-executor persona is executed by that runtime instead of a Cursor subagent, so the same model can author a stage under another harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona is the exception — it is the supervisor itself and must stay on `cursor`.
+An external-executor persona is executed by that runtime instead of a Cursor subagent, so the same model can author a stage under another harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona records the supervisor's model but always stays in the operator's editor session. It accepts `cursor`, or `copilot` when the `vscode` host is enabled; it cannot launch a separate supervisor process.
 
-Note that `openai:` names a runtime, while `oai:` names a tier alias family of Cursor models. They are unrelated, and an alias family value may never carry an executor prefix.
+`openai:` names a runtime, while `oai:` names a tier alias family. The alias value selects its runtime explicitly; for example, `oai:advanced` can resolve to `copilot:gpt-5.6-sol[provider=openai,effort=high]`.
 
 Behavior shared by every harness-dispatched executor:
 
@@ -1409,7 +1409,7 @@ Requirements and behavior:
 
 ### `copilot`
 
-A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[effort=high]`. `configs.copilot` in `config.json` maps every persona this way. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
+A `copilot` stage persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[effort=high]`. Every shipped profile in `config.json` uses this executor; `configs.copilot` remains a compatibility name for the default mapping. The supervisor stays in the operator's editor session. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
 
 Supported bracket options:
 

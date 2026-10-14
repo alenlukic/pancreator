@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { personaExecutorOf } from '../../src/lib/executors/mapping.js'
+import {
+  parsePersonaMapping,
+  personaExecutorOf,
+} from '../../src/lib/executors/mapping.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
   loadPipelineConfig,
@@ -327,19 +330,88 @@ test('pipeline config rejects recursive aliases and unsupported tier keys', () =
       }),
     /anthropic key 'expert' is not supported.*balanced, advanced, ultra/u,
   )
+})
 
-  // The persona names an explicit spec so the alias definition is the only
-  // failure path that can satisfy this assertion.
-  assert.throws(
-    () =>
-      parsePipelineConfig({
-        schema_version: 1,
-        active_config: 'default',
-        anthropic: { balanced: 'claude-code:claude-opus-5' },
-        configs: { default: { coder: 'claude-sonnet-5' } },
-      }),
-    /anthropic\.balanced MUST use the cursor executor/u,
+test('pipeline aliases preserve external executors and validate their options', () => {
+  for (const spec of [
+    'copilot:claude-opus-5-5[provider=anthropic,effort=high]',
+    'copilot:gpt-5.6-sol[provider=openai,effort=xhigh]',
+    'claude-code:claude-opus-5[session-resume=true]',
+    'openai:gpt-6-astra[effort=high]',
+  ]) {
+    const file = parsePipelineConfig({
+      schema_version: 1,
+      active_config: 'default',
+      anthropic: { advanced: spec },
+      defaults: { planner: 'anthropic:advanced' },
+      configs: { default: { reviewer: 'anthropic:advanced' } },
+    })
+
+    assert.deepEqual(resolveConfigPersonas(file, 'default'), {
+      planner: spec,
+      reviewer: spec,
+    })
+    const snapshot = makePipelineConfigSnapshot({
+      name: 'default',
+      config: { personas: resolveConfigPersonas(file, 'default') },
+      file,
+      path: 'config.json',
+      sha256: 'test',
+    })
+    assert.equal(snapshot.executors?.planner, personaExecutorOf(spec))
+  }
+
+  for (const [spec, error] of [
+    [
+      'copilot:gpt-5.6-sol[reasoning=high]',
+      /unknown copilot option 'reasoning'/u,
+    ],
+    ['copilot:gpt-5.6-sol[provider=missing]', /provider.*not supported/u],
+    ['copilot:gpt-5.6-sol[effort=invalid]', /effort.*not supported/u],
+    ['codex:gpt-5.6-sol', /executor.*codex/u],
+  ] as const) {
+    assert.throws(
+      () =>
+        parsePipelineConfig({
+          schema_version: 1,
+          active_config: 'default',
+          oai: { advanced: spec },
+          configs: { default: { coder: 'oai:advanced' } },
+        }),
+      error,
+    )
+  }
+})
+
+test('shipped profiles resolve every projected persona to Copilot', () => {
+  const file = parsePipelineConfig(
+    JSON.parse(readFileSync(path.join(process.cwd(), 'config.json'), 'utf8')),
   )
+  const personas = readdirSync(
+    path.join(process.cwd(), 'library/cursor/agents'),
+  )
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => name.slice(0, -3))
+    .sort()
+
+  assert.deepEqual(Object.keys(file.defaults).sort(), personas)
+
+  for (const name of Object.keys(file.configs)) {
+    for (const [persona, spec] of Object.entries(
+      resolveConfigPersonas(file, name),
+    )) {
+      const mapping = parsePersonaMapping(spec)
+      assert.equal(mapping.executor, 'copilot', `${name}.${persona}`)
+      assert.ok(
+        ['anthropic', 'openai'].includes(mapping.options.provider ?? ''),
+        `${name}.${persona}`,
+      )
+      assert.deepEqual(Object.keys(mapping.options).sort(), [
+        'effort',
+        'provider',
+      ])
+    }
+  }
 })
 
 test('cursor tier aliases stay distinct from explicit executor mappings', () => {
@@ -393,7 +465,7 @@ test('an oai tier alias and an openai executor prefix mean different things', ()
   )
 })
 
-test('the config schema admits an openai spec and refuses one in an alias', () => {
+test('the config schema admits executor-valued aliases and refuses recursion', () => {
   const schema = JSON.parse(
     readFileSync(
       path.join(process.cwd(), 'library/schemas/config.schema.json'),
@@ -408,13 +480,15 @@ test('the config schema admits an openai spec and refuses one in an alias', () =
   const modelSpec = new RegExp(schema.$defs.modelSpec.pattern, 'u')
 
   assert.equal(modelSpec.test('openai:gpt-6-astra'), true)
+  assert.equal(
+    modelSpec.test('copilot:claude-opus-5-5[provider=anthropic,effort=high]'),
+    true,
+  )
   assert.equal(modelSpec.test('claude-code:claude-opus-5'), true)
   assert.equal(modelSpec.test('cursor:auto'), true)
   assert.equal(modelSpec.test('gpt-5.6-sol'), true)
   assert.equal(modelSpec.test('codex:gpt-5.6-sol'), false)
 
-  // The alias side refuses every external executor prefix, so an alias family
-  // cannot move a persona onto another runtime.
   const refusedByAlias = (value: string): boolean =>
     schema.$defs.aliasValue.allOf.some((clause) =>
       clause.not === undefined
@@ -422,9 +496,15 @@ test('the config schema admits an openai spec and refuses one in an alias', () =
         : new RegExp(clause.not.pattern, 'u').test(value),
     )
 
-  assert.equal(refusedByAlias('openai:gpt-6-astra'), true)
-  assert.equal(refusedByAlias('claude-code:claude-opus-5'), true)
+  assert.equal(refusedByAlias('openai:gpt-6-astra'), false)
+  assert.equal(refusedByAlias('claude-code:claude-opus-5'), false)
+  assert.equal(
+    refusedByAlias('copilot:claude-opus-5-5[provider=anthropic,effort=high]'),
+    false,
+  )
   assert.equal(refusedByAlias('gpt-5.6-sol'), false)
+  assert.equal(refusedByAlias('anthropic:advanced'), true)
+  assert.equal(refusedByAlias('cursor:balanced'), true)
 })
 
 test('pipeline config accepts legacy nested named-config mappings', () => {

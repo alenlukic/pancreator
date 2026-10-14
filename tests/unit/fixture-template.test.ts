@@ -30,6 +30,35 @@ test('fixture template size guard permits the limit and names an excess', () => 
   )
 })
 
+test('fixture config pins Copilot aliases and works without any Cursor defaults', () => {
+  const config: Record<string, unknown> = {
+    anthropic: {
+      advanced: 'copilot:claude-opus-5-5[provider=anthropic,effort=high]',
+    },
+    defaults: {
+      orchestrator: 'copilot:gpt-5.6-sol[provider=openai,effort=high]',
+      planner: 'anthropic:advanced',
+    },
+    configs: {
+      default: {},
+      flat: { summary: 'Copilot config.', coder: 'anthropic:advanced' },
+      nested: { personas: { reviewer: 'anthropic:advanced' } },
+    },
+  }
+
+  pinFixtureCursorExecutors(config)
+
+  assert.deepEqual(config.defaults, {
+    orchestrator: 'gpt-5.6-sol',
+    planner: 'gpt-5.6-sol',
+  })
+  assert.deepEqual(config.configs, {
+    default: {},
+    flat: { summary: 'Copilot config.', coder: 'gpt-5.6-sol' },
+    nested: { personas: { reviewer: 'gpt-5.6-sol' } },
+  })
+})
+
 test('fixture config routes operator external executor personas to cursor', () => {
   const config: Record<string, unknown> = {
     defaults: {
