@@ -98,7 +98,7 @@
           "sections": {
             "self_development": {
               "heading": "## Invariants",
-              "content_sha256": "0f5999bdf348dddc617ada55649f7a4d03ce4176245938324c5185a821f9becf"
+              "content_sha256": "fd8448d609175d598751821c084d08aea470e8dfe82157c3744c70956a53dcaf"
             },
             "embedded": {
               "heading": "## Change and safety boundaries",

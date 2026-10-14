@@ -1465,7 +1465,7 @@ Requirements and behavior:
 
 ### `copilot`
 
-A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[provider=anthropic,effort=high]`. Put executor-specific mappings in `config_overrides.json` under `model_config` or local persona mappings. The `copilot` named profile remains a compatibility name for the default mapping, and the supervisor stays in the operator's editor session. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
+A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[provider=anthropic,effort=high]`. Put executor-specific mappings in `config_overrides.json` under `model_config` or local persona mappings. Configuration names describe model policies, never executors. Select executors through `model_config`, independently of `active_config`. Change an existing `active_config` only when the operator explicitly directs it. The supervisor stays in the operator's editor session. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
 
 Supported bracket options:
 

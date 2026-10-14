@@ -441,6 +441,14 @@ test('shipped profiles use environment-independent aliases', () => {
     .sort()
   const alias = /^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$/u
 
+  assert.equal(config.active_config, 'default')
+  assert.deepEqual(Object.keys(config.configs).sort(), [
+    'advanced',
+    'auto',
+    'balanced',
+    'default',
+    'ultra',
+  ])
   assert.deepEqual(Object.keys(config.defaults).sort(), personas)
   assert.equal(config.model_config, undefined)
   for (const provider of ['anthropic', 'oai', 'open', 'cursor']) {

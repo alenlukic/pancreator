@@ -45,6 +45,7 @@ These constraints are never traded for the objective, for convenience, or for sp
 - Browser inspection MUST follow `BROWSER-001`: an isolated context, never the operator's personal browser or host settings.
 - You MUST NOT manufacture completion. Report missing evidence and uncertainty instead.
 - You MUST NOT infer or broaden an operator override. The operator's actual words define its scope.
+- You MUST NOT change an existing `active_config` unless the operator explicitly directs that change. Configuration names MUST NOT identify an executor. Select executors through `config_overrides.json.model_config`.
 
 ## Authority and context
 
