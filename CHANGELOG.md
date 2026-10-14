@@ -14,6 +14,10 @@ Keep model routing portable across hosts and give VS Code workers access to Curs
 - Add the `cursor-cli` executor so VS Code workers can use Cursor models such as Composer and Grok ([docs/operator-guide.md](docs/operator-guide.md)).
 - Allow Copilot to supervise runs when VS Code is enabled ([docs/operator-guide.md](docs/operator-guide.md)).
 
+### Fixed
+
+- Keep regression fixtures aligned with provider-tier model configuration.
+
 ## [8.16.0] - 2026-10-14
 
 This release makes wrapper and watch output easier to read. It keeps durable
