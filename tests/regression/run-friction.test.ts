@@ -16,7 +16,11 @@ import {
   validateStageOutput,
 } from '../../src/lib/validation.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
-import { createFixture, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  pinFixturePersonaModel,
+  writeJson,
+} from '../helpers.js'
 import { createRun } from '../run-helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -427,7 +431,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   // while it is still in flight. The mapping is absent from its own snapshot,
   // so the run never resolves it and must keep advancing.
   editPersonaMappings(root, (defaults) => {
-    defaults['fixture-only-persona'] = 'auto-smart'
+    defaults['fixture-only-persona'] = 'anthropic:balanced'
   })
 
   const prepared = prepareInvocation(root, additive.run_id).invocation
@@ -435,10 +439,16 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   assert.ok(prepared)
   assert.equal(prepared.stage.slug, 'implement')
 
-  editPersonaMappings(root, (defaults) => {
-    defaults.coder =
-      defaults.coder === 'gpt-5.6-terra' ? 'gpt-5.6-sol' : 'gpt-5.6-terra'
-  })
+  const configOverrides = JSON.parse(
+    readFileSync(path.join(root, 'config_overrides.json'), 'utf8'),
+  ) as { model_config: { anthropic: { balanced: string } } }
+  const updatedCoderModel =
+    configOverrides.model_config.anthropic.balanced ===
+    'cursor:gpt-5.6-terra'
+      ? 'cursor:gpt-5.6-sol'
+      : 'cursor:gpt-5.6-terra'
+
+  pinFixturePersonaModel(root, 'coder', updatedCoderModel)
 
   const drifted = prepareInvocation(root, changed.run_id)
 

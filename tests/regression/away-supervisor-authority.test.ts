@@ -381,7 +381,12 @@ test('a config that still carries the retired guardrail keys loads', () => {
   const guardrails = { allowed_actions: ['approve', 'resume'], ...retired }
   const overridesPath = path.join(root, 'config_overrides.json')
 
-  writeJson(overridesPath, { away_mode: { enabled: true, guardrails } })
+  const existingOverrides = read(overridesPath) as Record<string, unknown>
+
+  writeJson(overridesPath, {
+    ...existingOverrides,
+    away_mode: { enabled: true, guardrails },
+  })
 
   const overrides = readFileSync(overridesPath)
 
