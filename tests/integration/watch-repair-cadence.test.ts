@@ -12,6 +12,7 @@ import {
   watchRecordPath,
 } from '../../src/lib/watch.js'
 import {
+  currentInvocation,
   fillPreparedOutput,
   multiplexedTargets,
   preparedRun,
@@ -524,8 +525,13 @@ test('AC-016: arming bound', async () => {
   ])
 
   assert.equal(piped.status, 0, piped.stderr)
-  assert.match(
-    piped.stderr.split('\n')[0] ?? '',
-    /armed at .*: cadence 60s, timeout 90s$/u,
-  )
+  const [arming, ...context] = (piped.stderr.split('\n')[0] ?? '').split('; ')
+  const invocation = currentInvocation(custom.root, custom.state)
+
+  assert.match(arming ?? '', /armed at .*: cadence 60s, timeout 90s$/u)
+  assert.deepEqual(context, [
+    `run ${custom.state.run_id}`,
+    `persona ${invocation.stage.persona}`,
+    `model ${invocation.stage.model}`,
+  ])
 })

@@ -240,8 +240,43 @@ names the invocation. `2` and `stalled` after `--stall-timeout-seconds` (default
 seconds with no change. The harness converts that duration to wakes at the active
 cadence, so a cadence override does not change the effective stall window. `3` and `timed_out` at `--timeout-seconds`.
 The command is safe to await in the foreground and safe to re-run. It returns
-`completed` at once when the output already exists. Wake lines print to
-stderr only on an interactive terminal.
+`completed` at once when the output already exists.
+
+On stderr, each session header names the run, invocation,
+persona, model, cadence and bound once. Wake lines report only new assistant
+chat, tool names in call order (consecutive repeats use `xN`), and wrapper byte
+growth with its newest line. Assistant text comes from the worker transcript;
+user prompts and tool arguments are omitted. Complete new assistant messages
+and all tool names appear in message order on indented lines. Text is redacted
+and terminal controls are removed before rendering. Paragraph breaks are
+preserved. Chat content wraps at 600 characters and tool content at 240,
+with indented continuation lines instead of truncation. Wrapper summaries
+remain truncated at 160 characters, including the `...` marker.
+The environment variables `PANCREATOR_WATCH_TEXT_CHARS`,
+`PANCREATOR_WATCH_TOOL_CHARS` and `PANCREATOR_WATCH_WRAPPER_CHARS` override these
+bounds with integers from 80 to 4096. Chat and tool bounds apply to content
+on each line, excluding labels and indentation. Invalid values fail explicitly.
+
+Consecutive unchanged wakes update one carriage-return progress line with an
+advancing `unchanged xN` counter. Shorter updates overwrite the full preceding
+line with space padding so multiplexed counters cannot leave stale digits.
+Progress or a verdict closes that line.
+Multiplexed watches use numbered labels in header order. Each wake drains its
+snapshot of appended transcript records in chunks of at most 1 MiB, including
+on a terminal wake. Incomplete records, even larger than one chunk, are retained
+until complete. Arming establishes the cursor at the end of existing history,
+without replaying it or the remainder of an incomplete historical record.
+Later discovery reads the available records from the beginning. New records
+are never skipped to catch up; unusually large messages or intervals can
+increase the memory and rendering time needed to show their full output.
+Display cursors are local to the watch process. JSON output and durable ledgers retain
+their existing observation and verdict contracts.
+
+Copilot's execution audit is written after the worker exits. While it runs,
+the display checks at most the 32 most recently modified session transcripts
+since launch, reading at most the first 1 MiB of each to match a user prompt
+that names this run and its exact invocation output path. Only a unique match
+is displayed. Cursor workers use the transcript linked by the agent index.
 
 Only `stalled` is a stall signal. `unverified` means the watch could not
 settle a completion, and `timed_out` means the bound passed; neither says the
