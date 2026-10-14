@@ -11,10 +11,8 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  parsePipelineConfig,
-  resolveConfigPersonas,
-} from '../../src/lib/pipeline-config.js'
+import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
+import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { createTestTempDirectory } from '../temp.js'
 import {
   REPO_ROOT,
@@ -76,11 +74,17 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     )
   }
 
-  const parsedConfig = parsePipelineConfig(config, 'installed config.json')
-  const projectedHarnessTechnicianModel = resolveConfigPersonas(
-    parsedConfig,
-    parsedConfig.active_config,
-  )['harness-technician']
+  assert.equal('model_config' in config, false)
+  const overrides = readJson<{ model_config: Record<string, unknown> }>(
+    path.join(project, '.pancreator', 'config_overrides.json'),
+  )
+
+  assert.equal(typeof overrides.model_config, 'object')
+  const loadedConfig = loadPipelineConfig(path.join(project, '.pancreator'))
+  const projectedHarnessTechnicianModel = parsePersonaMapping(
+    loadedConfig.config.personas['harness-technician'],
+    'harness-technician',
+  ).model_spec
 
   assert.ok(
     readFileSync(
@@ -294,8 +298,10 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     marker.payload_files.some((entry) => entry.path.startsWith('dist/')),
     false,
   )
-  assert.ok(
+  assert.equal(
     marker.cursor_files.some((entry) => entry.path.endsWith('coder.md')),
+    parsePersonaMapping(loadedConfig.config.personas.coder, 'coder')
+      .executor === 'cursor',
   )
 })
 

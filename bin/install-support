@@ -716,10 +716,9 @@ function cursorSourceFiles(sourceRoot, hosts = DEFAULT_PROJECT_HOSTS) {
 }
 
 /**
- * Read a harness config with the untracked operator-overrides file beside it
- * merged over it. The self-development checkout blanks its model values in
- * the tracked config.json and keeps the real specs in config_overrides.json,
- * so every installer read of a source config MUST see the effective merge.
+ * Read a harness config with its untracked operator overrides merged over it.
+ * Provider-tier references stay in config.json; concrete model specs stay in
+ * config_overrides.json, so projection reads always need the effective merge.
  */
 /**
  * An empty model string in a named config's personas inherits the default
@@ -753,9 +752,10 @@ function parseAliasReference(value) {
 
 function aliasCatalogFromConfig(config) {
   const catalog = {}
+  const modelConfig = config?.model_config
 
   for (const family of MODEL_ALIAS_FAMILIES) {
-    const raw = config?.[family]
+    const raw = modelConfig?.[family] ?? config?.[family]
     catalog[family] =
       typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {}
   }
@@ -871,19 +871,189 @@ function stripInheritedPlaceholders(config) {
   return config
 }
 
-function readConfigWithOverrides(configPath) {
-  let config = readJson(configPath)
-
+function readConfigOverrides(configPath) {
   for (const overridesName of ['config_overrides.json', 'config.local.json']) {
     const overridesPath = path.join(path.dirname(configPath), overridesName)
 
     if (existsSync(overridesPath)) {
-      config = mergeConfigObjects(config, readJson(overridesPath))
-      break
+      return readJson(overridesPath)
     }
   }
 
-  return stripInheritedPlaceholders(config)
+  return {}
+}
+
+function readConfigWithOverrides(configPath) {
+  return stripInheritedPlaceholders(
+    mergeConfigObjects(readJson(configPath), readConfigOverrides(configPath)),
+  )
+}
+
+function modelConfigFromLegacy(config) {
+  const result = {}
+  const configured =
+    typeof config?.model_config === 'object' && config.model_config !== null
+      ? config.model_config
+      : {}
+
+  for (const family of MODEL_ALIAS_FAMILIES) {
+    const legacy = config?.[family]
+    const raw = mergeConfigObjects(
+      typeof legacy === 'object' && legacy !== null && !Array.isArray(legacy)
+        ? legacy
+        : {},
+      typeof configured[family] === 'object' &&
+        configured[family] !== null &&
+        !Array.isArray(configured[family])
+        ? configured[family]
+        : {},
+    )
+
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      continue
+    }
+
+    const tiers = {}
+
+    for (const [tier, spec] of Object.entries(raw)) {
+      if (typeof spec !== 'string' || spec.length === 0) {
+        continue
+      }
+
+      tiers[tier] = /^(copilot|cursor|cursor-cli):/u.test(spec)
+        ? spec
+        : `cursor:${spec}`
+    }
+
+    if (Object.keys(tiers).length > 0) {
+      result[family] = tiers
+    }
+  }
+
+  return result
+}
+
+function normalizeConfigOverrides(value) {
+  const overrides =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? { ...value }
+      : {}
+  const modelConfig = modelConfigFromLegacy(overrides)
+
+  for (const family of MODEL_ALIAS_FAMILIES) {
+    delete overrides[family]
+  }
+
+  if (Object.keys(modelConfig).length > 0) {
+    overrides.model_config = modelConfig
+  }
+
+  return overrides
+}
+
+function modelOverridesFromExisting(source, existing) {
+  const overrides = {}
+  const sourceDefaults =
+    typeof source.defaults === 'object' && source.defaults !== null
+      ? source.defaults
+      : {}
+  const existingDefaults =
+    typeof existing.defaults === 'object' && existing.defaults !== null
+      ? existing.defaults
+      : {}
+  const changedDefaults = Object.fromEntries(
+    Object.entries(existingDefaults).filter(
+      ([persona, model]) => sourceDefaults[persona] !== model,
+    ),
+  )
+
+  if (Object.keys(changedDefaults).length > 0) {
+    overrides.defaults = changedDefaults
+  }
+
+  const changedConfigs = {}
+
+  for (const [name, existingConfig] of Object.entries(existing.configs ?? {})) {
+    const sourceConfig = source.configs?.[name]
+    const sourcePersonas = personaMapFromNamedConfig(sourceConfig)
+    const changedPersonas = Object.fromEntries(
+      Object.entries(personaMapFromNamedConfig(existingConfig)).filter(
+        ([persona, model]) => sourcePersonas[persona] !== model,
+      ),
+    )
+
+    if (Object.keys(changedPersonas).length > 0) {
+      changedConfigs[name] = changedPersonas
+    }
+  }
+
+  if (Object.keys(changedConfigs).length > 0) {
+    overrides.configs = changedConfigs
+  }
+
+  const sourceModelConfig = modelConfigFromLegacy(source)
+  const existingModelConfig = modelConfigFromLegacy(existing)
+  const changedModelConfig = {}
+
+  for (const [provider, tiers] of Object.entries(existingModelConfig)) {
+    const changedTiers = Object.fromEntries(
+      Object.entries(tiers).filter(
+        ([tier, spec]) => sourceModelConfig[provider]?.[tier] !== spec,
+      ),
+    )
+
+    if (Object.keys(changedTiers).length > 0) {
+      changedModelConfig[provider] = changedTiers
+    }
+  }
+
+  if (Object.keys(changedModelConfig).length > 0) {
+    overrides.model_config = changedModelConfig
+  }
+
+  return overrides
+}
+
+function retainModelOverridePersonas(overrides, shipped) {
+  const retained = { ...overrides }
+
+  if (typeof retained.defaults === 'object' && retained.defaults !== null) {
+    retained.defaults = retainShippedPersonas(retained.defaults, shipped)
+  }
+
+  if (typeof retained.configs === 'object' && retained.configs !== null) {
+    const configs = {}
+
+    for (const [name, config] of Object.entries(retained.configs)) {
+      if (typeof config !== 'object' || config === null) {
+        continue
+      }
+
+      const next = {}
+
+      for (const [key, value] of Object.entries(config)) {
+        if (key === 'summary') {
+          next.summary = value
+        } else if (key === 'personas') {
+          if (typeof value === 'object' && value !== null) {
+            const personas = retainShippedPersonas(value, shipped)
+
+            if (Object.keys(personas).length > 0) {
+              next.personas = personas
+            }
+          }
+        } else if (shipped.has(key)) {
+          next[key] = value
+        }
+      }
+
+      configs[name] = next
+    }
+
+    retained.configs = configs
+  }
+
+  return retained
 }
 
 function personaModelsFromConfig(configPath) {
@@ -921,7 +1091,7 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
     return personaModelsFromConfig(sourceConfigPath)
   }
 
-  const targetConfig = stripInheritedPlaceholders(readJson(personaConfigPath))
+  const targetConfig = readConfigWithOverrides(personaConfigPath)
   const activeConfigName =
     typeof targetConfig.active_config === 'string'
       ? targetConfig.active_config
@@ -2029,18 +2199,35 @@ function writeProject() {
   const source = path.resolve(requiredOption('--source'))
   const destination = path.resolve(requiredOption('--destination'))
   const workspaceId = requiredOption('--workspace-id')
-  // An install ships the effective configuration: the source checkout's
-  // tracked config.json merged with its untracked operator overrides.
+  const sourceConfig = readJson(source)
+  const sourceOverrides = normalizeConfigOverrides(readConfigOverrides(source))
+  const sourceModelConfig = modelConfigFromLegacy(sourceConfig)
+  sourceOverrides.model_config = mergeConfigObjects(
+    sourceModelConfig,
+    sourceOverrides.model_config ?? {},
+  )
   let config = readConfigWithOverrides(source)
   const existing = existsSync(destination) ? readJson(destination) : null
+  const existingOverrides = normalizeConfigOverrides(
+    readConfigOverrides(destination),
+  )
+  let legacyModelOverrides = {}
 
   if (existing) {
+    legacyModelOverrides = modelOverridesFromExisting(sourceConfig, existing)
     config = mergeEmbeddedProjectConfig(
       config,
       stripInheritedPlaceholders(existing),
     )
   }
 
+  const outputOverrides = retainModelOverridePersonas(
+    mergeConfigObjects(
+      mergeConfigObjects(sourceOverrides, legacyModelOverrides),
+      existingOverrides,
+    ),
+    new Set(Object.keys(sourceConfig.defaults ?? {})),
+  )
   config.fast_wall = targetFastWall(config.fast_wall, existing?.fast_wall)
 
   // A detached harness has no stable relative path to its target, so the target
@@ -2072,10 +2259,23 @@ function writeProject() {
     }
   }
 
-  const defaults =
-    typeof config.defaults === 'object' && config.defaults !== null
-      ? config.defaults
+  config.defaults =
+    typeof sourceConfig.defaults === 'object' && sourceConfig.defaults !== null
+      ? sourceConfig.defaults
       : {}
+  config.configs = Object.fromEntries(
+    Object.entries(sourceConfig.configs ?? {}).map(([name, namedConfig]) => [
+      name,
+      stripNamedConfigPlaceholders(namedConfig),
+    ]),
+  )
+  delete config.model_config
+
+  for (const family of MODEL_ALIAS_FAMILIES) {
+    delete config[family]
+  }
+
+  const defaults = config.defaults
 
   for (const [name, namedConfig] of Object.entries(config.configs ?? {})) {
     if (typeof namedConfig !== 'object' || namedConfig === null) {
@@ -2104,6 +2304,10 @@ function writeProject() {
   }
 
   writeJson(destination, config)
+  writeJson(
+    path.join(path.dirname(destination), 'config_overrides.json'),
+    outputOverrides,
+  )
 }
 
 async function configureShellAlias() {

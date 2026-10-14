@@ -117,9 +117,15 @@ export function delegateEvidenceWorkers(
     const mapping = resolvePersonaMapping(pipelineConfig, worker.persona)
     const headlessCursor =
       mapping.executor === 'cursor' && options.headless === true
+    const cursorCli = mapping.executor === 'cursor-cli'
     const copilot = mapping.executor === 'copilot'
 
-    if (mapping.executor !== 'claude-code' && !copilot && !headlessCursor) {
+    if (
+      mapping.executor !== 'claude-code' &&
+      !copilot &&
+      !headlessCursor &&
+      !cursorCli
+    ) {
       results.push({
         ...base,
         skipped: 'cursor_persona',
@@ -132,10 +138,14 @@ export function delegateEvidenceWorkers(
       continue
     }
 
-    if ((headlessCursor || copilot) && !preflighted.has(mapping.raw)) {
-      const preflight = headlessCursor
-        ? ensureCursorReady(root)
-        : ensureExecutorReady(root, state, 'copilot', mapping)
+    if (
+      (headlessCursor || cursorCli || copilot) &&
+      !preflighted.has(mapping.raw)
+    ) {
+      const preflight =
+        headlessCursor || cursorCli
+          ? ensureCursorReady(root)
+          : ensureExecutorReady(root, state, 'copilot', mapping)
 
       if (!preflight.ok) {
         // EXECUTOR-001 makes a failed preflight an operator-visible stop that
@@ -190,36 +200,38 @@ export function delegateEvidenceWorkers(
       `launching ${worker.role} evidence worker (${worker.persona}) via ${mapping.executor}`,
     )
 
-    const result = headlessCursor
-      ? createCursorAgentAdapter({
-          workspaceDir,
-          installationRoot: root,
-          runtimeDir: path.join(root, 'runtime'),
-          modelSpec: mapping.model_spec,
-          modelVerification: cursorModelPredictionForSpec(
-            root,
-            mapping.model_spec,
-          ),
-          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-        }).run(prompt)
-      : copilot
-        ? createCopilotAdapter({
-            root,
+    const result =
+      headlessCursor || cursorCli
+        ? createCursorAgentAdapter({
+            ...(cursorCli ? { kind: 'cursor-cli' as const } : {}),
             workspaceDir,
-            stage,
-            persona: worker.persona,
-            mapping,
+            installationRoot: root,
+            runtimeDir: path.join(root, 'runtime'),
+            modelSpec: mapping.model_spec,
+            modelVerification: cursorModelPredictionForSpec(
+              root,
+              mapping.model_spec,
+            ),
             ...(timeoutMs !== undefined ? { timeoutMs } : {}),
           }).run(prompt)
-        : runClaudeCode({
-            prompt,
-            cwd: workspaceDir,
-            model: mapping.model,
-            permissionMode: mapping.options['permission-mode'] ?? 'default',
-            allowedTools: policy.allowedTools,
-            addDirs: policy.addDirs,
-            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-          })
+        : copilot
+          ? createCopilotAdapter({
+              root,
+              workspaceDir,
+              stage,
+              persona: worker.persona,
+              mapping,
+              ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+            }).run(prompt)
+          : runClaudeCode({
+              prompt,
+              cwd: workspaceDir,
+              model: mapping.model,
+              permissionMode: mapping.options['permission-mode'] ?? 'default',
+              allowedTools: policy.allowedTools,
+              addDirs: policy.addDirs,
+              ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+            })
     const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stdout.json`
     const stderrPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stderr.log`
 

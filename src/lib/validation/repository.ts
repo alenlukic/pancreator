@@ -104,6 +104,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'docs/validation-framework.md',
     'config.json',
     'library/schemas/config.schema.json',
+    'library/schemas/config-overrides.schema.json',
     'library/schemas/stage-output.schema.json',
     'library/schemas/target-authoring.schema.json',
     'library/schemas/turn-reminder-profiles.schema.json',

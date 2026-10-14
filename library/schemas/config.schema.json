@@ -5,16 +5,38 @@
   "description": "Workspace identity, state root, tracking patterns, and named persona-to-model mappings for a Pancreator workspace.",
   "type": "object",
   "required": ["schema_version"],
+  "not": {
+    "anyOf": [
+      { "required": ["model_config"] },
+      { "required": ["anthropic"] },
+      { "required": ["oai"] },
+      { "required": ["open"] },
+      { "required": ["cursor"] }
+    ]
+  },
   "$defs": {
+    "executor": {
+      "type": "string",
+      "enum": ["copilot", "cursor", "cursor-cli"]
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["anthropic", "oai", "cursor", "open"]
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["balanced", "advanced", "ultra"]
+    },
     "modelSpec": {
       "type": "string",
       "minLength": 1,
-      "description": "A model spec, optionally prefixed with one of the closed persona-executor set: cursor, claude-code, openai, copilot. An absent prefix means cursor.",
-      "pattern": "^((cursor|claude-code|openai|copilot):)?[^:]+$"
+      "description": "An executor-specific persona mapping, permitted in config_overrides.json only.",
+      "pattern": "^((cursor|claude-code|openai|copilot|cursor-cli):)?[^:]+$"
     },
     "modelAlias": {
       "type": "string",
-      "pattern": "^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$"
+      "description": "An environment-independent provider and tier reference.",
+      "pattern": "^(anthropic|oai|cursor|open):(balanced|advanced|ultra)$"
     },
     "modelSpecOrAlias": {
       "anyOf": [
@@ -23,6 +45,9 @@
       ]
     },
     "inheritableMapping": {
+      "anyOf": [{ "const": "" }, { "$ref": "#/$defs/modelAlias" }]
+    },
+    "inheritableOverrideMapping": {
       "anyOf": [{ "const": "" }, { "$ref": "#/$defs/modelSpecOrAlias" }]
     },
     "aliasValue": {
@@ -35,6 +60,21 @@
           }
         }
       ]
+    },
+    "modelConfigValue": {
+      "type": "string",
+      "description": "Executor prefix followed by an executor-specific model string.",
+      "pattern": "^(copilot|cursor|cursor-cli):[^:]+$"
+    },
+    "modelConfiguration": {
+      "type": "object",
+      "description": "Per-checkout model strings keyed by provider and tier. This belongs in config_overrides.json.",
+      "propertyNames": { "pattern": "^(anthropic|oai|cursor|open)$" },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": { "pattern": "^(balanced|advanced|ultra)$" },
+        "additionalProperties": { "$ref": "#/$defs/modelConfigValue" }
+      }
     }
   },
   "properties": {
@@ -188,50 +228,10 @@
       "type": "string",
       "minLength": 1
     },
-    "anthropic": {
-      "type": "object",
-      "description": "Model alias definitions for the Anthropic family. Keys are optional.",
-      "additionalProperties": false,
-      "properties": {
-        "balanced": { "$ref": "#/$defs/aliasValue" },
-        "advanced": { "$ref": "#/$defs/aliasValue" },
-        "ultra": { "$ref": "#/$defs/aliasValue" }
-      }
-    },
-    "oai": {
-      "type": "object",
-      "description": "Model alias definitions for the OpenAI family. Keys are optional.",
-      "additionalProperties": false,
-      "properties": {
-        "balanced": { "$ref": "#/$defs/aliasValue" },
-        "advanced": { "$ref": "#/$defs/aliasValue" },
-        "ultra": { "$ref": "#/$defs/aliasValue" }
-      }
-    },
-    "open": {
-      "type": "object",
-      "description": "Model alias definitions for open-source model providers. Keys are optional.",
-      "additionalProperties": false,
-      "properties": {
-        "balanced": { "$ref": "#/$defs/aliasValue" },
-        "advanced": { "$ref": "#/$defs/aliasValue" },
-        "ultra": { "$ref": "#/$defs/aliasValue" }
-      }
-    },
-    "cursor": {
-      "type": "object",
-      "description": "Model alias definitions for Cursor-managed providers. Keys are optional.",
-      "additionalProperties": false,
-      "properties": {
-        "balanced": { "$ref": "#/$defs/aliasValue" },
-        "advanced": { "$ref": "#/$defs/aliasValue" },
-        "ultra": { "$ref": "#/$defs/aliasValue" }
-      }
-    },
     "defaults": {
       "type": "object",
-      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code, openai, copilot); no prefix means cursor. A mapping MAY also reference a tier alias (for example anthropic:balanced).",
-      "additionalProperties": { "$ref": "#/$defs/modelSpecOrAlias" }
+      "description": "Environment-independent persona mappings every named config inherits. Values MUST use provider:tier aliases; executor-specific model strings belong in config_overrides.json.",
+      "additionalProperties": { "$ref": "#/$defs/modelAlias" }
     },
     "$operator": {
       "type": "object",
@@ -256,7 +256,7 @@
           },
           "personas": {
             "type": "object",
-            "description": "Legacy compatibility input: nested persona-to-model mappings. Installations and overrides MAY still supply this shape. The canonical shape flattens these mappings directly under the named config object.",
+            "description": "Legacy-compatible nested persona mappings. Values use provider:tier aliases; an empty string inherits the default.",
             "additionalProperties": { "$ref": "#/$defs/inheritableMapping" }
           }
         },

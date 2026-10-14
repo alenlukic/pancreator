@@ -76,9 +76,9 @@ export const DEFAULT_PROJECT_HOSTS: readonly ProjectHost[] = ['cursor']
 
 /**
  * Untracked operator-local overrides, merged over the checked-in harness
- * configuration. The checked-in `config.json` carries the recommended defaults
- * a release can update; this file holds per-checkout preferences such as
- * `active_config` or persona model overrides.
+ * configuration. The checked-in `config.json` carries provider:tier persona
+ * references; this file holds per-checkout preferences such as `active_config`,
+ * executor-specific `model_config`, or persona model overrides.
  */
 export const LOCAL_CONFIG_PATH = 'config_overrides.json'
 

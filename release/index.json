@@ -484,6 +484,10 @@
     {
       "version": "8.16.0",
       "commit": "c84fd8618e59cf9f90634ffa187a2808bde5c946"
+    },
+    {
+      "version": "8.17.0",
+      "commit": "0548908a185a7ee226e67f93ae846f0bed55aae0"
     }
   ]
 }

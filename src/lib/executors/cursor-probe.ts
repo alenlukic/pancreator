@@ -247,7 +247,7 @@ function expectedFor(
 }
 
 /**
- * Probe every distinct cursor-executor model spec of the active pipeline
+ * Probe every distinct Cursor or Cursor CLI model spec of the active pipeline
  * config against live Cursor and compare the resolved variant with an
  * available local catalog's prediction. Static validation proves a spec is
  * well-formed for that catalog; this proves what it launches today.
@@ -266,7 +266,7 @@ export async function probeCursorModels(
   for (const [persona, raw] of Object.entries(personas)) {
     const mapping = parsePersonaMapping(raw, persona)
 
-    if (mapping.executor !== 'cursor') {
+    if (mapping.executor !== 'cursor' && mapping.executor !== 'cursor-cli') {
       continue
     }
 

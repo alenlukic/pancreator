@@ -30,20 +30,21 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
   const legacyAgent = path.join(project, '.cursor', 'agents', 'coder.md')
   const markerPath = path.join(pancreatorDir, 'install.json')
   const configJsonPath = path.join(pancreatorDir, 'config.json')
+  const overridesPath = path.join(pancreatorDir, 'config_overrides.json')
 
   try {
-    const config = readJson<{
+    const overrides = readJson<{
       active_config: string
       defaults: Record<string, string>
       configs: Record<string, Record<string, unknown>>
-    }>(configJsonPath)
+    }>(overridesPath)
 
-    config.active_config = 'balanced'
-    const balanced = config.configs.balanced as Record<string, unknown>
+    overrides.active_config = 'balanced'
+    const balanced = overrides.configs.balanced as Record<string, unknown>
     balanced.coder = customCoderModel
-    config.defaults[retiredPersona] = retiredModel
+    overrides.defaults[retiredPersona] = retiredModel
     balanced[retiredPersona] = retiredModel
-    writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
+    writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
 
     // Reproduce an install made before agents were namespaced, where the
     // marker records Pancreator as the owner of the old path.
@@ -226,14 +227,18 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /Installation refresh completed/)
 
-    const refreshed = readJson<{
+    const refreshedOverrides = readJson<{
       active_config: string
+      defaults: Record<string, string>
+      configs: Record<string, Record<string, unknown>>
+    }>(overridesPath)
+    const refreshed = readJson<{
       defaults: Record<string, string>
       configs: Record<string, Record<string, unknown>>
     }>(configJsonPath)
 
-    assert.equal(refreshed.active_config, 'balanced')
-    assert.equal(refreshed.configs.balanced.coder, customCoderModel)
+    assert.equal(refreshedOverrides.active_config, 'balanced')
+    assert.equal(refreshedOverrides.configs.balanced.coder, customCoderModel)
     assert.ok(
       readFileSync(
         path.join(project, '.cursor', 'agents', 'pan-coder.md'),
@@ -242,8 +247,9 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     )
 
     assert.equal(refreshed.defaults[retiredPersona], undefined)
+    assert.equal(refreshedOverrides.defaults[retiredPersona], undefined)
     assert.equal(
-      refreshed.configs.balanced[retiredPersona],
+      refreshedOverrides.configs.balanced[retiredPersona],
       undefined,
       'a retired persona MUST NOT survive a refresh',
     )

@@ -19,6 +19,14 @@ type ModelAliasFamily = (typeof MODEL_ALIAS_FAMILIES)[number]
 const MODEL_ALIAS_TIERS = ['balanced', 'advanced', 'ultra'] as const
 type ModelAliasTier = (typeof MODEL_ALIAS_TIERS)[number]
 
+const MODEL_CONFIG_EXECUTORS = [
+  'copilot',
+  'cursor',
+  'cursor-cli',
+] as const satisfies readonly PersonaExecutorKind[]
+type ModelConfigMap = Partial<
+  Record<ModelAliasFamily, Partial<Record<ModelAliasTier, string>>>
+>
 type ModelAliasMap = Partial<Record<ModelAliasTier, string>>
 
 function isAliasTier(value: string): value is ModelAliasTier {
@@ -59,7 +67,7 @@ function resolveModelAlias(
 
     invariant(
       typeof resolved === 'string' && resolved.length > 0,
-      `${source} references alias '${spec}', but ${parsed.family}.${parsed.tier} is not defined. Define the alias or use an explicit model spec.`,
+      `${source} references alias '${spec}', but ${parsed.family}.${parsed.tier} is not defined in model_config. Add it to config_overrides.json.model_config.`,
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 
@@ -95,6 +103,7 @@ export interface NamedPipelineConfig {
 export interface PipelineConfigFile {
   schema_version: 1
   active_config: string
+  model_config: ModelConfigMap
   anthropic: ModelAliasMap
   oai: ModelAliasMap
   open: ModelAliasMap
@@ -168,7 +177,7 @@ function parsePersonaMap(
     // harness-consumed executors, the bracket options.
     const mapping = parsePersonaMapping(expanded, `${source}.${persona}`)
 
-    if (mapping.executor === 'cursor') {
+    if (mapping.executor === 'cursor' || mapping.executor === 'cursor-cli') {
       resolveCursorModelSlug(mapping, `${source}.${persona}`)
     }
 
@@ -182,6 +191,66 @@ function parsePersonaMap(
   )
 
   return personas
+}
+
+function parseModelConfig(value: unknown, source: string): ModelConfigMap {
+  if (value === undefined) {
+    return {}
+  }
+
+  invariant(isRecord(value), `${source} MUST be an object.`, {
+    code: 'INVALID_PIPELINE_CONFIG',
+  })
+
+  const modelConfig: ModelConfigMap = {}
+
+  for (const [provider, rawTiers] of Object.entries(value)) {
+    invariant(
+      MODEL_ALIAS_FAMILIES.includes(provider as ModelAliasFamily),
+      `${source} provider '${provider}' is not supported. Supported providers: ${MODEL_ALIAS_FAMILIES.join(', ')}.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+    invariant(isRecord(rawTiers), `${source}.${provider} MUST be an object.`, {
+      code: 'INVALID_PIPELINE_CONFIG',
+    })
+
+    const tiers: Partial<Record<ModelAliasTier, string>> = {}
+
+    for (const [tier, spec] of Object.entries(rawTiers)) {
+      invariant(
+        isAliasTier(tier),
+        `${source}.${provider} key '${tier}' is not supported. Supported tiers: ${MODEL_ALIAS_TIERS.join(', ')}.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+      invariant(
+        typeof spec === 'string' && spec.length > 0,
+        `${source}.${provider}.${tier} MUST be a non-empty executor:model string.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      const prefix = /^([a-z][a-z0-9-]*):/u.exec(spec)?.[1]
+      invariant(
+        prefix !== undefined &&
+          MODEL_CONFIG_EXECUTORS.includes(
+            prefix as (typeof MODEL_CONFIG_EXECUTORS)[number],
+          ),
+        `${source}.${provider}.${tier} MUST use one of these executors: ${MODEL_CONFIG_EXECUTORS.join(', ')}.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      const mapping = parsePersonaMapping(spec, `${source}.${provider}.${tier}`)
+
+      if (mapping.executor === 'cursor' || mapping.executor === 'cursor-cli') {
+        resolveCursorModelSlug(mapping, `${source}.${provider}.${tier}`)
+      }
+
+      tiers[tier] = spec
+    }
+
+    modelConfig[provider as ModelAliasFamily] = tiers
+  }
+
+  return modelConfig
 }
 
 function parseNamedConfig(
@@ -226,6 +295,85 @@ function parseNamedConfig(
   }
 }
 
+function assertTrackedConfigUsesAliases(
+  value: unknown,
+  source: string,
+  root: string,
+): void {
+  invariant(isRecord(value), `${source} MUST contain an object.`, {
+    code: 'INVALID_PIPELINE_CONFIG',
+  })
+
+  const personaDirectory = path.join(root, 'library', 'cursor', 'agents')
+  const hasCanonicalPersonas = fileExists(
+    path.join(personaDirectory, 'coder.md'),
+  )
+  invariant(
+    value.model_config === undefined,
+    `${source}.model_config belongs in config_overrides.json.`,
+    { code: 'INVALID_PIPELINE_CONFIG' },
+  )
+
+  for (const provider of MODEL_ALIAS_FAMILIES) {
+    invariant(
+      value[provider] === undefined,
+      `${source}.${provider} model definitions belong in config_overrides.json.model_config.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+  }
+
+  const assertAliasMap = (
+    raw: unknown,
+    mappingSource: string,
+    allowEmpty: boolean,
+  ): void => {
+    if (raw === undefined) {
+      return
+    }
+
+    invariant(isRecord(raw), `${mappingSource} MUST be an object.`, {
+      code: 'INVALID_PIPELINE_CONFIG',
+    })
+
+    for (const [persona, model] of Object.entries(raw)) {
+      if (persona === 'summary') {
+        continue
+      }
+      if (persona === 'personas') {
+        assertAliasMap(model, `${mappingSource}.personas`, allowEmpty)
+        continue
+      }
+      if (allowEmpty && model === '') {
+        continue
+      }
+      if (
+        hasCanonicalPersonas &&
+        !fileExists(path.join(personaDirectory, `${persona}.md`))
+      ) {
+        continue
+      }
+
+      invariant(
+        typeof model === 'string' && parseAliasReference(model) !== null,
+        `${mappingSource}.${persona} MUST use a provider:tier alias; executor-specific model strings belong in config_overrides.json.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+  }
+
+  assertAliasMap(value.defaults, `${source}.defaults`, false)
+
+  if (value.configs !== undefined) {
+    invariant(isRecord(value.configs), `${source}.configs MUST be an object.`, {
+      code: 'INVALID_PIPELINE_CONFIG',
+    })
+
+    for (const [name, config] of Object.entries(value.configs)) {
+      assertAliasMap(config, `${source}.configs.${name}`, true)
+    }
+  }
+}
+
 /**
  * Persona-to-model map of a named config: the file's `defaults` overlaid by
  * that config's personas. Throws `INVALID_PIPELINE_CONFIG` when the name is
@@ -251,10 +399,10 @@ export function resolveConfigPersonas(
 
 /**
  * Validates a pipeline config document and returns it normalized, with model
- * alias tiers checked and persona aliases expanded to explicit specs. Throws
- * `INVALID_PIPELINE_CONFIG` on a bad shape, an unsupported or recursive
- * alias, an invalid executor mapping, an empty `configs`, or an undefined
- * `active_config`.
+ * alias tiers checked and persona aliases expanded through `model_config` to
+ * explicit executor-specific specs. Throws `INVALID_PIPELINE_CONFIG` on a bad
+ * shape, an unsupported or unresolved alias, a recursive alias, an invalid
+ * executor mapping, an empty `configs`, or an undefined `active_config`.
  */
 export function parsePipelineConfig(
   value: unknown,
@@ -275,57 +423,15 @@ export function parsePipelineConfig(
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
-  function parseAliasMap(
-    family: ModelAliasFamily,
-    raw: unknown,
-  ): ModelAliasMap {
-    if (raw === undefined) {
-      return {}
-    }
-
-    invariant(isRecord(raw), `${source}.${family} MUST be an object.`, {
-      code: 'INVALID_PIPELINE_CONFIG',
-    })
-
-    const parsed: ModelAliasMap = {}
-
-    for (const [tier, spec] of Object.entries(raw)) {
-      invariant(
-        isAliasTier(tier),
-        `${source}.${family} key '${tier}' is not supported. Supported tiers: ${MODEL_ALIAS_TIERS.join(
-          ', ',
-        )}.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-      invariant(
-        typeof spec === 'string' && spec.length > 0,
-        `${source}.${family}.${tier} MUST be a non-empty model string.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-
-      invariant(
-        parseAliasReference(spec) === null,
-        `${source}.${family}.${tier} MUST be an explicit model spec; recursive aliases are not supported.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-
-      const mapping = parsePersonaMapping(spec, `${source}.${family}.${tier}`)
-
-      if (mapping.executor === 'cursor') {
-        resolveCursorModelSlug(mapping, `${source}.${family}.${tier}`)
-      }
-
-      parsed[tier] = spec
-    }
-
-    return parsed
-  }
-
+  const modelConfig = parseModelConfig(
+    value.model_config,
+    `${source}.model_config`,
+  )
   const aliases: Record<ModelAliasFamily, ModelAliasMap> = {
-    anthropic: parseAliasMap('anthropic', value.anthropic),
-    oai: parseAliasMap('oai', value.oai),
-    open: parseAliasMap('open', value.open),
-    cursor: parseAliasMap('cursor', value.cursor),
+    anthropic: modelConfig.anthropic ?? {},
+    oai: modelConfig.oai ?? {},
+    open: modelConfig.open ?? {},
+    cursor: modelConfig.cursor ?? {},
   }
 
   const defaults = isRecord(value.defaults)
@@ -369,6 +475,7 @@ export function parsePipelineConfig(
   return {
     schema_version: 1,
     active_config: value.active_config,
+    model_config: modelConfig,
     anthropic: aliases.anthropic,
     oai: aliases.oai,
     open: aliases.open,
@@ -386,8 +493,8 @@ export function parsePipelineConfig(
  * `INVALID_PIPELINE_CONFIG` when the file is missing or the config is
  * undefined or invalid.
  *
- * When a local Cursor model catalog exists, every cursor persona of every
- * named config is also checked against it; `skipCatalog` bypasses that check.
+ * When a local Cursor model catalog exists, every Cursor or Cursor CLI persona
+ * of every named config is also checked against it; `skipCatalog` bypasses that check.
  */
 export function loadPipelineConfig(
   root: string,
@@ -403,6 +510,9 @@ export function loadPipelineConfig(
 
   // The digest covers the effective configuration, so a `config_overrides.json`
   // preference is indistinguishable from the same edit made in `config.json`.
+  const baseConfig = readJson(filePath)
+  assertTrackedConfigUsesAliases(baseConfig, configName, root)
+
   const raw = readHarnessConfig(root, filePath)
   const file = parsePipelineConfig(raw, configName)
   const resolvedName = name ?? file.active_config
@@ -428,7 +538,10 @@ export function loadPipelineConfig(
       )) {
         const mapping = parsePersonaMapping(model, `${candidate}.${persona}`)
 
-        if (mapping.executor === 'cursor') {
+        if (
+          mapping.executor === 'cursor' ||
+          mapping.executor === 'cursor-cli'
+        ) {
           resolveModel(mapping, `${candidate}.${persona}`)
         }
       }
@@ -554,7 +667,7 @@ export function resolvePersonaMapping(
   // model that cards, attestations, and projected workers use.
   const mapping = parsePersonaMapping(model, `personas.${persona}`)
 
-  if (mapping.executor === 'cursor') {
+  if (mapping.executor === 'cursor' || mapping.executor === 'cursor-cli') {
     resolveCursorModelSlug(mapping, `personas.${persona}`)
   }
 

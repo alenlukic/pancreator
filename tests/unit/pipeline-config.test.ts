@@ -3,10 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  parsePersonaMapping,
-  personaExecutorOf,
-} from '../../src/lib/executors/mapping.js'
+import { personaExecutorOf } from '../../src/lib/executors/mapping.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
   loadPipelineConfig,
@@ -32,27 +29,46 @@ test('config_overrides.json preferences override the checked-in pipeline config'
         active_config: 'default',
         configs: {
           default: {
-            orchestrator: 'gpt-5.6-sol',
-            reviewer: 'default-reviewer',
+            orchestrator: 'oai:advanced',
+            reviewer: 'anthropic:balanced',
           },
-          advanced: { reviewer: 'advanced-reviewer' },
+          advanced: { reviewer: 'anthropic:advanced' },
         },
       },
       null,
       2,
     )}\n`,
   )
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    JSON.stringify({
+      model_config: {
+        oai: { advanced: 'cursor:gpt-5.6-sol' },
+        anthropic: {
+          balanced: 'cursor:claude-sonnet-5',
+          advanced: 'cursor:claude-opus-5-5',
+        },
+      },
+    }),
+  )
 
   const base = loadPipelineConfig(root)
 
-  assert.equal(base.config.personas.orchestrator, 'gpt-5.6-sol')
+  assert.equal(base.config.personas.orchestrator, 'cursor:gpt-5.6-sol')
 
   writeFileSync(
     path.join(root, 'config_overrides.json'),
     JSON.stringify({
       active_config: 'advanced',
+      model_config: {
+        oai: { advanced: 'cursor:gpt-5.6-sol' },
+        anthropic: {
+          balanced: 'cursor:claude-sonnet-5',
+          advanced: 'cursor:claude-opus-5-5',
+        },
+      },
       defaults: {
-        orchestrator: 'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+        orchestrator: 'copilot:gpt-5.6-terra[provider=openai,effort=high]',
       },
     }),
   )
@@ -63,7 +79,7 @@ test('config_overrides.json preferences override the checked-in pipeline config'
   assert.equal(loaded.name, 'advanced')
   assert.equal(
     loaded.config.personas.orchestrator,
-    'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+    'copilot:gpt-5.6-terra[provider=openai,effort=high]',
   )
   // A preference the local file does not name still comes from config.json.
   assert.equal(loaded.config.personas.reviewer, expectedReviewer)
@@ -77,6 +93,25 @@ test('config_overrides.json preferences override the checked-in pipeline config'
   )
 
   assert.throws(() => loadPipelineConfig(root), /MUST contain an object/u)
+})
+
+test('tracked config rejects executor-specific persona model strings', () => {
+  const root = createTestTempDirectory('pipeline-config-env-model-')
+
+  writeFileSync(
+    path.join(root, 'config.json'),
+    JSON.stringify({
+      schema_version: 1,
+      active_config: 'default',
+      defaults: { coder: 'copilot:gpt-6.1-sol[provider=openai]' },
+      configs: { default: {} },
+    }),
+  )
+
+  assert.throws(
+    () => loadPipelineConfig(root),
+    /config\.json\.defaults\.coder MUST use a provider:tier alias/u,
+  )
 })
 
 test('pipeline config rejects an undefined active config', () => {
@@ -207,59 +242,62 @@ test('an empty named-config mapping inherits the default and an empty default is
   )
 })
 
-test('pipeline config expands every alias exactly in defaults and named configs', () => {
+test('provider-tier aliases expand through local model_config overrides', () => {
   const aliases = [
-    ['anthropic', 'balanced', 'claude-sonnet-5'],
+    ['anthropic', 'balanced', 'cursor:claude-sonnet-5'],
     [
       'anthropic',
       'advanced',
-      'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]',
+      'copilot:claude-opus-5[provider=anthropic,effort=high]',
     ],
     [
       'anthropic',
       'ultra',
-      'claude-fable-5-1[thinking=true,context=300k,effort=high]',
+      'cursor:claude-fable-5-1[thinking=true,context=300k,effort=high]',
     ],
     [
       'oai',
       'balanced',
-      'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+      'cursor:gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
     ],
-    ['oai', 'advanced', 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'],
-    ['open', 'balanced', 'glm-5.2'],
-    ['open', 'advanced', 'kimi-k3[reasoning=max]'],
-    ['cursor', 'balanced', 'composer-2.5'],
-    ['cursor', 'advanced', 'grok-4.6[effort=high,fast=false]'],
+    ['oai', 'advanced', 'copilot:gpt-6.1-sol[provider=openai,effort=high]'],
+    ['open', 'balanced', 'cursor:glm-5.2'],
+    ['open', 'advanced', 'cursor:kimi-k3[reasoning=max]'],
+    ['cursor', 'balanced', 'cursor-cli:composer-2.5'],
+    ['cursor', 'advanced', 'cursor-cli:grok-4.6[effort=high,fast=false]'],
   ] as const
   const file = parsePipelineConfig({
     schema_version: 1,
     active_config: 'default',
-    anthropic: {
-      balanced: 'claude-sonnet-5',
-      advanced:
-        'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]',
-      ultra: 'claude-fable-5-1[thinking=true,context=300k,effort=high]',
-    },
-    oai: {
-      balanced: 'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
-      advanced: 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
-    },
-    open: {
-      balanced: 'glm-5.2',
-      advanced: 'kimi-k3[reasoning=max]',
-    },
-    cursor: {
-      balanced: 'composer-2.5',
-      advanced: 'grok-4.6[effort=high,fast=false]',
+    model_config: {
+      anthropic: {
+        balanced: 'cursor:claude-sonnet-5',
+        advanced: 'copilot:claude-opus-5[provider=anthropic,effort=high]',
+        ultra:
+          'cursor:claude-fable-5-1[thinking=true,context=300k,effort=high]',
+      },
+      oai: {
+        balanced:
+          'cursor:gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+        advanced: 'copilot:gpt-6.1-sol[provider=openai,effort=high]',
+      },
+      open: {
+        balanced: 'cursor:glm-5.2',
+        advanced: 'cursor:kimi-k3[reasoning=max]',
+      },
+      cursor: {
+        balanced: 'cursor-cli:composer-2.5',
+        advanced: 'cursor-cli:grok-4.6[effort=high,fast=false]',
+      },
     },
     defaults: {
       inherited: 'oai:advanced',
     },
     configs: {
       default: Object.fromEntries(
-        aliases.map(([family, tier], index) => [
+        aliases.map(([provider, tier], index) => [
           `alias-${index}`,
-          `${family}:${tier}`,
+          `${provider}:${tier}`,
         ]),
       ),
     },
@@ -269,12 +307,15 @@ test('pipeline config expands every alias exactly in defaults and named configs'
 
   assert.equal(
     resolved.inherited,
-    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+    'copilot:gpt-6.1-sol[provider=openai,effort=high]',
   )
 
   for (const [index, [, , specification]] of aliases.entries()) {
     assert.equal(resolved[`alias-${index}`], specification)
-    assert.equal(personaExecutorOf(resolved[`alias-${index}`] ?? ''), 'cursor')
+    assert.equal(
+      personaExecutorOf(resolved[`alias-${index}`] ?? ''),
+      specification.split(':', 1)[0],
+    )
   }
 })
 
@@ -284,7 +325,7 @@ test('pipeline config rejects alias references to missing tiers', () => {
       parsePipelineConfig({
         schema_version: 1,
         active_config: 'default',
-        anthropic: {},
+        model_config: { anthropic: {} },
         configs: {
           default: { coder: 'anthropic:balanced' },
         },
@@ -307,17 +348,16 @@ test('pipeline config rejects malformed alias-like mappings', () => {
   )
 })
 
-test('pipeline config rejects recursive aliases and unsupported tier keys', () => {
+test('pipeline config rejects unsupported model_config tiers and executors', () => {
   assert.throws(
     () =>
       parsePipelineConfig({
         schema_version: 1,
         active_config: 'default',
-        anthropic: { balanced: 'oai:balanced' },
-        oai: { balanced: 'gpt-5.6-sol' },
+        model_config: { anthropic: { expert: 'cursor:claude-opus-5' } },
         configs: { default: { coder: 'anthropic:balanced' } },
       }),
-    /anthropic\.balanced MUST be an explicit model spec; recursive aliases are not supported/u,
+    /model_config\.anthropic key 'expert' is not supported.*balanced, advanced, ultra/u,
   )
 
   assert.throws(
@@ -325,24 +365,24 @@ test('pipeline config rejects recursive aliases and unsupported tier keys', () =
       parsePipelineConfig({
         schema_version: 1,
         active_config: 'default',
-        anthropic: { expert: 'claude-opus-5' },
-        configs: { default: { coder: 'claude-sonnet-5' } },
+        model_config: {
+          anthropic: { balanced: 'claude-code:claude-opus-5' },
+        },
+        configs: { default: { coder: 'anthropic:balanced' } },
       }),
-    /anthropic key 'expert' is not supported.*balanced, advanced, ultra/u,
+    /model_config\.anthropic\.balanced MUST use one of these executors: copilot, cursor, cursor-cli/u,
   )
 })
 
-test('pipeline aliases preserve external executors and validate their options', () => {
+test('pipeline aliases preserve Copilot mappings and validate their options', () => {
   for (const spec of [
     'copilot:claude-opus-5-5[provider=anthropic,effort=high]',
     'copilot:gpt-5.6-sol[provider=openai,effort=xhigh]',
-    'claude-code:claude-opus-5[session-resume=true]',
-    'openai:gpt-6-astra[effort=high]',
   ]) {
     const file = parsePipelineConfig({
       schema_version: 1,
       active_config: 'default',
-      anthropic: { advanced: spec },
+      model_config: { anthropic: { advanced: spec } },
       defaults: { planner: 'anthropic:advanced' },
       configs: { default: { reviewer: 'anthropic:advanced' } },
     })
@@ -368,14 +408,17 @@ test('pipeline aliases preserve external executors and validate their options', 
     ],
     ['copilot:gpt-5.6-sol[provider=missing]', /provider.*not supported/u],
     ['copilot:gpt-5.6-sol[effort=invalid]', /effort.*not supported/u],
-    ['codex:gpt-5.6-sol', /executor.*codex/u],
+    [
+      'codex:gpt-5.6-sol',
+      /model_config\.oai\.advanced MUST use one of these executors/u,
+    ],
   ] as const) {
     assert.throws(
       () =>
         parsePipelineConfig({
           schema_version: 1,
           active_config: 'default',
-          oai: { advanced: spec },
+          model_config: { oai: { advanced: spec } },
           configs: { default: { coder: 'oai:advanced' } },
         }),
       error,
@@ -383,33 +426,37 @@ test('pipeline aliases preserve external executors and validate their options', 
   }
 })
 
-test('shipped profiles resolve every projected persona to Copilot', () => {
-  const file = parsePipelineConfig(
-    JSON.parse(readFileSync(path.join(process.cwd(), 'config.json'), 'utf8')),
-  )
+test('shipped profiles use environment-independent aliases', () => {
+  const config = JSON.parse(
+    readFileSync(path.join(process.cwd(), 'config.json'), 'utf8'),
+  ) as Record<string, unknown> & {
+    defaults: Record<string, string>
+    configs: Record<string, Record<string, unknown>>
+  }
   const personas = readdirSync(
     path.join(process.cwd(), 'library/cursor/agents'),
   )
     .filter((name) => name.endsWith('.md'))
     .map((name) => name.slice(0, -3))
     .sort()
+  const alias = /^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$/u
 
-  assert.deepEqual(Object.keys(file.defaults).sort(), personas)
+  assert.deepEqual(Object.keys(config.defaults).sort(), personas)
+  assert.equal(config.model_config, undefined)
+  for (const provider of ['anthropic', 'oai', 'open', 'cursor']) {
+    assert.equal(config[provider], undefined)
+  }
 
-  for (const name of Object.keys(file.configs)) {
-    for (const [persona, spec] of Object.entries(
-      resolveConfigPersonas(file, name),
-    )) {
-      const mapping = parsePersonaMapping(spec)
-      assert.equal(mapping.executor, 'copilot', `${name}.${persona}`)
-      assert.ok(
-        ['anthropic', 'openai'].includes(mapping.options.provider ?? ''),
-        `${name}.${persona}`,
-      )
-      assert.deepEqual(Object.keys(mapping.options).sort(), [
-        'effort',
-        'provider',
-      ])
+  for (const mapping of Object.values(config.defaults)) {
+    assert.match(mapping, alias)
+  }
+  for (const [name, entries] of Object.entries(config.configs)) {
+    for (const [persona, mapping] of Object.entries(entries)) {
+      if (persona === 'summary' || persona === 'personas' || mapping === '') {
+        continue
+      }
+      assert.equal(typeof mapping, 'string', `${name}.${persona}`)
+      assert.match(mapping as string, alias, `${name}.${persona}`)
     }
   }
 })
@@ -418,7 +465,7 @@ test('cursor tier aliases stay distinct from explicit executor mappings', () => 
   const file = parsePipelineConfig({
     schema_version: 1,
     active_config: 'default',
-    cursor: { balanced: 'composer-2.5' },
+    model_config: { cursor: { balanced: 'cursor-cli:composer-2.5' } },
     configs: {
       default: {
         alias: 'cursor:balanced',
@@ -431,7 +478,7 @@ test('cursor tier aliases stay distinct from explicit executor mappings', () => 
   })
 
   assert.deepEqual(file.configs.default.personas, {
-    alias: 'composer-2.5',
+    alias: 'cursor-cli:composer-2.5',
     explicitCursor: 'cursor:gpt-5.2',
     explicitOptions: 'gpt-5.6-sol[reasoning=xhigh,fast=false]',
     external: 'claude-code:claude-opus-5[session-resume=true]',
@@ -445,7 +492,12 @@ test('an oai tier alias and an openai executor prefix mean different things', ()
   const file = parsePipelineConfig({
     schema_version: 1,
     active_config: 'default',
-    oai: { balanced: 'gpt-5.5-medium', ultra: 'gpt-5.6-sol-high' },
+    model_config: {
+      oai: {
+        balanced: 'cursor:gpt-5.5-medium',
+        ultra: 'copilot:gpt-5.6-sol-high',
+      },
+    },
     configs: {
       default: {
         tier: 'oai:balanced',
@@ -455,7 +507,7 @@ test('an oai tier alias and an openai executor prefix mean different things', ()
   })
 
   assert.deepEqual(file.configs.default.personas, {
-    tier: 'gpt-5.5-medium',
+    tier: 'cursor:gpt-5.5-medium',
     runtime: 'openai:gpt-6-astra',
   })
   assert.equal(personaExecutorOf(file.configs.default.personas.tier), 'cursor')
@@ -465,7 +517,7 @@ test('an oai tier alias and an openai executor prefix mean different things', ()
   )
 })
 
-test('the config schema admits executor-valued aliases and refuses recursion', () => {
+test('the model schemas constrain aliases and local executors', () => {
   const schema = JSON.parse(
     readFileSync(
       path.join(process.cwd(), 'library/schemas/config.schema.json'),
@@ -473,38 +525,88 @@ test('the config schema admits executor-valued aliases and refuses recursion', (
     ),
   ) as {
     $defs: {
+      executor: { enum: string[] }
+      provider: { enum: string[] }
+      tier: { enum: string[] }
+      modelAlias: { pattern: string }
+    }
+    properties: {
+      defaults: { additionalProperties: { $ref: string } }
+    }
+    not: { anyOf: { required?: string[] }[] }
+  }
+  const overrideSchema = JSON.parse(
+    readFileSync(
+      path.join(process.cwd(), 'library/schemas/config-overrides.schema.json'),
+      'utf8',
+    ),
+  ) as {
+    $defs: {
+      modelConfigValue: { pattern: string }
       modelSpec: { pattern: string }
-      aliasValue: { allOf: { not?: { pattern: string } }[] }
     }
   }
-  const modelSpec = new RegExp(schema.$defs.modelSpec.pattern, 'u')
 
-  assert.equal(modelSpec.test('openai:gpt-6-astra'), true)
+  const localModelSpec = new RegExp(overrideSchema.$defs.modelSpec.pattern, 'u')
+
+  assert.equal(localModelSpec.test('openai:gpt-6-astra'), true)
   assert.equal(
-    modelSpec.test('copilot:claude-opus-5-5[provider=anthropic,effort=high]'),
+    localModelSpec.test(
+      'copilot:claude-opus-5-5[provider=anthropic,effort=high]',
+    ),
     true,
   )
-  assert.equal(modelSpec.test('claude-code:claude-opus-5'), true)
-  assert.equal(modelSpec.test('cursor:auto'), true)
-  assert.equal(modelSpec.test('gpt-5.6-sol'), true)
-  assert.equal(modelSpec.test('codex:gpt-5.6-sol'), false)
-
-  const refusedByAlias = (value: string): boolean =>
-    schema.$defs.aliasValue.allOf.some((clause) =>
-      clause.not === undefined
-        ? false
-        : new RegExp(clause.not.pattern, 'u').test(value),
-    )
-
-  assert.equal(refusedByAlias('openai:gpt-6-astra'), false)
-  assert.equal(refusedByAlias('claude-code:claude-opus-5'), false)
+  assert.equal(localModelSpec.test('claude-code:claude-opus-5'), true)
+  assert.equal(localModelSpec.test('cursor:auto'), true)
+  assert.equal(localModelSpec.test('gpt-5.6-sol'), true)
+  assert.equal(localModelSpec.test('codex:gpt-5.6-sol'), false)
+  assert.deepEqual(schema.$defs.executor.enum, [
+    'copilot',
+    'cursor',
+    'cursor-cli',
+  ])
+  assert.deepEqual(schema.$defs.provider.enum, [
+    'anthropic',
+    'oai',
+    'cursor',
+    'open',
+  ])
+  assert.deepEqual(schema.$defs.tier.enum, ['balanced', 'advanced', 'ultra'])
   assert.equal(
-    refusedByAlias('copilot:claude-opus-5-5[provider=anthropic,effort=high]'),
+    new RegExp(schema.$defs.modelAlias.pattern, 'u').test('oai:advanced'),
+    true,
+  )
+  assert.equal(
+    new RegExp(schema.$defs.modelAlias.pattern, 'u').test(
+      'copilot:gpt-6-astra',
+    ),
     false,
   )
-  assert.equal(refusedByAlias('gpt-5.6-sol'), false)
-  assert.equal(refusedByAlias('anthropic:advanced'), true)
-  assert.equal(refusedByAlias('cursor:balanced'), true)
+  assert.equal(
+    schema.properties.defaults.additionalProperties.$ref,
+    '#/$defs/modelAlias',
+  )
+  assert.ok(
+    schema.not.anyOf.some((rule) => rule.required?.includes('model_config')),
+  )
+  assert.equal(
+    new RegExp(overrideSchema.$defs.modelConfigValue.pattern, 'u').test(
+      'cursor-cli:composer-2.5',
+    ),
+    true,
+  )
+  assert.equal(
+    new RegExp(overrideSchema.$defs.modelConfigValue.pattern, 'u').test(
+      'anthropic:advanced',
+    ),
+    false,
+  )
+  assert.equal(
+    new RegExp(overrideSchema.$defs.modelConfigValue.pattern, 'u').test(
+      'claude-code:claude-opus-5',
+    ),
+    false,
+  )
 })
 
 test('pipeline config accepts legacy nested named-config mappings', () => {
@@ -557,17 +659,24 @@ test('unused aliases do not require account-catalog availability', () => {
     JSON.stringify({
       schema_version: 1,
       active_config: 'default',
-      anthropic: { balanced: 'claude-sonnet-5' },
-      open: { balanced: 'glm-5.2' },
       configs: { default: { coder: 'anthropic:balanced' } },
+    }),
+  )
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    JSON.stringify({
+      model_config: {
+        anthropic: { balanced: 'cursor:claude-sonnet-5' },
+        open: { balanced: 'cursor:glm-5.2' },
+      },
     }),
   )
 
   const loaded = loadPipelineConfig(root)
   const snapshot = makePipelineConfigSnapshot(loaded)
 
-  assert.equal(loaded.config.personas.coder, 'claude-sonnet-5')
-  assert.equal(snapshot.personas.coder, 'claude-sonnet-5')
+  assert.equal(loaded.config.personas.coder, 'cursor:claude-sonnet-5')
+  assert.equal(snapshot.personas.coder, 'cursor:claude-sonnet-5')
 })
 
 test('loadPipelineConfig skipCatalog projects a spec the catalog rejects', () => {
@@ -597,7 +706,15 @@ test('loadPipelineConfig skipCatalog projects a spec the catalog rejects', () =>
     JSON.stringify({
       schema_version: 1,
       active_config: 'default',
-      configs: { default: { coder: 'retired-model[thinking=true]' } },
+      configs: { default: { coder: 'anthropic:balanced' } },
+    }),
+  )
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    JSON.stringify({
+      model_config: {
+        anthropic: { balanced: 'cursor:retired-model[thinking=true]' },
+      },
     }),
   )
 
@@ -609,5 +726,8 @@ test('loadPipelineConfig skipCatalog projects a spec the catalog rejects', () =>
   // The skipped catalog echoes the spec verbatim, options included.
   const loaded = loadPipelineConfig(root, undefined, { skipCatalog: true })
 
-  assert.equal(loaded.config.personas.coder, 'retired-model[thinking=true]')
+  assert.equal(
+    loaded.config.personas.coder,
+    'cursor:retired-model[thinking=true]',
+  )
 })

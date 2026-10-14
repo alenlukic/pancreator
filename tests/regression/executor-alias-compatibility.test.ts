@@ -13,6 +13,10 @@ test('moving a persona to openai prunes its projected cursor subagent', () => {
     defaults: Record<string, string>
     configs?: Record<string, Record<string, unknown>>
   }
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as {
+    defaults?: Record<string, string>
+  }
 
   syncCursorProjection(root, { write: true })
 
@@ -20,7 +24,10 @@ test('moving a persona to openai prunes its projected cursor subagent', () => {
 
   assert.ok(existsSync(projected), 'a cursor persona owns a projected agent')
 
-  config.defaults.planner = 'openai:gpt-6-astra[effort=high]'
+  overrides.defaults = {
+    ...overrides.defaults,
+    planner: 'openai:gpt-6-astra[effort=high]',
+  }
 
   for (const named of Object.values(config.configs ?? {})) {
     delete named.planner
@@ -31,6 +38,7 @@ test('moving a persona to openai prunes its projected cursor subagent', () => {
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
   syncCursorProjection(root, { write: true })
 
   // An externally executed persona has no Cursor subagent to launch, so a
@@ -39,4 +47,37 @@ test('moving a persona to openai prunes its projected cursor subagent', () => {
 
   // The neighbouring cursor personas keep theirs.
   assert.ok(existsSync(path.join(root, '.cursor/agents/pan-coder.md')))
+})
+
+test('moving a persona to cursor-cli prunes its projected cursor subagent', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    configs?: Record<string, Record<string, unknown>>
+  }
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as {
+    defaults?: Record<string, string>
+  }
+
+  syncCursorProjection(root, { write: true })
+
+  const projected = path.join(root, '.cursor/agents/pan-planner.md')
+
+  assert.ok(existsSync(projected), 'a cursor persona owns a projected agent')
+
+  for (const named of Object.values(config.configs ?? {})) {
+    delete named.planner
+  }
+
+  overrides.defaults = {
+    ...overrides.defaults,
+    planner: 'cursor-cli:composer-2.5',
+  }
+
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
+  syncCursorProjection(root, { write: true })
+
+  assert.equal(existsSync(projected), false)
 })

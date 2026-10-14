@@ -53,6 +53,7 @@ import {
 import { claudeCodeVersionPreflight } from '../executors/claude-code.js'
 import { copilotCliPreflight } from '../executors/copilot-cli.js'
 import { openAiExecutorPreflight } from '../executors/openai-auth.js'
+import { ensureCursorReady } from './executors.js'
 import {
   applyOperatorInvolvement,
   loadOperatorInvolvementFile,
@@ -350,7 +351,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   invariant(
     supervisor.executor === 'cursor' || copilotSupervisor,
-    `Persona 'orchestrator' MUST use the cursor executor or the copilot executor with the vscode host enabled; ` +
+    `Persona 'orchestrator' MUST use the active in-host executor: the cursor executor or the copilot executor with the vscode host enabled; ` +
       `'${supervisor.raw}' routes it to '${supervisor.executor}'.`,
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
@@ -389,11 +390,16 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
         ? claudeCodeVersionPreflight()
         : executor === 'copilot'
           ? copilotCliPreflight()
-          : openAiExecutorPreflight(root)
+          : executor === 'cursor-cli'
+            ? ensureCursorReady(root)
+            : openAiExecutorPreflight(root)
+
+    const preflightError =
+      'error' in preflight ? preflight.error : 'unknown preflight failure'
 
     invariant(
       preflight.ok,
-      `Executor preflight failed for '${executor}': ${preflight.error}`,
+      `Executor preflight failed for '${executor}': ${preflightError}`,
       {
         code: 'EXECUTOR_PREFLIGHT_FAILED',
         details: { executor, ...preflight },

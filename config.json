@@ -30,48 +30,38 @@
     "max_load_average_per_cpu": 1,
     "minimum_qualified_samples": 5
   },
-  "active_config": "default",
-  "anthropic": {
-    "balanced": "copilot:claude-sonnet-5-5[provider=anthropic,effort=high]",
-    "advanced": "copilot:claude-opus-5-5[provider=anthropic,effort=high]",
-    "ultra": "copilot:claude-opus-5[provider=anthropic,effort=high]"
-  },
-  "oai": {
-    "balanced": "copilot:gpt-6-luna[provider=openai,effort=high]",
-    "advanced": "copilot:gpt-6.1-sol[provider=openai,effort=high]",
-    "ultra": "copilot:gpt-6-astra[provider=openai,effort=medium]"
-  },
+  "active_config": "balanced",
   "defaults": {
     "orchestrator": "oai:advanced",
     "meta-orchestrator": "anthropic:ultra",
     "planner": "anthropic:ultra",
-    "coder": "copilot:gpt-6.1-sol[provider=openai,effort=medium]",
+    "coder": "anthropic:advanced",
     "metacritic": "anthropic:ultra",
-    "reviewer": "oai:advanced",
-    "verifier": "copilot:gpt-6.1-sol[provider=openai,effort=medium]",
-    "remediator": "oai:advanced",
-    "remediator-severe": "copilot:gpt-6-astra[provider=openai,effort=high]",
-    "shepherd-reviewer": "oai:advanced",
-    "qa-tester": "copilot:gpt-6.1-sol[provider=openai,effort=medium]",
-    "designer": "oai:ultra",
-    "design-reviewer": "oai:ultra",
-    "design-qa": "oai:advanced",
-    "release-steward": "oai:balanced",
-    "librarian": "oai:advanced",
-    "decomposer": "oai:advanced",
-    "spotfixer": "oai:advanced",
-    "harness-technician": "oai:advanced",
-    "harness-workflow-qa": "oai:ultra",
-    "debloater": "oai:advanced"
+    "reviewer": "anthropic:advanced",
+    "verifier": "anthropic:advanced",
+    "remediator": "anthropic:advanced",
+    "remediator-severe": "anthropic:ultra",
+    "shepherd-reviewer": "anthropic:advanced",
+    "qa-tester": "open:advanced",
+    "designer": "anthropic:ultra",
+    "design-reviewer": "oai:advanced",
+    "design-qa": "anthropic:advanced",
+    "release-steward": "cursor:advanced",
+    "librarian": "anthropic:advanced",
+    "decomposer": "anthropic:advanced",
+    "spotfixer": "anthropic:advanced",
+    "harness-technician": "anthropic:advanced",
+    "harness-workflow-qa": "anthropic:ultra",
+    "debloater": "anthropic:advanced"
   },
   "$operator": {
-    "summary": "Named Copilot model configurations for every canonical persona in VS Code. The supervisor stays in the operator session.",
-    "note": "Aliases include the executor, provider, and reasoning effort. Put per-checkout preferences in config_overrides.json, then run ./bin/pan models --sync. New runs snapshot the resolved mapping; existing runs keep their snapshot. Cursor remains available through explicit cursor: model mappings."
+    "summary": "Environment-independent provider:tier aliases with local executor choices for supported hosts.",
+    "note": "Keep executor-specific model strings in the untracked config_overrides.json under model_config or a local persona override. After changing either file, run ./bin/pan models --sync. New runs snapshot the resolved mapping; existing runs keep their snapshot. VS Code workers may use Copilot while the supervisor stays in the operator session. Use cursor: or cursor-cli: mappings when those executors are needed."
   },
   "configs": {
     "default": {},
     "balanced": {
-      "summary": "Copilot with focused coding, strong review, and frontier planning.",
+      "summary": "Focused coding, strong review, and frontier planning.",
       "coder": "anthropic:balanced",
       "remediator": "anthropic:balanced",
       "reviewer": "anthropic:advanced",
@@ -79,15 +69,15 @@
       "qa-tester": "oai:balanced"
     },
     "advanced": {
-      "summary": "Copilot with stronger coding and QA for complex work.",
-      "coder": "copilot:claude-opus-5-5[provider=anthropic,effort=medium]",
+      "summary": "Stronger coding and QA for complex work.",
+      "coder": "anthropic:advanced",
       "remediator": "anthropic:advanced",
       "reviewer": "oai:advanced",
       "verifier": "oai:advanced",
       "qa-tester": "oai:advanced"
     },
     "ultra": {
-      "summary": "Copilot with maximum supported reasoning for demanding work.",
+      "summary": "Maximum reasoning for demanding work.",
       "planner": "anthropic:ultra",
       "coder": "oai:ultra",
       "remediator": "anthropic:ultra",
@@ -98,7 +88,12 @@
       "qa-tester": "oai:ultra"
     },
     "auto": {
-      "summary": "Inherit the default Copilot persona mapping."
+      "summary": "Cursor-managed routing except for the bounded coding workhorse.",
+      "planner": "",
+      "decomposer": "",
+      "reviewer": "",
+      "verifier": "",
+      "qa-tester": ""
     },
     "copilot": {
       "summary": "Compatibility name for the default Copilot persona mapping."

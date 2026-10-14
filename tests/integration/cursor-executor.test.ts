@@ -36,6 +36,7 @@ import {
   writeFixtureCursorCatalog,
   writeJson,
 } from '../helpers.js'
+import { pinFixturePersonaModel } from '../fixture-template.js'
 import { checkpoint } from './delivery-helpers.js'
 
 /** Flags the installed CLI declares. A case may drop one to fail preflight. */
@@ -186,18 +187,26 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
 })
 
 test('headless delegation dispatches Cursor and needs no watch record', () => {
-  const run = checkpoint('delivery@created')
+  const run = checkpoint('delivery@created', {
+    key: 'cursor-model-verification',
+    fixture: (root) => {
+      // Model verification uses a synthetic catalog so account-local parameter
+      // definitions cannot change the fixture's configured variant.
+      rmSync(path.join(root, LOCAL_CATALOG_RELATIVE_PATH), { force: true })
+      pinFixturePersonaModel(
+        root,
+        'coder',
+        'cursor:claude-sonnet-5[effort=high]',
+      )
+      writeFixtureCursorCatalog(root)
+    },
+  })
   const root = run.root
   const snapshot = loadPipelineConfigSnapshot(
     root,
     run.state.pipeline_config?.path ?? '',
   )
   const mapping = resolvePersonaMapping(snapshot, 'coder')
-
-  // The catalog is operator-local and gitignored, so a fixture that wants the
-  // drift comparison exercised has to bring one. Without this the prediction
-  // is null on every checkout and the comparison never runs.
-  writeFixtureCursorCatalog(root)
 
   const expected = expectedCursorModelForSpec(root, mapping.model_spec)
 

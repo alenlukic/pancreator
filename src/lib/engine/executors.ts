@@ -182,11 +182,11 @@ export function ensureCursorReady(
 }
 
 /**
- * Runs the readiness preflight for one persona executor (Cursor, Claude Code,
- * OpenAI, or Copilot) and returns an error message instead of throwing when it
- * fails. The Claude Code, OpenAI, and Copilot checks cache a successful result
- * on the run state, which the caller persists. The Copilot check also resolves
- * the credential of the provider `mapping` names. Throws
+ * Runs the readiness preflight for one persona executor (Cursor, Cursor CLI,
+ * Claude Code, OpenAI, or Copilot) and returns an error message instead of
+ * throwing when it fails. The Claude Code, OpenAI, and Copilot checks cache a
+ * successful result on the run state, which the caller persists. The Copilot
+ * check also resolves the credential of the provider `mapping` names. Throws
  * `EXECUTOR_UNSUPPORTED` for an unknown executor kind.
  */
 export function ensureExecutorReady(
@@ -197,6 +197,7 @@ export function ensureExecutorReady(
 ): { ok: true } | { ok: false; error: string } {
   switch (executor) {
     case 'cursor':
+    case 'cursor-cli':
       return ensureCursorReady(root)
     case 'claude-code':
       return ensureClaudeCodeReady(state)
@@ -218,6 +219,8 @@ export function ensureExecutorReady(
 const EXECUTOR_PREFLIGHT_REMEDY: Record<PersonaExecutorKind, string> = {
   cursor:
     'Install cursor-agent and provide CURSOR_API_KEY in the process environment or repository-local .env file',
+  'cursor-cli':
+    'Install cursor-agent and set CURSOR_API_KEY in the repository-local .env file',
   'claude-code': 'Install and authenticate the Claude Code CLI on this machine',
   openai: 'Export OPENAI_API_KEY, or add it to the repository-local .env file',
   copilot:
