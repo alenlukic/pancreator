@@ -2590,6 +2590,41 @@ Run that command to observe a wrapped agent command. `--shell` also takes the re
 - `heartbeat.json`: rewritten every beat (30 seconds by default, never more than 60). A file younger than two cadences means the wrapper is alive. `log_bytes` and `last_output_at` grow with output; `recent_lines` holds the last five non-empty output lines, which is the tail to read before any interruption.
 - `output.log`: the full redacted output.
 
+The `-c '<body>'` form writes `script.sh` inside that record directory and
+executes `bash <file>`, so the command's argument vector contains the path
+instead of the body. There is no 900-byte body limit. `record.json` adds
+`script_path` and `script_descriptor` (`interpreter`, `lines`, and UTF-8
+`bytes`); its `command` contains the interpreter and path, never the body.
+The start output also prints this descriptor. The script is private (mode 0600) and retained with the record. When the body contains a known secret,
+the stored script contains redaction tokens and delegates to an inherited
+anonymous pipe that carries the original body. This preserves literal
+execution without writing the secret to disk or passing the body in argv.
+
+Terminal output collapses whitespace and limits each line to
+`PAN_RUN_LINE_WIDTH` characters (default 240, minimum 80). A cut line ends
+with `[truncated; original=<n>]`, where `<n>` is its length after redaction
+and before whitespace normalization. The full redacted text remains in
+`output.log`. The same rendering applies to failure replay and heartbeat
+output. Heartbeats in quiet mode show only new output since the preceding
+beat, up to `PAN_RUN_TAIL_LINES` non-empty lines (default 5, range 1–20).
+Older lines beyond that budget stay in the log. Streaming mode prints no
+heartbeat tail because those lines already reached the terminal. An idle
+beat prints one status line without repeating old output. These display
+rules do not change the existing heartbeat record fields or their meanings.
+The width also bounds status and descriptor lines; increase it when you need
+an unabridged watch command. Heartbeat lines that a quiet filter already
+forwarded are excluded from the next beat's display.
+
+Streaming also exposes unterminated prompts during the 500 ms flush and
+treats carriage returns as display boundaries. A partial fragment is printed
+once; later output continues in a new display fragment. Its truncation marker
+counts that fragment's redacted length. Display storage retains only a prefix
+bounded by the configured width and length counters. Quiet heartbeats scan
+new output in chunks of at most 64 KiB and retain only the configured line
+budget. Redaction can retain a secret-sized suffix across chunks. The complete
+redacted bytes, including carriage returns, remain in `output.log`; heartbeat
+byte offsets and `recent_lines` retain their existing meanings.
+
 Silence in `output.log` is not a hang while `heartbeat.json` stays fresh: a long test or build is the ordinary cause. `pan watch --process` has no stall state; `timed_out` is its bound and prints a re-arm command. A heartbeat older than two cadences with `ended_at` null means the wrapper died (a crash or a host suspend). `DELEGATE-001` states when a supervisor may interrupt a wrapped command and what evidence it records.
 
 ### Shell hook
@@ -2680,4 +2715,4 @@ Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run
 
 ### Wrapper start, stall release, and test heartbeats
 
-`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper refuses a `-c` string at or above 900 UTF-8 bytes with `ARGV_ELEMENT_TOO_LARGE`. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.
+`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper spools `-c` bodies to the record's script file, including bodies above 900 UTF-8 bytes. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.

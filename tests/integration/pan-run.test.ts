@@ -17,75 +17,21 @@ import test from 'node:test'
 
 import { isRecord } from '../../src/lib/io.js'
 import { createTestTempDirectory } from '../temp.js'
+import {
+  findLatestLogDir,
+  PAN_RUN,
+  PROCESS_TIMEOUT_MS,
+  readJsonFile,
+  readRecord,
+  runEnv,
+  runPanRun,
+} from './pan-run-fixture.js'
 
-const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
-const PROCESS_TIMEOUT_MS = 30_000
 const BANNER =
   /^\[pan-run\] \S+ started pid=(\d+); watch with \.\/bin\/pan watch --shell (runtime\/logs\/shell\/\S+)$/mu
 // Printed only when the start helper wrote no record.json.
 const FALLBACK_BANNER =
   /^\[pan-run\] \S+ started pid=(\d+); watch with \.\/bin\/pan watch --process (\d+) --label \S+ --output (\S+) --exit-record (\S+)$/mu
-
-function runEnv(
-  root: string,
-  extra: NodeJS.ProcessEnv = {},
-): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env }
-
-  // Surrounding diagnostics would change the captured streams.
-  delete env.PAN_VERBOSE
-  delete env.PAN_PROGRESS_FD
-  delete env.PAN_RUN_HEARTBEAT_SECONDS
-
-  return { ...env, ...extra, PANCREATOR_ROOT: root }
-}
-
-function runPanRun(
-  args: string[],
-  options: { root: string; env?: NodeJS.ProcessEnv; input?: string },
-) {
-  return spawnSync(PAN_RUN, args, {
-    encoding: 'utf8',
-    env: runEnv(options.root, options.env),
-    input: options.input,
-    timeout: PROCESS_TIMEOUT_MS,
-    maxBuffer: 4 * 1024 * 1024,
-  })
-}
-
-/** Read and parse a JSON file, returning null on any error. */
-function readJsonFile(filePath: string): unknown {
-  try {
-    return JSON.parse(readFileSync(filePath, 'utf8'))
-  } catch {
-    return null
-  }
-}
-
-function findLatestLogDir(root: string): string | null {
-  const shellLogsDir = path.join(root, 'runtime', 'logs', 'shell')
-
-  if (!existsSync(shellLogsDir)) return null
-
-  const dirs = readdirSync(shellLogsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort()
-
-  const last = dirs.at(-1)
-
-  return last === undefined ? null : path.join(shellLogsDir, last)
-}
-
-function readRecord(root: string): Record<string, unknown> {
-  const record = readJsonFile(
-    path.join(findLatestLogDir(root) as string, 'record.json'),
-  )
-
-  assert.ok(isRecord(record), 'record.json must be a JSON object')
-
-  return record
-}
 
 function processAlive(pid: number): boolean {
   try {
@@ -296,7 +242,7 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
     },
   )
 
-  await t.test('-c form runs through bash -c', () => {
+  await t.test('-c form runs through a spooled Bash file', () => {
     const root = createTestTempDirectory('pan-run-c-form-')
     const result = runPanRun(['-c', 'echo "shell string" | tr a-z A-Z'], {
       root,
@@ -304,11 +250,17 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
 
     assert.equal(result.status, 0)
     assert.equal(result.stdout, 'SHELL STRING\n')
-    assert.deepEqual(readRecord(root).command, [
+    const record = readRecord(root)
+
+    assert.equal(typeof record.script_path, 'string')
+    assert.deepEqual(record.command, [
       'bash',
-      '-c',
-      'echo "shell string" | tr a-z A-Z',
+      path.join(root, String(record.script_path)),
     ])
+    assert.equal(
+      readFileSync(path.join(root, String(record.script_path)), 'utf8'),
+      'echo "shell string" | tr a-z A-Z',
+    )
   })
 
   await t.test('exit code is passed through', () => {
@@ -485,7 +437,7 @@ test('AC-14: heartbeat updates heartbeat.json and clamps cadence above 60', asyn
       const beats = result.stderr
         .split('\n')
         .filter((line) =>
-          /^\[pan-run\] bash running \d+s pid=\d+ (\+\d+B|no new output for \d+s \(last: start\))$/u.test(
+          /^\[pan-run\] bash running \d+s pid=\d+ (\+\d+B|no new output for \d+s)$/u.test(
             line,
           ),
         )
@@ -494,10 +446,8 @@ test('AC-14: heartbeat updates heartbeat.json and clamps cadence above 60', asyn
         beats.length >= 2,
         `two heartbeat lines expected: ${result.stderr}`,
       )
-      assert.ok(
-        result.stderr.includes('\n  start\n'),
-        `the first beat must print the indented tail: ${result.stderr}`,
-      )
+      assert.ok(!result.stderr.includes('\n  start\n'))
+      assert.equal(result.stdout, 'start\n')
 
       const hb = readJsonFile(
         path.join(findLatestLogDir(root)!, 'heartbeat.json'),
@@ -835,6 +785,7 @@ test('AC-004: a start helper killed twice still prints the observe line and the 
       ...killingNodeShim(root, false),
       CURSOR_CONVERSATION_ID: 'agent-fallback',
       PAN_RUN_RECORD: parentRel,
+      PAN_RUN_LINE_WIDTH: '512',
     },
   })
 
@@ -947,25 +898,6 @@ test('AC-08: SIGTERM and SIGINT stop a grandchild inside a nested shell', async 
   }
 })
 
-test('AC-09: -c refuses oversized strings before running', () => {
-  const root = createTestTempDirectory('pan-run-argv-limit-')
-  const big = 'x'.repeat(900)
-  const almost = `: ${'x'.repeat(897)}`
-  const utf8 = '€'.repeat(300)
-
-  const refused = runPanRun(['-c', big], { root })
-  assert.equal(refused.status, 2)
-  assert.match(refused.stderr, /ARGV_ELEMENT_TOO_LARGE/u)
-  assert.match(refused.stderr, /900/u)
-  assert.equal(findLatestLogDir(root), null)
-
-  const refusedUtf8 = runPanRun(['-c', utf8], { root })
-  assert.equal(refusedUtf8.status, 2)
-
-  const allowed = runPanRun(['-c', almost], { root })
-  assert.equal(allowed.status, 0)
-})
-
 test('AC-004: a start helper killed once is retried, and the record keeps the first failure', () => {
   const root = createTestTempDirectory('pan-run-start-retried-')
   const result = runPanRun(['--label', 'retried', '--', 'echo', 'still runs'], {
@@ -994,4 +926,35 @@ test('AC-004: a start helper killed once is retried, and the record keeps the fi
     ),
     'the retry writes the heartbeat file the first attempt did not',
   )
+})
+
+test('AC-11: failure replay and helper failure messages obey the configured width', () => {
+  const root = createTestTempDirectory('pan-run-failure-width-')
+  const result = runPanRun(
+    [
+      '--quiet',
+      '--label',
+      'failure-width',
+      '-c',
+      `printf '  ${'x'.repeat(500)}\\n'; exit 7`,
+    ],
+    {
+      root,
+      env: {
+        ...killingNodeShim(root, false),
+        PAN_RUN_LINE_WIDTH: '80',
+        PAN_PROGRESS_FD: '2',
+      },
+    },
+  )
+
+  assert.equal(result.status, 7, result.stderr)
+  assert.match(result.stdout, /\[truncated; original=502\]/u)
+  const lines = `${result.stdout}${result.stderr}`.trimEnd().split('\n')
+
+  assert.ok(
+    lines.every((line) => line.length <= 80),
+    lines.join('\n'),
+  )
+  assert.equal(readRecord(root).exit_code, 7)
 })
