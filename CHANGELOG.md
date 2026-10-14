@@ -1,5 +1,26 @@
 # Changelog
 
+## [8.16.0] - 2026-10-14
+
+This release makes wrapper and watch output easier to read. It keeps durable
+records and watch behavior unchanged.
+
+### Changed
+
+- Run `bin/pan-run -c` scripts from a record-local file, then store a redacted
+  descriptor instead of the script body ([d57ff9c2](https://github.com/alenlukic/pancreator/commit/d57ff9c2)).
+- Show only new wrapper output at each heartbeat, with bounded readable lines
+  and explicit original-length markers ([d57ff9c2](https://github.com/alenlukic/pancreator/commit/d57ff9c2)).
+- Show the watch context once, then show new worker text, ordered tool names,
+  and wrapper changes at each wake ([322ad1b1](https://github.com/alenlukic/pancreator/commit/322ad1b1)).
+
+### Fixed
+
+- Show partial wrapper output before input and bound large output rendering
+  ([d57ff9c2](https://github.com/alenlukic/pancreator/commit/d57ff9c2)).
+- Clear stale characters after a shorter watch progress update
+  ([322ad1b1](https://github.com/alenlukic/pancreator/commit/322ad1b1)).
+
 ## [8.15.0] - 2026-10-08
 
 This release makes the spend canvases easier to read. Both canvases show readable model names, and the trends canvas reports figures for the whole window rather than its last days.
