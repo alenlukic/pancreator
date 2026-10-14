@@ -1,5 +1,13 @@
 # Changelog
 
+## [8.17.2] - 2026-10-14
+
+### Fixed
+
+- Restore `active_config: default` and remove the executor named configuration ([config.json](config.json)).
+- Preserve an existing `active_config` unless the operator explicitly directs a change ([AGENTS.md](AGENTS.md)).
+- Select executors through local tier mappings and keep configuration names independent of executors ([docs/operator-guide.md](docs/operator-guide.md)).
+
 ## [8.17.1] - 2026-10-14
 
 ### Fixed
