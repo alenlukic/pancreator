@@ -472,6 +472,14 @@
     {
       "version": "8.13.4",
       "commit": "309f2f78d955fce61e29b600311599a177ff0718"
+    },
+    {
+      "version": "8.14.0",
+      "commit": "fc2629ad9141b7aebb40675e9ec7987c92df0e22"
+    },
+    {
+      "version": "8.15.0",
+      "commit": "75c310dfe1e5d71450a0c40aba5930a1eb6ff692"
     }
   ]
 }

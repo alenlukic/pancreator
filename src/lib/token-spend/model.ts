@@ -48,6 +48,29 @@ export interface DailySpendPoint extends SpendMetrics {
   date: string
 }
 
+export type SpendTrendDimension =
+  | 'model'
+  | 'provider'
+  | 'fast_mode'
+  | 'workflow_role'
+  | 'stage'
+  | 'command'
+  | 'persona'
+  | 'governance'
+
+/**
+ * Daily spend of one dimension. `keys` holds the costliest keys of the window
+ * and at most one trailing `Other`; each row's arrays align with `keys`.
+ */
+export interface SpendTrendSeries {
+  keys: string[]
+  rows: Array<{ date: string; cost_cents: number[]; total_tokens: number[] }>
+}
+
+export interface SpendTrends {
+  dimensions: Record<SpendTrendDimension, SpendTrendSeries>
+}
+
 export interface TokenSpendReport {
   schema_version: 2
   generated_at: string
@@ -93,11 +116,15 @@ export interface TokenSpendReport {
     stage: SpendCoverage
     remediation: SpendCoverage
   }
+  /** Present only when the report was generated with `trends`. */
+  trends?: SpendTrends
   warnings: string[]
 }
 
 export interface GenerateTokenSpendReportOptions {
   days?: number
+  /** Add the per-day dimension series the trends canvas reads. */
+  trends?: boolean
   apiKey?: string
   sessionToken?: string
   now?: Date

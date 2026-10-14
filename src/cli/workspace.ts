@@ -32,7 +32,15 @@ import { generateTokenSpendReport } from '../lib/token-spend/report.js'
 import { reportMultiInstanceSpend } from '../lib/spend-sync/report.js'
 import { syncSpend } from '../lib/spend-sync/sync.js'
 import { runDailyQuality } from '../lib/daily-quality.js'
-import { writeSpendCanvas } from '../lib/spend-canvas.js'
+import {
+  clampSpendBrackets,
+  parseSpendBrackets,
+  type RequestedSpendBrackets,
+} from '../lib/spend-brackets.js'
+import {
+  type RenderableSpendReport,
+  writeSpendCanvas,
+} from '../lib/spend-canvas.js'
 import { writeRedlineRecord } from '../lib/watch/redline.js'
 import {
   createWorktree,
@@ -426,16 +434,13 @@ export async function spendCommand({ root, args }: CliContext): Promise<void> {
     )
 
     const canvas = option(args, '--canvas')
+    const choices = spendCanvasChoices(args, canvas)
     const report = await reportMultiInstanceSpend(root, {
       ...(days === null ? {} : { days }),
+      ...(choices.trends ? { trends: true } : {}),
     })
 
-    print(
-      canvas === null
-        ? { status: 'reported', report }
-        : writeSpendCanvas(root, canvas, report),
-      hasFlag(args, '--json'),
-    )
+    print(spendOutput(root, canvas, report, choices), hasFlag(args, '--json'))
     return
   }
 
@@ -449,17 +454,73 @@ export async function spendCommand({ root, args }: CliContext): Promise<void> {
 
   const days = integerOption(args, '--days')
   const canvas = option(args, '--canvas')
+  const choices = spendCanvasChoices(args, canvas)
   const report = await generateTokenSpendReport(root, {
     ...(days === null ? {} : { days }),
+    ...(choices.trends ? { trends: true } : {}),
   })
 
-  print(
-    canvas === null
-      ? { status: 'reported', report }
-      : writeSpendCanvas(root, canvas, report),
-    true,
-  )
+  print(spendOutput(root, canvas, report, choices), true)
   return
+}
+
+interface SpendCanvasChoices {
+  brackets: RequestedSpendBrackets | null
+  trends: boolean
+}
+
+/** Parse `--brackets`, `--brackets-file`, and `--trends` before any fetch. */
+function spendCanvasChoices(
+  args: string[],
+  canvas: string | null,
+): SpendCanvasChoices {
+  const labels = option(args, '--brackets')
+  const file = option(args, '--brackets-file')
+  const trends = hasFlag(args, '--trends')
+
+  invariant(
+    !trends || canvas !== null,
+    '--trends MUST be used with --canvas; it writes a second canvas beside the report canvas.',
+    { code: 'INVALID_ARGUMENT' },
+  )
+
+  return {
+    brackets:
+      labels === null && file === null
+        ? null
+        : parseSpendBrackets({
+            labels,
+            file: file === null ? undefined : readJson(path.resolve(file)),
+          }),
+    trends,
+  }
+}
+
+function spendOutput(
+  root: string,
+  canvas: string | null,
+  report: RenderableSpendReport,
+  choices: SpendCanvasChoices,
+): unknown {
+  const brackets =
+    choices.brackets === null
+      ? undefined
+      : clampSpendBrackets(choices.brackets, report.period)
+
+  if (canvas !== null) {
+    return writeSpendCanvas(root, canvas, report, {
+      ...(brackets === undefined ? {} : { brackets }),
+      trends: choices.trends,
+    })
+  }
+
+  return brackets === undefined
+    ? { status: 'reported', report }
+    : {
+        status: 'reported',
+        report: { ...report, brackets: brackets.brackets },
+        skipped_brackets: brackets.skipped,
+      }
 }
 
 /** `pan cleanup`. */

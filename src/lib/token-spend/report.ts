@@ -12,10 +12,12 @@ import {
 } from '../cursor-usage.js'
 import { invariant } from '../errors.js'
 import { attributionRoots, readTranscripts } from './transcripts.js'
+import { spendTrends } from './trends.js'
 import {
   attributionForEvent,
   copilotSessionCount,
   readSupervisorCommands,
+  resolvedFastMode,
   resolveTranscriptWorkflow,
 } from './attribution.js'
 import {
@@ -259,7 +261,11 @@ export function aggregateSpendRecords(
   const syntheticAttributions: EventAttribution[] = []
 
   for (const record of records) {
-    const { metrics, attribution } = record
+    const { metrics } = record
+    const attribution = {
+      ...record.attribution,
+      fast_mode: resolvedFastMode(record.model, record.attribution.fast_mode),
+    }
     const date = new Date(record.timestamp_ms).toISOString().slice(0, 10)
 
     addMetrics(totals, metrics)
@@ -410,7 +416,7 @@ export function aggregateSpendRecords(
     },
     warnings: [
       'Cursor does not meter tokens per tool. Tool token totals overlap when a conversation used more than one tool.',
-      'Cursor usage events do not expose Fast mode. Fast attribution uses exact fast=true or fast=false model declarations and leaves all other events unknown.',
+      'Cursor usage events do not expose Fast mode. An event counts as Fast when its model name ends in -fast or its declared model sets fast=true; every other event counts as not Fast.',
     ],
   }
 }
@@ -428,6 +434,8 @@ export async function generateTokenSpendReport(
     collected.records,
     collected.tool_calls,
   )
+  const trends =
+    options.trends === true ? { trends: spendTrends(collected.records) } : {}
 
   const endDateMs = now.getTime()
   const startDateMs = endDateMs - days * DAY_MS
@@ -450,6 +458,7 @@ export async function generateTokenSpendReport(
     daily: aggregated.daily,
     slices: aggregated.slices,
     coverage: aggregated.coverage,
+    ...trends,
     warnings: [
       ...collected.warnings,
       ...aggregated.warnings,

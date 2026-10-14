@@ -13,7 +13,11 @@ import {
   Stat,
   Table,
   Text,
+  useHostTheme,
+  useState,
 } from 'cursor/canvas'
+
+// __SPEND_CANVAS_SHARED__
 
 interface Metrics {
   events: number
@@ -59,6 +63,7 @@ interface SpendReport {
   daily: Array<Metrics & { date: string }>
   slices: Record<string, SliceRow[]>
   coverage: Record<string, Coverage>
+  brackets?: Bracket[]
   warnings: string[]
 }
 
@@ -143,6 +148,33 @@ const dayLabel = (date: string) =>
 const busiestDay = [...REPORT.daily].sort(
   (a, b) => b.cost_cents - a.cost_cents,
 )[0]
+const brackets = REPORT.brackets ?? []
+const dailyByDate = new Map(REPORT.daily.map((point) => [point.date, point]))
+// Every UTC day of the window, with days that carry no usage at zero, so the
+// bars of quiet days keep their place under the brackets.
+const days = utcDays(REPORT.period.start, REPORT.period.end).map(
+  (date) =>
+    dailyByDate.get(date) ?? {
+      date,
+      events: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_write_tokens: 0,
+      cache_read_tokens: 0,
+      total_tokens: 0,
+      cost_cents: 0,
+    },
+)
+// Days above $1,000 read best on $500 gridlines; smaller reports pick their own.
+const dailyTick =
+  Math.max(...days.map((point) => point.cost_cents), 0) >= 100_000
+    ? 500
+    : undefined
+const periods = bracketStats(
+  brackets,
+  days.map((point) => point.date),
+  days.map((point) => point.cost_cents),
+)
 
 const commands = byCost(REPORT.slices.commands)
 const personaModels = byCost(REPORT.slices.persona_models)
@@ -157,7 +189,10 @@ const roles = byCost(REPORT.slices.workflow_role).map((row) =>
 )
 const supervisor = roles.find((row) => row.key === 'supervisor')
 const stageWorker = roles.find((row) => row.key === 'stage worker')
-const fast = byCost(REPORT.slices.fast_mode)
+const fast = byCost(REPORT.slices.fast_mode).map((row) => ({
+  ...row,
+  key: row.key === 'fast' ? 'Fast' : 'Not Fast',
+}))
 const governance = byCost(REPORT.slices.governance)
 const remediation = byCost(REPORT.slices.remediation)
 const coverage = Object.entries(REPORT.coverage)
@@ -287,7 +322,7 @@ const cards = [
       'Fast mode',
       fast,
       perEvent,
-      'Fast mode is known only from an exact fast=true or fast=false model declaration. Max mode is not Fast mode.',
+      'An event is Fast when its model name ends in -fast or its declared model sets fast=true; every other event is not Fast. Max mode is not Fast mode.',
     ),
   governance.length > 0 &&
     summaryCard(
@@ -383,18 +418,32 @@ export default function SpendReportCanvas() {
       )}
 
       {REPORT.daily.length > 0 && (
-        <Grid columns={2} gap={24}>
+        <Grid columns={brackets.length > 0 ? 1 : 2} gap={24}>
           <Stack gap={10}>
             <H2>Daily charged cost</H2>
-            <BarChart
-              categories={REPORT.daily.map((d) => dayLabel(d.date))}
-              series={costSeries(REPORT.daily)}
-              stacked={stackedCost}
-              valuePrefix="$"
-              height={240}
-            />
+            {brackets.length > 0 ? (
+              <BracketedDailyChart
+                dates={days.map((d) => d.date)}
+                categories={days.map((d) => dayLabel(d.date))}
+                series={costSeries(days)}
+                brackets={brackets}
+                height={520}
+                tickStep={dailyTick}
+              />
+            ) : (
+              <BarChart
+                categories={days.map((d) => dayLabel(d.date))}
+                series={costSeries(days)}
+                stacked={stackedCost}
+                valuePrefix="$"
+                height={480}
+              />
+            )}
             <Text tone="tertiary" size="small">
               X axis: UTC day. Y axis: USD{stackedCost ? ', stacked' : ''}.
+              {brackets.length > 0
+                ? ' Red brackets mark labeled periods; the shaded columns are the days each covers.'
+                : ''}
               {busiestDay
                 ? ` The busiest day, ${day(busiestDay.date)}, cost ${usd(busiestDay.cost_cents)}.`
                 : ''}
@@ -402,27 +451,61 @@ export default function SpendReportCanvas() {
                 ? ` * The last day covers only its first ${endHour} hours.`
                 : ''}
             </Text>
+            {periods.length > 0 && (
+              <Table
+                headers={[
+                  'Period',
+                  'Dates',
+                  'Days',
+                  'Charged cost',
+                  'Share of window',
+                  '$ / day',
+                  'vs window average',
+                ]}
+                rows={periods.map((p) => [
+                  p.bracket.name,
+                  bracketSpan(p.bracket),
+                  n(p.days),
+                  usd(p.cost),
+                  pct(p.share, 1),
+                  usd(p.perDay),
+                  `${p.lift.toFixed(2)}×`,
+                ])}
+                columnAlign={[
+                  'left',
+                  'left',
+                  'right',
+                  'right',
+                  'right',
+                  'right',
+                  'right',
+                ]}
+                rowTone={periods.map((p) =>
+                  p.lift >= 1.5 ? 'danger' : undefined,
+                )}
+              />
+            )}
           </Stack>
           <Stack gap={10}>
             <H2>Daily tokens by category</H2>
             <BarChart
-              categories={REPORT.daily.map((d) => dayLabel(d.date))}
+              categories={days.map((d) => dayLabel(d.date))}
               series={[
                 {
                   name: 'Input (M)',
-                  data: REPORT.daily.map((d) => mtok(d.input_tokens)),
+                  data: days.map((d) => mtok(d.input_tokens)),
                 },
                 {
                   name: 'Output (M)',
-                  data: REPORT.daily.map((d) => mtok(d.output_tokens)),
+                  data: days.map((d) => mtok(d.output_tokens)),
                 },
                 {
                   name: 'Cache write (M)',
-                  data: REPORT.daily.map((d) => mtok(d.cache_write_tokens)),
+                  data: days.map((d) => mtok(d.cache_write_tokens)),
                 },
                 {
                   name: 'Cache read (M)',
-                  data: REPORT.daily.map((d) => mtok(d.cache_read_tokens)),
+                  data: days.map((d) => mtok(d.cache_read_tokens)),
                 },
               ]}
               stacked

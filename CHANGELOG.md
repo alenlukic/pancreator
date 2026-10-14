@@ -1,5 +1,40 @@
 # Changelog
 
+## [8.15.0] - 2026-10-08
+
+This release makes the spend canvases easier to read. Both canvases show readable model names, and the trends canvas reports figures for the whole window rather than its last days.
+
+### Changed
+
+- Show readable model names such as `Claude Opus 5 (high thinking, Fast)` in place of Cursor model ids in both spend canvases ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646)).
+- Count a spend event as Fast only when its model name ends in `-fast` or its declared model sets `fast=true`, and as not Fast otherwise, so no Fast mode cost reads as unknown ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646), [docs/operator-guide.md](docs/operator-guide.md)).
+- Base the trends canvas headline figures on the whole window: total and average cost, busiest day, costliest labeled period, costliest model, and Fast share ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646)).
+- Split the Cursor fee out of daily cost on the trends canvas, and draw both daily cost charts twice as tall with $500 gridlines when a day reaches $1,000 ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646)).
+- Draw the Cursor fee share and cache-read share on separate charts, each with an axis fitted to its data ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646)).
+
+### Added
+
+- Add a cost acceleration chart to the trends canvas: the change in 7-day average daily cost against the 7 days before it ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646), [library/skills/spend-canvas.md](library/skills/spend-canvas.md)).
+
+### Removed
+
+- Remove the cumulative cost, provider mix, workflow role, stage mix, and biggest movers sections from the trends canvas ([787d8646](https://github.com/alenlukic/pancreator/commit/787d8646)).
+
+## [8.14.0] - 2026-10-08
+
+This release adds labeled periods and a trends canvas to spend reports. Red brackets mark periods above the daily charged cost chart, and the trends canvas shows how spend shifted across the window.
+
+### Changed
+
+- Draw the daily spend charts over every UTC day of the window, so days without usage keep their place ([cba461cd](https://github.com/alenlukic/pancreator/commit/cba461cd)).
+
+### Added
+
+- Add `pan spend --brackets <labels>` to draw a red bracket above the daily charged cost chart for each labeled period, with a table of each period's cost against the window average ([cba461cd](https://github.com/alenlukic/pancreator/commit/cba461cd), [docs/operator-guide.md](docs/operator-guide.md)).
+- Accept each period inline as `label@YYYY-MM-DD..YYYY-MM-DD` or from a `--brackets-file` of resolved labels, clamp it to the window, and report skipped labels ([cba461cd](https://github.com/alenlukic/pancreator/commit/cba461cd)).
+- Add `pan spend --canvas <path> --trends` to write `<name>-trends.canvas.tsx`, with model, vendor, Fast mode, included and on-demand, workflow role, stage, command, and efficiency trends ([cba461cd](https://github.com/alenlukic/pancreator/commit/cba461cd), [library/skills/spend-canvas.md](library/skills/spend-canvas.md)).
+- Let `/pan-spend --brackets` date each label from transcripts and connected meeting notes, calendar, mail, and Slack ([cba461cd](https://github.com/alenlukic/pancreator/commit/cba461cd), [library/cursor/commands/pan-spend.md](library/cursor/commands/pan-spend.md)).
+
 ## [8.13.4] - 2026-10-08
 
 This release repairs catalog diagnostics. The diagnostics now name the catalog file and `Cursor.models.list()` as the refresh.

@@ -2185,8 +2185,8 @@ contributes its workflow records and the target workspace's Cursor transcripts,
 so worker conversation ids can resolve to the correct persona and stage.
 
 Cursor's usage API does not expose Fast mode or token cost per tool. Pancreator
-uses an exact `fast=true` or `fast=false` model declaration when one is
-available and reports `unknown` otherwise. The tool view reports token spend
+counts an event as Fast when its model name ends in `-fast` or its declared
+model sets `fast=true`, and counts every other event as not Fast. The tool view reports token spend
 for conversations that used each tool, so those totals overlap. Each inferred
 view shows its attribution coverage.
 Cursor's personal endpoint does not expose authoritative billed charges.
@@ -2432,6 +2432,27 @@ and open it beside the chat. `--canvas` writes the standard spend canvas from
 `library/templates/spend-report.canvas.tsx` to the absolute path you name, and
 `pan spend --canvas` does the same for the local report that `/pan-spend` uses.
 `library/skills/spend-canvas.md` describes the layout.
+
+Add `--trends` beside `--canvas` to write a second canvas,
+`<name>-trends.canvas.tsx`. It shows how daily cost, cost acceleration, the
+model mix, Fast mode, included and on-demand usage, the Cursor fee, commands,
+and cost efficiency changed across the window. Both canvases show readable
+model names.
+
+Add `--brackets <label,...>` to mark labeled periods with red brackets above the
+daily charged cost chart. `/pan-spend --brackets athene-demo,eclipse-demo`
+dates each label from transcripts and connected integrations such as meeting
+notes, calendar, mail, and Slack. It then passes the periods in a
+`--brackets-file`. On the command line, a label can carry its own period:
+
+```sh
+pan spend --days 60 --canvas <absolute-path.canvas.tsx> --trends \
+  --brackets 'athene-demo@2026-08-31..2026-09-08,pal-slack-message@2026-09-22'
+```
+
+A bracket carries only its label, a readable name, UTC dates, and a source
+kind. A label without a period, or with a period outside the window, is
+reported as skipped.
 
 ## Supervisor handoff
 
