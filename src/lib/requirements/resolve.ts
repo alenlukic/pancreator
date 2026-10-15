@@ -184,7 +184,14 @@ function toResolvedRequirement(
     registry_version: entry?.version ?? '0',
     kind: entry?.kind ?? 'validator',
     phase: requirement.phase,
-    executor: requirement.executor,
+    executor:
+      requirement.registry_id === 'STAGE-SCAFFOLD-001' &&
+      normalizedInvocationKind(context) === 'workflow' &&
+      context.workflow === 'planning' &&
+      context.stage === 'plan' &&
+      context.persona === 'planner'
+        ? 'harness'
+        : requirement.executor,
     target: requirement.target,
     ...(binding.resolved ? { resolved_target: binding.resolved } : {}),
     arguments: requirement.arguments ?? {},

@@ -19,7 +19,7 @@ export function requiredData(
   if (workflowSlug === 'planning' && stage === 'plan' && root) {
     return {
       ...requiredData(stage, root, invocation, runState, 'delivery'),
-      cohort_plan: writePlanningFixtureSpecs(root),
+      cohort_plan: writePlanningFixtureSpecs(root, invocation?.run_id),
     }
   }
 

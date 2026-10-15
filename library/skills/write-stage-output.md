@@ -13,6 +13,10 @@ harness checks.
 
 1. Start from `library/templates/stage-output.example.json` and keep the
    invocation ID exactly as the card states.
+   Planning workers fill the scaffold preparation already created. They use
+   file tools and draft parent digests as `harness-pending`; validation and
+   submission finalize only declared reference metadata after merge patches.
+   Other workers retain their card's scaffold automation requirement.
 2. Follow the card's `output.operator_brief` contract. When it exists, author
    schema-valid brief JSON at its `source_path` and do not run the renderer.
 3. Create each extra evidence artifact before referencing it. Markdown

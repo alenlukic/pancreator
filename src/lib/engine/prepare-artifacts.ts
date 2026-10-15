@@ -3,7 +3,15 @@
  */
 
 import { scaffoldOperatorBrief } from '../briefs/scaffold.js'
-import { resolveInside, writeJsonAtomic, writeTextAtomic } from '../io.js'
+import {
+  ensureDir,
+  fileExists,
+  resolveInside,
+  writeJsonAtomic,
+  writeTextAtomic,
+} from '../io.js'
+import { scaffoldStageOutput } from '../requirements/scaffold.js'
+import { resolveRunLayout } from '../run-layout.js'
 import { supervisorAttestCommand } from '../governance/supervisor-card.js'
 import { redlineRecordPath } from '../watch.js'
 import type { WorkflowOperatorArtifactProfile } from '../operator-artifact-profiles.js'
@@ -299,4 +307,21 @@ export function writeInvocationArtifacts(
 
   writeJsonAtomic(resolveInside(root, jsonPath), invocation)
   writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
+
+  if (
+    invocation.workflow.slug === 'planning' &&
+    stage.slug === 'plan' &&
+    stage.persona === 'planner'
+  ) {
+    ensureDir(
+      resolveInside(
+        root,
+        `${resolveRunLayout(root, runId).operator.relative}/specs`,
+      ),
+    )
+
+    if (!fileExists(resolveInside(root, invocation.output.path))) {
+      scaffoldStageOutput(root, invocation, invocation.output.path)
+    }
+  }
 }
