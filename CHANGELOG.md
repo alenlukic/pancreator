@@ -1,5 +1,13 @@
 # Changelog
 
+## [9.1.1] - 2026-10-15
+
+### Fixed
+
+- Fixed worktree selection for approved cohort plans.
+- Fixed concurrent shared baseline preparation and ownership recovery.
+- Fixed planner output scaffolding and canonical child references.
+
 ## [9.1.0] - 2026-10-15
 
 Add optional VS Code customizations to source checkouts and installed harnesses.
