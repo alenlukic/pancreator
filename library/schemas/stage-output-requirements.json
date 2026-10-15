@@ -678,7 +678,6 @@
             "data.release.local_release.index_commit",
             "data.release.local_release.fetched_main",
             "data.release.local_release.branch",
-            "data.release.local_release.pr_description_path",
             "data.release.versioning",
             "data.release.versioning.current_version",
             "data.release.versioning.proposed_version",
@@ -713,10 +712,6 @@
             "data.release.disclosed_waivers[].waiver_id",
             "data.release.disclosed_waivers[].workspace_fingerprint"
           ]
-        },
-        {
-          "registry_id": "PR-DESCRIPTION-VALIDATE-001",
-          "enforcement": "blocks"
         }
       ],
       "fields": [
@@ -727,10 +722,9 @@
             "release_commit",
             "index_commit",
             "fetched_main",
-            "branch",
-            "pr_description_path"
+            "branch"
           ],
-          "format": "required in self-development when the invocation names a managed worktree; carries the completed local release commits, ancestry, branch, and PR evidence"
+          "format": "required in self-development when the invocation names a managed worktree; carries the completed local release commits, ancestry, and branch evidence"
         },
         {
           "path": "data.release.local_release.release_commit",
@@ -751,11 +745,6 @@
           "path": "data.release.local_release.branch",
           "type": "string",
           "format": "name of the finalized worktree branch"
-        },
-        {
-          "path": "data.release.local_release.pr_description_path",
-          "type": "string",
-          "format": "harness-relative path of the final PR description, which MUST resolve inside the installation and name the release commit range"
         },
         {
           "path": "data.release.versioning",

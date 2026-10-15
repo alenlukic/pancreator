@@ -7,6 +7,7 @@ import {
   allocateReleaseVersion,
   isReleaseBump,
 } from '../lib/release-allocation.js'
+import { collectReleaseEvidence } from '../lib/release-landing/evidence.js'
 import { landRelease } from '../lib/release-landing.js'
 import {
   continueLocalRelease,
@@ -34,6 +35,18 @@ export function releaseCommand({ root, args }: CliContext): void {
     option(args, '--worktree'),
     '--worktree',
   )
+
+  if (sub === 'evidence') {
+    print(
+      collectReleaseEvidence(
+        root,
+        worktreeName,
+        option(args, '--run') ?? undefined,
+      ),
+      hasFlag(args, '--json'),
+    )
+    return
+  }
 
   if (sub === 'sync') {
     const onto = option(args, '--onto')

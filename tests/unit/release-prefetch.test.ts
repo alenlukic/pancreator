@@ -44,6 +44,18 @@ test('release prefetch rejects every ineligible submission state', () => {
   const root = sharedFixture()
   const workflow = loadWorkflow(root, 'delivery')
   const implement = stageBySlug(workflow, 'implement')
+  const ship = stageBySlug(workflow, 'ship')
+  assert.equal(ship.entry_gate, undefined)
+  ship.entry_gate = {
+    criterion: 'ship.full_suite',
+    failure: 'remediate',
+    max_loops: 2,
+  }
+  ship.criteria.push(
+    stageBySlug(workflow, 'verify').criteria.find(
+      (criterion) => criterion.id === 'ship.full_suite',
+    )!,
+  )
 
   const running = {
     status: 'running',

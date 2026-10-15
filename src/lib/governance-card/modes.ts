@@ -280,7 +280,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
     title: 'Release metadata preparation',
     summary:
       'Prepare a complete local Pancreator release from checkpoint through ' +
-      'final PR copy, outside a workflow ship stage. Self-development only.',
+      'local finalization, outside a workflow ship stage. Self-development only.',
     boundaries: [
       'You MUST stop without mutation unless the installation mode is `self_development`.',
       'You MUST stop when a mutating workflow is active against this workspace.',

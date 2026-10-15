@@ -25,7 +25,7 @@ export const FAST_WALL_SERIES_ROOT_ENV = 'PAN_FAST_WALL_SERIES_ROOT'
 export const FAST_WALL_RUN_ID_ENV = 'PAN_FAST_WALL_RUN_ID'
 export const FAST_WALL_PHASE_ENV = 'PAN_FAST_WALL_PHASE'
 export const FAST_WALL_CALLER_CLASS_ENV = 'PAN_FAST_WALL_CALLER_CLASS'
-export const FAST_WALL_CRITERION_ID = 'ship.fast_wall_ceiling'
+export const FAST_WALL_CRITERION_ID = 'verify.fast_wall_ceiling'
 
 /** Phase of a run's baseline capture, before the implementation stage. */
 export const FAST_WALL_BASELINE_PHASE = 'baseline'

@@ -173,16 +173,15 @@ export function resolveSubmitValidators(
  * Validators whose target a blocked result of the named stage never produces.
  */
 const BLOCKED_OUTPUT_EXEMPT_VALIDATORS: Record<string, readonly string[]> = {
-  ship: ['RELEASE-VALIDATE-001', 'PR-DESCRIPTION-VALIDATE-001'],
+  ship: ['RELEASE-VALIDATE-001'],
 }
 
 /**
  * Why this validator judges nothing on this submission, or null.
  *
- * A blocked stage reports a precondition it lacked, so the release packet and
- * the pull-request copy were never written. Failing every field of an
- * artifact the stage could not produce buries the one thing the operator
- * needs: the missing precondition and the command that supplies it.
+ * A blocked stage reports a precondition it lacked, so the release packet
+ * was never written. Failing every field of an artifact the stage could not
+ * produce buries the missing precondition and the command that supplies it.
  */
 function blockedOutputExemption(
   stageSlug: string,

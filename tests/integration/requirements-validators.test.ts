@@ -90,34 +90,8 @@ test('every prototype stage resolves the blocking output validator', () => {
   }
 })
 
-test('PR validators bind named workflow artifact and standalone output', () => {
+test('PR validators bind the standalone writer output', () => {
   const root = createFixture()
-  const workflow = resolveRequirements(root, {
-    persona: 'release-steward',
-    workflow: 'delivery',
-    stage: 'ship',
-    invocation_kind: 'workflow',
-    operator_artifacts: 'requested',
-    invocation: {
-      output_path: 'runtime/logs/workflows/x/outputs/ship.json',
-      artifact_paths: [
-        'runtime/logs/workflows/x/operator/ship.html',
-        'runtime/logs/workflows/x/operator/pr-description.md',
-      ],
-      artifact_targets: {
-        pr_description: 'runtime/logs/workflows/x/operator/pr-description.md',
-      },
-    },
-  })
-  const workflowRequirement = workflow.validation_requirements.find(
-    (item) => item.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
-  )
-
-  assert.equal(
-    workflowRequirement?.resolved_target,
-    'runtime/logs/workflows/x/operator/pr-description.md',
-  )
-
   const standalone = resolveRequirements(root, {
     persona: 'release-steward',
     workflow: 'standalone',
@@ -264,16 +238,11 @@ test('an unresolvable named artifact target is reported, not replaced', () => {
   const root = createFixture()
   const requirement = resolveRequirements(root, {
     persona: 'release-steward',
-    workflow: 'delivery',
-    stage: 'ship',
-    invocation_kind: 'workflow',
-    operator_artifacts: 'requested',
+    workflow: 'standalone',
+    stage: 'write-pr',
+    invocation_kind: 'standalone',
     invocation: {
-      output_path: 'runtime/logs/workflows/x/outputs/ship.json',
-      artifact_paths: ['runtime/logs/workflows/x/operator/pr-description.md'],
-      artifact_targets: {
-        pr_description: 'runtime/logs/workflows/x/operator/pr-description.md',
-      },
+      output_path: 'runtime/pr-descriptions/branch.md',
     },
   }).validation_requirements.find(
     (item) => item.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
@@ -292,17 +261,21 @@ test('an unresolvable named artifact target is reported, not replaced', () => {
       },
       requirements: {
         validation_requirements: [
-          { ...requirement, resolved_target: undefined },
+          {
+            ...requirement,
+            target: 'artifact:example',
+            executor: 'harness',
+            resolved_target: undefined,
+          },
         ],
       },
     }) as unknown as Invocation
 
-  // A ship that owes no named artifact never owed the pull-request copy:
-  // PR-001 scopes that copy to a ship that produces operator artifacts.
+  // An unresolved selector must not fall back to the stage output.
   const unowed = resolveSubmitValidators(root, invocationFor(), {})
 
   assert.equal(unowed.length, 1)
-  assert.equal(unowed[0]?.unresolved_target, 'artifact:pr_description')
+  assert.equal(unowed[0]?.unresolved_target, 'artifact:example')
   assert.equal(unowed[0]?.named_artifacts_declared, false)
   assert.notEqual(
     unowed[0]?.target_path,
@@ -316,6 +289,6 @@ test('an unresolvable named artifact target is reported, not replaced', () => {
     {},
   )
 
-  assert.equal(owed[0]?.unresolved_target, 'artifact:pr_description')
+  assert.equal(owed[0]?.unresolved_target, 'artifact:example')
   assert.equal(owed[0]?.named_artifacts_declared, true)
 })

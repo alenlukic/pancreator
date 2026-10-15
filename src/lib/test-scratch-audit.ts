@@ -54,6 +54,8 @@ const RUN_CONSTRUCTION_ALLOWLIST = new Set([
   'tests/integration/prototype-helpers.ts',
   'tests/integration/release-preparation-finalize.test.ts',
   'tests/integration/release-preparation-sync.test.ts',
+  // Exercises a custom shell workflow and real landing; no delivery checkpoint represents it.
+  'tests/integration/release-process-order.test.ts',
   'tests/integration/repository-checks-agent-runs.test.ts',
   'tests/integration/repository-checks-recorded-passes.test.ts',
   'tests/integration/runtime-archive-cli.test.ts',

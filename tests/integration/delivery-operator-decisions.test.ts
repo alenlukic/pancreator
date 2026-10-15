@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -23,35 +23,7 @@ import {
   writeJson,
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
-import { BRIEFS, checkpoint } from './delivery-helpers.js'
-
-test('ship cannot succeed when its PR artifact violates resolved authority', () => {
-  const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@ship-prepared',
-    BRIEFS,
-  )
-
-  assert.ok(invocation)
-  const stage = stageBySlug(workflow, 'ship')
-  const output = makeOutput(root, invocation, stage)
-  const prArtifact = invocation.output.artifacts?.[1]
-
-  assert.ok(prArtifact)
-  writeFileSync(
-    path.join(root, prArtifact.path),
-    'A body without a conventional title or required sections.\n',
-  )
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
-
-  assert.equal(submitted.record.outcome, 'blocked')
-  assert.match(
-    submitted.state.stage_history.at(-1)?.validation_errors.join('\n') ?? '',
-    /harness validator PR-DESCRIPTION-VALIDATE-001 failed/u,
-  )
-})
+import { checkpoint } from './delivery-helpers.js'
 
 test('an operator revision returns the ratified plan to the planner', () => {
   const { root, runId, state, workflow } = checkpoint(

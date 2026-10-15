@@ -17,19 +17,13 @@ the irreversible action. It makes the decision easy and safe.
 - For Pancreator self-development, the completed version bump, fetched-main
   hash, immutable release commit, separate release-index commit, and clean
   worktree result.
-- PR description artifact at
-  `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
-  For layout v1, use
-  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`.
-  Produce it through `write-pr-description.md`.
-  Put `<release-commit>..<index-commit>` in its Changelist.
 
 ## Checks before proposing
 
 - Review, and QA when the verify invocation launched it (see
   `evidence_worker_skips`), passed against the current workspace fingerprint.
   If evidence is stale, stop and report it.
-- The proposed commit/PR text matches the actual change and does not overstate.
+- The proposed commit text matches the actual change and does not overstate.
 
 ## Boundaries
 

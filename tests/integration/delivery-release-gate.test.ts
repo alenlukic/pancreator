@@ -13,7 +13,7 @@ import { RELEASE_LANDING_METADATA_PATHS } from '../../src/lib/versioning.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   assertNoShellGate,
-  checkpoint,
+  legacyEntryCheckpoint as checkpoint,
   checksVariant,
   failingVerify,
   fullFailsUntil,
@@ -182,7 +182,11 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   )
 
   assert.ok(fullSuite)
-  assert.equal(fullSuite.entry_gate, true)
+  assert.equal(
+    fullSuite.entry_gate,
+    true,
+    JSON.stringify(shipped.record.evaluation),
+  )
   assert.equal(fullSuite.passed, true)
   assert.equal(fullSuite.evidence_path, gate.last_result.evidence_path)
   assert.equal(shipped.record.outcome, 'success')

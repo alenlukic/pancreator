@@ -11,7 +11,7 @@ import {
 } from '../../src/lib/engine.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
-  checkpoint,
+  legacyEntryCheckpoint as checkpoint,
   checksVariant,
   fullFailsUntil,
   fullRuns,

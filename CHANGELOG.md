@@ -1,5 +1,30 @@
 # Changelog
 
+## [8.18.0] - 2026-10-15
+
+Complete verification before release preparation and allocate the version only for the final local landing.
+
+### Changed
+
+- Require current verify evidence before landing; replace release-time test and bounded-repair execution with a return to verify ([release procedure](library/skills/update-release-metadata.md)).
+- Run configuration validation, the release profile, and the final fast wall report at the end of verify ([verify stage](library/workflows/delivery/stages/verify.json)).
+- Update release metadata and finalize the immutable release/index pair once, after preparation finishes ([landing transaction](src/lib/release-landing/land.ts)).
+
+### Added
+
+- Collect one reusable release evidence bundle and refuse stale source before allocating a version ([release evidence](src/lib/release-landing/evidence.ts)).
+
+### Removed
+
+- Remove automatic PR descriptions, context collection, artifacts, and validators from release preparation ([release steward](library/personas/release-steward.md)).
+
+### Fixed
+
+- Preserve verified candidate manifest changes during metadata synchronization and invalidate proof after dependency changes ([source fingerprint](src/lib/release-source.ts)).
+- Retain regression coverage for existing workflow snapshots while moving current release checks into verify ([release sequencing tests](tests/integration/release-process-order.test.ts)).
+
+Configuration validation still reports the existing OUTPUT-001 test-citation defect. Source checks and the synthetic shell run are recorded separately; synthetic results assert no product acceptance.
+
 ## [8.17.3] - 2026-10-14
 
 Clean command cards before shell submission and bound lifecycle output before display.

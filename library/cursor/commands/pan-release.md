@@ -1,21 +1,10 @@
-Complete local Pancreator release preparation from checkpoint through final PR copy. Treat `$ARGUMENTS` as optional operator context plus one required `--worktree <name>` selection.
+Complete local release preparation for `$ARGUMENTS`, which must select one `--worktree <name>`.
 
-1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Then run `{{PANCREATOR_PAN_COMMAND}} governance card --mode release` and read the card it writes in full. When the operator selects a worktree, add `--worktree <name>` so the card creates or resolves it and binds the session workspace to it. The card is the complete resolved governance for this mode. Do not assemble policy text by hand and do not generate a second card for the same session.
-2. Read `{{PANCREATOR_HARNESS_PATH}}docs/target-repo-primer.md`, `{{PANCREATOR_HARNESS_PATH}}library/personas/release-steward.md`, and `{{PANCREATOR_HARNESS_PATH}}library/skills/update-release-metadata.md`.
-3. Read `{{PANCREATOR_HARNESS_PATH}}config.json` and stop without mutation unless `installation_mode` is `self_development`. This command does not version embedded target repositories.
-4. Run `{{PANCREATOR_PAN_COMMAND}} list --json`. Stop if a mutating workflow is active against this workspace. The workflow ship stage owns its own automatic release update.
-5. When the card reports a worktree, that worktree checkout is the repository the steward inspects, edits, and validates in the following steps. Reject a missing name or more than one selection.
-6. Invoke the `pan-release-steward` subagent in standalone release mode. Paste the complete card into the delegated prompt. Require `pan release sync --worktree <name>`, `pan release continue --worktree <name>`, and `pan release finalize --worktree <name>`.
-   - Treat sync results `synchronized` and `already_current` as success.
-   - Treat continue result `not_needed` as success when no rebase is active.
-   - Stop on `RELEASE_REBASE_TOPOLOGY_LOST`, which means a completed rebase dropped a merge the branch carried. Do not finalize over it.
-   - Report any `RELEASE_LOCAL_DEFAULT_AHEAD` entry from the `advisories` field on sync and finalize.
-   - Inspect the complete release delta and synchronize all required version-bearing files.
-   - After finalize succeeds, land the branch as step 9 states.
-7. Require idempotence: when an uncommitted candidate already exists, regenerate it in place rather than incrementing again. When the branch already ends in a complete release/index pair for the proposed version, reuse that pair. When there are no changes and no candidate, make no edits.
-8. Permit direct edits only to `CHANGELOG.md`, `VERSION`, `package.json`, `package-lock.json`, `README.md`, and version-bearing Markdown under `{{PANCREATOR_HARNESS_PATH}}docs/`. Require `pan release finalize` to create the release commit and the separate `release/index.json` commit.
-9. Run `{{PANCREATOR_PAN_COMMAND}} release land --worktree <name> --json`. The command runs the touch-set default `impacted-release` (every lane test, including integration, whose static import closure reaches a file this candidate changed against `pan-dev`) before it moves `pan-dev`, so do not run a separate check list. Pass `--verify-profile full` only when the operator directs the full suite for this land.
-10. On `landed`, record the landed version, tip, and commits. On `conflict`, surface the source paths and stop for repair. On `verification_failed`, give the exact failures to the release steward for one correction pass, then run the command again. On a `LANDING_BUILD_BEHIND_TIP` refusal, run the rerun command it names once, which runs the candidate's own build. On any other `landing_refused` reason or `LANDING_MUTEX_TIMEOUT`, surface the reason and stop.
-11. Generate and validate final PR copy from the finalized worktree. Put `<release-commit>..<index-commit>` in the Changelist.
-12. Do not push, open or merge a PR, publish, deploy, rewrite history, or invent commit hashes.
-13. Surface the card path, fetched-main hash, release commit, index commit, final PR path, and the three remaining remote actions.
+1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Resolve and read the complete release card with `{{PANCREATOR_PAN_COMMAND}} governance card --mode release --worktree <name>`.
+2. Read the target primer, release steward persona, and `library/skills/update-release-metadata.md`. Apply their self-development and workspace boundaries.
+3. Check for concurrent mutating work in the selected workspace. Complete source synchronization and verification before release. Release MUST NOT run tests.
+4. Inspect the complete release delta, choose major, minor, or patch, and author one Unreleased entry. Checkpoint eligible changes. Stop without mutation when no releasable delta exists.
+5. Collect one bundle with `{{PANCREATOR_PAN_COMMAND}} release evidence --worktree <name> --run <run-id> --json`. Finish the evidence review and every other preparation check. Under SHIP-001, return missing or stale proof to verify.
+6. As the final local operation, run `{{PANCREATOR_PAN_COMMAND}} release land --worktree <name> --run <run-id> --bump <major|minor|patch> --json`. It allocates, updates metadata, and finalizes once under the landing mutex, then advances pan-dev. Do not allocate or finalize beforehand.
+7. Report the version, release and index commits, and tip. Surface a refusal with its remediation command. Preserve any completed pair on retry.
+8. Return control before any push, pull request, publication, deployment, or history rewrite.

@@ -198,13 +198,6 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
       'the reused release version retains one index entry',
     )
 
-    const prPath = 'runtime/pr-descriptions/final.md'
-
-    mkdirSync(path.dirname(path.join(root, prPath)), { recursive: true })
-    writeFileSync(
-      path.join(root, prPath),
-      `feat: prepare local release\n\n## Summary\nPrepare the release.\n\n## Changelist\n- Local commit range: \`${finalized.release_commit}..${finalized.index_commit}\`.\n`,
-    )
     writeJson(path.join(root, 'runtime', 'ship-output.json'), {
       data: {
         release: {
@@ -225,7 +218,6 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
             release_commit: finalized.release_commit,
             index_commit: finalized.index_commit,
             branch: finalized.branch,
-            pr_description_path: prPath,
           },
           versioning: {
             current_version: git(worktreePath, [
@@ -271,37 +263,6 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
     })
 
     assert.equal(validation.status, 'passed', JSON.stringify(validation.issues))
-
-    writeFileSync(
-      path.join(root, prPath),
-      'feat: prepare local release\n\n## Summary\nPrepare the release.\n\n## Changelist\n- Finalize local commits.\n',
-    )
-
-    const missingRange = validateReleaseOutput({
-      root,
-      targetPath: 'runtime/ship-output.json',
-      requirement: {
-        policy_id: 'SHIP-001',
-        requirement_id: 'release-packet-validate',
-        registry_id: 'RELEASE-PACKET-VALIDATE-001',
-        arguments: {},
-      },
-      invocation: {
-        workspace_root: record.path,
-        managed_worktree: {
-          name: record.name,
-          path: record.path,
-          branch: record.branch,
-        },
-      },
-      runState: { workspace_root: record.path },
-    })
-
-    assert.ok(
-      missingRange.issues.some(
-        (issue) => issue.code === 'release.pr_commit_range_missing',
-      ),
-    )
 
     const state = createRun(root, {
       workflowSlug: 'delivery',

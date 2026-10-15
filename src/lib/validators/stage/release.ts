@@ -2,14 +2,7 @@
 
 import path from 'node:path'
 
-import {
-  readJson,
-  isRecord,
-  resolveInside,
-  fileExists,
-  readText,
-} from '../../io.js'
-import { errorMessage } from '../../errors.js'
+import { readJson, isRecord, fileExists, readText } from '../../io.js'
 import type { HandlerInput, HandlerResult } from '../../requirements/types.js'
 import { activeOperatorGateWaivers } from '../../waivers.js'
 import { readProjectConfig } from '../../project-config.js'
@@ -42,7 +35,7 @@ import { releaseObservationIssues } from './release-observations.js'
  * change list against the diff, updated files, rollback, compatibility,
  * governance review, and release metadata. In self-development with a managed
  * worktree, also checks the local release and index commits, their order and
- * ancestry, the branch, a clean worktree, and the PR description. Raises
+ * ancestry, the branch, and a clean worktree. Raises
  * `release.*` and `git.unavailable` codes.
  */
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
@@ -85,10 +78,6 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
       localRelease && typeof localRelease.branch === 'string'
         ? localRelease.branch
         : ''
-    const prDescriptionPath =
-      localRelease && typeof localRelease.pr_description_path === 'string'
-        ? localRelease.pr_description_path
-        : ''
 
     if (
       localReleaseRequired &&
@@ -96,13 +85,12 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         !/^[0-9a-f]{40}$/u.test(releaseCommit) ||
         !/^[0-9a-f]{40}$/u.test(indexCommit) ||
         !/^[0-9a-f]{40}$/u.test(fetchedMain) ||
-        localBranch.length === 0 ||
-        prDescriptionPath.length === 0)
+        localBranch.length === 0)
     ) {
       issues.push(
         issue(
           'release.local_release_missing',
-          'Self-development release output MUST include complete local release commit, ancestry, branch, and PR evidence',
+          'Self-development release output MUST include complete local release commit, ancestry, and branch evidence',
         ),
       )
     } else if (localReleaseRequired && localRelease) {
@@ -178,45 +166,6 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           issue(
             'release.index_commit_scope',
             'The index commit MUST change only release/index.json',
-          ),
-        )
-      }
-
-      // An agent supplies this path, so a traversal or an absolute path is a
-      // reportable mistake in the output rather than a harness fault.
-      // `resolveInside` throws on one, which ended the validator with a stack
-      // trace instead of an issue the retry could read.
-      let prPath: string | null = null
-
-      try {
-        prPath = resolveInside(input.root, prDescriptionPath)
-      } catch (error) {
-        issues.push(
-          issue(
-            'release.pr_description_path_invalid',
-            `release.local_release.pr_description_path MUST resolve inside ` +
-              `the installation: ${prDescriptionPath} (${errorMessage(error)})`,
-          ),
-        )
-      }
-
-      if (prPath === null) {
-        // The path named nothing this validator can read, and the issue above
-        // says so. The content checks below have no file to judge.
-      } else if (!fileExists(prPath)) {
-        issues.push(
-          issue(
-            'release.pr_description_missing',
-            `Final PR description is missing: ${prDescriptionPath}`,
-          ),
-        )
-      } else if (
-        !readText(prPath).includes(`${releaseCommit}..${indexCommit}`)
-      ) {
-        issues.push(
-          issue(
-            'release.pr_commit_range_missing',
-            'The final PR description MUST include the completed local release commit range',
           ),
         )
       }

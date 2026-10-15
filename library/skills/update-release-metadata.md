@@ -1,121 +1,61 @@
 # Update release metadata
 
-Use during a Pancreator self-development ship stage and in standalone
-`/pan-release` mode. Do not use in embedded target repositories.
+Use for a Pancreator self-development ship stage or `/pan-release`.
+Embedded and detached target releases do not change harness metadata.
 
 ## Outcome
 
-Prepare one complete local release:
-
-- determine the actual change range since the last committed release bump
-- select exactly one Semantic Versioning bump: `major`, `minor`, or `patch`
-- author or regenerate the current Common Changelog release entry
-- synchronize every current-version metadata and documentation reference
-- create the immutable release commit before indexing it
-- create a separate commit that changes only `release/index.json`
+Complete verification first. Collect one evidence bundle, choose the Semantic
+Versioning bump, and author the release notes. Allocate the version, synchronize
+metadata, finalize once, and merge only as the final local operation.
 
 ## Establish the baseline
 
-1. Read `config.json` and stop without mutation unless `installation_mode` is
-   `self_development`.
-2. Read `VERSION`, `package.json`, `package-lock.json`, `CHANGELOG.md`,
-   `release/index.json`, `README.md`, and `docs/embedded-installation.md`.
-3. Resolve the committed version with `git show HEAD:VERSION` and identify the
-   commit that introduced that value by inspecting `git log -p -- VERSION`.
-   Record the full 40-character lowercase commit hash as `baseline_commit`.
-4. Inspect the complete delta after that baseline: committed changes through
-   `HEAD`, staged and unstaged changes, relevant untracked files, and existing
-   `## [Unreleased]` content. Do not rely only on the current workflow artifact
-   or only on the unstaged diff.
-5. Treat a dirty metadata set whose latest versioned changelog entry already
-   equals the working-tree `VERSION` as an in-progress release candidate.
-   Regenerate that candidate in place. Never bump again merely because the
-   ship stage or `/pan-release` is retried.
-6. When standalone `/pan-release` finds no changes after the baseline and no
-   in-progress candidate, stop without editing files.
+Read the committed version and the commit that introduced it. Inspect the complete
+committed and working delta since that baseline, including existing Unreleased
+notes. Stop without edits when there is no releasable change. Checkpoint source
+changes before collecting evidence. The candidate must already contain pan-dev;
+any synchronization that changes source requires another verify pass.
 
 ## Choose the bump
 
-Select the highest applicable impact across the complete release delta:
-
-- `major`: a backward-incompatible installed layout, command contract,
-  durable-state schema, governance contract, or update path requiring migration
-- `minor`: a backward-compatible operator capability, workflow, persona,
-  validation behavior, or material installation behavior
-- `patch`: backward-compatible fixes, documentation, tests, maintenance, and
-  internal refactors shipped as a release
-
-In a managed worktree, take the proposed version from the allocation
-authority instead of computing it:
-
-```sh
-./bin/pan release allocate --worktree <name> --bump <major|minor|patch> --run <run-id> --json
-```
-
-The result's `allocation.version` is the proposed version. It is the next
-stable version above every published and allocated version. Thus a concurrent
-release in another worktree cannot hold the same number.
-
-A repeat for the same worktree returns the same version until that release
-lands. Do not allocate a second time to refresh it.
-
-Outside a managed worktree, calculate the exact next stable version from the
-committed current version:
-
-- major: `<major + 1>.0.0`
-- minor: `<major>.<minor + 1>.0`
-- patch: `<major>.<minor>.<patch + 1>`
+Choose `major` for incompatible contracts or migrations, `minor` for compatible
+capabilities, and `patch` for compatible fixes, documentation, or maintenance.
+Record the decision without allocating a number. Regenerate an existing draft
+in place. Preserve a completed release pair on a retry.
 
 ## Author release notes
 
-1. Replace `## [Unreleased]` with `## [<proposed-version>] - <UTC date>` when
-   it represents the pending delta. Otherwise insert or regenerate the latest
-   versioned entry without duplicating the same version.
-2. Summarize the actual release delta rather than copying commit subjects.
-3. Use only the groups that apply, in this order: `Changed`, `Added`, `Removed`,
-   `Fixed`.
-4. Use imperative, operator-facing impact statements.
-5. Link each item to the best evidence already available: an existing commit,
-   PR, issue, or repository document. Never invent a future release commit hash.
-6. Preserve historical release entries unchanged.
+Write one `## [Unreleased]` entry grounded in the actual delta. Use Changed,
+Added, Removed, and Fixed groups in that order when applicable. Link statements
+to existing evidence. Preserve historical entries. Checkpoint the notes.
 
-## Synchronize version-bearing files
+## Collect evidence once
 
-Update all of the following to the proposed version:
+Run `pan release evidence --worktree <name> --run <run-id> --json` once. This
+collects the successful verify proof and its source fingerprint into one reusable
+bundle. A repeated call at the same fingerprint reuses that bundle. Review it
+and finish every other preparation check before landing.
 
-- `VERSION`
-- `package.json.version`
-- `package-lock.json.version`
-- `package-lock.json.packages[""].version`
-- the current-version heading and introduction in `README.md`
-- the current-version statement in `docs/embedded-installation.md`
-- any other durable `README*` or `docs/**/*.md` statement that explicitly
-  identifies the current Pancreator version
+Under VERSION-001, release commands and the release steward do not run tests. The verify stage
+owns configuration validation, the resolved release profile, and the final fast
+wall report, in that order after the other required verification checks pass.
+Missing or stale proof returns the work to verify.
 
-Do not rewrite historical versions, examples, migration references, or
-`CHANGELOG.md` history merely because they contain an older number.
+## Final local operation
 
-## Validate
+Run `pan release land --worktree <name> --run <run-id> --bump <major|minor|patch>
+--json`. It consumes the bundle without rerunning tests. Under the landing mutex,
+it allocates the version, updates metadata once, finalizes once, validates the
+release/index topology, and advances pan-dev. It preserves candidate dependency
+and documentation changes. The topology guard necessarily follows commit creation.
 
-1. Search `README*` and `docs/**/*.md` for the committed current version and
-   update only remaining statements that claim it is the current release.
-2. Run `npm run format:check`, `npm run typecheck`, and `npm run validate`.
-3. Inspect the final Git diff and confirm that release-preparation edits are
-   limited to `CHANGELOG.md`, `VERSION`, `package.json`, `package-lock.json`,
-   `README.md`, and version-bearing Markdown under `docs/`.
-4. In workflow mode, populate `release.versioning` with:
-   `current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
-   `rationale`, `compatibility`, `updated_files`, and `release_index_action`.
-5. Run `pan release finalize` with the managed worktree and fetched-main hash.
-   Record the resulting release and index commit hashes.
-6. After finalize, run `pan release land --worktree <name> --json` to
-   integrate, verify, and land on pan-dev. On `landed`, record the landed
-   version, tip before and after, release commit, and index commit. On any
-   other status, surface the result and stop.
+Record the returned version, release commit, index commit, and tip. Populate
+`release.versioning` from these results: current_version, recommendation,
+proposed_version, baseline_commit, rationale, compatibility, updated_files, and
+release_index_action. Do not run a separate allocate or finalize beforehand.
 
 ## Boundaries
 
-Only `pan release finalize` may create the two final local commits.
-Only `pan release land` may fast-forward pan-dev. Never use `git merge` or
-`git update-ref` by hand. `VERSION-001` on the active card owns the
-remote-action prohibitions.
+Only the release commands may create the immutable release and index commits.
+Only `pan release land` may advance pan-dev. Remote actions require the operator.
