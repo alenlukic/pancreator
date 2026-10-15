@@ -246,6 +246,26 @@ def is_allowlisted(tokens):
     return bool(segments) and all(allowlisted_segment(segment) for segment in segments)
 
 
+def unbounded_lifecycle(tokens):
+    words = [value for kind, value, _, _ in tokens if kind == "word"]
+    index = next(i for i, word in enumerate(words) if is_pan_run(word)) + 1
+    while index < len(words):
+        word = words[index]
+        if word in {"--summary", "--quiet", "--stream", "--request", "-c"}:
+            return False
+        if word in {"--label", "--cwd", "--heartbeat-seconds"}:
+            index += 2
+            continue
+        if word == "--":
+            argv = words[index + 1:]
+            return len(argv) >= 2 and os.path.basename(argv[0]) == "pan" and argv[1] in {
+                "init", "status", "prepare", "submit", "pause", "resume", "decide",
+                "governance", "worktree", "waive-gate", "set-stage", "attribute",
+            }
+        return False
+    return False
+
+
 def verdict(command):
     command = command.strip()
     if not command:
@@ -258,7 +278,13 @@ def verdict(command):
         return "Command uses a '$' expansion form the monitor does not accept outside single quotes ($'...', $\"...\", ${...}, $[...], or a zsh $~ $= $^ form)."
     except ValueError:
         return "Command could not be parsed."
-    if is_wrapped(tokens) or is_allowlisted(tokens):
+    if is_wrapped(tokens):
+        if len(command.encode("utf-8")) > 400 or "\n" in command:
+            return "COMMAND_DISPLAY_TOO_LARGE: Write a prepared JSON request with a file tool before calling the shell. Submit only bin/pan-run --request <file.json>; do not embed the payload in that shell call."
+        if unbounded_lifecycle(tokens):
+            return "LIFECYCLE_OUTPUT_UNBOUNDED: Use bin/pan-run --summary -- for lifecycle commands, or a prepared request. Use --stream only when raw output was requested."
+        return None
+    if is_allowlisted(tokens):
         return None
     return ""
 
@@ -269,7 +295,8 @@ def deny_message(reason, pan_run):
         lead
         + "Every agent shell command must run inside bin/pan-run. Use one of these forms:\n"
         + "  " + pan_run + " -- <command> [args...]\n"
-        + "  " + pan_run + " -c '<shell string>'\n"
+        + "  " + pan_run + " --request <file.json>\n"
+        + "Prepare long or multiline commands with a file tool. The request holds label, optional cwd/output, and argv or script.\n"
         + "Allowlisted read-only commands (" + ", ".join(ALLOWLIST) + ") may run without the "
         + "wrapper and may chain only into other allowlisted commands, with no command "
         + "substitution and no redirection except 2>/dev/null."

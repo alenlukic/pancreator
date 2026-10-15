@@ -130,6 +130,8 @@ The release steward owns the version decision and synchronized metadata inside a
 
 Run every agent shell command inside `bin/pan-run`. Allowlisted read-only commands (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`) may run unwrapped but must not chain or pipe into a non-allowlisted command.
 
+Before a long or multiline shell call, use a file tool to write a JSON request under `runtime/commands/`. Include `label` and exactly one of `argv` (a string array) or `script` (a shell body). Optional `cwd` selects the working directory. Submit only `bin/pan-run --request <file.json>` to the shell tool. Never embed the payload in that shell call. Keep submitted commands within 400 UTF-8 bytes and one line. Requests default to concise output with a full log reference. Use `output: "stream"` for interactive commands, watch streams, or requested raw output. Use `--summary` for short lifecycle calls. A hook cannot shorten a command the chat UI already received.
+
 Give every blocking `pan watch` call a 330-second block bound (330000 ms). When the platform detaches it, run `pan watch --attach <ledger>` at once and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Never call `AwaitShell` or any platform await tool as a timer.
 
 ## Validation

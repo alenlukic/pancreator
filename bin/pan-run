@@ -5,10 +5,13 @@
 # Forms:
 #   pan-run [options] -- <argv...>      run argv without a shell
 #   pan-run [options] -c '<string>'     spool the string and run bash <file>
+#   pan-run --request <file.json>      run a prepared request with a concise result
 #
 # Options:
 #   --label <name>            human-readable name for the wait
 #   --quiet                   capture to stdout.log/stderr.log; replay on failure
+#   --summary                 capture output and print a bounded result with its log
+#   --stream                  explicitly stream output (also the legacy default)
 #   --cwd <dir>               working directory for the command
 #   --heartbeat-seconds <n>   heartbeat cadence (default 30, clamped to 60)
 #
@@ -76,6 +79,8 @@ usage_error() {
 
 LABEL=""
 QUIET=0
+SUMMARY=0
+REQUEST_PATH=""
 CWD=""
 HB_ARG=""
 SHELL_STRING=""
@@ -89,6 +94,15 @@ while [[ $# -gt 0 ]]; do
       LABEL="$2"; shift 2 ;;
     --quiet)
       QUIET=1; shift ;;
+    --summary)
+      SUMMARY=1; QUIET=1; shift ;;
+    --stream)
+      SUMMARY=0; QUIET=0; shift ;;
+    --request)
+      [[ $# -ge 2 ]] || usage_error '--request requires a JSON file'
+      REQUEST_PATH="$2"; SUMMARY=1; QUIET=1; shift 2
+      [[ $# -eq 0 ]] || usage_error '--request must be the last option'
+      break ;;
     --cwd)
       [[ $# -ge 2 ]] || usage_error '--cwd requires an argument'
       CWD="$2"; shift 2 ;;
@@ -107,11 +121,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$HAS_SHELL_STRING" -eq 0 && ${#COMMAND_ARGV[@]} -eq 0 ]]; then
-  usage_error "no command given. Use -- <argv...> or -c '<string>'"
+if [[ -z "$REQUEST_PATH" && "$HAS_SHELL_STRING" -eq 0 && ${#COMMAND_ARGV[@]} -eq 0 ]]; then
+  usage_error "no command given. Use --request <file.json>, -- <argv...>, or -c '<string>'"
 fi
 
-is_verbose && QUIET=0
+if is_verbose; then QUIET=0; SUMMARY=0; fi
 
 if [[ -n "$CWD" ]]; then
   CWD="$(cd "$CWD" && pwd)" || usage_error "--cwd is not a directory: $CWD"
@@ -136,7 +150,7 @@ DRAIN_SECONDS=$((10#$DRAIN_SECONDS))
 # Progress sink: stderr when streaming. In quiet mode, PAN_PROGRESS_FD or a
 # terminal stderr, exported so nested quiet wrappers beat to the same sink.
 PROGRESS_FD=""
-if [[ "$QUIET" -eq 0 ]]; then
+if [[ "$QUIET" -eq 0 || "$SUMMARY" -eq 1 ]]; then
   PROGRESS_FD=2
 elif [[ "${PAN_PROGRESS_FD:-}" =~ ^[0-9]+$ ]] && (: >&"$PAN_PROGRESS_FD") 2>/dev/null; then
   exec 7>&"$PAN_PROGRESS_FD"
@@ -226,6 +240,57 @@ function collectSecrets() {
 function redact(text, secrets) {
   for (const { value, token } of secrets) text = text.split(value).join(token);
   return text;
+}
+
+function request(file) {
+  try {
+    const stat = fs.statSync(file);
+    if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error();
+    const value = JSON.parse(fs.readFileSync(file, "utf8"));
+    const string = (v) => typeof v === "string" && !v.includes("\0");
+    if (!value || Array.isArray(value) || typeof value !== "object") throw new Error();
+    if (Object.keys(value).some((key) => !["label", "cwd", "argv", "script", "output"].includes(key))) throw new Error();
+    if (!string(value.label) || !value.label.trim() || value.label.length > 80 || /[\r\n]/.test(value.label)) throw new Error();
+    if (value.cwd !== undefined && (!string(value.cwd) || !value.cwd)) throw new Error();
+    if (value.output !== undefined && !["summary", "stream", "quiet"].includes(value.output)) throw new Error();
+    const hasScript = Object.hasOwn(value, "script");
+    if (hasScript === Object.hasOwn(value, "argv")) throw new Error();
+    if (hasScript ? !string(value.script) || !value.script.trim() :
+      !Array.isArray(value.argv) || !value.argv.length || !value.argv.every(string) || !value.argv[0]) throw new Error();
+    const fields = [value.label, value.cwd || "", value.output || "summary", hasScript ? "script" : "argv",
+      ...(hasScript ? [value.script] : value.argv)];
+    process.stdout.write([...fields, "PAN_REQUEST_COMPLETE"].join("\0") + "\0");
+  } catch {
+    process.stderr.write("pan-run: INVALID_REQUEST: expected label, optional cwd/output, and exactly one of argv or script (maximum 1 MiB).\n");
+    process.exitCode = 2;
+  }
+}
+
+function resultSummary(dir) {
+  const record = readJson(path.join(dir, "record.json"));
+  if (!record) throw new Error("pan-run: result record missing");
+  const lines = [`[pan-run] ${record.label}: exited ${record.exit_code}${record.signal ? ` (${record.signal})` : ""}`];
+  const streams = record.exit_code === 0 ? ["stdout.log", "stderr.log"] : ["stderr.log", "stdout.log"];
+  for (const name of streams) {
+    const file = path.join(dir, name);
+    const size = fs.statSync(file).size;
+    if (!size) continue;
+    let value;
+    if (size <= 64 * 1024) value = readJson(file);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      for (const key of ["status", "error", "message", "run_id", "current_stage", "next_command"]) {
+        if (["string", "number", "boolean"].includes(typeof value[key])) lines.push(`  ${key}: ${value[key]}`);
+      }
+      if (value.pending_action && typeof value.pending_action.type === "string") lines.push(`  pending_action: ${value.pending_action.type}`);
+    } else {
+      const tail = tailLines(file, size, 20);
+      const counts = tail.filter((line) => /^# (tests|pass|fail) \d+$/.test(line));
+      lines.push(...(counts.length === 3 ? counts.map((line) => line.slice(2)) : tail.slice(-3)).map((line) => `  ${line}`));
+    }
+  }
+  for (const line of lines.slice(0, 9)) process.stdout.write(`${summarize(line)}\n`);
+  process.stdout.write(`${summarize(`  Full output: ${record.log_path}`)}\n`);
+  if (!record.output_drained) process.stdout.write("  Output is still open; consult the log for later output.\n");
 }
 
 function lineWidth() {
@@ -524,7 +589,8 @@ function filter(logPath) {
   let passThrough = true;
   let lastDisplay = Date.now();
 
-  const forwardHeartbeat = env.PAN_RUN_FORWARD_HEARTBEAT === "1";
+  const captureRaw = env.PAN_RUN_SUMMARY === "1";
+  const forwardHeartbeat = !captureRaw && env.PAN_RUN_FORWARD_HEARTBEAT === "1";
   const progressFd = forwardHeartbeat ? Number(env.PAN_RUN_PROGRESS_FD || 0) : 0;
   const display = lineRenderer((line, heartbeat) => {
     lastDisplay = Date.now();
@@ -544,7 +610,8 @@ function filter(logPath) {
     pending = pending.slice(cut);
     lastEmit = Date.now();
     fs.writeSync(log, out);
-    display.write(out);
+    if (captureRaw) fs.writeSync(1, out);
+    else display.write(out);
   };
 
   process.stdin.on("data", (chunk) => {
@@ -566,7 +633,8 @@ function filter(logPath) {
     const out = redact(pending, secrets);
     pending = "";
     fs.writeSync(log, out);
-    display.write(out);
+    if (captureRaw) fs.writeSync(1, out);
+    else display.write(out);
     display.flush();
     fs.closeSync(log);
   });
@@ -635,6 +703,7 @@ function recordEnd(commandArgv) {
   record.exit_code = Number(env.PAN_RUN_EXIT_CODE);
   record.signal = env.PAN_RUN_SIGNAL || null;
   record.quiet = env.PAN_RUN_QUIET === "1";
+  record.summary = env.PAN_RUN_SUMMARY === "1";
   record.output_drained = env.PAN_RUN_OUTPUT_DRAINED !== "0";
   const startStatus = Number(env.PAN_RUN_START_STATUS || 0);
   if (startStatus !== 0) {
@@ -718,7 +787,7 @@ function beat() {
   if (grown) {
     const delta = size - previousBytes;
     let printed = [];
-    if (env.PAN_RUN_QUIET !== "0") {
+    if (env.PAN_RUN_QUIET !== "0" && env.PAN_RUN_SUMMARY !== "1") {
       printed = newLines(logPath, previousBytes, size, printLines);
     }
     const lines = printed.join("\n");
@@ -737,6 +806,8 @@ function beat() {
 const [mode, ...rest] = process.argv.slice(2);
 if (mode === "redact") process.stdout.write(redact(fs.readFileSync(0, "utf8"), collectSecrets()));
 else if (mode === "spool") spool(rest[0]);
+else if (mode === "request") request(rest[0]);
+else if (mode === "result") resultSummary(rest[0]);
 else if (mode === "summarize") {
   const text = fs.readFileSync(0, "utf8");
   if (text) {
@@ -750,6 +821,36 @@ else if (mode === "beat") beat();
 else if (mode === "compact") process.stdout.write(`${JSON.stringify(compactShellLogs(rest[0] || env.PAN_RUN_SHELL_LOG_DIR, Date.now()))}\n`);
 else { process.stderr.write(`pan-run helper: unknown mode ${mode}\n`); process.exit(2); }
 HELPER_JS_EOF
+
+if [[ -n "$REQUEST_PATH" ]]; then
+  FIELDS=()
+  while IFS= read -r -d '' FIELD; do FIELDS+=("$FIELD"); done < <(node "$HELPER" request "$REQUEST_PATH")
+  FIELD_COUNT=${#FIELDS[@]}
+  if [[ "$FIELD_COUNT" -lt 6 || "${FIELDS[FIELD_COUNT-1]}" != PAN_REQUEST_COMPLETE ]]; then
+    exit 2
+  fi
+  unset 'FIELDS[FIELD_COUNT-1]'
+  LABEL="${FIELDS[0]}"
+  [[ -z "${FIELDS[1]}" ]] || CWD="${FIELDS[1]}"
+  if [[ -n "$CWD" ]]; then
+    CWD="$(cd "$CWD" && pwd)" || usage_error 'request cwd is not a directory'
+    GIT_TOP="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -z "$GIT_TOP" ]] || ENV_FILES="$ENV_FILES"$'\n'"$GIT_TOP/.env"
+  fi
+  case "${FIELDS[2]}" in
+    stream) QUIET=0; SUMMARY=0; PROGRESS_FD=2 ;;
+    quiet) QUIET=1; SUMMARY=0; PROGRESS_FD="" ;;
+    summary) QUIET=1; SUMMARY=1; PROGRESS_FD=2 ;;
+  esac
+  if is_verbose; then QUIET=0; SUMMARY=0; PROGRESS_FD=2; fi
+  if [[ "${FIELDS[3]}" == script ]]; then
+    HAS_SHELL_STRING=1
+    SHELL_STRING="${FIELDS[4]}"
+  else
+    COMMAND_ARGV=("${FIELDS[@]:4}")
+  fi
+  unset FIELDS FIELD
+fi
 
 redact_text() {
   printf '%s' "$1" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" redact
@@ -844,7 +945,7 @@ mkfifo "$FIFO_OUT" "$FIFO_ERR"
 if [[ "$QUIET" -eq 1 ]]; then
   : >"$STDOUT_LOG"
   : >"$STDERR_LOG"
-  FILTER_ENV=(PAN_RUN_ENV_FILES="$ENV_FILES")
+  FILTER_ENV=(PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY="$SUMMARY")
   # With no progress sink, heartbeat lines go to fd 2, which each filter
   # inherits from the wrapper and never redirects.
   FILTER_ENV+=(PAN_RUN_FORWARD_HEARTBEAT=1 PAN_RUN_PROGRESS_FD="${PROGRESS_FD:-2}")
@@ -853,9 +954,9 @@ if [[ "$QUIET" -eq 1 ]]; then
   cat "$FIFO_ERR" | env "${FILTER_ENV[@]}" node "$HELPER" filter "$LOG_PATH" >"$STDERR_LOG" &
   ERR_FILTER_PID=$!
 else
-  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" &
+  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 node "$HELPER" filter "$LOG_PATH" &
   OUT_FILTER_PID=$!
-  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" filter "$LOG_PATH" >&2 &
+  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 node "$HELPER" filter "$LOG_PATH" >&2 &
   ERR_FILTER_PID=$!
 fi
 
@@ -1010,11 +1111,11 @@ fi
   # never waits on it.
   sleep "$FIRST_HB_SECONDS" </dev/null >/dev/null 2>&1 7>&- || exit 0
   kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
-  PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" \
+  PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" \
     node "$HELPER" beat || true
   while sleep "$HB_SECONDS" </dev/null >/dev/null 2>&1 7>&-; do
     kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
-    PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" \
+    PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" \
       node "$HELPER" beat || true
   done
 ) &
@@ -1064,7 +1165,7 @@ fi
 PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_EXIT_CODE="$EXIT_CODE" PAN_RUN_SIGNAL="$SIGNAL_NAME" \
   PAN_RUN_RECORD_REL="$RECORD_DIR_REL" PAN_RUN_LABEL="$LABEL" PAN_RUN_CWD="${CWD:-$PWD}" \
   PAN_RUN_PID="$CMD_PID" PAN_RUN_WRAPPER_PID="$WRAPPER_PID" PAN_RUN_CADENCE="$HB_SECONDS" \
-  PAN_RUN_STARTED_AT="$START_AT" PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_QUIET="$QUIET" \
+  PAN_RUN_STARTED_AT="$START_AT" PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" \
   PAN_RUN_START_STATUS="$START_STATUS" PAN_RUN_START_SIGNAL="$START_SIGNAL" \
   PAN_RUN_START_RECOVERED="$START_RECOVERED" PAN_RUN_START_STDERR="$START_STDERR" \
   PAN_RUN_CURSOR_CONVERSATION_ID="$CURSOR_CONV_ID" PAN_RUN_PARENT_RECORD="$PARENT_RECORD" \
@@ -1080,11 +1181,15 @@ if [[ "$OUTPUT_DRAINED" -eq 0 ]]; then
   wait "$OUT_FILTER_PID" "$ERR_FILTER_PID" 2>/dev/null
 fi
 
+if [[ "$SUMMARY" -eq 1 ]]; then
+  PAN_RUN_ENV_FILES="$ENV_FILES" node "$HELPER" result "$RECORD_DIR"
+fi
+
 if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -eq 0 ]]; then
   rm -f "$STDOUT_LOG" "$STDERR_LOG" 2>/dev/null || true
 fi
 
-if [[ "$QUIET" -eq 1 && "$EXIT_CODE" -ne 0 ]]; then
+if [[ "$QUIET" -eq 1 && "$SUMMARY" -eq 0 && "$EXIT_CODE" -ne 0 ]]; then
   truncated=0
   for capture in "$STDOUT_LOG" "$STDERR_LOG"; do
     if (( $(wc -c <"$capture") > MAX_CAPTURE_BYTES )); then truncated=1; fi
