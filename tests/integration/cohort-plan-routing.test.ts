@@ -4,18 +4,300 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { readAwayDecisionLedger } from '../../src/lib/away-mode.js'
 import {
   cohortSessionIds,
   cohortStatus,
   maybeStartDelivery,
+  parseCohortPlan,
   retryDeliveryRoute,
+  type DeliveryAutostartResult,
 } from '../../src/lib/cohorts.js'
-import { eventPath, loadState, statePath } from '../../src/lib/state.js'
+import {
+  eventPath,
+  listRunStates,
+  loadState,
+  statePath,
+} from '../../src/lib/state.js'
+import type { StageOutput } from '../../src/lib/types.js'
 import { renderStatus } from '../../src/lib/render.js'
 import { createWorktree, readWorktreeIndex } from '../../src/lib/worktrees.js'
 import { createFixture } from '../fixture-template.js'
 import { writeJson } from '../helpers.js'
 import { CLI, git, ratifiedPlanRun } from './cohort-helpers.js'
+import { AWAY_ALL, checkpoint } from './delivery-helpers.js'
+
+for (const actor of ['operator', 'away'] as const) {
+  for (const dirty of [false, true]) {
+    test(`pan ${actor === 'away' ? 'away ' : ''}decide approves a worktree-bound multi-chunk plan and reuses its cohort${dirty ? ' after committing dirty work' : ''}`, () => {
+      const { root, runId, state } = checkpoint(
+        'planning@plan-awaiting-operator',
+        AWAY_ALL,
+      )
+      const worktree = createWorktree(root, 'planning-selected')
+      const outputPath = state.stage_history.find(
+        (item) => item.stage === 'plan' && item.outcome === 'success',
+      )?.output_path
+
+      assert.ok(outputPath)
+
+      const output = JSON.parse(
+        readFileSync(path.join(root, outputPath), 'utf8'),
+      ) as StageOutput
+      const plan = parseCohortPlan(
+        output.data.cohort_plan,
+        'checkpoint cohort plan',
+      )
+      const child = plan.chunks[0]
+
+      assert.ok(child)
+
+      const specificationDirectory = path.dirname(child.child_spec_path)
+      const childSpecification = readFileSync(
+        path.join(root, child.child_spec_path),
+        'utf8',
+      )
+
+      for (const id of ['alpha', 'beta', 'gamma']) {
+        writeFileSync(
+          path.join(root, specificationDirectory, `${id}.md`),
+          childSpecification,
+        )
+      }
+
+      output.data.cohort_plan = {
+        parent_spec_path: plan.parent_spec_path,
+        chunks: [
+          {
+            id: 'alpha',
+            title: 'Alpha',
+            cohort_index: 1,
+            child_spec_path: path.join(specificationDirectory, 'alpha.md'),
+            depends_on: [],
+          },
+          {
+            id: 'beta',
+            title: 'Beta',
+            cohort_index: 1,
+            child_spec_path: path.join(specificationDirectory, 'beta.md'),
+            depends_on: [],
+          },
+          {
+            id: 'gamma',
+            title: 'Gamma',
+            cohort_index: 2,
+            child_spec_path: path.join(specificationDirectory, 'gamma.md'),
+            depends_on: ['alpha', 'beta'],
+          },
+        ],
+        edges: [
+          { from: 'alpha', to: 'gamma' },
+          { from: 'beta', to: 'gamma' },
+        ],
+        cohorts: [
+          { index: 1, chunks: ['alpha', 'beta'] },
+          { index: 2, chunks: ['gamma'] },
+        ],
+      }
+      writeJson(path.join(root, outputPath), output)
+      writeJson(statePath(root, runId), {
+        ...state,
+        workspace_root: worktree.path,
+        managed_worktree: {
+          name: worktree.name,
+          path: worktree.path,
+          branch: worktree.branch,
+        },
+      })
+
+      const planningPath = path.join(root, worktree.path)
+
+      if (dirty) {
+        writeFileSync(
+          path.join(planningPath, 'plan-work.txt'),
+          'planned work\n',
+        )
+      }
+
+      const approval = spawnSync(
+        process.execPath,
+        [
+          CLI,
+          ...(actor === 'away'
+            ? ['away', 'decide', runId, '--action', 'approve']
+            : ['decide', runId, 'approve']),
+          '--note',
+          'Approve the multi-chunk plan.',
+          '--worktree',
+          worktree.name,
+        ],
+        { cwd: root, encoding: 'utf8' },
+      )
+
+      assert.equal(approval.status, 0, approval.stderr)
+
+      const response = JSON.parse(approval.stdout) as {
+        autostart: DeliveryAutostartResult
+      }
+      let started = response.autostart
+
+      if (dirty) {
+        assert.ok(started.status === 'failed' && started.kind === 'cohort')
+        assert.match(started.error, /plan-work\.txt/u)
+        assert.deepEqual(started.manual_commands, [
+          `./bin/pan cohort route --plan-run ${runId}`,
+        ])
+        assert.equal(loadState(root, runId).status, 'succeeded')
+        assert.equal(loadState(root, runId).delivery_handoff?.kind, 'failed')
+        assert.deepEqual(cohortSessionIds(root), [])
+        assert.equal(listRunStates(root).length, 1)
+        assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+
+        const approvedEvent = readFileSync(eventPath(root, runId), 'utf8')
+          .trim()
+          .split('\n')
+          .map(
+            (line) => JSON.parse(line) as { decision?: string; actor?: string },
+          )
+          .filter((event) => event.decision === 'approve')
+
+        assert.deepEqual(
+          approvedEvent.map((event) => event.actor),
+          [actor],
+        )
+        git(planningPath, ['add', 'plan-work.txt'])
+        git(planningPath, ['commit', '-q', '-m', 'chore: commit planning work'])
+
+        const recovered = spawnSync(
+          process.execPath,
+          [
+            CLI,
+            'cohort',
+            'route',
+            '--plan-run',
+            runId,
+            '--worktree',
+            worktree.name,
+          ],
+          { cwd: root, encoding: 'utf8' },
+        )
+
+        assert.equal(recovered.status, 0, recovered.stderr)
+        started = JSON.parse(recovered.stdout) as DeliveryAutostartResult
+        const recoveredEvents = readFileSync(eventPath(root, runId), 'utf8')
+          .trim()
+          .split('\n')
+          .map((line) => JSON.parse(line) as { decision?: string })
+          .filter((event) => event.decision === 'approve')
+
+        assert.deepEqual(recoveredEvents, approvedEvent)
+      }
+
+      assert.ok(
+        started.status === 'started' && started.kind === 'cohort',
+        approval.stdout,
+      )
+      assert.equal(started.cohort_index, 1)
+      assert.deepEqual(
+        started.chunks.map((chunk) => chunk.chunk),
+        ['alpha', 'beta'],
+      )
+      assert.equal(
+        new Set(started.chunks.map((chunk) => chunk.worktree)).size,
+        2,
+      )
+      assert.ok(
+        started.chunks.every((chunk) => chunk.worktree !== worktree.path),
+      )
+      for (const chunk of started.chunks) {
+        const child = loadState(root, chunk.run_id)
+
+        assert.equal(child.workflow_slug, 'delivery-chunk')
+        assert.equal(child.workspace_root, chunk.worktree)
+        assert.equal(child.managed_worktree?.path, chunk.worktree)
+
+        if (dirty) {
+          assert.equal(
+            readFileSync(
+              path.join(root, chunk.worktree, 'plan-work.txt'),
+              'utf8',
+            ),
+            'planned work\n',
+          )
+        }
+      }
+      assert.deepEqual(cohortSessionIds(root), [started.cohort_id])
+      assert.equal(listRunStates(root).length, 3)
+      assert.equal(readWorktreeIndex(root).worktrees.length, 3)
+
+      const approved = loadState(root, runId)
+      const events = readFileSync(eventPath(root, runId), 'utf8')
+
+      assert.equal(approved.status, 'succeeded')
+      assert.equal(approved.managed_worktree?.name, worktree.name)
+      assert.equal(approved.delivery_handoff?.kind, 'cohort')
+      const approvalEvents = events
+        .trim()
+        .split('\n')
+        .map(
+          (line) => JSON.parse(line) as { decision?: string; actor?: string },
+        )
+        .filter((event) => event.decision === 'approve')
+
+      assert.deepEqual(
+        approvalEvents.map((event) => event.actor),
+        [actor],
+      )
+
+      if (actor === 'away') {
+        assert.deepEqual(
+          readAwayDecisionLedger(root).map((record) => [
+            record.action,
+            record.result,
+          ]),
+          [['approve', 'applied']],
+        )
+      }
+
+      const automatic = maybeStartDelivery(
+        root,
+        approved,
+        { actor, action: 'approve' },
+        { worktreeName: worktree.name },
+      )
+      const retry = spawnSync(
+        process.execPath,
+        [
+          CLI,
+          'cohort',
+          'route',
+          '--plan-run',
+          runId,
+          '--worktree',
+          worktree.name,
+        ],
+        { cwd: root, encoding: 'utf8' },
+      )
+
+      assert.equal(automatic?.status, 'already_started')
+      assert.equal(retry.status, 0, retry.stderr)
+      assert.deepEqual(JSON.parse(retry.stdout), {
+        ...started,
+        status: 'already_started',
+      })
+      assert.deepEqual(cohortSessionIds(root), [started.cohort_id])
+      assert.equal(listRunStates(root).length, 3)
+      assert.equal(readWorktreeIndex(root).worktrees.length, 3)
+      const afterRetry = readFileSync(eventPath(root, runId), 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as { decision?: string })
+        .filter((event) => event.decision === 'approve')
+
+      assert.deepEqual(afterRetry, approvalEvents)
+    })
+  }
+}
 
 test('approving a multi-chunk plan starts cohort 1', () => {
   const root = createFixture()
@@ -76,6 +358,42 @@ test('approving a multi-chunk plan starts cohort 1', () => {
   }
 
   assert.equal(cohortStatus(root, started.cohort_id).chunks.length, 2)
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+})
+
+test('an opted-out multi-chunk plan retains its planning worktree without starting delivery', () => {
+  const root = createFixture()
+  const worktree = createWorktree(root, 'planning-opt-out')
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const state = loadState(root, planRunId)
+
+  writeJson(statePath(root, planRunId), {
+    ...state,
+    autostart_delivery: false,
+    workspace_root: worktree.path,
+    managed_worktree: {
+      name: worktree.name,
+      path: worktree.path,
+      branch: worktree.branch,
+    },
+  })
+
+  const result = maybeStartDelivery(
+    root,
+    loadState(root, planRunId),
+    { actor: 'operator', action: 'approve' },
+    { worktreeName: worktree.name },
+  )
+
+  assert.equal(result, null)
+  assert.equal(loadState(root, planRunId).status, 'succeeded')
+  assert.equal(loadState(root, planRunId).managed_worktree?.name, worktree.name)
+  assert.equal(loadState(root, planRunId).delivery_handoff, undefined)
+  assert.deepEqual(cohortSessionIds(root), [])
+  assert.equal(listRunStates(root).length, 1)
   assert.equal(readWorktreeIndex(root).worktrees.length, 1)
 })
 
@@ -442,10 +760,15 @@ test('a multi-chunk route refuses to branch away from a dirty planning worktree 
 
   writeFileSync(dirtyPath, 'keep me\n')
 
-  const refused = maybeStartDelivery(root, loadState(root, planRunId), {
-    actor: 'away',
-    action: 'approve',
-  })
+  const refused = maybeStartDelivery(
+    root,
+    loadState(root, planRunId),
+    {
+      actor: 'away',
+      action: 'approve',
+    },
+    { worktreeName: worktree.name },
+  )
 
   assert.equal(refused?.status, 'failed')
   assert.match(refused?.error ?? '', /planning-wide/u)
@@ -465,7 +788,9 @@ test('a multi-chunk route refuses to branch away from a dirty planning worktree 
   git(worktreePath, ['add', 'operator-plan-work.txt'])
   git(worktreePath, ['commit', '-q', '-m', 'chore: plan-time work'])
 
-  const routed = retryDeliveryRoute(root, planRunId)
+  const routed = retryDeliveryRoute(root, planRunId, {
+    worktreeName: worktree.name,
+  })
 
   assert.equal(routed.status, 'started')
   assert.equal(routed.kind, 'cohort')
