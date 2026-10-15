@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+Add optional VS Code customizations to source checkouts and installed harnesses.
+
+### Added
+
+- Ship an operator command to check, apply, and restore editor patches and governance settings with private backups ([command](bin/vscode-customizations)).
+- Support verified VS Code 1.139.1 and 1.142.0 builds through shared recipes and version overrides ([installation guide](docs/embedded-installation.md#optional-vs-code-customizations)).
+- Preserve provider sections, native model choices, short default model identifiers, and explicit effort choices ([recipes](library/vscode/customizations.json)).
+
+### Fixed
+
+- Detect pending instruction edits when replacement text is part of the original instruction ([status tests](tests/unit/vscode-customizations.test.ts)).
+- Verify native BYOK synchronization in 1.142.0 and retain the legacy recovery for 1.139.1 ([version overrides](library/vscode/customizations-1.142.0.json)).
+
+The source passed static checks and 21 automated tests. The 1.142.0 sandbox passed 18 native behavior checks and the apply, repeat, and restore cycle. Restore reproduced the original bytes. GUI startup and authenticated provider requests are unverified.
+
 ## [9.0.1] - 2026-10-15
 
 Show live worker activity with clear message blocks and compact visible heartbeats.
