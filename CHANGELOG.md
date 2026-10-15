@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [9.0.0] - 2026-10-15
 
 Complete verification before release preparation and allocate the version only for the final local landing.
 
