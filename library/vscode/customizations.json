@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "summary": "Optional machine customizations captured from the operator scripts. Apply explicitly with bin/vscode-customizations; installation only ships the recipes.",
+  "verified_against": {
+    "vscode": "1.139.1",
+    "commit": "04c0d99f4fb0d8afe6ce4f0c58e31e183ac3e4b1"
+  },
+  "includes": ["instruction-patches.json"],
+  "versions": {
+    "1.142.0": "customizations-1.142.0.json"
+  },
+  "features": [
+    "Anthropic and OpenAI sections above Other Models in both model pickers, with upgrade rows hidden and update rows preserved",
+    "Retry stale BYOK registration once for idle SDK sessions",
+    "Resolve an unambiguous short chat.defaultModel ID in the Agents window",
+    "Default GPT-6 Luna reasoning effort to High while preserving explicit choices"
+  ],
+  "provenance": {
+    "picker": "Operator model-picker-patch-v2 recipe",
+    "default_model": "Operator default model fix, 2026-10-14",
+    "effort": "Operator High effort directive, 2026-10-14"
+  },
+  "patches": [
+    {
+      "id": "VSC-PICKER-WORKBENCH-1",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "else i.push(bCt(a.id,a.entry,a.reason,t.manageSettingsUrl,t.updateStateType,t.chatEntitlementService))}}",
+      "replace": "else if(a.reason!==\"upgrade\")i.push(bCt(a.id,a.entry,a.reason,t.manageSettingsUrl,t.updateStateType,t.chatEntitlementService))}}",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-2",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "let n=[],r=(a,c,l=[])=>{if(!(!c.length&&!l.length))",
+      "replace": "let __mpOther=t.other,n=[],r=(a,c,l=[])=>{l=l.filter(u=>u.needsUpdate||vCt(u.entry,this._entitlementService,i.unavailableContext.currentVSCodeVersion)!==\"upgrade\");if(!(!c.length&&!l.length))",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-3",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "if(r(d(13918,null),t.pinned),r(void 0,t.suggested,t.unavailable),t.other.length){",
+      "replace": "if(r(d(13918,null),t.pinned),r(void 0,t.suggested,t.unavailable),__mpOther=__mpLift(t,r,this._languageModelsService),__mpOther.length){",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-4",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "let a=eio(t),c=",
+      "replace": "let a=eio({...t,other:__mpOther}),c=",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-5",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "let l=d(13916,null),u=t.other.length;",
+      "replace": "let l=d(13916,null),u=__mpOther.length;",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-6",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "for(let l of t.other)n.push(this._createModelItem(l,i,c))",
+      "replace": "for(let l of __mpOther)n.push(this._createModelItem(l,i,c))",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-7",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "function icn(s){let o=Bvr(s),e=Vvr(o),t=Uvr(o);zvr(o,e,t);let i=Kvr(o);",
+      "replace": "function icn(s){let o=Bvr(s),e=Vvr(o),t=Uvr(o);zvr(o,e,t);__mpTop(o);let i=Kvr(o);",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-8",
+      "targets": ["out/vs/workbench/workbench.desktop.main.js"],
+      "find": "function mse(s,o){",
+      "replace": "/*model-picker-patch-v2*/function __mpVendor(m,L){let d=m.metadata;if(d.byokModelIdentifier){let b=L.lookupLanguageModel(d.byokModelIdentifier);return b?.vendor??d.modelGroup?.id}return d.isBYOK?d.vendor:void 0}function __mpLift(t,r,L){let rest=t.other;for(let v of [\"anthropic\", \"openai\"]){let ms=rest.filter(m=>__mpVendor(m,L)===v);if(!ms.length)continue;rest=rest.filter(m=>__mpVendor(m,L)!==v);ms.sort((a,b)=>a.metadata.name.localeCompare(b.metadata.name));r(mse(L,v),ms)}return rest}function __mpTop(s){let o=s.options,e=s.items;for(let v of [\"anthropic\", \"openai\"]){let ms=o.models.filter(m=>!s.placed.has(m.identifier)&&__mpVendor(m,o.languageModelsService)===v);if(!ms.length)continue;ms.sort((a,b)=>a.metadata.name.localeCompare(b.metadata.name));e.push({kind:\"separator\",label:mse(o.languageModelsService,v)});for(let m of ms){s.markPlaced(m.identifier);let c=o.controlModels[m.metadata.id]??o.controlModels[m.identifier];if(c?.minVSCodeVersion&&!BZ(o.currentVSCodeVersion,c.minVSCodeVersion))e.push(bCt(m.metadata.id,c,\"update\",o.manageSettingsUrl,o.updateStateType,o.chatEntitlementService));else{let{action:p,ariaDescription:r}=d8(m,o.selectedModelId,o.actions.onSelect);e.push(VZ(p,m,o.openerService,void 0,o.presentation.isUBB,r,s.makePinAction(m),o.actions.onConfigure))}}}}function mse(s,o){",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-1",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "else i.push(Mkt(a.id,a.entry,a.reason,t.manageSettingsUrl,t.updateStateType,t.chatEntitlementService))}}",
+      "replace": "else if(a.reason!==\"upgrade\")i.push(Mkt(a.id,a.entry,a.reason,t.manageSettingsUrl,t.updateStateType,t.chatEntitlementService))}}",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-2",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "let n=[],r=(a,c,l=[])=>{if(!(!c.length&&!l.length))",
+      "replace": "let __mpOther=t.other,n=[],r=(a,c,l=[])=>{l=l.filter(u=>u.needsUpdate||Pkt(u.entry,this._entitlementService,i.unavailableContext.currentVSCodeVersion)!==\"upgrade\");if(!(!c.length&&!l.length))",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-3",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "if(r(d(13918,null),t.pinned),r(void 0,t.suggested,t.unavailable),t.other.length){",
+      "replace": "if(r(d(13918,null),t.pinned),r(void 0,t.suggested,t.unavailable),__mpOther=__mpLift(t,r,this._languageModelsService),__mpOther.length){",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-4",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "let a=Uro(t),c=",
+      "replace": "let a=Uro({...t,other:__mpOther}),c=",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-5",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "let l=d(13916,null),u=t.other.length;",
+      "replace": "let l=d(13916,null),u=__mpOther.length;",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-6",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "for(let l of t.other)n.push(this._createModelItem(l,i,c))",
+      "replace": "for(let l of __mpOther)n.push(this._createModelItem(l,i,c))",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-7",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "function Qun(s){let o=K_r(s),e=q_r(o),t=G_r(o);$_r(o,e,t);let i=j_r(o);",
+      "replace": "function Qun(s){let o=K_r(s),e=q_r(o),t=G_r(o);$_r(o,e,t);__mpTop(o);let i=j_r(o);",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-8",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "function Hre(s,o){",
+      "replace": "/*model-picker-patch-v2*/function __mpVendor(m,L){let d=m.metadata;if(d.byokModelIdentifier){let b=L.lookupLanguageModel(d.byokModelIdentifier);return b?.vendor??d.modelGroup?.id}return d.isBYOK?d.vendor:void 0}function __mpLift(t,r,L){let rest=t.other;for(let v of [\"anthropic\", \"openai\"]){let ms=rest.filter(m=>__mpVendor(m,L)===v);if(!ms.length)continue;rest=rest.filter(m=>__mpVendor(m,L)!==v);ms.sort((a,b)=>a.metadata.name.localeCompare(b.metadata.name));r(Hre(L,v),ms)}return rest}function __mpTop(s){let o=s.options,e=s.items;for(let v of [\"anthropic\", \"openai\"]){let ms=o.models.filter(m=>!s.placed.has(m.identifier)&&__mpVendor(m,o.languageModelsService)===v);if(!ms.length)continue;ms.sort((a,b)=>a.metadata.name.localeCompare(b.metadata.name));e.push({kind:\"separator\",label:Hre(o.languageModelsService,v)});for(let m of ms){s.markPlaced(m.identifier);let c=o.controlModels[m.metadata.id]??o.controlModels[m.identifier];if(c?.minVSCodeVersion&&!qJ(o.currentVSCodeVersion,c.minVSCodeVersion))e.push(Mkt(m.metadata.id,c,\"update\",o.manageSettingsUrl,o.updateStateType,o.chatEntitlementService));else{let{action:p,ariaDescription:r}=E3(m,o.selectedModelId,o.actions.onSelect);e.push(GJ(p,m,o.openerService,void 0,o.presentation.isUBB,r,s.makePinAction(m),o.actions.onConfigure))}}}}function Hre(s,o){",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-PICKER-HOST-1",
+      "targets": ["out/vs/platform/agentHost/node/agentHostMain.js"],
+      "find": "await u?.setModel(t.id,n0(t,this._configurationService,this._logService,s.configurationId),i0(t,a,l),p),",
+      "replace": "/*model-picker-patch-v2*/try{await u?.setModel(t.id,n0(t,this._configurationService,this._logService,s.configurationId),i0(t,a,l),p)}catch(__mpError){if(!u||u.hasActiveTurn||!this._byokModels.some(m=>m.id===t.id)||!String(__mpError?.message??__mpError).includes(`Provider model '${t.id}' is not registered`))throw __mpError;this._logService.info(`[Copilot:${u.sessionId}] Refreshing BYOK registration before model selection`);await this._destroyLiveSession(u,!0);u=await this._ensureResolvedChatSession(this._resolveChatContext(e,i));if(!u)throw __mpError;await u.setModel(t.id,n0(t,this._configurationService,this._logService,s.configurationId),i0(t,a,l),p)};",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-DEFAULT-MODEL",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "function ude(s,o){let e=s?.trim().toLowerCase();if(!e)return;if(e===dcn)return o.find(n=>n.metadata.id?.trim().toLowerCase()===dcn);let t=o.find(n=>n.metadata.id?.trim().toLowerCase()===e);if(t)return t;let i=o.filter(n=>n.metadata.family?.trim().toLowerCase()===e);return i.length>0?i.reduce((n,r)=>Dyr(r.metadata.version,n.metadata.version)>0?r:n):void 0}",
+      "replace": "function ude(s,o){let e=s?.trim().toLowerCase();if(!e)return;if(e===dcn)return o.find(n=>n.metadata.id?.trim().toLowerCase()===dcn);let t=o.find(n=>n.metadata.id?.trim().toLowerCase()===e);if(t)return t;let i=o.filter(n=>n.metadata.family?.trim().toLowerCase()===e);if(i.length>0)return i.reduce((n,r)=>Dyr(r.metadata.version,n.metadata.version)>0?r:n);let n=o.filter(r=>r.metadata.id?.trim().toLowerCase().split(\"/\").at(-1)===e);return n.length===1?n[0]:void 0}",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-1",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "configurationSchema:this._toLanguageModelConfigurationSchema(i.configSchema)",
+      "replace": "configurationSchema:this._toLanguageModelConfigurationSchema(i.configSchema,i.id)",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-2",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "_toLanguageModelConfigurationSchema(e){if(!e)return;let t={};",
+      "replace": "_toLanguageModelConfigurationSchema(e,o){if(!e)return;let t={};",
+      "occurrences": 1
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-3",
+      "targets": ["out/vs/sessions/sessions.desktop.main.js"],
+      "find": "t[i]={type:n.type,title:n.title,description:n.description,default:n.default,enum:n.enum,enumItemLabels:n.enumLabels??r?.labels",
+      "replace": "t[i]={type:n.type,title:n.title,description:n.description,default:o===\"openai/OpenAI/gpt-6-luna\"&&s._reasoningEffortKeys.has(i)&&n.readOnly!==!0&&n.enum?.includes(\"high\")?\"high\":n.default,enum:n.enum,enumItemLabels:n.enumLabels??r?.labels",
+      "occurrences": 1
+    }
+  ]
+}

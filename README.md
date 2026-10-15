@@ -93,6 +93,15 @@ submission to create validated HTML from retained stage records.
 
 3. In VS Code chat, select the `pan-supervisor` agent, then run `/pan-start <request>` or `/pan-resume <run-id>`.
 
+4. Optionally install the captured VS Code customizations yourself. The same command ships in embedded installations:
+
+   ```bash
+   ./bin/vscode-customizations --check
+   ./bin/vscode-customizations --apply
+   ```
+
+   This bundles the provider sections in the model picker, stale BYOK registration recovery, default model resolution, Luna High effort, and Pancreator governance patches and settings. It changes the selected VS Code app and existing user profiles across all workspaces. Installation and projection never apply it automatically. See [optional VS Code customizations](docs/embedded-installation.md#optional-vs-code-customizations) for restore, version checks, and signature risks.
+
 Remove `vscode` from `hosts` and sync again to remove those files. See [Choose editor hosts](docs/operator-guide.md#choose-editor-hosts) for the surfaces and the known limits.
 
 ## Install Into Another Repository

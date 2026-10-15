@@ -56,6 +56,50 @@ cd /path/to/target-repository
 # /pan-build-briefs to generate target-specific brief semantics and design tokens.
 ```
 
+## Optional VS Code customizations
+
+The payload includes `bin/vscode-customizations`, its runtime source, and the recipes in `library/vscode/`. The source checkout and an embedded or detached installation use the same command. `bin/install`, `bin/update`, and `pan models --sync` only deliver the bundle; they never patch the editor or change user settings.
+
+The operator invokes this separately after installation:
+
+```bash
+# From the target repository; inspection does not write anything.
+./.pancreator/bin/vscode-customizations --check
+# After reviewing the report:
+./.pancreator/bin/vscode-customizations --apply
+```
+
+In self-development, use `./bin/vscode-customizations` with the same arguments. For a detached installation, use `<harness-dir>/bin/vscode-customizations`.
+
+The shared runner selects a recipe from the installed app's version and verifies its exact commit. Version 1.139.1 keeps the captured recipes unchanged. Version 1.142.0 inherits the governance edits, settings, and effort schema changes, with only changed anchors and picker layout behavior in `library/vscode/customizations-1.142.0.json`. Its native model selection synchronizes BYOK registrations before switching; that branch verifies the native implementation instead of adding the legacy disconnect/resume recovery. Unknown versions or commits are refused.
+
+Validation on a separate 1.142.0 app covered check, apply, repeated apply, restore, CLI version execution, and 18 checks against the patched native methods. These checks covered provider ordering, search and selection, preserved update rows, model resolution, outgoing effort defaults, explicit effort choices, and BYOK synchronization. Restore reproduced the original app and profile bytes. Visible GUI startup and authenticated provider calls remain unverified.
+
+The captured customizations are:
+
+| Surface                | Change                                                                                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Both model pickers     | Put Anthropic and OpenAI above Other Models; hide subscription upgrade rows while preserving update rows, search, native model identifiers, and selection callbacks. |
+| Copilot Agent Host     | On 1.139.1, refresh stale BYOK registration once for an idle SDK session. On 1.142.0, verify the native registration synchronization.                                |
+| Agents window defaults | Resolve an unambiguous short `chat.defaultModel` identifier to its provider model. Default GPT-6 Luna effort to High; explicit choices still win.                    |
+| Copilot governance     | Apply the six instruction edits and six settings in the canonical `library/vscode/instruction-patches.json`. Safety and security instructions stay.                  |
+
+The command does not select a default model, copy provider credentials, migrate themes, or install extensions. These are app patches and governance settings, not a copy of an operator's personal configuration.
+
+The default app is `/Applications/Visual Studio Code.app`; `--app` also accepts a `Contents/Resources/app` directory. Settings default to `~/Library/Application Support/Code/User/settings.json` and every existing `profiles/*/settings.json`. Override the user directory with `--user-data-dir`, or use `--skip-settings` to operate only on the app. Profile comments and unrelated settings are preserved. To include a profile created later when a backup exists, restore this bundle and apply it again.
+
+`--check` exits 0 when applied, 1 when changes are pending, and 2 when inspection is refused. Apply and restore exit 2 on refusal. Before any apply, every anchor, app version and commit, integrity checksum, and selected settings file must pass preflight. Every changed JavaScript file passes `node --check` before any file is replaced. An interrupted apply can be restored using the same app, user directory, and state directory.
+
+Backups live in `~/.local/state/pancreator/vscode-customizations/`, separated by app location and build. They use private permissions and include the original bytes of changed files and settings. `--state-dir` selects another backup location. Existing app patches are recognized; if they were already present, this bundle does not claim or remove them. Restore returns only the changes this invocation captured:
+
+```bash
+./.pancreator/bin/vscode-customizations --revert
+```
+
+Restore preflights every backup digest and refuses to overwrite any subsequent app or settings edit. Preserve the backups and reconcile that edit before retrying. A process killed while holding the customization lock leaves a PID record; the next apply or restore recovers it only when the recorded process no longer exists.
+
+Fully quit and reopen VS Code after apply or restore. Writing into `/Applications` may require App Management permission for the terminal. Patching breaks the Microsoft code signature's resource seal; startup checksums are updated, but launch, updater, and Keychain behavior still require operator verification. An editor update replaces the app patches. An unsupported version or commit requires a fresh anchor audit and manifest update before reapplication. A marketplace Copilot Chat extension can replace the built-in extension targeted by the governance recipe; that separate extension is outside this bundle.
+
 ## Optional scheduled trigger
 
 An embedded or detached installation includes the schedule configuration,
@@ -554,7 +598,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `9.0.1`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `9.1.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is
