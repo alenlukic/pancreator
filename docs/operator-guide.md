@@ -117,7 +117,7 @@ decisions. `away decide` is the only command that appends a
 `SupervisorDecisionRecord` to `runtime/logs/away-mode/supervisor-decisions.jsonl`.
 It accepts `--action` (one of the allowed guardrail actions), `--note` or
 `--note-file` (the reason), `--stage` (required for `set-stage`), and
-`--worktree` (the worktree a single-chunk plan route starts delivery in). Pan
+`--worktree` (the planning worktree to target, also used for single-chunk delivery). A cohort route derives separate chunk worktrees. Pan
 refuses a disabled run, an unanswered operator question, a run with no
 permitted blocker, an action outside the guardrails, and a missing argument,
 and a refusal writes nothing. A failed apply appends one `failed` record and
@@ -1575,6 +1575,8 @@ A cohort session runs to its release run without stopping for you between cohort
 The `decide` response, and an `away decide` response that approves the gate, carries an `autostart` object with a `status` of `started`, `already_started`, or `failed` and a `kind`. For `kind: delivery` the object carries `run_id`, `worktree`, and `resume_command` (`/pan-resume <run-id>`). For `kind: cohort` it carries `cohort_id`, `cohort_index`, `max_parallel`, `deferred_chunks` (the chunks the parallelism limit left unstarted), `supervise_command` (the `/pan-cohort <cohort-id>` session for the whole cohort), and `chunks`, one entry per started chunk run with `chunk`, `run_id`, `worktree`, and `resume_command`. `already_started` means an earlier approval already started that delivery, so nothing failed. For `failed` the object carries `error` and `manual_commands`; the approval and the ratified plan stand. The one manual command is `pan cohort route --plan-run <plan-run-id>`, for the single-chunk route and the cohort route alike. It is the idempotent retry: it adopts a run or session the failed attempt already created rather than creating a second one, so running it twice is safe. The failed route is persisted on the plan run, so `pan status <plan-run-id>` shows `Delivery route failed: <error>` with that command under `Manual:`, and a successful route replaces the failed line with the started delivery. `pan status <plan-run-id>` names the handoff (`delivery_handoff`), and `pan cohort integrate` reports its own continuation under the same `autostart` key with `kind: cohort` or `kind: release`; `pan cohort status` names the release run as `release_run_id`.
 
 The route runs after your decision is already recorded and never rewrites it. It fires for your own `pan decide approve` and for an away-mode approval applied on your behalf, because the route is a recorded property of the run rather than a judgment made at approval time.
+
+For a planning run bound to a managed worktree, pass its `--worktree <name>` to `decide`, `away decide`, or `cohort route` to target that run. A multi-chunk route derives a separate worktree for each chunk; it accepts the planning selection without assigning it to the chunks. A single-chunk route uses the explicit selection, or inherits the planning worktree when no selection is supplied. A dirty planning worktree still blocks cohort fan-out until its work is committed; the recorded approval stands and `cohort route --plan-run <plan-run-id> --worktree <name>` retries the route.
 
 ### Opting out of the route
 

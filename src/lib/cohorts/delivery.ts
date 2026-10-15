@@ -243,15 +243,8 @@ function routeDelivery(
 
     kind = 'cohort'
 
-    // A cohort session derives one worktree per chunk, so there is no single
-    // worktree an operator could name for it.
-    invariant(
-      options.worktreeName === undefined,
-      `--worktree applies only to a single-chunk plan route. This plan has ` +
-        `${plan.chunks.length} chunks, and a cohort session derives one ` +
-        'worktree per chunk.',
-      { code: 'COHORT_WORKTREE_NOT_APPLICABLE' },
-    )
+    // The selection targets the planning command. Cohort delivery derives
+    // separate worktrees for its chunks rather than consuming that selection.
 
     const existing = cohortSessionForPlanRun(root, state.run_id)
 
