@@ -11,7 +11,19 @@ import {
 
 import { collectSecrets, redact } from '../agent-index/store.js'
 import { PanError } from '../errors.js'
-import { transcriptSteps, type TranscriptStep } from '../transcripts/records.js'
+import {
+  transcriptSteps,
+  transcriptStep,
+  transcriptToolStep,
+  type TranscriptStep,
+} from '../transcripts/records.js'
+import { isRecord } from '../io.js'
+import {
+  readAgentActivity,
+  type AgentActivity,
+} from '../agent-index/activity.js'
+import type { WatchAgentSessionEntry, WatchAgentWakeInfo } from './agent.js'
+import type { GenericWatchRecordEntry } from './process.js'
 import {
   copilotSessionsRoot,
   copilotSessionTranscript,
@@ -19,7 +31,6 @@ import {
 } from '../transcripts/source.js'
 import { readLaunchRecord } from './launch.js'
 import { resolveWatchedInvocation } from './paths.js'
-import { formatSessionStartLine } from './record.js'
 import type { WatchRecordEntry } from './types.js'
 
 const READ_BYTES = 1024 * 1024
@@ -119,6 +130,49 @@ export class WatchTranscriptCursor {
   private offset = 0
   private pending = Buffer.alloc(0)
   private discarding = false
+  private readonly toolIds = new Set<string>()
+
+  private steps(content: string): TranscriptStep[] {
+    const steps: TranscriptStep[] = []
+    for (const line of content.split('\n')) {
+      if (!line.trim()) continue
+      let value: unknown
+      try {
+        value = JSON.parse(line)
+      } catch {
+        continue
+      }
+      if (!isRecord(value)) continue
+      const data = isRecord(value.data) ? value.data : {}
+      if (value.type === 'tool.execution_start') {
+        const id = typeof data.toolCallId === 'string' ? data.toolCallId : null
+        if (id && this.toolIds.has(id)) continue
+        if (id) this.toolIds.add(id)
+        const step = transcriptToolStep(value)
+        if (step) steps.push(step)
+      } else {
+        // Copilot can describe the same tool in the assistant message and its start event.
+        if (Array.isArray(data.toolRequests)) {
+          value = {
+            ...value,
+            data: {
+              ...data,
+              toolRequests: data.toolRequests.filter((tool: unknown) => {
+                if (!isRecord(tool) || typeof tool.toolCallId !== 'string')
+                  return true
+                if (this.toolIds.has(tool.toolCallId)) return false
+                this.toolIds.add(tool.toolCallId)
+                return true
+              }),
+            },
+          }
+        }
+        const step = transcriptStep(value)
+        if (step) steps.push(step)
+      }
+    }
+    return steps
+  }
 
   read(
     file: string | null,
@@ -147,6 +201,7 @@ export class WatchTranscriptCursor {
         this.offset = 0
         this.pending = Buffer.alloc(0)
         this.discarding = false
+        this.toolIds.clear()
       }
       if (prime) {
         this.offset = stat.size
@@ -182,7 +237,7 @@ export class WatchTranscriptCursor {
         const complete =
           end === -1 ? Buffer.alloc(0) : content.subarray(0, end + 1)
         this.pending = Buffer.from(content.subarray(end + 1))
-        steps.push(...transcriptSteps(complete.toString('utf8')))
+        steps.push(...this.steps(complete.toString('utf8')))
       }
       return { steps, notice: '' }
     } finally {
@@ -207,11 +262,15 @@ export interface WatchDisplayInputs {
     notice: string
   }
   secrets: string[]
+  interactive?: boolean
 }
 
 /** Renders one session with separate cursors for multiplexed invocations. */
 export class WatchDisplay {
   private readonly states = new Map<string, DisplayState>()
+  private readonly liveRuns = new Map<string, WatchRecordEntry>()
+  private readonly liveAgents = new Map<string, number>()
+  private readonly agentStarted = new Map<string, number>()
   private readonly secrets: string[]
   private readonly textChars = limit('PANCREATOR_WATCH_TEXT_CHARS', 600)
   private readonly toolChars = limit('PANCREATOR_WATCH_TOOL_CHARS', 240)
@@ -257,8 +316,7 @@ export class WatchDisplay {
       .join('\n  ')
   }
 
-  private state(entry: WatchRecordEntry): DisplayState {
-    const key = `${entry.run_id}:${entry.invocation_id}`
+  private state(key: string): DisplayState {
     let state = this.states.get(key)
     if (!state) {
       state = {
@@ -276,17 +334,21 @@ export class WatchDisplay {
 
   /** Prints the run, invocation, persona, model, cadence and bound once. */
   start(entry: WatchRecordEntry): string {
-    const state = this.state(entry)
+    this.liveRuns.set(`${entry.run_id}:${entry.invocation_id}`, entry)
+    const state = this.state(`${entry.run_id}:${entry.invocation_id}`)
     // Establish the display cursor before the first wait, without replaying history.
     this.transcriptDelta(entry, state, true)
     const context =
       this.inputs?.context(entry) ??
       resolveWatchedInvocation(this.root, entry.run_id, entry.invocation_id)
         .stage
-    return `${this.finish()}${this.summary(
-      `${formatSessionStartLine(entry)}; run ${entry.run_id}; persona ${context.persona}; model ${context.model}`,
-      4096,
-    )}\n`
+    return (
+      `${this.finish()}── Watch · ${this.summary(context.persona, 120)} ──\n` +
+      `  Run: ${this.summary(entry.run_id, 160)}\n` +
+      `  Invocation: ${this.summary(entry.invocation_id, 160)}\n` +
+      `  Model: ${this.summary(context.model, 160)}\n` +
+      `  Observe every ${entry.cadence_seconds}s · Bound ${entry.timeout_seconds ?? 3600}s\n\n`
+    )
   }
 
   private transcriptDelta(
@@ -315,18 +377,31 @@ export class WatchDisplay {
     }
   }
 
-  /** Prints new transcript and wrapper fragments, or updates one idle line. */
-  wake(entry: WatchRecordEntry): string {
-    const state = this.state(entry)
-    const activity = entry.observation?.agent_activity
-    const delta = this.transcriptDelta(entry, state)
-    const notice = delta.notice !== state.notice ? delta.notice : ''
-    state.notice = delta.notice
-    const assistant = delta.steps.filter((step) => step.role === 'assistant')
+  private readCursor(
+    state: DisplayState,
+    prime = false,
+  ): { steps: TranscriptStep[]; notice: string } {
+    try {
+      return state.cursor.read(state.transcript, prime)
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        typeof error.code === 'string' &&
+        ['EACCES', 'EPERM', 'EIO', 'ESTALE', 'EISDIR'].includes(error.code)
+      ) {
+        return { steps: [], notice: `Transcript unreadable (${error.code}).` }
+      }
+      throw error
+    }
+  }
+
+  private fragments(steps: TranscriptStep[]): string[] {
+    const assistant = steps.filter((step) => step.role === 'assistant')
     const fragments: string[] = []
     for (const step of assistant) {
       const text = this.continued(step.text, this.textChars)
-      if (text) fragments.push(`chat: ${text}`)
+      if (text) fragments.push(`── Message ──\n  ${text}`)
       const tools: { name: string; count: number }[] = []
       for (const tool of step.tools) {
         const last = tools.at(-1)
@@ -339,8 +414,140 @@ export class WatchDisplay {
           .join(', '),
         this.toolChars,
       )
-      if (toolText) fragments.push(`tools: ${toolText}`)
+      if (toolText) fragments.push(`── Tool ──\n  ${toolText}`)
     }
+    return fragments
+  }
+
+  /** Show a shell observer's new output separately from its compact heartbeat. */
+  processWake(entry: GenericWatchRecordEntry): string {
+    const lines: string[] = []
+    if ((entry.output?.growth_bytes ?? 0) > 0 && entry.output?.tail?.length) {
+      lines.push(
+        `── Output ──\n  ${this.continued(entry.output.tail.join('\n'), this.textChars)}\n`,
+      )
+    }
+    if (!entry.terminal_state) {
+      const elapsed = Math.floor(
+        entry.heartbeat?.elapsed_seconds ?? entry.wake * entry.cadence_seconds,
+      )
+      lines.push(
+        `♥ ${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}\n`,
+      )
+    }
+    return lines.length ? `${lines.join('\n')}\n` : ''
+  }
+
+  /** Prime an indexed subagent's transcript before observing live changes. */
+  startAgent(entry: WatchAgentSessionEntry): string {
+    this.liveAgents.set(entry.subject, entry.cadence_seconds)
+    this.agentStarted.set(entry.subject, Date.parse(entry.recorded_at))
+    const state = this.state(`agent:${entry.subject}`)
+    const activity = readAgentActivity(
+      this.root,
+      entry.subject,
+      Date.now(),
+      entry.cadence_seconds,
+    )
+    state.transcript = activity?.transcript?.path ?? null
+    this.readCursor(state, !activity?.stop)
+    return `── Watch · ${this.summary(entry.subject, 120)} ──\n\n`
+  }
+
+  /** Emit new chat and tools for a standalone agent without idle wake spam. */
+  wakeAgent(entry: WatchAgentWakeInfo): string {
+    const output = this.agentDelta(entry.subject, entry.agent_activity)
+    if (entry.terminal_state) {
+      this.liveAgents.delete(entry.subject)
+      return output
+    }
+    const elapsed = Math.max(
+      0,
+      Math.floor(
+        (Date.parse(entry.recorded_at) -
+          (this.agentStarted.get(entry.subject) ??
+            Date.parse(entry.recorded_at))) /
+          1000,
+      ),
+    )
+    return `${output}♥ ${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}\n\n`
+  }
+
+  private agentDelta(subject: string, activity: AgentActivity | null): string {
+    const state = this.state(`agent:${subject}`)
+    state.transcript = activity?.transcript?.path ?? state.transcript
+    const delta = this.readCursor(state)
+    const fragments = this.fragments(delta.steps)
+    const notice =
+      delta.notice ||
+      (!state.transcript ? 'Waiting for the agent transcript.' : '')
+    if (notice && notice !== state.notice) fragments.push(notice)
+    state.notice = notice
+    return fragments.length ? `${fragments.join('\n\n')}\n\n` : ''
+  }
+
+  /** Route an attach ledger's known watch record shapes to the same live renderer. */
+  follow(entry: Record<string, unknown>): string {
+    if (
+      entry.schema_version !== 1 ||
+      typeof entry.watch_session_id !== 'string'
+    )
+      return ''
+    if (
+      typeof entry.run_id === 'string' &&
+      typeof entry.invocation_id === 'string'
+    ) {
+      // These are harness-authored records; the discriminants select the owning watch format.
+      const record = entry as unknown as WatchRecordEntry
+      if (entry.event === 'session_started') return this.start(record)
+      if (entry.event === 'wake') return this.wake(record)
+    } else if (typeof entry.subject === 'string') {
+      if (entry.event === 'session_started' && 'agent_entry' in entry)
+        return this.startAgent(entry as unknown as WatchAgentSessionEntry)
+      if (entry.event === 'wake' && 'agent_activity' in entry)
+        return this.wakeAgent(entry as unknown as WatchAgentWakeInfo)
+    }
+    return ''
+  }
+
+  /** Forward transcript activity between observation wakes without changing their cadence. */
+  refresh(): string {
+    const output: string[] = []
+    for (const [subject, cadence] of this.liveAgents) {
+      const state = this.state(`agent:${subject}`)
+      output.push(
+        this.agentDelta(
+          subject,
+          state.transcript
+            ? null
+            : readAgentActivity(this.root, subject, Date.now(), cadence),
+        ),
+      )
+    }
+    for (const [key, entry] of this.liveRuns) {
+      const state = this.state(key)
+      const delta = this.transcriptDelta(entry, state)
+      const fragments = this.fragments(delta.steps)
+      if (delta.notice && delta.notice !== state.notice)
+        fragments.push(delta.notice)
+      state.notice = delta.notice
+      if (fragments.length)
+        output.push(`${this.finish()}${fragments.join('\n\n')}\n\n`)
+    }
+    return output.join('')
+  }
+
+  /** Prints new transcript and wrapper fragments; silent wakes stay in the ledger. */
+  wake(entry: WatchRecordEntry): string {
+    const key = `${entry.run_id}:${entry.invocation_id}`
+    if (entry.terminal_state) this.liveRuns.delete(key)
+    else this.liveRuns.set(key, entry)
+    const state = this.state(key)
+    const activity = entry.observation?.agent_activity
+    const delta = this.transcriptDelta(entry, state)
+    const notice = delta.notice !== state.notice ? delta.notice : ''
+    state.notice = delta.notice
+    const fragments = this.fragments(delta.steps)
     const heartbeat = activity?.open_call?.shell_heartbeat
     let wrapper = ''
     if (heartbeat?.log_bytes != null) {
@@ -370,7 +577,10 @@ export class WatchDisplay {
       state.idle += 1
       const line = `${label} unchanged x${state.idle}`
       this.idleLineWidth = Math.max(this.idleLineWidth, line.length)
-      return `\r${line.padEnd(this.idleLineWidth)}`
+      const elapsed = entry.wake * entry.cadence_seconds
+      return (this.inputs?.interactive ?? process.stderr.isTTY)
+        ? `\r${line.padEnd(this.idleLineWidth)}`
+        : `♥ ${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}\n`
     }
     const idle = state.idle > 0 ? `; unchanged x${state.idle}` : ''
     state.idle = 0
@@ -389,7 +599,7 @@ export class WatchDisplay {
     return (
       `${this.finish()}${label} wake ${entry.wake} at ${entry.recorded_at}: ${output}${idle}` +
       `${terminal}\n` +
-      (fragments.length ? `  ${fragments.join('\n  ')}\n` : '')
+      (fragments.length ? `\n${fragments.join('\n\n')}\n\n` : '')
     )
   }
 

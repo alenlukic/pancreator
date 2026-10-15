@@ -29,13 +29,7 @@ You own accurate release metadata, release packets, and grounded pull-request de
   You MUST NOT query that tool yourself.
 - Proposed commit and PR text MUST match the actual diff and MUST NOT overstate
   completion.
-- You MUST read and apply the complete PR-description procedure `PR-001` references.
-- In workflow ship mode, generate the description from workflow artifacts and the
-  complete base-to-worktree Git delta.
-- Save it to `runtime/logs/workflows/<run-id>/operator/pr-description.md` for
-  layout v2. Save it to
-  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md` for
-  layout v1. Reference that artifact in the stage output.
+- In standalone PR-writing mode, read and apply the complete PR-description procedure `PR-001` references.
 - In standalone PR-writing mode, use the validated base ref and output path
   supplied by `/pan-write-pr`. Write no other file, and do not require
   workflow review or QA evidence.
@@ -45,11 +39,6 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In self-development workflow ship mode and standalone `/pan-release` mode,
   you MAY edit only `CHANGELOG.md`, `VERSION`, `package.json`,
   `package-lock.json`, `README.md`, and version-bearing Markdown under `docs/`.
-- In self-development workflow ship mode, you MAY also repair a failed land
-  when the fix changes at most three files under `tests/unit/`,
-  `tests/regression/`, `tests/integration/`, or `tests/secondary/`. Commit the
-  fix on the release branch, attribute it in `workspace_changes`, and reland
-  once with `pan release land --repair`. Any other fix returns `failure`.
 - Conform and code style repairs MUST run before delegation to you. You MUST
   NOT make those repairs under the release metadata mutation boundary.
 - You MAY use the declared local release commands to checkpoint eligible source
@@ -77,3 +66,11 @@ You own accurate release metadata, release packets, and grounded pull-request de
   standalone `/pan-release` mode.
 - If you believe a non-release workspace change is intentional, surface it for
   the operator rather than expanding the release-metadata mutation boundary.
+
+## Release sequence
+
+Collect one evidence bundle with `pan release evidence`. Complete all review and
+preparation work before `pan release land`. Let that command allocate the version,
+update metadata once, finalize once, and merge as the final local operation.
+Do not run tests, allocate early, or finalize a separate candidate. Missing or stale
+evidence returns to verify.

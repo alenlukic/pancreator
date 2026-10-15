@@ -170,7 +170,7 @@ test('every repair instruction surface agrees on the category partition', () => 
   assert.doesNotMatch(command, /requested intake count/u)
 })
 
-test('ship, write-pr, and conform keep required STE checks', () => {
+test('write-pr and conform keep required STE checks while ship has no PR check', () => {
   const root = sharedFixture()
   const requiredSte = (
     persona: string,
@@ -194,7 +194,7 @@ test('ship, write-pr, and conform keep required STE checks', () => {
 
   assert.deepEqual(
     requiredSte('release-steward', 'delivery', 'ship', 'workflow'),
-    ['workflow-pr-simplified-english-validate'],
+    [],
   )
   assert.deepEqual(
     requiredSte('release-steward', 'standalone', 'write-pr', 'standalone'),

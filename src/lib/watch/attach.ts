@@ -67,6 +67,8 @@ export interface WatchAttachOptions {
   untilTerminal?: boolean
   sleep?: (ms: number) => Promise<void>
   now?: () => number
+  /** Deliver newly observed ledger entries to the live display. */
+  onEntry?: (entry: Record<string, unknown>) => void
 }
 
 export interface WatchAttachResult {
@@ -110,6 +112,7 @@ function inspectLedger(absolutePath: string): {
   watcherIdentity: string | null
   terminalState: string | null
   latestWake: AttachLatestWake | null
+  entries: Array<Record<string, unknown>>
 } {
   const entries = readLedgerEntries(absolutePath)
 
@@ -178,7 +181,13 @@ function inspectLedger(absolutePath: string): {
     }
   }
 
-  return { watcherPid, watcherIdentity, terminalState, latestWake }
+  return {
+    watcherPid,
+    watcherIdentity,
+    terminalState,
+    latestWake,
+    entries: entries.slice(Math.max(0, lastSessionIdx)),
+  }
 }
 
 export async function watchAttach(
@@ -235,6 +244,7 @@ export async function watchAttach(
   const reattachCommand = `./bin/pan watch --attach ${options.ledgers.join(',')}`
 
   const lastIdentityCheckMs = new Map<string, number>()
+  const delivered = new Map<string, { session: unknown; count: number }>()
 
   for (;;) {
     let allDone = true
@@ -251,8 +261,24 @@ export async function watchAttach(
         continue
       }
 
-      const { watcherPid, watcherIdentity, terminalState, latestWake } =
-        inspectLedger(abs)
+      const {
+        watcherPid,
+        watcherIdentity,
+        terminalState,
+        latestWake,
+        entries,
+      } = inspectLedger(abs)
+      const identity = entries[0]?.watch_session_id
+      const prior = delivered.get(session.ledger)
+      const offset =
+        prior && prior.session === identity && prior.count <= entries.length
+          ? prior.count
+          : 0
+      for (const entry of entries.slice(offset)) options.onEntry?.(entry)
+      delivered.set(session.ledger, {
+        session: identity,
+        count: entries.length,
+      })
 
       session.latest_wake = latestWake ?? undefined
 

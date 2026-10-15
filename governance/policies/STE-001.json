@@ -48,20 +48,6 @@
       }
     },
     {
-      "id": "workflow-pr-simplified-english-validate",
-      "registry_id": "SIMPLIFIED-ENGLISH-VALIDATE-001",
-      "phase": "pre_submit",
-      "executor": "harness",
-      "target": "artifact:pr_description",
-      "enforcement": "required",
-      "failure_route": "retry",
-      "evidence_class": "validation-result",
-      "applicability": {
-        "invocation_kind": "workflow",
-        "stage": "ship"
-      }
-    },
-    {
       "id": "standalone-pr-simplified-english-validate",
       "registry_id": "SIMPLIFIED-ENGLISH-VALIDATE-001",
       "phase": "pre_submit",

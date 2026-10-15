@@ -440,7 +440,6 @@ test('each local-release topology branch reports its own coded issue', () => {
       index_commit: 'b'.repeat(40),
       fetched_main: 'c'.repeat(40),
       branch: 'main',
-      pr_description_path: 'runtime/pr-descriptions/release.md',
     }).includes('release.local_release_missing'),
   )
 
@@ -453,7 +452,6 @@ test('each local-release topology branch reports its own coded issue', () => {
     index_commit: 'b'.repeat(40),
     fetched_main: 'c'.repeat(40),
     branch: 'a-branch-this-workspace-is-not-on',
-    pr_description_path: 'runtime/pr-descriptions/release.md',
   })
 
   for (const code of [
@@ -467,86 +465,6 @@ test('each local-release topology branch reports its own coded issue', () => {
   }
 
   assert.equal(codes.includes('release.local_release_missing'), false)
-})
-
-// int-con HR-005: `resolveInside` threw on an agent-supplied traversal, so a
-// malformed release.local_release.pr_description_path ended the validator
-// with a stack trace instead of an issue the retry could read.
-test('a malformed pull-request description path is a coded issue, not a thrown error', () => {
-  const root = createFixture()
-  const target = 'output.json'
-  const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: root,
-    encoding: 'utf8',
-  }).trim()
-
-  const validateWithPath = (prDescriptionPath: string) => {
-    writeFileSync(
-      path.join(root, target),
-      `${JSON.stringify({
-        data: {
-          release: {
-            summary: 'ready',
-            local_release: {
-              release_commit: commit,
-              index_commit: commit,
-              fetched_main: commit,
-              branch: 'main',
-              pr_description_path: prDescriptionPath,
-            },
-            change_list: [],
-            validation: [],
-            rollback: 'revert commit',
-            waivers: [],
-            follow_up_cases: [],
-          },
-        },
-      })}\n`,
-    )
-
-    return validateReleaseOutput({
-      root,
-      targetPath: target,
-      requirement: {
-        policy_id: 'SHIP-001',
-        requirement_id: 'release-validate',
-        registry_id: 'RELEASE-VALIDATE-001',
-        arguments: {},
-      },
-      invocation: {
-        managed_worktree: {
-          name: 'release',
-          path: 'worktrees/operator/release',
-          branch: 'main',
-        },
-      },
-      runState: { stage_history: [] },
-    })
-  }
-
-  for (const malformed of [
-    '../escape.md',
-    path.resolve(root, '..', 'escape.md'),
-  ]) {
-    const result = validateWithPath(malformed)
-    const codes = result.issues.map((entry) => entry.code)
-
-    assert.equal(result.status, 'failed', malformed)
-    assert.ok(codes.includes('release.pr_description_path_invalid'), malformed)
-    // The content checks have no file to judge, so neither fires.
-    assert.equal(codes.includes('release.pr_description_missing'), false)
-    assert.equal(codes.includes('release.pr_commit_range_missing'), false)
-  }
-
-  // A well-formed path that names no file still reaches the content check.
-  const wellFormed = validateWithPath('runtime/pr-descriptions/absent.md')
-  const wellFormedCodes = wellFormed.issues.map((entry) => entry.code)
-
-  assert.equal(
-    wellFormedCodes.includes('release.pr_description_path_invalid'),
-    false,
-  )
-  assert.ok(wellFormedCodes.includes('release.pr_description_missing'))
 })
 
 test('release validator reads metadata from selected workspace', () => {

@@ -134,7 +134,7 @@ test('the advisory ship criterion exposes an over-ceiling average without blocki
     const stage = {
       ...ship,
       criteria: ship.criteria.filter(
-        (criterion) => criterion.id === 'ship.fast_wall_ceiling',
+        (criterion) => criterion.id === 'verify.fast_wall_ceiling',
       ),
     }
 
@@ -160,7 +160,7 @@ test('the advisory ship criterion exposes an over-ceiling average without blocki
       snapshot,
     )
     const result = evaluated.results.find(
-      (item) => item.id === 'ship.fast_wall_ceiling',
+      (item) => item.id === 'verify.fast_wall_ceiling',
     )
 
     // The ceiling is soft: the criterion passes, and its evidence still
@@ -311,6 +311,6 @@ test('review guidance cites the configured wall authority', () => {
   )
 
   assert.match(skill, /configured `fast_wall` ceiling/u)
-  assert.match(skill, /`ship.fast_wall_ceiling`/u)
+  assert.match(skill, /`verify.fast_wall_ceiling`/u)
   assert.doesNotMatch(skill, /No suite-duration ceiling is in force/u)
 })

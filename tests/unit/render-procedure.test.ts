@@ -352,6 +352,9 @@ test('a card that owns a repository-check gate carries the gate-cache rule', () 
 test('a card handed gate evidence carries the same gate-cache rule', () => {
   const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
+  invocation.rubric = invocation.rubric.filter(
+    (criterion) => criterion.type !== 'shell',
+  )
 
   assert.ok(
     !renderInvocationMarkdown(invocation).includes(GATE_CACHE_ACCEPTANCE_RULE),

@@ -311,7 +311,6 @@ export const RELEASE_REFUSALS: readonly StageRefusal[] = [
       'data.release.local_release.index_commit',
       'data.release.local_release.fetched_main',
       'data.release.local_release.branch',
-      'data.release.local_release.pr_description_path',
     ],
   },
   {
@@ -343,22 +342,6 @@ export const RELEASE_REFUSALS: readonly StageRefusal[] = [
     paths: [],
     unowned_reason:
       'The refusal reads the contents of a commit rather than requiring another field.',
-  },
-  {
-    code: 'release.pr_description_path_invalid',
-    paths: ['data.release.local_release.pr_description_path'],
-  },
-  {
-    code: 'release.pr_description_missing',
-    paths: [],
-    unowned_reason:
-      'The file the declared path names does not exist, which is a relation to the filesystem.',
-  },
-  {
-    code: 'release.pr_commit_range_missing',
-    paths: [],
-    unowned_reason:
-      'The refusal reads the content of the referenced PR description rather than a field of the output.',
   },
   {
     code: 'release.versioning_missing',
@@ -592,23 +575,21 @@ export const RELEASE_REFUSALS: readonly StageRefusal[] = [
 
 /**
  * Refusals `validatePrDescription` can raise. Its target is the PR
- * description Markdown document rather than the ship stage output, so no
- * stage-output field owns any of them. The output field that names the
- * document, `data.release.local_release.pr_description_path`, is declared and
- * enforced by `RELEASE-VALIDATE-001`.
+ * description Markdown document from standalone PR-writing mode, so no
+ * stage-output field owns any of them.
  */
 export const PR_DESCRIPTION_REFUSALS: readonly StageRefusal[] = [
   {
     code: 'pr.context_missing',
     paths: [],
     unowned_reason:
-      'The refusal reports an unresolvable PR description context, which is a relation to run state rather than a field of the output.',
+      'The refusal reports an unresolvable PR description context rather than a field of the output.',
   },
   {
     code: 'pr.file_missing',
     paths: [],
     unowned_reason:
-      'The document the ship output names does not exist, which is a relation to the filesystem.',
+      'The document the standalone command names does not exist, which is a relation to the filesystem.',
   },
   {
     code: 'pr.title_invalid',

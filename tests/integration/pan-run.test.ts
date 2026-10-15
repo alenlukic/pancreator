@@ -68,17 +68,20 @@ async function startPanRun(root: string, args: string[]) {
   const guard = setTimeout(() => child.kill('SIGKILL'), PROCESS_TIMEOUT_MS)
 
   closed.finally(() => clearTimeout(guard)).catch(() => undefined)
-  await waitFor(() => BANNER.test(streams.stderr))
-
-  const banner = BANNER.exec(streams.stderr) as RegExpExecArray
+  await waitFor(() => {
+    const dir = findLatestLogDir(root)
+    return dir !== null && existsSync(path.join(dir, 'record.json'))
+  })
+  const record = readRecord(root)
+  const logPath = String(record.log_path)
 
   return {
     child,
     streams,
     closed,
-    pid: Number(banner[1]),
-    logPath: path.join(root, banner[2], 'output.log'),
-    recordPath: `${banner[2]}/record.json`,
+    pid: Number(record.pid),
+    logPath: path.join(root, logPath),
+    recordPath: logPath.replace(/output\.log$/u, 'record.json'),
   }
 }
 
@@ -326,10 +329,13 @@ test('AC-13: pan-run writes record.json, streams to output.log, exits with comma
   })
 
   await t.test(
-    'startup line on stderr names log path and observation command',
+    'verbose startup line names log path and observation command',
     () => {
       const root = createTestTempDirectory('pan-run-stderr-')
-      const result = runPanRun(['--', 'echo', 'hi'], { root })
+      const result = runPanRun(['--', 'echo', 'hi'], {
+        root,
+        env: { PAN_VERBOSE: '1' },
+      })
       const banner = BANNER.exec(result.stderr)
 
       assert.ok(banner, `stderr must carry the banner: ${result.stderr}`)
@@ -442,9 +448,10 @@ test('AC-14: heartbeat updates heartbeat.json and clamps cadence above 60', asyn
           ),
         )
 
-      assert.ok(
-        beats.length >= 2,
-        `two heartbeat lines expected: ${result.stderr}`,
+      assert.equal(
+        beats.length,
+        0,
+        'streamed output must not be followed by idle counters',
       )
       assert.ok(!result.stderr.includes('\n  start\n'))
       assert.equal(result.stdout, 'start\n')
@@ -773,7 +780,10 @@ function killingNodeShim(root: string, onlyFirst: boolean): NodeJS.ProcessEnv {
   )
   chmodSync(path.join(shimDirectory, 'node'), 0o755)
 
-  return { PATH: `${shimDirectory}:${process.env.PATH ?? ''}` }
+  return {
+    PATH: `${shimDirectory}:${process.env.PATH ?? ''}`,
+    PAN_VERBOSE: '1',
+  }
 }
 
 test('AC-004: a start helper killed twice still prints the observe line and the record names the failure', () => {
@@ -846,7 +856,7 @@ test('AC-01: wrapper start line precedes external work and arrives quickly', asy
   child.stderr.on('data', (chunk: Buffer) => {
     stderr += chunk.toString('utf8')
   })
-  await waitFor(() => /\[pan-run\] started wrapper_pid=\d+/u.test(stderr), 5000)
+  await waitFor(() => /── Command ──/u.test(stderr), 5000)
   assert.ok(
     Date.now() - startedAt < 1000,
     'the early start line must arrive within one second',
@@ -861,7 +871,7 @@ test('AC-02: first heartbeat arrives by five seconds with default cadence', () =
   assert.equal(result.status, 0)
   const beats = result.stderr
     .split('\n')
-    .filter((line) => /^\[pan-run\] \S+ running \d+s pid=\d+/u.test(line))
+    .filter((line) => /^♥ \d\d:\d\d$/u.test(line))
   assert.equal(beats.length, 1, `expected one heartbeat line: ${result.stderr}`)
 })
 

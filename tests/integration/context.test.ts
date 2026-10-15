@@ -9,7 +9,6 @@ import {
 } from '../../src/lib/context.js'
 import type {
   OperatorGateWaiver,
-  PrDescriptionContext,
   RunState,
   StageHistoryItem,
 } from '../../src/lib/types.js'
@@ -304,38 +303,7 @@ test('ship context selects effective records and indexes superseded history', ()
   assert.equal(byPath.get('VERSION')?.retrieval, 'required')
   assert.equal(byPath.get('release/index.json')?.retrieval, 'required')
 
-  const prDescription: PrDescriptionContext = {
-    mode: 'target',
-    template_path: '.github/PULL_REQUEST_TEMPLATE.md',
-    instruction_paths: ['AGENTS.md', '.github/AGENTS.md', 'docs/pr-rules.md'],
-    heading_order: ['Why', 'Confidence & risk', 'What changed'],
-    required_headings: ['Why', 'Confidence & risk'],
-    optional_headings: ['What changed'],
-    allows_body_title: false,
-  }
-  const withPr = buildInvocationInputs({
-    root,
-    state,
-    stage,
-    attempt: 1,
-    invocationId: 'ship-pr-context',
-    workspaceFingerprint: 'fp-current',
-    prDescription,
-  })
-
-  assert.deepEqual(withPr.pr_description, prDescription)
-
-  for (const referencePath of [
-    '.github/PULL_REQUEST_TEMPLATE.md',
-    'AGENTS.md',
-    '.github/AGENTS.md',
-    'docs/pr-rules.md',
-  ]) {
-    assert.equal(
-      withPr.references.find((item) => item.path === referencePath)?.retrieval,
-      'required',
-    )
-  }
+  assert.equal(inputs.pr_description, undefined)
 })
 
 test('embedded ship context omits Pancreator self-development release metadata', () => {

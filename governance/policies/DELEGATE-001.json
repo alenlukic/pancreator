@@ -95,7 +95,7 @@
       "excerpt": true
     },
     {
-      "text": "`bin/pan-run` MUST print a `[pan-run] started` line before any other work. A wrapped call with no such line 5 seconds after launch MUST be treated as a stalled launch.",
+      "text": "`bin/pan-run` MUST print its command header before helper work. Nested wrappers MAY reuse the enclosing header. Verbose mode prints the wrapper PID. A top-level wrapped call with no header 5 seconds after launch MUST be treated as a stalled launch.",
       "audience": ["agent"],
       "excerpt": true
     },

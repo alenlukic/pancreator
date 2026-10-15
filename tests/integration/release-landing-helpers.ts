@@ -10,7 +10,10 @@ import path from 'node:path'
 
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
-import { createFixture } from '../fixture-template.js'
+import {
+  createFixture,
+  pinFixtureCursorExecutors,
+} from '../fixture-template.js'
 
 export const REPO_ROOT = process.cwd()
 
@@ -55,7 +58,19 @@ export function landingFixture(): string {
   copyFileSync(path.join(REPO_ROOT, 'bin', 'check-landing'), checkLanding)
   chmodSync(checkLanding, 0o755)
   config.installation_mode = 'embedded'
+  pinFixtureCursorExecutors(config, 'anthropic:balanced')
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+  pinFixtureCursorExecutors(overrides, 'anthropic:balanced')
+  writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
+  git(root, ['add', 'config.json'])
+  git(root, ['add', '-f', 'config_overrides.json'])
+  git(root, ['commit', '-qm', 'test: pin release fixture executors'])
+  git(root, ['branch', '-f', PAN_DEV, 'HEAD'])
 
   return root
 }

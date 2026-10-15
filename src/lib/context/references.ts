@@ -15,7 +15,6 @@ import type {
   RunState,
   StageDefinition,
   WorkspaceSnapshot,
-  PrDescriptionContext,
   InvocationReferenceRetrieval,
   ContextReference,
   ContextReferenceStatus,
@@ -33,7 +32,6 @@ export interface InvocationContextOptions {
   invocationId: string
   workspaceFingerprint: string
   workspace?: WorkspaceSnapshot
-  prDescription?: PrDescriptionContext
 }
 
 export interface ContextManifest {

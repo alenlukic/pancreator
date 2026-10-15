@@ -28,8 +28,8 @@ function recordedValidations(
 }
 
 /**
- * A blocked ship submission wrote no release packet and no pull-request copy,
- * so the validators that read them have nothing to judge. Failing them buried
+ * A blocked ship submission wrote no release packet, so the validators that
+ * read it have nothing to judge. Failing them buried
  * the block itself under one failure per absent release field.
  */
 test('a blocked ship submission reports its release validators as not applicable', () => {
@@ -55,10 +55,9 @@ test('a blocked ship submission reports its release validators as not applicable
 
   const validations = recordedValidations(root, runId)
 
-  for (const registryId of [
-    'RELEASE-VALIDATE-001',
-    'PR-DESCRIPTION-VALIDATE-001',
-  ]) {
+  assert.equal(validations.has('PR-DESCRIPTION-VALIDATE-001'), false)
+
+  for (const registryId of ['RELEASE-VALIDATE-001']) {
     const result = validations.get(registryId)
 
     assert.ok(result, `${registryId} recorded no result`)

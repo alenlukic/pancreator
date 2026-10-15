@@ -271,7 +271,6 @@ export function stageFieldContract(
   requirements: NonNullable<
     Invocation['requirements']
   >['validation_requirements'],
-  artifactsRequested: boolean,
 ): Invocation['output']['field_contract'] {
   const source = readJson(
     path.join(root, 'library', 'schemas', 'stage-output-requirements.json'),
@@ -322,13 +321,6 @@ export function stageFieldContract(
       `stage-output-requirements.json stages.${contractKey} contains an invalid validator.`,
       { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
     )
-
-    if (
-      validator.registry_id === 'PR-DESCRIPTION-VALIDATE-001' &&
-      !artifactsRequested
-    ) {
-      return []
-    }
 
     const requirement = requirementByRegistryId.get(validator.registry_id)
 

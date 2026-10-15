@@ -111,23 +111,6 @@ export function buildInvocationInputs(
     })
   }
 
-  if (options.prDescription?.template_path) {
-    addReference(references, {
-      path: options.prDescription.template_path,
-      description: 'Resolved target pull-request template',
-      retrieval: 'required',
-    })
-  }
-
-  for (const instructionPath of options.prDescription?.instruction_paths ??
-    []) {
-    addReference(references, {
-      path: instructionPath,
-      description: 'Resolved target pull-request instruction file',
-      retrieval: 'required',
-    })
-  }
-
   if (stage.persona === 'coder') {
     for (const baseline of Object.values(
       state.repository_check_baselines ?? {},
@@ -188,7 +171,6 @@ export function buildInvocationInputs(
       : {}),
     ...(returnVisit ? { remediation_return: returnVisit } : {}),
     ...(targetInstructions ? { target_instructions: targetInstructions } : {}),
-    ...(options.prDescription ? { pr_description: options.prDescription } : {}),
     ...(contextReference && contextReferenceInspection
       ? {
           context_reference: {

@@ -14,10 +14,23 @@ import { prepareInvocation } from '../../src/lib/engine.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   checkpoint,
+  installLegacyReleaseEntry,
   checksVariant,
   PASS,
   submitStageOutput,
 } from '../integration/delivery-helpers.js'
+
+const legacyChecksVariant: typeof checksVariant = (...args) => {
+  const variant = checksVariant(...args)
+  return {
+    ...variant,
+    key: `legacy-entry:${variant.key}`,
+    fixture: (root) => {
+      variant.fixture?.(root)
+      installLegacyReleaseEntry(root)
+    },
+  }
+}
 
 const SECONDARY_FAILURE =
   `node -e "console.log('not ok 1 - installs cleanly ` +
@@ -55,7 +68,7 @@ function failedGateEvent(
 test('an entry gate failure in a lane no earlier gate ran records the lane gap', () => {
   const { root, runId, workflow } = checkpoint(
     'delivery@verify-prepared',
-    checksVariant('checks=full-fails-secondary', {
+    legacyChecksVariant('checks=full-fails-secondary', {
       static: { probes: [], commands: [PASS] },
       fast: { probes: [], commands: [PASS] },
       configuration: { probes: [], commands: [PASS] },
@@ -83,7 +96,7 @@ test('an entry gate failure in a lane no earlier gate ran records the lane gap',
 test('an entry gate failure in a command an earlier gate proved records no lane gap', () => {
   const { root, runId, workflow } = checkpoint(
     'delivery@verify-prepared',
-    checksVariant('checks=full-fails-configuration-command', {
+    legacyChecksVariant('checks=full-fails-configuration-command', {
       static: { probes: [], commands: [PASS] },
       fast: { probes: [], commands: [PASS] },
       configuration: { probes: [], commands: [BREAKABLE] },

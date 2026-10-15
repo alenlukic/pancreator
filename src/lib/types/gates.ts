@@ -80,6 +80,8 @@ export interface GateFailureClassification {
 }
 
 export interface DeterministicResult {
+  /** Source content proved by the final verify gate, excluding release metadata. */
+  verified_source?: { fingerprint: string; profile: string }
   id: string
   type: 'shell' | 'state'
   hard: boolean

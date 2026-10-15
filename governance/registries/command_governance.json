@@ -115,9 +115,8 @@
     {
       "command": "pan-release",
       "worktree_forwarding": [
-        "release sync --worktree <name>",
-        "release continue --worktree <name>",
-        "release finalize --worktree <name>"
+        "release evidence --worktree <name>",
+        "release land --worktree <name>"
       ]
     },
     {

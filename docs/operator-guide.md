@@ -586,7 +586,7 @@ Run `/pan-build-briefs` after installation and whenever recurring operator-facin
 
 Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated.
 
-New workflow runs suppress stage briefs and workflow PR copy by default. Request briefs for every stage when the run starts:
+New workflow runs suppress stage briefs by default. Request briefs for every stage when the run starts:
 
 ```sh
 ./bin/pan init --request runtime/inbox/queue/request.md --operator-artifacts
@@ -610,7 +610,7 @@ Generate one submitted stage brief later without rerunning its worker:
 
 Omit `--stage` to generate each missing latest-stage brief. Existing HTML stays unchanged unless `--force` is present. A failed render or validation keeps the source JSON and preserves existing HTML.
 
-The ship stage creates workflow PR copy only when its invocation requests operator artifacts. `/pan-write-pr` remains available independently.
+Invoke `/pan-write-pr` explicitly to create a PR description for the current branch and worktree.
 
 New run directories separate their contents. Open `operator/` for the preserved
 request and explicitly requested outputs. Harness records remain under `agent/`.
@@ -2220,7 +2220,7 @@ aggregate JSON is the desired surface instead of Canvas.
 
 ## Write a standalone PR description
 
-Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
+Use `/pan-write-pr` to create a PR description when the current branch and worktree are ready for review. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
 
 The command is read-only apart from its generated Markdown artifact. It does not create, update, or merge a pull request and stops when the base is invalid, the comparison is ambiguous, or there is no delta to describe.
 
@@ -2307,7 +2307,7 @@ has already been updated by the release steward. Before approval, confirm:
 - deferred acceptance criteria and any follow-up obligations required by the operator's waiver terms are disclosed
 - residual risks are acceptable
 - rollback guidance is credible
-- the proposed commit/PR text accurately describes the diff
+- the release packet and proposed commit text accurately describe the diff
 - the selected version bump and generated release notes match the complete
   delta since the last committed release bump
 
@@ -2576,76 +2576,45 @@ Root cause: allocation, finalize, and merge ran without serialization. Two branc
 
 `pan release land` fixes this by holding a lock from tip read to fast-forward, so two concurrent landings receive distinct versions and one serialized path to pan-dev.
 
-### The landing command
+### Prepare and land
 
-`pan release land` is the only supported way to land a release branch on `pan-dev`:
+Complete source synchronization and the normal verify stage first. Verify runs
+configuration validation, the resolved release profile, and the final fast wall
+report only after the other required checks pass. Ship and standalone release
+never execute tests.
+
+Choose major, minor, or patch and checkpoint one Unreleased changelog entry.
+Collect one reusable bundle from the successful verify:
 
 ```sh
-pan release land --worktree <name> [--bump <major|minor|patch>] [--run <run-id>] \
-  [--verify-profile <name>]... [--repair <note>] [--wait-seconds <n>] [--json]
+pan release evidence --worktree <name> --run <run-id> --json
 ```
 
-The command holds the landing mutex at `runtime/release/landing.lock` from tip read to fast-forward and runs these steps in order:
+Finish evidence review and all preparation before the final operation:
 
-1. **Tip read** — reads the current pan-dev commit and its VERSION.
-2. **Build currency** — refuses with `landing_refused` when the executing `pan` build is a checkout of this repository whose HEAD does not contain the tip. The reason starts with `LANDING_BUILD_BEHIND_TIP`. The land's own decisions (the verify profile, the integrate, the check) run from that build, so an older build would apply older landing rules than the tip carries. The main checkout's build lags `pan-dev` until the operator promotes it, so a land from there names the rerun on the candidate's own build: `PANCREATOR_EXEC_ROOT=<worktree path> ./bin/pan release land --worktree <name>`. When the candidate branch lacks the tip as well, the reason says to merge `pan-dev` into it first.
-3. **Integrate** — when the candidate branch does not yet include the tip, predicts conflicts with `git merge-tree`, stops on source conflicts, or merges the tip and resolves every release metadata file to the tip's content.
-4. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
-5. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
-6. **Finalize** — calls `pan release finalize` to create the release and index commits.
-7. **Verify** — first compiles the candidate worktree through its own `bin/run-built --build-only`, without the `PANCREATOR_BUILD_READY` value the launching `bin/pan` exported for the earlier tree. A tree that does not compile returns `verification_failed` before any profile runs. The `build` step and every `verify` step in `landing.jsonl` record the build stamp of the tree they tested, and the land fails if the sources change while the profiles run. A worktree without `bin/run-built` skips the build. No profile command inherits `PANCREATOR_BUILD_READY`. The step runs each `--verify-profile` against the candidate worktree. Operator directive (2026-10-01), the touch-set rule: without `--verify-profile`, the land runs `impacted-release` (every lane test whose static import closure reaches a file the candidate changed against `pan-dev`), with one lighter exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `impacted-release`. An operator who needs the full suite for a specific land still gets it with `--verify-profile full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, `bounded_repair`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
-8. **Check** — runs `bin/check-landing branch <head> pan-dev`.
-9. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
+```sh
+pan release land --worktree <name> --run <run-id> --bump <major|minor|patch> --json
+```
 
-Every `step` event in `landing.jsonl` also carries the landing's `token` and the `--run` id. Only the `acquired` event of an older log names the run, and readers then attribute the steps by the block from `acquired` to `released`.
+Landing holds the mutex, checks the candidate ancestry and bundle currency, then
+allocates the version. It synchronizes metadata once, finalizes one immutable
+release/index pair, checks its topology, and advances pan-dev. The topology guard
+necessarily follows creation of the commits it validates. Candidate dependency
+and documentation changes survive metadata synchronization.
 
-The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `verification_basis`, `build_stamp`, `lock_wait_seconds`, and `lock_hold_seconds`.
+Missing evidence or changed source stops before allocation. A moved pan-dev tip
+requires synchronization and another verify pass; release never silently tests
+or merges new source. Test-profile and bounded-repair flags are refused. Correct
+source defects before verify, then collect a replacement bundle. Repeating bundle
+collection at the same source and tip reuses the existing record.
 
-### Bounded ship repair
-
-A land that fails `verify` leaves its release pair on the candidate branch. When the fix is small, the release steward repairs it in the ship stage without a remediate round:
-
-1. Commit the fix on the release branch. It MUST change at most three files under `tests/unit/`, `tests/regression/`, `tests/integration/`, or `tests/secondary/`, and nothing else.
-2. Run `pan release land --worktree <name> --run <run-id> --repair "<why>"`.
-
-The land checks the bound before it merges, allocates, or commits anything, and it refuses with `LANDING_REPAIR_OUT_OF_BOUND` (too many paths, or a path outside those directories), `LANDING_REPAIR_NO_FAILURE` (the run has no failed land on this worktree), `LANDING_REPAIR_TIP_MOVED` (pan-dev holds commits the candidate lacks), `LANDING_REPAIR_DIRTY`, `LANDING_REPAIR_PAIR_MISSING`, or `LANDING_REPAIR_REQUIRES_RUN`. A refused repair returns `landing_refused`, and the steward returns `failure`, which routes to remediation as before.
-
-An accepted repair reuses the finalized release and index commits and creates no new pair, because a test-only commit above the indexed release commit adds no installable input that `bin/check-landing` counts. It verifies `static`, `configuration`, and the profile of each repaired lane (`fast` for unit and regression, `impacted-integration`, or `secondary`), records the basis `bounded_repair`, and adds the note and paths to the `verify` step and to the result as `repair`. The ship criterion `ship.local_release_complete` accepts a head above the index commit only when `data.release.ship_repair.commit` names that head and the paths between the two commits stay inside the bound.
-
-### Statuses
-
-| Status                | Exit | Meaning                                                                                                    |
-| --------------------- | ---- | ---------------------------------------------------------------------------------------------------------- |
-| `landed`              | 0    | pan-dev is at the new version.                                                                             |
-| `conflict`            | 1    | Source files conflict with the tip. Resolve and rerun.                                                     |
-| `verification_failed` | 1    | Checks failed; release commits stay on the branch. Fix and rerun.                                          |
-| `landing_refused`     | 1    | `bin/check-landing` refused, or the executing build lacks the pan-dev tip. Fix the named reason and rerun. |
-
-### Lock location and wait bound
-
-The lock file lives at `runtime/release/landing.lock`. The landing event log at `runtime/release/landing.jsonl` records every acquire, wait-progress report, stale reclaim, release, and timeout.
-
-A waiter prints the holder's pid, worktree, command, start time, and elapsed seconds to stderr at least every 60 seconds while it waits. The default timeout is 7200 seconds (two hours); `--wait-seconds` takes a whole number of seconds and shortens it. A timeout fails with `LANDING_MUTEX_TIMEOUT` and names the holder.
-
-### Stale lock reclaim
-
-A lock is stale when its recorded pid is not running or when the process's start identity no longer matches. A stale lock is moved to `runtime/release/stale-locks/landing.lock.stale-<iso>-<token>` and the next caller acquires without operator intervention. The reclaim is recorded in `landing.jsonl` with `event: 'reclaimed'` and the dead holder's details. Reclaimers serialize, and each moves the lock only while it still carries the stale token, so two waiters never both hold the mutex.
-
-The landing runs synchronously and installs no signal handler. An interrupt or `SIGTERM` ends the holder at once, and the next landing reclaims its lock because the pid is gone. `pan cleanup` deletes reclaimed locks under `runtime/release/stale-locks/` after the retention window (class `landing-lock-stale`) and always keeps `allocations.jsonl`, `landing.jsonl`, and the live lock.
-
-### Source-conflict loop
-
-When `pan release land` returns `conflict`:
-
-1. Merge pan-dev into the candidate branch: `git merge --no-ff --no-edit pan-dev`.
-2. Resolve each source path the result lists. Take the tip's content for every metadata file.
-3. Stage resolved paths and commit.
-4. Run the impacted profile to confirm correctness.
-5. Run `pan release land --worktree <name>` again. The new run re-reads the tip, so a further tip movement is integrated too.
+The result records version, release and index commits, tip, step order, and mutex
+timing. Remote actions remain operator decisions. Dedicated `/pan-write-pr` stays
+available when explicitly requested; release generates no PR artifact.
 
 ## Monitored shell execution
 
-Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the command, its pid, and the `pan watch` command that observes it. The record directory in that command holds `output.log`:
+Every agent shell command runs inside `bin/pan-run`. The wrapper keeps full redacted output under `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. Normal display uses a command header and compact elapsed heartbeats such as `♥ 00:30`. It does not repeat the PID, path, or idle explanation. Result content is indented beneath `── Result ──`. `PAN_VERBOSE=1` restores the diagnostic banner and detailed heartbeat output:
 
 ```
 [pan-run] <label> started pid=<pid>; watch with ./bin/pan watch --shell runtime/logs/shell/<timestamp>-<label>-<hex>
@@ -2672,12 +2641,12 @@ executes `bash <file>`, so the command's argument vector contains the path
 instead of the body. There is no 900-byte body limit. `record.json` adds
 `script_path` and `script_descriptor` (`interpreter`, `lines`, and UTF-8
 `bytes`); its `command` contains the interpreter and path, never the body.
-The start output also prints this descriptor. The script is private (mode 0600) and retained with the record. When the body contains a known secret,
+Verbose start output also prints this descriptor. The script is private (mode 0600) and retained with the record. When the body contains a known secret,
 the stored script contains redaction tokens and delegates to an inherited
 anonymous pipe that carries the original body. This preserves literal
 execution without writing the secret to disk or passing the body in argv.
 
-Terminal output collapses whitespace and limits each line to
+Ordinary terminal output preserves up to eight spaces of leading indentation, compacts other whitespace, and limits each line to
 `PAN_RUN_LINE_WIDTH` characters (default 240, minimum 80). A cut line ends
 with `[truncated; original=<n>]`, where `<n>` is its length after redaction
 and before whitespace normalization. The full redacted text remains in
@@ -2686,7 +2655,7 @@ output. Heartbeats in quiet mode show only new output since the preceding
 beat, up to `PAN_RUN_TAIL_LINES` non-empty lines (default 5, range 1–20).
 Older lines beyond that budget stay in the log. Streaming mode prints no
 heartbeat tail because those lines already reached the terminal. An idle
-beat prints one status line without repeating old output. These display
+beat prints only a heart marker and changing elapsed time. These display
 rules do not change the existing heartbeat record fields or their meanings.
 The width also bounds status and descriptor lines; increase it when you need
 an unabridged watch command. Heartbeat lines that a quiet filter already
@@ -2703,6 +2672,14 @@ redacted bytes, including carriage returns, remain in `output.log`; heartbeat
 byte offsets and `recent_lines` retain their existing meanings.
 
 Silence in `output.log` is not a hang while `heartbeat.json` stays fresh: a long test or build is the ordinary cause. `pan watch --process` has no stall state; `timed_out` is its bound and prints a re-arm command. A heartbeat older than two cadences with `ended_at` null means the wrapper died (a crash or a host suspend). `DELEGATE-001` states when a supervisor may interrupt a wrapped command and what evidence it records.
+
+### Live watch output
+
+`pan watch --agent` and run watches forward newly appended assistant messages and tool names between observation wakes. Attach uses the same display and independent cursors. The observation cadence and verdicts do not change. Message, Tool, Output, and Result labels use `── … ──` markers. Their content is indented two spaces. Heartbeats remain at the left margin and show elapsed time without repeated context.
+
+The renderer reads complete transcript records, skips user messages and private reasoning, redacts known secrets, and deduplicates Copilot tool starts against assistant tool requests. Missing transcript evidence is reported as missing rather than invented. The final wake drains pending transcript content. An unavailable native agent or a missing transcript still limits what can be displayed.
+
+The wrapper automatically streams `pan watch`, including a prepared request or `--summary` call, so capture mode cannot hide live activity. The wrapper suppresses its own visible heartbeat for that command because the watch owns the visible heartbeat. Its durable heartbeat continues. Watch text retains indentation and full continuation lines instead of passing through the wrapper's ordinary truncation filter. Direct lifecycle commands default to concise summaries unless an output mode is explicit. Raw diagnostics remain available with `--stream` or `PAN_VERBOSE=1`.
 
 ### Commands shown in chat
 
@@ -2729,9 +2706,9 @@ bin/pan-run --request runtime/commands/initialize-repair.json
 
 Requests require `label` (1–80 characters) and exactly one of `argv` (a nonempty string array) or `script` (a shell body). Arguments retain whitespace, empty values, and quoting characters literally; the wrapper does not evaluate an argv array as shell source. A script uses the existing private spool and redaction path. Optional `cwd` is relative to the shell call's working directory, as is the request path. The file must contain valid JSON, be at most 1 MiB, and contain no unknown fields or NUL values. Do not put credentials in a request; use the existing environment. Remove the request after the command completes when it is no longer needed. The wrapper retains its execution record and redacted output.
 
-Requests default to `output: "summary"`. The wrapper captures the complete redacted output before it prints a bounded result: exit status, selected lifecycle fields or a short text tail, and the full log path. Both successful and failed calls use the same display budget, and failures retain their original exit code. Summary heartbeats show liveness without replaying the captured payload. The summary is an excerpt, not a replacement for the full result: read the log when a decision needs omitted fields. A short direct call can use `--summary` for the same behavior.
+Requests default to `output: "summary"`. The wrapper captures the complete redacted output before it prints a bounded result: exit status and selected lifecycle fields or a short text tail. Failed calls also print the full log path. Successful calls keep that path in the command record. Both successful and failed calls use the same display budget, and failures retain their original exit code. Summary heartbeats show liveness without replaying the captured payload. The summary is an excerpt, not a replacement for the full result: read the log when a decision needs omitted fields. A short direct call can use `--summary` for the same behavior.
 
-Use `output: "stream"` for interactive prompts, watch streams, and requested raw output, or `output: "quiet"` for the existing silent-success/failure-replay behavior. `PAN_VERBOSE=1` overrides either capture mode. Direct `--` and `-c` calls retain their existing behavior.
+Use `output: "stream"` for interactive prompts, watch streams, and requested raw output, or `output: "quiet"` for the existing silent-success/failure-replay behavior. `PAN_VERBOSE=1` overrides either capture mode. Direct lifecycle calls select summaries by default. Other direct `--` and `-c` calls retain streaming behavior. Watch commands always keep live forwarding.
 
 The bootstrap and OUTPUT-001 teach request preparation before a shell tool call is constructed. The shell monitor rejects wrapped calls over 400 UTF-8 bytes or containing a newline and names the prepared-request path. It also refuses direct lifecycle calls without an explicit output mode, before they can emit raw JSON. Use `--summary` normally, or `--stream` when raw output is requested. That refusal is a fallback, not a UI rewrite: a host may already display the rejected command. No hook response claims to rewrite a tool card. Regression tests exercise the actual short submitted command, the hook decision, and the stdout/stderr returned to the host.
 
@@ -2823,4 +2800,4 @@ Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run
 
 ### Wrapper start, stall release, and test heartbeats
 
-`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper spools `-c` bodies to the record's script file, including bodies above 900 UTF-8 bytes. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.
+`bin/pan-run` prints `── Command ──` before any helper starts. Nested wrappers reuse the enclosing header. Verbose mode prints `[pan-run] started wrapper_pid=<pid>` instead. Agents treat a top-level wrapped call with no header within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper spools `-c` bodies to the record's script file, including bodies above 900 UTF-8 bytes. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.

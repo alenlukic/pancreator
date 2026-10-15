@@ -182,7 +182,7 @@ export function stageValidatorRefusals(
     },
     {
       registry_id: 'PR-DESCRIPTION-VALIDATE-001',
-      stage: 'ship',
+      stage: null,
       sources: [
         { file: PR_DESCRIPTION_MODULE, functions: ['validatePrDescription'] },
       ],

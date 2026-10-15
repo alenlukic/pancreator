@@ -20,6 +20,7 @@ export function runEnv(
   delete env.PAN_RUN_HEARTBEAT_SECONDS
   delete env.PAN_RUN_LINE_WIDTH
   delete env.PAN_RUN_TAIL_LINES
+  delete env.PAN_RUN_RECORD
 
   return { ...env, ...extra, PANCREATOR_ROOT: root }
 }

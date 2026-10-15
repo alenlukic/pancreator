@@ -1,5 +1,47 @@
 # Changelog
 
+## [9.0.1] - 2026-10-15
+
+Show live worker activity with clear message blocks and compact visible heartbeats.
+
+### Changed
+
+- Separate Message, Tool, Output, and Result blocks with marked labels and indent their content ([operator guide](docs/operator-guide.md#live-watch-output)).
+- Keep heartbeats at the left margin with elapsed time and omit repeated PID and path details ([command output](bin/pan-run)).
+
+### Fixed
+
+- Forward live subagent messages and tool activity before completion through normal and attached watches ([47e8c37f](https://github.com/alenlukic/pancreator/commit/47e8c37fba0b1ddf7e3b23ef23e91e7064dcb9b2)).
+- Stream watch commands through the wrapper even when a prepared request selects summary output ([live command tests](tests/regression/live-command-output.test.ts)).
+- Preserve indentation, redact secrets, and deduplicate tool activity without exposing private reasoning ([watch display](src/lib/watch/display.ts)).
+
+The operator directed local release to pan-dev without the release command. The prior candidate passed 155 affected tests and visible toy demonstrations. Real model-subagent validation remains unverified after a contradictory host launch error. No push or publication is part of this release.
+
+## [8.18.0] - 2026-10-15
+
+Complete verification before release preparation and allocate the version only for the final local landing.
+
+### Changed
+
+- Require current verify evidence before landing; replace release-time test and bounded-repair execution with a return to verify ([release procedure](library/skills/update-release-metadata.md)).
+- Run configuration validation, the release profile, and the final fast wall report at the end of verify ([verify stage](library/workflows/delivery/stages/verify.json)).
+- Update release metadata and finalize the immutable release/index pair once, after preparation finishes ([landing transaction](src/lib/release-landing/land.ts)).
+
+### Added
+
+- Collect one reusable release evidence bundle and refuse stale source before allocating a version ([release evidence](src/lib/release-landing/evidence.ts)).
+
+### Removed
+
+- Remove automatic PR descriptions, context collection, artifacts, and validators from release preparation ([release steward](library/personas/release-steward.md)).
+
+### Fixed
+
+- Preserve verified candidate manifest changes during metadata synchronization and invalidate proof after dependency changes ([source fingerprint](src/lib/release-source.ts)).
+- Retain regression coverage for existing workflow snapshots while moving current release checks into verify ([release sequencing tests](tests/integration/release-process-order.test.ts)).
+
+Configuration validation still reports the existing OUTPUT-001 test-citation defect. Source checks and the synthetic shell run are recorded separately; synthetic results assert no product acceptance.
+
 ## [8.17.3] - 2026-10-14
 
 Clean command cards before shell submission and bound lifecycle output before display.

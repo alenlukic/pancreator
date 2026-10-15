@@ -923,3 +923,55 @@ export function checkpoint(
 
   return readClone(cloneTree(built.root), built.runId)
 }
+
+/** Preserve entry-gate compatibility coverage without restoring it to current workflows. */
+export function installLegacyReleaseEntry(root: string): void {
+  const base = path.join(root, 'library/workflows/delivery/stages')
+  const verifyPath = path.join(base, 'verify.json')
+  const shipPath = path.join(base, 'ship.json')
+  const verify = JSON.parse(readFileSync(verifyPath, 'utf8')) as StageDefinition
+  const ship = JSON.parse(readFileSync(shipPath, 'utf8')) as StageDefinition
+  const checks = verify.criteria.filter(
+    (criterion) => criterion.type === 'shell',
+  )
+  verify.criteria = verify.criteria.filter(
+    (criterion) => criterion.type !== 'shell',
+  )
+  ship.criteria.push(...checks)
+  ship.entry_gate = {
+    criterion: 'ship.full_suite',
+    failure: 'remediate',
+    max_loops: 2,
+  }
+  writeJson(verifyPath, verify)
+  writeJson(shipPath, ship)
+  execFileSync(
+    'git',
+    [
+      'add',
+      'library/workflows/delivery/stages/verify.json',
+      'library/workflows/delivery/stages/ship.json',
+    ],
+    { cwd: root },
+  )
+  execFileSync(
+    'git',
+    ['commit', '-qm', 'test: preserve legacy entry-gate workflow'],
+    { cwd: root },
+  )
+}
+
+/** Replay the old entry-gate layout for regression coverage of retained run snapshots. */
+export function legacyEntryCheckpoint(
+  name: Checkpoint,
+  variant?: CheckpointVariant,
+): CheckpointClone {
+  return checkpoint(name, {
+    ...variant,
+    key: `legacy-entry:${variant?.key ?? 'default'}`,
+    fixture: (root) => {
+      variant?.fixture?.(root)
+      installLegacyReleaseEntry(root)
+    },
+  })
+}

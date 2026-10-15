@@ -15,10 +15,12 @@ import {
   decideRun,
   getRunState,
   prepareInvocation,
+  setRunStage,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
 import {
   createFixture,
   makeOutput,
@@ -28,6 +30,74 @@ import {
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { writeInboxRequest } from './delivery-helpers.js'
+
+test('managed ship preparation omits PR context and artifacts for either brief setting', () => {
+  const root = createFixture()
+  const worktree = createWorktree(root, 'ship-context')
+  const workspace = path.join(root, worktree.path)
+
+  mkdirSync(path.join(workspace, '.github', 'PULL_REQUEST_TEMPLATE'), {
+    recursive: true,
+  })
+  writeFileSync(
+    path.join(workspace, '.github', 'PULL_REQUEST_TEMPLATE.md'),
+    '## Why\n',
+  )
+  writeFileSync(
+    path.join(workspace, '.github', 'PULL_REQUEST_TEMPLATE', 'feature.md'),
+    '## Feature\n',
+  )
+
+  for (const operatorArtifacts of [false, true]) {
+    const state = createRun(root, {
+      workflowSlug: 'delivery',
+      requestPath: 'request.md',
+      workspace: worktree.path,
+      worktree,
+      operatorArtifacts,
+    })
+
+    setRunStage(
+      root,
+      state.run_id,
+      'ship',
+      'Inspect the ship preparation contract.',
+    )
+
+    const invocation = prepareInvocation(root, state.run_id).invocation
+
+    assert.ok(invocation)
+    assert.equal(invocation.inputs.pr_description, undefined)
+    assert.equal(invocation.output.artifacts, undefined)
+    assert.equal(
+      invocation.output.required_data[
+        'release.local_release.pr_description_path'
+      ],
+      undefined,
+    )
+    assert.equal(
+      invocation.inputs.references.some((reference) =>
+        reference.path.includes('PULL_REQUEST_TEMPLATE'),
+      ),
+      false,
+    )
+    assert.equal(
+      invocation.policies.some((policy) => policy.id === 'PR-001'),
+      false,
+    )
+    assert.equal(
+      invocation.requirements?.validation_requirements.some(
+        (requirement) =>
+          requirement.registry_id === 'PR-DESCRIPTION-VALIDATE-001' ||
+          requirement.target === 'artifact:pr_description',
+      ),
+      false,
+    )
+    assert.equal(Boolean(invocation.output.operator_brief), operatorArtifacts)
+
+    abortRun(root, state.run_id, 'Ship preparation inspected.')
+  }
+})
 
 test('moves succeeded inbox request to complete through the full delivery workflow', () => {
   const root = createFixture()
@@ -77,18 +147,25 @@ test('moves succeeded inbox request to complete through the full delivery workfl
     assert.ok(invocation.stage.model.length > 0)
 
     if (stageSlug === 'ship') {
-      assert.equal(invocation.inputs.pr_description?.mode, 'fallback')
-      assert.equal(invocation.output.artifacts?.length, 2)
-      assert.match(
-        invocation.output.artifacts?.[1]?.path ?? '',
-        /operator\/pr-description\.md$/u,
+      assert.equal(invocation.inputs.pr_description, undefined)
+      assert.equal(invocation.output.artifacts, undefined)
+      assert.equal(
+        invocation.output.required_data[
+          'release.local_release.pr_description_path'
+        ],
+        undefined,
       )
       assert.equal(
-        invocation.requirements?.validation_requirements.find(
+        invocation.policies.some((policy) => policy.id === 'PR-001'),
+        false,
+      )
+      assert.equal(
+        invocation.requirements?.validation_requirements.some(
           (requirement) =>
-            requirement.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
-        )?.resolved_target,
-        invocation.output.artifacts?.[1]?.path,
+            requirement.registry_id === 'PR-DESCRIPTION-VALIDATE-001' ||
+            requirement.target === 'artifact:pr_description',
+        ),
+        false,
       )
     }
 

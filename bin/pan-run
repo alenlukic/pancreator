@@ -80,6 +80,8 @@ usage_error() {
 LABEL=""
 QUIET=0
 SUMMARY=0
+OUTPUT_EXPLICIT=0
+LIVE_WATCH=0
 REQUEST_PATH=""
 CWD=""
 HB_ARG=""
@@ -93,11 +95,11 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || usage_error '--label requires an argument'
       LABEL="$2"; shift 2 ;;
     --quiet)
-      QUIET=1; shift ;;
+      SUMMARY=0; QUIET=1; OUTPUT_EXPLICIT=1; shift ;;
     --summary)
-      SUMMARY=1; QUIET=1; shift ;;
+      SUMMARY=1; QUIET=1; OUTPUT_EXPLICIT=1; shift ;;
     --stream)
-      SUMMARY=0; QUIET=0; shift ;;
+      SUMMARY=0; QUIET=0; OUTPUT_EXPLICIT=1; shift ;;
     --request)
       [[ $# -ge 2 ]] || usage_error '--request requires a JSON file'
       REQUEST_PATH="$2"; SUMMARY=1; QUIET=1; shift 2
@@ -125,6 +127,33 @@ if [[ -z "$REQUEST_PATH" && "$HAS_SHELL_STRING" -eq 0 && ${#COMMAND_ARGV[@]} -eq
   usage_error "no command given. Use --request <file.json>, -- <argv...>, or -c '<string>'"
 fi
 
+select_command_output() {
+  local offset=0 index executable="${COMMAND_ARGV[0]:-}"
+  if [[ "${executable##*/}" == env ]]; then
+    offset=1
+    while [[ "${COMMAND_ARGV[$offset]:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+      offset=$((offset + 1))
+    done
+    [[ "${COMMAND_ARGV[$offset]:-}" != -- ]] || offset=$((offset + 1))
+    executable="${COMMAND_ARGV[$offset]:-}"
+  fi
+  index=$((offset + 1))
+  case "${executable##*/}" in
+    pan) ;;
+    node|nodejs)
+      [[ "${COMMAND_ARGV[$index]:-}" == */cli.js ]] || return 0
+      index=$((index + 1)) ;;
+    *) return 0 ;;
+  esac
+  case "${COMMAND_ARGV[$index]:-}" in
+    watch)
+      # A watch is itself the live observer. Capturing it hides worker activity.
+      LIVE_WATCH=1; QUIET=0; SUMMARY=0 ;;
+    init|status|prepare|submit|pause|resume|decide|governance|worktree|waive-gate|set-stage|attribute|release)
+      if [[ "$OUTPUT_EXPLICIT" -eq 0 ]]; then QUIET=1; SUMMARY=1; fi ;;
+  esac
+}
+select_command_output
 if is_verbose; then QUIET=0; SUMMARY=0; fi
 
 if [[ -n "$CWD" ]]; then
@@ -167,7 +196,11 @@ fi
 
 WRAPPER_PID=$$
 if [[ -n "$PROGRESS_FD" ]]; then
-  printf '[pan-run] started wrapper_pid=%s\n' "$WRAPPER_PID" >&"$PROGRESS_FD"
+  if is_verbose; then
+    printf '[pan-run] started wrapper_pid=%s\n' "$WRAPPER_PID" >&"$PROGRESS_FD"
+  elif [[ -z "${PAN_RUN_RECORD:-}" ]]; then
+    printf '── Command ──\n\n' >&"$PROGRESS_FD"
+  fi
 fi
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
@@ -269,7 +302,7 @@ function request(file) {
 function resultSummary(dir) {
   const record = readJson(path.join(dir, "record.json"));
   if (!record) throw new Error("pan-run: result record missing");
-  const lines = [`[pan-run] ${record.label}: exited ${record.exit_code}${record.signal ? ` (${record.signal})` : ""}`];
+  const lines = [`${record.exit_code === 0 ? "Completed" : "Failed"}: ${record.label}${record.exit_code === 0 ? "" : ` (exit ${record.exit_code}${record.signal ? `, ${record.signal}` : ""})`}`];
   const streams = record.exit_code === 0 ? ["stdout.log", "stderr.log"] : ["stderr.log", "stdout.log"];
   for (const name of streams) {
     const file = path.join(dir, name);
@@ -285,11 +318,17 @@ function resultSummary(dir) {
     } else {
       const tail = tailLines(file, size, 20);
       const counts = tail.filter((line) => /^# (tests|pass|fail) \d+$/.test(line));
-      lines.push(...(counts.length === 3 ? counts.map((line) => line.slice(2)) : tail.slice(-3)).map((line) => `  ${line}`));
+      if (counts.length === 3) {
+        const number = (name) => counts.find((line) => line.startsWith(`# ${name} `)).split(" ")[2];
+        lines.push(`  Tests: ${number("pass")} passed, ${number("fail")} failed (${number("tests")} total)`);
+      } else {
+        lines.push(...tail.slice(-3).map((line) => `  ${line}`));
+      }
     }
   }
-  for (const line of lines.slice(0, 9)) process.stdout.write(`${summarize(line)}\n`);
-  process.stdout.write(`${summarize(`  Full output: ${record.log_path}`)}\n`);
+  process.stdout.write("\n── Result ──\n");
+  for (const line of lines.slice(0, 8)) process.stdout.write(`${summarize(line.trim(), "  ")}\n`);
+  if (record.exit_code !== 0) process.stdout.write(`${summarize(`Details: ${record.log_path}`, "  ")}\n`);
   if (!record.output_drained) process.stdout.write("  Output is still open; consult the log for later output.\n");
 }
 
@@ -323,7 +362,10 @@ function lineRenderer(emit, prefix = "") {
     originalLength += text.length;
     rawPrefix = (rawPrefix + text.slice(0, 12 - rawPrefix.length)).slice(0, 12);
     let normalized = text.replace(/\s+/g, " ");
-    if (compactLength === 0 || endsSpace) normalized = normalized.trimStart();
+    if (compactLength === 0) {
+      const indent = (text.match(/^[ \t]*/) || [""])[0].replace(/\t/g, "  ").slice(0, 8);
+      normalized = indent + normalized.trimStart();
+    } else if (endsSpace) normalized = normalized.trimStart();
     if (!normalized) return;
     compactLength += normalized.length;
     endsSpace = normalized.endsWith(" ");
@@ -589,7 +631,7 @@ function filter(logPath) {
   let passThrough = true;
   let lastDisplay = Date.now();
 
-  const captureRaw = env.PAN_RUN_SUMMARY === "1";
+  const captureRaw = env.PAN_RUN_SUMMARY === "1" || env.PAN_RUN_LIVE_WATCH === "1";
   const forwardHeartbeat = !captureRaw && env.PAN_RUN_FORWARD_HEARTBEAT === "1";
   const progressFd = forwardHeartbeat ? Number(env.PAN_RUN_PROGRESS_FD || 0) : 0;
   const display = lineRenderer((line, heartbeat) => {
@@ -779,8 +821,22 @@ function beat() {
     beat_at: new Date().toISOString(),
     last_output_at: size > 0 ? stats.mtime.toISOString() : null,
     recent_lines: recent,
+    idle_reported: size > previousBytes ? false : true,
   });
 
+  if (env.PAN_RUN_LIVE_WATCH === "1") return;
+  const verbose = /^(1|true|yes)$/i.test(env.PAN_VERBOSE || "");
+  if (!verbose) {
+    if (size > previousBytes) {
+      if (env.PAN_RUN_QUIET !== "0" && env.PAN_RUN_SUMMARY !== "1") {
+        const lines = newLines(logPath, previousBytes, size, printLines);
+        if (lines.length) fs.writeSync(1, `${lines.join("\n")}\n`);
+      }
+    }
+    const clock = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+    fs.writeSync(1, `♥ ${clock}\n`);
+    return;
+  }
   const grown = size > previousBytes;
   const label = env.PAN_RUN_LABEL;
   const pid = env.PAN_RUN_PID;
@@ -850,6 +906,9 @@ if [[ -n "$REQUEST_PATH" ]]; then
     COMMAND_ARGV=("${FIELDS[@]:4}")
   fi
   unset FIELDS FIELD
+  OUTPUT_EXPLICIT=1
+  select_command_output
+  if [[ "$LIVE_WATCH" -eq 1 ]]; then PROGRESS_FD=2; fi
 fi
 
 redact_text() {
@@ -954,9 +1013,9 @@ if [[ "$QUIET" -eq 1 ]]; then
   cat "$FIFO_ERR" | env "${FILTER_ENV[@]}" node "$HELPER" filter "$LOG_PATH" >"$STDERR_LOG" &
   ERR_FILTER_PID=$!
 else
-  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 node "$HELPER" filter "$LOG_PATH" &
+  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 PAN_RUN_LIVE_WATCH="$LIVE_WATCH" node "$HELPER" filter "$LOG_PATH" &
   OUT_FILTER_PID=$!
-  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 node "$HELPER" filter "$LOG_PATH" >&2 &
+  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 PAN_RUN_LIVE_WATCH="$LIVE_WATCH" node "$HELPER" filter "$LOG_PATH" >&2 &
   ERR_FILTER_PID=$!
 fi
 
@@ -1089,7 +1148,7 @@ fi
 # `pan watch --shell` reads the pid and paths from record.json, so the short
 # command prints only once that record exists. A start helper that died twice
 # left no record, and the explicit form still gives the agent a command.
-if [[ -n "$PROGRESS_FD" ]]; then
+if [[ -n "$PROGRESS_FD" ]] && is_verbose; then
   if [[ -f "$RECORD_DIR/record.json" ]]; then
     printf '[pan-run] %s started pid=%s; watch with ./bin/pan watch --shell %s\n' \
       "$SAFE_LABEL" "$CMD_PID" "$RECORD_DIR_REL" | summarize_lines >&"$PROGRESS_FD"
@@ -1111,11 +1170,11 @@ fi
   # never waits on it.
   sleep "$FIRST_HB_SECONDS" </dev/null >/dev/null 2>&1 7>&- || exit 0
   kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
-  PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" \
+  PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" PAN_RUN_LIVE_WATCH="$LIVE_WATCH" \
     node "$HELPER" beat || true
   while sleep "$HB_SECONDS" </dev/null >/dev/null 2>&1 7>&-; do
     kill -0 "$WRAPPER_PID" 2>/dev/null || exit 0
-    PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" \
+    PAN_RUN_RECORD_DIR="$RECORD_DIR" PAN_RUN_LABEL="$SAFE_LABEL" PAN_RUN_PID="$CMD_PID" PAN_RUN_QUIET="$QUIET" PAN_RUN_SUMMARY="$SUMMARY" PAN_RUN_LIVE_WATCH="$LIVE_WATCH" \
       node "$HELPER" beat || true
   done
 ) &

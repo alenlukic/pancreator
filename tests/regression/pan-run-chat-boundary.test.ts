@@ -73,11 +73,11 @@ test('chat boundary: the submitted command contains only a request path and retu
   })
 
   assert.equal(result.status, 0, result.stderr)
-  assert.match(result.stdout, /exited 0/u)
+  assert.match(result.stdout, /Completed: initialize-repair/u)
   assert.match(result.stdout, /status: created/u)
   assert.match(result.stdout, /run_id: repair-run/u)
   assert.match(result.stdout, /next_command: .\/bin\/pan prepare repair-run/u)
-  assert.match(result.stdout, /Full output: runtime\/logs\/shell\//u)
+  assert.doesNotMatch(result.stdout, /runtime\/logs\/shell\//u)
   assert.doesNotMatch(
     result.stdout + result.stderr,
     /"details"|"index"|synthetic-chat-secret/u,
@@ -150,7 +150,7 @@ test('prepared scripts reuse private spooling, preserve stdin and failures, and 
   })
 
   assert.equal(result.status, 7, result.stderr)
-  assert.match(result.stdout, /exited 7/u)
+  assert.match(result.stdout, /Failed: script-check \(exit 7\)/u)
   assert.match(result.stdout, /received:hello/u)
   assert.match(result.stdout, /\[REDACTED:MY_TOKEN\]/u)
   assert.doesNotMatch(
@@ -185,7 +185,7 @@ test('summary keeps structured errors visible despite large stdout and preserves
   )
 
   assert.equal(result.status, 9, result.stderr)
-  assert.match(result.stdout, /exited 9/u)
+  assert.match(result.stdout, /Failed: node \(exit 9\)/u)
   assert.match(result.stdout, /error: CHECK_FAILED/u)
   assert.match(result.stdout, /message: Inspect the retained evidence/u)
   assert.ok(result.stdout.trim().split('\n').length <= 10)

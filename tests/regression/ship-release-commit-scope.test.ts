@@ -416,7 +416,7 @@ test('the release contract sequences the harness-root landing after submit', () 
 
   const ship = repositoryText(
     'library/workflows/delivery/prompts/ship.md',
-  ).indexOf('release finalize')
+  ).indexOf('release land')
   const stop = repositoryText(
     'library/workflows/delivery/prompts/ship.md',
   ).indexOf('operator step after submit')

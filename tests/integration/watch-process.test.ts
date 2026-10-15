@@ -3,6 +3,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import {
   appendFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   realpathSync,
@@ -439,7 +440,6 @@ test('wakes report output growth, a tail on growth, and silence once output stop
 // AC-16: --exit-record support
 test('AC-16: --exit-record reports the exit status of a wrapped command', async (t) => {
   const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
-  const BANNER = /watch with \.\/bin\/pan watch --shell (\S+)/u
 
   await t.test(
     'a watch armed on a live wrapped command that exits 3 reports exit_status 3',
@@ -463,10 +463,11 @@ test('AC-16: --exit-record reports the exit status of a wrapped command', async 
       const guard = setTimeout(() => wrapper.kill('SIGKILL'), 30_000)
 
       try {
-        await waitFor(() => BANNER.test(stderr))
+        await waitFor(() =>
+          existsSync(path.join(root, 'runtime/logs/shell/latest/record.json')),
+        )
 
-        const [, shellRecord] = BANNER.exec(stderr) as RegExpExecArray
-        const shell = resolveShellRecord(root, shellRecord as string)
+        const shell = resolveShellRecord(root, 'latest')
         const result = await watchProcess(root, {
           pid: shell.pid,
           label: 'wrapped-exit-3',
@@ -679,11 +680,8 @@ test('pan watch --shell resolves one pan-run record to its process and paths', a
           timeout: 60_000,
         },
       )
-      const shellRecord = /watch with \.\/bin\/pan watch --shell (\S+)/u.exec(
-        wrapped.stderr,
-      )?.[1]
-
-      assert.ok(shellRecord, wrapped.stderr)
+      assert.equal(wrapped.status, 3, wrapped.stderr)
+      const shellRecord = resolveShellRecord(root, 'latest').directory
 
       const watched = spawnSync(
         process.execPath,

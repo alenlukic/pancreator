@@ -35,7 +35,7 @@ test('AC-07 through AC-09: large shell bodies spool with a descriptor and no bod
   ).trim()
 
   assert.equal(executed, `bash ${script}`)
-  assert.match(result.stderr, /script bash lines=3 bytes=\d+/u)
+  assert.doesNotMatch(result.stderr, /script bash|started pid=/u)
 })
 
 test('AC-11, AC-13, AC-14: synthetic interpreter output is bounded and spool redaction preserves execution', () => {

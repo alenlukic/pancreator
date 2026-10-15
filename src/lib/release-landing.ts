@@ -1,7 +1,7 @@
 /**
- * `pan release land` — the single harness command that integrates a candidate
- * branch with the current pan-dev tip, allocates a version above that tip,
- * verifies, checks with `bin/check-landing`, and fast-forwards pan-dev.
+ * `pan release land` consumes the collected verify proof, then allocates a
+ * version, synchronizes metadata once, finalizes once, checks the immutable
+ * commit pair, and fast-forwards pan-dev. It never executes test profiles.
  *
  * All operations run while the caller holds the landing mutex, so two
  * concurrent landings receive distinct versions and one serialized path to

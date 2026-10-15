@@ -108,7 +108,7 @@ export interface LandReleaseOptions {
   runId?: string | null
   verifyProfiles?: string[]
   waitSeconds?: number
-  /** Why the failed land is relanded as a bounded repair. Requires `runId`. */
+  /** Legacy repair request; current landing refuses it and requires verify. */
   repairNote?: string
 }
 
@@ -127,7 +127,12 @@ export interface LandReleaseOptions {
  */
 export interface LandingVerification {
   profiles: string[]
-  basis: 'operator' | 'entry_gate_fingerprint' | 'bounded_repair' | 'default'
+  basis:
+    | 'operator'
+    | 'entry_gate_fingerprint'
+    | 'bounded_repair'
+    | 'default'
+    | 'verify_fingerprint'
   reason: string
   source_fingerprint?: string
 }
@@ -397,6 +402,12 @@ export function candidateReleaseNotes(
   worktreePath: string,
   tipCommit: string,
 ): string {
+  const pending = gitShowFile(worktreePath, 'HEAD', 'CHANGELOG.md') ?? ''
+  const unreleased =
+    /^## \[Unreleased\][^\n]*\n([\s\S]*?)(?=^## \[|$(?![\s\S]))/mu
+      .exec(pending)?.[1]
+      ?.trim()
+  if (unreleased) return unreleased
   const history = spawnSync(
     'git',
     ['rev-list', '--first-parent', 'HEAD', '--not', tipCommit],
@@ -516,7 +527,7 @@ export function regenerateMetadata(
   restoreTipReleaseIndex(repositoryRoot, worktreePath, tipCommit)
   writeFileSync(path.join(worktreePath, 'VERSION'), `${newVersion}\n`)
 
-  const tipPackageJson = gitShowFile(repositoryRoot, tipCommit, 'package.json')
+  const tipPackageJson = gitShowFile(worktreePath, 'HEAD', 'package.json')
 
   if (tipPackageJson !== null) {
     const pkg = JSON.parse(tipPackageJson) as Record<string, unknown>
@@ -527,11 +538,7 @@ export function regenerateMetadata(
     )
   }
 
-  const tipPackageLock = gitShowFile(
-    repositoryRoot,
-    tipCommit,
-    'package-lock.json',
-  )
+  const tipPackageLock = gitShowFile(worktreePath, 'HEAD', 'package-lock.json')
 
   if (tipPackageLock !== null) {
     const lock = JSON.parse(tipPackageLock) as Record<string, unknown>
@@ -552,8 +559,8 @@ export function regenerateMetadata(
   }
 
   const tipEmbedded = gitShowFile(
-    repositoryRoot,
-    tipCommit,
+    worktreePath,
+    'HEAD',
     'docs/embedded-installation.md',
   )
 
@@ -570,7 +577,7 @@ export function regenerateMetadata(
     )
   }
 
-  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time
+  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD in local time
   const newHeading = `## [${newVersion}] - ${today}`
 
   const tipChangelogWithoutUnreleased = tipChangelogContent.replace(
