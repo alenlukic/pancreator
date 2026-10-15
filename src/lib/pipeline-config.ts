@@ -13,7 +13,7 @@ import { fileExists, isRecord, readJson, resolveInside, sha256 } from './io.js'
 import { harnessConfigName, readHarnessConfig } from './project-config.js'
 import type { PersonaExecutorKind } from './types.js'
 
-const MODEL_ALIAS_FAMILIES = ['anthropic', 'oai', 'open', 'cursor'] as const
+const MODEL_ALIAS_FAMILIES = ['anthropic', 'oai', 'cursor', 'open'] as const
 type ModelAliasFamily = (typeof MODEL_ALIAS_FAMILIES)[number]
 
 const MODEL_ALIAS_TIERS = ['balanced', 'advanced', 'ultra'] as const
@@ -28,6 +28,27 @@ type ModelConfigMap = Partial<
   Record<ModelAliasFamily, Partial<Record<ModelAliasTier, string>>>
 >
 type ModelAliasMap = Partial<Record<ModelAliasTier, string>>
+
+function parseModelEnumeration<T extends string>(
+  value: unknown,
+  source: string,
+  expected: readonly T[],
+): T[] {
+  if (value === undefined) {
+    return [...expected]
+  }
+
+  invariant(
+    Array.isArray(value) &&
+      value.length === expected.length &&
+      new Set(value).size === expected.length &&
+      value.every((entry) => expected.includes(entry)),
+    `${source} MUST enumerate exactly: ${expected.join(', ')}.`,
+    { code: 'INVALID_PIPELINE_CONFIG' },
+  )
+
+  return [...value] as T[]
+}
 
 function isAliasTier(value: string): value is ModelAliasTier {
   return (MODEL_ALIAS_TIERS as readonly string[]).includes(value)
@@ -102,6 +123,9 @@ export interface NamedPipelineConfig {
 
 export interface PipelineConfigFile {
   schema_version: 1
+  executor: Array<(typeof MODEL_CONFIG_EXECUTORS)[number]>
+  provider: ModelAliasFamily[]
+  tier: ModelAliasTier[]
   active_config: string
   model_config: ModelConfigMap
   anthropic: ModelAliasMap
@@ -474,6 +498,21 @@ export function parsePipelineConfig(
 
   return {
     schema_version: 1,
+    executor: parseModelEnumeration(
+      value.executor,
+      `${source}.executor`,
+      MODEL_CONFIG_EXECUTORS,
+    ),
+    provider: parseModelEnumeration(
+      value.provider,
+      `${source}.provider`,
+      MODEL_ALIAS_FAMILIES,
+    ),
+    tier: parseModelEnumeration(
+      value.tier,
+      `${source}.tier`,
+      MODEL_ALIAS_TIERS,
+    ),
     active_config: value.active_config,
     model_config: modelConfig,
     anthropic: aliases.anthropic,

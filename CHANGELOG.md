@@ -1,20 +1,20 @@
 # Changelog
 
-## [8.17.3] - 2026-10-15
-
-Clean command cards before shell submission and bound lifecycle output before display.
-
-### Changed
-
-- Prepare long commands in JSON files before the shell call, then submit a short request path ([docs/operator-guide.md](docs/operator-guide.md#commands-shown-in-chat)).
-- Require an explicit output mode for lifecycle calls and keep complete redacted logs beside concise summaries ([docs/operator-guide.md](docs/operator-guide.md#commands-shown-in-chat)).
+## [8.17.2] - 2026-10-14
 
 ### Fixed
 
-- Preserve arguments, stdin, exit codes, and streaming while summaries use bounded output ([023f0823](https://github.com/alenlukic/pancreator/commit/023f0823b447b31471907cce875fce06422ff3b7)).
-- Keep wrapper summary controls out of child environments and assign valid policy audiences ([023f0823](https://github.com/alenlukic/pancreator/commit/023f0823b447b31471907cce875fce06422ff3b7)).
+- Restore `active_config: default` and remove the executor named configuration ([config.json](config.json)).
+- Preserve an existing `active_config` unless the operator explicitly directs a change ([AGENTS.md](AGENTS.md)).
+- Select executors through local tier mappings and keep configuration names independent of executors ([docs/operator-guide.md](docs/operator-guide.md)).
 
-The operator authorized a bounded release procedure under the trace repair directive. Retain the 181 passing affected tests and static checks. Bypass repeated broad integration, coverage, workflow review, and record-window checks. These bypasses are not passing test evidence.
+## [8.17.1] - 2026-10-14
+
+### Fixed
+
+- Declare the complete executor, provider, and tier arrays in `config.json` and validate their values ([docs/operator-guide.md](docs/operator-guide.md)).
+- Preserve model defaults and generated projections when configurations omit or add these arrays ([tests/integration/projection-hosts.test.ts](tests/integration/projection-hosts.test.ts)).
+- Allow Cursor test fixtures to run when local model preferences select Copilot ([61db0c26](https://github.com/alenlukic/pancreator/commit/61db0c26dd5c4a9da75761e583bd47d307b5a10f)).
 
 ## [8.17.0] - 2026-10-14
 

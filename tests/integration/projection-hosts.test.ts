@@ -73,6 +73,33 @@ function vscodeFixture(): string {
   return root
 }
 
+test('model enumeration declarations do not change host projections', () => {
+  const root = vscodeFixture()
+
+  setHosts(root, ['cursor', 'vscode'])
+  editJson(path.join(root, 'config.json'), (config) => {
+    delete config.executor
+    delete config.provider
+    delete config.tier
+  })
+  syncCursorProjection(root, { write: true })
+
+  editJson(path.join(root, 'config.json'), (config) => {
+    config.executor = ['copilot', 'cursor', 'cursor-cli']
+    config.provider = ['anthropic', 'oai', 'cursor', 'open']
+    config.tier = ['balanced', 'advanced', 'ultra']
+  })
+
+  const changes = syncCursorProjection(root)
+
+  assert.ok(changes.length > 0)
+  assert.equal(
+    changes.some((change) => change.changed),
+    false,
+  )
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+})
+
 test('an installation without hosts behaves as Cursor only', () => {
   const root = createFixture()
 

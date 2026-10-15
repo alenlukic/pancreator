@@ -81,6 +81,27 @@
     "schema_version": {
       "const": 1
     },
+    "executor": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/executor" },
+      "uniqueItems": true,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "provider": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/provider" },
+      "uniqueItems": true,
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "tier": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tier" },
+      "uniqueItems": true,
+      "minItems": 3,
+      "maxItems": 3
+    },
     "workspace_id": {
       "type": "string",
       "minLength": 1

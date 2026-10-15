@@ -1335,7 +1335,7 @@ Known limits, each tracked by a probe in the host-support spec:
 
 ## Select pipeline models
 
-`config.json` is the source of truth for environment-independent persona mappings and recommended defaults. Persona values use `provider:tier` references; concrete executor-specific model strings belong in the untracked `config_overrides.json`. Canonical artifacts live under `library/cursor/`; sync renders commands, personas, instructions, and hooks for every enabled host, while `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the host surfaces:
+`config.json` is the source of truth for environment-independent persona mappings and recommended defaults. Its `executor`, `provider`, and `tier` arrays declare the complete supported values: `copilot`, `cursor`, `cursor-cli`; `anthropic`, `oai`, `cursor`, `open`; and `balanced`, `advanced`, `ultra`, respectively. These declarations do not select a model or executor. Older configurations that omit them receive the same arrays by default; supplied arrays must contain every supported value exactly once. Persona values use `provider:tier` references; concrete executor-specific model strings belong in the untracked `config_overrides.json`. Canonical artifacts live under `library/cursor/`; sync renders commands, personas, instructions, and hooks for every enabled host, while `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the host surfaces:
 
 ```sh
 ./bin/pan models --sync
@@ -1465,7 +1465,7 @@ Requirements and behavior:
 
 ### `copilot`
 
-A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[provider=anthropic,effort=high]`. Put executor-specific mappings in `config_overrides.json` under `model_config` or local persona mappings. The `copilot` named profile remains a compatibility name for the default mapping, and the supervisor stays in the operator's editor session. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
+A `copilot` persona runs as a top-level GitHub Copilot CLI process, for example `copilot:claude-sonnet-5[provider=anthropic,effort=high]`. Put executor-specific mappings in `config_overrides.json` under `model_config` or local persona mappings. Configuration names describe model policies, never executors. Select executors through `model_config`, independently of `active_config`. Change an existing `active_config` only when the operator explicitly directs it. The supervisor stays in the operator's editor session. The CLI must be version `1.0.88` or later; set `PANCREATOR_COPILOT_BIN` when the binary is not on `PATH`.
 
 Supported bracket options:
 
