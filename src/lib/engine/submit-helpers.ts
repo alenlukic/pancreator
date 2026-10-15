@@ -7,6 +7,7 @@
 import path from 'node:path'
 
 import { renderBrief } from '../briefs/render.js'
+import { finalizePlanningReferences } from '../cohorts/specifications.js'
 import { errorMessage, invariant } from '../errors.js'
 import {
   ensureDir,
@@ -207,6 +208,12 @@ export function materializeOutputSubmission(
   expectedInvocationId: string | null,
 ): MaterializedSubmission {
   if (!isRecord(submittedValue) || !('revises' in submittedValue)) {
+    finalizePlanningReferences(
+      root,
+      state,
+      submittedValue,
+      expectedInvocationId,
+    )
     return { value: submittedValue }
   }
 
@@ -248,11 +255,15 @@ export function materializeOutputSubmission(
     { code: 'INVALID_REVISION' },
   )
 
+  const value = applyJsonMergePatch(
+    readJson(resolveInside(root, revisedFrom.output_path)),
+    submittedValue.patch,
+  )
+
+  finalizePlanningReferences(root, state, value, expectedInvocationId)
+
   return {
-    value: applyJsonMergePatch(
-      readJson(resolveInside(root, revisedFrom.output_path)),
-      submittedValue.patch,
-    ),
+    value,
     revisedFrom,
   }
 }

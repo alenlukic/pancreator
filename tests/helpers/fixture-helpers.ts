@@ -150,16 +150,23 @@ export function childSpecificationMarkdown(options: {
  */
 export function writePlanningFixtureSpecs(
   root: string,
+  runId?: string,
 ): Record<string, unknown> {
+  const specs = runId
+    ? {
+        parent: `runtime/logs/workflows/${runId}/operator/specs/parent-specification.md`,
+        child: `runtime/logs/workflows/${runId}/operator/specs/c1.md`,
+      }
+    : PLANNING_FIXTURE_SPECS
   const parentBody = '# Parent specification\n\nThe complete record.\n'
-  const parentAbsolute = path.join(root, PLANNING_FIXTURE_SPECS.parent)
+  const parentAbsolute = path.join(root, specs.parent)
 
   mkdirSync(path.dirname(parentAbsolute), { recursive: true })
   writeFileSync(parentAbsolute, parentBody)
   writeFileSync(
-    path.join(root, PLANNING_FIXTURE_SPECS.child),
+    path.join(root, specs.child),
     childSpecificationMarkdown({
-      parentPath: PLANNING_FIXTURE_SPECS.parent,
+      parentPath: specs.parent,
       parentDigest: `sha256:${sha256(parentBody.trim())}`,
       // The single chunk owns every labeled originating item of the fixture
       // product specification, so the child-spec validator's exactly-once
@@ -169,13 +176,13 @@ export function writePlanningFixtureSpecs(
   )
 
   return {
-    parent_spec_path: PLANNING_FIXTURE_SPECS.parent,
+    parent_spec_path: specs.parent,
     chunks: [
       {
         id: 'c1',
         title: 'Run a workflow',
         cohort_index: 1,
-        child_spec_path: PLANNING_FIXTURE_SPECS.child,
+        child_spec_path: specs.child,
         depends_on: [],
       },
     ],

@@ -9,7 +9,11 @@
     "When no durable automation exists, an agent MAY create a task-specific script under runtime/logs/workflows/<run-id>/scripts/ only for the current run. The agent SHOULD test the core behavior and likely edge cases of that script before it relies on that script.",
     "An agent MUST report a missing executable, non-zero exit, timeout, malformed result, or target mismatch as an automation failure. The agent MUST then follow the requirement's declared failure route. Agents MUST NOT bypass the failure by asserting an equivalent manual result.",
     "The agent MUST record the exact command, target, result, and evidence path for every required automation invocation.",
-    "Harness-owned operations and gates MUST remain harness-owned even when an agent runs the same automation for early feedback."
+    "Harness-owned operations and gates MUST remain harness-owned even when an agent runs the same automation for early feedback.",
+    {
+      "text": "Planning plan preparation MUST create the stage-output scaffold and run-local specs directory before worker launch, preserving authored output. The stage-scaffold requirement resolves to harness ownership only for the planning workflow's plan-stage planner. Workers in other contexts keep their resolved ownership (`tests/integration/planning-bookkeeping.test.ts::planning preparation supplies unfinished file-only artifacts and preserves authored output`).",
+      "audience": ["harness"]
+    }
   ],
   "requirements": [
     {

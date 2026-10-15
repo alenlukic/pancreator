@@ -5,6 +5,10 @@
   "summary": "A ratified cohort plan MUST hold one parent specification and one child specification per unit of work. It MUST execute as ordered groups of parallel delivery runs, each in its own worktree. Each group merges before the next one starts, and every ordering decision rests on durable records rather than agent judgment.",
   "instructions": [
     {
+      "text": "For an active unratified planning invocation, validation and submission MUST finalize declared draft child references after full-output or merge-patch materialization, using the canonical trimmed parent digest. Drafts use `harness-pending`; strict validators MUST still reject pending and stale final references. Finalization MUST preflight run-local paths and reference blocks, preserve worker claims, record changed references, and fail explicitly on unsafe paths or concurrent edits. Approved and foreign plans MUST NOT be rewritten (`tests/unit/planning-specifications.test.ts::planning finalization refreshes three file-only children without changing claims`; `tests/unit/planning-specifications.test.ts::planning finalization rejects unsafe inputs before any child write`; `tests/integration/planning-bookkeeping.test.ts::planning validation and submission share finalized full and revised outputs`).",
+      "audience": ["harness"]
+    },
+    {
       "text": "The ratified artifact MUST hold one parent specification. The parent specification carries the complete record of the request. The artifact MUST hold one child specification for each unit of work a single delivery run owns.",
       "audience": ["supervisor"]
     },
