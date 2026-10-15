@@ -500,6 +500,10 @@
     {
       "version": "8.17.3",
       "commit": "bbe4755359f47b4d6dbd2e2f1036d2a17546ec90"
+    },
+    {
+      "version": "9.0.0",
+      "commit": "909abca49c7a3f53783774c5c5ecd706686f95de"
     }
   ]
 }
