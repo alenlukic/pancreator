@@ -46,12 +46,7 @@ import {
 } from '../repository-checks.js'
 import { repositoryChecksConfigDigest } from '../gate-cache.js'
 import { now, writeDecision } from '../state.js'
-import type {
-  RepositoryCheckBaselinePointer,
-  RunState,
-  StageDefinition,
-  WorkflowDefinition,
-} from '../types.js'
+import type { RunState, StageDefinition, WorkflowDefinition } from '../types.js'
 import {
   loadRepositoryCheckBaseline,
   repositoryCheckBaselinesCaptured,
@@ -410,7 +405,10 @@ export function ensureWorkflowRepositoryCheckBaselines(
   const cohortId = state.cohort?.cohort_id ?? null
 
   if (cohortId) {
-    const claim = claimCohortBaselineCapture(root, cohortId, state.run_id)
+    const claim = claimCohortBaselineCapture(root, cohortId, state.run_id, {
+      waitForCaptureMs: 3_600_000,
+      onProgress,
+    })
 
     if (claim.status === 'adopted') {
       state.repository_check_baselines = claim.baselines
@@ -433,10 +431,8 @@ export function ensureWorkflowRepositoryCheckBaselines(
       ? `${cohortBaselineDirectory(root, cohortId)}/${name}`
       : layout.evidence(name).relative
 
-  let blocked: boolean
-
   try {
-    blocked = captureRepositoryCheckBaselines(
+    const blocked = captureRepositoryCheckBaselines(
       root,
       state,
       workflow,
@@ -444,34 +440,28 @@ export function ensureWorkflowRepositoryCheckBaselines(
       artifactPath,
       onProgress,
     )
-  } catch (error) {
-    if (cohortId) {
-      releaseCohortBaselineClaim(root, cohortId, state.run_id)
-    }
 
-    throw error
-  }
-
-  if (cohortId) {
-    if (blocked || !state.repository_check_baselines) {
-      releaseCohortBaselineClaim(root, cohortId, state.run_id)
-    } else {
+    if (cohortId && !blocked && state.repository_check_baselines) {
       recordCohortBaselines(
         root,
         cohortId,
         state.run_id,
-        state.repository_check_baselines as Record<
-          string,
-          RepositoryCheckBaselinePointer
-        >,
+        state.repository_check_baselines,
       )
       onProgress?.(
         `recorded the shared pre-implementation baseline on cohort ${cohortId}`,
       )
     }
-  }
 
-  return blocked
+    return blocked
+  } catch (error) {
+    delete state.repository_check_baselines
+    throw error
+  } finally {
+    if (cohortId) {
+      releaseCohortBaselineClaim(root, cohortId, state.run_id)
+    }
+  }
 }
 
 /**

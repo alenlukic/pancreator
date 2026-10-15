@@ -176,7 +176,11 @@ export function validateOutputForSubmission(
       return options.submittedPath
     }
 
-    if (options.submittedPath === undefined && declaredOutputExists) {
+    if (
+      materialized.revisedFrom === undefined &&
+      options.submittedPath === undefined &&
+      declaredOutputExists
+    ) {
       return invocation.output.path
     }
 

@@ -684,7 +684,10 @@ export function prepareInvocation(
         // The exact command, with the JSON snapshot the scaffold interface
         // accepts, so a delegated worker never reconstructs it from the
         // requirement table and never reaches for the Markdown contract.
-        ...(stage.persona === 'orchestrator'
+        ...(stage.persona === 'orchestrator' ||
+        (workflow.slug === 'planning' &&
+          stage.slug === 'plan' &&
+          stage.persona === 'planner')
           ? {}
           : {
               scaffold_command:

@@ -66,11 +66,27 @@ gate ratifies the whole artifact before any source changes.
     `Acceptance criteria`, `Dependencies`, `Validation`, and
     `Handoff contract`. Each child opens with a `Parent specification`
     reference block that names the parent path, the selected range, the
-    content digest, and the read trigger. Take the content digest from
-    `pan context digest <parent-path>`. Run it from the harness root. The
-    card's **Harness root** line names it when present. Otherwise the card's
-    **Workspace** is the harness root. Do not compute it by hand. The
-    validator rejects a digest on another basis and names the expected value.
+    content digest, and the read trigger. Use the literal `harness-pending`
+    for the draft content digest. Preparation creates your output scaffold
+    and the specs directory before launch. Use file tools to author them;
+    no shell or digest command is required.
+    Validation and submission finalize references after materializing the
+    full output or merge patch, unless you explicitly report `failure` or
+    `blocked`. Those reports preserve unfinished specifications so the
+    harness can record the outcome and recovery route; they do not ratify
+    a plan or bypass its strict validators.
+    The harness pins every declared child to
+    the current parent using the same trimmed-content basis as
+    `pan context digest`, and records changed reference paths in run evidence.
+    A parent revision refreshes all declared child references together.
+    Keep one unambiguous reference block with `Source`, `Selected range`,
+    `Content digest`, and `Read when` fields. An optional `Reference status`
+    field belongs to the harness. Finalization changes only digest and status
+    metadata; your proof tags, scope, claims, verdicts, and risks stay yours.
+    Keep all specification paths canonical and inside this run's specs
+    directory. Missing files, aliases, symlinks, ambiguous blocks, and concurrent
+    edits fail explicitly. Approved plans are never repinned.
+    Pure validators still reject pending or stale final references.
     Do not paste the parent body into a child. Write each criterion line of
     the child `Acceptance criteria` section as its id, then its plan proof
     tag, then the statement: `1. AC-01 [proof: live] <statement>`. Use the
@@ -96,6 +112,9 @@ Populate `data.product_spec` (`summary`, `user_stories`, `constraints`,
 `out_of_scope`, `open_questions`), `data.engineering_plan` (`approach`,
 `components`, `files`, `risks`, `validation`), `data.acceptance_criteria`,
 `data.test_plan`, `data.open_question_dispositions`, and `data.cohort_plan`.
+
+Fill the prepared scaffold after reading the card. Its pending attestation and
+unevaluated criteria are placeholders, and its presence does not show completion.
 
 `data.cohort_plan` states `parent_spec_path`, `chunks`, `edges`, and
 `cohorts`, plus `serial_justification` for a single-chunk plan. Each chunk

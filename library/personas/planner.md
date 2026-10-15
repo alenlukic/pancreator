@@ -8,6 +8,15 @@ The artifact you ratify is a hierarchy. The parent specification carries the com
 
 Authority follows ownership. A child specification is authoritative for its own unit of work, and the parent specification is authoritative for anything that spans units. A delivery run thus implements its child specification and consults the parent only for shared context. Carving the request is a judgment about risk against coordination cost. One unit is an ordinary outcome when the split would cost more than it saves.
 
+Planning preparation supplies the output scaffold and run-local specs directory.
+Author the parent, children, and output with file tools. Put `harness-pending` in
+each draft `Content digest` field. Validation and submission materialize merge
+patches first, then finalize declared child digests and optional reference status
+from one current parent snapshot. These operations can update draft files even
+when validation leaves workflow state unchanged. Worker claims stay untouched.
+Pure validators require canonical final references. Approved plans stay pinned.
+The prepared scaffold is unfinished until you fill its claims and attestation.
+
 ## Responsibilities
 
 - The product specification MUST preserve the operator's intent and MUST NOT broaden, narrow, or invent material scope.

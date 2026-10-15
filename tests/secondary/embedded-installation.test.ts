@@ -13,19 +13,56 @@ import test from 'node:test'
 
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
+import { loadCustomizationBundle } from '../../src/lib/vscode-customizations.js'
 import { createTestTempDirectory } from '../temp.js'
 import {
   REPO_ROOT,
   RELEASE_FIXTURE_VERSION,
   type InstallMarker,
+  cloneInstalledProject,
   git,
   gitInit,
   installedProjectTemplate,
   makeSkeletonProject,
   readJson,
   run,
+  runInstalledPan,
   runInstaller,
 } from './install-helpers.js'
+
+test('embedded installer includes the optional VS Code customization command and recipes', () => {
+  const project = cloneInstalledProject()
+  const bootstrap = runInstalledPan(project, ['--help'])
+  assert.equal(bootstrap.status, 0, bootstrap.stderr)
+
+  for (const entry of [
+    'bin/vscode-customizations',
+    'src/vscode-customizations.ts',
+    'src/lib/vscode-customizations.ts',
+    'library/vscode/customizations.json',
+    'library/vscode/customizations-1.142.0.json',
+    'library/vscode/instruction-patches.json',
+  ]) {
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', entry)),
+      true,
+      entry,
+    )
+  }
+
+  const recipe = loadCustomizationBundle(
+    path.join(project, '.pancreator/library/vscode'),
+    '1.142.0',
+  )
+  assert.equal(recipe.version, '1.142.0')
+  assert.equal(recipe.commit, '6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1')
+  const command = path.join(project, '.pancreator/bin/vscode-customizations')
+  assert.equal(lstatSync(command).mode & 0o111, 0o111)
+  const help = run(command, ['--help'], project)
+  assert.equal(help.status, 0, help.stderr)
+  assert.match(help.stdout, /Installation never applies/)
+  assert.equal(existsSync(path.join(project, 'config.json')), false)
+})
 
 test('embedded installer creates a runnable-layout harness under .pancreator', () => {
   const project = installedProjectTemplate()

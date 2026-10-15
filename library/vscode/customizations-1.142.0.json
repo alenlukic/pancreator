@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "base_version": "1.139.1",
+  "verified_against": {
+    "vscode": "1.142.0",
+    "commit": "6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1"
+  },
+  "summary": "Only changed anchors for 1.142.0. Governance edits, settings, effort schema edits, and all runner behavior inherit the 1.139.1 base.",
+  "notes": [
+    "The native picker now uses routing items and one tabbed builder; preserve those rows and lift provider models using its native _createModelItem callback. Legacy grouped-builder and global helper patches are omitted.",
+    "VSC-PICKER-HOST-1 is a read-only assertion in this version: the upstream setModel method synchronizes BYOK registrations before selecting a model. No legacy disconnect/resume workaround is added."
+  ],
+  "omit": [
+    "VSC-PICKER-WORKBENCH-6",
+    "VSC-PICKER-WORKBENCH-7",
+    "VSC-PICKER-WORKBENCH-8",
+    "VSC-PICKER-SESSIONS-6",
+    "VSC-PICKER-SESSIONS-7",
+    "VSC-PICKER-SESSIONS-8"
+  ],
+  "patch_overrides": [
+    {
+      "id": "VSC-PICKER-WORKBENCH-1",
+      "find": "let a=(l,u,p=[])=>{if(!(!u.length&&!p.length))",
+      "replace": "let __mpOther=t.other,a=(l,u,p=[])=>{p=p.filter(h=>this._getUnavailableReason(h,i)!==\"upgrade\");if(!(!u.length&&!p.length))"
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-2",
+      "find": "a(void 0,t.suggested,t.unavailable),t.other.length){",
+      "replace": "a(void 0,t.suggested,t.unavailable),__mpOther=(()=>{let rest=t.other,__mpVendor=m=>{let d=m.metadata;if(d.byokModelIdentifier){let b=this._languageModelsService.lookupLanguageModel(d.byokModelIdentifier);return b?.vendor??d.modelGroup?.id}return d.isBYOK?d.vendor:void 0};for(let v of [\"anthropic\",\"openai\"]){let ms=rest.filter(m=>__mpVendor(m)===v);if(!ms.length)continue;rest=rest.filter(m=>__mpVendor(m)!==v);ms.sort((x,y)=>x.metadata.name.localeCompare(y.metadata.name));a(this._languageModelsService.getVendors().find(x=>x.vendor===v)?.displayName??v,ms)}return rest})(),__mpOther.length){"
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-3",
+      "find": "let l=Wfo(t),u=",
+      "replace": "let l=Wfo({...t,other:__mpOther}),u="
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-4",
+      "find": "let p=d(16276,null),h=t.other.length;",
+      "replace": "let p=d(16276,null),h=__mpOther.length;"
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-5",
+      "find": "for(let p of t.other)r.push(this._createModelItem(p,i,u))",
+      "replace": "for(let p of __mpOther)r.push(this._createModelItem(p,i,u))"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-1",
+      "find": "let a=(l,u,p=[])=>{if(!(!u.length&&!p.length))",
+      "replace": "let __mpOther=t.other,a=(l,u,p=[])=>{p=p.filter(h=>this._getUnavailableReason(h,i)!==\"upgrade\");if(!(!u.length&&!p.length))"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-2",
+      "find": "a(void 0,t.suggested,t.unavailable),t.other.length){",
+      "replace": "a(void 0,t.suggested,t.unavailable),__mpOther=(()=>{let rest=t.other,__mpVendor=m=>{let d=m.metadata;if(d.byokModelIdentifier){let b=this._languageModelsService.lookupLanguageModel(d.byokModelIdentifier);return b?.vendor??d.modelGroup?.id}return d.isBYOK?d.vendor:void 0};for(let v of [\"anthropic\",\"openai\"]){let ms=rest.filter(m=>__mpVendor(m)===v);if(!ms.length)continue;rest=rest.filter(m=>__mpVendor(m)!==v);ms.sort((x,y)=>x.metadata.name.localeCompare(y.metadata.name));a(this._languageModelsService.getVendors().find(x=>x.vendor===v)?.displayName??v,ms)}return rest})(),__mpOther.length){"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-3",
+      "find": "let l=cxo(t),u=",
+      "replace": "let l=cxo({...t,other:__mpOther}),u="
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-4",
+      "find": "let p=d(16276,null),h=t.other.length;",
+      "replace": "let p=d(16276,null),h=__mpOther.length;"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-5",
+      "find": "for(let p of t.other)r.push(this._createModelItem(p,i,u))",
+      "replace": "for(let p of __mpOther)r.push(this._createModelItem(p,i,u))"
+    },
+    {
+      "id": "VSC-PICKER-HOST-1",
+      "find": "async setModel(e,t,n,o){try{await this.syncByokModels()}catch(s){this._logService.warn(`[Copilot:${this.sessionId}] Failed to register BYOK models before changing model`,s)}this._logService.info(`[Copilot:${this.sessionId}] Changing model to: ${e}`),await this._awaitControlPlaneRpc(\"session.setModel\",this._wrapper.session.setModel(e,{reasoningEffort:t,contextTier:n,...o!==void 0?{autoTier:o}:{}})),this._lastSeenModelId=e}",
+      "replace": "async setModel(e,t,n,o){try{await this.syncByokModels()}catch(s){this._logService.warn(`[Copilot:${this.sessionId}] Failed to register BYOK models before changing model`,s)}this._logService.info(`[Copilot:${this.sessionId}] Changing model to: ${e}`),await this._awaitControlPlaneRpc(\"session.setModel\",this._wrapper.session.setModel(e,{reasoningEffort:t,contextTier:n,...o!==void 0?{autoTier:o}:{}})),this._lastSeenModelId=e}"
+    },
+    {
+      "id": "VSC-DEFAULT-MODEL",
+      "find": "function Z9(s,o){let e=s?.trim().toLowerCase();if(!e)return;if(e===NLn)return o.find(n=>n.metadata.id?.trim().toLowerCase()===NLn);let t=o.find(n=>n.metadata.id?.trim().toLowerCase()===e);if(t)return t;let i=o.filter(n=>n.metadata.family?.trim().toLowerCase()===e);return i.length>0?i.reduce((n,r)=>H8r(r.metadata.version,n.metadata.version)>0?r:n):void 0}",
+      "replace": "function Z9(s,o){let e=s?.trim().toLowerCase();if(!e)return;if(e===NLn)return o.find(n=>n.metadata.id?.trim().toLowerCase()===NLn);let t=o.find(n=>n.metadata.id?.trim().toLowerCase()===e);if(t)return t;let i=o.filter(n=>n.metadata.family?.trim().toLowerCase()===e);if(i.length>0)return i.reduce((n,r)=>H8r(r.metadata.version,n.metadata.version)>0?r:n);let n=o.filter(r=>r.metadata.id?.trim().toLowerCase().split(\"/\").at(-1)===e);return n.length===1?n[0]:void 0}"
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-1",
+      "find": "configurationSchema:this._toLanguageModelConfigurationSchema(n.configSchema)",
+      "replace": "configurationSchema:this._toLanguageModelConfigurationSchema(n.configSchema,n.id)"
+    }
+  ]
+}

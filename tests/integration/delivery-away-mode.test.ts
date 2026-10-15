@@ -17,7 +17,7 @@ import {
 } from '../../src/lib/away-mode.js'
 import { decideAwayAsSupervisor } from '../../src/lib/away-orchestration.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import { createFixture, PLANNING_FIXTURE_SPECS } from '../helpers.js'
+import { createFixture } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
 import { AWAY, checkpoint } from './delivery-helpers.js'
 
@@ -66,7 +66,9 @@ test('pan away decide approves a ratified plan via CLI', () => {
   // The child specification the plan names is gone, so the routing hook
   // that follows the approval fails. The approval is durable before the
   // hook runs, so the failure is reported beside it.
-  rmSync(path.join(root, PLANNING_FIXTURE_SPECS.child))
+  rmSync(
+    path.join(root, `runtime/logs/workflows/${runId}/operator/specs/c1.md`),
+  )
 
   const result = cli(
     'away',

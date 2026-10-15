@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import {
   materializeOutputSubmission,
+  decideRun,
   outputValidateScratchPath,
   prepareInvocation,
   resolveSubmitValidators,
@@ -17,6 +18,8 @@ import { HANDLERS } from '../../src/lib/requirements/handlers.js'
 import { loadRegistry } from '../../src/lib/requirements/registry.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadState } from '../../src/lib/state.js'
+import { buildContextReference } from '../../src/lib/context/references.js'
+import { isRecord } from '../../src/lib/io.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import { checkpoint } from '../integration/delivery-helpers.js'
 import {
@@ -27,6 +30,82 @@ import {
   writeJson,
 } from '../helpers.js'
 import { submitAsSupervisor } from '../run-helpers.js'
+
+test('planning revisions validate and submit the merged plan rather than the stale declared output', () => {
+  const {
+    root,
+    runId,
+    invocation: first,
+    workflow,
+  } = checkpoint('planning@plan-prepared')
+
+  assert.ok(first)
+  const stage = stageBySlug(workflow, 'plan')
+  const failedOutput = makeOutput(root, first, stage)
+
+  failedOutput.criteria[0].result = 'fail'
+  writeJson(path.join(root, first.output.path), failedOutput)
+  writeCanonicalDelegation(root, first)
+  const failed = submitAsSupervisor(root, runId, first.output.path)
+
+  assert.equal(failed.record.outcome, 'failure')
+  decideRun(root, runId, 'revise', 'Revise the failed draft.')
+  const { invocation } = prepareInvocation(root, runId)
+
+  assert.ok(invocation)
+  const output = makeOutput(root, invocation, stage)
+  const plan = output.data.cohort_plan
+
+  assert.ok(
+    isRecord(plan) &&
+      typeof plan.parent_spec_path === 'string' &&
+      Array.isArray(plan.chunks),
+  )
+  const child = plan.chunks[0]
+
+  assert.ok(isRecord(child) && typeof child.child_spec_path === 'string')
+  const childAbsolute = path.join(root, child.child_spec_path)
+  const original = readFileSync(childAbsolute, 'utf8')
+
+  writeFileSync(
+    childAbsolute,
+    original.replace(/sha256:[0-9a-f]{64}/u, 'harness-pending'),
+  )
+  const revision = {
+    revises: first.invocation_id,
+    patch: {
+      invocation_id: invocation.invocation_id,
+      invocation_attestation: output.invocation_attestation,
+      criteria: output.criteria,
+      summary: 'Merged plan claims',
+    },
+  }
+  const stateBefore = loadState(root, runId)
+  const mirror = validateOutputForSubmission(root, runId, invocation, revision)
+
+  assert.equal(mirror.passed, true, JSON.stringify(mirror.checks))
+  assert.deepEqual(loadState(root, runId), stateBefore)
+  assert.ok(
+    readFileSync(childAbsolute, 'utf8').includes(
+      buildContextReference(root, plan.parent_spec_path).content_sha256,
+    ),
+  )
+  writeFileSync(
+    path.join(root, plan.parent_spec_path),
+    '# Parent revision before submission\n',
+  )
+  writeJson(path.join(root, invocation.output.path), revision)
+  writeCanonicalDelegation(root, invocation)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.status, 'awaiting_operator')
+  assert.ok(
+    readFileSync(childAbsolute, 'utf8').includes(
+      buildContextReference(root, plan.parent_spec_path).content_sha256,
+    ),
+  )
+})
 
 /** Registry ids of the harness validation records a run persisted. */
 function persistedHarnessValidatorIds(root: string, runId: string): string[] {
