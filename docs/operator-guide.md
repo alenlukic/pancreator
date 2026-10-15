@@ -2704,6 +2704,37 @@ byte offsets and `recent_lines` retain their existing meanings.
 
 Silence in `output.log` is not a hang while `heartbeat.json` stays fresh: a long test or build is the ordinary cause. `pan watch --process` has no stall state; `timed_out` is its bound and prints a re-arm command. A heartbeat older than two cadences with `ended_at` null means the wrapper died (a crash or a host suspend). `DELEGATE-001` states when a supervisor may interrupt a wrapped command and what evidence it records.
 
+### Commands shown in chat
+
+The host displays the submitted shell command before `pan-run` executes. Spooling a `-c` body inside the wrapper cannot shorten that command card. Prepare the payload with a file tool first, under `runtime/commands/`, then submit only its path:
+
+```json
+{
+  "label": "initialize-repair",
+  "cwd": "/path/to/pancreator",
+  "argv": [
+    "./bin/pan",
+    "init",
+    "--request",
+    "runtime/inbox/queue/repair.md",
+    "--worktree",
+    "repair"
+  ]
+}
+```
+
+```bash
+bin/pan-run --request runtime/commands/initialize-repair.json
+```
+
+Requests require `label` (1–80 characters) and exactly one of `argv` (a nonempty string array) or `script` (a shell body). Arguments retain whitespace, empty values, and quoting characters literally; the wrapper does not evaluate an argv array as shell source. A script uses the existing private spool and redaction path. Optional `cwd` is relative to the shell call's working directory, as is the request path. The file must contain valid JSON, be at most 1 MiB, and contain no unknown fields or NUL values. Do not put credentials in a request; use the existing environment. Remove the request after the command completes when it is no longer needed. The wrapper retains its execution record and redacted output.
+
+Requests default to `output: "summary"`. The wrapper captures the complete redacted output before it prints a bounded result: exit status, selected lifecycle fields or a short text tail, and the full log path. Both successful and failed calls use the same display budget, and failures retain their original exit code. Summary heartbeats show liveness without replaying the captured payload. The summary is an excerpt, not a replacement for the full result: read the log when a decision needs omitted fields. A short direct call can use `--summary` for the same behavior.
+
+Use `output: "stream"` for interactive prompts, watch streams, and requested raw output, or `output: "quiet"` for the existing silent-success/failure-replay behavior. `PAN_VERBOSE=1` overrides either capture mode. Direct `--` and `-c` calls retain their existing behavior.
+
+The bootstrap and OUTPUT-001 teach request preparation before a shell tool call is constructed. The shell monitor rejects wrapped calls over 400 UTF-8 bytes or containing a newline and names the prepared-request path. It also refuses direct lifecycle calls without an explicit output mode, before they can emit raw JSON. Use `--summary` normally, or `--stream` when raw output is requested. That refusal is a fallback, not a UI rewrite: a host may already display the rejected command. No hook response claims to rewrite a tool card. Regression tests exercise the actual short submitted command, the hook decision, and the stdout/stderr returned to the host.
+
 ### Shell hook
 
 `bin/pan-hook-shell-monitor` runs as a `beforeShellExecution` hook in every Cursor session where the harness is projected. It allows commands wrapped with `bin/pan-run` and a short read-only allowlist (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`). An allowlisted command must be named bare, may chain only into other allowlisted commands, and may redirect only `2>/dev/null`. A command or process substitution, a refused flag, and every other command are denied, and the agent message names both wrapper forms. Outside single quotes, a `$` may introduce only a plain parameter name or a special parameter, so `$'...'`, `$"..."`, `${...}`, `$[...]`, and the zsh `$~`, `$=`, and `$^` forms are denied in both the allowlist and the wrapped form; put such syntax inside a `bin/pan-run -c '...'` string.
