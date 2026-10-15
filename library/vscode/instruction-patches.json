@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "summary": "Machine-level changes that remove VS Code and Copilot Chat agent instructions that conflict with Pancreator governance. The operator applies them with the cursor-to-vscode-migration skill: scripts/vscode_prompt_patch.py applies the patches, and migrate.py action P0.prompt-settings applies the settings. Audit: runtime/research/20260927T2100Z-vscode-instruction-audit.md.",
+  "summary": "Machine-level changes that remove VS Code and Copilot Chat agent instructions that conflict with Pancreator governance. The operator applies these canonical patches and settings with bin/vscode-customizations, available in self-development and installed harnesses. The cursor-to-vscode-migration skill remains a legacy runner. Audit: runtime/research/20260927T2100Z-vscode-instruction-audit.md.",
   "authority": "Operator directive (Alen, 2026-09-27): remove conflicting aspects of VS Code's agent instructions through a compiled workbench patch, and document every such modification in the VS Code-specific Pancreator config.",
   "scope": "Every patch and setting applies to the whole machine, in every workspace, so an entry removes or rewrites only text whose removal is safe outside Pancreator. Safety and security guidance (secrets, elevation, destructive actions, irreversible-action confirmation) stays.",
   "verified_against": {
