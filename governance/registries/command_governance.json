@@ -114,10 +114,7 @@
     },
     {
       "command": "pan-release",
-      "worktree_forwarding": [
-        "release evidence --worktree <name>",
-        "release land --worktree <name>"
-      ]
+      "worktree_forwarding": ["release land --worktree <name>"]
     },
     {
       "command": "pan-horizon",

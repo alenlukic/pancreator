@@ -199,7 +199,7 @@ function localReleaseStageOf(root: string): StageDefinition {
   }
 }
 
-test('a worktree-bound run fails the local-release criterion it has not satisfied', () => {
+test('worktree-bound release coordination does not add a local-release validation gate', () => {
   // The criterion carried only a positive assertion, so a change that always
   // returned `true` left the suite green.
   const root = sharedFixture()
@@ -238,10 +238,12 @@ test('a worktree-bound run fails the local-release criterion it has not satisfie
     (item) => item.id === 'ship.local_release_complete',
   )
 
-  assert.ok(absentResult)
-  assert.equal(absentResult.passed, false)
-  assert.match(absentResult.explanation ?? '', /incomplete/u)
-  assert.deepEqual(absent.advisories, [], 'the legacy bypass does not apply')
+  assert.equal(absentResult, undefined)
+  assert.deepEqual(
+    absent.advisories,
+    [],
+    'Release coordination does not adjudicate verification.',
+  )
 
   // Well-formed hashes that describe no commit in this workspace still fail:
   // the criterion resolves topology rather than the shape of a string.
@@ -256,8 +258,8 @@ test('a worktree-bound run fails the local-release criterion it has not satisfie
   assert.equal(
     unreachable.results.find(
       (item) => item.id === 'ship.local_release_complete',
-    )?.passed,
-    false,
+    ),
+    undefined,
   )
 })
 
@@ -266,7 +268,7 @@ test('a worktree-bound run fails the local-release criterion it has not satisfie
 // The operator kept the compatibility path, because removing it changes an
 // installation that predates managed worktrees, and asked for the bypass to
 // become visible in the record instead.
-test('a worktree-less self-development run records the criterion it bypassed', () => {
+test('worktree-less release coordination does not manufacture a bypassed validation pass', () => {
   const root = sharedFixture()
   const localReleaseStage = localReleaseStageOf(root)
   const snapshot = gitWorkspaceSnapshot(root)
@@ -295,11 +297,8 @@ test('a worktree-less self-development run records the criterion it bypassed', (
     (item) => item.id === 'ship.local_release_complete',
   )
 
-  assert.ok(result)
-  assert.equal(result.passed, true, 'the compatibility path still passes')
-  assert.equal(evaluated.advisories.length, 1)
-  assert.match(evaluated.advisories[0] ?? '', /ship\.local_release_complete/u)
-  assert.match(evaluated.advisories[0] ?? '', /no\s+managed worktree/u)
+  assert.equal(result, undefined)
+  assert.equal(evaluated.advisories.length, 0)
 })
 
 test('delivery ship stage routes failure to remediate for landing-conflict recovery', () => {

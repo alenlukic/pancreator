@@ -1,7 +1,7 @@
 /**
- * `pan release land` consumes the collected verify proof, then allocates a
- * version, synchronizes metadata once, finalizes once, checks the immutable
- * commit pair, and fast-forwards pan-dev. It never executes test profiles.
+ * `pan release land` coordinates integration, allocates a version,
+ * constructs metadata, finalizes the commit pair, and fast-forwards pan-dev.
+ * It neither runs checks nor consumes verification evidence.
  *
  * All operations run while the caller holds the landing mutex, so two
  * concurrent landings receive distinct versions and one serialized path to

@@ -5,7 +5,7 @@
   "summary": "Routine execution output MUST remain quiet on success, and the Cursor SDK invocation logger MUST render normalized stream events as an operator transcript.",
   "instructions": [
     {
-      "text": "Before a long or multiline shell call, agents MUST write a prepared JSON request with a file tool. Store it under runtime/commands/ with label and exactly one of argv or script. Submit only bin/pan-run --request <file.json> to the shell tool. Submitted wrapped commands MUST fit one line and 400 UTF-8 bytes. The shell monitor refuses larger calls (tests/regression/pan-run-chat-boundary.test.ts). This guard cannot undo a command already displayed by the host.",
+      "text": "Before a long or multiline shell call, agents MUST write a prepared JSON request with a file tool. Store it under runtime/commands/ with label and exactly one of argv or script. Submit only bin/pan-run --request <file.json> to the shell tool. Submitted wrapped commands MUST fit one line and 400 UTF-8 bytes. The shell monitor refuses larger calls (`tests/regression/pan-run-chat-boundary.test.ts::chat boundary: long inline programs and multiline calls are refused before execution`). This guard cannot undo a command already displayed by the host.",
       "audience": ["agent"]
     },
     {
@@ -13,7 +13,7 @@
       "audience": ["agent"]
     },
     {
-      "text": "The shell monitor MUST refuse direct lifecycle calls without an explicit output mode. Summary mode MUST bound the returned result, identify the exit status, and retain full redacted output in the referenced log. It MUST preserve command arguments, stdin, exit codes, and redaction (tests/regression/pan-run-chat-boundary.test.ts).",
+      "text": "The shell monitor MUST refuse direct lifecycle calls without an explicit output mode. Summary mode MUST bound the returned result, identify the exit status, and retain full redacted output in the referenced log. It MUST preserve command arguments, stdin, exit codes, and redaction (`tests/regression/pan-run-chat-boundary.test.ts::prepared scripts reuse private spooling, preserve stdin and failures, and retain full redacted evidence`).",
       "audience": ["harness"]
     },
     {

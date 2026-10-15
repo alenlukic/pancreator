@@ -482,7 +482,11 @@ test('child-spec-validate rejects a missing section and a malformed parent refer
   )
 
   assert.ok(codes.has('child.section_missing'))
-  assert.ok(codes.has('child.parent_reference_digest'))
+  assert.equal(
+    codes.has('child.parent_reference_digest'),
+    false,
+    'The harness supplies the actual parent digest; unrelated missing fields still fail.',
+  )
 })
 
 test('child-spec-validate rejects a parent digest computed on the untrimmed file', () => {

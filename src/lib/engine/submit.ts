@@ -4,6 +4,10 @@
  */
 
 import { rmSync } from 'node:fs'
+import {
+  repairVerificationSubmission,
+  finishVerificationEvidence,
+} from '../verification-evidence.js'
 
 import { invariant } from '../errors.js'
 import {
@@ -388,6 +392,16 @@ export function submitOutput(
     // the root diagnostic and drop the derivatives.
     const briefRenderFailed = briefErrors.length > 0
     const briefRenderedPath = invocation.output.operator_brief?.rendered_path
+    if (stage.persona === 'verifier' && isRecord(submittedValue)) {
+      repairVerificationSubmission(
+        root,
+        state,
+        invocation,
+        state.current_invocation.output_path,
+        submittedValue,
+      )
+    }
+
     const validation = validateStageOutput(
       root,
       stage,
@@ -650,6 +664,24 @@ export function submitOutput(
       evaluated.results,
       harnessValidation.validatorOutcome,
     )
+    if (stage.persona === 'verifier') {
+      finishVerificationEvidence(
+        root,
+        state,
+        invocation,
+        validation.output,
+        evaluated.results,
+        outcome,
+      )
+      writeJsonAtomic(
+        resolveInside(root, state.current_invocation.output_path),
+        {
+          ...(isRecord(submittedValue) ? submittedValue : {}),
+          data: validation.output.data,
+        },
+      )
+    }
+
     const allValidationErrors = [
       ...validation.errors,
       ...harnessValidation.errors,

@@ -40,7 +40,7 @@ function shipStage(): StageDefinition {
   return {
     slug: 'ship',
     title: 'Release preparation',
-    persona: 'release-steward',
+    persona: 'verifier',
     workspace_policy: 'release_metadata_only',
     gate: 'next_stage',
     context: { inputs: [] },
@@ -392,40 +392,21 @@ function repositoryText(relativePath: string): string {
   return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
 }
 
-test('the release contract sequences the harness-root landing after submit', () => {
-  const sources = [
-    'library/workflows/delivery/prompts/ship.md',
-    'library/personas/orchestrator.md',
-    'governance/criteria/index.md',
-  ]
-
-  for (const source of sources) {
-    const content = repositoryText(source)
-
-    assert.match(
-      content,
-      /after submit/u,
-      `${source} must place the release landing after submit`,
-    )
-    assert.match(
-      content,
-      /harness root/u,
-      `${source} must say which checkout the landing moves`,
-    )
+test('the release coordinator carries no product-validation criteria or evidence-review obligations', () => {
+  const ship = JSON.parse(
+    repositoryText('library/workflows/delivery/stages/ship.json'),
+  ) as {
+    criteria: unknown[]
+    required_data: Record<string, string>
+    context: { gate_evidence: boolean }
   }
-
-  const ship = repositoryText(
-    'library/workflows/delivery/prompts/ship.md',
-  ).indexOf('release land')
-  const stop = repositoryText(
-    'library/workflows/delivery/prompts/ship.md',
-  ).indexOf('operator step after submit')
-
-  assert.notEqual(ship, -1)
-  assert.ok(
-    stop > ship,
-    'the ship prompt must stop the steward after finalization, not before it',
+  assert.deepEqual(ship.criteria, [])
+  assert.equal(ship.required_data['release.validation'], undefined)
+  assert.equal(
+    ship.required_data['release.governance_artifact_review'],
+    undefined,
   )
+  assert.equal(ship.context.gate_evidence, false)
 })
 
 // HR4-004 named two repairs and forbade shipping both. The criterion keeps no

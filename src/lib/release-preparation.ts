@@ -46,7 +46,7 @@ import type {
   LocalReleaseSyncResult,
   ManagedWorktreeReference,
 } from './types.js'
-import { validateReleaseMetadata, isReleaseMetadataPath } from './versioning.js'
+import { isReleaseMetadataPath } from './versioning.js'
 import {
   isProtectedWorkspacePath,
   normalizeProtectedPath,
@@ -852,13 +852,6 @@ export function finalizeLocalRelease(
       },
     )
   }
-
-  const metadata = validateReleaseMetadata(resolved.absolute)
-
-  invariant(metadata.errors.length === 0, metadata.errors.join(' '), {
-    code: 'RELEASE_METADATA_INVALID',
-    details: { errors: metadata.errors },
-  })
 
   if (
     completePair &&

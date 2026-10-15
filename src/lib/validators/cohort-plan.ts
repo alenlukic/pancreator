@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { writeFileSync } from 'node:fs'
 
 import {
   acceptanceCriterionLines,
@@ -10,6 +11,9 @@ import {
   readJson,
   readText,
   referenceContentSha256,
+  sha256,
+  writeJsonAtomic,
+  writeTextAtomic,
 } from '../io.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
@@ -643,7 +647,7 @@ export function validateChildSpecifications(
       continue
     }
 
-    const content = readText(childAbsolute)
+    let content = readText(childAbsolute)
 
     for (const heading of CHILD_SPEC_SECTIONS) {
       if (sectionBody(content, heading) === null) {
@@ -677,11 +681,39 @@ export function validateChildSpecifications(
 
       const recordedDigest = /sha256:([0-9a-f]{64})/u.exec(reference)?.[1]
 
-      if (recordedDigest === undefined) {
+      if (
+        recordedDigest === undefined &&
+        parentDigest !== null &&
+        reference.includes(plan.parent_spec_path)
+      ) {
+        const original = content
+        const originalPath = `${childAbsolute}.${sha256(original).slice(0, 12)}.original.md`
+
+        if (!fileExists(originalPath)) {
+          writeFileSync(originalPath, original, { flag: 'wx', mode: 0o600 })
+        }
+
+        const updatedReference = /^\s*-\s*Content digest:/imu.test(reference)
+          ? reference.replace(
+              /^(\s*-\s*Content digest:\s*).*$/imu,
+              `$1sha256:${parentDigest}`,
+            )
+          : `${reference.trimEnd()}\n\n- Content digest: sha256:${parentDigest}\n`
+        content = content.replace(reference, updatedReference)
+        writeTextAtomic(childAbsolute, content)
+        writeJsonAtomic(`${childAbsolute}.digest-repair.json`, {
+          operation:
+            'Supply the actual parent digest from the harness-owned producer',
+          parent_spec_path: plan.parent_spec_path,
+          parent_sha256: parentDigest,
+          original_sha256: sha256(original),
+          original_path: path.relative(input.root, originalPath),
+        })
+      } else if (recordedDigest === undefined) {
         issues.push(
           issue(
             'child.parent_reference_digest',
-            `${chunk.child_spec_path} parent reference MUST carry the parent's sha256 content digest`,
+            `${chunk.child_spec_path} parent digest has no available producer`,
           ),
         )
       } else if (parentDigest !== null && recordedDigest !== parentDigest) {

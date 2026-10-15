@@ -140,9 +140,7 @@ delegation contract unchanged.
   on success instead of following its own success transition. Once
   `max_loops` failures have routed, the next failure pauses the run with an
   `operator_decision` marked `operator_only`, which away mode cannot resume or
-  redirect. `delivery/ship` declares `ship.full_suite` this way: the `full`
-  profile runs only there (`SHIP-001`), routes to `remediate`, and allows two
-  repair loops.
+  redirect. Current release coordinators declare no entry or quality gates. The verifier owns evidence correctness and its final `verify.final_fast` check; generic entry gates remain available to other stage roles.
 - `checkpoint` - optional role this stage plays for run contracts, one of
   `technical_plan` or `independent_review`. Contracts attach by role rather than
   by stage slug, so the same contract applies unchanged to `planning/plan`,

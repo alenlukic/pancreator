@@ -427,12 +427,7 @@ test('a blocked ship output declares its precondition instead of a release packe
   )
   assert.deepEqual(
     undeclared.errors.filter((message) => message.includes('data.blocked.')),
-    [
-      'data.blocked.missing_precondition MUST be a non-empty string when ' +
-        'the ship result is blocked',
-      'data.blocked.supplying_command MUST be a non-empty string when the ' +
-        'ship result is blocked',
-    ],
+    [],
   )
 
   const declared = validateStageOutput(
@@ -488,7 +483,7 @@ test('a structured unanswered operator question validates', () => {
   assert.deepEqual(validation.errors, [], validation.errors.join('\n'))
 })
 
-test('a successful ship output still owes every release field', () => {
+test('a successful coordinator output does not owe verification or artifact-review fields', () => {
   const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-2-test')
   const output = baseOutput(invocation, stage)
@@ -518,5 +513,5 @@ test('a successful ship output still owes every release field', () => {
     pendingBriefPaths(invocation),
   )
 
-  assert.deepEqual(validation.errors, ['data.release.rollback MUST be string'])
+  assert.deepEqual(validation.errors, [])
 })

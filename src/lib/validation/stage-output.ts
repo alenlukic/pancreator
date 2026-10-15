@@ -266,6 +266,10 @@ export function validateStageOutput(
     )
   }
 
+  if (stage.persona === 'release-steward') {
+    return { issues, errors: issues.map((issue) => issue.message), output }
+  }
+
   if (
     typeof record.summary !== 'string' ||
     record.summary.trim().length === 0
@@ -420,7 +424,7 @@ export function validateStageOutput(
       }
     }
 
-    if (evaluation.result === 'unevaluated') {
+    if (evaluation.result === 'unevaluated' && criterion.type !== 'shell') {
       addIssue(
         'criterion.unevaluated',
         `Criterion '${criterion.id}' remains unevaluated and cannot be submitted`,

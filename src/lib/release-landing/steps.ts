@@ -133,6 +133,7 @@ export interface LandingVerification {
     | 'bounded_repair'
     | 'default'
     | 'verify_fingerprint'
+    | 'not_applicable'
   reason: string
   source_fingerprint?: string
 }
@@ -588,7 +589,7 @@ export function regenerateMetadata(
   const firstHeadingMatch = RELEASE_HEADING_PATTERN.exec(
     tipChangelogWithoutUnreleased,
   )
-  const newEntry = `${newHeading}\n\n${candidateEntryBody}\n`
+  const newEntry = `${newHeading}\n\n${candidateEntryBody.trim()}\n`
 
   let newChangelog: string
 

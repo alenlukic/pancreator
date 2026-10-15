@@ -937,7 +937,27 @@ export function installLegacyReleaseEntry(root: string): void {
   verify.criteria = verify.criteria.filter(
     (criterion) => criterion.type !== 'shell',
   )
-  ship.criteria.push(...checks)
+  // Replay the generic entry-gate mechanism, not the current release coordinator.
+  ship.persona = 'orchestrator'
+  ship.criteria.push(
+    ...checks.map((criterion) =>
+      criterion.id === 'verify.final_fast'
+        ? {
+            ...criterion,
+            id: 'ship.full_suite',
+            command: 'pan repository-check full',
+          }
+        : criterion.id === 'verify.configuration'
+          ? { ...criterion, id: 'ship.validate' }
+          : criterion,
+    ),
+  )
+  ship.criteria.push({
+    id: 'ship.prior_gates_current',
+    type: 'state',
+    hard: true,
+    statement: 'Legacy generic gate requires current verification evidence.',
+  })
   ship.entry_gate = {
     criterion: 'ship.full_suite',
     failure: 'remediate',

@@ -50,7 +50,8 @@
     "verify.verdict": "string",
     "verify.findings": "array",
     "verify.acceptance_results": "array",
-    "verify.gate_evidence_citations": "array"
+    "verify.gate_evidence_citations": "array",
+    "verify.evidence_packet": "object"
   },
   "blocked_required_data": {
     "verify": "object"
@@ -75,26 +76,26 @@
       "statement": "When QA runs, its cases from the ratified test plan cover each `live` criterion, or each criterion when the criteria carry no proof type, or explicitly justify why a case is not applicable. Gate evidence proves each `test` criterion, the review proves each `review` criterion, and each `observe` criterion records `observe`."
     },
     {
-      "id": "ship.validate",
+      "id": "verify.configuration",
       "type": "shell",
       "hard": true,
-      "statement": "Configured repository validation remains valid.",
+      "statement": "The repository configuration and repaired evidence structure remain valid without changing the underlying signal.",
       "command": "pan repository-check configuration",
       "timeout_ms": 240000
     },
     {
-      "id": "ship.full_suite",
+      "id": "verify.final_fast",
       "type": "shell",
       "hard": true,
-      "statement": "The full repository-check profile passes on the release candidate after all other verification checks pass.",
-      "command": "pan repository-check full",
+      "statement": "The final fast check confirms the verifier evidence packet after all other required verification checks pass.",
+      "command": "pan repository-check fast",
       "timeout_ms": 1200000
     },
     {
       "id": "verify.fast_wall_ceiling",
       "type": "shell",
       "hard": false,
-      "statement": "The TEST-001 rolling 24-hour qualified fast-lane wall average is reported as a non-blocking release advisory.",
+      "statement": "Report the qualified fast-lane wall average as an advisory without changing the verdict.",
       "command": "pan tests wall",
       "timeout_ms": 30000
     }

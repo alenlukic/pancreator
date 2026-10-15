@@ -168,6 +168,31 @@
         "tests/integration/planning-workflow.test.ts: a planning run routes on approval by default and --no-autostart opts out",
         "tests/integration/cohorts-routing.test.ts: the routing hook fires only for an approval of a routed planning run"
       ]
+    },
+    {
+      "id": "shared-cumulative-verifier-procedure",
+      "category": "duplicate",
+      "sources": [
+        "library/workflows/delivery/prompts/verify.md",
+        "library/workflows/metacritic/prompts/verify.md"
+      ],
+      "disposition": "retain",
+      "rationale": "Both delivery and consolidation verifiers use the same incoming packet, structural repair rules, and final fast gate. Workflow-specific sources remain stable for existing snapshots.",
+      "evidence": [
+        "tests/unit/verification-evidence.test.ts",
+        "tests/regression/release-coordination-only.test.ts"
+      ]
+    },
+    {
+      "id": "release-boundary-and-version-ownership",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/SHIP-001.json",
+        "governance/policies/VERSION-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "The release coordinator and standalone version steward receive separate cards. Each must receive the boundary that assigns validation to the verifier.",
+      "evidence": ["tests/regression/release-coordination-only.test.ts"]
     }
   ]
 }

@@ -1,6 +1,10 @@
 /** The verify stage-output validator and its gate-evidence helpers. */
 
 import path from 'node:path'
+import {
+  canonicalVerificationEvidencePath,
+  normalizeVerificationEvidence,
+} from '../../verification-evidence.js'
 
 import { isRecord, readJson } from '../../io.js'
 import {
@@ -113,6 +117,7 @@ export function profileCommandInText(
 }
 
 function currentGateEvidenceReferences(
+  root: string,
   invocation: Record<string, unknown> | undefined,
 ): { path: string; profile: string; fingerprint: string }[] {
   const inputs =
@@ -136,7 +141,7 @@ function currentGateEvidenceReferences(
       typeof evidence.fingerprint === 'string'
     ) {
       current.push({
-        path: reference.path,
+        path: canonicalVerificationEvidencePath(root, reference.path),
         profile: evidence.profile,
         fingerprint: evidence.fingerprint,
       })
@@ -187,6 +192,8 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     string,
     unknown
   >
+
+  normalizeVerificationEvidence(value)
 
   if (value.result === 'blocked') {
     const data = isRecord(value.data) ? value.data : {}
@@ -262,6 +269,40 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     return {
       status: 'failed',
       issues: [issue('verify.missing', 'data.verify is required')],
+    }
+  }
+
+  const packet = isRecord(verify.evidence_packet)
+    ? verify.evidence_packet
+    : null
+
+  if (packet && packet.schema_version === 1 && Array.isArray(packet.incoming)) {
+    for (const reference of packet.incoming) {
+      if (!isRecord(reference)) {
+        continue
+      }
+
+      if (reference.required === true && reference.available !== true) {
+        issues.push(
+          issue(
+            'verify.incoming_missing',
+            `Required incoming evidence is unavailable: ${String(reference.path)}`,
+          ),
+        )
+      }
+
+      if (
+        isRecord(reference.gate_evidence) &&
+        reference.gate_evidence.current === true &&
+        reference.gate_evidence.fingerprint !== packet.workspace_fingerprint
+      ) {
+        issues.push(
+          issue(
+            'verify.incoming_stale',
+            `Incoming gate evidence names a different workspace: ${String(reference.path)}`,
+          ),
+        )
+      }
     }
   }
 
@@ -358,7 +399,10 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     )
   }
 
-  for (const reference of currentGateEvidenceReferences(input.invocation)) {
+  for (const reference of currentGateEvidenceReferences(
+    input.root,
+    input.invocation,
+  )) {
     const key = `${reference.profile}\u0000${reference.fingerprint}\u0000${reference.path}`
 
     if (!citedKeys.has(key)) {

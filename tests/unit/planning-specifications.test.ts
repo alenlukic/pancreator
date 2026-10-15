@@ -342,7 +342,7 @@ test('planning finalization leaves approved plans and foreign outputs untouched'
   assert.equal(readFileSync(path.join(root, children[0]), 'utf8'), original)
 })
 
-test('pure child validation rejects pending and stale digests', () => {
+test('child validation supplies missing real digests and still rejects stale recorded digests', () => {
   const { root, children, state, output, parent } = fixture()
   const targetPath = 'output.json'
   const input = {
@@ -357,10 +357,15 @@ test('pure child validation rejects pending and stale digests', () => {
   }
 
   writeFileSync(path.join(root, targetPath), JSON.stringify(output))
-  assert.ok(
+  assert.equal(
     validateChildSpecifications(input).issues.some((issue) =>
       issue.code.includes('digest'),
     ),
+    false,
+  )
+  assert.match(
+    readFileSync(path.join(root, children[0]), 'utf8'),
+    /sha256:[0-9a-f]{64}/u,
   )
   finalizePlanningReferences(root, state, output, 'plan-1')
   assert.ok(

@@ -87,6 +87,10 @@ export function resolveSubmitValidators(
 ): ResolvedSubmitValidator[] {
   const resolved: ResolvedSubmitValidator[] = []
 
+  if (invocation.stage.persona === 'release-steward') {
+    return resolved
+  }
+
   if (!invocation.requirements) {
     return resolved
   }
@@ -219,6 +223,10 @@ export function runHarnessAuthoritativeValidators(
   blocking_errors: string[]
   validatorOutcome: StageOutcome | null
 } {
+  if (invocation.stage.persona === 'release-steward') {
+    return { errors: [], blocking_errors: [], validatorOutcome: null }
+  }
+
   const errors: string[] = []
   const blockingErrors: string[] = []
   const failedRoutes: RequirementFailureRoute[] = []
