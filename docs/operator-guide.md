@@ -2645,7 +2645,7 @@ When `pan release land` returns `conflict`:
 
 ## Monitored shell execution
 
-Every agent shell command runs inside `bin/pan-run`. The wrapper streams a redacted durable log to `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. The start line on stderr names the command, its pid, and the `pan watch` command that observes it. The record directory in that command holds `output.log`:
+Every agent shell command runs inside `bin/pan-run`. The wrapper keeps full redacted output under `runtime/logs/shell/<timestamp>-<label>-<hex>/output.log`, updates a heartbeat file, and records the exit in `record.json`. Normal display uses a command header and compact elapsed heartbeats such as `♥ 00:30`. It does not repeat the PID, path, or idle explanation. Result content is indented beneath `── Result ──`. `PAN_VERBOSE=1` restores the diagnostic banner and detailed heartbeat output:
 
 ```
 [pan-run] <label> started pid=<pid>; watch with ./bin/pan watch --shell runtime/logs/shell/<timestamp>-<label>-<hex>
@@ -2672,12 +2672,12 @@ executes `bash <file>`, so the command's argument vector contains the path
 instead of the body. There is no 900-byte body limit. `record.json` adds
 `script_path` and `script_descriptor` (`interpreter`, `lines`, and UTF-8
 `bytes`); its `command` contains the interpreter and path, never the body.
-The start output also prints this descriptor. The script is private (mode 0600) and retained with the record. When the body contains a known secret,
+Verbose start output also prints this descriptor. The script is private (mode 0600) and retained with the record. When the body contains a known secret,
 the stored script contains redaction tokens and delegates to an inherited
 anonymous pipe that carries the original body. This preserves literal
 execution without writing the secret to disk or passing the body in argv.
 
-Terminal output collapses whitespace and limits each line to
+Ordinary terminal output preserves up to eight spaces of leading indentation, compacts other whitespace, and limits each line to
 `PAN_RUN_LINE_WIDTH` characters (default 240, minimum 80). A cut line ends
 with `[truncated; original=<n>]`, where `<n>` is its length after redaction
 and before whitespace normalization. The full redacted text remains in
@@ -2686,7 +2686,7 @@ output. Heartbeats in quiet mode show only new output since the preceding
 beat, up to `PAN_RUN_TAIL_LINES` non-empty lines (default 5, range 1–20).
 Older lines beyond that budget stay in the log. Streaming mode prints no
 heartbeat tail because those lines already reached the terminal. An idle
-beat prints one status line without repeating old output. These display
+beat prints only a heart marker and changing elapsed time. These display
 rules do not change the existing heartbeat record fields or their meanings.
 The width also bounds status and descriptor lines; increase it when you need
 an unabridged watch command. Heartbeat lines that a quiet filter already
@@ -2703,6 +2703,14 @@ redacted bytes, including carriage returns, remain in `output.log`; heartbeat
 byte offsets and `recent_lines` retain their existing meanings.
 
 Silence in `output.log` is not a hang while `heartbeat.json` stays fresh: a long test or build is the ordinary cause. `pan watch --process` has no stall state; `timed_out` is its bound and prints a re-arm command. A heartbeat older than two cadences with `ended_at` null means the wrapper died (a crash or a host suspend). `DELEGATE-001` states when a supervisor may interrupt a wrapped command and what evidence it records.
+
+### Live watch output
+
+`pan watch --agent` and run watches forward newly appended assistant messages and tool names between observation wakes. Attach uses the same display and independent cursors. The observation cadence and verdicts do not change. Message, Tool, Output, and Result labels use `── … ──` markers. Their content is indented two spaces. Heartbeats remain at the left margin and show elapsed time without repeated context.
+
+The renderer reads complete transcript records, skips user messages and private reasoning, redacts known secrets, and deduplicates Copilot tool starts against assistant tool requests. Missing transcript evidence is reported as missing rather than invented. The final wake drains pending transcript content. An unavailable native agent or a missing transcript still limits what can be displayed.
+
+The wrapper automatically streams `pan watch`, including a prepared request or `--summary` call, so capture mode cannot hide live activity. The wrapper suppresses its own visible heartbeat for that command because the watch owns the visible heartbeat. Its durable heartbeat continues. Watch text retains indentation and full continuation lines instead of passing through the wrapper's ordinary truncation filter. Direct lifecycle commands default to concise summaries unless an output mode is explicit. Raw diagnostics remain available with `--stream` or `PAN_VERBOSE=1`.
 
 ### Commands shown in chat
 
@@ -2729,9 +2737,9 @@ bin/pan-run --request runtime/commands/initialize-repair.json
 
 Requests require `label` (1–80 characters) and exactly one of `argv` (a nonempty string array) or `script` (a shell body). Arguments retain whitespace, empty values, and quoting characters literally; the wrapper does not evaluate an argv array as shell source. A script uses the existing private spool and redaction path. Optional `cwd` is relative to the shell call's working directory, as is the request path. The file must contain valid JSON, be at most 1 MiB, and contain no unknown fields or NUL values. Do not put credentials in a request; use the existing environment. Remove the request after the command completes when it is no longer needed. The wrapper retains its execution record and redacted output.
 
-Requests default to `output: "summary"`. The wrapper captures the complete redacted output before it prints a bounded result: exit status, selected lifecycle fields or a short text tail, and the full log path. Both successful and failed calls use the same display budget, and failures retain their original exit code. Summary heartbeats show liveness without replaying the captured payload. The summary is an excerpt, not a replacement for the full result: read the log when a decision needs omitted fields. A short direct call can use `--summary` for the same behavior.
+Requests default to `output: "summary"`. The wrapper captures the complete redacted output before it prints a bounded result: exit status and selected lifecycle fields or a short text tail. Failed calls also print the full log path. Successful calls keep that path in the command record. Both successful and failed calls use the same display budget, and failures retain their original exit code. Summary heartbeats show liveness without replaying the captured payload. The summary is an excerpt, not a replacement for the full result: read the log when a decision needs omitted fields. A short direct call can use `--summary` for the same behavior.
 
-Use `output: "stream"` for interactive prompts, watch streams, and requested raw output, or `output: "quiet"` for the existing silent-success/failure-replay behavior. `PAN_VERBOSE=1` overrides either capture mode. Direct `--` and `-c` calls retain their existing behavior.
+Use `output: "stream"` for interactive prompts, watch streams, and requested raw output, or `output: "quiet"` for the existing silent-success/failure-replay behavior. `PAN_VERBOSE=1` overrides either capture mode. Direct lifecycle calls select summaries by default. Other direct `--` and `-c` calls retain streaming behavior. Watch commands always keep live forwarding.
 
 The bootstrap and OUTPUT-001 teach request preparation before a shell tool call is constructed. The shell monitor rejects wrapped calls over 400 UTF-8 bytes or containing a newline and names the prepared-request path. It also refuses direct lifecycle calls without an explicit output mode, before they can emit raw JSON. Use `--summary` normally, or `--stream` when raw output is requested. That refusal is a fallback, not a UI rewrite: a host may already display the rejected command. No hook response claims to rewrite a tool card. Regression tests exercise the actual short submitted command, the hook decision, and the stdout/stderr returned to the host.
 
@@ -2823,4 +2831,4 @@ Each run writes `runtime/logs/quality/<occurrence-id>/result.json`. A failed run
 
 ### Wrapper start, stall release, and test heartbeats
 
-`bin/pan-run` prints `[pan-run] started wrapper_pid=<pid>` before any helper starts. Agents treat a wrapped call with no start line within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper spools `-c` bodies to the record's script file, including bodies above 900 UTF-8 bytes. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.
+`bin/pan-run` prints `── Command ──` before any helper starts. Nested wrappers reuse the enclosing header. Verbose mode prints `[pan-run] started wrapper_pid=<pid>` instead. Agents treat a top-level wrapped call with no header within five seconds as a stalled launch and run `bin/pan-run -- bin/pan-unstick`. The wrapper spools `-c` bodies to the record's script file, including bodies above 900 UTF-8 bytes. The failures-only reporter prints `# heartbeat` lines on long runs; `pan tests impacted` forwards them with a `[tests impacted]` prefix. The shell hook allowlist includes read-only `ps` sweeps such as `ps -axo pid,ppid,etime,command | rg cat`; forms that print process environments stay denied.

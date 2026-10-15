@@ -35,6 +35,30 @@ function baseEntry(
   }
 }
 
+test('shell watch separates new output from a visible unindented heartbeat', () => {
+  const display = new WatchDisplay('', {
+    context: () => ({ persona: 'toy', model: 'toy' }),
+    transcript: () => ({ steps: [], notice: '' }),
+    secrets: [],
+  })
+  const output = display.processWake(
+    baseEntry({
+      output: {
+        path: 'toy.log',
+        exists: true,
+        size: 8,
+        mtime_ms: 0,
+        growth_bytes: 8,
+        silent_seconds: 0,
+        tail: ['hello'],
+      },
+    }),
+  )
+  assert.match(output, /^── Output ──\n  hello\n\n♥ 03:00\n\n$/u)
+  assert.equal(display.processWake(baseEntry({ wake: 4 })), '♥ 04:00\n\n')
+  assert.equal(display.processWake(baseEntry({ terminal_state: 'exited' })), '')
+})
+
 test('formatProcessWakeLines renders growth with an indented tail', () => {
   const line = formatProcessWakeLines(
     baseEntry({
@@ -295,6 +319,7 @@ function displayFixture() {
       return { steps: delta, notice: '' }
     },
     secrets: ['fixture-secret-value'],
+    interactive: true,
   })
   return {
     display,
@@ -356,8 +381,11 @@ test('watch display redacts, bounds and emits only new assistant text and ordere
     },
   ])
   const first = display.wake(baseWakeEntry())
-  assert.match(first, /chat: first \[REDACTED\]\n  API_KEY=\[REDACTED\]/u)
-  assert.match(first, /tools: Read x2, Shell, Read/u)
+  assert.match(
+    first,
+    /── Message ──\n  first \[REDACTED\]\n  API_KEY=\[REDACTED\]/u,
+  )
+  assert.match(first, /── Tool ──\n  Read x2, Shell, Read/u)
   assert.doesNotMatch(first, /private|fixture-secret-value|inline-secret/u)
   append([
     {
@@ -367,13 +395,13 @@ test('watch display redacts, bounds and emits only new assistant text and ordere
     },
   ])
   const second = display.wake(baseWakeEntry())
-  assert.match(second, /chat: second\n  tools: Grep/u)
+  assert.match(second, /── Message ──\n  second\n\n── Tool ──\n  Grep/u)
   assert.doesNotMatch(second, /first|Read|Shell/u)
   const empty = display.wake(baseWakeEntry())
-  assert.doesNotMatch(empty, /chat:|tools:/u)
+  assert.doesNotMatch(empty, /── Message ──|── Tool ──/u)
   append([{ role: 'assistant', text: 'x'.repeat(2000), tools: [] }])
   const bounded = display.wake(baseWakeEntry())
-  const chat = bounded.split('chat: ')[1]?.trimEnd().split('\n  ')
+  const chat = bounded.split('── Message ──\n  ')[1]?.trimEnd().split('\n  ')
   assert.ok(chat?.every((line) => line.length <= 600))
   assert.equal(chat?.join(''), 'x'.repeat(2000))
 })
@@ -404,7 +432,10 @@ test('watch display preserves full ordered messages and tools across bounded con
     )
   }
   assert.ok(rendered.indexOf('first-END') < rendered.indexOf('second-END'))
-  assert.ok(rendered.indexOf('first-tool-0') < rendered.indexOf('chat: second'))
+  assert.ok(
+    rendered.indexOf('first-tool-0') <
+      rendered.indexOf('── Message ──\n  second'),
+  )
   assert.match(rendered, /\[REDACTED\]\n  \n  first-END/u)
   assert.doesNotMatch(
     rendered,
@@ -412,7 +443,7 @@ test('watch display preserves full ordered messages and tools across bounded con
   )
   assert.doesNotMatch(
     display.wake(baseWakeEntry({ wake: 4 })),
-    /END|tool-|chat:/u,
+    /END|tool-|── Message ──/u,
   )
 })
 
@@ -422,12 +453,14 @@ test('watch display wraps Unicode safely and removes terminal controls before a 
   append([{ role: 'assistant', text, tools: [{ name: 'Shell', input: {} }] }])
   const rendered = display.wake(baseWakeEntry({ terminal_state: 'completed' }))
   assert.match(rendered, / -> completed\n/u)
-  assert.match(rendered, /END\n  tools: Shell\n$/u)
+  assert.match(rendered, /END\n\n── Tool ──\n  Shell\n\n$/u)
   assert.doesNotMatch(
     rendered,
     /fixture-secret|private title|[\x00-\x09\x0b-\x1f]/u,
   )
-  const chat = rendered.split('chat: ')[1]?.split('\n  tools:')[0]
+  const chat = rendered
+    .split('── Message ──\n  ')[1]
+    ?.split('\n\n── Tool ──')[0]
   assert.equal(
     chat?.split('\n  ').join(''),
     `${'\u{1f642}'.repeat(601)} [REDACTED]END`,
@@ -596,7 +629,7 @@ test('watch display applies configured bounds after redaction and rejects invali
   ])
   const line = display.wake(baseWakeEntry())
   assert.doesNotMatch(line, /fixture-secret-value|\x1b/u)
-  const chat = line.split('chat: ')[1]?.trimEnd().split('\n  ')
+  const chat = line.split('── Message ──\n  ')[1]?.trimEnd().split('\n  ')
   assert.ok(chat?.every((part) => part.length <= 80))
   assert.equal(chat?.join(''), `[REDACTED] [REDACTED] ${'x'.repeat(200)}`)
   for (const invalid of ['', '79', '4097', '100.5', 'no']) {
@@ -629,7 +662,10 @@ test('watch display bounds tools and wrapper lines and retains completion diagno
       completion_hold: 'output_younger_than_cadence',
     }),
   )
-  const tools = line.split('tools: ')[1]?.split('\n  wrapper')[0]?.split('\n  ')
+  const tools = line
+    .split('── Tool ──\n  ')[1]
+    ?.split('\n\nwrapper')[0]
+    ?.split('\n  ')
   assert.ok(tools?.every((part) => part.length <= 240))
   assert.equal(
     tools?.join(''),
@@ -658,7 +694,7 @@ test('watch display reports transcript I/O failures once without changing observ
   const entry = baseWakeEntry()
   const before = JSON.stringify(entry)
   assert.match(display.wake(entry), /transcript unreadable \(EACCES\)/u)
-  assert.equal(display.wake(entry), '\r[pan watch] unchanged x1')
+  assert.match(display.wake(entry), /^♥ \d\d:\d\d\n$/u)
   assert.equal(JSON.stringify(entry), before)
   failure = Object.assign(new Error('unexpected parser failure'), {
     code: 'UNEXPECTED',

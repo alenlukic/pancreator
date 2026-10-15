@@ -160,6 +160,27 @@ export function transcriptStep(record: unknown): TranscriptStep | null {
   return null
 }
 
+/** A live Copilot tool-start event, normalized without exposing tool arguments. */
+export function transcriptToolStep(record: unknown): TranscriptStep | null {
+  if (
+    !isRecord(record) ||
+    record.type !== 'tool.execution_start' ||
+    !isRecord(record.data)
+  ) {
+    return null
+  }
+
+  const name = record.data.toolName
+
+  return typeof name === 'string'
+    ? {
+        role: 'assistant',
+        text: '',
+        tools: [{ name: COPILOT_TOOL_NAMES[name] ?? name, input: {} }],
+      }
+    : null
+}
+
 /** Every user and assistant step of one JSONL transcript, oldest first. */
 export function transcriptSteps(content: string): TranscriptStep[] {
   const steps: TranscriptStep[] = []

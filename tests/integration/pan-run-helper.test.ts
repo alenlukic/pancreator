@@ -416,10 +416,7 @@ test('beat prints growth with an indented tail, then silence once output stops c
   const first = runHelper(helper, ['beat'], beatEnv)
 
   assert.equal(first.status, 0)
-  assert.match(
-    first.stdout,
-    /^\[pan-run\] beattest running \d+s pid=4242 \+6B\n {2}line1\n$/u,
-  )
+  assert.match(first.stdout, /^  line1\n♥ \d\d:\d\d\n$/u)
 
   const hbAfterFirst = JSON.parse(
     readFileSync(path.join(dir, 'heartbeat.json'), 'utf8'),
@@ -430,15 +427,11 @@ test('beat prints growth with an indented tail, then silence once output stops c
   assert.deepEqual(hbAfterFirst.recent_lines, ['line1'])
   assert.equal(typeof hbAfterFirst.beat_at, 'string')
 
-  // No growth since the first beat: the second beat must report silence,
-  // never repeat the stale tail as if it were new output.
+  // Silence advances the heartbeat and emits only elapsed time, not the old output.
   const second = runHelper(helper, ['beat'], beatEnv)
 
   assert.equal(second.status, 0)
-  assert.match(
-    second.stdout,
-    /^\[pan-run\] beattest running \d+s pid=4242 no new output for \d+s\n$/u,
-  )
+  assert.match(second.stdout, /^♥ \d\d:\d\d\n$/u)
 
   const hbAfterSecond = JSON.parse(
     readFileSync(path.join(dir, 'heartbeat.json'), 'utf8'),
@@ -449,7 +442,7 @@ test('beat prints growth with an indented tail, then silence once output stops c
   writeFileSync(path.join(dir, 'output.log'), 'line1\nline2\n')
   const third = runHelper(helper, ['beat'], beatEnv)
 
-  assert.match(third.stdout, /\n {2}line2\n$/u)
+  assert.match(third.stdout, /^  line2\n♥ \d\d:\d\d\n$/u)
   assert.ok(!third.stdout.includes('line1'))
 })
 
@@ -515,7 +508,7 @@ test('AC-10: quiet beats exclude heartbeat lines the filter already forwarded', 
     PAN_RUN_PID: '1234',
   })
 
-  assert.match(result.stdout, /\n {2}ordinary\n$/u)
+  assert.match(result.stdout, /^  ordinary\n♥ \d\d:\d\d\n$/u)
   assert.ok(!result.stdout.includes('# heartbeat'))
 })
 
@@ -622,8 +615,8 @@ fs.readSync = function(fd, buffer, offset, length, position) {
 
   assert.ok(result.split('\n').every((line) => line.length <= 80))
   assert.match(result, /\[truncated; original=\d+\]/u)
-  assert.match(result, /\n {2}\[REDACTED:MY_TOKEN\]: z+/u)
-  assert.match(result, /\n {2}last\n$/u)
+  assert.match(result, /^ {2}\[REDACTED:MY_TOKEN\]: z+/u)
+  assert.match(result, /\n {2}last\n♥ \d\d:\d\d\n$/u)
   assert.ok(!result.includes(boundarySecret))
   assert.ok(!result.includes('# heartbeat'))
   assert.ok(!result.includes('  old'))
@@ -677,7 +670,7 @@ test('R-02: overlapping secret matches cannot retain an entire newline-free stre
   assert.equal(readFileSync(log, 'utf8'), expected)
 })
 
-test('beat reports "no output yet" for an empty log', () => {
+test('beat keeps a compact elapsed heartbeat for an empty log', () => {
   const root = createTestTempDirectory('pan-run-helper-beat-empty-')
   const shellDir = path.join(root, 'runtime', 'logs', 'shell')
   const helper = writeHelper(root)
@@ -707,8 +700,9 @@ test('beat reports "no output yet" for an empty log', () => {
   })
 
   assert.equal(result.status, 0)
+  assert.match(result.stdout, /^♥ \d\d:\d\d\n$/u)
   assert.match(
-    result.stdout,
-    /^\[pan-run\] empty running \d+s pid=4343 no output yet\n$/u,
+    runHelper(helper, ['beat'], { PAN_RUN_RECORD_DIR: dir }).stdout,
+    /^♥ \d\d:\d\d\n$/u,
   )
 })

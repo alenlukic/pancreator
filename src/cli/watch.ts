@@ -28,20 +28,16 @@ import { foregroundReturnRecordPath } from '../lib/watch/paths.js'
 import {
   resolveShellRecord,
   watchProcess,
-  formatProcessWakeLines,
   type GenericWatchRecordEntry,
 } from '../lib/watch/process.js'
 import {
   formatGapLine,
-  formatOpenCallSuffix,
   formatStallEvidenceLine,
   formatWakeLine,
 } from '../lib/watch/record.js'
 import { watchTimer } from '../lib/watch/timer.js'
 import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
-  DEFAULT_WATCH_CADENCE_SECONDS,
-  DEFAULT_WATCH_TIMEOUT_SECONDS,
   WATCH_EXIT_CODES,
   type WatchRecordEntry,
 } from '../lib/watch/types.js'
@@ -108,14 +104,25 @@ function agentIndexHooksHint(
   return `hooks: agent-index hooks missing from ${stale.join('; ')}; run ./bin/pan models --sync`
 }
 
-/** `pan watch`. */
-export async function watchCommand({
-  root,
-  args,
-  json,
-}: CliContext): Promise<void> {
-  let display: WatchDisplay | undefined
-  const workerDisplay = () => (display ??= new WatchDisplay(root))
+/** `pan watch`: live display forwarding is independent of observation cadence. */
+export async function watchCommand(context: CliContext): Promise<void> {
+  const display = new WatchDisplay(context.root)
+  const refresh = setInterval(() => {
+    process.stderr.write(display.refresh())
+  }, 250)
+  refresh.unref()
+  try {
+    await runWatchCommand(context, display)
+  } finally {
+    clearInterval(refresh)
+  }
+}
+
+async function runWatchCommand(
+  { root, args, json }: CliContext,
+  display: WatchDisplay,
+): Promise<void> {
+  const workerDisplay = () => display
   const watchCallbacks = {
     // Stderr carries progress even in agent shells; stdout carries the result.
     onWake: (entry: WatchRecordEntry) =>
@@ -177,6 +184,7 @@ export async function watchCommand({
     const attachAuthority = option(args, '--cadence-directed-by-operator')
     const result = await watchAttach(root, {
       ledgers: ledgerList,
+      onEntry: (entry) => process.stderr.write(workerDisplay().follow(entry)),
       timeoutSeconds: timeoutSec,
       cadenceSeconds: parseCadenceSeconds(
         option(args, '--cadence-seconds'),
@@ -192,22 +200,18 @@ export async function watchCommand({
       json
         ? result
         : [
-            `attach ${result.state}: ${result.ledgers.length} session(s) after ${result.elapsed_seconds.toFixed(1)}s`,
-            `block bound: ${result.block_bound_ms} ms`,
-            ...result.ledgers.map((s) => {
-              const wake = s.latest_wake
-              const liveness = wake?.liveness
-              return (
-                `  ${s.ledger}: ${s.state ?? 'pending'}` +
-                (s.session_terminal_state
-                  ? ` (session: ${s.session_terminal_state})`
-                  : '') +
-                (wake
-                  ? ` wake ${wake.wake} liveness=${liveness?.state ?? 'unknown'}`
-                  : '')
+            '── Result ──',
+            `  ${result.exit_code === 0 ? 'Completed' : result.state} · ${result.elapsed_seconds.toFixed(1)}s`,
+            ...result.ledgers
+              .filter(
+                (entry) =>
+                  entry.session_terminal_state &&
+                  entry.session_terminal_state !== 'completed',
               )
-            }),
-            `re-attach with: ${result.reattach_command}`,
+              .map((entry) => `  Watch: ${entry.session_terminal_state}`),
+            ...(result.state !== 'attach_completed'
+              ? [`  Resume: ${result.reattach_command}`]
+              : []),
           ].join('\n'),
       json,
     )
@@ -264,41 +268,11 @@ export async function watchCommand({
         : {}),
       timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
       onSessionStart: (entry: WatchAgentSessionEntry) => {
-        const indexed = entry.agent_entry
         finalHooksProjection = entry.hooks_projection
-        const hooksHint = agentIndexHooksHint(entry.hooks_projection)
-        process.stderr.write(
-          `[pan watch:agent:${entry.subject}] armed ` +
-            `${entry.cadence_seconds}s cadence, ` +
-            `${entry.timeout_seconds}s bound; ` +
-            (indexed
-              ? `index: ${indexed.status}, last ${indexed.last_event_kind} ` +
-                `at ${indexed.last_event_at}` +
-                (entry.aliases.length > 0
-                  ? `, aliases ${entry.aliases.join(', ')}`
-                  : '')
-              : 'index: not registered yet') +
-            `; attach: ./bin/pan watch --attach ${entry.record_path}` +
-            (hooksHint ? `; ${hooksHint}` : '') +
-            '\n',
-        )
+        process.stderr.write(workerDisplay().startAgent(entry))
       },
       onWake: (info: WatchAgentWakeInfo) => {
-        const activity = info.agent_activity
-        const age =
-          activity?.last_event_age_seconds != null
-            ? ` (${activity.last_event_age_seconds.toFixed(0)}s ago)`
-            : ''
-        process.stderr.write(
-          `[pan watch:agent:${info.subject}] wake ${info.wake}` +
-            (activity ? '' : ' not registered') +
-            formatOpenCallSuffix(activity) +
-            (activity?.last_event_kind
-              ? ` last:${activity.last_event_kind}${age}`
-              : '') +
-            (info.terminal_state ? ` -> ${info.terminal_state}` : '') +
-            '\n',
-        )
+        process.stderr.write(workerDisplay().wakeAgent(info))
       },
     })
 
@@ -311,9 +285,7 @@ export async function watchCommand({
             `over ${result.wakes} wakes; this is not evidence of a stall. ` +
             `${agentIndexHooksHint(finalHooksProjection) ?? 'Confirm the agent id and rearm.'} ` +
             `record ${result.record_path}`
-          : `agent watch ${result.state}: '${result.agent_id}' after ` +
-            `${result.elapsed_seconds.toFixed(1)}s over ${result.wakes} wakes; ` +
-            `record ${result.record_path}` +
+          : `── Result ──\n  ${result.state === 'completed' ? 'Completed' : result.state} · ${result.elapsed_seconds.toFixed(1)}s` +
             (result.state === 'stalled'
               ? `\n${formatStallEvidenceLine(result.stall_evidence)}`
               : ''),
@@ -387,7 +359,7 @@ export async function watchCommand({
     )
     const genericRecord = option(args, '--record') ?? undefined
     const genericOnWake = (entry: GenericWatchRecordEntry): void => {
-      process.stderr.write(`${formatProcessWakeLines(entry)}\n`)
+      process.stderr.write(workerDisplay().processWake(entry))
     }
 
     if (timerMode) {
@@ -419,10 +391,7 @@ export async function watchCommand({
     )
 
     process.stderr.write(
-      `[pan watch:${shell ? shell.label : (option(args, '--label') ?? processPid)}] ` +
-        `armed pid ${shell ? shell.pid : processPid}; wake every ` +
-        `${genericCadence ?? DEFAULT_WATCH_CADENCE_SECONDS}s, bound ` +
-        `${processTimeout ?? DEFAULT_WATCH_TIMEOUT_SECONDS}s\n`,
+      `── Watch · ${shell ? shell.label : (option(args, '--label') ?? processPid)} ──\n\n`,
     )
 
     const result = await watchProcess(shell ? shell.root : root, {
@@ -460,9 +429,7 @@ export async function watchCommand({
     print(
       json
         ? result
-        : `process watch ${result.state}: '${result.label}' (pid ` +
-            `${result.subject}) after ${result.elapsed_seconds.toFixed(1)}s ` +
-            `over ${result.wakes} wakes; record ${result.record_path}` +
+        : `── Result ──\n  ${result.state} · ${result.elapsed_seconds.toFixed(1)}s` +
             (result.state === 'timed_out' && result.rearm_command
               ? `\nre-arm with: ${result.rearm_command}`
               : exitStatusNote),
