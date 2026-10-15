@@ -1,5 +1,22 @@
 # Changelog
 
+## [9.0.1] - 2026-10-15
+
+Show live worker activity with clear message blocks and compact visible heartbeats.
+
+### Changed
+
+- Separate Message, Tool, Output, and Result blocks with marked labels and indent their content ([operator guide](docs/operator-guide.md#live-watch-output)).
+- Keep heartbeats at the left margin with elapsed time and omit repeated PID and path details ([command output](bin/pan-run)).
+
+### Fixed
+
+- Forward live subagent messages and tool activity before completion through normal and attached watches ([47e8c37f](https://github.com/alenlukic/pancreator/commit/47e8c37fba0b1ddf7e3b23ef23e91e7064dcb9b2)).
+- Stream watch commands through the wrapper even when a prepared request selects summary output ([live command tests](tests/regression/live-command-output.test.ts)).
+- Preserve indentation, redact secrets, and deduplicate tool activity without exposing private reasoning ([watch display](src/lib/watch/display.ts)).
+
+The operator directed local release to pan-dev without the release command. The prior candidate passed 155 affected tests and visible toy demonstrations. Real model-subagent validation remains unverified after a contradictory host launch error. No push or publication is part of this release.
+
 ## [8.18.0] - 2026-10-15
 
 Complete verification before release preparation and allocate the version only for the final local landing.
