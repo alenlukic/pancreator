@@ -390,11 +390,11 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   const modelConfig = fixtureConfig.model_config as
     | Record<string, Record<string, string>>
     | undefined
-  const fixtureModel = modelConfig?.anthropic?.balanced
-
-  if (typeof fixtureModel !== 'string' || !fixtureModel.startsWith('cursor:')) {
-    throw new Error('Fixture requires a Cursor executor model in model_config.')
-  }
+  const configuredModel = modelConfig?.anthropic?.balanced
+  const fixtureModel =
+    typeof configuredModel === 'string' && configuredModel.startsWith('cursor:')
+      ? configuredModel
+      : 'cursor:gpt-5.6-sol'
 
   delete fixtureConfig.model_config
   pinFixtureCursorExecutors(fixtureConfig, 'anthropic:balanced')

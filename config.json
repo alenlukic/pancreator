@@ -1,5 +1,8 @@
 {
   "schema_version": 1,
+  "executor": ["copilot", "cursor", "cursor-cli"],
+  "provider": ["anthropic", "oai", "cursor", "open"],
+  "tier": ["balanced", "advanced", "ultra"],
   "workspace_id": "pancreator-self-dev",
   "workspace_root": ".",
   "state_root": "runtime",
@@ -30,7 +33,7 @@
     "max_load_average_per_cpu": 1,
     "minimum_qualified_samples": 5
   },
-  "active_config": "balanced",
+  "active_config": "default",
   "defaults": {
     "orchestrator": "oai:advanced",
     "meta-orchestrator": "anthropic:ultra",
@@ -94,9 +97,6 @@
       "reviewer": "",
       "verifier": "",
       "qa-tester": ""
-    },
-    "copilot": {
-      "summary": "Compatibility name for the default Copilot persona mapping."
     }
   },
   "operator_involvement": {

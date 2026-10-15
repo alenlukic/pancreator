@@ -441,6 +441,14 @@ test('shipped profiles use environment-independent aliases', () => {
     .sort()
   const alias = /^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$/u
 
+  assert.equal(config.active_config, 'default')
+  assert.deepEqual(Object.keys(config.configs).sort(), [
+    'advanced',
+    'auto',
+    'balanced',
+    'default',
+    'ultra',
+  ])
   assert.deepEqual(Object.keys(config.defaults).sort(), personas)
   assert.equal(config.model_config, undefined)
   for (const provider of ['anthropic', 'oai', 'open', 'cursor']) {
@@ -517,6 +525,53 @@ test('an oai tier alias and an openai executor prefix mean different things', ()
   )
 })
 
+test('model enumerations default without changing resolved persona mappings', () => {
+  const value = {
+    schema_version: 1,
+    active_config: 'default',
+    model_config: {
+      oai: { advanced: 'copilot:gpt-6.1-sol[provider=openai,effort=medium]' },
+    },
+    configs: { default: { coder: 'oai:advanced' } },
+  }
+  const defaults = parsePipelineConfig(value)
+  const explicit = parsePipelineConfig({
+    ...value,
+    executor: ['copilot', 'cursor', 'cursor-cli'],
+    provider: ['anthropic', 'oai', 'cursor', 'open'],
+    tier: ['balanced', 'advanced', 'ultra'],
+  })
+
+  assert.deepEqual(explicit, defaults)
+  assert.deepEqual(defaults.executor, ['copilot', 'cursor', 'cursor-cli'])
+  assert.deepEqual(defaults.provider, ['anthropic', 'oai', 'cursor', 'open'])
+  assert.deepEqual(defaults.tier, ['balanced', 'advanced', 'ultra'])
+  assert.equal(
+    resolveConfigPersonas(explicit, 'default').coder,
+    'copilot:gpt-6.1-sol[provider=openai,effort=medium]',
+  )
+})
+
+test('model enumerations reject unsupported, missing, and duplicate values', () => {
+  const value = {
+    schema_version: 1,
+    active_config: 'default',
+    configs: { default: { coder: 'cursor:auto' } },
+  }
+
+  for (const [key, entries] of [
+    ['executor', ['copilot', 'cursor', 'openai']],
+    ['provider', ['anthropic', 'oai', 'open']],
+    ['tier', ['balanced', 'advanced', 'advanced']],
+    ['tier', 'balanced'],
+  ] as const) {
+    assert.throws(
+      () => parsePipelineConfig({ ...value, [key]: entries }),
+      new RegExp(`${key} MUST enumerate exactly`, 'u'),
+    )
+  }
+})
+
 test('the model schemas constrain aliases and local executors', () => {
   const schema = JSON.parse(
     readFileSync(
@@ -530,7 +585,16 @@ test('the model schemas constrain aliases and local executors', () => {
       tier: { enum: string[] }
       modelAlias: { pattern: string }
     }
-    properties: {
+    properties: Record<
+      'executor' | 'provider' | 'tier',
+      {
+        type: string
+        items: { $ref: string }
+        uniqueItems: boolean
+        minItems: number
+        maxItems: number
+      }
+    > & {
       defaults: { additionalProperties: { $ref: string } }
     }
     not: { anyOf: { required?: string[] }[] }
@@ -572,6 +636,22 @@ test('the model schemas constrain aliases and local executors', () => {
     'open',
   ])
   assert.deepEqual(schema.$defs.tier.enum, ['balanced', 'advanced', 'ultra'])
+
+  const config = JSON.parse(
+    readFileSync(path.join(process.cwd(), 'config.json'), 'utf8'),
+  ) as Record<string, unknown>
+
+  for (const key of ['executor', 'provider', 'tier'] as const) {
+    assert.deepEqual(config[key], schema.$defs[key].enum)
+    assert.deepEqual(schema.properties[key], {
+      type: 'array',
+      items: { $ref: `#/$defs/${key}` },
+      uniqueItems: true,
+      minItems: schema.$defs[key].enum.length,
+      maxItems: schema.$defs[key].enum.length,
+    })
+  }
+
   assert.equal(
     new RegExp(schema.$defs.modelAlias.pattern, 'u').test('oai:advanced'),
     true,
