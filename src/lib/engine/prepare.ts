@@ -4,6 +4,10 @@
  */
 
 import path from 'node:path'
+import {
+  prepareVerificationEvidence,
+  verificationEvidencePacketPath,
+} from '../verification-evidence.js'
 
 import { assertCohortRunUnblocked } from '../cohorts/chunks.js'
 import {
@@ -220,11 +224,13 @@ export function prepareInvocation(
       state.pending_action.type === 'invoke_agent' &&
       state.current_invocation
     ) {
-      return {
-        state,
-        invocation: readInvocation(root, state.current_invocation.json_path),
-        advisories,
+      const prepared = readInvocation(root, state.current_invocation.json_path)
+
+      if (prepared.stage.persona === 'verifier') {
+        prepareVerificationEvidence(root, state, prepared)
       }
+
+      return { state, invocation: prepared, advisories }
     }
 
     invariant(
@@ -770,6 +776,16 @@ export function prepareInvocation(
         : {}),
       workspace_before: workspace,
       ...harnessBaseline(root, state),
+    }
+
+    if (stage.persona === 'verifier') {
+      prepareVerificationEvidence(root, state, invocation)
+      invocation.inputs.references.push({
+        path: verificationEvidencePacketPath(root, runId).relative,
+        description:
+          'The cumulative incoming verification evidence packet; extend this same packet and preserve its provenance.',
+        retrieval: 'required',
+      })
     }
 
     writeInvocationArtifacts({

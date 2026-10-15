@@ -1687,7 +1687,7 @@ This is an operator-owned decision. The operator may run it directly or explicit
 
 Pancreator does not recursively index the workspace. During a `source_allowed` stage, the worker may edit tracked source files within declared scope. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are outside agent remit and must never be read, edited, created, deleted, validated, or reported. Git-visible fingerprints and stage evidence track relevant source state.
 
-Governance and artifact diagnostics are advisory until ship. The release steward reviews and repairs safe runtime-only issues, pauses only for a legitimate implementation, test, security, or release concern, and never sends governance paperwork back to the coder. Product or test failures still follow their owning remediation route.
+The verifier owns incoming and self-produced evidence structure. It preserves the original, repairs equivalent field shapes and recorded citation aliases, and records each repair in the same cumulative evidence packet. Structural defects do not block when the actual signal is unchanged. Missing real proof, failed assertions, stale source, and contradictions remain substantive verification concerns. Release consumes the supplied outcome without inspecting or validating evidence.
 
 The self-development ship stage may change only release metadata and version-bearing documentation plus runtime artifact repairs. Embedded ship may repair only Pancreator runtime artifacts and must not modify target source. Do not run concurrent mutating workflows against one workspace; pause before operator-driven tracked changes.
 
@@ -2580,35 +2580,17 @@ Root cause: allocation, finalize, and merge ran without serialization. Two branc
 
 ### Prepare and land
 
-Complete source synchronization and the normal verify stage first. Verify runs
-configuration validation, the resolved release profile, and the final fast wall
-report only after the other required checks pass. Ship and standalone release
-never execute tests.
+The verifier checks incoming evidence, extends that same packet with its own observations, repairs representation without changing the signal, and finishes with the fast profile. The packet retains source references, original hashes, previous attempts, repairs, and the actual gate results. Failed product checks or missing proof remain failures.
 
-Choose major, minor, or patch and checkpoint one Unreleased changelog entry.
-Collect one reusable bundle from the successful verify:
-
-```sh
-pan release evidence --worktree <name> --run <run-id> --json
-```
-
-Finish evidence review and all preparation before the final operation:
+Release owns coordination and integration, not verification. Choose major, minor, or patch and checkpoint one Unreleased changelog entry. Then run:
 
 ```sh
 pan release land --worktree <name> --run <run-id> --bump <major|minor|patch> --json
 ```
 
-Landing holds the mutex, checks the candidate ancestry and bundle currency, then
-allocates the version. It synchronizes metadata once, finalizes one immutable
-release/index pair, checks its topology, and advances pan-dev. The topology guard
-necessarily follows creation of the commits it validates. Candidate dependency
-and documentation changes survive metadata synchronization.
+Landing holds the mutex across integration, reconciliation, version allocation, metadata construction, finalization, and advancement of pan-dev. It integrates a newer tip and preserves candidate dependency and documentation changes. A genuine source conflict stops reconciliation before allocation.
 
-Missing evidence or changed source stops before allocation. A moved pan-dev tip
-requires synchronization and another verify pass; release never silently tests
-or merges new source. Test-profile and bounded-repair flags are refused. Correct
-source defects before verify, then collect a replacement bundle. Repeating bundle
-collection at the same source and tip reuses the existing record.
+Neither workflow nor standalone release requires a verification record or runs a quality gate. The legacy `release evidence` command is a compatibility no-op. Legacy test-profile and repair options are ignored rather than interpreted as release-time validation. Verification remains responsible for the correctness of all evidence and actual failing signals.
 
 The result records version, release and index commits, tip, step order, and mutex
 timing. Remote actions remain operator decisions. Dedicated `/pan-write-pr` stays

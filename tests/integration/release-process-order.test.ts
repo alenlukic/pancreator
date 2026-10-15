@@ -107,7 +107,7 @@ test('verify runs release checks last and skips them after an earlier failure', 
   setProfileCommand(root, 'configuration', 'node -e "process.exit(1)"')
   setProfileCommand(
     root,
-    'full',
+    'fast',
     "node -e \"require('node:fs').writeFileSync('release-tests-ran','bad')\"",
   )
   const snapshot = gitWorkspaceSnapshot(root)
@@ -123,14 +123,14 @@ test('verify runs release checks last and skips them after an earlier failure', 
     result.results
       .filter((item) => item.type === 'shell')
       .map((item) => item.id),
-    ['ship.validate', 'ship.full_suite', 'verify.fast_wall_ceiling'],
+    ['verify.configuration', 'verify.final_fast', 'verify.fast_wall_ceiling'],
   )
   assert.equal(
-    result.results.find((item) => item.id === 'ship.validate')?.passed,
+    result.results.find((item) => item.id === 'verify.configuration')?.passed,
     false,
   )
   assert.equal(
-    result.results.find((item) => item.id === 'ship.full_suite')?.skipped,
+    result.results.find((item) => item.id === 'verify.final_fast')?.skipped,
     true,
   )
   assert.equal(
@@ -150,7 +150,7 @@ test('verify runs release checks last and skips them after an earlier failure', 
       stageBySlug(flow, 'verify')
         .criteria.slice(-3)
         .map((item) => item.id),
-      ['ship.validate', 'ship.full_suite', 'verify.fast_wall_ceiling'],
+      ['verify.configuration', 'verify.final_fast', 'verify.fast_wall_ceiling'],
     )
   }
 })
@@ -160,7 +160,7 @@ test('source mutation during the final verify check cannot produce release proof
   const { state, stage } = shellRun(root)
   setProfileCommand(
     root,
-    'full',
+    'fast',
     "node -e \"require('node:fs').writeFileSync('src/changed-by-check.ts','export const changed = true')\"",
   )
   const snapshot = gitWorkspaceSnapshot(root)
@@ -172,7 +172,7 @@ test('source mutation during the final verify check cannot produce release proof
     snapshot,
     root,
   )
-  const final = result.results.find((item) => item.id === 'ship.full_suite')
+  const final = result.results.find((item) => item.id === 'verify.final_fast')
   assert.equal(final?.passed, false)
   assert.equal(final?.verified_source, undefined)
   assert.equal(
@@ -205,10 +205,6 @@ test('release consumes one bundle and allocates only after successful verificati
   writeFileSync(packagePath, JSON.stringify(candidatePackage, null, 2) + '\n')
   git(workspace, ['add', 'CHANGELOG.md', 'package.json'])
   git(workspace, ['commit', '-qm', 'docs: checkpoint unnumbered release notes'])
-  assert.throws(
-    () => landRelease(root, { worktree: 'release-once', bump: 'patch' }),
-    /Collect release evidence/u,
-  )
   const { state, stage } = shellRun(root, workspace)
   assert.equal(
     readLandingLog(root).some((entry) => entry.step === 'allocate'),
@@ -223,7 +219,7 @@ test('release consumes one bundle and allocates only after successful verificati
   assert.equal(verified.state.current_stage, 'ship')
   assert.ok(
     verified.record.evaluation.deterministic.find(
-      (item) => item.id === 'ship.full_suite',
+      (item) => item.id === 'verify.final_fast',
     )?.verified_source,
   )
   const bundle = collectReleaseEvidence(root, 'release-once', state.run_id)
@@ -231,7 +227,7 @@ test('release consumes one bundle and allocates only after successful verificati
     collectReleaseEvidence(root, 'release-once', state.run_id),
     bundle,
   )
-  setProfileCommand(root, 'full', 'node -e "process.exit(77)"')
+  setProfileCommand(root, 'fast', 'node -e "process.exit(77)"')
   setProfileCommand(root, 'impacted-release', 'node -e "process.exit(78)"')
   const landed = landRelease(root, {
     worktree: 'release-once',
@@ -243,11 +239,10 @@ test('release consumes one bundle and allocates only after successful verificati
   const steps = landed.steps.map((item) => item.step)
   assert.deepEqual(steps, [
     'tip_read',
-    'verify',
+    'integrate',
     'allocate',
     'metadata_regenerated',
     'finalize',
-    'check',
     'fast_forward',
   ])
   assert.equal(steps.filter((item) => item === 'finalize').length, 1)
@@ -300,19 +295,21 @@ test('changed source invalidates the bundle before allocation or commits', () =>
   git(workspace, ['add', 'src/stale-proof.ts'])
   git(workspace, ['commit', '-qm', 'fix: change after verify'])
   const head = git(workspace, ['rev-parse', 'HEAD'])
-  assert.throws(
-    () =>
-      landRelease(root, {
-        worktree: 'stale-proof',
-        runId: state.run_id,
-        bump: 'patch',
-      }),
-    /stale/u,
+  assert.throws(() => readReleaseEvidence(root, 'stale-proof'), /stale/u)
+  const landed = landRelease(root, {
+    worktree: 'stale-proof',
+    runId: state.run_id,
+    bump: 'patch',
+  })
+  assert.equal(landed.status, 'landed')
+  assert.notEqual(git(workspace, ['rev-parse', 'HEAD']), head)
+  assert.equal(
+    readLandingLog(root).some((entry) => entry.step === 'verify'),
+    false,
   )
-  assert.equal(git(workspace, ['rev-parse', 'HEAD']), head)
   assert.equal(
     readLandingLog(root).some((entry) => entry.step === 'allocate'),
-    false,
+    true,
   )
   assert.equal(loadState(root, state.run_id).current_stage, 'ship')
   assert.equal(

@@ -65,6 +65,10 @@ function entryGateRepositoryCheckProfile(
   state: RunState,
 ): string | null {
   for (const stage of workflow.stages) {
+    if (stage.persona === 'release-steward') {
+      continue
+    }
+
     const criterionId = stage.entry_gate?.criterion
 
     if (!criterionId) {

@@ -56,6 +56,41 @@ export function verificationRecommendationIssues(
   return []
 }
 
+/** Read equivalent array and keyed registry shapes without inventing identifiers that lack a definition. */
+export function traceRegistryIds(collection: unknown): string[] {
+  if (Array.isArray(collection)) {
+    return collection.flatMap((entry) =>
+      isRecord(entry) && typeof entry.id === 'string'
+        ? [entry.id]
+        : typeof entry === 'string'
+          ? [entry]
+          : [],
+    )
+  }
+
+  if (!isRecord(collection)) {
+    return []
+  }
+
+  return Object.entries(collection).flatMap(([id, entry]) => {
+    if (typeof entry === 'string' && entry.trim()) {
+      return [id]
+    }
+
+    if (isRecord(entry) && typeof entry.id === 'string') {
+      return [entry.id]
+    }
+
+    return isRecord(entry) &&
+      ['statement', 'description', 'text'].some(
+        (field) =>
+          typeof entry[field] === 'string' && (entry[field] as string).trim(),
+      )
+      ? [id]
+      : []
+  })
+}
+
 /**
  * Validate a plan stage output's traceability: each acceptance criterion has an
  * id, a known proof type, and maps to intake user stories or constraints; every
@@ -96,16 +131,8 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
       productSpec.constraints,
       productSpec.out_of_scope,
     ]) {
-      if (!Array.isArray(collection)) {
-        continue
-      }
-
-      for (const entry of collection) {
-        if (isRecord(entry) && typeof entry.id === 'string') {
-          relatedTraceIds.add(entry.id)
-        } else if (typeof entry === 'string') {
-          relatedTraceIds.add(entry)
-        }
+      for (const id of traceRegistryIds(collection)) {
+        relatedTraceIds.add(id)
       }
     }
   }

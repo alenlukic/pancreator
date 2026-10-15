@@ -7,7 +7,6 @@ import {
   allocateReleaseVersion,
   isReleaseBump,
 } from '../lib/release-allocation.js'
-import { collectReleaseEvidence } from '../lib/release-landing/evidence.js'
 import { landRelease } from '../lib/release-landing.js'
 import {
   continueLocalRelease,
@@ -38,11 +37,12 @@ export function releaseCommand({ root, args }: CliContext): void {
 
   if (sub === 'evidence') {
     print(
-      collectReleaseEvidence(
-        root,
-        worktreeName,
-        option(args, '--run') ?? undefined,
-      ),
+      {
+        status: 'not_required',
+        owner: 'verifier',
+        message:
+          'Release does not collect or inspect evidence. Verification maintains its cumulative packet before the final fast check.',
+      },
       hasFlag(args, '--json'),
     )
     return
@@ -118,12 +118,6 @@ export function releaseCommand({ root, args }: CliContext): void {
     const waitSecondsArg = option(args, '--wait-seconds')
     const verifyProfileArgs = options(args, '--verify-profile')
     const repairNote = option(args, '--repair')
-
-    if (repairNote !== null && repairNote.trim().length === 0) {
-      throw new PanError('--repair needs a non-empty note.', {
-        code: 'LANDING_REPAIR_NOTE_REQUIRED',
-      })
-    }
 
     if (bump !== undefined && !isReleaseBump(bump)) {
       throw new PanError(

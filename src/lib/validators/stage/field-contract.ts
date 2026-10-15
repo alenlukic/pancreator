@@ -284,8 +284,8 @@ export function validateSharedFieldContract(
       !isRecord(stage) ||
       !Array.isArray(stage.validators) ||
       !Array.isArray(stage.fields) ||
-      stage.validators.length === 0 ||
-      stage.fields.length === 0
+      (stageSlug !== 'ship' && stage.validators.length === 0) ||
+      (stageSlug !== 'ship' && stage.fields.length === 0)
     ) {
       issues.push(
         issue(
@@ -399,23 +399,6 @@ export function validateSharedFieldContract(
   }
 
   issues.push(...undeclaredBlockingFieldIssues(source))
-
-  const releaseChangeList = sharedFieldRequirements(input.root, 'ship').find(
-    (field) => field.path === 'data.release.change_list[]',
-  )
-
-  if (
-    !['path', 'kind', 'description'].every((field) =>
-      releaseChangeList?.required?.includes(field),
-    )
-  ) {
-    issues.push(
-      issue(
-        'field_contract.release_change_list',
-        'The ship change list MUST require path, kind, and description',
-      ),
-    )
-  }
 
   const expectedVerifyEnums: Record<string, string[]> = {
     'data.verify.verdict': [

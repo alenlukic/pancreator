@@ -96,9 +96,9 @@ export const HELP_BODY = `Usage:
   pan release allocate --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--json]
       Hand the worktree the next release version above every version published on its head, on pan-dev, on the local default branch, or already allocated, and record the allocation in runtime/release/allocations.jsonl before any release commit exists. Two worktrees allocating against the same base receive different versions, and a repeated request from a worktree whose allocation has not landed returns the same version. The ship validator accepts the allocated version in place of the exact next version for the same bump.
   pan release evidence --worktree <name> [--run <run-id>] [--json]
-      Collect one reusable bundle from a successful verify on this source tree. Release commands never run tests.
+      Compatibility no-op. The verifier owns and extends its cumulative evidence packet before its final fast check; release neither collects nor checks evidence.
   pan release land --worktree <name> --bump <major|minor|patch> [--run <run-id>] [--wait-seconds <n>] [--json]
-      Consume the bundle, check ancestry and currency, then allocate, update metadata once, finalize once, validate the release/index topology, and fast-forward pan-dev. Missing or stale evidence requires verify. Legacy --verify-profile and --repair flags are refused. The landing mutex serializes version allocation and landing. A completed pair is reused on retry.
+      Coordinate integration and reconciliation, allocate a version, construct metadata and the immutable release/index pair, then fast-forward pan-dev. Release never runs tests, checks evidence, or adds validation gates. Legacy --verify-profile and --repair options are accepted and ignored. The landing mutex serializes integration and allocation. Genuine source conflicts stop reconciliation.
 
   pan author apply --input <draft-json> [--worktree <name>] [--json]
   pan author validate [--extension <id>] [--worktree <name>] [--json]

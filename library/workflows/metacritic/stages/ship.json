@@ -8,59 +8,24 @@
   "gate_relaxable": false,
   "context": {
     "request": "conditional",
-    "required_stage_outputs": [
-      {
-        "stage": "consolidate",
-        "selection": "latest"
-      },
-      {
-        "stage": "verify",
-        "selection": "latest"
-      }
-    ],
+    "required_stage_outputs": [],
     "prior_attempts": 1,
     "operator_feedback": 1,
-    "include_workspace_ratifications": true
+    "include_workspace_ratifications": false,
+    "conditional_stage_outputs": [],
+    "gate_evidence": false,
+    "suite_profile": false
   },
   "required_data": {
     "release": "object",
-    "release.summary": "string",
-    "release.change_list": "array",
-    "release.validation": "array",
-    "release.rollback": "string",
-    "release.waivers": "array",
-    "release.follow_up_cases": "array",
-    "release.governance_artifact_review": "object",
-    "release.governance_artifact_review.summary": "string",
-    "release.governance_artifact_review.issues_reviewed": "array",
-    "release.governance_artifact_review.repairs": "array",
-    "release.governance_artifact_review.escalations": "array"
+    "release.summary": "string"
   },
   "blocked_required_data": {
     "blocked": "object",
     "blocked.missing_precondition": "string",
     "blocked.supplying_command": "string"
   },
-  "criteria": [
-    {
-      "id": "ship.prior_gates_current",
-      "type": "state",
-      "hard": true,
-      "statement": "Review and QA are satisfied by current successful evidence or explicit operator waiver directives."
-    },
-    {
-      "id": "ship.release_packet_complete",
-      "type": "judgment",
-      "hard": true,
-      "statement": "The release packet accurately summarizes scope, validation, risks, and rollback."
-    },
-    {
-      "id": "ship.release_metadata_updated",
-      "type": "state",
-      "hard": true,
-      "statement": "Pancreator self-development release metadata is synchronized and records a real major, minor, or patch bump; embedded target workflows do not modify Pancreator release metadata."
-    }
-  ],
+  "criteria": [],
   "transitions": {
     "success": "succeeded",
     "failure": "consolidate",

@@ -73,6 +73,11 @@ export function evaluateDeterministicCriteria(
 } {
   const results: DeterministicResult[] = []
   const advisories: string[] = []
+
+  if (stage.persona === 'release-steward') {
+    return { results, workspace: afterSnapshot, advisories }
+  }
+
   let scopePassed = true
 
   if (stage.workspace_policy !== 'source_allowed') {
@@ -202,6 +207,7 @@ export function evaluateDeterministicCriteria(
       // currency checks detect contamination regardless of the outcome.
       const finalCheck =
         criterion.id === 'ship.full_suite' ||
+        criterion.id === 'verify.final_fast' ||
         criterion.id === 'verify.fast_wall_ceiling'
       const skipReason =
         gateSkipReason ??
@@ -267,7 +273,8 @@ export function evaluateDeterministicCriteria(
         })
       } else {
         const sourceBefore =
-          criterion.id === 'ship.full_suite'
+          criterion.id === 'ship.full_suite' ||
+          criterion.id === 'verify.final_fast'
             ? releaseSourceFingerprint(workspaceDir)
             : null
         const checked = runShellCheck(
@@ -284,7 +291,8 @@ export function evaluateDeterministicCriteria(
           { beforeSnapshot },
         )
         if (
-          criterion.id === 'ship.full_suite' &&
+          (criterion.id === 'ship.full_suite' ||
+            criterion.id === 'verify.final_fast') &&
           checked.passed &&
           !checked.disabled &&
           !checked.skipped

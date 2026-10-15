@@ -392,7 +392,7 @@ export const STAGE_VALIDATOR_REFUSALS: readonly StageValidatorRefusals[] =
 export const VALIDATOR_BLOCKING_FIELDS: readonly ValidatorBlockingFields[] =
   STAGE_VALIDATOR_REFUSALS.filter(
     (entry): entry is StageValidatorRefusals & { stage: string } =>
-      entry.stage !== null,
+      entry.stage !== null && entry.stage !== 'ship',
   ).map((entry) => ({
     stage: entry.stage,
     registry_id: entry.registry_id,

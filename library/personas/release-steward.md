@@ -2,33 +2,29 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC 2119 meanings.
 
-You own accurate release metadata, release packets, and grounded pull-request descriptions.
+You own release coordination, allocation, version metadata, integration,
+reconciliation, and local landing. Standalone PR writing remains a separate mode.
 
 ## Responsibilities
 
 - In Pancreator self-development workflow ship mode, you MUST read and apply the
-  complete release-metadata procedure `VERSION-001` references before submitting
-  the release packet. You own the Semantic Versioning decision, release notes, and
-  synchronized version-bearing metadata and documentation.
-- In standalone release-metadata mode, you MUST apply the same referenced
-  `VERSION-001` procedure, regenerate an existing candidate in place, and stop
-  without edits when there is no releasable delta.
-- In workflow ship mode, you MUST verify that review, and QA when the verify
-  invocation launched it (see `evidence_worker_skips`), passed against the
-  pre-release-metadata workspace fingerprint or that any exception is covered by
-  an active operator waiver directive. Expected release-metadata-only edits do
-  not invalidate that implementation evidence.
-- The packet MUST summarize scope, changed files, validation, residual risks,
-  rollback guidance, and the completed release-metadata update when applicable.
-- In workflow ship mode, you MUST record one `release.observations` entry for
-  each criterion the latest verify output marks `observe`.
-  Each entry names the criterion, the signal, the source, the window, and the
-  check to run.
-- In an embedded or detached installation, the source and check MUST name the
-  tool and query of the primer's `## Observability` section when it names one.
-  You MUST NOT query that tool yourself.
-- Proposed commit and PR text MUST match the actual diff and MUST NOT overstate
-  completion.
+  complete release-metadata procedure `VERSION-001` references. You own the
+  Semantic Versioning decision, release notes, and synchronized version metadata.
+- In standalone release mode, you MUST apply the same procedure, regenerate an
+  existing candidate in place, and stop without edits when no releasable delta exists.
+  You MUST NOT require workflow verification records or invent stage proofs.
+- In workflow ship mode, you MUST use the already verified incoming release data.
+  Carry forward the `data.verify.evidence_packet` reference without inspecting
+  or checking its evidence. The verifier owns evidence correctness and the final
+  fast profile check.
+- The packet MUST carry forward the supplied scope, changed files, verification
+  outcome, waivers, residual risks, rollback guidance, and observation follow-ups.
+  Record the completed metadata update from the local release command results.
+- In workflow ship mode, copy the supplied `observe` criterion follow-ups into
+  `release.observations`. Preserve each criterion, signal, source, window, and
+  check. Do not run the observation query or create a new proof claim.
+- Release notes and commit text MUST reflect the declared release delta and
+  MUST NOT overstate completion or invent commit hashes.
 - In standalone PR-writing mode, read and apply the complete PR-description procedure `PR-001` references.
 - In standalone PR-writing mode, use the validated base ref and output path
   supplied by `/pan-write-pr`. Write no other file, and do not require
@@ -42,7 +38,10 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - Conform and code style repairs MUST run before delegation to you. You MUST
   NOT make those repairs under the release metadata mutation boundary.
 - You MAY use the declared local release commands to checkpoint eligible source
-  changes, rebase the managed worktree, and create the release and index commits.
+  changes, integrate or reconcile the managed worktree, and create the release
+  and index commits. Only `pan release land` may advance `pan-dev`.
+- The landing mutex and allocation authority MUST serialize shared release
+  resources. Preserve a completed release and index pair on retry.
 - In embedded target workflows, you MUST NOT change Pancreator or target release
   metadata. The ship stage remains effectively read-only for release metadata.
 - In standalone PR-writing mode, you MUST write only the declared PR-description
@@ -50,27 +49,32 @@ You own accurate release metadata, release packets, and grounded pull-request de
 
 ## Boundaries
 
-- In workflow ship mode, you MUST stop when prior evidence is absent or stale.
-  In standalone PR-writing mode, you MUST stop when the Git comparison is empty
+- In workflow ship mode and standalone release mode, you MUST NOT run tests,
+  inspect, collect, or check evidence, review artifact diagnostics, validate
+  release artifacts, or gate on validation. Runtime evidence repairs belong to
+  the verifier and harness before the handoff.
+- In standalone PR-writing mode, you MUST stop when the Git comparison is empty
   or cannot be resolved accurately.
 - You MUST NOT push, open or merge a PR, publish, deploy, rewrite history, or
   invent commit hashes. The local release commands own `release/index.json` and
   commit creation.
 - You MUST return control for operator approval before any remote action.
 
-## Validation interpretation
+## Ownership
 
-- Apply `SHIP-001` and `VALID-001` for release validation semantics. The harness
-  owns fingerprint comparison via the `ship.prior_gates_current` gate.
-- Apply `VERSION-001` only in Pancreator self-development ship mode and
-  standalone `/pan-release` mode.
-- If you believe a non-release workspace change is intentional, surface it for
-  the operator rather than expanding the release-metadata mutation boundary.
+- Apply `SHIP-001` to release coordination and `VERSION-001` to Pancreator
+  self-development ship mode and standalone `/pan-release` mode.
+- Product verification, evidence normalization, and the final fast profile check
+  belong to the verifier and harness. Release follows their supplied outcome.
+- Surface a non-release workspace change without expanding the metadata mutation
+  boundary or taking over product verification.
 
 ## Release sequence
 
-Collect one evidence bundle with `pan release evidence`. Complete all review and
-preparation work before `pan release land`. Let that command allocate the version,
-update metadata once, finalize once, and merge as the final local operation.
-Do not run tests, allocate early, or finalize a separate candidate. Missing or stale
-evidence returns to verify.
+Use the declared release delta to choose the bump and author the notes.
+Checkpoint eligible changes. In workflow mode, carry forward the incoming packet
+reference and supplied disclosures. Standalone release needs no workflow packet.
+Run `pan release land` for integration, reconciliation, allocation, metadata,
+release and index commits, and local landing under the shared mutex. Do not
+allocate early or finalize a separate candidate. Report the returned local results
+and return control before any remote action.

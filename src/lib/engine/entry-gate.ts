@@ -336,7 +336,7 @@ export function runStageEntryGate(
 ): 'pass' | 'routed' | 'paused' {
   const gate = stage.entry_gate
 
-  if (!gate) {
+  if (stage.persona === 'release-steward' || !gate) {
     return 'pass'
   }
 

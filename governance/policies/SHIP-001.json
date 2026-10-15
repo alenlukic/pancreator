@@ -2,34 +2,20 @@
   "id": "SHIP-001",
   "title": "Operator-owned release boundary",
   "severity": "hard",
-  "summary": "Verify MUST finish all release checks before ship. Release MUST consume one evidence bundle, finalize once, and leave remote actions to the operator.",
+  "summary": "Release MUST coordinate allocation, version metadata, integration, reconciliation, and local landing from already verified incoming data. Remote actions remain operator-owned.",
   "instructions": [
-    "The verify stage MUST run the resolved release profile after all other required checks pass, followed by the final fast wall report. The ship stage and release commands MUST NOT run tests. Coverage: `tests/integration/release-process-order.test.ts::verify runs release checks last and skips them after an earlier failure`.",
-    "The release steward MUST collect exactly one evidence bundle with pan release evidence. Release MUST reuse it and MUST refuse missing or stale evidence instead of running tests. Coverage: `tests/integration/release-process-order.test.ts::release consumes one bundle and allocates only after successful verification`.",
-    "A failed verify MUST follow its declared failure transition. A source change or a moved integration tip MUST return to verify before release preparation continues.",
-    "The release steward MUST finish its evidence review, release notes, and other checks before allocation. pan release land MUST allocate the version, update metadata, finalize once, and land as the final local operation.",
-    "The release packet MUST confirm that prior gates are satisfied by current evidence or explicit operator acceptance and waiver directives.",
-    "The release packet MUST enumerate active operator gate waivers, deferred acceptance criteria, reviewer criterion amendments, and linked spotfix cases. It MUST NOT describe a waived gate or an amended criterion as an ordinary pass.",
-    "The release packet MUST include rollback guidance, unresolved non-blocking risks, and a concise change summary.",
+    "The ship stage and release commands MUST NOT run tests, inspect, collect, or check evidence, review artifact diagnostics, validate release artifacts, or gate on validation.",
+    "Workflow ship MUST carry forward the incoming data.verify.evidence_packet reference and the verifier's supplied release disclosures without checking their evidence. It MUST NOT collect a separate evidence bundle. Standalone /pan-release MUST work without workflow verification records or invented stage proofs.",
+    "A failed verify MUST follow its declared failure transition. The verifier owns any renewed product verification after source changes during integration or reconciliation. Release MUST NOT run or adjudicate that verification.",
+    "The release steward MUST construct release notes and choose the bump from the declared release delta. pan release land MUST coordinate integration, reconciliation, allocation, metadata construction, release and index commits, and local landing. The landing mutex and allocation authority MUST serialize shared release resources.",
+    "The release packet MUST carry forward the supplied verification outcome, active operator gate waivers, deferred acceptance criteria, reviewer criterion amendments, and linked spotfix cases. It MUST NOT describe a waived gate or an amended criterion as an ordinary pass.",
+    "The release packet MUST include the supplied rollback guidance, unresolved non-blocking risks, and a concise change summary.",
     "For Pancreator self-development only, the release steward MUST update release metadata under VERSION-001 before operator approval. Embedded target workflows MUST remain release-metadata read-only.",
-    "Self-development ship with a managed worktree MUST checkpoint eligible changes before collecting evidence. It MUST let pan release land update metadata and create the release and index commits once.",
-    "The workflow MUST pause for operator approval before branch push, pull-request creation, merge, publication, or deployment.",
+    "Self-development ship with a managed worktree MUST checkpoint eligible changes. It MUST let pan release land update metadata and create the release and index commits once. A retry MUST preserve an already completed release and index pair.",
+    "The workflow MUST pause for operator approval before branch push, pull-request creation, remote merge, publication, or deployment. Local landing through pan release land remains part of release coordination.",
     "When away mode allows `approve`, the supervisor MAY approve a successful ship packet with `pan away decide`.",
     "That approval MUST apply only the recorded outcome and the terminal workflow transition.",
-    "An away-mode ship approval MUST NOT authorize push, pull-request creation, merge, publication, deployment, or branch deletion.",
-    "The release steward MUST review the run governance/artifact diagnostics index and repair safe runtime-only defects. It MUST record a disposition for every issue. It MUST continue when no legitimate implementation, test, security, or release concern remains. Governance/artifact defects MUST never transition back to implementation. A legitimate concern MUST pause for operator decision.",
-    "Before operator approval, four artifacts MUST run their resolved policy-bound validators under VALID-001. They are the release data, the waiver and follow-up disclosure, the diff-grounded change list, and the referenced release packet."
+    "An away-mode ship approval MUST NOT authorize push, pull-request creation, remote merge, publication, deployment, or branch deletion."
   ],
-  "requirements": [
-    {
-      "id": "release-validate",
-      "registry_id": "RELEASE-VALIDATE-001",
-      "phase": "pre_submit",
-      "executor": "harness",
-      "target": "invocation.output.path",
-      "enforcement": "required",
-      "failure_route": "stage_failure",
-      "evidence_class": "validation-result"
-    }
-  ]
+  "requirements": []
 }

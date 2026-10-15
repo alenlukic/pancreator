@@ -51,11 +51,14 @@ test('release prefetch rejects every ineligible submission state', () => {
     failure: 'remediate',
     max_loops: 2,
   }
-  ship.criteria.push(
-    stageBySlug(workflow, 'verify').criteria.find(
-      (criterion) => criterion.id === 'ship.full_suite',
+  ship.persona = 'orchestrator'
+  ship.criteria.push({
+    ...stageBySlug(workflow, 'verify').criteria.find(
+      (criterion) => criterion.id === 'verify.final_fast',
     )!,
-  )
+    id: 'ship.full_suite',
+    command: 'pan repository-check full',
+  })
 
   const running = {
     status: 'running',

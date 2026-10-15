@@ -30,7 +30,8 @@ deny_await() {
 # The payload travels in the environment because the program itself is the
 # python3 -c argument; stdin cannot carry both.
 PAN_HOOK_PAYLOAD="$input" PAN_HOOK_AWAIT_MESSAGE="$await_message" \
-  PAN_HOOK_HOST_TOOLS="$HARNESS_ROOT/governance/registries/host_tools.json" python3 -c '
+  PAN_HOOK_HOST_TOOLS="$HARNESS_ROOT/governance/registries/host_tools.json" \
+  PAN_HOOK_AGENT_ROOT="${PANCREATOR_ROOT:-$HARNESS_ROOT}" python3 -c '
 import json, os, sys
 
 # Used only when the registry is unreadable. tests/regression/await-shell-hook
@@ -95,6 +96,29 @@ if tool_name in rules["await"] and tool_name in rules["await_when"]:
     if value in (None, 0, False, ""):
         print(allow)
         sys.exit(0)
+    # A completed result returns immediately even when the reader carries wait=True.
+    # Unknown, running, or incomplete index entries retain the await ban.
+    if host == "copilot-cli" and tool_name == "read_agent" and isinstance(arguments, dict):
+        agent_id = arguments.get("agent_id")
+        try:
+            index_path = os.path.join(os.environ["PAN_HOOK_AGENT_ROOT"], "runtime/logs/agents/index.json")
+            with open(index_path, encoding="utf-8") as handle:
+                index = json.load(handle)
+            resolved = (index.get("aliases") or {}).get(agent_id, agent_id)
+            terminal = any(
+                entry.get("agent_id") == resolved
+                and entry.get("status") in ("completed", "error", "aborted")
+                and entry.get("last_event_kind") == "stopped"
+                and isinstance(entry.get("stop"), dict)
+                and entry["stop"].get("status") == entry.get("status")
+                for entry in index.get("agents", [])
+                if isinstance(entry, dict)
+            )
+            if isinstance(agent_id, str) and agent_id and terminal:
+                print(allow)
+                sys.exit(0)
+        except Exception:
+            pass
 
 if tool_name in rules["await"]:
     message = os.environ["PAN_HOOK_AWAIT_MESSAGE"]

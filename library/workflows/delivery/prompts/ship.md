@@ -1,32 +1,33 @@
 ## Objective
 
-Prepare an accurate release packet from the ratified scope and current verification.
+Coordinate release metadata, allocation, integration, reconciliation, and local
+landing from the already verified incoming data.
 
 ## Procedure
 
-1. Read the card and required inputs. Confirm current successful verify evidence
-   and disclose every waiver, warning, deferred criterion, and unresolved risk.
-2. Finish the governance artifact review and repair safe runtime artifact defects.
-   Return implementation or test concerns to verify through the declared route.
-3. In self-development, inspect the complete release delta, choose the version
-   bump, and prepare one Unreleased changelog entry. Checkpoint eligible changes
-   in the managed worktree. Any source synchronization belongs before verify.
-4. Collect one bundle with `pan release evidence --worktree <name> --run <run-id>
---json`. Use the candidate build through `PANCREATOR_EXEC_ROOT` when available.
-   A missing or stale bundle requires verify. Do not execute tests during ship.
-5. Finish the change list, validation disclosure, rollback guidance, and one
-   observation per criterion verify marked observe. An observation names its
-   criterion, signal, source, window, and exact check. Use the primer's tool and
-   query when it supplies one; do not query that tool during release.
-6. As the final local operation, run `pan release land --worktree <name>
---run <run-id> --bump <major|minor|patch> --json`. It consumes the bundle,
-   allocates the version, updates metadata, finalizes once, checks the immutable
-   release/index pair, and advances pan-dev. Do not allocate or finalize earlier.
-7. Populate the packet and versioning fields from the returned results. Attribute
-   every changed metadata path in workspace_changes. Preserve completed commits
-   on retry. Surface a refusal and its supplying command without rerunning tests.
-8. Embedded and detached targets do not mutate harness release metadata. Return
+1. Read the card and supplied release inputs. Carry forward the
+   `data.verify.evidence_packet` reference and the supplied waivers, warnings,
+   deferred criteria, and risks without inspecting or checking evidence artifacts.
+2. In self-development, use the declared release delta to choose the bump and
+   prepare one Unreleased changelog entry. Checkpoint eligible changes in the
+   managed worktree. Preserve the allocation authority and landing mutex.
+3. Carry forward the supplied change summary, verification outcome, rollback
+   guidance, and observation follow-ups. Each observation retains its supplied
+   criterion, signal, source, window, and check. Do not run the observation query
+   or invent proof.
+4. Run `pan release land --worktree <name> --run <run-id>
+--bump <major|minor|patch> --json` for integration, reconciliation, allocation,
+   metadata construction, release and index commits, and local landing on
+   `pan-dev`. Do not allocate or finalize a separate candidate beforehand.
+5. Populate the packet and versioning fields from the returned local results.
+   Attribute every changed metadata path in `workspace_changes`. Preserve a
+   completed release and index pair on retry. Surface an operational refusal
+   with its supplying command.
+6. Embedded and detached targets do not mutate harness release metadata. Return
    the packet for operator approval before any remote action.
 
-A landing that changes the harness root checkout is an operator step after submit.
-The release steward changes only the managed worktree during its stage.
+Ship MUST NOT run tests, inspect, collect, or check evidence, review artifact
+diagnostics, validate release artifacts, or gate on validation. The verifier and
+harness own evidence correctness, runtime evidence repairs, and the final fast
+profile check. Ship follows their supplied outcome and does not collect another
+evidence bundle.

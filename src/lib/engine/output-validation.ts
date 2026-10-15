@@ -6,6 +6,10 @@
 
 import { rmSync } from 'node:fs'
 import path from 'node:path'
+import {
+  normalizeVerificationEvidence,
+  prepareVerificationEvidence,
+} from '../verification-evidence.js'
 
 import {
   fileExists,
@@ -121,6 +125,19 @@ export function validateOutputForSubmission(
   // The harness renders the operator brief during submission, so its absence
   // before submit is expected.
   const renderedPath = invocation.output.operator_brief?.rendered_path
+  if (stage.persona === 'verifier' && isRecord(effectiveValue)) {
+    normalizeVerificationEvidence(effectiveValue)
+
+    if (isRecord(effectiveValue.data) && isRecord(effectiveValue.data.verify)) {
+      effectiveValue.data.verify.evidence_packet = prepareVerificationEvidence(
+        root,
+        state,
+        invocation,
+        { persist: false },
+      )
+    }
+  }
+
   const structural = validateStageOutput(
     root,
     stage,

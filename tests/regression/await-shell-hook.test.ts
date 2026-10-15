@@ -7,6 +7,7 @@ import {
   mkdirSync,
   readFileSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -159,6 +160,81 @@ test('C-013: a fault in the Task path allows the Task and keeps the AwaitShell b
       'deny',
     )
   })
+})
+
+test('completed Copilot agent results may be read immediately while running and unproven targets retain the await ban', () => {
+  const root = createTestTempDirectory('completed-agent-read-')
+  const directory = path.join(root, 'runtime/logs/agents')
+  mkdirSync(directory, { recursive: true })
+  const index = path.join(directory, 'index.json')
+  const env = {
+    ...process.env,
+    PAN_HOOK_HOST: 'copilot-cli',
+    PANCREATOR_ROOT: root,
+  }
+
+  for (const status of ['completed', 'error', 'aborted', 'running']) {
+    writeFileSync(
+      index,
+      JSON.stringify({
+        agents: [
+          {
+            agent_id: 'terminal-agent',
+            status,
+            last_event_kind: 'stopped',
+            stop: { status },
+          },
+        ],
+        aliases: { 'platform-id': 'terminal-agent' },
+      }),
+    )
+    assert.equal(
+      runHook(
+        payload('read_agent', { agent_id: 'platform-id', wait: true }),
+        env,
+      ).permission,
+      status === 'running' ? 'deny' : 'allow',
+    )
+  }
+
+  writeFileSync(
+    index,
+    JSON.stringify({
+      agents: [
+        {
+          agent_id: 'terminal-agent',
+          status: 'completed',
+          last_event_kind: 'call_finished',
+        },
+      ],
+      aliases: {},
+    }),
+  )
+  assert.equal(
+    runHook(
+      payload('read_agent', { agent_id: 'terminal-agent', wait: true }),
+      env,
+    ).permission,
+    'deny',
+  )
+  assert.equal(
+    runHook(payload('read_agent', { agent_id: 'unknown', wait: true }), env)
+      .permission,
+    'deny',
+  )
+  assert.equal(
+    runHook(payload('read_agent', { agent_id: 'unknown', wait: false }), env)
+      .permission,
+    'allow',
+  )
+  writeFileSync(index, 'invalid index')
+  assert.equal(
+    runHook(
+      payload('read_agent', { agent_id: 'terminal-agent', wait: true }),
+      env,
+    ).permission,
+    'deny',
+  )
 })
 
 test('the deny hook applies each host tool registry entry, and its built-in fallback matches the registry', () => {

@@ -106,7 +106,11 @@ function normalizeDiagnosticLine(
   workspaceRoot: string,
   externalScratch: string | null,
 ): string {
-  const slashed = stripAnsi(line).replaceAll('\\', '/')
+  const identities = stripAnsi(line).replaceAll(
+    /((?:current_head|candidate_head|tip_before|tip_after|workspace_fingerprint)\\?["']\s*:\s*\\?["'])(?:[a-f0-9]{64}|[a-f0-9]{40})(\\?["'])/giu,
+    '$1<execution-identity>$2',
+  )
+  const slashed = identities.replaceAll('\\', '/')
   const unscratched = externalScratch
     ? slashed.replaceAll(
         externalScratch.replaceAll('\\', '/'),

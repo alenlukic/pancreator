@@ -60,6 +60,57 @@ function passedCheck(): RepositoryCheckResult {
   }
 }
 
+test('volatile execution identities do not invent regressions while assertion bodies, counts, and failure status retain their signal', () => {
+  const first = 'a'.repeat(40)
+  const second = 'b'.repeat(40)
+  const assertion =
+    'not ok - same assertion\nAssertionError: expected 1, actual 2\n'
+  const baseline = failedCheck(assertion + `  "current_head": "${first}",\n`)
+  const repeated = failedCheck(assertion + `  "current_head": "${second}",\n`)
+  const comparison = compareRepositoryCheckToBaseline(baseline, repeated)
+  assert.equal(comparison.passed, true)
+  assert.equal(comparison.delta.new.length, 0)
+  assert.equal(repeated.status, 'failed')
+  assert.equal(repeated.results[0]!.exit_code, 1)
+  assert.equal(
+    compareRepositoryCheckToBaseline(
+      baseline,
+      failedCheck(
+        assertion.replace('actual 2', 'actual 3') +
+          `  "current_head": "${second}",\n`,
+      ),
+    ).passed,
+    false,
+  )
+  assert.equal(
+    compareRepositoryCheckToBaseline(
+      baseline,
+      failedCheck(
+        assertion +
+          'not ok - a new failed assertion\n' +
+          `  "current_head": "${second}",\n`,
+      ),
+    ).passed,
+    false,
+  )
+  assert.equal(
+    compareRepositoryCheckToBaseline(
+      baseline,
+      failedCheck(assertion + `  "current_head": "${second}",\n`, {
+        exit_code: 2,
+      }),
+    ).passed,
+    false,
+  )
+  assert.equal(
+    compareRepositoryCheckToBaseline(
+      failedCheck(`"actual_value": "${first}"`),
+      failedCheck(`"actual_value": "${second}"`),
+    ).passed,
+    false,
+  )
+})
+
 test('baseline comparison tolerates line movement and improving failure counts', () => {
   const baseline = failedCheck(
     '/workspace/src/a.ts:10:2 error Unexpected value no-example\n✖ 2 problems (2 errors, 0 warnings)\n',

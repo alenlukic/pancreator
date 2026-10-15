@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Limit release coordination to integration, reconciliation, allocation, metadata, and local landing ([release procedure](library/skills/update-release-metadata.md)).
+- Give the verifier ownership of the cumulative evidence packet and the final fast check ([verifier](library/personas/verifier.md)).
+
+### Added
+
+- Preserve original evidence and repair equivalent representations, citation keys, and invocation references ([evidence packet](src/lib/verification-evidence.ts)).
+
+### Fixed
+
+- Accept pending shell checks until submission runs them, and preserve genuine failures ([submission validation](src/lib/validation/stage-output.ts)).
+- Normalize volatile execution identities in diagnostics and accept keyed constraint registries and missing parent digests ([verification guidance](library/workflows/delivery/prompts/verify.md)).
+- Permit result retrieval for agents whose recorded terminal state proves completion ([await hook](bin/pan-hook-deny-await-shell)).
+
 ## [9.1.1] - 2026-10-15
 
 ### Fixed
