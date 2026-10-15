@@ -16,11 +16,7 @@ import {
   validateStageOutput,
 } from '../../src/lib/validation.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
-import {
-  createFixture,
-  pinFixturePersonaModel,
-  writeJson,
-} from '../helpers.js'
+import { createFixture, pinFixturePersonaModel, writeJson } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -443,8 +439,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
     readFileSync(path.join(root, 'config_overrides.json'), 'utf8'),
   ) as { model_config: { anthropic: { balanced: string } } }
   const updatedCoderModel =
-    configOverrides.model_config.anthropic.balanced ===
-    'cursor:gpt-5.6-terra'
+    configOverrides.model_config.anthropic.balanced === 'cursor:gpt-5.6-terra'
       ? 'cursor:gpt-5.6-sol'
       : 'cursor:gpt-5.6-terra'
 
