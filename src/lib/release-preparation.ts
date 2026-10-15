@@ -228,7 +228,8 @@ function worktree(
   return { record, absolute }
 }
 
-function assertReleaseWorkspaceAvailable(
+/** Refuse release mutation unless this worktree is available to the named ship run. */
+export function assertReleaseWorkspaceAvailable(
   root: string,
   name: string,
   ownerRunId?: string,

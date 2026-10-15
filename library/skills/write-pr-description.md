@@ -1,9 +1,7 @@
 # Write a PR description
 
-Use when preparing a merge-ready GitHub pull-request body from workflow
-artifacts or directly from the current branch and worktree. The release steward
-applies this skill during the ship stage and in standalone `/pan-write-pr`
-invocations.
+Use when the operator invokes `/pan-write-pr` to prepare a GitHub pull-request
+body from the current branch and worktree.
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use
 RFC 2119 meanings.
@@ -16,22 +14,7 @@ The description is for a human reviewer who has not read the diff. Lead with
 impact and intent, not file inventory. Save the body for the operator to paste
 into `gh pr create`. Never open the PR yourself.
 
-## Invocation modes
-
-### Workflow ship
-
-The invocation card supplies `<run-id>` and MAY supply a PR base ref. Default the
-base to `main` when none is supplied. Write one Markdown file at the path for
-the run layout:
-
-- Layout v2:
-  `runtime/logs/workflows/<run-id>/operator/pr-description.md`
-- Layout v1:
-  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`
-
-Reference this path in the stage JSON output `artifacts` list.
-
-### Standalone command
+## Standalone command
 
 The `/pan-write-pr` command supplies a validated base ref and a unique output
 path under `runtime/pr-descriptions/`. Write only that file. Do not require ship
@@ -39,8 +22,8 @@ stage records, review evidence, QA evidence, or a workflow run.
 
 ## Authority modes
 
-The invocation supplies `inputs.pr_description`, or the standalone command
-supplies `pan pr-description context --json`. Use the mode from that result.
+The standalone command supplies `pan pr-description context --json`. Use the
+mode from that result.
 
 ### Target mode
 
@@ -54,7 +37,7 @@ Read every resolved template and instruction path before drafting.
 - Do not add Summary, Changelist, How to read this PR, or a delivery manifest
   unless the target template contains that heading.
 - Do not put a suggested title in the body unless
-  `inputs.pr_description.allows_body_title` is true.
+  `allows_body_title` is true in the resolved context.
 - Apply the live target instructions when they conflict with the Pancreator
   fallback format.
 
@@ -107,33 +90,25 @@ MUST validate it as one literal Git ref before this skill runs.
 
 1. **Git delta** — the complete comparison defined above, using `main` by
    default or the caller-supplied base ref.
-2. **Run artifacts** — in workflow mode, use paths for the active run layout.
-   Layout v2 uses `agent/artifacts/json/`, `operator/`, and `agent/events.jsonl`.
-   Layout v1 uses `artifacts/json/`, `artifacts/markdown/`, and `events.jsonl`.
-3. **Target authority** — the resolved PR template, instruction paths, section
+2. **Target authority** — the resolved PR template, instruction paths, section
    order, required headings, and optional headings.
-4. **Release context** — in workflow mode, the ship-stage inputs (spec, plan,
-   implementation, review, QA, and release packet draft) when present.
 
 Every Summary claim, Changelist bullet, and walkthrough statement MUST be
 traceable to the Git delta or an artifact you read.
 You MUST NOT invent changes.
 
-When the Git delta reveals paths not explained by prior stage artifacts, fold
-them into Summary and Changelist as grouped thematic items.
+Group the Git delta into thematic items for Summary and Changelist.
 You MUST NOT emit one bullet per unexplained path.
 
 ## Steps
 
-1. Determine whether the invocation is workflow ship or standalone command.
+1. Read the validated base ref and output path from the standalone command.
 2. Resolve target mode or Pancreator fallback mode before drafting.
 3. Read every resolved target template and instruction path in target mode.
 4. Resolve the validated base ref, current branch, merge base, and complete Git
    delta per **Git comparison**.
-5. In workflow mode, read the applicable run artifacts and release context.
-6. Draft the file per the resolved authority mode and run the checks below.
-7. Write only the mode-specific output path. In workflow mode, list it in stage
-   artifacts.
+5. Draft the file per the resolved authority mode and run the checks below.
+6. Write only the command-supplied output path.
 
 ## Conformance checks
 

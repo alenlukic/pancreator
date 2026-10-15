@@ -6,11 +6,6 @@
   "workspace_policy": "release_metadata_only",
   "gate": "operator",
   "gate_relaxable": false,
-  "entry_gate": {
-    "criterion": "ship.full_suite",
-    "failure": "consolidate",
-    "max_loops": 2
-  },
   "context": {
     "request": "conditional",
     "required_stage_outputs": [
@@ -48,22 +43,6 @@
   },
   "criteria": [
     {
-      "id": "ship.full_suite",
-      "type": "shell",
-      "hard": true,
-      "statement": "The full repository-check profile passes on the consolidated implementation before release preparation begins.",
-      "command": "pan repository-check full",
-      "timeout_ms": 1200000
-    },
-    {
-      "id": "ship.fast_wall_ceiling",
-      "type": "shell",
-      "hard": false,
-      "statement": "The TEST-001 rolling 24-hour qualified fast-lane wall average is reported as a non-blocking release advisory.",
-      "command": "pan tests wall",
-      "timeout_ms": 30000
-    },
-    {
       "id": "ship.prior_gates_current",
       "type": "state",
       "hard": true,
@@ -80,14 +59,6 @@
       "type": "state",
       "hard": true,
       "statement": "Pancreator self-development release metadata is synchronized and records a real major, minor, or patch bump; embedded target workflows do not modify Pancreator release metadata."
-    },
-    {
-      "id": "ship.validate",
-      "type": "shell",
-      "hard": true,
-      "statement": "Configured repository validation remains valid.",
-      "command": "pan repository-check configuration",
-      "timeout_ms": 240000
     }
   ],
   "transitions": {

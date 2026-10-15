@@ -586,7 +586,7 @@ Run `/pan-build-briefs` after installation and whenever recurring operator-facin
 
 Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated.
 
-New workflow runs suppress stage briefs and workflow PR copy by default. Request briefs for every stage when the run starts:
+New workflow runs suppress stage briefs by default. Request briefs for every stage when the run starts:
 
 ```sh
 ./bin/pan init --request runtime/inbox/queue/request.md --operator-artifacts
@@ -610,7 +610,7 @@ Generate one submitted stage brief later without rerunning its worker:
 
 Omit `--stage` to generate each missing latest-stage brief. Existing HTML stays unchanged unless `--force` is present. A failed render or validation keeps the source JSON and preserves existing HTML.
 
-The ship stage creates workflow PR copy only when its invocation requests operator artifacts. `/pan-write-pr` remains available independently.
+Invoke `/pan-write-pr` explicitly to create a PR description for the current branch and worktree.
 
 New run directories separate their contents. Open `operator/` for the preserved
 request and explicitly requested outputs. Harness records remain under `agent/`.
@@ -2220,7 +2220,7 @@ aggregate JSON is the desired surface instead of Canvas.
 
 ## Write a standalone PR description
 
-Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
+Use `/pan-write-pr` to create a PR description when the current branch and worktree are ready for review. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
 
 The command is read-only apart from its generated Markdown artifact. It does not create, update, or merge a pull request and stops when the base is invalid, the comparison is ambiguous, or there is no delta to describe.
 
@@ -2307,7 +2307,7 @@ has already been updated by the release steward. Before approval, confirm:
 - deferred acceptance criteria and any follow-up obligations required by the operator's waiver terms are disclosed
 - residual risks are acceptable
 - rollback guidance is credible
-- the proposed commit/PR text accurately describes the diff
+- the release packet and proposed commit text accurately describe the diff
 - the selected version bump and generated release notes match the complete
   delta since the last committed release bump
 
@@ -2576,72 +2576,41 @@ Root cause: allocation, finalize, and merge ran without serialization. Two branc
 
 `pan release land` fixes this by holding a lock from tip read to fast-forward, so two concurrent landings receive distinct versions and one serialized path to pan-dev.
 
-### The landing command
+### Prepare and land
 
-`pan release land` is the only supported way to land a release branch on `pan-dev`:
+Complete source synchronization and the normal verify stage first. Verify runs
+configuration validation, the resolved release profile, and the final fast wall
+report only after the other required checks pass. Ship and standalone release
+never execute tests.
+
+Choose major, minor, or patch and checkpoint one Unreleased changelog entry.
+Collect one reusable bundle from the successful verify:
 
 ```sh
-pan release land --worktree <name> [--bump <major|minor|patch>] [--run <run-id>] \
-  [--verify-profile <name>]... [--repair <note>] [--wait-seconds <n>] [--json]
+pan release evidence --worktree <name> --run <run-id> --json
 ```
 
-The command holds the landing mutex at `runtime/release/landing.lock` from tip read to fast-forward and runs these steps in order:
+Finish evidence review and all preparation before the final operation:
 
-1. **Tip read** — reads the current pan-dev commit and its VERSION.
-2. **Build currency** — refuses with `landing_refused` when the executing `pan` build is a checkout of this repository whose HEAD does not contain the tip. The reason starts with `LANDING_BUILD_BEHIND_TIP`. The land's own decisions (the verify profile, the integrate, the check) run from that build, so an older build would apply older landing rules than the tip carries. The main checkout's build lags `pan-dev` until the operator promotes it, so a land from there names the rerun on the candidate's own build: `PANCREATOR_EXEC_ROOT=<worktree path> ./bin/pan release land --worktree <name>`. When the candidate branch lacks the tip as well, the reason says to merge `pan-dev` into it first.
-3. **Integrate** — when the candidate branch does not yet include the tip, predicts conflicts with `git merge-tree`, stops on source conflicts, or merges the tip and resolves every release metadata file to the tip's content.
-4. **Allocate** — computes `nextSemanticVersion(tipVersion, bump)` and records it in the allocations ledger.
-5. **Metadata** — regenerates `VERSION`, `package.json`, `package-lock.json`, `docs/embedded-installation.md`, and `CHANGELOG.md` from the tip's content plus the candidate's new changelog entry. The entry comes from the newest candidate commit whose changelog holds an entry its fork point from the tip does not hold, so the notes survive the integration merge and the conflict loop below, even when another landing already took the version the candidate finalized at. Land reads the notes before it integrates, so a candidate without notes fails before any merge commit or allocation. The tip's `release/index.json` also replaces the candidate's, in its own commit when they differ, so pan-dev never indexes a version from a pair the candidate finalized before landing. When the candidate head already is the release pair for the new version, as on a rerun after `verification_failed`, the step is skipped and finalize reuses that pair.
-6. **Finalize** — calls `pan release finalize` to create the release and index commits.
-7. **Verify** — first compiles the candidate worktree through its own `bin/run-built --build-only`, without the `PANCREATOR_BUILD_READY` value the launching `bin/pan` exported for the earlier tree. A tree that does not compile returns `verification_failed` before any profile runs. The `build` step and every `verify` step in `landing.jsonl` record the build stamp of the tree they tested, and the land fails if the sources change while the profiles run. A worktree without `bin/run-built` skips the build. No profile command inherits `PANCREATOR_BUILD_READY`. The step runs each `--verify-profile` against the candidate worktree. Operator directive (2026-10-01), the touch-set rule: without `--verify-profile`, the land runs `impacted-release` (every lane test whose static import closure reaches a file the candidate changed against `pan-dev`), with one lighter exception. When the integrate step merged nothing, `--run` names the run, and that run's ship entry gate passed an executed `full` run on a tree whose source content still matches, the land runs `static` and `configuration` only. The source content is every tracked and untracked non-ignored file outside `runtime/` and the release metadata paths, so the steward's commits and the release pair leave it unchanged. A merged integrate, a missing run, a waived or level-disabled gate, or any source change keeps `impacted-release`. An operator who needs the full suite for a specific land still gets it with `--verify-profile full`. Every `verify` step in `landing.jsonl` records its `basis` (`operator`, `entry_gate_fingerprint`, `bounded_repair`, or `default`) and the `reason`, and a match also records `source_fingerprint`.
-8. **Check** — runs `bin/check-landing branch <head> pan-dev`.
-9. **Fast-forward** — updates pan-dev through `git merge --ff-only` in its checkout or `git update-ref` when pan-dev is not checked out.
+```sh
+pan release land --worktree <name> --run <run-id> --bump <major|minor|patch> --json
+```
 
-Every `step` event in `landing.jsonl` also carries the landing's `token` and the `--run` id. Only the `acquired` event of an older log names the run, and readers then attribute the steps by the block from `acquired` to `released`.
+Landing holds the mutex, checks the candidate ancestry and bundle currency, then
+allocates the version. It synchronizes metadata once, finalizes one immutable
+release/index pair, checks its topology, and advances pan-dev. The topology guard
+necessarily follows creation of the commits it validates. Candidate dependency
+and documentation changes survive metadata synchronization.
 
-The result carries `status`, `steps` (each step reached, with its start time), `version`, `tip_before`, `tip_after`, `release_commit`, `index_commit`, `merge_commit` (when integration ran), `verified_profiles`, `verification_basis`, `build_stamp`, `lock_wait_seconds`, and `lock_hold_seconds`.
+Missing evidence or changed source stops before allocation. A moved pan-dev tip
+requires synchronization and another verify pass; release never silently tests
+or merges new source. Test-profile and bounded-repair flags are refused. Correct
+source defects before verify, then collect a replacement bundle. Repeating bundle
+collection at the same source and tip reuses the existing record.
 
-### Bounded ship repair
-
-A land that fails `verify` leaves its release pair on the candidate branch. When the fix is small, the release steward repairs it in the ship stage without a remediate round:
-
-1. Commit the fix on the release branch. It MUST change at most three files under `tests/unit/`, `tests/regression/`, `tests/integration/`, or `tests/secondary/`, and nothing else.
-2. Run `pan release land --worktree <name> --run <run-id> --repair "<why>"`.
-
-The land checks the bound before it merges, allocates, or commits anything, and it refuses with `LANDING_REPAIR_OUT_OF_BOUND` (too many paths, or a path outside those directories), `LANDING_REPAIR_NO_FAILURE` (the run has no failed land on this worktree), `LANDING_REPAIR_TIP_MOVED` (pan-dev holds commits the candidate lacks), `LANDING_REPAIR_DIRTY`, `LANDING_REPAIR_PAIR_MISSING`, or `LANDING_REPAIR_REQUIRES_RUN`. A refused repair returns `landing_refused`, and the steward returns `failure`, which routes to remediation as before.
-
-An accepted repair reuses the finalized release and index commits and creates no new pair, because a test-only commit above the indexed release commit adds no installable input that `bin/check-landing` counts. It verifies `static`, `configuration`, and the profile of each repaired lane (`fast` for unit and regression, `impacted-integration`, or `secondary`), records the basis `bounded_repair`, and adds the note and paths to the `verify` step and to the result as `repair`. The ship criterion `ship.local_release_complete` accepts a head above the index commit only when `data.release.ship_repair.commit` names that head and the paths between the two commits stay inside the bound.
-
-### Statuses
-
-| Status                | Exit | Meaning                                                                                                    |
-| --------------------- | ---- | ---------------------------------------------------------------------------------------------------------- |
-| `landed`              | 0    | pan-dev is at the new version.                                                                             |
-| `conflict`            | 1    | Source files conflict with the tip. Resolve and rerun.                                                     |
-| `verification_failed` | 1    | Checks failed; release commits stay on the branch. Fix and rerun.                                          |
-| `landing_refused`     | 1    | `bin/check-landing` refused, or the executing build lacks the pan-dev tip. Fix the named reason and rerun. |
-
-### Lock location and wait bound
-
-The lock file lives at `runtime/release/landing.lock`. The landing event log at `runtime/release/landing.jsonl` records every acquire, wait-progress report, stale reclaim, release, and timeout.
-
-A waiter prints the holder's pid, worktree, command, start time, and elapsed seconds to stderr at least every 60 seconds while it waits. The default timeout is 7200 seconds (two hours); `--wait-seconds` takes a whole number of seconds and shortens it. A timeout fails with `LANDING_MUTEX_TIMEOUT` and names the holder.
-
-### Stale lock reclaim
-
-A lock is stale when its recorded pid is not running or when the process's start identity no longer matches. A stale lock is moved to `runtime/release/stale-locks/landing.lock.stale-<iso>-<token>` and the next caller acquires without operator intervention. The reclaim is recorded in `landing.jsonl` with `event: 'reclaimed'` and the dead holder's details. Reclaimers serialize, and each moves the lock only while it still carries the stale token, so two waiters never both hold the mutex.
-
-The landing runs synchronously and installs no signal handler. An interrupt or `SIGTERM` ends the holder at once, and the next landing reclaims its lock because the pid is gone. `pan cleanup` deletes reclaimed locks under `runtime/release/stale-locks/` after the retention window (class `landing-lock-stale`) and always keeps `allocations.jsonl`, `landing.jsonl`, and the live lock.
-
-### Source-conflict loop
-
-When `pan release land` returns `conflict`:
-
-1. Merge pan-dev into the candidate branch: `git merge --no-ff --no-edit pan-dev`.
-2. Resolve each source path the result lists. Take the tip's content for every metadata file.
-3. Stage resolved paths and commit.
-4. Run the impacted profile to confirm correctness.
-5. Run `pan release land --worktree <name>` again. The new run re-reads the tip, so a further tip movement is integrated too.
+The result records version, release and index commits, tip, step order, and mutex
+timing. Remote actions remain operator decisions. Dedicated `/pan-write-pr` stays
+available when explicitly requested; release generates no PR artifact.
 
 ## Monitored shell execution
 

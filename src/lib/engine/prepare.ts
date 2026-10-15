@@ -41,7 +41,6 @@ import {
 } from '../project-config.js'
 import { registerPreparedInvocation } from '../hypervisor.js'
 import { resolvePolicies } from '../policies.js'
-import { resolvePrDescriptionContext } from '../pr-description.js'
 import { resolveRequirements } from '../requirements/resolve.js'
 import { resolvePersonaMapping } from '../pipeline-config.js'
 import {
@@ -372,8 +371,6 @@ export function prepareInvocation(
       `${invocationId}.brief.json`,
     ).relative
     const briefRenderedPath = layout.operatorHtml(invocationId).relative
-    const prDescriptionPath =
-      layout.operatorMarkdown('pr-description.md').relative
 
     const jsonPath = layout.invocation(invocationId, '.json').relative
     const markdownPath = layout.invocation(invocationId, '.md').relative
@@ -466,13 +463,6 @@ export function prepareInvocation(
       contracts,
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
-    const prDescription =
-      stage.persona === 'release-steward' &&
-      stage.slug === 'ship' &&
-      (artifactsRequested || isSelfDevelopmentInstallation(root))
-        ? resolvePrDescriptionContext(workspaceDirectory(root, state), policies)
-        : undefined
-
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
       workflow: workflow.slug,
@@ -480,14 +470,7 @@ export function prepareInvocation(
       contracts,
       invocation: {
         output_path: outputPath,
-        artifact_paths: artifactsRequested
-          ? [briefRenderedPath, ...(prDescription ? [prDescriptionPath] : [])]
-          : prDescription
-            ? [prDescriptionPath]
-            : [],
-        ...(prDescription
-          ? { artifact_targets: { pr_description: prDescriptionPath } }
-          : {}),
+        artifact_paths: artifactsRequested ? [briefRenderedPath] : [],
       },
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
@@ -561,7 +544,6 @@ export function prepareInvocation(
       workflow.slug,
       stage.slug,
       requirements.validation_requirements,
-      artifactsRequested,
     )
 
     if (stage.persona === 'coder' && attempt > 1) {
@@ -603,7 +585,6 @@ export function prepareInvocation(
           'release.local_release.release_commit': 'string',
           'release.local_release.index_commit': 'string',
           'release.local_release.branch': 'string',
-          'release.local_release.pr_description_path': 'string',
         })
       }
     }
@@ -676,7 +657,6 @@ export function prepareInvocation(
         invocationId,
         workspaceFingerprint: workspace.fingerprint,
         workspace,
-        ...(prDescription ? { prDescription } : {}),
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
       ...(evidenceWorkerSkips.length > 0 && stage.persona !== 'orchestrator'
@@ -712,26 +692,6 @@ export function prepareInvocation(
                 `--invocation ${jsonPath} --output ${outputPath}`,
             }),
         required_data: requiredData,
-        ...(prDescription
-          ? {
-              artifacts: [
-                ...(artifactsRequested
-                  ? [
-                      {
-                        path: briefRenderedPath,
-                        description:
-                          'Primary self-contained HTML brief for the operator.',
-                      },
-                    ]
-                  : []),
-                {
-                  path: prDescriptionPath,
-                  description:
-                    'Pull-request description validated against target authority.',
-                },
-              ],
-            }
-          : {}),
         ...(fieldContract ? { field_contract: fieldContract } : {}),
         ...(artifactsRequested && briefVocabulary
           ? {

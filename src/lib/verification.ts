@@ -67,7 +67,7 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   light: {
     summary:
       'Static, configuration, fast, and impacted integration checks gate ' +
-      'the implement and remediate loops. The full profile runs only as the ship release gate when the run enters ' +
+      'the implement and remediate loops. The resolved release profile runs at the end of verify before entering ' +
       'ship; a failure routes to remediate and a repaired run returns to ' +
       'ship for another full run, at most twice before the operator ' +
       'decides. Implementing agents leave fast to the gates, evidence ' +
@@ -83,8 +83,8 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   thorough: {
     summary:
       'Alias of light kept for existing run snapshots and operator scripts: ' +
-      'the ship release gate runs the full profile at stage entry and no ' +
-      'verify or remediate gate runs it.',
+      'the release profile runs after the other checks in verify and no ' +
+      'release command runs tests.',
     gates: {
       'verify.full_suite': false,
       'remediate.full_suite': false,

@@ -17,6 +17,7 @@ import { evaluateStateCriterion } from '../../src/lib/validation.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   checkpoint,
+  installLegacyReleaseEntry,
   fullFailsUntil,
   fullRuns,
   PASS,
@@ -45,6 +46,7 @@ const FULL_FAILS_ONCE = {
 }
 
 function writeChecks(root: string): void {
+  installLegacyReleaseEntry(root)
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
     profiles: FULL_FAILS_ONCE,

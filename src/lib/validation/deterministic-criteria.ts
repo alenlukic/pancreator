@@ -25,6 +25,7 @@ import type {
   StageOutput,
   DeterministicResult,
 } from '../types.js'
+import { releaseSourceFingerprint } from '../release-source.js'
 import { runShellCheck } from './shell-check.js'
 import {
   absorbedPathOwners,
@@ -199,7 +200,19 @@ export function evaluateDeterministicCriteria(
       // its runtime proving nothing, so the gate is recorded as skipped
       // instead of run. State criteria below still evaluate: scope and
       // currency checks detect contamination regardless of the outcome.
-      if (gateSkipReason !== null) {
+      const finalCheck =
+        criterion.id === 'ship.full_suite' ||
+        criterion.id === 'verify.fast_wall_ceiling'
+      const skipReason =
+        gateSkipReason ??
+        (finalCheck &&
+        results.some(
+          (result) => result.hard && !result.passed && !result.disabled,
+        )
+          ? 'an earlier required check failed'
+          : null)
+
+      if (skipReason !== null) {
         results.push({
           id: criterion.id,
           type: 'shell',
@@ -207,7 +220,7 @@ export function evaluateDeterministicCriteria(
           passed: true,
           skipped: true,
           explanation:
-            `Gate not executed: ${gateSkipReason}, so the outcome was ` +
+            `Gate not executed: ${skipReason}, so the outcome was ` +
             'already decided as non-success before any deterministic gate ' +
             'ran. A shell gate runs only when its result can decide the stage.',
           command: criterion.command,
@@ -253,21 +266,40 @@ export function evaluateDeterministicCriteria(
           workspace_fingerprint: afterSnapshot.fingerprint,
         })
       } else {
-        results.push(
-          runShellCheck(
-            root,
-            runDirectory,
-            state,
-            stage,
-            criterion,
-            afterSnapshot,
-            workspaceDir,
-            typeof override === 'string' ? override : undefined,
-            artifactId,
-            onProgress,
-            { beforeSnapshot },
-          ),
+        const sourceBefore =
+          criterion.id === 'ship.full_suite'
+            ? releaseSourceFingerprint(workspaceDir)
+            : null
+        const checked = runShellCheck(
+          root,
+          runDirectory,
+          state,
+          stage,
+          criterion,
+          afterSnapshot,
+          workspaceDir,
+          typeof override === 'string' ? override : undefined,
+          artifactId,
+          onProgress,
+          { beforeSnapshot },
         )
+        if (
+          criterion.id === 'ship.full_suite' &&
+          checked.passed &&
+          !checked.disabled &&
+          !checked.skipped
+        ) {
+          const profile = repositoryCheckProfileName(checked.command ?? '')
+          const fingerprint = releaseSourceFingerprint(workspaceDir)
+          if (profile && fingerprint && fingerprint === sourceBefore) {
+            checked.verified_source = { fingerprint, profile }
+          } else {
+            checked.passed = false
+            checked.explanation =
+              'The source changed during the final verify check; its result cannot authorize a release.'
+          }
+        }
+        results.push(checked)
       }
     } else if (criterion.type === 'state') {
       if (criterion.id === 'ship.local_release_complete') {

@@ -152,21 +152,28 @@ test('VERIFY-001 binds the blast-radius rule to every verify evidence worker', (
   )
 })
 
-test('self-development ship keeps PR policy when briefs are suppressed', () => {
+test('ship and standalone release exclude PR policy for either brief setting', () => {
   const root = sharedFixture()
-  const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>
-    resolvePolicies(root, {
-      persona: 'release-steward',
-      workflow: 'delivery',
-      stage: 'ship',
-      operator_artifacts: operatorArtifacts,
-    }).map((policy) => policy.id)
 
-  assert.ok(ids('requested').includes('PR-001'))
-  assert.ok(ids('suppressed').includes('PR-001'))
+  for (const operatorArtifacts of ['requested', 'suppressed'] as const) {
+    for (const [workflow, stage] of [
+      ['delivery', 'ship'],
+      ['metacritic', 'ship'],
+      ['standalone', 'release'],
+    ]) {
+      const ids = resolvePolicies(root, {
+        persona: 'release-steward',
+        workflow,
+        stage,
+        operator_artifacts: operatorArtifacts,
+      }).map((policy) => policy.id)
+
+      assert.equal(ids.includes('PR-001'), false, `${workflow}/${stage}`)
+    }
+  }
 })
 
-test('embedded ship excludes PR policy when artifacts are suppressed', () => {
+test('embedded ship excludes PR policy for either brief setting', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
@@ -179,14 +186,16 @@ test('embedded ship excludes PR policy when artifacts are suppressed', () => {
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
   mkdirSync(path.join(root, 'target'), { recursive: true })
 
-  const ids = resolvePolicies(root, {
-    persona: 'release-steward',
-    workflow: 'delivery',
-    stage: 'ship',
-    operator_artifacts: 'suppressed',
-  }).map((policy) => policy.id)
+  for (const operatorArtifacts of ['requested', 'suppressed'] as const) {
+    const ids = resolvePolicies(root, {
+      persona: 'release-steward',
+      workflow: 'delivery',
+      stage: 'ship',
+      operator_artifacts: operatorArtifacts,
+    }).map((policy) => policy.id)
 
-  assert.equal(ids.includes('PR-001'), false)
+    assert.equal(ids.includes('PR-001'), false)
+  }
 })
 
 test('best-of-N stages carry the same policies as the delivery stages they mirror', () => {
