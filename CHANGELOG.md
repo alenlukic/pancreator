@@ -13,6 +13,7 @@ Clean command cards before shell submission and bound lifecycle output before di
 
 - Preserve arguments, stdin, exit codes, and streaming while summaries use bounded output ([023f0823](https://github.com/alenlukic/pancreator/commit/023f0823b447b31471907cce875fce06422ff3b7)).
 - Keep wrapper summary controls out of child environments and assign valid policy audiences ([023f0823](https://github.com/alenlukic/pancreator/commit/023f0823b447b31471907cce875fce06422ff3b7)).
+- Format the inherited run-friction regression test without assertion changes ([e75bb077](https://github.com/alenlukic/pancreator/commit/e75bb07705a7b0497ecaf0cfc405fe6355395e77)).
 
 The operator authorized a bounded release procedure under the trace repair directive. Retain the 181 passing affected tests and static checks. Bypass repeated broad integration, coverage, workflow review, and record-window checks. These bypasses are not passing test evidence.
 
