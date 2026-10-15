@@ -411,6 +411,22 @@ test('the shared baseline claim admits one live capturer at a time', () => {
     recorded_at: '2026-09-02T00:00:00.000Z',
   }
 
+  assert.throws(
+    () => recordCohortBaselines(root, cohortId, 'run-c', { fast: pointer }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_BASELINE_CAPTURE_NOT_OWNER',
+  )
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baselines,
+    undefined,
+  )
+  assert.throws(
+    () => recordCohortBaselines(root, cohortId, 'run-b', { fast: undefined }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_BASELINE_POINTER_MISSING',
+  )
   recordCohortBaselines(root, cohortId, 'run-b', { fast: pointer })
 
   const recorded = loadCohortState(root, cohortId)

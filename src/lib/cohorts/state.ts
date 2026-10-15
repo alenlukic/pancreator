@@ -13,6 +13,7 @@ import {
   isRecord,
   writeJsonAtomic,
   withOperationMutex,
+  type OperationMutexOptions,
 } from '../io.js'
 import { now } from '../state.js'
 import type {
@@ -292,12 +293,14 @@ export function persistCohortState(
  * Runs an operation against a freshly loaded cohort session state while holding
  * that session's operation mutex, and returns the operation's result. Throws
  * `COHORT_NOT_FOUND` for an unknown session and `RUN_OPERATION_IN_PROGRESS`
- * when another process holds the mutex.
+ * when another process holds the mutex beyond the optional wait bound.
+ * Callers refuse immediately unless they explicitly opt into bounded waiting.
  */
 export function withCohortSession<T>(
   root: string,
   cohortId: string,
   operation: (state: CohortSessionState) => T,
+  options: OperationMutexOptions = {},
 ): T {
   invariant(
     fileExists(cohortStatePath(root, cohortId)),
@@ -305,7 +308,9 @@ export function withCohortSession<T>(
     { code: 'COHORT_NOT_FOUND' },
   )
 
-  return withOperationMutex(cohortMutexPath(root, cohortId), () =>
-    operation(loadCohortState(root, cohortId)),
+  return withOperationMutex(
+    cohortMutexPath(root, cohortId),
+    () => operation(loadCohortState(root, cohortId)),
+    options,
   )
 }
