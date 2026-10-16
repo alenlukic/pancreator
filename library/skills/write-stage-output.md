@@ -24,6 +24,15 @@ harness checks.
    invocation/delegation records, PR copy, or legacy artifacts.
 4. Fill every rubric criterion with a result, concrete evidence, and an
    explanation of why the evidence is enough.
+   Use `pending_harness` for shell criteria in the resolved invocation rubric.
+   Those checks belong to the harness. Selected tests do not prove a gate
+   profile passed. Leave worker judgments as `pass`, `fail`, or
+   `not_applicable` with their evidence; never submit `unevaluated`.
+   Validation checks eligibility before gates run. Submission records each gate
+   in the task record's `evaluation.deterministic` and retains the original
+   claims in `evaluation.self` and the stage history's `self_criteria`.
+   Missing results and unauthorized skips cannot settle pending checks.
+   Explicitly disabled gates retain their disabled evidence.
 5. Populate every required `data` field with the declared type.
 6. State risks and unknowns honestly. An empty list means you checked, not that
    you skipped.

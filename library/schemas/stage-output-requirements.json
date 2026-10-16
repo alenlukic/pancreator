@@ -4,6 +4,7 @@
   "validator_id": "FIELD-CONTRACT-VALIDATE-001",
   "criterion_results": {
     "unevaluated": "Scaffold-only. The harness writes this value and submission rejects it.",
+    "pending_harness": "Only for shell criteria in the resolved invocation rubric, which the harness executes. Eligibility validation precedes gates. The task record's evaluation.deterministic settles the attempt; evaluation.self and stage history self_criteria preserve worker claims. A missing result or unauthorized skip cannot settle a pending check. An explicitly disabled gate retains its disabled record.",
     "skipped": "Terminal non-success. Permitted on a blocked output or on a shell criterion when the stage already failed. Forbidden on success.",
     "not_applicable": "Worker judgment that a criterion does not apply. Hard criteria MUST NOT use it."
   },
