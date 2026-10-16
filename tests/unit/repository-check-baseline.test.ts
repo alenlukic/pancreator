@@ -5,6 +5,8 @@ import {
   compareRepositoryCheckToBaseline,
   type RepositoryCheckResult,
 } from '../../src/lib/repository-checks.js'
+import { isEnvironmentBlockedDelta } from '../../src/lib/validation/baselines.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 
 function failedCheck(
   stderr: string,
@@ -299,4 +301,505 @@ test('a pytest-looking transcript still surfaces failures outside the pytest sha
     comparison.delta.new[0]?.diagnostic ?? '',
     /Missing return statement/u,
   )
+})
+
+test('TAP assertion substance stays attached to its case and retains literal values', () => {
+  const record = (body: string, name = 'checks value'): string =>
+    `not ok 1 - ${name}\n  ---\n  error: 'mismatch'\n${body}\n  ...\n`
+  const original = record(
+    "  expected: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\n  actual: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'",
+  )
+  const identity = (diagnostic: string, count = 1) => ({
+    kind: 'command',
+    command: 'npm run lint',
+    diagnostic,
+    count,
+  })
+  const normalized = (value: string): string =>
+    value
+      .replace('not ok 1', 'not ok <index>')
+      .replace('  ---\n', '')
+      .replace('  ...\n', '')
+      .split('\n')
+      .map((line) => (/^ {4}/u.test(line) ? line.slice(2) : line.trim()))
+      .filter(Boolean)
+      .join('\n')
+
+  for (const changed of [
+    original.replace(
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      'cccccccccccccccccccccccccccccccccccccccc',
+    ),
+    original.replace('checks value', 'checks another case'),
+  ]) {
+    const comparison = compareRepositoryCheckToBaseline(
+      failedCheck(original),
+      failedCheck(changed),
+    )
+    assert.deepEqual(comparison.delta.new, [identity(normalized(changed))])
+    assert.deepEqual(comparison.delta.fixed, [identity(normalized(original))])
+  }
+  for (const [before, after] of [
+    ["  expected: '10ms'", "  expected: '20ms'"],
+    [
+      "  actual: '/workspace/file.ts:10:2'",
+      "  actual: '/workspace/file.ts:20:3'",
+    ],
+    ["  actual: '2026-10-14T10:00:00Z'", "  actual: '2026-10-15T11:00:00Z'"],
+    [
+      '  expected:\n    "current_head": "' + 'a'.repeat(40) + '"',
+      '  expected:\n    "current_head": "' + 'b'.repeat(40) + '"',
+    ],
+    ['  actual:\n    duration_ms: 10', '  actual:\n    duration_ms: 20'],
+    [
+      '  actual:\n    first:\n      second: value',
+      '  actual:\n    first:\n    second: value',
+    ],
+  ]) {
+    const baseline = record(before)
+    const current = record(after)
+    const comparison = compareRepositoryCheckToBaseline(
+      failedCheck(baseline),
+      failedCheck(current),
+    )
+    assert.deepEqual(comparison.delta.new, [identity(normalized(current))])
+    assert.deepEqual(comparison.delta.fixed, [identity(normalized(baseline))])
+  }
+})
+
+test('runner metadata is ignored outside assertions and raw recorded results stay compatible', () => {
+  const output = (head: string, count: number): string =>
+    `Selected ${count} of 50 lane tests for 2 changed file(s).\n` +
+    `[tests impacted] running ${count} of 196 lane test file(s) for 6 changed file(s) (log: /report-${count}.log)\n` +
+    `ok - passing case ${count}\n` +
+    `  "current_head": "${head}",\n` +
+    'not ok 1 - same failure\n  AssertionError: mismatch\n'
+  const baseline = failedCheck(output('a'.repeat(40), 2))
+  const current = failedCheck(output('b'.repeat(40), 4))
+  current.total_duration_ms = 99
+  current.config_path = '/generated/current/repository-checks.json'
+  current.advisories = ['Generated report at /temporary/report.json']
+  const roundTrip = JSON.parse(JSON.stringify(current)) as RepositoryCheckResult
+  const comparison = compareRepositoryCheckToBaseline(baseline, roundTrip)
+  assert.deepEqual(comparison.delta.new, [])
+  assert.deepEqual(comparison.delta.fixed, [])
+  assert.deepEqual(comparison.delta.counts, { new: 0, fixed: 0, carried: 2 })
+  assert.deepEqual(roundTrip, current)
+})
+
+test('a final runner failure rendering is not a second unnumbered occurrence', () => {
+  const record =
+    'not ok - same case (/workspace/test.ts:1)\n    AssertionError: mismatch\n'
+  const baseline = failedCheck(record)
+  const comparison = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck(
+      record + '# failing tests:\n# test at /workspace/test.ts:1\n' + record,
+    ),
+  )
+  assert.deepEqual(comparison.delta.new, [])
+  assert.deepEqual(comparison.delta.fixed, [])
+  assert.equal(comparison.delta.carried[0]?.count, 1)
+  const duplicate = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck(record + record),
+  )
+  assert.deepEqual(duplicate.delta.new, [
+    { ...comparison.delta.carried[0]!, count: 1 },
+  ])
+  assert.deepEqual(duplicate.delta.fixed, [])
+})
+
+test('mixed pytest output retains additional tool errors even with a recognized pytest failure', () => {
+  const before =
+    'plugins: anyio-4.0.0\nFAILED test.py::old - AssertionError: old\n'
+  const error = 'src/other.py:<line>: error: Missing return statement [return]'
+  const comparison = compareRepositoryCheckToBaseline(
+    failedCheck(before),
+    failedCheck(
+      before + 'src/other.py:4: error: Missing return statement [return]\n',
+    ),
+  )
+  assert.deepEqual(comparison.delta.new, [
+    {
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic: error,
+      count: 1,
+    },
+  ])
+  assert.deepEqual(comparison.delta.fixed, [])
+})
+
+test('unsupported and truncated output remains visible and passing commands contribute no failures', () => {
+  for (const output of [
+    'unrecognized tool output',
+    'fatal: new crash',
+    '…[output elided]…',
+  ]) {
+    const comparison = compareRepositoryCheckToBaseline(
+      failedCheck(''),
+      failedCheck(output),
+    )
+    assert.deepEqual(comparison.delta.new, [
+      {
+        kind: 'command',
+        command: 'npm run lint',
+        diagnostic: output,
+        count: 1,
+      },
+    ])
+    assert.deepEqual(comparison.delta.fixed, [])
+  }
+  const incomplete = compareRepositoryCheckToBaseline(
+    failedCheck(''),
+    failedCheck("not ok 1 - truncated\n  ---\n  error: 'partial'\n"),
+  )
+  assert.deepEqual(incomplete.delta.new, [
+    {
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic:
+        "not ok <index> - truncated\nerror: 'partial'\n<incomplete TAP assertion>",
+      count: 1,
+    },
+  ])
+  const passed = passedCheck()
+  passed.results[0]!.stdout = 'not ok 99 - ordinary captured application text'
+  const comparison = compareRepositoryCheckToBaseline(passedCheck(), passed)
+  assert.deepEqual(comparison.delta.new, [])
+  assert.deepEqual(comparison.delta.fixed, [])
+})
+
+test('command, exit, signal and timeout changes retain exact status identities', () => {
+  const diagnostic = 'AssertionError: mismatch'
+  const baseline = failedCheck(diagnostic)
+  for (const override of [
+    { exit_code: 2 },
+    { signal: 'SIGTERM' as const },
+    { timed_out: true },
+  ]) {
+    const current = failedCheck(diagnostic, override)
+    const entry = current.results[0]!
+    const comparison = compareRepositoryCheckToBaseline(baseline, current)
+    assert.deepEqual(comparison.delta.new, [
+      {
+        kind: 'command',
+        command: 'npm run lint',
+        diagnostic: `<status> exit_code=${entry.exit_code} signal=${entry.signal ?? 'null'} timed_out=${entry.timed_out}`,
+        count: 1,
+      },
+    ])
+    assert.deepEqual(comparison.delta.fixed, [
+      {
+        kind: 'command',
+        command: 'npm run lint',
+        diagnostic: '<status> exit_code=1 signal=null timed_out=false',
+        count: 1,
+      },
+    ])
+  }
+  const comparison = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck(diagnostic, { command: 'another checker' }),
+  )
+  assert.deepEqual(comparison.delta.new, [
+    {
+      kind: 'command',
+      command: 'another checker',
+      diagnostic: '<status> exit_code=1 signal=null timed_out=false',
+      count: 1,
+    },
+    { kind: 'command', command: 'another checker', diagnostic, count: 1 },
+  ])
+  assert.deepEqual(comparison.delta.fixed, [
+    {
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic: '<status> exit_code=1 signal=null timed_out=false',
+      count: 1,
+    },
+    { kind: 'command', command: 'npm run lint', diagnostic, count: 1 },
+  ])
+})
+
+test('nested TAP occurrences retain their suite identity', () => {
+  const suite = (name: string): string =>
+    `# Subtest: ${name}\n    # Subtest: same child\n    not ok 1 - same child\n      ---\n      error: 'mismatch'\n      ...\n`
+  const baseline = failedCheck(suite('first'))
+  const comparison = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck(suite('first') + suite('second')),
+  )
+  assert.deepEqual(comparison.delta.new, [
+    {
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic:
+        "not ok <index> - same child (suite: second)\nerror: 'mismatch'",
+      count: 1,
+    },
+  ])
+  assert.deepEqual(comparison.delta.fixed, [])
+})
+
+test('TAP literal blocks preserve blank lines and trailing whitespace', () => {
+  const before =
+    "not ok 1 - multiline value\n  ---\n  expected: 'other'\n  actual: |-\n    first\n    second\n  ...\n"
+  const diagnostic =
+    "not ok <index> - multiline value\nexpected: 'other'\nactual: |-\n  first\n  second"
+
+  for (const [from, to, normalized] of [
+    ['first\n', 'first\n\n', 'first\n\n'],
+    ['first\n', 'first \n', 'first \n'],
+    ['first\n', 'first\n    \n', 'first\n  \n'],
+  ]) {
+    const comparison = compareRepositoryCheckToBaseline(
+      failedCheck(before),
+      failedCheck(before.replace(from, to)),
+    )
+    const identity = (value: string) => ({
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic: value,
+      count: 1,
+    })
+
+    assert.deepEqual(comparison.delta.fixed, [identity(diagnostic)])
+    assert.deepEqual(comparison.delta.new, [
+      identity(diagnostic.replace(from, normalized)),
+    ])
+  }
+})
+
+for (const [label, replacement, normalized] of [
+  ['blank line', 'first\n\n', 'first\n\n'],
+  ['whitespace-only line', 'first\n    \n', 'first\n  \n'],
+  ['trailing space', 'first \n', 'first \n'],
+]) {
+  test(`TAP error scalars retain a changed ${label}`, () => {
+    const before =
+      'not ok 1 - explicit assertion failure\n  ---\n  error: |-\n    first\n    second\n  ...\n'
+    const diagnostic =
+      'not ok <index> - explicit assertion failure\nerror: |-\n  first\n  second'
+    const identity = (value: string) => ({
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic: value,
+      count: 1,
+    })
+    const comparison = compareRepositoryCheckToBaseline(
+      failedCheck(before),
+      failedCheck(before.replace('first\n', replacement)),
+    )
+
+    assert.deepEqual(comparison.delta.new, [
+      identity(diagnostic.replace('first\n', normalized)),
+    ])
+    assert.deepEqual(comparison.delta.fixed, [identity(diagnostic)])
+  })
+}
+
+for (const field of ['error', 'expected', 'actual']) {
+  test(`TAP ${field} scalars retain embedded terminators and subsequent content`, () => {
+    const before = `not ok 1 - literal terminator\n  ---\n  ${field}: |-\n    first\n    ...\n    second\n  ...\n`
+    const diagnostic = `not ok <index> - literal terminator\n${field}: |-\n  first\n  ...\n  second`
+    const identity = (value: string) => ({
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic: value,
+      count: 1,
+    })
+    const baseline = failedCheck(before)
+    const unchanged = compareRepositoryCheckToBaseline(
+      baseline,
+      failedCheck(before),
+    )
+
+    assert.deepEqual(unchanged.delta.new, [])
+    assert.deepEqual(unchanged.delta.fixed, [])
+
+    for (const [from, to] of [
+      ['...\n', '... \n'],
+      ['second', 'changed second'],
+    ]) {
+      const comparison = compareRepositoryCheckToBaseline(
+        baseline,
+        failedCheck(before.replace(from, to)),
+      )
+
+      assert.equal(comparison.passed, false)
+      assert.deepEqual(comparison.delta.new, [
+        identity(diagnostic.replace(from, to)),
+      ])
+      assert.deepEqual(comparison.delta.fixed, [identity(diagnostic)])
+    }
+
+    assert.deepEqual(unchanged.delta.carried, [identity(diagnostic)])
+
+    const incomplete = compareRepositoryCheckToBaseline(
+      baseline,
+      failedCheck(before.slice(0, -'\n  ...\n'.length)),
+    )
+
+    assert.equal(incomplete.passed, false)
+    assert.deepEqual(incomplete.delta.new, [
+      identity(`${diagnostic}\n<incomplete TAP assertion>`),
+    ])
+    assert.deepEqual(incomplete.delta.fixed, [identity(diagnostic)])
+  })
+}
+
+test('TAP location retains the source filename while ignoring line and column', () => {
+  const transcript = (file: string, line: number, column: number): string =>
+    `TAP version 13\n# Subtest: same case\nnot ok 1 - same case\n  ---\n  location: '/workspace/tests/unit/${file}.test.ts:${line}:${column}'\n  error: 'mismatch'\n  ...\n1..1\n`
+  const baseline = failedCheck(transcript('a', 10, 2))
+  const moved = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck(transcript('a', 20, 3)),
+  )
+  const identity = (file: string) => ({
+    kind: 'command',
+    command: 'npm run lint',
+    diagnostic: `not ok <index> - same case\nlocation: '<workspace>/tests/unit/${file}.test.ts:<line>:<column>'\nerror: 'mismatch'`,
+    count: 1,
+  })
+
+  assert.deepEqual(moved.delta.new, [])
+  assert.deepEqual(moved.delta.fixed, [])
+  assert.deepEqual(moved.delta.carried, [identity('a')])
+
+  const renamed = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck(transcript('b', 10, 2)),
+  )
+
+  assert.deepEqual(renamed.delta.new, [identity('b')])
+  assert.deepEqual(renamed.delta.fixed, [identity('a')])
+})
+
+test('TAP product assertions cannot establish infrastructure identity', () => {
+  const stage = stageBySlug(loadWorkflow(process.cwd(), 'delivery'), 'verify')
+  const baseline = failedCheck(
+    'ERROR collecting tests/legacy.py - ImportError: missing\n',
+  )
+  const comparisonWith = (diagnostic: string) =>
+    compareRepositoryCheckToBaseline(
+      baseline,
+      failedCheck(baseline.results[0]!.stderr + diagnostic + '\n'),
+    )
+
+  for (const phrase of [
+    'ERROR collecting',
+    'ImportError: missing',
+    'ModuleNotFoundError: missing',
+    'ETIMEDOUT',
+    'timed out',
+    'worker crashed',
+  ]) {
+    for (const headline of [
+      'not ok - newly failing product test (/workspace/tests/unit/product.test.ts:10)',
+      'not ok 1 - newly failing product test',
+    ]) {
+      const comparison = comparisonWith(
+        `${headline}\n    AssertionError: expected ${phrase} in the output`,
+      )
+
+      assert.equal(comparison.delta.new.length, 1)
+      assert.equal(
+        isEnvironmentBlockedDelta(stage, baseline, comparison),
+        false,
+        `${headline}: ${phrase}`,
+      )
+    }
+  }
+
+  for (const diagnostic of [
+    'ERROR collecting tests/new.py - ImportError: missing',
+    'E ImportError: missing',
+    'ETIMEDOUT',
+    'worker crashed',
+  ]) {
+    assert.equal(
+      isEnvironmentBlockedDelta(stage, baseline, comparisonWith(diagnostic)),
+      true,
+      diagnostic,
+    )
+  }
+})
+
+test('independent TAP documents, suite instances and streams retain occurrences', () => {
+  const record =
+    "not ok 1 - repeated failure\n  ---\n  error: 'mismatch'\n  ...\n"
+  const document = `TAP version 13\n${record}1..1\n`
+  const suite = `# Subtest: repeated suite\n${record
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => `    ${line}\n`)
+    .join('')}`
+  const cases: Array<[RepositoryCheckResult, RepositoryCheckResult]> = [
+    [failedCheck(document), failedCheck(document + document)],
+    [failedCheck(suite), failedCheck(suite + suite)],
+    [failedCheck(record), failedCheck(record, { stdout: record })],
+  ]
+
+  for (const [baseline, current] of cases) {
+    const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+    assert.deepEqual(comparison.delta.new, [
+      { ...comparison.delta.carried[0]!, count: 1 },
+    ])
+    assert.deepEqual(comparison.delta.fixed, [])
+    assert.equal(comparison.delta.carried[0]?.count, 1)
+  }
+})
+
+test('pytest retains unknown nonmetadata output alongside recognized failures', () => {
+  const before =
+    'plugins: anyio-4.0.0\nFAILED test.py::old - AssertionError: old\n'
+
+  for (const diagnostic of [
+    'panic: index out of range [1] with length 1',
+    'unrecognized tool output',
+    'platform: unsupported foreign target',
+    'timeout: foreign operation failed',
+    'class UnexpectedFailure(Exception):',
+  ]) {
+    const comparison = compareRepositoryCheckToBaseline(
+      failedCheck(before),
+      failedCheck(before + diagnostic + '\n'),
+    )
+
+    assert.deepEqual(comparison.delta.new, [
+      { kind: 'command', command: 'npm run lint', diagnostic, count: 1 },
+    ])
+    assert.deepEqual(comparison.delta.fixed, [])
+  }
+})
+
+test('actual impacted wrapper metadata does not change failure identities', () => {
+  const record = 'not ok - stable failure\n    AssertionError: mismatch\n'
+  const output = (seconds: number, count: number): string =>
+    `[tests impacted] running ${count} of 196 lane test file(s) for 6 changed file(s) (log: runtime/logs/checks/tests-impacted-${seconds}.log)\n` +
+    `[tests impacted] # heartbeat ${seconds}s: ${count} passed, 1 failed, ${count} files done\n` +
+    record +
+    `[tests impacted] FAILED: ${count} of 196 lane test file(s) (exit 1) in ${seconds}s\n` +
+    '# failing tests:\n' +
+    record +
+    `log: runtime/logs/checks/tests-impacted-${seconds}.log\n`
+  const comparison = compareRepositoryCheckToBaseline(
+    failedCheck(output(30, 4)),
+    failedCheck(output(60, 9)),
+  )
+
+  assert.deepEqual(comparison.delta.new, [])
+  assert.deepEqual(comparison.delta.fixed, [])
+  assert.deepEqual(comparison.delta.carried, [
+    {
+      kind: 'command',
+      command: 'npm run lint',
+      diagnostic: 'not ok - stable failure\nAssertionError: mismatch',
+      count: 1,
+    },
+  ])
 })

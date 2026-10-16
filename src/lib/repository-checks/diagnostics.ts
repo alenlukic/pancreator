@@ -105,11 +105,19 @@ function normalizeDiagnosticLine(
   line: string,
   workspaceRoot: string,
   externalScratch: string | null,
+  assertion = false,
+  literal = false,
 ): string {
-  const identities = stripAnsi(line).replaceAll(
-    /((?:current_head|candidate_head|tip_before|tip_after|workspace_fingerprint)\\?["']\s*:\s*\\?["'])(?:[a-f0-9]{64}|[a-f0-9]{40})(\\?["'])/giu,
-    '$1<execution-identity>$2',
-  )
+  if (literal) {
+    return stripAnsi(line)
+  }
+  const clean = stripAnsi(line).trim()
+  const identities = assertion
+    ? clean
+    : clean.replaceAll(
+        /^(\s*["'](?:current_head|candidate_head|tip_before|tip_after|workspace_fingerprint)["']\s*:\s*["'])(?:[a-f0-9]{64}|[a-f0-9]{40})(["'],?\s*)$/giu,
+        '$1<execution-identity>$2',
+      )
   const slashed = identities.replaceAll('\\', '/')
   const unscratched = externalScratch
     ? slashed.replaceAll(
@@ -137,19 +145,11 @@ function normalizeDiagnosticLine(
       // pytest-xdist prefixes depend on worker scheduling and collection order.
       // Remove each prefix so two equivalent runs produce the same identity.
       .replaceAll(/^(?:\[(?:gw\d+|\s*\d+%)\]\s*)+/giu, '')
-      .replaceAll(
-        /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/gu,
-        '<timestamp>',
-      )
-      .replaceAll(
-        /\b\d+(?:\.\d+)?\s?(?:ms|s|sec|secs|seconds|m|min|mins|minutes)\b/giu,
-        '<duration>',
-      )
       // A TAP index shifts whenever a suite gains or loses a case, so keeping it
       // would report every surviving failure as both fixed and new.
       .replaceAll(/^((?:not )?ok)\s+\d+\b/giu, '$1 <index>')
-      .replaceAll(/([/\w.-]+):\d+:\d+/gu, '$1:<line>:<column>')
-      .replaceAll(/([/\w.-]+):\d+/gu, '$1:<line>')
+      .replaceAll(/([/\w.-]+\.[a-z][\w-]*):\d+:\d+/giu, '$1:<line>:<column>')
+      .replaceAll(/([/\w.-]+\.[a-z][\w-]*):\d+/giu, '$1:<line>')
       .replaceAll(/\s+/gu, ' ')
       .trim()
   )
@@ -183,6 +183,22 @@ function isNonFailureOutputLine(line: string): boolean {
     // A bare pytest node id is a progress echo, or a warnings-summary header.
     /^[\w./-]+(?:::[\w.-]+)+(?:\[.*\])?$/u.test(line) ||
     /^(?:ok \d+\b|# Subtest:|TAP version \d+\b)/iu.test(line) ||
+    /^ok - /u.test(line) ||
+    /^ok <index>(?:\s|$)/u.test(line) ||
+    /^\d+\.\.\d+(?:\s+#.*)?$/u.test(line) ||
+    /^(?:\[tests impacted\] )?# heartbeat \d+(?:\.\d+)?s: \d+ passed, \d+ failed, \d+ files done$/u.test(
+      line,
+    ) ||
+    /^\[tests impacted\] (?:FAILED: \d+ of \d+ lane test file\(s\) \(exit -?\d+\)|passed: \d+ of \d+ lane test file\(s\)(?:, \d+ tests)?) in \d+(?:\.\d+)?s(?: \(log: [^)]+\))?$/u.test(
+      line,
+    ) ||
+    /^log: runtime\/logs\/checks\/\S+$/u.test(line) ||
+    /^\[tests impacted\] running \d+ of \d+ lane test(?:s\b| file\(s\)(?:\s|$))/u.test(
+      line,
+    ) ||
+    /^Selected \d+ of \d+ lane tests for \d+ changed file\(s\)\.$/u.test(
+      line,
+    ) ||
     // TAP YAML block delimiters are exactly three characters; a longer line
     // starting with `---` can be real failure content (a diff header).
     /^(?:---|\.\.\.)$/u.test(line) ||
@@ -200,10 +216,10 @@ function isNonFailureOutputLine(line: string): boolean {
  */
 function isPytestSessionNoiseLine(line: string): boolean {
   return (
-    /^(?:platform|plugins:|rootdir:|configfile:|collecting\b|collected \d+)/iu.test(
+    /^(?:platform \S+ -- Python |plugins:|rootdir:|configfile:|collecting\b|collected \d+)/iu.test(
       line,
     ) ||
-    /^(?:cachedir:|timeout(?: method| func_only)?:|asyncio:|hypothesis profile\b)/iu.test(
+    /^(?:cachedir:|timeout: \d+(?:\.\d+)?s$|timeout method: (?:signal|thread)$|timeout func_only: (?:True|False)$|asyncio:|hypothesis profile\b)/iu.test(
       line,
     ) ||
     /^(?:created: \d+\/\d+ workers?|\d+ workers \[\d+ items?\]|scheduling tests via )/iu.test(
@@ -236,17 +252,196 @@ function isPytestFailureLine(line: string): boolean {
   )
 }
 
+function isPytestWarningLine(line: string): boolean {
+  return /^[\w./<>-]+:(?:\d+|<line>): \w+Warning:/u.test(line)
+}
+
+/**
+ * Keep an assertion attached to its case. Numbered TAP records identify an
+ * occurrence; a repeated rendering of that same occurrence is not another test.
+ * Unnumbered failures remain a multiset unless a runner summary repeats them.
+ */
+function runnerDiagnostics(
+  rawLines: string[],
+  normalize: (line: string, assertion?: boolean, literal?: boolean) => string,
+): string[] {
+  const documents: string[][] = []
+  let document: string[] = []
+  for (const line of rawLines) {
+    if (/^TAP version \d+\s*$/u.test(stripAnsi(line)) && document.length > 0) {
+      documents.push(document)
+      document = []
+    }
+    document.push(line)
+  }
+  documents.push(document)
+  return documents.flatMap((lines) =>
+    runnerDocumentDiagnostics(lines, normalize),
+  )
+}
+
+function runnerDocumentDiagnostics(
+  rawLines: string[],
+  normalize: (line: string, assertion?: boolean, literal?: boolean) => string,
+): string[] {
+  const diagnostics: string[] = []
+  const summary: string[] = []
+  const numbered = new Set<string>()
+  const suites: Array<{ depth: number; name: string; instance: number }> = []
+  let suiteInstance = 0
+  let inSummary = false
+
+  for (let index = 0; index < rawLines.length; index += 1) {
+    const raw = stripAnsi(rawLines[index])
+    if (raw === '# failing tests:') {
+      inSummary = true
+      continue
+    }
+    if (inSummary && /^# test at /u.test(raw)) {
+      continue
+    }
+    const subtest = /^(\s*)# Subtest: (.+)$/u.exec(raw)
+    if (subtest) {
+      while (
+        suites.length > 0 &&
+        suites[suites.length - 1].depth >= subtest[1].length
+      ) {
+        suites.pop()
+      }
+      suiteInstance += 1
+      suites.push({
+        depth: subtest[1].length,
+        name: subtest[2],
+        instance: suiteInstance,
+      })
+      continue
+    }
+    const match = /^(\s*)not ok(?: (\d+))? - (.+)$/u.exec(raw)
+    if (!match) {
+      const line = normalize(raw)
+      if (line) {
+        const target = inSummary ? summary : diagnostics
+        target.push(line)
+      }
+      continue
+    }
+
+    const body: string[] = []
+    const indent = match[1].length
+    let yaml = false
+    let complete = false
+    let literalDepth: number | null = null
+    for (; index + 1 < rawLines.length; index += 1) {
+      const next = stripAnsi(rawLines[index + 1])
+      if (next.trim().length === 0) {
+        if (literalDepth !== null) {
+          body.push(normalize(next.slice(indent + 2), true, true))
+        }
+        continue
+      }
+      const depth = /^\s*/u.exec(next)![0].length
+      if (depth <= indent) {
+        break
+      }
+      if (!yaml && next.trim() === '---') {
+        yaml = true
+        continue
+      }
+      if (yaml && depth === indent + 2 && next.trim() === '...') {
+        complete = true
+        index += 1
+        break
+      }
+      if (literalDepth !== null && depth <= literalDepth) {
+        literalDepth = null
+      }
+      if (
+        yaml &&
+        depth === indent + 2 &&
+        (/^(?:expected|actual):/u.test(next.trim()) ||
+          /^error:\s*[|>]/u.test(next.trim()))
+      ) {
+        literalDepth = depth
+      }
+      // Only the immediate YAML fields are runner metadata. Nested values of
+      // expected/actual (even fields named duration_ms) remain assertion data.
+      if (
+        yaml &&
+        depth === indent + 2 &&
+        /^(?:duration_ms|type):/u.test(next.trim())
+      ) {
+        continue
+      }
+      body.push(
+        normalize(
+          literalDepth === null ? next : next.slice(indent + 2),
+          true,
+          literalDepth !== null,
+        ),
+      )
+    }
+    const parents = suites
+      .filter((suite) => suite.depth < indent)
+      .map((suite) => normalize(suite.name))
+    const header =
+      normalize(raw) +
+      (parents.length > 0 ? ` (suite: ${parents.join(' > ')})` : '')
+    const record = [
+      header,
+      ...body,
+      ...(yaml && !complete ? ['<incomplete TAP assertion>'] : []),
+    ].join('\n')
+    const occurrence =
+      match[2] === undefined
+        ? null
+        : `${suites.map((suite) => suite.instance).join('/')}:${indent}:${match[2]}:${record}`
+    if (occurrence !== null && numbered.has(occurrence)) {
+      continue
+    }
+    if (occurrence !== null) {
+      numbered.add(occurrence)
+    }
+    const target = inSummary ? summary : diagnostics
+    target.push(record)
+  }
+
+  // A closing failure list repeats the main records, but can also be the only
+  // retained evidence in a truncated transcript. Keep the greater multiplicity.
+  const remaining = new Map<string, number>()
+  for (const diagnostic of diagnostics) {
+    remaining.set(diagnostic, (remaining.get(diagnostic) ?? 0) + 1)
+  }
+  for (const diagnostic of summary) {
+    const count = remaining.get(diagnostic) ?? 0
+    if (count > 0) {
+      remaining.set(diagnostic, count - 1)
+    } else {
+      diagnostics.push(diagnostic)
+    }
+  }
+  return diagnostics
+}
+
 function diagnosticCounts(
   result: RepositoryCheckCommandResult,
   workspaceRoot: string,
 ): Map<string, number> {
   const externalScratch = externalTestScratchRoot(workspaceRoot)
-  const normalizedLines =
-    `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`
-      .split(/\r?\n/u)
-      .map((line) =>
-        normalizeDiagnosticLine(line, workspaceRoot, externalScratch),
-      )
+  const normalizedLines = [
+    result.stdout,
+    result.stderr,
+    result.error ?? '',
+  ].flatMap((output) =>
+    runnerDiagnostics(output.split(/\r?\n/u), (line, assertion, literal) =>
+      normalizeDiagnosticLine(
+        line,
+        workspaceRoot,
+        externalScratch,
+        assertion,
+        literal,
+      ),
+    ),
+  )
   // A recognized failure line is kept unconditionally: pass-echo and noise
   // patterns run first, and a failure record that also mentions PASSED (xdist
   // interleaving) must not be filtered before the failure allowlist sees it.
@@ -261,29 +456,23 @@ function diagnosticCounts(
     const withoutSessionNoise = lines.filter(
       (line) => isPytestFailureLine(line) || !isPytestSessionNoiseLine(line),
     )
-    const failures = withoutSessionNoise.filter((line) =>
-      isPytestFailureLine(line),
-    )
 
-    // Keeping only recognized failure shapes prevents traceback churn, but a
-    // failing transcript whose failure text matches no known pytest shape must
-    // not be discarded whole: a command that runs pytest plus another tool
-    // (pytest passing, the other tool regressing) would then lose the genuine
-    // failure and the gate would pass. The fallback keeps only error-looking
-    // lines, so a passing suite's warnings and code context still form no
-    // identities and the status identity alone carries the command failure.
-    diagnostics =
-      failures.length > 0
-        ? failures
-        : withoutSessionNoise.filter(
-            (line) =>
-              /\b(?:error|errors|failed|failure|failures|exception|traceback|fatal|internalerror)\b/iu.test(
-                line,
-              ) &&
-              // Source context quoted under a warning or traceback is not an
-              // error record even when it names an exception type.
-              !/^(?:class|def|@|import |from )\s*\w/u.test(line),
-          )
+    // Exclude recognized warning reports and their source context; unknown
+    // output remains evidence even when pytest has already named a failure.
+    diagnostics = withoutSessionNoise.filter(
+      (line, index) =>
+        isPytestFailureLine(line) ||
+        !(
+          /^[\w./<>-]+:(?:\d+|<line>): \d+ warnings?$/u.test(line) ||
+          isPytestWarningLine(line) ||
+          (/^(?:class \w+.*:|@\w+(?:\.\w+)*|self\.loader\.exec_module\(module\))$/u.test(
+            line,
+          ) &&
+            (isPytestWarningLine(withoutSessionNoise[index - 1] ?? '') ||
+              isPytestWarningLine(withoutSessionNoise[index + 1] ?? ''))) ||
+          /^\[Statsig::DynamicConfig\]: Type mismatch - /u.test(line)
+        ),
+    )
   }
 
   const counts = new Map<string, number>()
