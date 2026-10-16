@@ -3,9 +3,11 @@ import { spawn, spawnSync } from 'node:child_process'
 import {
   appendFileSync,
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -14,13 +16,181 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { createTestTempDirectory } from '../temp.js'
+import { getRunState } from '../../src/lib/engine/run-status.js'
+import { checkpoint } from './delivery-helpers.js'
 
 import {
   PAN,
   ROOT,
   createBuildScriptFixture,
+  FAKE_TSC_OUT_DIR,
   waitForPath,
 } from './cli-build-helpers.js'
+
+test('a selected candidate administers installation runs and worktrees when the controller cannot build', async () => {
+  const { root, runId } = checkpoint('delivery@created')
+  const candidate = createBuildScriptFixture()
+  const trace = path.join(root, 'candidate-execution.jsonl')
+  const probeStarted = path.join(root, 'candidate-probe-started')
+
+  try {
+    for (const script of ['pan', 'run-built', 'run-quiet', 'pan-run']) {
+      copyFileSync(
+        path.join(ROOT, 'bin', script),
+        path.join(root, 'bin', script),
+      )
+      chmodSync(path.join(root, 'bin', script), 0o755)
+    }
+
+    writeFileSync(
+      path.join(root, 'bin', 'build'),
+      '#!/usr/bin/env bash\n[[ "${1:-}" == "--stamp-fresh" ]] && exit 1\nprintf "broken controller\\n" >&2\nexit 73\n',
+      { mode: 0o755 },
+    )
+    writeFileSync(
+      path.join(candidate.root, 'package.json'),
+      '{"name":"pancreator-v2-prototype","type":"module"}\n',
+    )
+    mkdirSync(path.join(candidate.root, 'src'))
+    writeFileSync(path.join(candidate.root, 'src', 'cli.ts'), 'export {}\n')
+
+    // Reuse the suite's real CLI build; the fake compiler isolates dispatch
+    // and compilation selection from the TypeScript compiler itself.
+    writeFileSync(
+      path.join(candidate.root, 'tools', 'tsc'),
+      [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        FAKE_TSC_OUT_DIR,
+        'mkdir -p "$out/src"',
+        `cp -R ${JSON.stringify(`${path.join(ROOT, 'dist/src')}/.`)} "$out/src/"`,
+        'printf "build\\n" >> builds.log',
+        'cat >> "$out/src/cli.js" <<\'TRACE\'',
+        '',
+        'import { appendFileSync as appendExecutionTrace } from "node:fs"',
+        `appendExecutionTrace(${JSON.stringify(trace)}, JSON.stringify({`,
+        '  executable: import.meta.url, cwd: process.cwd(),',
+        '  root: process.env.PANCREATOR_ROOT, override: process.env.PANCREATOR_EXEC_ROOT ?? null,',
+        '  ready: process.env.PANCREATOR_BUILD_READY, args: process.argv.slice(2)',
+        '}) + "\\n")',
+        `if (process.argv[2] === "models") appendExecutionTrace(${JSON.stringify(probeStarted)}, "started\\n")`,
+        'TRACE',
+        '',
+      ].join('\n'),
+    )
+
+    const env = { ...candidate.env }
+
+    delete env.PANCREATOR_ROOT
+    delete env.PANCREATOR_EXEC_ROOT
+
+    const pan = path.join(root, 'bin', 'pan')
+    const run = (args: string[], execRoot?: string) =>
+      spawnSync('/bin/bash', [pan, ...args], {
+        cwd: candidate.root,
+        env: {
+          ...env,
+          ...(execRoot === undefined ? {} : { PANCREATOR_EXEC_ROOT: execRoot }),
+        },
+        encoding: 'utf8',
+        timeout: 120_000,
+        maxBuffer: 4 * 1024 * 1024,
+      })
+
+    const broken = run(['status', runId, '--json'])
+
+    assert.equal(broken.status, 73, broken.stderr)
+    assert.match(broken.stderr, /broken controller/u)
+
+    const requested = [
+      ['status', runId, '--json'],
+      ['prepare', runId, '--json'],
+      ['worktree', 'create', 'isolated-candidate', '--json'],
+      ['worktree', 'list', '--json'],
+    ]
+    let preparation = ''
+
+    for (const args of requested) {
+      const result = run(args, path.relative(root, candidate.root))
+
+      assert.equal(result.status, 0, result.stderr)
+      assert.doesNotMatch(result.stderr, /broken controller/u)
+      assert.notEqual(result.stdout.trim(), '', args.join(' '))
+
+      if (args[0] === 'prepare') {
+        preparation = result.stdout
+      }
+    }
+
+    await waitForPath(probeStarted)
+
+    const observations: unknown = readFileSync(trace, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as unknown)
+
+    assert.ok(Array.isArray(observations))
+    assert.equal(observations.length, requested.length + 1)
+    assert.deepEqual(
+      observations
+        .map((entry: { args: string[] }) => entry.args)
+        .filter((args) => args[0] !== 'models'),
+      requested,
+    )
+    assert.deepEqual(
+      observations
+        .map((entry: { args: string[] }) => entry.args)
+        .filter((args) => args[0] === 'models'),
+      [
+        [
+          'models',
+          '--probe',
+          '--await-probe',
+          '--run',
+          runId,
+          '--invocation',
+          getRunState(root, runId).current_invocation?.id,
+        ],
+      ],
+    )
+
+    for (const entry of observations) {
+      assert.deepEqual(entry, {
+        executable: `file://${realpathSync(candidate.root)}/dist/src/cli.js`,
+        cwd: realpathSync(root),
+        root: realpathSync(root),
+        override: null,
+        ready: realpathSync(candidate.root),
+        args: entry.args,
+      })
+    }
+
+    assert.ok(getRunState(root, runId).current_invocation, preparation)
+    assert.equal(getRunState(root, runId).current_stage, 'implement')
+    assert.ok(
+      existsSync(path.join(root, 'worktrees/operator/isolated-candidate')),
+    )
+    assert.equal(
+      existsSync(path.join(candidate.root, 'runtime/logs/workflows')),
+      false,
+    )
+    assert.equal(
+      readFileSync(path.join(candidate.root, 'builds.log'), 'utf8'),
+      'build\n',
+    )
+
+    const invalid = run(['status', runId, '--json'], path.join(root, 'missing'))
+
+    assert.equal(invalid.status, 1)
+    assert.match(invalid.stderr, /EXEC_ROOT_INVALID/u)
+    assert.equal(
+      readFileSync(trace, 'utf8').trim().split('\n').length,
+      observations.length,
+    )
+  } finally {
+    rmSync(candidate.root, { recursive: true, force: true })
+  }
+})
 
 test('importing the compiled CLI emits nothing while executing it reaches the command', () => {
   // The entrypoint guard keeps `main()` from running when another module
