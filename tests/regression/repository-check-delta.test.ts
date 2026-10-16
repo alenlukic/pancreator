@@ -30,6 +30,12 @@ const FIXTURE = readFileSync(
 
 const WORKSPACE_ROOT = '/workspace/.pancreator/worktrees/operator/my-task'
 
+const tapReplay = (name: string): string =>
+  readFileSync(
+    path.join(process.cwd(), 'tests/fixtures/trace-friction', name),
+    'utf8',
+  )
+
 function checkResult(
   stdout: string,
   status: 'passed' | 'failed',
@@ -201,4 +207,46 @@ test('a configured external scratch root folds to the default scratch identity',
 
   assert.equal(comparison.passed, true, comparison.explanation)
   assert.deepEqual(newDiagnostics(comparison), [])
+})
+
+test('synthetic TAP replay ignores runner metadata with exact empty new and fixed lists', () => {
+  const baseline = {
+    ...checkResult(tapReplay('baseline.tap'), 'failed'),
+    workspace_root: '/workspace',
+  }
+  const current = {
+    ...checkResult(tapReplay('current.tap'), 'failed'),
+    workspace_root: '/workspace',
+  }
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.deepEqual(comparison.delta.new, [])
+  assert.deepEqual(comparison.delta.fixed, [])
+  assert.equal(comparison.delta.carried.length, 1)
+  assert.equal(comparison.delta.carried[0]?.count, 1)
+  assert.match(
+    comparison.delta.carried[0]?.diagnostic ?? '',
+    /expected: 'a{40}'/u,
+  )
+  assert.equal(current.results[0]?.stdout, tapReplay('current.tap'))
+})
+
+test('TAP rendering echoes retain one occurrence while separate indices retain multiplicity', () => {
+  const body = tapReplay('baseline.tap')
+  const record = body.slice(body.indexOf('not ok'), body.indexOf('1..5'))
+  const baseline = checkResult(body, 'failed')
+  const echo = compareRepositoryCheckToBaseline(
+    baseline,
+    checkResult(body + record, 'failed'),
+  )
+  assert.deepEqual(echo.delta.new, [])
+  assert.deepEqual(echo.delta.fixed, [])
+  const duplicate = compareRepositoryCheckToBaseline(
+    baseline,
+    checkResult(body + record.replace('not ok 5', 'not ok 6'), 'failed'),
+  )
+  assert.deepEqual(duplicate.delta.new, [
+    { ...echo.delta.carried[0]!, count: 1 },
+  ])
+  assert.deepEqual(duplicate.delta.fixed, [])
 })

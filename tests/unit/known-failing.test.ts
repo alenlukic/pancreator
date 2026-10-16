@@ -39,6 +39,49 @@ test('failure headlines expose identities for isolated reruns', () => {
   )
 })
 
+test('multiline identities retain evidence and use only the headline', () => {
+  for (const [headline, file, name] of [
+    [
+      'FAIL tests/unit/a.test.ts > real case',
+      'tests/unit/a.test.ts',
+      'real case',
+    ],
+    [
+      'FAILED tests/test_a.py::real_case - mismatch',
+      'tests/test_a.py',
+      'real_case',
+    ],
+    [
+      'not ok - real case (tests/unit/a.test.ts:12)',
+      'tests/unit/a.test.ts',
+      'real case',
+    ],
+    [
+      'not ok <index> - real case (<workspace>/tests/unit/a.test.ts:<line>:<column>)',
+      '<workspace>/tests/unit/a.test.ts',
+      'real case',
+    ],
+  ]) {
+    const diagnostic = `${headline}\nAssertionError: unrelated identity`
+    assert.deepEqual(parseTestFailureIdentity(diagnostic), {
+      file,
+      case: name,
+      diagnostic,
+    })
+  }
+  assert.deepEqual(
+    failedRepositoryCheckLanes(
+      result(
+        failingCommand(
+          'custom runner',
+          'not ok - unknown case\n    AssertionError: tests/integration/unrelated.test.ts\n',
+        ),
+      ),
+    ),
+    ['custom runner'],
+  )
+})
+
 function failingCommand(
   command: string,
   stdout: string,
@@ -153,6 +196,45 @@ test('a declared failure is credited and an undeclared one is not', () => {
   assert.equal(withUndeclared.credited.length, 1)
   assert.equal(withUndeclared.undeclared.length, 1)
   assert.match(withUndeclared.undeclared[0], /undeclared case/u)
+})
+
+test('assertion bodies cannot supply known-failure case or file identity', () => {
+  const declaration = {
+    file: 'tests/unit/example.test.ts',
+    case: 'previously known case',
+    reason: 'pre-existing failure',
+  }
+
+  for (const transcript of [
+    'not ok - newly failing case (/workspace/tests/unit/example.test.ts:10)\n' +
+      '    AssertionError: expected previously known case to exist\n',
+    'not ok - previously known case (/workspace/tests/unit/other.test.ts:10)\n' +
+      '    AssertionError: expected tests/unit/example.test.ts to exist\n',
+  ]) {
+    const credit = creditKnownFailures(
+      result(failingCommand('npm test', transcript)),
+      [declaration],
+    )
+
+    assert.deepEqual(credit.credited, [])
+    assert.equal(credit.undeclared.length, 1)
+    assert.match(credit.undeclared[0]!, /AssertionError:/u)
+  }
+
+  const credit = creditKnownFailures(
+    result(
+      failingCommand(
+        'npm test',
+        'not ok - previously known case (/workspace/tests/unit/example.test.ts:10)\n' +
+          '    AssertionError: real diagnostic\n',
+      ),
+    ),
+    [declaration],
+  )
+
+  assert.equal(credit.credited.length, 1)
+  assert.match(credit.credited[0]!, /AssertionError: real diagnostic/u)
+  assert.deepEqual(credit.undeclared, [])
 })
 
 // AC-021. The gate accepts a profile when nothing is undeclared, so a failing

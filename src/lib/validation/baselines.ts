@@ -362,9 +362,15 @@ export function isEnvironmentBlockedDelta(
   })
 }
 
-/** A pytest test-failure record: product evidence, never infrastructure. */
+/** A runner test-failure record: product evidence, never infrastructure. */
 function isTestFailureRecord(diagnostic: string): boolean {
-  return /^FAILED\b/u.test(diagnostic) || /^\S+::.*\bFAILED\b/u.test(diagnostic)
+  const headline = diagnostic.split('\n', 1)[0]
+
+  return (
+    /^not ok\b/u.test(headline) ||
+    /^FAILED\b/u.test(headline) ||
+    /^\S+::.*\bFAILED\b/u.test(headline)
+  )
 }
 
 /**
