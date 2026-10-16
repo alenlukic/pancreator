@@ -232,6 +232,14 @@ test('ship context selects effective records and indexes superseded history', ()
   ]
 
   const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'ship')
+  stage.context = {
+    ...stage.context,
+    required_stage_outputs: [
+      { stage: 'implement', selection: 'latest' },
+      { stage: 'verify', selection: 'latest' },
+    ],
+    conditional_stage_outputs: [{ stage: 'remediate', selection: 'latest' }],
+  }
   const inputs = buildInvocationInputs({
     root,
     state,

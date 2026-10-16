@@ -2,6 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { validateStageOutput } from '../../src/lib/validation.js'
+import {
+  blockingCriterionStateErrors,
+  effectiveOutcome,
+  submissionGateSkipReason,
+} from '../../src/lib/engine/submit-helpers.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { sharedFixture } from '../fixture-template.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
@@ -67,6 +72,73 @@ function fixtureInvocation(
     },
   }
 }
+
+test('gate skip reasons retain rejection precedence and permit valid pending claims', () => {
+  const root = sharedFixture()
+  const { stage, invocation } = fixtureInvocation(root, 'implement', 'skip')
+  const output = baseOutput(invocation, stage)
+  const reason = (
+    attestation: string[] = [],
+    validators: string[] = [],
+    blocking: string[] = [],
+    submitted: unknown = output,
+  ) =>
+    submissionGateSkipReason(
+      stage,
+      output,
+      submitted,
+      attestation,
+      validators,
+      blocking,
+    )
+
+  for (const result of ['failure', 'blocked'] as const) {
+    assert.equal(
+      reason(['bad attestation'], ['harness validator claims failed'], [], {
+        result,
+      }),
+      `the stage reported result '${result}'`,
+    )
+  }
+  assert.equal(
+    reason(['bad attestation'], ['harness validator claims failed']),
+    'the invocation read attestation failed',
+  )
+  assert.equal(
+    reason(
+      [],
+      [
+        'harness validator claims failed',
+        'harness validator claims failed',
+        'harness validator artifacts failed',
+      ],
+    ),
+    'harness validator claims, artifacts rejected the output',
+  )
+  const hard = stage.criteria.find((criterion) => criterion.hard)
+  assert.ok(hard)
+  const claim = output.criteria.find((criterion) => criterion.id === hard.id)
+  assert.ok(claim)
+  claim.result = 'fail'
+  assert.equal(
+    reason([], [], ['invalid criterion']),
+    `hard criterion '${hard.id}' was self-evaluated as failed`,
+  )
+  claim.result = 'pass'
+  assert.equal(
+    reason([], [], ['invalid criterion']),
+    'a blocking artifact or stage-output validator rejected the output',
+  )
+  for (const criterion of output.criteria) {
+    if (
+      stage.criteria.find((item) => item.id === criterion.id)?.type === 'shell'
+    ) {
+      criterion.result = 'pending_harness'
+    }
+  }
+  assert.equal(reason(), null)
+  assert.equal(reason([], [], [], { result: 'invalid' }), null)
+})
 
 function baseOutput(
   invocation: Invocation,
@@ -290,6 +362,148 @@ test('stage output rejects an unevaluated criterion on every result', () => {
       `${result} reported ${matches.length} times`,
     )
     assert.match(matches[0].message, /remains unevaluated/u)
+  }
+})
+
+test('pending_harness survives normalization only for resolved harness shells', () => {
+  const root = sharedFixture()
+  const { invocation, stage } = fixtureInvocation(root, 'implement', 'pending')
+
+  delete invocation.output.operator_brief
+  const output = baseOutput(invocation, stage)
+  output.data = {
+    implementation: { changed_files: [], tests_added: [], notes: [] },
+    acceptance_results: [],
+  }
+  const shell = stage.criteria.find((criterion) => criterion.type === 'shell')
+
+  assert.ok(shell)
+  const claim = output.criteria.find((criterion) => criterion.id === shell.id)
+
+  assert.ok(claim)
+  claim.result = 'pending_harness'
+  claim.evidence = []
+  const validation = validateStageOutput(root, stage, invocation, output)
+
+  assert.deepEqual(validation.errors, [])
+  assert.equal(
+    validation.output.criteria.find((criterion) => criterion.id === shell.id)
+      ?.result,
+    'pending_harness',
+  )
+
+  for (const type of ['judgment', 'state'] as const) {
+    const invalidStage = {
+      ...stage,
+      criteria: stage.criteria.map((criterion) =>
+        criterion.id === shell.id ? { ...criterion, type } : criterion,
+      ),
+    }
+    const invalid = validateStageOutput(root, invalidStage, invocation, output)
+
+    assert.ok(
+      invalid.issues.some(
+        (issue) => issue.code === 'criterion.pending_harness',
+      ),
+    )
+    assert.ok(blockingCriterionStateErrors(invalid.issues).length > 0)
+  }
+
+  const unassigned = {
+    ...invocation,
+    rubric: invocation.rubric.filter((criterion) => criterion.id !== shell.id),
+  }
+
+  assert.ok(
+    validateStageOutput(root, stage, unassigned, output).issues.some(
+      (issue) => issue.code === 'criterion.pending_harness',
+    ),
+  )
+
+  output.criteria.push({
+    id: 'unknown.pending',
+    result: 'pending_harness',
+    explanation: '',
+    evidence: [],
+  })
+  assert.ok(
+    blockingCriterionStateErrors(
+      validateStageOutput(root, stage, invocation, output).issues,
+    ).some((message) => message.includes('unknown.pending')),
+  )
+})
+
+test('pending harness outcomes require terminal deterministic evidence', () => {
+  const root = sharedFixture()
+  const { invocation, stage } = fixtureInvocation(root, 'implement', 'settle')
+  const output = baseOutput(invocation, stage)
+  const shell = stage.criteria.find((criterion) => criterion.type === 'shell')
+
+  assert.ok(shell)
+  output.criteria = output.criteria.map((claim) =>
+    claim.id === shell.id ? { ...claim, result: 'pending_harness' } : claim,
+  )
+  const result = {
+    id: shell.id,
+    type: 'shell' as const,
+    hard: true,
+    passed: true,
+    workspace_fingerprint: 'unit-fingerprint',
+  }
+
+  assert.equal(effectiveOutcome(stage, output, [], []), 'failure')
+  assert.equal(
+    effectiveOutcome(stage, output, [], [{ ...result, skipped: true }]),
+    'failure',
+  )
+  assert.equal(
+    effectiveOutcome(stage, output, [], [{ ...result, type: 'state' }]),
+    'failure',
+  )
+  assert.equal(effectiveOutcome(stage, output, [], [result, result]), 'failure')
+  assert.equal(effectiveOutcome(stage, output, [], [result]), 'success')
+  assert.equal(
+    effectiveOutcome(stage, output, [], [{ ...result, passed: false }]),
+    'failure',
+  )
+  assert.equal(
+    effectiveOutcome(
+      stage,
+      output,
+      [],
+      [{ ...result, passed: false, disabled: true }],
+    ),
+    'success',
+  )
+  assert.equal(
+    output.criteria.find((claim) => claim.id === shell.id)?.result,
+    'pending_harness',
+  )
+})
+
+test('shell unevaluated remains scaffold-only on every declared outcome', () => {
+  const root = sharedFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'implement',
+    'unfinished',
+  )
+  const output = baseOutput(invocation, stage)
+  const shell = stage.criteria.find((criterion) => criterion.type === 'shell')
+
+  assert.ok(shell)
+  const claim = output.criteria.find((criterion) => criterion.id === shell.id)
+
+  assert.ok(claim)
+  claim.result = 'unevaluated'
+
+  for (const result of ['success', 'failure', 'blocked'] as const) {
+    output.result = result
+    assert.ok(
+      validateStageOutput(root, stage, invocation, output).issues.some(
+        (issue) => issue.code === 'criterion.unevaluated',
+      ),
+    )
   }
 })
 

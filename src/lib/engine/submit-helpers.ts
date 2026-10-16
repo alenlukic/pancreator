@@ -161,6 +161,10 @@ export function effectiveOutcome(
     return 'failure'
   }
 
+  if (pendingHarnessResolutionErrors(stage, output, deterministic).length > 0) {
+    return 'failure'
+  }
+
   if (
     deterministic.some((item) => item.hard && !item.passed && !item.disabled)
   ) {
@@ -171,21 +175,88 @@ export function effectiveOutcome(
 }
 
 /**
- * Returns the messages of the output validation issues that must block a
- * submission because a criterion was left unevaluated or skipped on a
- * successful outcome.
+ * Returns criterion contract errors that must block submission before shell
+ * gates run.
  */
 export function blockingCriterionStateErrors(
   issues: StageOutputValidation['issues'],
 ): string[] {
-  const blockingCodes = new Set([
-    'criterion.unevaluated',
-    'criterion.skipped_on_success',
-  ])
-
   return issues
-    .filter((issue) => blockingCodes.has(issue.code))
+    .filter((issue) => issue.code.startsWith('criterion.'))
     .map((issue) => issue.message)
+}
+
+/** Return the rejection that makes executing shell gates unnecessary. */
+export function submissionGateSkipReason(
+  stage: StageDefinition,
+  output: StageOutput,
+  submittedValue: unknown,
+  attestationErrors: string[],
+  validatorErrors: string[],
+  blockingValidationErrors: string[],
+): string | null {
+  if (
+    isRecord(submittedValue) &&
+    (submittedValue.result === 'failure' || submittedValue.result === 'blocked')
+  ) {
+    return `the stage reported result '${submittedValue.result}'`
+  }
+
+  if (attestationErrors.length > 0) {
+    return 'the invocation read attestation failed'
+  }
+
+  const rejectingValidatorIds = [
+    ...new Set(
+      validatorErrors
+        .map((message) => /^harness validator (\S+) failed/u.exec(message)?.[1])
+        .filter((value): value is string => typeof value === 'string'),
+    ),
+  ]
+
+  if (rejectingValidatorIds.length > 0) {
+    return `harness validator ${rejectingValidatorIds.join(', ')} rejected the output`
+  }
+
+  const selfEvaluations = new Map(
+    output.criteria.map((item) => [item.id, item]),
+  )
+  const failedHardSelfCriterion = stage.criteria.find(
+    (criterion) =>
+      criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
+  )
+
+  if (failedHardSelfCriterion) {
+    return `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
+  }
+
+  return blockingValidationErrors.length > 0
+    ? 'a blocking artifact or stage-output validator rejected the output'
+    : null
+}
+
+/** Pending claims need terminal harness evidence; a success-shaped skip is not a result. */
+export function pendingHarnessResolutionErrors(
+  stage: StageDefinition,
+  output: StageOutput,
+  deterministic: DeterministicResult[],
+): string[] {
+  return output.criteria.flatMap((claim) => {
+    if (claim.result !== 'pending_harness') {
+      return []
+    }
+
+    const criterion = stage.criteria.find((item) => item.id === claim.id)
+    const results = deterministic.filter((item) => item.id === claim.id)
+    const result = results[0]
+
+    return criterion?.type === 'shell' &&
+      results.length === 1 &&
+      result.type === 'shell' &&
+      (result.disabled === true || result.skipped !== true)
+      ? []
+      : [`Pending harness criterion '${claim.id}' has no terminal shell result`]
+  })
 }
 
 export interface MaterializedSubmission {

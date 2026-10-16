@@ -72,9 +72,10 @@
               "fail",
               "not_applicable",
               "unevaluated",
+              "pending_harness",
               "skipped"
             ],
-            "description": "Worker judgments are pass, fail, or not_applicable. unevaluated is scaffold-only and MUST NOT be submitted. skipped is terminal on a blocked output or on a shell criterion when the stage already failed; it MUST NOT appear on success."
+            "description": "Worker judgments are pass, fail, or not_applicable. pending_harness hands a shell criterion in the resolved invocation to the harness; deterministic evidence decides its final result without changing the worker claim. unevaluated is scaffold-only and MUST NOT be submitted. skipped is terminal on a blocked output or on a shell criterion when the stage already failed; it MUST NOT appear on success."
           },
           "evidence": {
             "type": "array",

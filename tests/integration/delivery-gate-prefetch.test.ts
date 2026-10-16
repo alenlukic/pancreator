@@ -29,7 +29,7 @@ import {
 } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
 import {
-  checkpoint,
+  legacyEntryCheckpoint as checkpoint,
   checksVariant,
   fullFailsUntil,
   fullRuns,
