@@ -1,5 +1,24 @@
 # Changelog
 
+## [9.3.0] - 2026-10-16
+
+### Changed
+
+- Let workers hand harness-owned shell checks to submission with `pending_harness`, and retain original claims beside actual gate results ([stage output contract](library/schemas/stage-output.schema.json)).
+
+### Added
+
+- Publish sanitized Copilot launch, session, chat, tool, completion, and heartbeat records before the CLI exits ([live evidence](docs/copilot-live-evidence.md)).
+
+### Fixed
+
+- Compare failure assertions and occurrence counts without treating recognized execution metadata as new failures ([diagnostics](src/lib/repository-checks/diagnostics.ts)).
+- Keep valid recorded runs usable when live configuration or advisory projection becomes incompatible, while retaining explicit errors for corrupt required snapshots ([lifecycle isolation](docs/lifecycle-isolation.md)).
+- Run an explicitly selected healthy candidate against installation state when the shared controller cannot build ([candidate execution](docs/lifecycle-isolation.md)).
+- Preserve credential redaction, session binding, output bounds, process cleanup, and separate failed-resume evidence during live Copilot execution ([transport contract](docs/copilot-live-evidence.md)).
+
+This release contains Cohort 1 only. Actor-aware scope enforcement, process-backed liveness decisions, and mandatory verification evidence collection remain in Cohort 2. Previously disclosed inherited diagnostics remain unresolved.
+
 ## [9.2.0] - 2026-10-15
 
 ### Changed
