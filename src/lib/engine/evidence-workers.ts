@@ -217,6 +217,12 @@ export function delegateEvidenceWorkers(
         : copilot
           ? createCopilotAdapter({
               root,
+              live: {
+                run_id: runId,
+                invocation_id: invocation.invocation_id,
+                role: worker.role,
+                attempt: invocation.attempt,
+              },
               workspaceDir,
               stage,
               persona: worker.persona,

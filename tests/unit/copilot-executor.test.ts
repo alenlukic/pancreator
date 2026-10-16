@@ -6,6 +6,7 @@ import test from 'node:test'
 import { copilotToolPolicy } from '../../src/lib/engine/executors.js'
 import {
   copilotArgv,
+  COPILOT_MAX_OUTPUT_BYTES,
   parseCopilotJsonl,
   resolveCopilotCredential,
 } from '../../src/lib/executors/copilot-cli.js'
@@ -20,8 +21,77 @@ import { assertWorkerNotStillActive } from '../../src/lib/engine/submit-checks.j
 import { executorProcessActivity } from '../../src/lib/watch/executor-process.js'
 import { watchedAgentActivity } from '../../src/lib/watch/observe.js'
 import { createTestTempDirectory } from '../temp.js'
+import {
+  CopilotStreamRedactor,
+  COPILOT_RELAY_LIMITS,
+  copilotRedactionSecrets,
+  runCopilotRelay,
+} from '../../src/lib/executors/copilot-relay.js'
+import {
+  delegationLivePaths,
+  loadDelegationLiveRecord,
+  updateDelegationLiveRecord,
+  writeDelegationLiveLaunch,
+  type DelegationLiveRecord,
+} from '../../src/lib/executors/delegation-live.js'
 
 const FAKE_KEY = 'sk-fake-copilot-key-0123456789'
+
+test('relay production bounds remain independent at 4 Mi characters and 64 MiB', () => {
+  assert.equal(COPILOT_MAX_OUTPUT_BYTES, 64 * 1024 * 1024)
+  assert.deepEqual(COPILOT_RELAY_LIMITS, {
+    frameCharacters: 4 * 1024 * 1024,
+    eventFileBytes: 64 * 1024 * 1024,
+  })
+})
+
+test('relay rejects absent or invalid adapter ownership before launch', async () => {
+  for (const adapterParentPid of [
+    undefined,
+    null,
+    0,
+    -1,
+    1.5,
+    '123',
+    2 ** 53,
+  ]) {
+    await assert.rejects(
+      runCopilotRelay(
+        JSON.stringify({
+          prompt: 'fixture',
+          cwd: '.',
+          model: 'fixture',
+          availableTools: [],
+          addDirs: [],
+          adapterParentPid,
+        }),
+        {},
+        () => assert.fail('invalid requests must not emit progress'),
+      ),
+      /Invalid Copilot relay adapter parent PID/u,
+    )
+  }
+})
+
+test('session argv binds a fresh UUID and resumes without assigning a different session', () => {
+  const request = {
+    cwd: '.',
+    model: 'fixture',
+    availableTools: [],
+    addDirs: [],
+  }
+  const session = '7ebc3016-ded1-45a6-b1e3-1c2731066482'
+  assert.ok(copilotArgv(request, session).includes(`--session-id=${session}`))
+  const resumed = copilotArgv(
+    { ...request, resumeSessionId: session },
+    'unused-fresh',
+  )
+  assert.ok(resumed.includes(`--resume=${session}`))
+  assert.equal(
+    resumed.some((arg) => arg.startsWith('--session-id=')),
+    false,
+  )
+})
 
 function stage(policy: StageDefinition['workspace_policy']): StageDefinition {
   return { slug: 'implement', workspace_policy: policy } as StageDefinition
@@ -212,6 +282,142 @@ test('the JSONL parser needs a result event and keeps the last model', () => {
       model: 'gpt-6-luna',
       final_message: 'ok',
     },
+  )
+})
+
+test('stream redaction hides every split credential and escaped prompt boundary', () => {
+  const prompt = 'private\n"prompt" \u2603'
+  const secrets = copilotRedactionSecrets(
+    {
+      OPENAI_API_KEY: FAKE_KEY,
+      GITHUB_TOKEN: 'github-secret',
+    },
+    prompt,
+  )
+
+  for (const secret of [
+    FAKE_KEY,
+    'github-secret',
+    prompt,
+    JSON.stringify(prompt).slice(1, -1),
+  ]) {
+    for (let split = 0; split <= secret.length; split++) {
+      const redactor = new CopilotStreamRedactor(secrets)
+      const actual =
+        redactor.write(`before ${secret.slice(0, split)}`) +
+        redactor.write(`${secret.slice(split)} after`) +
+        redactor.write('', true)
+
+      assert.equal(actual, 'before [REDACTED] after')
+    }
+  }
+
+  const redactor = new CopilotStreamRedactor(['ababac'])
+  assert.equal(redactor.write('abab'), '')
+  assert.equal(redactor.write('abac!'), 'ab[REDACTED]!')
+
+  for (const prefix of ['sk-fixture-common', 'private\\n\\"prompt\\"']) {
+    const longer = `${prefix}-credential-tail`
+
+    for (let split = 0; split <= longer.length; split++) {
+      const overlapping = new CopilotStreamRedactor([prefix, longer])
+      assert.equal(
+        overlapping.write(longer.slice(0, split)) +
+          overlapping.write(longer.slice(split)) +
+          overlapping.write('', true),
+        '[REDACTED]',
+      )
+    }
+
+    for (const continuation of ['', '-different']) {
+      const overlapping = new CopilotStreamRedactor([prefix, longer])
+      assert.equal(
+        overlapping.write(prefix) +
+          overlapping.write(continuation) +
+          overlapping.write('', true),
+        `[REDACTED]${continuation}`,
+      )
+    }
+  }
+})
+
+test('live paths reject escape and snapshots reject stale attempts and terminal reuse', () => {
+  const root = harnessRoot()
+  const identity = {
+    run_id: 'run-1',
+    invocation_id: 'inv-1',
+    role: 'stage',
+    attempt: 1,
+    launch_id: 'launch-1',
+  }
+  const timestamp = new Date().toISOString()
+  const record: DelegationLiveRecord = {
+    ...identity,
+    schema_version: 1,
+    executor: 'copilot',
+    launched_at: timestamp,
+    heartbeat_at: timestamp,
+    relay_pid: process.pid,
+    relay_start_identity: null,
+    sequence: 0,
+    stream_sequences: { stdout: 0, stderr: 0 },
+    truncated: false,
+  }
+
+  assert.equal(loadDelegationLiveRecord(root, identity), null)
+  assert.throws(
+    () => delegationLivePaths(root, { ...identity, role: '../escape' }),
+    /Invalid/u,
+  )
+  writeDelegationLiveLaunch(root, record)
+  assert.deepEqual(loadDelegationLiveRecord(root, identity), record)
+  assert.throws(
+    () =>
+      updateDelegationLiveRecord(root, {
+        ...record,
+        requested_session_id: 'changed',
+      }),
+    /reuse or regress/u,
+  )
+  assert.throws(
+    () => writeDelegationLiveLaunch(root, record),
+    /already exists/u,
+  )
+  updateDelegationLiveRecord(root, {
+    ...record,
+    sequence: 1,
+    stream_sequences: { stdout: 1, stderr: 0 },
+  })
+  assert.throws(
+    () =>
+      updateDelegationLiveRecord(root, {
+        ...record,
+        sequence: 2,
+      }),
+    /reuse or regress/u,
+  )
+
+  const paths = delegationLivePaths(root, identity)
+  writeFileSync(
+    paths.record,
+    JSON.stringify({ ...record, requested_session_id: 123 }),
+  )
+  assert.throws(
+    () => loadDelegationLiveRecord(root, identity),
+    /Invalid delegation live field requested_session_id/u,
+  )
+  writeFileSync(paths.record, JSON.stringify({ ...record, attempt: 2 }))
+  assert.throws(() => loadDelegationLiveRecord(root, identity), /Invalid/u)
+  writeFileSync(paths.record, JSON.stringify(record))
+  updateDelegationLiveRecord(root, {
+    ...record,
+    sequence: 1,
+    ended_at: timestamp,
+    exit_code: 0,
+  })
+  assert.throws(
+    () => updateDelegationLiveRecord(root, record),
+    /reuse or regress/u,
   )
 })
 
