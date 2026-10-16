@@ -9,6 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { PanError } from '../errors.js'
+import type { DelegationLiveIdentity } from '../executors/delegation-live.js'
 import type { ParsedPersonaMapping } from '../executors/mapping.js'
 import { cursorAuthenticationReadiness } from '../executors/cursor-probe.js'
 import { cursorAgentBinaryReadiness } from '../executors/cursor-agent.js'
@@ -757,6 +758,7 @@ export function createCopilotAdapter(context: {
   persona: string
   mapping: ParsedPersonaMapping
   timeoutMs?: number
+  live?: Omit<DelegationLiveIdentity, 'launch_id'>
 }): ExternalExecutorAdapter {
   const provider = copilotProviderOf(context.mapping.options)
   const credential = resolveCopilotCredential(context.root, provider)
@@ -807,6 +809,14 @@ export function createCopilotAdapter(context: {
           ? { timeoutMs: context.timeoutMs }
           : {}),
         environment: credential.credential.environment,
+        ...(context.live
+          ? {
+              live: {
+                root: context.root,
+                identity: { ...context.live, launch_id: randomUUID() },
+              },
+            }
+          : {}),
       })
       const reported = result.parsed?.model
       const modelError =

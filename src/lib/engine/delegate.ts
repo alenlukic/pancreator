@@ -199,6 +199,12 @@ export function delegateInvocation(
         case 'copilot':
           return createCopilotAdapter({
             root,
+            live: {
+              run_id: runId,
+              invocation_id: invocationId,
+              role: 'stage',
+              attempt: invocation.attempt,
+            },
             workspaceDir,
             stage,
             persona: invocation.stage.persona,
