@@ -520,6 +520,10 @@
     {
       "version": "9.2.0",
       "commit": "e873706a0b70332c730d1ecc110ec6ff774c4fda"
+    },
+    {
+      "version": "9.3.0",
+      "commit": "4b821f6ed93ef162cd39e88052118820246ce80f"
     }
   ]
 }
