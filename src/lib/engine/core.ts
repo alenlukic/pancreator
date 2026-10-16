@@ -6,8 +6,11 @@
 
 import path from 'node:path'
 
-import { invariant } from '../errors.js'
-import { canonicalPersonaMapping } from '../executors/mapping.js'
+import { invariant, PanError } from '../errors.js'
+import {
+  canonicalPersonaMapping,
+  parsePersonaMapping,
+} from '../executors/mapping.js'
 import {
   fileExists,
   isRecord,
@@ -151,6 +154,8 @@ export function loadRunPipelineConfig(root: string, state: RunState) {
  * A run must keep resolving the models it snapshotted, but a mapping it never
  * resolves is not drift. Adding a persona would otherwise strand every run in
  * flight, including the self-development run that introduces that persona.
+ * Known live compatibility failures become advisories after the required
+ * snapshot mappings and workflow have validated; all other failures propagate.
  */
 export function runPipelineConfigAdvisories(
   root: string,
@@ -161,6 +166,47 @@ export function runPipelineConfigAdvisories(
     return []
   }
 
+  // Required snapshot and workflow errors must stay outside advisory recovery.
+  for (const [persona, model] of Object.entries(snapshot.personas)) {
+    parsePersonaMapping(model, `personas.${persona}`)
+  }
+
+  const personas = state.cursor_agent_suffix
+    ? personaSubset(snapshot.personas, loadRunWorkflow(root, state))
+    : snapshot.personas
+
+  try {
+    return pipelineConfigDriftAdvisories(root, state, snapshot, personas)
+  } catch (error) {
+    if (
+      !(error instanceof PanError) ||
+      ![
+        'INVALID_PIPELINE_CONFIG',
+        'INVALID_PROJECT_CONFIG',
+        'INVALID_PROJECTION_MANIFEST',
+        'INVALID_CURSOR_AGENT',
+        'INVALID_CURSOR_CATALOG',
+        'UNRESOLVED_CURSOR_MODEL',
+      ].includes(error.code)
+    ) {
+      throw error
+    }
+
+    return [
+      `PIPELINE_CONFIG_ADVISORY_UNAVAILABLE: ${error.code}: ${error.message} ` +
+        `This run continues on its recorded pipeline snapshot '${snapshot.name}'. ` +
+        `Repair the live configuration or projection for this executable, then run ` +
+        `${path.join(root, 'bin', 'pan')} models --sync to restore drift checks.`,
+    ]
+  }
+}
+
+function pipelineConfigDriftAdvisories(
+  root: string,
+  state: RunState,
+  snapshot: ReturnType<typeof loadRunPipelineConfig>,
+  personas: Record<string, string>,
+): string[] {
   const advisories: string[] = []
 
   // A best-of-N run pins its own persona map, so its run-scoped agent
@@ -169,7 +215,7 @@ export function runPipelineConfigAdvisories(
     const variantDrift = projectPersonaVariants(
       root,
       state.cursor_agent_suffix,
-      personaSubset(snapshot.personas, loadRunWorkflow(root, state)),
+      personas,
     ).filter((entry) => entry.changed)
 
     if (variantDrift.length > 0) {
