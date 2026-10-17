@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { chmodSync, copyFileSync, mkdirSync, readFileSync } from 'node:fs'
+import {
+  chmodSync,
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import test from 'node:test'
@@ -12,6 +18,18 @@ const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 interface HookResponse {
   continue: true
   additional_context?: string
+}
+
+const PRINCIPLES_PREFIX =
+  'Remember the operating principles; you MUST abide by these:'
+
+function principlesReminder(root: string): string {
+  const section = readFileSync(path.join(root, 'AGENTS.md'), 'utf8')
+    .split(/\n(?=## )/u)
+    .find((part) => part.startsWith('## Mission and operating principles\n'))
+
+  assert.ok(section)
+  return `${PRINCIPLES_PREFIX}\n${section.trim()}`
 }
 
 function invoke(
@@ -64,9 +82,46 @@ test('the CLI emits the declared reminder for every governed role', () => {
     assert.match(response.additional_context ?? '', /^\[COMMS-001\]$/mu)
     assert.match(
       response.additional_context ?? '',
-      /Active card: .+ \(sha256:[a-f0-9]{64}\)$/u,
+      /^Active card: .+ \(sha256:[a-f0-9]{64}\)$/mu,
+    )
+    assert.ok(response.additional_context?.endsWith(principlesReminder(root)))
+    assert.equal(
+      response.additional_context?.split(PRINCIPLES_PREFIX).length,
+      2,
     )
   }
+})
+
+test('prompt and session hooks end with the current operating principles', () => {
+  const root = createFixture()
+
+  for (const event of [
+    'beforeSubmitPrompt',
+    'UserPromptSubmit',
+    'sessionStart',
+    'SessionStart',
+  ]) {
+    const response = invoke(root, event, 'ordinary operator request', event)
+
+    assert.ok(response.additional_context?.endsWith(principlesReminder(root)))
+  }
+
+  const card = path.join(root, 'AGENTS.md')
+  writeFileSync(
+    card,
+    readFileSync(card, 'utf8').replace(
+      '## Invariants',
+      'Fixture principle added after the first prompt.\n\n## Invariants',
+    ),
+  )
+
+  const updated = invoke(root, 'updated-principles', 'ordinary request')
+
+  assert.ok(updated.additional_context?.endsWith(principlesReminder(root)))
+  assert.match(
+    updated.additional_context ?? '',
+    /Fixture principle added after the first prompt\.$/u,
+  )
 })
 
 test('expanded command content resolves through its canonical opening line', () => {
@@ -80,7 +135,7 @@ test('expanded command content resolves through its canonical opening line', () 
   assert.match(response.additional_context ?? '', /^Role: pair$/mu)
 })
 
-test('an expanded bounded read-only command body carries no reminder', () => {
+test('an expanded bounded read-only command body carries only the principles reminder', () => {
   const root = createFixture()
 
   for (const command of ['pan-status', 'pan-validate']) {
@@ -91,6 +146,7 @@ test('an expanded bounded read-only command body carries no reminder', () => {
 
     assert.deepEqual(invoke(root, `expanded-${command}`, expanded), {
       continue: true,
+      additional_context: principlesReminder(root),
     })
     assert.deepEqual(
       invoke(
@@ -98,12 +154,12 @@ test('an expanded bounded read-only command body carries no reminder', () => {
         `expanded-arguments-${command}`,
         expanded.replaceAll('$ARGUMENTS', '63287_Sep-22-0314_fixture'),
       ),
-      { continue: true },
+      { continue: true, additional_context: principlesReminder(root) },
     )
   }
 })
 
-test('excluded sessions and other hook events receive a permissive response', () => {
+test('excluded sessions retain the principles and other hook events stay permissive', () => {
   const root = createFixture()
 
   for (const prompt of [
@@ -112,7 +168,10 @@ test('excluded sessions and other hook events receive a permissive response', ()
     '/pan-status',
     './bin/pan horizon start fixture --headless',
   ]) {
-    assert.deepEqual(invoke(root, prompt, prompt), { continue: true })
+    assert.deepEqual(invoke(root, prompt, prompt), {
+      continue: true,
+      additional_context: principlesReminder(root),
+    })
   }
 
   assert.deepEqual(invoke(root, 'subagent', '/pan-pair', 'subagentStart'), {
@@ -134,7 +193,7 @@ test('hook entry reaches the CLI from a working directory outside the harness', 
     env: environment,
     input: JSON.stringify({
       hook_event_name: 'beforeSubmitPrompt',
-      prompt: 'ordinary operator request',
+      prompt: '/pan-pair',
     }),
     timeout: 30_000,
   })
@@ -144,7 +203,10 @@ test('hook entry reaches the CLI from a working directory outside the harness', 
   const response = JSON.parse(result.stdout) as HookResponse
 
   assert.equal(response.continue, true)
-  assert.match(response.additional_context ?? '', /^Role: unbound$/mu)
+  assert.match(response.additional_context ?? '', /^Role: pair$/mu)
+  assert.ok(
+    response.additional_context?.endsWith(principlesReminder(process.cwd())),
+  )
 })
 
 test('hook entry uses the built CLI and degrades permissively when it is missing', () => {

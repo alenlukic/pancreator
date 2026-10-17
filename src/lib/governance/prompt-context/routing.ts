@@ -16,6 +16,7 @@ import {
 } from '../../io.js'
 import type { RunState } from '../../types.js'
 import {
+  CARD_PATH,
   ROLE_SET,
   TURN_REMINDER_STATE_PATH,
   loadTurnReminderRegistry,
@@ -23,7 +24,7 @@ import {
   type TurnReminderRole,
 } from './registry.js'
 import { liveRuns } from './cards.js'
-import { renderTurnReminder } from './reminders.js'
+import { cardSection, renderTurnReminder } from './reminders.js'
 
 interface ConversationRecord {
   role: Exclude<TurnReminderRole, 'none'>
@@ -419,9 +420,10 @@ function resolveRole(
  * Handle a prompt-submit hook payload: infer the conversation's reminder role
  * from the prompt, the stored conversation role, and live runs, record that
  * role in the turn reminder state file, and return the rendered governance
- * reminder as `additional_context`. Returns only `{ continue: true }` for other
- * hook events, headless horizon starts, named orchestrator prompts, and any
- * error, so the hook never blocks a prompt.
+ * reminder as `additional_context`, ending with the current operating
+ * principles from AGENTS.md. Excluded roles receive only the principles.
+ * Other hook events and errors return only `{ continue: true }`, so the hook
+ * never blocks a prompt.
  */
 export function resolvePromptContext(
   root: string,
@@ -439,12 +441,16 @@ export function resolvePromptContext(
       return { continue: true }
     }
 
+    const principles = [
+      'Remember the operating principles; you MUST abide by these:',
+      cardSection(root, CARD_PATH, '## Mission and operating principles'),
+    ].join('\n')
     const store = readConversationStore(root, registry, now)
     const runs = liveRuns(root)
     const resolution = resolveRole(root, payload, store, runs)
 
     if (resolution.role === 'none') {
-      return { continue: true }
+      return { continue: true, additional_context: principles }
     }
 
     if (payload.conversation_id) {
@@ -464,7 +470,7 @@ export function resolvePromptContext(
 
     return {
       continue: true,
-      additional_context: reminder.content,
+      additional_context: `${reminder.content}\n\n${principles}`,
     }
   } catch {
     return { continue: true }

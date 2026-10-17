@@ -305,7 +305,7 @@ test('malformed input and unreadable resolver state fail open', () => {
   rmSync(statePath, { recursive: true })
 })
 
-test('excluded commands and non-prompt events carry no reminder', () => {
+test('excluded commands carry principles only and non-prompt events carry no reminder', () => {
   const root = createFixture()
 
   for (const prompt of [
@@ -316,9 +316,18 @@ test('excluded commands and non-prompt events carry no reminder', () => {
     '/pan-meta-orchestrator',
     '/pan-orchestrator',
   ]) {
-    assert.deepEqual(resolvePromptContext(root, payload(prompt, prompt)), {
-      continue: true,
-    })
+    const response = resolvePromptContext(root, payload(prompt, prompt))
+
+    assert.equal(response.continue, true)
+    assert.equal(role(response), null)
+    assert.match(
+      response.additional_context ?? '',
+      /^Remember the operating principles; you MUST abide by these:\n/u,
+    )
+    assert.doesNotMatch(
+      response.additional_context ?? '',
+      /Pancreator governance reminder/u,
+    )
   }
 
   for (const prompt of ['/pan-review', '/pan-tune-harness']) {
