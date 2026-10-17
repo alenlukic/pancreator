@@ -54,6 +54,8 @@ import {
 import { collectStageRepositoryCheckProfiles } from './profiles.js'
 import { applyTransition } from './transition.js'
 
+export { resolveStageForAttempt } from '../stage-persona.js'
+
 export interface PrepareInvocationResult {
   state: RunState
   invocation: Invocation | null
@@ -430,57 +432,6 @@ export function writeLabeledDelegationArtifact(
     artifact_path: delegation.delegation_artifact_path,
     skipped: null,
   }
-}
-
-/**
- * The stage definition for the current attempt, with verdict-conditional
- * persona routing applied. A stage with `persona_by_verdict` reads the latest
- * output of its source stage and swaps in the mapped persona when the recorded
- * verdict matches. An absent source output, an unreadable file, or an unmapped
- * verdict keeps the default persona, so verdict routing degrades to the
- * stage's own declaration instead of failing the run.
- */
-export function resolveStageForAttempt(
-  root: string,
-  state: RunState,
-  stage: StageDefinition,
-): StageDefinition {
-  const byVerdict = stage.persona_by_verdict
-
-  if (!byVerdict) {
-    return stage
-  }
-
-  const item = [...state.stage_history]
-    .reverse()
-    .find((entry) => entry.stage === byVerdict.source_stage)
-
-  if (!item) {
-    return stage
-  }
-
-  let verdict: unknown
-
-  try {
-    const output = readJson(resolveInside(root, item.output_path))
-
-    verdict =
-      isRecord(output) && isRecord(output.data)
-        ? byVerdict.path
-            .split('.')
-            .reduce<unknown>(
-              (value, key) => (isRecord(value) ? value[key] : undefined),
-              output.data,
-            )
-        : undefined
-  } catch {
-    return stage
-  }
-
-  const persona =
-    typeof verdict === 'string' ? byVerdict.map[verdict] : undefined
-
-  return persona ? { ...stage, persona } : stage
 }
 
 /** Refresh stale interior checks before a post-remediation verification. */

@@ -11,6 +11,7 @@ import type {
   ExternalModelVerification,
 } from '../types.js'
 import { probeEnvironment } from './cursor-auth.js'
+import { custodyAuthorityRoot } from './scope-custody.js'
 import {
   resolveWriteSandbox,
   type PreparedLaunch,
@@ -379,7 +380,9 @@ function runCursorAgent(
   // The agent's own binary and argv stay the recorded launch. The sandbox
   // wrapper is transport, and its profile is too large to belong in an
   // evidence record that a reader scans for the agent's arguments.
-  const sandbox = resolveWriteSandbox(request.writeRoots ?? [])
+  const sandbox = resolveWriteSandbox(request.writeRoots ?? [], [
+    custodyAuthorityRoot(request.installationRoot),
+  ])
   const launch = sandbox.wrap(binary, argv)
   const enforcement = request.writeRoots
     ? {

@@ -1,4 +1,4 @@
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { COPILOT_CLI_REQUIRED_FLAGS } from '../../src/lib/executors/copilot-cli.js'
@@ -7,12 +7,15 @@ import type { DelegationLiveIdentity } from '../../src/lib/executors/delegation-
 import { createTestTempDirectory } from '../temp.js'
 
 /** Creates a controllable Copilot CLI stub and its isolated live identity. */
-export function setup(role = 'stage'): {
+export function setup(
+  role = 'stage',
+  root = createTestTempDirectory('copilot-live-'),
+): {
   root: string
   binary: string
   identity: DelegationLiveIdentity
 } {
-  const root = createTestTempDirectory('copilot-live-')
+  mkdirSync(root, { recursive: true })
   const binary = path.join(root, 'copilot')
   writeFileSync(
     binary,

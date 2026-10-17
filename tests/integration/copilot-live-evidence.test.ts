@@ -418,6 +418,45 @@ test('spawn failure, timeout, missing result and independent output bounds remai
   }
 })
 
+test('successful process group termination is not repeated during relay cleanup', async () => {
+  for (const mode of ['descendant', 'bounded']) {
+    const fixture = setup()
+    const signalsPath = path.join(fixture.root, 'group-signals.json')
+    const running = launch(fixture, {
+      mode,
+      maxOutputBytes: 1024,
+      runner: `
+        import {readFileSync, writeFileSync} from 'node:fs'
+        import {runCopilotRelay} from ${JSON.stringify(new URL(`file://${RELAY}`).href)}
+        const kill = process.kill.bind(process)
+        const signals = []
+        process.kill = (pid, signal) => {
+          if (pid < 0) signals.push(signal)
+          return kill(pid, signal)
+        }
+        const result = await runCopilotRelay(readFileSync(0, 'utf8'), process.env, text => process.stderr.write(text))
+        writeFileSync(${JSON.stringify(signalsPath)}, JSON.stringify(signals))
+        process.stdout.write(JSON.stringify(result))
+      `,
+    })
+    const result = await running.result
+    assert.equal(result.ok, mode === 'descendant', result.error ?? '')
+    const signals: unknown = JSON.parse(readFileSync(signalsPath, 'utf8'))
+    assert.deepEqual(
+      signals,
+      mode === 'descendant' ? ['SIGKILL'] : ['SIGTERM', 'SIGKILL'],
+    )
+    const pid = Number(
+      readFileSync(path.join(fixture.root, 'descendant.pid'), 'utf8'),
+    )
+    assert.equal(processIsAlive(pid), false)
+    const record = loadDelegationLiveRecord(fixture.root, fixture.identity)
+    assert.ok(record?.ended_at)
+    assert.equal(record.error, result.error)
+    assertSinksSafe(fixture, running.progress(), result)
+  }
+})
+
 test('a CLI exit cleans descendants that retain its pipes and ignore SIGTERM', async () => {
   const fixture = setup()
   const running = launch(fixture, { mode: 'descendant', timeoutMs: 5_000 })
@@ -470,7 +509,10 @@ for (const kind of ['stage', 'evidence'] as const) {
         assert.ok(worker)
         rmSync(path.join(run.root, worker.evidence_path), { force: true })
       }
-      const fixture = setup()
+      const fixture = setup(
+        'stage',
+        path.join(run.root, 'runtime', 'copilot-live-fixture'),
+      )
       const server = createServer()
       server.listen(0, '127.0.0.1')
       await once(server, 'listening')

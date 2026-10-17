@@ -18,6 +18,9 @@ import {
   provisionCopilotWorkspace,
 } from '../executors/copilot-workspace.js'
 import { fileExists, isRecord, resolveInside } from '../io.js'
+import { stageWriteRoots } from '../executors/scope-custody.js'
+
+export { stageWriteRoots } from '../executors/scope-custody.js'
 import { panCommand } from '../project-config.js'
 import {
   claudeCodeCredentialPreflight,
@@ -263,33 +266,6 @@ export function pauseForExecutorPreflight(
       `${panCommand(root)} models --sync, and start a new run.`,
     `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
-}
-
-/** Whether a stage's workspace policy lets its executor change source. */
-function stageMutatesSource(stage: StageDefinition): boolean {
-  return (
-    stage.workspace_policy === 'source_allowed' ||
-    stage.workspace_policy === 'release_metadata_only'
-  )
-}
-
-/**
- * Absolute directories a stage's executor may write into. A non-source stage
- * reaches only the harness runtime tree, where its declared output, evidence,
- * and brief artifacts live. Both external executors consume this one decision:
- * Claude Code renders it into `Write(...)` and `Edit(...)` rules, and the
- * OpenAI tool loop hands it to its path authorizer.
- */
-export function stageWriteRoots(
-  root: string,
-  workspaceDir: string,
-  stage: StageDefinition,
-): string[] {
-  const runtimeTree = path.join(root, 'runtime')
-
-  return stageMutatesSource(stage)
-    ? [...new Set([workspaceDir, runtimeTree])]
-    : [runtimeTree]
 }
 
 /**
@@ -804,6 +780,11 @@ export function createCopilotAdapter(context: {
           : {}),
         availableTools: policy.availableTools,
         addDirs: policy.addDirs,
+        writeRoots: stageWriteRoots(
+          context.root,
+          context.workspaceDir,
+          context.stage,
+        ),
         ...(resumeSessionId ? { resumeSessionId } : {}),
         ...(context.timeoutMs !== undefined
           ? { timeoutMs: context.timeoutMs }
@@ -849,6 +830,17 @@ export function createCopilotAdapter(context: {
         mcp_capabilities: COPILOT_MCP_CAPABILITIES,
         tool_policy: {
           granted_roots: [context.workspaceDir, ...policy.addDirs],
+          write_roots: stageWriteRoots(
+            context.root,
+            context.workspaceDir,
+            context.stage,
+          ),
+          ...(result.custody_records
+            ? { custody_records: result.custody_records }
+            : {}),
+          ...(result.write_boundary
+            ? { write_boundary: result.write_boundary }
+            : {}),
           per_path_write_policy: false,
           scope_gate: 'scope.no_unapproved_changes',
         },

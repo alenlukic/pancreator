@@ -61,9 +61,12 @@ function harnessRoot(): string {
 
 /** A fake `copilot` that records its stdin and argv and prints JSONL. */
 function fakeCopilot(
-  options: { omitFlag?: string; revision?: boolean } = {},
+  options: { omitFlag?: string; revision?: boolean; root?: string } = {},
 ): string {
-  const dir = createTestTempDirectory('copilot-bin-')
+  const dir = options.root
+    ? path.join(options.root, 'runtime', 'copilot-fixture')
+    : createTestTempDirectory('copilot-bin-')
+  mkdirSync(dir, { recursive: true })
   const help = COPILOT_CLI_REQUIRED_FLAGS.filter(
     (flag) => flag !== options.omitFlag,
   )
@@ -165,7 +168,7 @@ test('preflight names a flag the installed CLI no longer offers', () => {
 
 test('resume failure and fresh fallback keep distinct live identities and explicit model failures', () => {
   const root = harnessRoot()
-  const binary = fakeCopilot()
+  const binary = fakeCopilot({ root })
   const live = {
     run_id: 'run-1',
     invocation_id: 'inv-1',
@@ -249,7 +252,7 @@ test(
       },
     })
     const { root, runId } = run
-    const binary = fakeCopilot({ revision: true })
+    const binary = fakeCopilot({ revision: true, root })
     const server = createServer()
     server.listen(0, '127.0.0.1')
     await once(server, 'listening')
@@ -499,7 +502,7 @@ test(
 
 test('the adapter pipes the card on stdin, trusts the workspace, and redacts the key', () => {
   const root = harnessRoot()
-  const binary = fakeCopilot()
+  const binary = fakeCopilot({ root })
   const binDir = path.dirname(binary)
 
   withEnv(
@@ -557,7 +560,7 @@ test('the adapter fails when the stream names another model', () => {
 
   withEnv(
     {
-      PANCREATOR_COPILOT_BIN: fakeCopilot(),
+      PANCREATOR_COPILOT_BIN: fakeCopilot({ root }),
       OPENAI_API_KEY: FAKE_KEY,
       FAKE_MODEL: 'gpt-6-luna',
     },
@@ -580,7 +583,7 @@ test('the adapter fails when the stream names another model', () => {
 test('a worktree worker launches with the projected hooks and its persona agent beside it', () => {
   const root = harnessRoot()
   const workspace = createTestTempDirectory('copilot-worktree-')
-  const binary = fakeCopilot()
+  const binary = fakeCopilot({ root })
 
   mkdirSync(path.join(root, '.github', 'hooks'), { recursive: true })
   mkdirSync(path.join(root, '.github', 'agents'), { recursive: true })
