@@ -17,6 +17,15 @@ reports remain available for every stage.
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
+Governance hooks deliver the same role-specific reminders on each user prompt
+and after each tool result or failure the host exposes. COMMS-001 and the
+operating principles use this shared path. Delivery does not depend on a
+readable transcript or a check for missing narration. A prompt selects the
+conversation role; tool cycles retain that role. Commands excluded from role
+selection still receive the common reminder. Hosts without a separate tool
+failure event use their tool result hook. Reminder delivery does not guarantee
+that an agent follows the instructions.
+
 Use `/pan-summarize-context` before moving work into a fresh Cursor conversation.
 It emits one copyable Markdown block containing the current goal, material
 conversation history, decisions, completed work, validation, open issues, and

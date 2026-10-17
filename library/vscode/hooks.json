@@ -26,7 +26,7 @@
       },
       {
         "type": "command",
-        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-visible-chat postToolUse",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter postToolUse pan-hook-governance-reminder",
         "timeoutSec": 10
       },
       {

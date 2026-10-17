@@ -217,6 +217,7 @@ if isinstance(context, str) and context:
     hook_event = {
         "beforeSubmitPrompt": "UserPromptSubmit",
         "sessionStart": "SessionStart",
+        "postToolUseFailure": "PostToolUseFailure",
     }.get(event, "PostToolUse")
     output = {
         "additionalContext": context,
