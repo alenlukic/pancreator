@@ -257,10 +257,10 @@ export function assertWorkerNotStillActive(
 
   if (processBackedExecutor(invocation)) {
     invariant(
-      executorProcessActivity(root, invocation, Date.now()) !== null,
+      executorProcessActivity(root, invocation, Date.now())?.stop != null,
       `The ${personaExecutor} worker for ${invocation.invocation_id} has no ` +
-        `execution record, so its pan delegate process is still open. Wait ` +
-        `for that process to exit, then submit.`,
+        `matching final execution audit. Its process is active or unverified. ` +
+        `Wait for pan delegate to record its exit, then submit.`,
       { code: WORKER_STILL_ACTIVE },
     )
     return

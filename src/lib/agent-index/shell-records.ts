@@ -328,6 +328,76 @@ function readHeartbeat(
   }
 }
 
+/** Read one explicitly linked wrapper using the same classifier as the index. */
+export function readShellRecord(
+  root: string,
+  relativeDirectory: string,
+  nowMs: number,
+  table: ProcessTable | null,
+): AgentShellRecord | null {
+  const directory = path.join(root, relativeDirectory)
+  const recordJson = readRecordJson(directory)
+
+  if (!recordJson) {
+    return null
+  }
+
+  const heartbeat = readHeartbeat(directory, nowMs)
+  const pid = typeof recordJson.pid === 'number' ? recordJson.pid : null
+  const record: AgentShellRecord = {
+    record_path: path.join(relativeDirectory, 'record.json'),
+    label: typeof recordJson.label === 'string' ? recordJson.label : null,
+    pid,
+    wrapper_pid:
+      typeof recordJson.wrapper_pid === 'number'
+        ? recordJson.wrapper_pid
+        : null,
+    started_at:
+      typeof recordJson.started_at === 'string' ? recordJson.started_at : null,
+    ended_at:
+      typeof recordJson.ended_at === 'string' ? recordJson.ended_at : null,
+    exit_code:
+      typeof recordJson.exit_code === 'number' ? recordJson.exit_code : null,
+    parent_record:
+      typeof recordJson.parent_record === 'string'
+        ? recordJson.parent_record
+        : null,
+    cursor_conversation_id:
+      typeof recordJson.cursor_conversation_id === 'string'
+        ? recordJson.cursor_conversation_id
+        : typeof recordJson.host_session_id === 'string'
+          ? recordJson.host_session_id
+          : null,
+    wrapper_process_identity:
+      typeof recordJson.wrapper_process_identity === 'string'
+        ? recordJson.wrapper_process_identity
+        : null,
+    heartbeat_seconds:
+      typeof recordJson.heartbeat_seconds === 'number'
+        ? recordJson.heartbeat_seconds
+        : null,
+    heartbeat_age_seconds: heartbeat.age_seconds,
+    log_bytes: heartbeat.log_bytes,
+    last_output_at: heartbeat.last_output_at,
+    silent_seconds: heartbeat.silent_seconds,
+    process_state: 'running',
+    tree_cpu_seconds: treeCpuSeconds(pid, table),
+  }
+  const prior = priorSamples.get(directory)
+  const previous =
+    prior && nowMs - prior.sampled_ms >= PRIOR_SAMPLE_MIN_MS
+      ? prior.record
+      : null
+
+  record.process_state = classifyShellRecord(record, previous, table)
+
+  if (!prior || previous) {
+    priorSamples.set(directory, { record, sampled_ms: nowMs })
+  }
+
+  return record
+}
+
 /**
  * The last sample of each record in this process. A watch reads once per wake,
  * so a sample at least this old is the previous wake's and decides `busy` or
@@ -395,60 +465,16 @@ export function readAgentShellRecords(
       continue
     }
 
-    const heartbeat = readHeartbeat(directory, nowMs)
-    const wrapperPid =
-      typeof recordJson.wrapper_pid === 'number' ? recordJson.wrapper_pid : null
-    const pid = typeof recordJson.pid === 'number' ? recordJson.pid : null
-    const partial: AgentShellRecord = {
-      record_path: path.relative(root, path.join(directory, 'record.json')),
-      label: typeof recordJson.label === 'string' ? recordJson.label : null,
-      pid,
-      wrapper_pid: wrapperPid,
-      started_at:
-        typeof recordJson.started_at === 'string'
-          ? recordJson.started_at
-          : null,
-      ended_at:
-        typeof recordJson.ended_at === 'string' ? recordJson.ended_at : null,
-      exit_code:
-        typeof recordJson.exit_code === 'number' ? recordJson.exit_code : null,
-      parent_record:
-        typeof recordJson.parent_record === 'string'
-          ? recordJson.parent_record
-          : null,
-      cursor_conversation_id: conversationId,
-      wrapper_process_identity:
-        typeof recordJson.wrapper_process_identity === 'string'
-          ? recordJson.wrapper_process_identity
-          : null,
-      heartbeat_seconds:
-        typeof recordJson.heartbeat_seconds === 'number'
-          ? recordJson.heartbeat_seconds
-          : null,
-      heartbeat_age_seconds: heartbeat.age_seconds,
-      log_bytes: heartbeat.log_bytes,
-      last_output_at: heartbeat.last_output_at,
-      silent_seconds: heartbeat.silent_seconds,
-      process_state: 'running',
-      tree_cpu_seconds: treeCpuSeconds(pid, table),
+    const record = readShellRecord(
+      root,
+      path.relative(root, directory),
+      nowMs,
+      table,
+    )
+
+    if (record) {
+      records.push(record)
     }
-
-    const prior = priorSamples.get(directory)
-    const previous =
-      prior && nowMs - prior.sampled_ms >= PRIOR_SAMPLE_MIN_MS
-        ? prior.record
-        : null
-
-    partial.process_state = classifyShellRecord(partial, previous, table)
-
-    if (!prior || previous) {
-      priorSamples.set(directory, {
-        record: partial,
-        sampled_ms: nowMs,
-      })
-    }
-
-    records.push(partial)
   }
 
   records.sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''))
