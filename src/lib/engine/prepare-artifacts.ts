@@ -42,6 +42,7 @@ import {
 } from '../validation.js'
 
 import { recordGovernanceArtifactIssues } from './core.js'
+import { prepareVerificationExecution } from './verification-execution.js'
 
 /** The `prepareInvocation` locals its delegation contract reads. */
 interface InvocationDelegationInput {
@@ -220,6 +221,8 @@ export function writeInvocationArtifacts(
     jsonPath,
   } = input
 
+  prepareVerificationExecution(root, state, invocation)
+
   if (artifactsRequested) {
     scaffoldOperatorBrief(root, {
       source_path: briefSourcePath,
@@ -307,6 +310,13 @@ export function writeInvocationArtifacts(
 
   writeJsonAtomic(resolveInside(root, jsonPath), invocation)
   writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
+
+  if (
+    stage.workspace_policy === 'read_only' &&
+    !fileExists(resolveInside(root, invocation.output.path))
+  ) {
+    scaffoldStageOutput(root, invocation, invocation.output.path)
+  }
 
   if (
     invocation.workflow.slug === 'planning' &&

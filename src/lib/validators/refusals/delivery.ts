@@ -232,6 +232,9 @@ export const PLAN_REFUSALS: readonly StageRefusal[] = [
       'The file a declared path names does not exist, which is a relation to the filesystem.',
   },
   { code: 'plan.case_reruns_profile', paths: ['data.test_plan[]'] },
+  { code: 'plan.execution_shape', paths: ['data.test_plan[]'] },
+  { code: 'plan.execution_required', paths: ['data.test_plan[]'] },
+  { code: 'plan.execution_operation', paths: ['data.test_plan[]'] },
   { code: 'plan.case_invalid_pan_invocation', paths: ['data.test_plan[]'] },
   {
     code: 'plan.criterion_unproducible',

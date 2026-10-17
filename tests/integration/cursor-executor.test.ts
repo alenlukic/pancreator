@@ -17,6 +17,7 @@ import {
 } from '../../src/lib/executors/cursor-agent.js'
 import { expectedCursorModelForSpec } from '../../src/lib/executors/cursor-probe.js'
 import { driveRun } from '../../src/lib/headless-driver.js'
+import { isRecord } from '../../src/lib/io.js'
 import {
   delegateEvidenceWorkers,
   delegateInvocation,
@@ -51,6 +52,38 @@ function withCursorFixture<T>(
 ): T {
   const binary = path.join(root, 'runtime', 'fake-cursor-agent')
   const promptPath = path.join(root, 'runtime', 'cursor-prompt.txt')
+  const probePath = path.join(root, 'runtime', 'cursor-hook-probe.cjs')
+  const proofPath = path.join(root, 'runtime', 'cursor-hook-proof.jsonl')
+  const hooks: unknown = JSON.parse(
+    readFileSync(path.join(process.cwd(), 'library/cursor/hooks.json'), 'utf8'),
+  )
+  assert.ok(isRecord(hooks) && isRecord(hooks.hooks))
+  const registered = hooks.hooks.beforeShellExecution
+  assert.ok(Array.isArray(registered))
+  const hook: unknown = registered[0]
+  assert.ok(isRecord(hook) && typeof hook.command === 'string')
+  assert.equal(hook.failClosed, true)
+  const hookPath = hook.command.replace(
+    '{{PANCREATOR_HARNESS_PATH}}',
+    `${process.cwd()}/`,
+  )
+  writeFileSync(
+    probePath,
+    `const { spawnSync } = require('node:child_process');
+const { appendFileSync } = require('node:fs');
+const decisions = ['git status', 'bin/pan-run -- node -e "process.exit(0)"'].map(command => {
+  const result = spawnSync(${JSON.stringify(hookPath)}, {
+    input: JSON.stringify({command, cwd: process.cwd(), workspace_policy: 'source_allowed'}),
+    encoding: 'utf8', timeout: 10000, env: process.env
+  });
+  if (result.error || result.status !== 0) throw result.error || new Error(result.stderr);
+  return { command, ...JSON.parse(result.stdout) };
+});
+appendFileSync(${JSON.stringify(proofPath)}, JSON.stringify({
+  policy: process.env.PANCREATOR_CURSOR_SHELL_POLICY, decisions
+}) + '\\n');
+`,
+  )
 
   const originalBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
   const originalKey = process.env.CURSOR_API_KEY
@@ -71,6 +104,7 @@ function withCursorFixture<T>(
       '  exit 0\n' +
       'fi\n' +
       'cat > "$FAKE_CURSOR_PROMPT_PATH"\n' +
+      `node ${JSON.stringify(probePath)} || exit 1\n` +
       'EVIDENCE=$(sed -n \'s/^Write your complete evidence report as Markdown to `\\([^`]*\\)`.*$/\\1/p\' "$FAKE_CURSOR_PROMPT_PATH" | head -1)\n' +
       'if [ -n "$EVIDENCE" ]; then\n' +
       '  printf \'# evidence\\n\\nFixture report.\\n\' > "$EVIDENCE"\n' +
@@ -121,6 +155,7 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
       installationRoot: root,
       runtimeDir: runtime,
       modelSpec,
+      shellPolicy: 'allow',
       modelVerification: {
         status: 'compared',
         expected_model: 'Expected Variant',
@@ -156,6 +191,7 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
       installationRoot: root,
       runtimeDir: runtime,
       modelSpec,
+      shellPolicy: 'allow',
       modelVerification: {
         status: 'compared',
         expected_model: 'Different Variant',
@@ -172,6 +208,7 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
       installationRoot: root,
       runtimeDir: runtime,
       modelSpec,
+      shellPolicy: 'allow',
       modelVerification: {
         status: 'unverifiable',
         reason: 'fixture reason',
@@ -183,6 +220,57 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
       status: 'unverifiable',
       reason: 'fixture reason',
     })
+  })
+})
+
+function assertHookProof(root: string, expected: ('allow' | 'deny')[]): void {
+  const records = readFileSync(
+    path.join(root, 'runtime', 'cursor-hook-proof.jsonl'),
+    'utf8',
+  )
+    .trim()
+    .split('\n')
+    .map((line): unknown => JSON.parse(line))
+  for (const [index, record] of records.entries()) {
+    assert.ok(isRecord(record) && Array.isArray(record.decisions))
+    assert.equal(record.decisions.length, 2)
+    for (const decision of record.decisions) {
+      assert.ok(isRecord(decision) && typeof decision.command === 'string')
+      assert.equal(decision.permission, expected[index], decision.command)
+      if (expected[index] === 'deny') {
+        assert.ok(typeof decision.agent_message === 'string')
+        assert.match(decision.agent_message, /read-only/u)
+      }
+    }
+  }
+  assert.deepEqual(
+    records.map((record) => {
+      assert.ok(isRecord(record))
+      return record.policy
+    }),
+    expected,
+  )
+}
+
+test('Cursor CLI retains shell denial and runtime writes on session resume', () => {
+  const root = createFixture()
+  withCursorFixture(root, 'Cursor Test Variant', () => {
+    const adapter = createCursorAgentAdapter({
+      kind: 'cursor-cli',
+      workspaceDir: root,
+      installationRoot: root,
+      runtimeDir: path.join(root, 'runtime'),
+      modelSpec: 'test-model',
+      shellPolicy: 'deny',
+      modelVerification: { status: 'unverifiable', reason: 'fixture' },
+      timeoutMs: 10_000,
+    })
+    const first = adapter.run('Read evidence and write the runtime report.')
+    assert.equal(first.ok, true, first.error ?? 'initial launch failed')
+    const resumed = adapter.run('Resolve the report.', first.session_id)
+    assert.equal(resumed.ok, true, resumed.error ?? 'resumed launch failed')
+    assert.ok(resumed.argv.includes('--resume'))
+    assertHookProof(root, ['deny', 'deny'])
   })
 })
 
@@ -274,6 +362,7 @@ test('headless delegation dispatches Cursor and needs no watch record', () => {
       JSON.stringify(driven.state.stage_history.at(-1)),
     )
     assert.equal(driven.state.delegated_workers?.length ?? 0, 0)
+    assertHookProof(root, ['allow'])
   })
 })
 
@@ -319,6 +408,7 @@ test('the driver advances a verify stage whose evidence workers map to Cursor', 
     )
 
     const driven = driveRun(root, run.runId, { maxSteps: 1 })
+    assertHookProof(root, [...workers.map(() => 'deny' as const), 'deny'])
 
     for (const worker of workers) {
       assert.ok(

@@ -28,14 +28,24 @@ export function buildInvocationInputs(
   const references = new Map<string, InvocationReference>()
   const missingRequired: string[] = []
   const { state, stage } = options
+  if (state.approved_plan) {
+    addReference(references, {
+      path: state.approved_plan.output_path,
+      description: 'Approved plan carried from the ratified planning run',
+      retrieval: 'required',
+    })
+  }
 
   if (stage.context.legacy_full_history) {
     return {
-      references: availableReferences(state).map((reference) => ({
-        path: reference.path,
-        description: reference.description,
-        retrieval: 'required',
-      })),
+      references: [
+        ...references.values(),
+        ...availableReferences(state).map<InvocationReference>((reference) => ({
+          path: reference.path,
+          description: reference.description,
+          retrieval: 'required',
+        })),
+      ],
     }
   }
 

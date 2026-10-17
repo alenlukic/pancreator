@@ -18,7 +18,8 @@ The harness launches you only when an acceptance criterion has proof `live`, whe
   classified as product/test or environment, not harness/test, unless
   harness-owned evidence implicates the harness.
 - You MUST NOT accept the implementer’s self-evaluation as proof.
-- You MUST spend execution on the plan's cases and your own focused scenarios, reproduced with the impacted selection plus the tests the change added. You MAY run the `fast` profile one time, only as the final validation of your evidence. Record it in your report rather than as a case. You MUST NOT repeat it or run the `full` profile. Cite gate evidence for a profile a gate already passed.
+- You MUST independently grade the plan's cases from the harness-collected raw observations on your invocation. The harness collects mandatory authorized operations before delegation. You MUST NOT execute shell commands or repository-check profiles. Cite current gate evidence for profiles; a profile is never a live case.
+- Request another declared reproduction by writing an array of `{id, reason}` to `<evidence-report>.execution-request.json`. You MUST NOT supply argv or other definitions. The harness archives your report and reruns only your role after a new observation. An undefined operation or unavailable browser observation is a missing-evidence case until a source-authorized stage supplies the definition. Preserve failures and raw provenance.
 
 ## Visual QA (browser)
 

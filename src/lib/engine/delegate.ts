@@ -3,12 +3,15 @@
  */
 
 import path from 'node:path'
+import { prepareVerificationExecution } from './verification-execution.js'
+import { scaffoldStageOutput } from '../requirements/scaffold.js'
 
 import { PanError, invariant } from '../errors.js'
 import { cursorModelPredictionForSpec } from '../executors/cursor-probe.js'
 import { createCursorAgentAdapter } from '../executors/cursor-agent.js'
 import {
   isRecord,
+  fileExists,
   readJson,
   readText,
   resolveInside,
@@ -51,6 +54,7 @@ import {
   createOpenAiAdapter,
   ensureExecutorReady,
   pauseForExecutorPreflight,
+  stageWriteRoots,
 } from './executors.js'
 
 export interface DelegateInvocationOptions extends OperationProgressOptions {
@@ -101,6 +105,9 @@ export function delegateInvocation(
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
     const invocationId = invocation.invocation_id
+    if (prepareVerificationExecution(root, state, invocation)) {
+      scaffoldStageOutput(root, invocation, invocation.output.path)
+    }
 
     const pipelineConfig = loadRunPipelineConfig(root, state)
     // The invocation carries the persona the prepared card resolved, which for
@@ -169,6 +176,11 @@ export function delegateInvocation(
             workspaceDir,
             installationRoot: root,
             runtimeDir: path.join(root, 'runtime'),
+            shellPolicy: stageWriteRoots(root, workspaceDir, stage).includes(
+              workspaceDir,
+            )
+              ? 'allow'
+              : 'deny',
             modelSpec: mapping.model_spec,
             modelVerification: cursorModelPredictionForSpec(
               root,
@@ -357,6 +369,32 @@ export function delegateInvocation(
         `delegating '${invocation.stage.persona}' to ${executor} (${mapping.model})`,
       )
       result = runExecutor(cardMarkdown)
+    }
+
+    // A read-only verifier selects authority by id. Only genuinely new
+    // observations justify another launch; an unchanged request cannot loop.
+    if (
+      invocation.stage.persona === 'verifier' &&
+      invocation.verification_execution
+    ) {
+      for (
+        let remaining = invocation.verification_execution.operations.length + 1;
+        remaining > 0;
+        remaining -= 1
+      ) {
+        const outputAbsolute = resolveInside(root, invocation.output.path)
+        if (!result.ok || !fileExists(outputAbsolute)) break
+        const output: unknown = readJson(outputAbsolute)
+        const requests =
+          isRecord(output) && isRecord(output.data)
+            ? output.data.verification_execution_requests
+            : undefined
+        if (requests === undefined) break
+        if (!prepareVerificationExecution(root, state, invocation)) break
+        writeExecutorLogs(`.execution-request-${remaining}`, result)
+        scaffoldStageOutput(root, invocation, invocation.output.path)
+        result = runExecutor(cardMarkdown)
+      }
     }
 
     const logs = writeExecutorLogs('', result)

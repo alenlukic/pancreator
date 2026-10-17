@@ -11,7 +11,7 @@
     "The agent MUST record the exact command, target, result, and evidence path for every required automation invocation.",
     "Harness-owned operations and gates MUST remain harness-owned even when an agent runs the same automation for early feedback.",
     {
-      "text": "Planning plan preparation MUST create the stage-output scaffold and run-local specs directory before worker launch, preserving authored output. The stage-scaffold requirement resolves to harness ownership only for the planning workflow's plan-stage planner. Workers in other contexts keep their resolved ownership (`tests/integration/planning-bookkeeping.test.ts::planning preparation supplies unfinished file-only artifacts and preserves authored output`).",
+      "text": "Read-only workflow preparation and dispatch MUST create or restore the stage-output scaffold before worker launch, preserving authored output and archived grading. Their stage-scaffold requirement resolves to harness ownership, and their worker contracts MUST contain no scaffold automation command. Source-authorized contexts retain registered ownership. Planning plan preparation also owns its scaffold and run-local specs directory (`tests/integration/planning-bookkeeping.test.ts::planning preparation supplies unfinished file-only artifacts and preserves authored output`).",
       "audience": ["harness"]
     }
   ],

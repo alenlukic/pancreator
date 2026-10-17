@@ -100,12 +100,20 @@ function agentStateRoots(): string[] {
  * writes, then re-allows writes under the given roots and the temporary,
  * device, and per-user state directories the agent needs.
  */
-export function writeSandboxProfile(writeRoots: string[]): string {
-  const allowed = [...subpaths(writeRoots), ...subpaths(agentStateRoots())]
+export function writeSandboxProfile(
+  writeRoots: string[],
+  strict = false,
+  denySubprocesses = false,
+): string {
+  const allowed = [
+    ...subpaths(writeRoots),
+    ...(strict ? ['/dev/null'] : subpaths(agentStateRoots())),
+  ]
 
   return [
     '(version 1)',
     '(allow default)',
+    ...(denySubprocesses ? ['(deny process-fork)'] : []),
     '(deny file-write*)',
     `(allow file-write* ${allowed
       .map((directory) => `(subpath ${quoted(directory)})`)
@@ -127,7 +135,10 @@ function unavailable(reason: string, writeRoots: string[]): WriteSandbox {
  * back to observing the filesystem and MUST record the reason, because an
  * unenforced boundary that nobody records is the state this exists to end.
  */
-export function resolveWriteSandbox(writeRoots: string[]): WriteSandbox {
+export function resolveWriteSandbox(
+  writeRoots: string[],
+  options: { strict?: boolean; denySubprocesses?: boolean } = {},
+): WriteSandbox {
   if (writeRoots.length === 0) {
     return unavailable('The caller granted no write roots to enforce.', [])
   }
@@ -151,7 +162,11 @@ export function resolveWriteSandbox(writeRoots: string[]): WriteSandbox {
     ])
   }
 
-  const profile = writeSandboxProfile(writeRoots)
+  const profile = writeSandboxProfile(
+    writeRoots,
+    options.strict,
+    options.denySubprocesses,
+  )
 
   return {
     mode: 'sandbox-exec',

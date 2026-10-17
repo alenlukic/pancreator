@@ -456,6 +456,7 @@ export interface Invocation {
    * evidence report is missing.
    */
   evidence_workers?: InvocationEvidenceWorker[]
+  verification_execution?: import('./verification-execution.js').VerificationExecutionContract
   /** Declared evidence workers whose `run_when` kept them off this visit. */
   evidence_worker_skips?: EvidenceWorkerSkip[]
   /**

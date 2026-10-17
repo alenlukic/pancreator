@@ -1,12 +1,13 @@
 /** Cohort plan parsing and the ratified planning artifact it reads. */
 
 import { invariant } from '../errors.js'
-import { isRecord, readJson, resolveInside } from '../io.js'
+import { isRecord, readJson, readText, resolveInside, sha256 } from '../io.js'
 import { loadState } from '../state.js'
 import type {
   CohortChunkRecord,
   CohortDependencyEdge,
   CohortGroupRecord,
+  RunState,
 } from '../types.js'
 import { COHORT_PLAN_WORKFLOW_SLUG } from './state.js'
 import { requireString } from './chunks.js'
@@ -174,6 +175,30 @@ function ratifiedPlanOutputPath(root: string, planRunId: string): string {
   )
 
   return ratified.output_path
+}
+
+/** Pin the successful planning output before creating any delivery run. */
+export function ratifiedPlanReference(
+  root: string,
+  planRunId: string,
+): NonNullable<RunState['approved_plan']> {
+  const outputPath = ratifiedPlanOutputPath(root, planRunId)
+  const state = loadState(root, planRunId)
+  const record = state.stage_history.find(
+    (item) =>
+      item.stage === 'plan' &&
+      item.outcome === 'success' &&
+      item.output_path === outputPath,
+  )
+  invariant(record, 'Ratified plan record is missing.', {
+    code: 'COHORT_PLAN_NOT_RATIFIED',
+  })
+  return {
+    run_id: planRunId,
+    output_path: outputPath,
+    invocation_id: record.invocation_id,
+    sha256: sha256(readText(resolveInside(root, outputPath))),
+  }
 }
 
 /** Cohort plan recorded by a ratified planning run. */

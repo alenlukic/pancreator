@@ -137,6 +137,13 @@ export interface RunState {
   design_composition?: true
   /** Delivery the approval of this planning run started. */
   delivery_handoff?: DeliveryHandoff
+  /** Immutable execution authority carried across the planning/delivery boundary. */
+  approved_plan?: {
+    run_id: string
+    output_path: string
+    invocation_id: string
+    sha256: string
+  }
   title: string
   status: RunStatus
   current_stage: string | null

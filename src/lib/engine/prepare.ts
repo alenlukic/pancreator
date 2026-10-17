@@ -4,6 +4,8 @@
  */
 
 import path from 'node:path'
+import { prepareVerificationExecution } from './verification-execution.js'
+import { scaffoldStageOutput } from '../requirements/scaffold.js'
 import {
   prepareVerificationEvidence,
   verificationEvidencePacketPath,
@@ -228,6 +230,9 @@ export function prepareInvocation(
 
       if (prepared.stage.persona === 'verifier') {
         prepareVerificationEvidence(root, state, prepared)
+        if (prepareVerificationExecution(root, state, prepared)) {
+          scaffoldStageOutput(root, prepared, prepared.output.path)
+        }
       }
 
       return { state, invocation: prepared, advisories }
@@ -473,6 +478,7 @@ export function prepareInvocation(
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
+      workspace_policy: stage.workspace_policy,
       contracts,
       invocation: {
         output_path: outputPath,
@@ -691,9 +697,11 @@ export function prepareInvocation(
         // accepts, so a delegated worker never reconstructs it from the
         // requirement table and never reaches for the Markdown contract.
         ...(stage.persona === 'orchestrator' ||
-        (workflow.slug === 'planning' &&
-          stage.slug === 'plan' &&
-          stage.persona === 'planner')
+        requirements.automation_requirements.some(
+          (requirement) =>
+            requirement.registry_id === 'STAGE-SCAFFOLD-001' &&
+            requirement.executor === 'harness',
+        )
           ? {}
           : {
               scaffold_command:

@@ -29,6 +29,7 @@ import {
   unstartedChunksOfCohort,
 } from './chunks.js'
 import { lastIntegratedCohort } from './integration.js'
+import { ratifiedPlanReference } from './plan.js'
 import {
   newestRun,
   planRunInvolvement,
@@ -96,6 +97,9 @@ export function startReleaseRun(
       workspace: record.path,
       worktree: { name: record.name, path: record.path, branch: record.branch },
       contextReferencePath: state.parent_spec_path,
+      approvedPlan: fileExists(statePath(root, state.plan_run_id))
+        ? ratifiedPlanReference(root, state.plan_run_id)
+        : undefined,
       involvement: planRunInvolvement(root, state),
       design: state.design_composition,
       // The chunk runs are the implementation record of this run, so the
