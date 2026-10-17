@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Append the current operating principles as the final prompt-context reminder, including prompts excluded from other role guidance ([prompt context](docs/cursor-hook-context-probe.md)).
+
 ## [9.4.0] - 2026-10-17
 
 ### Changed
