@@ -252,7 +252,12 @@ export function validateSharedFieldContract(
     }
   }
 
-  for (const result of ['unevaluated', 'skipped', 'not_applicable']) {
+  for (const result of [
+    'unevaluated',
+    'pending_harness',
+    'skipped',
+    'not_applicable',
+  ]) {
     const meaning = source.criterion_results[result]
 
     if (typeof meaning !== 'string' || meaning.trim().length === 0) {

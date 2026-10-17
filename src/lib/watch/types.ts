@@ -126,6 +126,8 @@ export interface WatchedPathObservation {
 }
 
 export interface WatchObservation {
+  /** Process-backed executors require a final exit/result audit to complete. */
+  executor_process_pending?: boolean
   observed_at: string
   output_path: string
   output_present: boolean

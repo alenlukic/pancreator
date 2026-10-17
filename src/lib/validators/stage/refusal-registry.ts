@@ -228,6 +228,24 @@ const VERIFY_FIELD_REFUSALS: readonly StageRefusal[] = [
  */
 const VERIFY_UNOWNED_REFUSALS: readonly StageRefusal[] = [
   {
+    code: 'verify.incoming_missing',
+    paths: [],
+    unowned_reason:
+      'Required incoming evidence must be available in the invocation packet, not supplied through a worker output field.',
+  },
+  {
+    code: 'verify.incoming_stale',
+    paths: [],
+    unowned_reason:
+      'Incoming gate evidence must match the packet workspace fingerprint, which is a relation between harness-owned records.',
+  },
+  {
+    code: 'verify.execution_evidence',
+    paths: [],
+    unowned_reason:
+      'Passing verification depends on current harness-owned observations and pinned invocation authority, not a worker output field.',
+  },
+  {
     code: 'verify.dimension_missing',
     paths: [],
     unowned_reason:

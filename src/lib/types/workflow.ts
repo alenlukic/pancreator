@@ -16,6 +16,7 @@ export type CriterionResultValue =
   | 'fail'
   | 'not_applicable'
   | 'unevaluated'
+  | 'pending_harness'
   | 'skipped'
 
 export type JsonTypeName = 'object' | 'array' | 'string' | 'number' | 'boolean'

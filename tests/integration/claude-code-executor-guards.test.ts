@@ -266,13 +266,21 @@ test('a Copilot supervisor requires the VS Code host and stays in the operator s
     >
   }
 
-  config.defaults.orchestrator =
-    'copilot:gpt-5.6-sol[provider=openai,effort=high]'
+  config.defaults.orchestrator = 'open:ultra'
+  const overridesPath = path.join(root, 'config_overrides.json')
+  const overrides = JSON.parse(readFileSync(overridesPath, 'utf8')) as {
+    model_config: Record<string, Record<string, string>>
+  }
+  overrides.model_config.open = {
+    ...overrides.model_config.open,
+    ultra: 'copilot:gpt-5.6-sol[provider=openai,effort=high]',
+  }
   for (const profile of Object.values(config.configs)) {
     delete profile.orchestrator
     if (profile.personas) delete profile.personas.orchestrator
   }
   writeFileSync(configPath, JSON.stringify(config))
+  writeFileSync(overridesPath, JSON.stringify(overrides))
   syncCursorProjection(root, { write: true })
 
   assert.throws(

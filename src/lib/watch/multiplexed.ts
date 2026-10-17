@@ -402,7 +402,12 @@ export async function watchInvocations(
       appendJsonLine(item.recordAbsolute, sessionStart)
       options.onSessionStart?.(sessionStart)
 
-      const initial = observeInvocation(root, item.invocation, cadenceSeconds)
+      const initial = observeInvocation(
+        root,
+        item.invocation,
+        cadenceSeconds,
+        now(),
+      )
 
       item.initial = initial
       item.previousFingerprint = initial.fingerprint
@@ -575,6 +580,7 @@ export async function watchInvocations(
           root,
           item.invocation,
           cadenceSeconds,
+          now(),
         )
 
         snapshotBlockedOutput(

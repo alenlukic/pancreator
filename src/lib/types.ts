@@ -205,3 +205,7 @@ export type {
   TaskRecord,
   WorkspaceSetupRecord,
 } from './types/supervisor.js'
+export type {
+  VerificationExecutionOperation,
+  VerificationExecutionEvidence,
+} from './types/verification-execution.js'

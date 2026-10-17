@@ -187,9 +187,10 @@ function toResolvedRequirement(
     executor:
       requirement.registry_id === 'STAGE-SCAFFOLD-001' &&
       normalizedInvocationKind(context) === 'workflow' &&
-      context.workflow === 'planning' &&
-      context.stage === 'plan' &&
-      context.persona === 'planner'
+      (context.workspace_policy === 'read_only' ||
+        (context.workflow === 'planning' &&
+          context.stage === 'plan' &&
+          context.persona === 'planner'))
         ? 'harness'
         : requirement.executor,
     target: requirement.target,

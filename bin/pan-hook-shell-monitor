@@ -16,6 +16,19 @@ import json
 import os
 import re
 
+# The adapter sets this in the child environment from the stage policy.
+# Payload fields and command assignments cannot override that launch decision.
+shell_policy = os.environ.get("PANCREATOR_CURSOR_SHELL_POLICY", "allow")
+if shell_policy != "allow":
+    message = (
+        "Shell execution is unavailable to this read-only worker. "
+        "Use file tools for declared runtime artifacts and harness-collected evidence for observations."
+        if shell_policy == "deny"
+        else "Shell execution denied: invalid Cursor launch shell policy."
+    )
+    print(json.dumps({"permission": "deny", "user_message": message[:200], "agent_message": message}))
+    raise SystemExit(0)
+
 # SHELL-MONITOR-VALIDATE-001 compares this list with the DELEGATE-001 allowlist.
 ALLOWLIST = ["git status", "git log", "git diff", "git show", "git rev-parse", "ls", "rg", "cat", "pwd", "ps"]
 

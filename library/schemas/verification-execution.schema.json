@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator/verification-execution/v1",
+  "title": "Verification execution contract v1",
+  "description": "Harness-owned raw observations, not product or browser verdicts. Authority and currency are also checked against the invocation and source.",
+  "oneOf": [
+    { "$ref": "#/$defs/operation" },
+    { "$ref": "#/$defs/evidence" },
+    { "$ref": "#/$defs/manifest" }
+  ],
+  "$defs": {
+    "paths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "argv",
+        "cwd",
+        "timeout_ms",
+        "write_roots",
+        "evidence_paths"
+      ],
+      "anyOf": [{ "required": ["criterion"] }, { "required": ["finding"] }],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "criterion": { "type": "string", "minLength": 1 },
+        "finding": { "type": "string", "minLength": 1 },
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "type": "string", "maxLength": 899 }
+        },
+        "cwd": { "type": "string", "minLength": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1, "maximum": 120000 },
+        "write_roots": { "$ref": "#/$defs/paths", "minItems": 1 },
+        "evidence_paths": { "$ref": "#/$defs/paths" },
+        "required": { "type": "boolean", "default": true }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "invocation_id", "authority"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "minLength": 1 },
+        "invocation_id": { "type": "string", "minLength": 1 },
+        "authority": { "enum": ["approved_plan", "source_allowed"] }
+      }
+    },
+    "gap": {
+      "type": "object",
+      "required": ["id", "reason"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "run_id",
+        "invocation_id",
+        "attempt",
+        "operation_id",
+        "definition_sha256",
+        "source_fingerprint",
+        "source",
+        "argv",
+        "cwd",
+        "timeout_ms",
+        "write_roots",
+        "evidence_paths",
+        "started_at",
+        "ended_at",
+        "duration_ms",
+        "exit_code",
+        "signal",
+        "timed_out",
+        "status",
+        "stdout",
+        "stderr",
+        "observations",
+        "enforcement"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "run_id": { "type": "string", "minLength": 1 },
+        "invocation_id": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "operation_id": { "type": "string", "minLength": 1 },
+        "definition_sha256": { "type": "string", "minLength": 1 },
+        "source_fingerprint": { "type": ["string", "null"] },
+        "source": { "$ref": "#/$defs/source" },
+        "argv": { "$ref": "#/$defs/paths" },
+        "cwd": { "type": "string" },
+        "timeout_ms": { "type": "integer", "minimum": 1, "maximum": 120000 },
+        "write_roots": { "$ref": "#/$defs/paths" },
+        "evidence_paths": { "$ref": "#/$defs/paths" },
+        "started_at": { "type": "string" },
+        "ended_at": { "type": "string" },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "exit_code": { "type": ["integer", "null"] },
+        "signal": { "type": ["string", "null"] },
+        "timed_out": { "type": "boolean" },
+        "status": { "enum": ["collected", "failed", "gap"] },
+        "error": { "type": "string" },
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "content", "sha256"],
+            "properties": {
+              "path": { "type": "string" },
+              "content": { "type": "string" },
+              "sha256": { "type": "string" }
+            }
+          }
+        },
+        "enforcement": {
+          "type": "object",
+          "required": ["mode", "reason"],
+          "properties": {
+            "mode": { "enum": ["none", "sandbox-exec"] },
+            "reason": { "type": "string" },
+            "processes": {
+              "enum": ["single-process", "unverified"],
+              "description": "Absent legacy containment evidence is nonpassing and requires recollection."
+            }
+          }
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "run_id",
+        "invocation_id",
+        "attempt",
+        "source_fingerprint",
+        "records",
+        "gaps",
+        "history"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "run_id": { "type": "string" },
+        "invocation_id": { "type": "string" },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "source_fingerprint": { "type": ["string", "null"] },
+        "records": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "gaps": { "type": "array", "items": { "$ref": "#/$defs/gap" } },
+        "history": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+      }
+    }
+  }
+}

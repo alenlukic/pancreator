@@ -448,17 +448,20 @@ test('a returning verification bounds execution by the remediation blast radius'
     qaWorker(),
   )
 
-  // The brief asks for execution over the blast radius and citation for the
+  // The brief asks for independent grading over the blast radius and citation for the
   // rest, and says plainly that no profile allowance moved.
   assert.match(brief, /return visit after remediation `remediate-1`/u)
-  assert.match(brief, /Execute the cases your scope reaches/u)
+  assert.match(
+    brief,
+    /Grade current harness-collected observations for the cases your scope reaches/u,
+  )
   assert.ok(brief.includes('- `src/lib/narrow.ts`'))
   assert.doesNotMatch(brief, /src\/lib\/wide\.ts/u)
   assert.match(brief, /Carry every other case forward/u)
   assert.match(brief, /`carried_from`/u)
   assert.match(brief, /changes no profile allowance/u)
   assert.match(brief, /MUST NOT run a cost-bearing or mutating/u)
-  assert.match(brief, /read-only single-command profile remains allowed/u)
+  assert.match(brief, /any shell command, or a repository-check profile/u)
   assert.doesNotMatch(brief, /When your scope allows one validation run/u)
 
   // An empty blast radius is the shape a successful remediation that
@@ -482,7 +485,10 @@ test('a returning verification bounds execution by the remediation blast radius'
   assert.match(unbounded, /return visit after remediation `remediate-1`/u)
   assert.match(unbounded, /MUST NOT run a cost-bearing or mutating/u)
   assert.doesNotMatch(unbounded, /When your scope allows one validation run/u)
-  assert.match(unbounded, /execute your scope in full and carry no case/u)
+  assert.match(
+    unbounded,
+    /grade current harness-collected observations for your scope in full and carry no case/u,
+  )
   assert.doesNotMatch(unbounded, /Carry every other case forward/u)
 
   // A first visit says none of it.
@@ -682,9 +688,7 @@ test('no shipped return-visit evidence brief offers a profile run anywhere', () 
   }
 })
 
-// The repair must withdraw the offer on a return, not delete it everywhere:
-// a first visit still owes its worker one validation run.
-test('a shipped first-visit evidence brief still offers its one validation run', () => {
+test('a shipped first-visit evidence brief keeps execution harness-owned', () => {
   const root = createFixture()
   const implement = historyItem('implement', 'implement-1', 'fp-before')
 
@@ -715,6 +719,8 @@ test('a shipped first-visit evidence brief still offers its one validation run',
     shippedWorker(stage, 0),
   )
 
-  assert.match(brief, PROFILE_RUN_OFFER)
-  assert.doesNotMatch(brief, /MUST NOT run a cost-bearing or mutating/u)
+  assert.doesNotMatch(brief, PROFILE_RUN_OFFER)
+  assert.match(brief, /MUST NOT run a cost-bearing or mutating/u)
+  assert.match(brief, /The harness owns process execution/u)
+  assert.match(brief, /Independently grade collected raw observations/u)
 })

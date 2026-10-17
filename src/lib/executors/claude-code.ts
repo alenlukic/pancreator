@@ -220,7 +220,16 @@ export function runClaudeCode(
     argv.push('--model', request.model)
   }
 
-  if (request.permissionMode) {
+  const restricted =
+    request.allowedTools !== undefined && !request.allowedTools.includes('Bash')
+
+  if (restricted) {
+    // Approval lists do not remove tools, and bypass mode ignores path grants.
+    const tools = [
+      ...new Set(request.allowedTools?.map((tool) => tool.split('(')[0])),
+    ]
+    argv.push('--tools', tools.join(','), '--permission-mode', 'default')
+  } else if (request.permissionMode) {
     argv.push('--permission-mode', request.permissionMode)
   }
 

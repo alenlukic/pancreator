@@ -9,8 +9,66 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import type { Invocation } from '../../src/lib/types.js'
+import { delegationExecutionPath } from '../../src/lib/validation/artifacts.js'
+import { executorProcessActivity } from '../../src/lib/watch/executor-process.js'
 import { watchProcess } from '../../src/lib/watch.js'
 import { createTestTempDirectory } from '../temp.js'
+
+test('AC-10: Copilot completion requires a matching final audit with exit and result evidence', () => {
+  const root = createTestTempDirectory('copilot-final-audit-')
+  const now = Date.now()
+  const invocation = {
+    run_id: 'audit-run',
+    invocation_id: 'audit-inv',
+    attempt: 1,
+    created_at: new Date(now - 1000).toISOString(),
+    stage: { slug: 'implement', persona_executor: 'copilot' },
+  } as Invocation
+  const auditPath = path.join(
+    root,
+    delegationExecutionPath(invocation.run_id, invocation.invocation_id, root),
+  )
+  mkdirSync(path.dirname(auditPath), { recursive: true })
+  for (const [fields, status] of [
+    [{}, 'completed'],
+    [{ exit_code: 7 }, 'error'],
+    [{ exit_code: null, timed_out: true }, 'error'],
+    [{ session_id: undefined }, 'error'],
+    [{ session_id: '' }, 'error'],
+    [{ is_error: true }, 'error'],
+    [{ failure_reason: 'missing_result' }, 'error'],
+    [{ exit_code: null }, undefined],
+    [{ exit_code: undefined }, undefined],
+    [{ run_id: 'wrong' }, undefined],
+    [{ invocation_id: 'wrong' }, undefined],
+    [{ executor: 'cursor' }, undefined],
+    [{ stage: 'verify' }, undefined],
+    [{ recorded_at: new Date(now - 2000).toISOString() }, undefined],
+    [{ recorded_at: new Date(now + 1000).toISOString() }, undefined],
+  ] as const) {
+    writeFileSync(
+      auditPath,
+      JSON.stringify({
+        schema_version: 1,
+        run_id: invocation.run_id,
+        invocation_id: invocation.invocation_id,
+        stage: 'implement',
+        executor: 'copilot',
+        recorded_at: new Date(now).toISOString(),
+        exit_code: 0,
+        timed_out: false,
+        session_id: 'result-session',
+        ...fields,
+      }),
+    )
+    assert.equal(
+      executorProcessActivity(root, invocation, now)?.stop?.status,
+      status,
+      JSON.stringify(fields),
+    )
+  }
+})
 
 test('AC-008: dead-at-arm path returns exited with numeric status when exit record holds integer code', async () => {
   const root = createTestTempDirectory('watch-process-dead-arm-')

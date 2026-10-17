@@ -228,7 +228,12 @@ export async function watchInvocation(
     // the supervisor commonly resolves one without submitting and the next
     // worker rewrites the same path.
     const observe = (): WatchObservation => {
-      const observation = observeInvocation(root, invocation, cadenceSeconds)
+      const observation = observeInvocation(
+        root,
+        invocation,
+        cadenceSeconds,
+        now(),
+      )
 
       snapshotBlockedOutput(root, runId, invocationId)
 

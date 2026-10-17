@@ -28,6 +28,16 @@ export interface StageOutputValidationOptions {
   pendingArtifactPaths?: string[]
 }
 
+/** Shell entries in the resolved rubric are executed by the harness, not the worker. */
+export function isHarnessShellCriterion(
+  invocation: Pick<Invocation, 'rubric'>,
+  id: string,
+): boolean {
+  return invocation.rubric.some(
+    (criterion) => criterion.id === id && criterion.type === 'shell',
+  )
+}
+
 function valueAt(object: Record<string, unknown>, dottedPath: string): unknown {
   let value: unknown = object
 
@@ -94,6 +104,7 @@ function normalizeCriteria(value: unknown): CriterionEvaluation[] {
       item.result === 'pass' ||
       item.result === 'fail' ||
       item.result === 'not_applicable' ||
+      item.result === 'pending_harness' ||
       item.result === 'skipped'
         ? item.result
         : item.result === 'unevaluated'
@@ -350,12 +361,13 @@ export function validateStageOutput(
         item.result !== 'fail' &&
         item.result !== 'not_applicable' &&
         item.result !== 'unevaluated' &&
+        item.result !== 'pending_harness' &&
         item.result !== 'skipped'
       ) {
         addIssue(
           'criterion.result',
           `criteria '${item.id}' result MUST be pass, fail, not_applicable, ` +
-            `unevaluated, or skipped (got ${JSON.stringify(item.result)})`,
+            `unevaluated, pending_harness, or skipped (got ${JSON.stringify(item.result)})`,
         )
       }
     }
@@ -402,6 +414,18 @@ export function validateStageOutput(
       )
     }
 
+    if (
+      evaluation.result === 'pending_harness' &&
+      (criterion.type !== 'shell' ||
+        !isHarnessShellCriterion(invocation, criterion.id))
+    ) {
+      addIssue(
+        'criterion.pending_harness',
+        `Criterion '${criterion.id}' may use pending_harness only when the ` +
+          'resolved invocation assigns this shell criterion to the harness',
+      )
+    }
+
     if (evaluation.result === 'skipped') {
       if (output.result === 'success') {
         addIssue(
@@ -424,7 +448,7 @@ export function validateStageOutput(
       }
     }
 
-    if (evaluation.result === 'unevaluated' && criterion.type !== 'shell') {
+    if (evaluation.result === 'unevaluated') {
       addIssue(
         'criterion.unevaluated',
         `Criterion '${criterion.id}' remains unevaluated and cannot be submitted`,

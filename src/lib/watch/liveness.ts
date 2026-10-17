@@ -16,7 +16,7 @@ export type AgentLivenessState =
 
 export interface AgentLiveness {
   state: AgentLivenessState
-  basis: 'transcript' | 'hook_stop' | 'hook_events' | null
+  basis: 'transcript' | 'hook_stop' | 'hook_events' | 'process' | null
   turn_open: boolean
   open_call_tool: string | null
   open_call_age_seconds: number | null
@@ -54,7 +54,12 @@ export function agentLiveness(activity: AgentActivity | null): AgentLiveness {
   if (activity.stop) {
     return {
       state: activity.stop.status === 'completed' ? 'finished' : 'failed',
-      basis: activity.stop.source === 'transcript' ? 'transcript' : 'hook_stop',
+      basis:
+        activity.stop.source === 'process'
+          ? 'process'
+          : activity.stop.source === 'transcript'
+            ? 'transcript'
+            : 'hook_stop',
       turn_open: false,
       open_call_tool: null,
       open_call_age_seconds: null,
@@ -76,7 +81,7 @@ export function agentLiveness(activity: AgentActivity | null): AgentLiveness {
 
     return {
       state: activity.open_call.shell_heartbeat ? 'in_shell' : 'in_tool',
-      basis: 'hook_events',
+      basis: activity.liveness?.basis === 'process' ? 'process' : 'hook_events',
       turn_open: turnOpen,
       open_call_tool: activity.open_call.tool,
       open_call_age_seconds: ageSeconds,

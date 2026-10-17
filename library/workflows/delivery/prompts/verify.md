@@ -30,8 +30,8 @@ remain blockers. Do not invent proof or hide a failure.
 ## Steps
 
 On a scoped return visit the card carries a `Scoped return visit` section and
-lists no evidence report. Then no evidence worker ran: read no report, execute
-the cases the blast radius reaches yourself for each dimension the section
+lists no evidence report. Then no evidence worker ran: read no report, grade
+the harness-collected cases the blast radius reaches for each dimension the section
 assigns, and record each dimension under `data.verify.dimensions` as the
 Output section states. For the review dimension, confirm each prior finding
 of the routing verdict as fixed or still open. A new finding in code the
@@ -66,23 +66,31 @@ not block the verdict.
    evidence establishes completeness. Retain partial observations and state
    which dimensions genuinely lack proof.
 2. Reconcile the reports. Where two of them disagree about the same behavior,
-   reproduce the disputed observation yourself before grading it.
-3. Spot-check, do not redo. Verify the reports' critical claims: rerun one
+   grade the harness-collected reproduction before resolving the disagreement.
+   Request a missing declared observation in
+   `data.verification_execution_requests` as an array of `{id, reason}`.
+   Requests MUST NOT carry executable definitions.
+3. Spot-check, do not redo. Grade the raw observations for one
    or two pivotal QA cases, read the diff hunks behind the highest-severity
    review findings, and confirm each acceptance criterion is actually covered
    by evidence rather than assertion. Fill any dimension the reports left
-   uncovered with your own bounded checks.
+   uncovered with independent file inspection or an authorized observation.
 4. Read `runtime/repository-checks.json` and preserve the target's documented
-   profile boundaries. Use the impacted selection or the narrowest affected test
-   for spot checks. After evidence correctness and the other required verify
-   checks pass, own the final `fast` profile check. The harness may run it on your
-   behalf and append its actual result to the same packet. The final gate is
+   profile boundaries. You MUST NOT execute shell commands or profiles. The
+   harness collects authorized bounded observations before delegation, runs
+   profiles, and applies final output validators. Cite current gate evidence.
+   The harness appends the actual final `fast` result to the same packet. Its gate is
    `fast`. Ship and release commands run no tests or validation checks. A failing
    verdict forwards to remediate without a suite run. Any browser inspection
    during reproduction follows `BROWSER-001` and the guidance on the invocation.
    Classify an intermittent timeout of a configured target check as product/test
    or environment rather than harness/test, unless harness evidence implicates
    the harness.
+   Undefined operations use the existing blocked route: `result: blocked`,
+   `data.verify.blocking_reason`, and non-empty `missing_evidence_paths`, without
+   a product verdict. A source-authorized stage supplies missing authority.
+   Missing or stale observations cannot support a pass. Terminal stdout alone
+   cannot establish a genuine browser verdict.
 5. Join everything into one findings list. Each finding carries `source`
    naming the evidence worker that produced it — `review` or `qa`, and
    `design-review` or `design-qa` on a design-composed run — a severity, a
@@ -133,8 +141,8 @@ Populate `data.verify` (`verdict`, `findings`, `qa_cases`, `acceptance_results`,
 `evidence_packet`; `remediation_guidance` on any failing verdict;
 `severity_rationale` on `fail_severe`). `evidence_packet` extends the incoming
 cumulative packet and preserves raw provenance and repair records. Apply the
-resolved verify validators to corrected runtime evidence without changing actual
-signal. When QA ran, carry the QA report's executed cases into `qa_cases` — each
+resolved verify contract to corrected runtime evidence without changing actual
+signal; the harness runs its validators. When QA ran, carry the QA report's executed cases into `qa_cases` — each
 states `id`, `steps`, `expected`, `actual`, and `result` — and cite the evidence
 report path for cases you did not rerun. When QA did not run, `qa_cases` is not owed.
 On a return visit after a remediation, a case carried from the earlier

@@ -37,7 +37,10 @@ import {
   watchLockPath,
   watchRecordPath,
 } from './paths.js'
-import { executorProcessActivity } from './executor-process.js'
+import {
+  executorProcessActivity,
+  processBackedExecutor,
+} from './executor-process.js'
 import { launchedMsFromRecord, readLaunchRecord } from './launch.js'
 import { BLOCKED_OUTPUT_SNAPSHOT_PATTERN } from './blocked-snapshot.js'
 
@@ -93,7 +96,11 @@ export function invocationEvidencePaths(
 
   try {
     for (const name of readdirSync(evidenceDir.absolute)) {
-      if (name.startsWith(invocationId) && !own.has(name)) {
+      if (
+        name.startsWith(invocationId) &&
+        !own.has(name) &&
+        !name.endsWith('.live.json')
+      ) {
         paths.add(path.posix.join(evidenceDir.relative, name))
       }
     }
@@ -307,7 +314,7 @@ export function watchedAgentActivity(
 ): AgentActivity | null {
   const agentId = watchedAgentId(root, invocation)
 
-  return agentId
+  const indexed = agentId
     ? readAgentActivity(
         root,
         agentId,
@@ -315,7 +322,18 @@ export function watchedAgentActivity(
         cadenceSeconds,
         invocationNotBeforeMs(invocation),
       )
-    : executorProcessActivity(root, invocation, nowMs)
+    : null
+  const processActivity = executorProcessActivity(root, invocation, nowMs)
+
+  if (processBackedExecutor(invocation)) {
+    if (processActivity?.stop || indexed?.stop) {
+      return processActivity
+    }
+    if (!indexed?.open_call && indexed?.transcript?.readable !== true) {
+      return processActivity ?? indexed
+    }
+  }
+  return indexed ?? processActivity
 }
 
 /**
@@ -327,13 +345,12 @@ export function watchedAgentStopped(
   root: string,
   invocation: Invocation,
 ): boolean {
-  const agentId = watchedAgentId(root, invocation)
-
-  if (agentId === null) {
+  if (processBackedExecutor(invocation)) {
     return executorProcessActivity(root, invocation, Date.now())?.stop != null
   }
-
+  const agentId = watchedAgentId(root, invocation)
   return (
+    agentId !== null &&
     readAgentStop(
       root,
       agentId,
@@ -385,6 +402,7 @@ export function observeInvocation(
   root: string,
   invocation: Invocation,
   cadenceSeconds: number = DEFAULT_WATCH_CADENCE_SECONDS,
+  nowMs: number = Date.now(),
 ): WatchObservation {
   const outputPath = invocation.output.path
   const outputAbsolute = resolveInside(root, outputPath)
@@ -445,6 +463,7 @@ export function observeInvocation(
       name.endsWith('-delegation-background.json') ||
       name.endsWith('-evidence-ready.json') ||
       name.endsWith('-launch.json') ||
+      name.endsWith('.live.json') ||
       name.endsWith('.delegation.md') ||
       BLOCKED_OUTPUT_SNAPSHOT_PATTERN.test(name) ||
       name === 'events.jsonl' ||
@@ -456,7 +475,7 @@ export function observeInvocation(
   const workspaceChanged = outputPresent
     ? null
     : workspaceChangedFromInvocation(root, invocation)
-  const observedMs = Date.now()
+  const observedMs = nowMs
   const agentActivity = watchedAgentActivity(
     root,
     invocation,
@@ -489,6 +508,9 @@ export function observeInvocation(
       ? { workspace_changed_from_invocation: workspaceChanged }
       : {}),
     ...(agentActivity ? { agent_activity: agentActivity } : {}),
+    ...(processBackedExecutor(invocation)
+      ? { executor_process_pending: !agentActivity?.stop }
+      : {}),
     fingerprint,
   }
 }

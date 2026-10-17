@@ -254,14 +254,34 @@ export function renderSupervisorProcedureBody(
               'dimension.',
           ]
         : []),
+    ...(invocation.verification_execution
+      ? [
+          `1c. After evidence workers finish, run \`pan prepare ${invocation.run_id}\` ` +
+            'to consume execution-request sidecars. Preparation collects only pinned ' +
+            'definitions, preserves prior reports, and removes only reports that need ' +
+            'another grading. Relaunch each missing consumer through the existing ' +
+            'worker-attempt command and watch it before launching the stage worker.',
+        ]
+      : []),
     ...deliverySteps,
+    ...(invocation.requirements?.automation_requirements.some(
+      (requirement) =>
+        requirement.registry_id === 'STAGE-SCAFFOLD-001' &&
+        requirement.executor === 'harness',
+    )
+      ? [
+          '3. The harness owns output scaffold automation and restores it before ' +
+            'each launch that needs new grading. Scaffold presence does not prove ' +
+            'worker activity; inspect the watch and agent state.',
+        ]
+      : []),
     ...(!externalDelegation && delegation.watch_command
       ? [
           '3a. Read the verdict the step-2a watch produced. Expect ' +
             'the output file to exist within seconds of the launch and to ' +
-            'stay unchanged for a while: `AUTO-001` requires the worker to ' +
-            'scaffold it before it starts work, so its presence marks a ' +
-            'worker that began. The watch knows that file and does not ' +
+            'stay unchanged for a while. The resolved scaffold owner prepares ' +
+            'it before grading; its presence alone proves no worker activity. ' +
+            'The watch knows that file and does not ' +
             'count it as a finished worker, so a present output early in a ' +
             'run is expected rather than a false positive to investigate. ' +
             'What the watch cannot read is the agent: when it reports ' +
@@ -269,6 +289,16 @@ export function renderSupervisorProcedureBody(
             'the watch with `--agent-state running` or `--agent-state ' +
             'completed`. Submission refuses anything short of a completed ' +
             'wake with `DELEGATION_UNOBSERVED`.',
+        ]
+      : []),
+    ...(invocation.verification_execution
+      ? [
+          `3c. If the final output requests verification execution, run ` +
+            `\`pan prepare ${invocation.run_id}\` before validation. New observations ` +
+            'archive that output and restore its scaffold; relaunch and watch the ' +
+            'same verifier to grade them. An unchanged request preserves completed ' +
+            'work and cannot trigger another launch. Missing definitions require ' +
+            'blocked verification and a source-authorized recovery.',
         ]
       : []),
     ...(delegation.output_validate_command

@@ -173,6 +173,9 @@ export function formatWakeLine(entry: WatchRecordEntry): string {
     `${entry.recorded_at}: ${output}, ` +
     `${entry.changed ? 'changed' : `unchanged x${entry.unchanged_wakes ?? 0}`}` +
     suffix +
+    (observation?.agent_activity?.liveness?.basis === 'process'
+      ? ' basis:process'
+      : '') +
     formatOpenCallSuffix(observation?.agent_activity)
   )
 }

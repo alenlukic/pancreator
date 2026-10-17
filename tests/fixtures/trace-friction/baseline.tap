@@ -1,0 +1,20 @@
+TAP version 13
+# heartbeat 30s: 4 passed, 1 failed, 2 files done
+# Subtest: retains assertion hashes
+not ok 5 - retains assertion hashes
+  ---
+  duration_ms: 10.123
+  type: 'test'
+  location: '/workspace/tests/value.test.ts:10:2'
+  error: 'values differ'
+  code: 'ERR_ASSERTION'
+  expected: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  actual: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/tests/value.test.ts:12:3)
+  ...
+1..5
+# tests 5
+# pass 4
+# fail 1

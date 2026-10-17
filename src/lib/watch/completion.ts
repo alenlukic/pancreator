@@ -103,6 +103,10 @@ export function completionEvidenceForObservation(
     return { strength: 'none' }
   }
 
+  if (observation.executor_process_pending) {
+    return { strength: 'weak', reason: 'agent_active' }
+  }
+
   const activity = observation.agent_activity
   const transcriptOpen =
     activity?.transcript?.readable === true &&

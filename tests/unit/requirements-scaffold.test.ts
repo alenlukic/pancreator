@@ -119,6 +119,30 @@ test('scaffold refuses to overwrite a non-empty output without force', () => {
   )
 })
 
+test('read-only verify scaffolding is idempotent and retains completed worker work', () => {
+  const root = createTestTempDirectory('pan-verify-scaffold-')
+  const outputPath = 'runtime/logs/workflows/x/outputs/verify.json'
+  const invocation = {
+    invocation_id: 'verify-1',
+    rubric: [],
+    output: {
+      path: outputPath,
+      required_data: { verify: 'object', 'verify.verdict': 'string' },
+    },
+  } as unknown as Invocation
+  scaffoldStageOutput(root, invocation, outputPath)
+  const scaffold = readFileSync(path.join(root, outputPath), 'utf8')
+  scaffoldStageOutput(root, invocation, outputPath)
+  assert.equal(readFileSync(path.join(root, outputPath), 'utf8'), scaffold)
+  const completed = `${JSON.stringify({ summary: 'Independent grading complete', data: { verify: { verdict: 'fail_remedial' } } })}\n`
+  writeFileSync(path.join(root, outputPath), completed)
+  assert.throws(
+    () => scaffoldStageOutput(root, invocation, outputPath),
+    /already exists/u,
+  )
+  assert.equal(readFileSync(path.join(root, outputPath), 'utf8'), completed)
+})
+
 test('scaffold copies the contract manifest into a pending attestation', () => {
   const root = createTestTempDirectory('pan-scaffold-')
   const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
@@ -127,7 +151,7 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
     invocation_id: 'implement-1',
     stage: { model: 'gpt-5.6-sol' },
     rubric: [
-      { id: 'implement.lint', hard: true },
+      { id: 'implement.lint', type: 'shell', hard: true },
       { id: 'implement.unit_tests', hard: true },
     ],
     output: { path: outputPath, required_data: {} },
@@ -174,10 +198,9 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   assert.equal(attestation.model, 'gpt-5.6-sol')
   assert.equal(attestation.contract_path, contractPath)
   assert.equal(result.output.criteria.length, invocation.rubric.length)
-  assert.ok(
-    result.output.criteria.every(
-      (criterion) => criterion.result === 'unevaluated',
-    ),
+  assert.deepEqual(
+    result.output.criteria.map((criterion) => criterion.result),
+    ['pending_harness', 'unevaluated'],
   )
   assert.equal(
     attestation.status === 'pending' ? attestation.contract_sha256 : '',
@@ -221,6 +244,23 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
     scaffoldStageOutput(root, legacy, legacy.output.path, false).output
       .invocation_attestation,
     undefined,
+  )
+})
+
+test('pending harness shells do not make an untouched scaffold look complete', () => {
+  const scaffold = {
+    summary: '',
+    invocation_attestation: { status: 'read' },
+    criteria: [
+      { id: 'implement.lint', result: 'pending_harness' },
+      { id: 'implement.acceptance_claimed', result: 'unevaluated' },
+    ],
+  }
+
+  assert.equal(isUntouchedScaffold(scaffold), true)
+  assert.equal(
+    isUntouchedScaffold({ ...scaffold, summary: 'Implementation completed.' }),
+    false,
   )
 })
 

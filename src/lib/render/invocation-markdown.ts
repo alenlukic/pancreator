@@ -14,7 +14,10 @@ import { fencedJson } from './contract.js'
 import { evidenceWorkerAttempts } from './delivery-prompt.js'
 import { renderSupervisorProcedureBody } from './supervisor-procedure.js'
 import { renderScopedReturn } from './remediation-return.js'
-import { renderEvidenceWorkerSkips } from './evidence-worker-brief.js'
+import {
+  renderEvidenceWorkerSkips,
+  renderVerificationExecution,
+} from './evidence-worker-brief.js'
 import { attributedChangeLines } from './status.js'
 
 /**
@@ -510,6 +513,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       : []),
     ...renderScopedReturn(invocation),
     ...renderEvidenceWorkerSkips(invocation),
+    ...renderVerificationExecution(invocation),
     ...(contextReferenceLines.length > 0 ? [...contextReferenceLines, ''] : []),
     ...(conditionalReferences.length > 0
       ? ['### Conditional references', '', ...conditionalReferences, '']
@@ -581,7 +585,17 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             'argument and fails by artifact type.',
           '',
         ]
-      : []),
+      : invocation.requirements?.automation_requirements.some(
+            (requirement) =>
+              requirement.registry_id === 'STAGE-SCAFFOLD-001' &&
+              requirement.executor === 'harness',
+          )
+        ? [
+            'The harness prepares and restores the output scaffold before launch. ' +
+              'Edit that file in place and use the supplied file tools.',
+            '',
+          ]
+        : []),
     ...(invocation.attempt > 1
       ? [
           'This is a retry. Instead of re-emitting the whole document, you ' +

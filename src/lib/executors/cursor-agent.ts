@@ -11,6 +11,7 @@ import type {
   ExternalModelVerification,
 } from '../types.js'
 import { probeEnvironment } from './cursor-auth.js'
+import { custodyAuthorityRoot } from './scope-custody.js'
 import {
   resolveWriteSandbox,
   type PreparedLaunch,
@@ -173,6 +174,8 @@ export interface CursorAgentRequest {
    * the result records which of the two happened.
    */
   writeRoots?: string[]
+  /** Enforced by the registered beforeShellExecution hook. */
+  shellPolicy?: 'allow' | 'deny'
 }
 
 export interface CursorAgentResult {
@@ -379,7 +382,9 @@ function runCursorAgent(
   // The agent's own binary and argv stay the recorded launch. The sandbox
   // wrapper is transport, and its profile is too large to belong in an
   // evidence record that a reader scans for the agent's arguments.
-  const sandbox = resolveWriteSandbox(request.writeRoots ?? [])
+  const sandbox = resolveWriteSandbox(request.writeRoots ?? [], [
+    custodyAuthorityRoot(request.installationRoot),
+  ])
   const launch = sandbox.wrap(binary, argv)
   const enforcement = request.writeRoots
     ? {
@@ -398,7 +403,12 @@ function runCursorAgent(
     // installation or workspace .env supplies it. Every cursor-agent spawn
     // authenticates the same way the model probe does, so the horizon arbiter
     // or an external-executor stage never fails auth that the probe passed.
-    env: workerEnvironment(request.installationRoot),
+    env: {
+      ...workerEnvironment(request.installationRoot),
+      ...(request.shellPolicy
+        ? { PANCREATOR_CURSOR_SHELL_POLICY: request.shellPolicy }
+        : {}),
+    },
     encoding: 'utf8',
     // The prompt travels over stdin, never as an argv element. Endpoint
     // security on an operator machine was observed to SIGKILL the cursor-agent
@@ -534,6 +544,7 @@ export interface CursorAgentAdapterOptions {
   installationRoot: string
   runtimeDir: string
   modelSpec: string
+  shellPolicy: 'allow' | 'deny'
   /**
    * Whether the local catalog predicts a variant for `modelSpec`. An
    * `unverifiable` prediction still delegates, and its reason reaches the
@@ -671,6 +682,7 @@ export function createCursorAgentAdapter(
         addDirs: [options.runtimeDir],
         requireTrust: true,
         installationRoot: options.installationRoot,
+        shellPolicy: options.shellPolicy,
         model: options.modelSpec,
         ...(resumeSessionId ? { sessionId: resumeSessionId } : {}),
         ...(options.timeoutMs !== undefined

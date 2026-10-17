@@ -3,7 +3,6 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { validateStageOutput } from '../../src/lib/validation/stage-output.js'
 import { traceRegistryIds } from '../../src/lib/validators/stage/plan-trace.js'
 import {
   canonicalVerificationEvidencePath,
@@ -17,7 +16,6 @@ import type {
   DeterministicResult,
   Invocation,
   RunState,
-  StageDefinition,
   StageOutput,
 } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -359,46 +357,4 @@ test('recorded invocation aliases repair only citations whose underlying artifac
   )
   const absent = old.replace('qa-evidence', 'missing')
   assert.equal(canonicalVerificationEvidencePath(root, absent), absent)
-})
-
-test('submission-owned shell checks may remain unevaluated until execution; unevaluated judgment remains a defect', () => {
-  const { root, invocation } = fixture()
-  const criterion = {
-    id: 'owned-fast',
-    type: 'shell',
-    hard: true,
-    statement: 'Fast check',
-    command: 'pan repository-check fast',
-  }
-  const stage = {
-    slug: 'implement',
-    persona: 'coder',
-    workspace_policy: 'source_allowed',
-    criteria: [criterion],
-    required_data: {},
-  } as unknown as StageDefinition
-  const scoped = { ...invocation, rubric: [criterion] } as unknown as Invocation
-  const value = {
-    ...output(invocation),
-    criteria: [
-      {
-        id: 'owned-fast',
-        result: 'unevaluated',
-        evidence: [],
-        explanation: 'The harness executes this check during submission.',
-      },
-    ],
-  }
-  const pending = validateStageOutput(root, stage, scoped, value)
-  assert.equal(pending.errors.length, 0, pending.errors.join('\n'))
-  const judgment = validateStageOutput(
-    root,
-    {
-      ...stage,
-      criteria: [{ ...criterion, type: 'judgment' }],
-    } as StageDefinition,
-    scoped,
-    value,
-  )
-  assert.ok(judgment.errors.some((message) => message.includes('unevaluated')))
 })

@@ -1,6 +1,5 @@
 /** Evidence-worker skips and the evidence-worker brief. */
 
-import { agentProfileExecutionAllowance } from '../agent-ledger-evidence.js'
 import type { Invocation, InvocationEvidenceWorker } from '../types.js'
 import {
   EVIDENCE_REPORT_CASE_PREFIX,
@@ -44,6 +43,28 @@ export function renderEvidenceWorkerSkips(invocation: Invocation): string[] {
   ]
 }
 
+export function renderVerificationExecution(invocation: Invocation): string[] {
+  const execution = invocation.verification_execution
+  if (!execution) return []
+  return [
+    '### Verification execution',
+    '',
+    `The harness supplies raw observations in \`${execution.manifest_path}\`. ` +
+      'Independently grade the observed content; collection success is not a verdict.',
+    ...execution.operations.map(
+      ({ operation, source }) =>
+        `- \`${operation.id}\` — ${operation.criterion ?? operation.finding}; ` +
+        `${operation.required === false ? 'available on request' : 'mandatory'}; ` +
+        `authority \`${source.path}\` (${source.authority}, ${source.sha256}); ` +
+        `timeout ${operation.timeout_ms} ms.`,
+    ),
+    ...execution.gaps.map(
+      (gap) => `- Evidence gap \`${gap.id}\`: ${gap.reason}`,
+    ),
+    '',
+  ]
+}
+
 /**
  * Render the prompt brief for one parallel evidence worker. The brief is the
  * worker's complete contract: it launches as a top-level named agent, reads
@@ -61,13 +82,6 @@ export function renderEvidenceWorkerBrief(
       `- \`${item.path}\` — ${item.description}`,
       ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
     ])
-  // A passed `fast` gate at the current workspace fingerprint is the evidence
-  // the worker's scope tells it to cite. Naming the command then would turn a
-  // permission into an order to rerun a profile the gate already ran.
-  const fastEvidenceCurrent = invocation.inputs.references.some(
-    (item) =>
-      item.gate_evidence?.profile === 'fast' && item.gate_evidence.current,
-  )
   const harnessRoot = invocation.harness_root
   const lines = [
     `# Evidence brief: ${worker.role} for stage \`${invocation.stage.slug}\``,
@@ -79,8 +93,8 @@ export function renderEvidenceWorkerBrief(
     // it inspects: a run bound to a managed worktree lives outside the main
     // checkout, and a worker that reads the main checkout reports the change
     // as missing.
-    `**Workspace** \`${invocation.workspace_root}\` — inspect and run ` +
-      'commands against this directory.',
+    `**Workspace** \`${invocation.workspace_root}\` — inspect this directory ` +
+      'read-only.',
     ...(invocation.managed_worktree
       ? [
           '',
@@ -98,34 +112,20 @@ export function renderEvidenceWorkerBrief(
           invocation.managed_worktree
             ? [
                 '',
-                `**Verification root** Commands that exercise changed harness ` +
-                  `source run from \`${harnessRoot}\` as ` +
-                  `\`PANCREATOR_EXEC_ROOT=${harnessRoot}/${invocation.workspace_root} ./bin/pan …\`. ` +
-                  'Bare `./bin/pan` remains the installation-root form for ' +
-                  'lifecycle and evidence commands.',
+                'Execution observations are collected by the harness against ' +
+                  'this worktree before delegation. Independently grade the ' +
+                  'raw observations referenced below.',
               ]
             : []),
         ]
       : []),
     '',
-    // The run is where the supervisor audits an agent-run profile, so the
-    // brief names the exact command that records the execution against it,
-    // or the gate evidence that makes running it unnecessary. The role is
-    // part of that command because every evidence worker of this stage
-    // shares its invocation id and owes its own recorded pass.
-    invocation.inputs.remediation_return
-      ? agentProfileExecutionAllowance(true)
-      : fastEvidenceCurrent
-        ? 'The implement gate already ran `fast` at this workspace ' +
-          'fingerprint. Cite that gate evidence reference from your card ' +
-          'instead of running the profile.'
-        : `${agentProfileExecutionAllowance(false)} Run that one validation ` +
-          `as exactly \`./bin/pan repository-check fast --run ${invocation.run_id} ` +
-          `--role ${worker.role}\` ` +
-          (harnessRoot
-            ? `from the harness root \`${harnessRoot}\` `
-            : 'from this checkout ') +
-          'so the run records the execution.',
+    'The harness owns process execution, repository-check profiles, and final ' +
+      'output validation. Cite current gate evidence for profile results. ' +
+      'Independently grade collected raw observations; command stdout alone ' +
+      'cannot prove a browser verdict.',
+    'You MUST NOT run a cost-bearing or mutating command, any shell command, ' +
+      'or a repository-check profile. Request authorized observations by id.',
     '',
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
@@ -140,9 +140,15 @@ export function renderEvidenceWorkerBrief(
     '',
     ...(references.length > 0 ? references : ['- No artifact inputs.']),
     '',
+    ...renderVerificationExecution(invocation),
     '## Report contract',
     '',
     `Write your report as Markdown to \`${worker.evidence_path}\`.`,
+    `To request a missing declared observation, write an array of ` +
+      `\`{id, reason}\` to \`${worker.evidence_path}.execution-request.json\`. ` +
+      'Requests select pinned operation ids and cannot authorize commands. ' +
+      'Report an undefined operation or unavailable browser observation as an ' +
+      'evidence gap, without a product verdict.',
     'Append each case or finding to that file as you finish it, under its ' +
       `own \`${EVIDENCE_REPORT_CASE_PREFIX}\` heading, rather than holding ` +
       'the whole report for one write at the end. A run that is interrupted ' +
@@ -162,7 +168,7 @@ export function renderEvidenceWorkerBrief(
     '## Boundaries',
     '',
     '- The workspace is read-only for you: you MUST NOT modify tracked ' +
-      'files, and you MUST write only your report file.',
+      'files, and you MUST write only your report and execution request sidecar.',
     '- You MUST NOT run workflow lifecycle commands, write stage outputs or ' +
       'delegation artifacts, or launch further subagents.',
     '- Report missing evidence and uncertainty instead of manufacturing ' +

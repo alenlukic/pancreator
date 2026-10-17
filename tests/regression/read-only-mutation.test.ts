@@ -88,3 +88,30 @@ test('read-only stage fails when a source workspace change is unattributed', () 
 
   assert.equal(cleanliness?.passed, true)
 })
+
+test('prepared read-only scope reports missing launches without changing the clean workspace verdict', () => {
+  const root = createFixture()
+  const workflowSlug = writeInspectionWorkflow(root)
+  const workflow = loadWorkflow(root, workflowSlug)
+  const stage = stageBySlug(workflow, 'inspect')
+  const run = createRun(root, { workflowSlug, requestPath: 'request.md' })
+  const invocation = prepareInvocation(root, run.run_id).invocation
+  assert.ok(invocation)
+  const artifact = resolveRunLayout(root, run.run_id).operatorMarkdown(
+    'inspect.md',
+  ).absolute
+  mkdirSync(path.dirname(artifact), { recursive: true })
+  writeFileSync(artifact, '# inspect\n')
+  writeJson(path.join(root, invocation.output.path), {
+    ...makeOutput(root, invocation, stage),
+    data: { inspection: { findings: [], verdict: 'pass' } },
+  })
+  writeCanonicalDelegation(root, invocation)
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
+  const scope = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'scope.no_unapproved_changes',
+  )
+  assert.equal(scope?.passed, true)
+  assert.match(scope?.explanation ?? '', /Custody fallback/u)
+  assert.match(scope?.explanation ?? '', /No launch custody records/u)
+})

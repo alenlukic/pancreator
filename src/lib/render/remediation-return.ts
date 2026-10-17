@@ -3,13 +3,13 @@
 import type { Invocation } from '../types.js'
 
 /**
- * What a returning evidence worker executes again and what it carries
+ * What a returning evidence worker grades again and what it carries
  * (`VERIFY-001`).
  *
  * A first visit renders nothing: every case is new work. On a return after a
  * remediation with a bounded blast radius the brief caps re-execution by the
  * paths that changed. A return whose remediation declared no changed path
- * bounds nothing, so the worker re-executes its scope in full and carries no
+ * bounds nothing, so the worker grades its scope in full and carries no
  * case forward.
  */
 export function renderRemediationReturn(invocation: Invocation): string[] {
@@ -36,20 +36,22 @@ export function renderRemediationReturn(invocation: Invocation): string[] {
     return [
       '',
       `${opening} That remediation declared no changed path, so nothing ` +
-        'bounds the radius: execute your scope in full and carry no case ' +
+        'bounds the radius: grade current harness-collected observations ' +
+        'for your scope in full and carry no case ' +
         'forward.',
     ]
   }
 
   return [
     '',
-    `${opening} Execute the cases your scope reaches that touch the ` +
+    `${opening} Grade current harness-collected observations for the cases ` +
+      'your scope reaches that touch the ' +
       "remediation's blast radius:",
     '',
     ...returnVisit.blast_radius.map((changedPath) => `- \`${changedPath}\``),
     '',
     'Carry every other case forward with its earlier result rather than ' +
-      'executing it again, and record `carried_from` on that case with the ' +
+      'grading it again, and record `carried_from` on that case with the ' +
       'prior invocation id and the workspace fingerprint it was observed ' +
       'at. This caps case coverage only; it changes no profile allowance.',
   ]
@@ -114,7 +116,8 @@ export function renderScopedReturn(invocation: Invocation): string[] {
     ]),
     ...(scoped.dimensions.some((dimension) => dimension.role === 'qa')
       ? [
-          'Execute the cases the blast radius reaches, record each in ' +
+          'Grade current harness-collected observations for the cases the ' +
+            'blast radius reaches, record each in ' +
             '`data.verify.qa_cases`, and carry every other case forward ' +
             'with `carried_from`, as a return-visit evidence worker would.',
           '',

@@ -97,6 +97,8 @@ import {
   emitVerifyWarningsInboxItem,
   materializeOperatorBrief,
   materializeOutputSubmission,
+  pendingHarnessResolutionErrors,
+  submissionGateSkipReason,
   submittedInvocationId,
 } from './submit-helpers.js'
 import { recordOperatorFeedback } from './recovery.js'
@@ -507,40 +509,14 @@ export function submitOutput(
             ...blockingValidatorErrors,
           ]
 
-    const declaredNonSuccess =
-      isRecord(submittedValue) &&
-      (submittedValue.result === 'failure' ||
-        submittedValue.result === 'blocked')
-        ? (submittedValue.result as string)
-        : null
-    const selfEvaluations = new Map(
-      validation.output.criteria.map((item) => [item.id, item]),
+    const gateSkipReason = submissionGateSkipReason(
+      stage,
+      validation.output,
+      submittedValue,
+      attestationErrors,
+      harnessValidation.blocking_errors,
+      blockingValidationErrors,
     )
-    const failedHardSelfCriterion = stage.criteria.find(
-      (criterion) =>
-        criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
-    )
-
-    const rejectingValidatorIds = [
-      ...new Set(
-        harnessValidation.blocking_errors
-          .map(
-            (message) => /^harness validator (\S+) failed/u.exec(message)?.[1],
-          )
-          .filter((value): value is string => typeof value === 'string'),
-      ),
-    ]
-    const gateSkipReason = declaredNonSuccess
-      ? `the stage reported result '${declaredNonSuccess}'`
-      : attestationErrors.length > 0
-        ? 'the invocation read attestation failed'
-        : rejectingValidatorIds.length > 0
-          ? `harness validator ${rejectingValidatorIds.join(', ')} rejected the output`
-          : blockingValidationErrors.length > 0
-            ? 'a blocking artifact or stage-output validator rejected the output'
-            : failedHardSelfCriterion
-              ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
-              : null
     const entryGatePass = currentEntryGatePass(state, stage)
     const evaluated = evaluateDeterministicCriteria(
       root,
@@ -560,6 +536,17 @@ export function submitOutput(
     )
 
     advise('gate_bypass', evaluated.advisories)
+
+    if (validation.output.result === 'success' && gateSkipReason === null) {
+      const unresolved = pendingHarnessResolutionErrors(
+        stage,
+        validation.output,
+        evaluated.results,
+      )
+
+      validation.errors.push(...unresolved)
+      blockingValidationErrors.push(...unresolved)
+    }
 
     // The ceiling is soft, so `pan tests wall` passes over it and the
     // criterion result cannot carry the breach. The report itself does.

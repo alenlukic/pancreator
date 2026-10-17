@@ -46,7 +46,11 @@ import {
   type DeliveryRouteOptions,
 } from './state.js'
 import { chunkIdSlug, firstUnsatisfiedIndex } from './chunks.js'
-import { readRatifiedCohortPlan, type ParsedCohortPlan } from './plan.js'
+import {
+  readRatifiedCohortPlan,
+  ratifiedPlanReference,
+  type ParsedCohortPlan,
+} from './plan.js'
 import { initCohortSession, startCohort } from './start.js'
 import { cohortSessionIds } from './abandon.js'
 import { startReleaseRun, startedChunksOfFirstCohort } from './release-run.js'
@@ -544,6 +548,7 @@ function startSingleDeliveryRun(
         branch: record.branch,
       },
       contextReferencePath: plan.parent_spec_path,
+      approvedPlan: ratifiedPlanReference(root, planState.run_id),
       involvement: planState.operator_involvement?.profile,
       design: planState.design_composition,
     })

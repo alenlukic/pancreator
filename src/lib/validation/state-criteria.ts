@@ -599,10 +599,8 @@ export function runEntryGateCriterion(
 }
 
 /**
- * Tracked harness-root paths this stage changed, when the run works in a
- * different directory. Empty when the workspace is the harness root, or when
- * the invocation recorded no harness baseline, because a comparison needs
- * both sides and an absent baseline is not evidence of a write.
+ * Controller observations, not ownership claims. Include commits since the
+ * baseline; committing a write cannot erase the need to attribute it.
  */
 export function harnessRootWrites(
   root: string,
@@ -613,10 +611,7 @@ export function harnessRootWrites(
     return []
   }
 
-  // Compare the working tree to its current HEAD. An independent clean commit
-  // advances the harness branch but is not a write by this stage; an
-  // uncommitted tracked edit remains visible in the snapshot delta.
-  const after = gitWorkspaceSnapshot(root)
+  const after = gitWorkspaceSnapshot(root, { commitBase: harnessBefore.head })
 
   return workspaceChangedPathsFromSnapshots(harnessBefore, after)
     .filter((relativePath) => !relativePath.startsWith('runtime/'))

@@ -15,9 +15,7 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
-  makeAttestation,
   makeOutput,
-  writeEvidenceReports,
   writeJson,
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
@@ -135,34 +133,16 @@ test('governance and artifact defects are advisory before ship and never loop to
   assert.equal(existsSync(path.join(root, brief.source_path)), true)
   assert.equal(existsSync(path.join(root, brief.rendered_path)), false)
 
-  // Submission gates hard on the evidence reports and the verify validator,
-  // so this minimal output carries valid verify data. Every other defect
-  // below stays advisory.
-  writeEvidenceReports(root, invocation)
-  writeJson(path.join(root, invocation.output.path), {
-    schema_version: 1,
-    invocation_id: invocation.invocation_id,
-    result: 'success',
-    invocation_attestation: makeAttestation(invocation),
-    data: {
-      verify: {
-        verdict: 'pass',
-        findings: [],
-        qa_cases: [
-          {
-            id: 'TP-01',
-            steps: 'Run workflow fixture',
-            expected: 'advance',
-            actual: 'advance',
-            result: 'pass',
-          },
-        ],
-        acceptance_results: [
-          { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
-        ],
-      },
-    },
-  })
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(loadWorkflow(root, 'delivery'), 'verify'),
+  )
+
+  // Keep rubric claims and verifier evidence valid; only artifact metadata is defective.
+  output.summary = ''
+  output.artifacts = []
+  writeJson(path.join(root, invocation.output.path), output)
 
   const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 

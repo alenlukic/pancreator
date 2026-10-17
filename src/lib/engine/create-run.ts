@@ -131,6 +131,7 @@ interface CreateRunOptions {
    * points at the parent specification, which it must never copy.
    */
   contextReferencePath?: string | null
+  approvedPlan?: RunState['approved_plan']
   /**
    * Route the ratified plan into delivery when its gate is approved. Absent
    * means the workflow default: on for `planning`, which is the only workflow
@@ -644,6 +645,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       current_stage: startStage,
       pending_action: { type: 'prepare_invocation' },
       current_invocation: null,
+      ...(options.approvedPlan ? { approved_plan: options.approvedPlan } : {}),
       request: {
         source_path: sourceRelative,
         stored_path: storedRequest,

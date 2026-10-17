@@ -27,6 +27,7 @@ import type {
 } from '../types.js'
 import { releaseSourceFingerprint } from '../release-source.js'
 import { runShellCheck } from './shell-check.js'
+import { classifyControllerChanges } from './scope-custody.js'
 import {
   absorbedPathOwners,
   absorbedRunAttributionNote,
@@ -74,13 +75,40 @@ export function evaluateDeterministicCriteria(
   const results: DeterministicResult[] = []
   const advisories: string[] = []
 
-  if (stage.persona === 'release-steward') {
-    return { results, workspace: afterSnapshot, advisories }
-  }
-
   let scopePassed = true
 
-  if (stage.workspace_policy !== 'source_allowed') {
+  const harnessPaths = harnessRootWrites(root, workspaceDir, harnessBefore)
+  const custody = classifyControllerChanges(
+    root,
+    workspaceDir,
+    state,
+    stage,
+    harnessPaths,
+  )
+  const custodyBlocked =
+    custody.invalid || custody.own.length > 0 || custody.unverified.length > 0
+  const custodyNote = [
+    custody.own.length > 0
+      ? ` Own unauthorized writes or attempts: ${boundedPathList(custody.own)}.`
+      : '',
+    custody.foreign.length > 0
+      ? ` External controller observations excluded by enforced process boundaries: ${boundedPathList(custody.foreign)}.`
+      : '',
+    custody.unverified.length > 0
+      ? ` Unverified attribution in harness root '${root}': ${boundedPathList(custody.unverified)}.`
+      : '',
+    custody.missing.length > 0
+      ? ` Custody fallback: ${custody.missing.join(' ')} Collect complete launch identities and enforced write boundaries for this invocation; rerun with enforcement or collect independent actor evidence for each write.`
+      : '',
+    custody.evidence.length > 0
+      ? ` Custody evidence: ${boundedPathList(custody.evidence)}.`
+      : '',
+  ].join('')
+  if (custody.missing.length > 0) {
+    advisories.push(custodyNote.trim())
+  }
+
+  if (stage.workspace_policy !== 'source_allowed' || custodyBlocked) {
     const changedPaths = workspaceChangedPathsFromSnapshots(
       beforeSnapshot,
       afterSnapshot,
@@ -104,11 +132,6 @@ export function evaluateDeterministicCriteria(
       (relativePath) => !absorbedOwners.has(relativePath),
     )
 
-    // A run that works somewhere else may not write the harness checkout.
-    // The workspace snapshot cannot see that tree, so an eval run or a
-    // worktree run edited the installation it was graded from and the scope
-    // criterion passed. Only `runtime/` is the harness's own run state.
-    const harnessPaths = harnessRootWrites(root, workspaceDir, harnessBefore)
     const blockingPaths = [
       ...changedPaths.filter(blocksUnderPolicy),
       ...unownedAbsorbedPaths,
@@ -140,15 +163,8 @@ export function evaluateDeterministicCriteria(
     const unattributedPaths = blockingPaths.filter(
       (relativePath) => !declaredInternalPaths.has(relativePath),
     )
-    // No worker declaration authorizes a stage to change the checkout its run
-    // is not working in, so a harness-root write is never attributable here.
-    // The one legitimate harness-root change a self-development release makes
-    // is landing its own release commit on the local default branch, and the
-    // ship contract sequences that landing after submit instead of excepting
-    // it, so a ship stage that followed the contract carries no such delta.
     const changed =
-      harnessPaths.length > 0 ||
-      (blockingPaths.length > 0 && !internallyAttributed)
+      custodyBlocked || (blockingPaths.length > 0 && !internallyAttributed)
     // Naming the remedy where the failure is read: the Phase 3 release spent
     // an operator waiver on a landing the contract now sequences later.
     const harnessRootRemedy =
@@ -166,23 +182,27 @@ export function evaluateDeterministicCriteria(
       hard: true,
       passed: !changed,
       explanation:
-        (harnessPaths.length > 0
-          ? `The run workspace is '${workspaceDir}', and this stage changed ` +
-            `tracked files in the harness root '${root}' outside runtime/: ` +
-            `${boundedPathList(harnessPaths)}.${harnessRootRemedy}`
+        (custodyBlocked
+          ? `Scope custody could not authorize the stage.${harnessRootRemedy}`
           : changed
             ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${boundedPathList(unattributedPaths.length > 0 ? unattributedPaths : blockingPaths)}.`
             : internallyAttributed
               ? `All workspace changes were traced to the active worker; no external contamination was detected: ${boundedPathList(blockingPaths)}.`
               : allowedPaths.length > 0
                 ? `Only permitted release metadata changed: ${boundedPathList(allowedPaths)}.`
-                : 'Workspace fingerprint is unchanged.') + absorbedNote,
+                : 'Workspace fingerprint is unchanged.') +
+        absorbedNote +
+        custodyNote,
       delta:
         changedPaths.length > 0
           ? boundedWorkspaceDelta(workspaceDelta(beforeSnapshot, afterSnapshot))
           : { added: [], removed: [] },
       workspace_fingerprint: afterSnapshot.fingerprint,
     })
+  }
+
+  if (stage.persona === 'release-steward') {
+    return { results, workspace: afterSnapshot, advisories }
   }
 
   for (const criterion of stage.criteria) {

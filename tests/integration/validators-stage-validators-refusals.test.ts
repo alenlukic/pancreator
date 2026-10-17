@@ -21,6 +21,40 @@ import {
   writeVerifyOutput,
 } from './validators-stage-validators-helpers.js'
 
+test('mandatory plan execution refusal declares its blocking field', () => {
+  const plan = STAGE_VALIDATOR_REFUSALS.find(
+    (entry) =>
+      entry.stage === 'plan' && entry.registry_id === 'PLAN-TRACE-VALIDATE-001',
+  )
+
+  assert.ok(plan)
+  assert.deepEqual(
+    plan.refusals.find((entry) => entry.code === 'plan.execution_required')
+      ?.paths,
+    ['data.test_plan[]'],
+  )
+  const contract = JSON.parse(
+    readFileSync(
+      path.join(
+        process.cwd(),
+        'library/schemas/stage-output-requirements.json',
+      ),
+      'utf8',
+    ),
+  ) as Record<string, unknown>
+
+  assert.deepEqual(
+    undeclaredBlockingFieldIssues(contract, [
+      {
+        stage: 'plan',
+        registry_id: plan.registry_id,
+        fields: ['data.test_plan[]'],
+      },
+    ]),
+    [],
+  )
+})
+
 test('field contract validator rejects enforced_fields that lack a declared shape', () => {
   const root = createFixture()
   const contractPath = 'library/schemas/stage-output-requirements.json'
@@ -678,6 +712,59 @@ test('every verify finding refusal names a declared blocking field', () => {
     ),
     JSON.stringify(result.issues),
   )
+})
+
+test('incoming evidence refusals are declared provenance checks and reject missing or stale observations', () => {
+  const root = validatorFixtureRoot('pan-verify-incoming-evidence-')
+  const target = 'output.json'
+  const declarations = STAGE_VALIDATOR_REFUSALS.find(
+    (entry) => entry.registry_id === 'VERIFY-VALIDATE-001',
+  )?.refusals
+
+  for (const [available, fingerprint, expected] of [
+    [true, 'current-source', []],
+    [false, 'current-source', ['verify.incoming_missing']],
+    [true, 'old-source', ['verify.incoming_stale']],
+  ] as const) {
+    writeVerifyOutput(root, target, {
+      verdict: 'pass',
+      findings: [],
+      qa_cases: [passingQaCase],
+      acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+      evidence_packet: {
+        schema_version: 1,
+        workspace_fingerprint: 'current-source',
+        incoming: [
+          {
+            path: 'incoming.json',
+            required: true,
+            available,
+            gate_evidence: { current: true, fingerprint },
+          },
+        ],
+      },
+    })
+
+    const result = validateVerifyOutput({
+      root,
+      targetPath: target,
+      requirement: verifyRequirement(),
+    })
+
+    assert.deepEqual(
+      result.issues.map((item) => item.code),
+      expected,
+    )
+    assert.equal(result.status, expected.length === 0 ? 'passed' : 'failed')
+
+    for (const code of expected) {
+      const declaration = declarations?.find((entry) => entry.code === code)
+
+      assert.ok(declaration, `${code} must be declared`)
+      assert.deepEqual(declaration.paths, [])
+      assert.ok(declaration.unowned_reason)
+    }
+  }
 })
 
 // Run 63308 finding F-02: the guard read the plan file contract alone, so a

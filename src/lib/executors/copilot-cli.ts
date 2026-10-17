@@ -1,6 +1,14 @@
 import { spawnSync } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+import { isRecord } from '../io.js'
 import { resolveEnvironmentKey } from './openai-auth.js'
+import type {
+  DelegationLiveIdentity,
+  DelegationWriteBoundary,
+} from './delegation-live.js'
+import { isDelegationWriteBoundary } from './scope-custody.js'
 
 /**
  * Process-level mechanics for the `copilot` persona executor: preflight,
@@ -26,6 +34,7 @@ export const COPILOT_CLI_REQUIRED_FLAGS = [
   '--reasoning-effort',
   '--resume',
   '--secret-env-vars',
+  '--session-id',
 ] as const
 
 export const COPILOT_PROVIDERS = ['github', 'openai', 'anthropic'] as const
@@ -61,8 +70,8 @@ export const COPILOT_SECRET_ENV_VARS = [
 
 const VERSION_PATTERN = /(\d+)\.(\d+)\.(\d+)/u
 const PREFLIGHT_TIMEOUT_MS = 30_000
-const DEFAULT_INVOCATION_TIMEOUT_MS = 3_600_000
-const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+export const DEFAULT_INVOCATION_TIMEOUT_MS = 3_600_000
+export const COPILOT_MAX_OUTPUT_BYTES = 64 * 1024 * 1024
 
 interface ByokProvider {
   key_variable: string
@@ -308,10 +317,14 @@ export interface CopilotInvocationRequest {
   effort?: string
   availableTools: readonly string[]
   addDirs: readonly string[]
+  writeRoots?: string[]
   resumeSessionId?: string
   timeoutMs?: number
   /** Credential environment. Merged into the child environment only. */
   environment: Record<string, string>
+  live?: { root: string; identity: DelegationLiveIdentity }
+  /** Aggregate raw output bound. Exceeding it fails explicitly. */
+  maxOutputBytes?: number
 }
 
 /**
@@ -322,8 +335,9 @@ export interface CopilotInvocationRequest {
 export function copilotArgv(
   request: Omit<
     CopilotInvocationRequest,
-    'prompt' | 'environment' | 'timeoutMs'
+    'prompt' | 'environment' | 'timeoutMs' | 'live' | 'maxOutputBytes'
   >,
+  sessionId?: string,
 ): string[] {
   return [
     '--output-format',
@@ -340,7 +354,11 @@ export function copilotArgv(
     '--no-auto-update',
     `--secret-env-vars=${COPILOT_SECRET_ENV_VARS.join(',')}`,
     ...request.addDirs.flatMap((directory) => ['--add-dir', directory]),
-    ...(request.resumeSessionId ? [`--resume=${request.resumeSessionId}`] : []),
+    ...(request.resumeSessionId
+      ? [`--resume=${request.resumeSessionId}`]
+      : sessionId
+        ? [`--session-id=${sessionId}`]
+        : []),
   ]
 }
 
@@ -433,6 +451,10 @@ export interface CopilotInvocationResult {
   parsed: CopilotResultPayload | null
   session_id?: string
   error?: string
+  signal?: string
+  truncated?: boolean
+  custody_records?: string[]
+  write_boundary?: DelegationWriteBoundary
 }
 
 /**
@@ -463,37 +485,40 @@ export function runCopilotCli(
   const binary = copilotCliBinary()
   const argv = copilotArgv(request)
   const startedAt = Date.now()
-  const spawned = spawnSync(binary, argv, {
-    cwd: request.cwd,
-    encoding: 'utf8',
-    input: request.prompt,
-    timeout: request.timeoutMs ?? DEFAULT_INVOCATION_TIMEOUT_MS,
-    maxBuffer: MAX_OUTPUT_BYTES,
-    env: copilotEnvironment(request.environment),
-  })
+  const { environment, ...settings } = request
+  const spawned = spawnSync(
+    process.execPath,
+    [fileURLToPath(new URL('./copilot-relay.js', import.meta.url))],
+    {
+      cwd: request.cwd,
+      encoding: 'utf8',
+      input: JSON.stringify({ ...settings, adapterParentPid: process.pid }),
+      stdio: ['pipe', 'pipe', 'inherit'],
+      timeout: (request.timeoutMs ?? DEFAULT_INVOCATION_TIMEOUT_MS) + 10_000,
+      killSignal: 'SIGTERM',
+      maxBuffer: COPILOT_MAX_OUTPUT_BYTES * 8,
+      env: copilotEnvironment(environment),
+    },
+  )
   const durationMs = Date.now() - startedAt
   const timedOut =
     (spawned.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT'
-  const stdout = spawned.stdout ?? ''
-  const stderr = spawned.stderr ?? ''
-  const parsed = parseCopilotJsonl(stdout)
   const base = {
     binary,
     argv,
     exit_code: spawned.status,
     timed_out: timedOut,
     duration_ms: durationMs,
-    stdout,
-    stderr,
-    parsed,
-    ...(parsed?.session_id ? { session_id: parsed.session_id } : {}),
+    stdout: '',
+    stderr: '',
+    parsed: null,
   }
 
   if (spawned.error && !timedOut) {
     return {
       ...base,
       ok: false,
-      error: `Failed to spawn '${binary}': ${spawned.error.message}`,
+      error: `Failed to run Copilot relay: ${spawned.error.message}`,
     }
   }
 
@@ -501,31 +526,96 @@ export function runCopilotCli(
     return {
       ...base,
       ok: false,
-      error: `Copilot CLI invocation timed out after ${durationMs}ms.`,
+      error: `Copilot relay timed out after ${durationMs}ms.`,
     }
   }
 
-  if (parsed === null) {
+  let payload: unknown
+
+  try {
+    payload = JSON.parse(spawned.stdout ?? '')
+  } catch {
     return {
       ...base,
       ok: false,
-      error:
-        `Copilot CLI exited with status ${spawned.status} and its stdout ` +
-        'held no JSONL result event.',
+      error: 'Copilot relay returned no valid result envelope.',
     }
   }
 
-  if (spawned.status !== 0 || (parsed.exit_code ?? 0) !== 0) {
+  if (
+    !isRecord(payload) ||
+    typeof payload.ok !== 'boolean' ||
+    typeof payload.binary !== 'string' ||
+    !Array.isArray(payload.argv) ||
+    !payload.argv.every((argument) => typeof argument === 'string') ||
+    !(payload.exit_code === null || Number.isSafeInteger(payload.exit_code)) ||
+    typeof payload.timed_out !== 'boolean' ||
+    typeof payload.duration_ms !== 'number' ||
+    !Number.isFinite(payload.duration_ms) ||
+    payload.duration_ms < 0 ||
+    typeof payload.stdout !== 'string' ||
+    typeof payload.stderr !== 'string' ||
+    !(payload.parsed === null || isRecord(payload.parsed)) ||
+    (payload.ok &&
+      (payload.timed_out ||
+        payload.exit_code !== 0 ||
+        !isRecord(payload.parsed))) ||
+    (!payload.ok && (typeof payload.error !== 'string' || !payload.error)) ||
+    (payload.write_boundary !== undefined &&
+      !isDelegationWriteBoundary(payload.write_boundary)) ||
+    (payload.custody_records !== undefined &&
+      (!Array.isArray(payload.custody_records) ||
+        !payload.custody_records.every(
+          (item) => typeof item === 'string' && path.isAbsolute(item),
+        )))
+  ) {
     return {
       ...base,
       ok: false,
-      error:
-        `Copilot CLI exited with status ${spawned.status}` +
-        (parsed.exit_code !== undefined
-          ? ` and reported exit code ${parsed.exit_code}.`
-          : '.'),
+      error: 'Copilot relay returned an invalid result envelope.',
     }
   }
 
-  return { ...base, ok: true }
+  const parsed = parseCopilotJsonl(payload.stdout)
+  if (payload.ok && parsed === null) {
+    return {
+      ...base,
+      ok: false,
+      error: 'Copilot relay success envelope held no JSONL result.',
+    }
+  }
+  const result: CopilotInvocationResult = {
+    ok: payload.ok,
+    binary: payload.binary,
+    argv: payload.argv,
+    exit_code: payload.exit_code === null ? null : Number(payload.exit_code),
+    timed_out: payload.timed_out,
+    duration_ms: payload.duration_ms,
+    stdout: payload.stdout,
+    stderr: payload.stderr,
+    parsed,
+    ...(typeof payload.session_id === 'string'
+      ? { session_id: payload.session_id }
+      : {}),
+    ...(typeof payload.error === 'string' ? { error: payload.error } : {}),
+    ...(typeof payload.signal === 'string' ? { signal: payload.signal } : {}),
+    ...(typeof payload.truncated === 'boolean'
+      ? { truncated: payload.truncated }
+      : {}),
+    ...(Array.isArray(payload.custody_records) &&
+    payload.custody_records.every((item) => typeof item === 'string')
+      ? { custody_records: payload.custody_records }
+      : {}),
+    ...(isDelegationWriteBoundary(payload.write_boundary)
+      ? { write_boundary: payload.write_boundary }
+      : {}),
+  }
+
+  return spawned.status === 0
+    ? result
+    : {
+        ...result,
+        ok: false,
+        error: 'Copilot relay exited unsuccessfully.',
+      }
 }

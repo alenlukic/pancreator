@@ -133,9 +133,8 @@ test('a run with its own workspace passes when it writes only that workspace', (
   assert.equal(result.passed, true)
 })
 
-// A commit on the independent harness-root branch is not a write by the
-// worktree-bound stage. Only dirty tracked content is attributable to it.
-test('an independent clean harness-root commit does not fail scope', () => {
+// Without process evidence even a clean commit has no provable actor.
+test('a clean harness-root commit without custody is explicitly unverified', () => {
   const root = createFixture()
   const workspace = separateWorkspace()
   const harnessBefore = gitWorkspaceSnapshot(root)
@@ -149,7 +148,8 @@ test('an independent clean harness-root commit does not fail scope', () => {
   })
 
   assert.ok(result)
-  assert.equal(result.passed, true)
+  assert.equal(result.passed, false)
+  assert.match(result.explanation ?? '', /Unverified attribution/u)
 })
 
 test('a stage outside the release lane is not told to land after submit', () => {

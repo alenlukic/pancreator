@@ -253,8 +253,15 @@ test('supervisor evidence activates future worker-card enforcement', async () =>
 
   assert.equal(workerRecord?.result, 'default')
   assert.equal(workerRecord?.effective_model, invocation.stage.model)
-  assert.deepEqual(submitted.advisories, [])
-  assert.deepEqual(submittedState.advisories, superseded.advisories)
+  assert.deepEqual(
+    submitted.advisories.map((advisory) => advisory.kind),
+    ['gate_bypass'],
+  )
+  assert.match(submitted.advisories[0]?.message ?? '', /Custody fallback/u)
+  assert.deepEqual(submittedState.advisories, [
+    ...superseded.advisories,
+    ...submitted.advisories,
+  ])
 })
 
 test('a bare model spec accepts any resolved Cursor variant', () => {
@@ -617,7 +624,12 @@ test('a probe that never lands settles into a labeled default at submit', async 
   assert.equal(settled?.result, 'default')
   assert.equal(settled?.effective_model, invocation.stage.model)
   assert.match(settled?.source ?? '', /the detached probe did not land/u)
-  assert.deepEqual(submitted.advisories, [])
+  assert.deepEqual(
+    submitted.advisories.map((advisory) => advisory.kind),
+    ['gate_bypass'],
+  )
+  assert.match(submitted.advisories[0]?.message ?? '', /Custody fallback/u)
+  assert.deepEqual(submitted.state.advisories, submitted.advisories)
   assert.ok(
     submitted.state.stage_history.some(
       (item) => item.invocation_id === invocation.invocation_id,

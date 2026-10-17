@@ -239,10 +239,12 @@ test('worktree-bound release coordination does not add a local-release validatio
   )
 
   assert.equal(absentResult, undefined)
-  assert.deepEqual(
-    absent.advisories,
-    [],
-    'Release coordination does not adjudicate verification.',
+  assert.equal(absent.advisories.length, 1)
+  assert.match(absent.advisories[0] ?? '', /Custody fallback/u)
+  assert.equal(
+    absent.results.find((item) => item.id === 'scope.no_unapproved_changes')
+      ?.passed,
+    true,
   )
 
   // Well-formed hashes that describe no commit in this workspace still fail:
@@ -298,7 +300,13 @@ test('worktree-less release coordination does not manufacture a bypassed validat
   )
 
   assert.equal(result, undefined)
-  assert.equal(evaluated.advisories.length, 0)
+  assert.equal(evaluated.advisories.length, 1)
+  assert.match(evaluated.advisories[0] ?? '', /Custody fallback/u)
+  assert.equal(
+    evaluated.results.find((item) => item.id === 'scope.no_unapproved_changes')
+      ?.passed,
+    true,
+  )
 })
 
 test('delivery ship stage routes failure to remediate for landing-conflict recovery', () => {

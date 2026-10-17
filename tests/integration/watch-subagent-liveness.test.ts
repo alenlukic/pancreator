@@ -186,7 +186,7 @@ test('multiplexed watch holds wake 0 as output_unconfirmed without transcript', 
   assert.equal(wakes[0]?.completion_hold, 'output_unconfirmed')
 })
 
-test('agent_active never completes on a confirming wake', async () => {
+test('agent_active never completes on a confirming wake', async (t) => {
   const { root, state, invocationId } = preparedRun()
   fillPreparedOutput(root, state)
   const agent = registerWorker(root, state.run_id, invocationId)
@@ -199,6 +199,7 @@ test('agent_active never completes on a confirming wake', async () => {
   })
 
   const clock = fakeClock()
+  t.mock.timers.enable({ apis: ['Date'], now: clock.now() })
   let closed = false
   const watched = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
@@ -206,6 +207,7 @@ test('agent_active never completes on a confirming wake', async () => {
     ...clock,
     sleep: async (ms) => {
       await clock.sleep(ms)
+      t.mock.timers.tick(ms)
       if (!closed) {
         closed = true
         handlePostToolUse(root, {

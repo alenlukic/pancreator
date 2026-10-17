@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { PanError } from '../errors.js'
+import { isHarnessShellCriterion } from '../validation/stage-output.js'
 import {
   fileExists,
   isRecord,
@@ -169,6 +170,7 @@ export function isUntouchedScaffold(value: unknown): boolean {
     const result = item.result
     const untouched =
       result === 'unevaluated' ||
+      result === 'pending_harness' ||
       (result === 'not_applicable' &&
         (typeof item.explanation !== 'string' ||
           item.explanation.trim().length === 0))
@@ -184,7 +186,7 @@ export interface StageOutputScaffoldResult {
 
 /**
  * Write a stage output scaffold for an invocation to `outputPath`: empty
- * summary, declared artifacts, one `unevaluated` entry per rubric criterion,
+ * summary, declared artifacts, pending harness shells and unevaluated judgments,
  * required data slots, and a `pending` contract attestation, and return it.
  * Returns `already_scaffolded` without writing when the file holds an untouched
  * scaffold. Throws when the file already holds work and `force` is false.
@@ -303,7 +305,9 @@ export function scaffoldStageOutput(
         : []),
     criteria: invocation.rubric.map((criterion) => ({
       id: criterion.id,
-      result: 'unevaluated',
+      result: isHarnessShellCriterion(invocation, criterion.id)
+        ? 'pending_harness'
+        : 'unevaluated',
       evidence: [],
       explanation: '',
     })),

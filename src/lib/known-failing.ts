@@ -36,7 +36,8 @@ const FAILURE_HEADLINE_PATTERNS = [
 ]
 
 function isFailureHeadline(line: string): boolean {
-  return FAILURE_HEADLINE_PATTERNS.some((pattern) => pattern.test(line))
+  const headline = line.split('\n', 1)[0]
+  return FAILURE_HEADLINE_PATTERNS.some((pattern) => pattern.test(headline))
 }
 
 export interface TestFailureIdentity {
@@ -49,9 +50,8 @@ export interface TestFailureIdentity {
 export function parseTestFailureIdentity(
   diagnostic: string,
 ): TestFailureIdentity | null {
-  const pytest = /^(?:FAILED|ERROR)\s+(\S+)::(.+?)(?:\s+-\s+|$)/u.exec(
-    diagnostic,
-  )
+  const headline = diagnostic.split('\n', 1)[0]
+  const pytest = /^(?:FAILED|ERROR)\s+(\S+)::(.+?)(?:\s+-\s+|$)/u.exec(headline)
 
   if (pytest) {
     return {
@@ -61,7 +61,7 @@ export function parseTestFailureIdentity(
     }
   }
 
-  const named = /(?:^|\s)(?:FAIL|×|✕|✗)\s+(\S+)\s+>\s+(.+)$/u.exec(diagnostic)
+  const named = /(?:^|\s)(?:FAIL|×|✕|✗)\s+(\S+)\s+>\s+(.+)$/u.exec(headline)
 
   if (named) {
     return {
@@ -72,8 +72,8 @@ export function parseTestFailureIdentity(
   }
 
   const node =
-    /^not ok(?:\s+\d+)?\s+-\s+(.+?)\s+\((.+):(\d+)(?::\d+)?\)$/u.exec(
-      diagnostic,
+    /^not ok(?:\s+(?:\d+|<index>))?\s+-\s+(.+?)\s+\((.+):(?:\d+|<line>)(?::(?:\d+|<column>))?\)$/u.exec(
+      headline,
     )
 
   if (node) {
@@ -221,8 +221,9 @@ export function failedRepositoryCheckLanes(
       )) {
         // Diagnostics arrive normalized, with line numbers replaced, so the
         // lane is read from the failure headline itself.
-        const lane = isFailureHeadline(diagnostic)
-          ? TEST_LANE_PATH.exec(diagnostic)?.[1]
+        const headline = diagnostic.split('\n', 1)[0]
+        const lane = isFailureHeadline(headline)
+          ? TEST_LANE_PATH.exec(headline)?.[1]
           : undefined
 
         if (lane) {
@@ -342,8 +343,10 @@ function fileStem(file: string): string {
 }
 
 function creditsLine(declaration: KnownFailingTest, line: string): boolean {
+  const headline = line.split('\n', 1)[0]
   return (
-    line.includes(fileStem(declaration.file)) && line.includes(declaration.case)
+    headline.includes(fileStem(declaration.file)) &&
+    headline.includes(declaration.case)
   )
 }
 

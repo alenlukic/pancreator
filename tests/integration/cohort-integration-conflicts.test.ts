@@ -517,6 +517,7 @@ test('the release run starts when the plan run record is gone', () => {
 
   const state = loadState(root, integrated.autostart.run_id)
 
+  assert.equal(state.approved_plan, undefined)
   // No plan run remains to name a profile, so the run takes the configured
   // default rather than inheriting one.
   assert.equal(state.operator_involvement?.profile, 'standard')

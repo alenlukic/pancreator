@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -16,6 +16,13 @@ import { loadPipelineConfigSnapshot } from '../../src/lib/pipeline-config.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
 import {
+  claudeCodeToolPolicy,
+  createClaudeCodeAdapter,
+} from '../../src/lib/engine/executors.js'
+import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
+import { delegateEvidenceWorkers } from '../../src/lib/engine/evidence-workers.js'
+import {
+  attachTargetInstructionEvidence,
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
@@ -24,9 +31,152 @@ import {
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import {
   CLAUDE_CODE_SPEC,
+  checkpoint,
   installClaudeCodeFixture,
+  routePersonas,
+  submitStageOutput,
   withStub,
 } from './delivery-helpers.js'
+
+function capabilityFixture(root: string): string {
+  const binary = path.join(root, 'claude-capability.cjs')
+  writeFileSync(
+    binary,
+    `#!/usr/bin/env node
+const fs = require('node:fs')
+const cp = require('node:child_process')
+const args = process.argv.slice(2)
+const values = flag => { const i=args.indexOf(flag); if(i<0)return []; const out=[]; for(let j=i+1;j<args.length&&!args[j].startsWith('--');j++)out.push(...args[j].split(',')); return out }
+const mode = values('--permission-mode')[0]
+const tools = values('--tools')
+const allowed = values('--allowed-tools')
+const available = name => tools.length===0 || tools.includes(name)
+const approved = name => mode==='bypassPermissions' || allowed.includes(name)
+const shell = available('Bash') && approved('Bash')
+if(shell) cp.execFileSync(process.execPath,['-e','require("node:fs").writeFileSync("runtime/shell-attempt.txt","executed")'])
+const sourceWrite = available('Write') && approved('Write')
+if(sourceWrite) fs.writeFileSync('source-attempt.txt','executed')
+const runtime = ${JSON.stringify(path.join(root, 'runtime'))}
+const runtimeWrite = available('Write') && (approved('Write') ||
+  (process.cwd()===${JSON.stringify(root)} && allowed.includes('Write(runtime/**)')) ||
+  allowed.includes('Write(//' + runtime + '/**)'))
+if(runtimeWrite) fs.writeFileSync(runtime + '/capability-report.json',JSON.stringify({shell,sourceWrite,runtimeWrite}))
+let prompt = ''
+process.stdin.setEncoding('utf8')
+process.stdin.on('data',chunk=>prompt+=chunk)
+process.stdin.on('end',()=>{
+  const destination = /Write your complete evidence report as Markdown to \`([^\`]+)\`/.exec(prompt)?.[1]
+  if(destination && runtimeWrite) fs.writeFileSync(destination,JSON.stringify({shell,sourceWrite,runtimeWrite}))
+  console.log(JSON.stringify({session_id:'capability-session',result:JSON.stringify({shell,sourceWrite,runtimeWrite})}))
+})
+`,
+  )
+  chmodSync(binary, 0o755)
+
+  return binary
+}
+
+test('read-only Claude tools reject shell and source writes even when bypass is requested or resumed', () => {
+  const root = createFixture()
+  const binary = capabilityFixture(root)
+  const workflow = loadWorkflow(root, 'delivery')
+  const mapping = parsePersonaMapping(
+    'claude-code:claude-opus-5[permission-mode=bypassPermissions,session-resume=true]',
+  )
+
+  withStub(binary, null, () => {
+    for (const { slug, workspaceDir } of [
+      { slug: 'verify', workspaceDir: root },
+      { slug: 'verify', workspaceDir: createFixture() },
+      { slug: 'ship', workspaceDir: root },
+      { slug: 'implement', workspaceDir: root },
+    ]) {
+      const stage = stageBySlug(workflow, slug)
+      const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
+      const adapter = createClaudeCodeAdapter({
+        workspaceDir,
+        mapping,
+        policy,
+        timeoutMs: 3000,
+      })
+
+      for (const session of [undefined, 'prior-session']) {
+        const result = adapter.run(
+          'Attempt harmless actions and write the report.',
+          session,
+        )
+        assert.equal(result.ok, true, result.error ?? result.stderr)
+        const output = JSON.parse(result.stdout) as { result: string }
+        const capabilities: unknown = JSON.parse(output.result)
+        const writable = ['source_allowed', 'release_metadata_only'].includes(
+          stage.workspace_policy,
+        )
+        assert.deepEqual(capabilities, {
+          shell: writable,
+          sourceWrite: writable,
+          runtimeWrite: true,
+        })
+        assert.ok(result.argv.includes('claude-opus-5'))
+        assert.equal(result.argv.includes('--resume'), session !== undefined)
+        assert.deepEqual(policy.addDirs, workspaceDir === root ? [] : [root])
+      }
+    }
+  })
+})
+
+test('Claude QA and review dispatch remove shell capability under bypass mode', () => {
+  const { root, runId, workflow } = checkpoint('delivery@implement-prepared', {
+    key: 'claude-readonly-capability',
+    fixture: (root) => {
+      installClaudeCodeFixture(root, ['qa-tester', 'reviewer'])
+      routePersonas(
+        root,
+        ['qa-tester', 'reviewer'],
+        'claude-code:claude-opus-5[permission-mode=bypassPermissions,session-resume=true]',
+      )
+    },
+  })
+  const implemented = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'implement'),
+    'success',
+    [],
+    (output) => {
+      output.data.verification_execution_operations = []
+      attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+    },
+  )
+  assert.equal(
+    implemented.record.outcome,
+    'success',
+    JSON.stringify(implemented.record.evaluation),
+  )
+  assert.ok(prepareInvocation(root, runId).invocation)
+  const binary = capabilityFixture(root)
+  const results = withStub(binary, null, () =>
+    delegateEvidenceWorkers(root, runId, { roles: ['qa', 'review'] }),
+  )
+  assert.deepEqual(results.map((result) => result.role).sort(), [
+    'qa',
+    'review',
+  ])
+
+  for (const result of results) {
+    assert.equal(result.ok, true, JSON.stringify(result))
+    const report: unknown = JSON.parse(
+      readFileSync(path.join(root, result.evidence_path), 'utf8'),
+    )
+    assert.deepEqual(report, {
+      shell: false,
+      sourceWrite: false,
+      runtimeWrite: true,
+    })
+  }
+
+  assert.equal(existsSync(path.join(root, 'runtime/shell-attempt.txt')), false)
+  assert.equal(existsSync(path.join(root, 'source-attempt.txt')), false)
+})
 
 function invocationFile(
   root: string,
