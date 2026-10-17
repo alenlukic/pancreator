@@ -24,6 +24,8 @@ import {
   type DelegationLiveEvent,
   type DelegationLiveRecord,
 } from './delegation-live.js'
+import { resolveWriteSandbox } from './write-sandbox.js'
+import { custodyAuthorityRoot, observeToolWrite } from './scope-custody.js'
 
 type RelayRequest = Omit<CopilotInvocationRequest, 'environment'> & {
   adapterParentPid: number
@@ -185,6 +187,9 @@ function parseRelayRequest(raw: string): RelayRequest {
     !value.availableTools.every((item) => typeof item === 'string') ||
     !Array.isArray(value.addDirs) ||
     !value.addDirs.every((item) => typeof item === 'string') ||
+    (value.writeRoots !== undefined &&
+      (!Array.isArray(value.writeRoots) ||
+        !value.writeRoots.every((item) => typeof item === 'string'))) ||
     value.environment !== undefined
   ) {
     throw new Error('Invalid Copilot relay request.')
@@ -280,6 +285,10 @@ export async function runCopilotRelay(
   const sessionId = request.resumeSessionId || randomUUID()
   const argv = copilotArgv(request, sessionId)
   const started = Date.now()
+  const sandbox = resolveWriteSandbox(
+    request.writeRoots ?? [],
+    request.live ? [custodyAuthorityRoot(request.live.root)] : [],
+  )
 
   const secrets = copilotRedactionSecrets(env, request.prompt)
   const sanitize = (text: string): string =>
@@ -305,6 +314,13 @@ export async function runCopilotRelay(
         sequence: 0,
         stream_sequences: { stdout: 0, stderr: 0 },
         truncated: false,
+        write_boundary: {
+          write_roots: sandbox.writeRoots,
+          effective_write_roots: sandbox.effectiveWriteRoots,
+          mode: sandbox.mode,
+          reason: sandbox.reason,
+        },
+        write_observations: [],
       }
     : undefined
 
@@ -320,6 +336,7 @@ export async function runCopilotRelay(
   let truncated = false
   let outputBytes = 0
   let eventBytes = 0
+  const toolWrites = new Map<string, string[]>()
 
   const persist = (): void => {
     if (live && record) {
@@ -351,6 +368,14 @@ export async function runCopilotRelay(
       }
 
       if (live) {
+        if (stream === 'stdout' && details.kind === 'tool') {
+          observeToolWrite(text, toolWrites, request.cwd, (observation) => {
+            record.write_observations?.push({
+              ...observation,
+              evidence: `${delegationLivePaths(live.root, record).events}:${event.sequence}`,
+            })
+          })
+        }
         const nextEventBytes =
           eventBytes + Buffer.byteLength(JSON.stringify(event)) + 1
 
@@ -374,14 +399,17 @@ export async function runCopilotRelay(
     writeProgress(`${text}\n`)
   }
   let childPid: number | undefined
+  let groupKilled = false
   let killTimer: ReturnType<typeof setTimeout> | undefined
   const killGroup = (signal: NodeJS.Signals): void => {
-    if (childPid === undefined) {
+    if (childPid === undefined || groupKilled) {
       return
     }
 
     try {
       process.kill(-childPid, signal)
+      // macOS can report EPERM for a group containing only dead descendants.
+      groupKilled = signal === 'SIGKILL'
     } catch (error) {
       if (
         !(error instanceof Error && 'code' in error && error.code === 'ESRCH')
@@ -435,10 +463,11 @@ export async function runCopilotRelay(
     }
   }
 
+  const launch = sandbox.wrap(binary, argv)
   process.on('SIGINT', onInt)
   process.on('SIGTERM', onTerm)
 
-  const child = spawn(binary, argv, {
+  const child = spawn(launch.binary, launch.argv, {
     cwd: request.cwd,
     env,
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -600,6 +629,7 @@ export async function runCopilotRelay(
   })
 
   clearTimeout(timeout)
+  launch.cleanup()
   clearInterval(heartbeat)
   clearInterval(parentCheck)
 
@@ -671,6 +701,15 @@ export async function runCopilotRelay(
     ...(signal ? { signal } : {}),
     ...(failure ? { error: failure } : {}),
     truncated,
+    ...(live && record
+      ? { custody_records: [delegationLivePaths(live.root, record).record] }
+      : {}),
+    write_boundary: {
+      write_roots: sandbox.writeRoots,
+      effective_write_roots: sandbox.effectiveWriteRoots,
+      mode: sandbox.mode,
+      reason: sandbox.reason,
+    },
   }
 }
 

@@ -3,6 +3,7 @@
  */
 
 import { scaffoldOperatorBrief } from '../briefs/scaffold.js'
+import { initializeDelegationCustody } from '../executors/delegation-live.js'
 import {
   ensureDir,
   fileExists,
@@ -305,6 +306,7 @@ export function writeInvocationArtifacts(
     )
   }
 
+  initializeDelegationCustody(root, invocation)
   writeJsonAtomic(resolveInside(root, jsonPath), invocation)
   writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
 

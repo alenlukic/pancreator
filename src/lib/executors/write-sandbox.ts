@@ -1,6 +1,7 @@
 import {
   accessSync,
   constants,
+  existsSync,
   mkdtempSync,
   realpathSync,
   rmSync,
@@ -43,6 +44,7 @@ export interface WriteSandbox {
   /** Why enforcement is unavailable. Empty when it is enforced. */
   reason: string
   writeRoots: string[]
+  effectiveWriteRoots: string[]
   wrap: (binary: string, argv: string[]) => PreparedLaunch
 }
 
@@ -63,11 +65,13 @@ function subpaths(directories: string[]): string[] {
 
     resolved.add(absolute)
 
-    try {
-      resolved.add(realpathSync(absolute))
-    } catch {
-      // A granted root the task will create still belongs in the profile.
+    let ancestor = absolute
+    while (!existsSync(ancestor) && path.dirname(ancestor) !== ancestor) {
+      ancestor = path.dirname(ancestor)
     }
+    resolved.add(
+      path.resolve(realpathSync(ancestor), path.relative(ancestor, absolute)),
+    )
   }
 
   return [...resolved].sort()
@@ -100,17 +104,54 @@ function agentStateRoots(): string[] {
  * writes, then re-allows writes under the given roots and the temporary,
  * device, and per-user state directories the agent needs.
  */
-export function writeSandboxProfile(writeRoots: string[]): string {
+export function writeSandboxProfile(
+  writeRoots: string[],
+  protectedRoots: string[] = [],
+  enforceWrites = true,
+): string {
   const allowed = [...subpaths(writeRoots), ...subpaths(agentStateRoots())]
+  const protectedPaths = subpaths(protectedRoots)
+  const ancestors = new Set<string>()
+  for (const protectedPath of protectedPaths) {
+    let ancestor = path.dirname(protectedPath)
+    while (path.dirname(ancestor) !== ancestor) {
+      ancestors.add(ancestor)
+      ancestor = path.dirname(ancestor)
+    }
+  }
 
   return [
     '(version 1)',
     '(allow default)',
-    '(deny file-write*)',
-    `(allow file-write* ${allowed
-      .map((directory) => `(subpath ${quoted(directory)})`)
-      .join(' ')})`,
+    ...(enforceWrites
+      ? [
+          '(deny file-write*)',
+          `(allow file-write* ${allowed
+            .map((directory) => `(subpath ${quoted(directory)})`)
+            .join(' ')})`,
+        ]
+      : []),
+    ...protectedPaths.map(
+      (directory) => `(deny file-write* (subpath ${quoted(directory)}))`,
+    ),
+    ...[...ancestors].map(
+      (directory) => `(deny file-write-unlink (literal ${quoted(directory)}))`,
+    ),
   ].join('\n')
+}
+
+export function custodyProtectionAvailable(): boolean {
+  if (process.platform !== 'darwin') return false
+  try {
+    accessSync(SANDBOX_BINARY, constants.X_OK)
+    return true
+  } catch (error) {
+    if (
+      ['ENOENT', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')
+    )
+      return false
+    throw error
+  }
 }
 
 function unavailable(reason: string, writeRoots: string[]): WriteSandbox {
@@ -118,6 +159,7 @@ function unavailable(reason: string, writeRoots: string[]): WriteSandbox {
     mode: 'none',
     reason,
     writeRoots,
+    effectiveWriteRoots: subpaths([...writeRoots, ...agentStateRoots()]),
     wrap: (binary, argv) => ({ binary, argv, cleanup: () => {} }),
   }
 }
@@ -127,36 +169,32 @@ function unavailable(reason: string, writeRoots: string[]): WriteSandbox {
  * back to observing the filesystem and MUST record the reason, because an
  * unenforced boundary that nobody records is the state this exists to end.
  */
-export function resolveWriteSandbox(writeRoots: string[]): WriteSandbox {
-  if (writeRoots.length === 0) {
-    return unavailable('The caller granted no write roots to enforce.', [])
-  }
-
-  if (process.env[WRITE_SANDBOX_ENV] === '0') {
-    return unavailable(`Disabled by ${WRITE_SANDBOX_ENV}=0.`, writeRoots)
-  }
-
-  if (process.platform !== 'darwin') {
+export function resolveWriteSandbox(
+  writeRoots: string[],
+  protectedRoots: string[] = [],
+): WriteSandbox {
+  if (!custodyProtectionAvailable()) {
     return unavailable(
-      `Write enforcement needs macOS sandbox-exec; this host is ${process.platform}.`,
+      `Write enforcement needs executable macOS sandbox-exec; this host is ${process.platform}.`,
       writeRoots,
     )
   }
 
-  try {
-    accessSync(SANDBOX_BINARY, constants.X_OK)
-  } catch {
-    return unavailable(`${SANDBOX_BINARY} is not executable on this host.`, [
-      ...writeRoots,
-    ])
-  }
-
-  const profile = writeSandboxProfile(writeRoots)
+  const reason =
+    process.env[WRITE_SANDBOX_ENV] === '0'
+      ? `Disabled by ${WRITE_SANDBOX_ENV}=0.`
+      : writeRoots.length === 0
+        ? 'The caller granted no write roots to enforce.'
+        : ''
+  if (reason && protectedRoots.length === 0)
+    return unavailable(reason, writeRoots)
+  const profile = writeSandboxProfile(writeRoots, protectedRoots, reason === '')
 
   return {
-    mode: 'sandbox-exec',
-    reason: '',
+    mode: reason ? 'none' : 'sandbox-exec',
+    reason,
     writeRoots,
+    effectiveWriteRoots: subpaths([...writeRoots, ...agentStateRoots()]),
     // The profile travels in a file rather than in an argument. Endpoint
     // security on an operator machine kills an exec whose single argument
     // reaches a kilobyte, which a profile listing every granted root does.

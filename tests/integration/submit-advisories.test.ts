@@ -108,6 +108,7 @@ test('a submission returns every advisory it records', async () => {
       'repository_check_claim',
       'delegation_supervision',
       'platform_guidance',
+      'gate_bypass',
     ]),
   )
   assert.ok(
@@ -120,6 +121,13 @@ test('a submission returns every advisory it records', async () => {
     ),
   )
   assert.deepEqual(submitted.advisories, recorded)
+  assert.ok(
+    submitted.advisories.some(
+      (advisory) =>
+        advisory.kind === 'gate_bypass' &&
+        advisory.message.includes('Custody fallback'),
+    ),
+  )
   assert.match(
     getRunStatus(root, state.run_id) as string,
     /Platform guidance conflict: "Plan mode forbids file edits"/u,

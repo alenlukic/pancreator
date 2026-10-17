@@ -1,9 +1,14 @@
 import { spawnSync } from 'node:child_process'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { isRecord } from '../io.js'
 import { resolveEnvironmentKey } from './openai-auth.js'
-import type { DelegationLiveIdentity } from './delegation-live.js'
+import type {
+  DelegationLiveIdentity,
+  DelegationWriteBoundary,
+} from './delegation-live.js'
+import { isDelegationWriteBoundary } from './scope-custody.js'
 
 /**
  * Process-level mechanics for the `copilot` persona executor: preflight,
@@ -312,6 +317,7 @@ export interface CopilotInvocationRequest {
   effort?: string
   availableTools: readonly string[]
   addDirs: readonly string[]
+  writeRoots?: string[]
   resumeSessionId?: string
   timeoutMs?: number
   /** Credential environment. Merged into the child environment only. */
@@ -447,6 +453,8 @@ export interface CopilotInvocationResult {
   error?: string
   signal?: string
   truncated?: boolean
+  custody_records?: string[]
+  write_boundary?: DelegationWriteBoundary
 }
 
 /**
@@ -552,7 +560,14 @@ export function runCopilotCli(
       (payload.timed_out ||
         payload.exit_code !== 0 ||
         !isRecord(payload.parsed))) ||
-    (!payload.ok && (typeof payload.error !== 'string' || !payload.error))
+    (!payload.ok && (typeof payload.error !== 'string' || !payload.error)) ||
+    (payload.write_boundary !== undefined &&
+      !isDelegationWriteBoundary(payload.write_boundary)) ||
+    (payload.custody_records !== undefined &&
+      (!Array.isArray(payload.custody_records) ||
+        !payload.custody_records.every(
+          (item) => typeof item === 'string' && path.isAbsolute(item),
+        )))
   ) {
     return {
       ...base,
@@ -586,6 +601,13 @@ export function runCopilotCli(
     ...(typeof payload.signal === 'string' ? { signal: payload.signal } : {}),
     ...(typeof payload.truncated === 'boolean'
       ? { truncated: payload.truncated }
+      : {}),
+    ...(Array.isArray(payload.custody_records) &&
+    payload.custody_records.every((item) => typeof item === 'string')
+      ? { custody_records: payload.custody_records }
+      : {}),
+    ...(isDelegationWriteBoundary(payload.write_boundary)
+      ? { write_boundary: payload.write_boundary }
       : {}),
   }
 

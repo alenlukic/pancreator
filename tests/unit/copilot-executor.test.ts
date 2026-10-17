@@ -409,9 +409,20 @@ test('live paths reject escape and snapshots reject stale attempts and terminal 
   writeFileSync(paths.record, JSON.stringify({ ...record, attempt: 2 }))
   assert.throws(() => loadDelegationLiveRecord(root, identity), /Invalid/u)
   writeFileSync(paths.record, JSON.stringify(record))
+  assert.throws(
+    () =>
+      updateDelegationLiveRecord(root, {
+        ...record,
+        sequence: 1,
+        ended_at: timestamp,
+        exit_code: 0,
+      }),
+    /reuse or regress/u,
+  )
   updateDelegationLiveRecord(root, {
     ...record,
-    sequence: 1,
+    sequence: 2,
+    stream_sequences: { stdout: 1, stderr: 0 },
     ended_at: timestamp,
     exit_code: 0,
   })

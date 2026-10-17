@@ -307,9 +307,13 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
     )
 
     assert.equal(gate.results[0]?.passed, true)
-    // The other half of the pair: a worktree-bound run satisfies the
-    // criterion, so it records no bypass advisory.
-    assert.deepEqual(gate.advisories, [])
+    assert.equal(gate.advisories.length, 1)
+    assert.match(gate.advisories[0] ?? '', /Custody fallback/u)
+    assert.ok(
+      gate.advisories.every(
+        (advisory) => !advisory.includes('legacy compatibility path'),
+      ),
+    )
 
     const calls = readFileSync(processAudit.logPath, 'utf8')
 

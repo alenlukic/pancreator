@@ -1,3 +1,5 @@
+import type { DelegationWriteBoundary } from '../executors/delegation-live.js'
+
 export type StageOutcome = 'success' | 'failure' | 'blocked'
 
 export type RunStatus =
@@ -87,6 +89,9 @@ export interface ExternalExecutorSession {
 /** Tool boundary the harness applied to one delegated worker process. */
 export interface ExternalExecutorToolPolicy {
   granted_roots: string[]
+  write_roots?: string[]
+  custody_records?: string[]
+  write_boundary?: DelegationWriteBoundary
   per_path_write_policy: boolean
   scope_gate: 'scope.no_unapproved_changes'
 }

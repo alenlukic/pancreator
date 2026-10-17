@@ -1,7 +1,19 @@
 import path from 'node:path'
+import { readdirSync } from 'node:fs'
 
-import { fileExists, isRecord, readJson, writeJsonAtomic } from '../io.js'
+import {
+  fileExists,
+  isRecord,
+  readJson,
+  stableStringify,
+  writeJsonAtomic,
+} from '../io.js'
 import { resolveRunLayout } from '../run-layout.js'
+import type { Invocation } from '../types.js'
+import {
+  custodyAuthorityRoot,
+  isDelegationWriteBoundary,
+} from './scope-custody.js'
 
 export interface DelegationLiveIdentity {
   run_id: string
@@ -34,6 +46,21 @@ export interface DelegationLiveRecord extends DelegationLiveIdentity {
   exit_code?: number | null
   signal?: string
   error?: string
+  write_boundary?: DelegationWriteBoundary
+  write_observations?: DelegationWriteObservation[]
+}
+
+export interface DelegationWriteBoundary {
+  write_roots: string[]
+  effective_write_roots: string[]
+  mode: 'sandbox-exec' | 'none'
+  reason: string
+}
+
+export interface DelegationWriteObservation {
+  path: string
+  outcome: 'written' | 'denied'
+  evidence: string
 }
 
 export interface DelegationLiveEvent {
@@ -85,12 +112,99 @@ export function delegationLivePaths(
   }
 }
 
+export function delegationCustodyDirectory(
+  root: string,
+  identity: Pick<DelegationLiveIdentity, 'run_id' | 'invocation_id'>,
+): string {
+  validateIdentity({
+    ...identity,
+    role: 'stage',
+    attempt: 1,
+    launch_id: 'path',
+  })
+  return path.join(
+    custodyAuthorityRoot(root),
+    identity.run_id,
+    identity.invocation_id,
+  )
+}
+
+export function delegationCustodyPreparationPath(
+  root: string,
+  identity: Pick<DelegationLiveIdentity, 'run_id' | 'invocation_id'>,
+): string {
+  return `${delegationCustodyDirectory(root, identity)}.prepared.json`
+}
+
+function custodyRecordPath(
+  root: string,
+  identity: DelegationLiveIdentity,
+): string {
+  return path.join(
+    delegationCustodyDirectory(root, identity),
+    path.basename(delegationLivePaths(root, identity).record),
+  )
+}
+
+/** Freeze only scope authority; delivery/session bookkeeping may still change. */
+export function invocationCustodyIdentity(invocation: Invocation) {
+  return {
+    run_id: invocation.run_id,
+    invocation_id: invocation.invocation_id,
+    attempt: invocation.attempt,
+    stage: {
+      slug: invocation.stage.slug,
+      persona: invocation.stage.persona,
+      persona_executor: invocation.stage.persona_executor ?? 'cursor',
+      model: invocation.stage.model,
+      workspace_policy: invocation.stage.workspace_policy ?? null,
+    },
+    workspace_root: invocation.workspace_root,
+    harness_root: invocation.harness_root ?? null,
+    evidence_workers: (invocation.evidence_workers ?? []).map(
+      ({ role, model }) => ({ role, model }),
+    ),
+  }
+}
+
+/** Preparation owns the complete inventory, before any worker can run. */
+export function initializeDelegationCustody(
+  root: string,
+  invocation: Invocation,
+): void {
+  const directory = delegationCustodyDirectory(root, invocation)
+  const target = path.join(directory, 'invocation.json')
+  const identity = invocationCustodyIdentity(invocation)
+  const preparation = delegationCustodyPreparationPath(root, invocation)
+  if (
+    fileExists(directory) &&
+    readdirSync(directory).some((name) => name.endsWith('.live.json'))
+  ) {
+    if (
+      !fileExists(target) ||
+      stableStringify(readJson(target)) !== stableStringify(identity) ||
+      (fileExists(preparation) &&
+        stableStringify(readJson(preparation)) !== stableStringify(identity))
+    ) {
+      throw new Error('Cannot replace invocation custody after a launch.')
+    }
+    writeJsonAtomic(preparation, identity)
+    return
+  }
+  // Keep preparation evidence outside the inventory it protects from deletion.
+  writeJsonAtomic(preparation, identity)
+  writeJsonAtomic(target, identity)
+}
+
 /** Missing evidence is unobserved. Malformed or mismatched evidence is an error. */
 export function loadDelegationLiveRecord(
   root: string,
   identity: DelegationLiveIdentity,
+  authority = false,
 ): DelegationLiveRecord | null {
-  const { record: recordPath } = delegationLivePaths(root, identity)
+  const recordPath = authority
+    ? custodyRecordPath(root, identity)
+    : delegationLivePaths(root, identity).record
 
   if (!fileExists(recordPath)) {
     return null
@@ -142,15 +256,41 @@ export function loadDelegationLiveRecord(
   }
 
   if (
-    (value.child_pid !== undefined && !Number.isSafeInteger(value.child_pid)) ||
+    (value.child_pid !== undefined &&
+      (!Number.isSafeInteger(value.child_pid) || value.child_pid < 1)) ||
     (value.child_start_identity !== undefined &&
       value.child_start_identity !== null &&
       typeof value.child_start_identity !== 'string') ||
     (value.exit_code !== undefined &&
       value.exit_code !== null &&
-      !Number.isSafeInteger(value.exit_code))
+      !Number.isSafeInteger(value.exit_code)) ||
+    (value.ended_at !== undefined &&
+      (!Number.isFinite(Date.parse(value.ended_at)) ||
+        Date.parse(value.ended_at) < Date.parse(value.launched_at)))
   ) {
     throw new Error(`Invalid delegation live process fields: ${recordPath}`)
+  }
+
+  if (
+    value.write_boundary !== undefined &&
+    !isDelegationWriteBoundary(value.write_boundary)
+  ) {
+    throw new Error(`Invalid delegation write boundary: ${recordPath}`)
+  }
+
+  if (
+    value.write_observations !== undefined &&
+    (!Array.isArray(value.write_observations) ||
+      !value.write_observations.every(
+        (item) =>
+          isRecord(item) &&
+          typeof item.path === 'string' &&
+          ['written', 'denied'].includes(item.outcome) &&
+          typeof item.evidence === 'string' &&
+          item.evidence.length > 0,
+      ))
+  ) {
+    throw new Error(`Invalid delegation write observations: ${recordPath}`)
   }
 
   return value as DelegationLiveRecord
@@ -162,11 +302,17 @@ export function writeDelegationLiveLaunch(
   record: DelegationLiveRecord,
 ): void {
   const paths = delegationLivePaths(root, record)
+  const authorityPath = custodyRecordPath(root, record)
 
-  if (fileExists(paths.record) || fileExists(paths.events)) {
+  if (
+    fileExists(paths.record) ||
+    fileExists(paths.events) ||
+    fileExists(authorityPath)
+  ) {
     throw new Error(`Delegation launch already exists: ${paths.record}`)
   }
 
+  writeJsonAtomic(authorityPath, record)
   writeJsonAtomic(paths.record, record)
 }
 
@@ -175,7 +321,7 @@ export function updateDelegationLiveRecord(
   root: string,
   record: DelegationLiveRecord,
 ): void {
-  const previous = loadDelegationLiveRecord(root, record)
+  const previous = loadDelegationLiveRecord(root, record, true)
 
   if (
     previous === null ||
@@ -185,10 +331,22 @@ export function updateDelegationLiveRecord(
     record.stream_sequences.stderr < previous.stream_sequences.stderr ||
     record.relay_pid !== previous.relay_pid ||
     record.requested_session_id !== previous.requested_session_id ||
-    record.launched_at !== previous.launched_at
+    record.launched_at !== previous.launched_at ||
+    record.relay_start_identity !== previous.relay_start_identity ||
+    (previous.child_pid !== undefined &&
+      (record.child_pid !== previous.child_pid ||
+        record.child_start_identity !== previous.child_start_identity)) ||
+    stableStringify(record.write_boundary) !==
+      stableStringify(previous.write_boundary) ||
+    !(previous.write_observations ?? []).every(
+      (observation, index) =>
+        stableStringify(observation) ===
+        stableStringify(record.write_observations?.[index]),
+    )
   ) {
     throw new Error('Delegation live update would reuse or regress a launch.')
   }
 
+  writeJsonAtomic(custodyRecordPath(root, record), record)
   writeJsonAtomic(delegationLivePaths(root, record).record, record)
 }
