@@ -55,6 +55,30 @@ test('subprocess denial is collector-specific and opt-in', () => {
   assert.match(writeSandboxProfile(roots, true, true), /\(deny process-fork\)/u)
 })
 
+test('Copilot state is an agent exception, never a strict collector grant', () => {
+  const home = createTestTempDirectory('pancreator-copilot-home-')
+  const granted = path.join(home, 'runtime')
+  const state = path.join(home, '.copilot')
+  const previousHome = process.env.HOME
+  process.env.HOME = home
+
+  try {
+    const profile = writeSandboxProfile([granted])
+    const sandbox = withEnv(undefined, () => resolveWriteSandbox([granted]))
+
+    assert.ok(profile.includes(`(subpath "${state}")`), profile)
+    assert.ok(sandbox.effectiveWriteRoots.includes(state))
+    assert.deepEqual(sandbox.writeRoots, [granted])
+    assert.ok(!writeSandboxProfile([granted], true, true).includes(state))
+  } finally {
+    if (previousHome === undefined) {
+      delete process.env.HOME
+    } else {
+      process.env.HOME = previousHome
+    }
+  }
+})
+
 // macOS resolves a fixture path through more than one prefix, and the
 // sandbox matches the resolved one. A profile that named only the declared
 // path would deny a write the caller granted.

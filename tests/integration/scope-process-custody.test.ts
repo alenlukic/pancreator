@@ -30,6 +30,7 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation, StageDefinition } from '../../src/lib/types.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import { createFixture, fixtureGit } from '../fixture-template.js'
+import { createTestTempDirectory } from '../temp.js'
 import { checkpoint } from './delivery-helpers.js'
 
 function setup(
@@ -812,22 +813,75 @@ emit({type:'result',sessionId:session,exitCode:0})
 }
 
 test('the real sandbox enforces its reported boundary or explicitly reports unavailable enforcement', () => {
-  const root = createFixture()
+  const root = createTestTempDirectory('pancreator-copilot-state-')
   const allowed = path.join(root, 'runtime')
   mkdirSync(allowed, { recursive: true })
-  const sandbox = resolveWriteSandbox([allowed])
-  if (sandbox.mode === 'none') {
-    assert.ok(sandbox.reason)
-    return
-  }
-  const launch = sandbox.wrap(process.execPath, [
-    '-e',
-    `const fs = require('node:fs'); fs.writeFileSync(${JSON.stringify(path.join(allowed, 'allowed.txt'))}, 'ok'); try { fs.writeFileSync(${JSON.stringify(path.join(root, 'forbidden.txt'))}, 'bad'); process.exit(2) } catch (error) { if (!['EPERM', 'EACCES'].includes(error.code)) throw error }`,
-  ])
+
+  const home = path.join(root, 'home')
+  const session = path.join(home, '.copilot', 'session-state', 'session')
+  const protectedRoot = path.join(home, '.copilot', 'custody')
+  const protectedRecord = path.join(protectedRoot, 'authority.json')
+  mkdirSync(protectedRoot, { recursive: true })
+  writeFileSync(protectedRecord, 'protected\n')
+
+  const previousHome = process.env.HOME
+  const previousSandbox = process.env.PANCREATOR_WRITE_SANDBOX
+  process.env.HOME = home
+  delete process.env.PANCREATOR_WRITE_SANDBOX
+
   try {
-    const result = spawnSync(launch.binary, launch.argv, { encoding: 'utf8' })
-    assert.equal(result.status, 0, result.stderr)
+    const sandbox = resolveWriteSandbox([allowed], [protectedRoot])
+
+    if (sandbox.mode === 'none') {
+      assert.ok(sandbox.reason)
+      return
+    }
+    const launch = sandbox.wrap(process.execPath, [
+      '-e',
+      `
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+fs.writeFileSync(${JSON.stringify(path.join(allowed, 'allowed.txt'))}, 'ok')
+fs.mkdirSync(${JSON.stringify(session)}, { recursive: true })
+fs.writeFileSync(${JSON.stringify(path.join(session, 'events.jsonl'))}, 'session\\n')
+for (const target of ${JSON.stringify([path.join(root, 'forbidden.txt'), path.join(home, 'forbidden.txt'), protectedRecord])}) {
+  assert.throws(() => fs.writeFileSync(target, 'bad'), error => ['EPERM', 'EACCES'].includes(error.code))
+}
+assert.throws(() => fs.unlinkSync(${JSON.stringify(protectedRecord)}), error => ['EPERM', 'EACCES'].includes(error.code))
+`,
+    ])
+    try {
+      const result = spawnSync(launch.binary, launch.argv, {
+        encoding: 'utf8',
+        timeout: 20_000,
+        maxBuffer: 1024 * 1024,
+      })
+      assert.equal(result.error, undefined)
+      assert.equal(result.signal, null, result.stderr)
+      assert.equal(result.status, 0, result.stderr)
+      assert.equal(
+        readFileSync(path.join(allowed, 'allowed.txt'), 'utf8'),
+        'ok',
+      )
+      assert.equal(
+        readFileSync(path.join(session, 'events.jsonl'), 'utf8'),
+        'session\n',
+      )
+      assert.equal(readFileSync(protectedRecord, 'utf8'), 'protected\n')
+    } finally {
+      launch.cleanup()
+    }
   } finally {
-    launch.cleanup()
+    if (previousHome === undefined) {
+      delete process.env.HOME
+    } else {
+      process.env.HOME = previousHome
+    }
+
+    if (previousSandbox === undefined) {
+      delete process.env.PANCREATOR_WRITE_SANDBOX
+    } else {
+      process.env.PANCREATOR_WRITE_SANDBOX = previousSandbox
+    }
   }
 })

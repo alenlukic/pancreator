@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Give the harness ownership of verification process execution, raw observations, and evidence-gap reporting while workers grade the supplied results ([verification execution](docs/verification-execution.md)).
+
+### Added
+
+- Attribute workspace writes to the current invocation and process, protect harness authority, and retain explicit fallback when custody is incomplete ([scope custody](docs/scope-custody.md)).
+- Use recorded process identity, shell heartbeat, and audit freshness to distinguish active Copilot execution from a stalled worker ([process-backed watch](docs/process-backed-watch.md)).
+- Collect declared verification operations before worker launch with isolated write roots, provenance, and fail-closed handling of missing or invalid results ([verification execution](docs/verification-execution.md)).
+
+### Fixed
+
+- Permit Copilot startup scratch writes within its sandbox while retaining source-write denial, custody protection, and strict verification-collector isolation ([write sandbox](src/lib/executors/write-sandbox.ts)).
+
+The supplied verifier supports all 15 acceptance criteria with warnings. The final fast check retains one waived file-size failure: the verification evidence fixture has 1188 lines against a 1000-line ceiling. A fixture split remains owed, and no current wall measurement is available. Conservative denied-read attribution, duplicate scaffold coverage, prose-coupled assertions, and previously disclosed historical failures remain unresolved.
+
 ## [9.3.0] - 2026-10-16
 
 ### Changed

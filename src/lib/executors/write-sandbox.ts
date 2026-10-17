@@ -91,6 +91,7 @@ function agentStateRoots(): string[] {
     '/private/var/tmp',
     '/private/tmp',
     '/dev',
+    path.join(home, '.copilot'),
     path.join(home, '.cursor'),
     path.join(home, '.config'),
     path.join(home, 'Library', 'Caches'),
