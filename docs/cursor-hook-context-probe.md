@@ -12,6 +12,12 @@ The payload logger went with the probe, so no current build writes
 operator notes name sit under the ignored `runtime/` tree, so neither reached
 the integrated branch. The verdict below is the durable record.
 
+The current prompt and session hooks end their returned context with
+`Remember the operating principles; you MUST abide by these:` followed by the
+current `## Mission and operating principles` section from the harness
+`AGENTS.md`. Prompts excluded from role reminders receive this principles text
+alone. Other hook events and malformed input retain the permissive response.
+
 ## Purpose
 
 This probe determines whether Cursor injects context returned by a

@@ -449,6 +449,8 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
       'Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model.',
       'Named personas retain their projected model routing through projected frontmatter and `config.json`.',
       '',
+      agentsSection('## Mission and operating principles'),
+      '',
       agentsSection('## Invariants'),
       '',
     ].join('\n'),
