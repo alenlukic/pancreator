@@ -454,6 +454,8 @@ test('a copilot worker stops on its execution record and not before', () => {
   const invocation = {
     run_id: 'run-1',
     invocation_id: 'inv-1',
+    attempt: 1,
+    created_at: new Date(Date.now() - 1_000).toISOString(),
     stage: { slug: 'implement', persona: 'coder', persona_executor: 'copilot' },
   } as unknown as Invocation
   const recordPath = path.join(
@@ -469,6 +471,7 @@ test('a copilot worker stops on its execution record and not before', () => {
         run_id: 'run-1',
         invocation_id: 'inv-1',
         executor: 'copilot',
+        stage: 'implement',
         exit_code: 0,
         timed_out: false,
         session_id: 'sess-1',
