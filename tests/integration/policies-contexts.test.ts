@@ -139,13 +139,14 @@ test('VERIFY-001 binds the blast-radius rule to every verify evidence worker', (
   assert.ok(
     texts.some(
       (text) =>
-        /impacted profile is the blast radius/u.test(text) &&
-        /MUST NOT run it a second time/u.test(text),
+        /MUST independently grade current harness-collected observations/u.test(
+          text,
+        ) && /MUST carry every other case forward/u.test(text),
     ),
   )
   assert.ok(
     texts.some((text) =>
-      /full profile runs only as the release gate of the ship stage/u.test(
+      /Read-only evidence workers and the verifier MUST NOT execute shell commands or repository-check profiles/u.test(
         text,
       ),
     ),

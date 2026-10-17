@@ -44,6 +44,17 @@ test('the profile denies writes and allows each granted root', () => {
   assert.ok(profile.includes(`(subpath "${granted}")`), profile)
 })
 
+test('subprocess denial is collector-specific and opt-in', () => {
+  const roots = [createTestTempDirectory('pancreator-process-sandbox-')]
+
+  assert.doesNotMatch(writeSandboxProfile(roots), /\(deny process-fork\)/u)
+  assert.doesNotMatch(
+    writeSandboxProfile(roots, true),
+    /\(deny process-fork\)/u,
+  )
+  assert.match(writeSandboxProfile(roots, true, true), /\(deny process-fork\)/u)
+})
+
 // macOS resolves a fixture path through more than one prefix, and the
 // sandbox matches the resolved one. A profile that named only the declared
 // path would deny a write the caller granted.

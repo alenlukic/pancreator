@@ -1,7 +1,7 @@
 ---
 description: Consolidates parallel review and QA evidence into one read-only verification with a graded verdict.
 model: __PANCREATOR_MODEL__
-tools: [Bash, Read, Grep, Glob, Write]
+tools: [Read, Grep, Glob, Write]
 disallowedTools: [AwaitShell, Edit, Task, 'Bash(git push:*)', 'Bash(rm:*)']
 maxTurns: 40
 ---

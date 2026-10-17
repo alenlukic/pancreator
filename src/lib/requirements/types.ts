@@ -3,6 +3,7 @@ import type {
   RequirementExecutor,
   RequirementPhase,
   RunContract,
+  WorkspacePolicy,
 } from '../types.js'
 
 export interface RegistryEntry {
@@ -38,6 +39,7 @@ export interface RequirementContext {
   workflow: string
   stage: string
   invocation_kind?: InvocationKind
+  workspace_policy?: WorkspacePolicy
   /** Run contracts in force, so contract-scoped policy rows resolve identically here. */
   contracts?: RunContract[]
   /**

@@ -6,7 +6,7 @@
  * proof type keeps QA, so a legacy or unplanned run loses nothing.
  */
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -95,7 +95,10 @@ test('a request whose criteria are all test-proven runs verify without QA', () =
 })
 
 test('a live criterion keeps the QA worker and its cases', () => {
-  const { invocation } = checkpoint('delivery@verify-prepared', LIVE_PROOF)
+  const { root, invocation } = checkpoint(
+    'delivery@verify-prepared',
+    LIVE_PROOF,
+  )
 
   assert.ok(invocation)
   assert.deepEqual(
@@ -104,6 +107,36 @@ test('a live criterion keeps the QA worker and its cases', () => {
   )
   assert.equal(invocation.evidence_worker_skips, undefined)
   assert.equal(invocation.output.required_data['verify.qa_cases'], 'array')
+  assert.ok(invocation.verification_execution)
+  const execution = JSON.parse(
+    readFileSync(
+      path.join(root, invocation.verification_execution.manifest_path),
+      'utf8',
+    ),
+  )
+  assert.ok(execution.gaps.some((gap: { id: string }) => gap.id === 'AC-01'))
+  assert.ok(existsSync(path.join(root, invocation.output.path)))
+  const qa = invocation.evidence_workers?.find((worker) => worker.role === 'qa')
+  assert.ok(qa)
+  const brief = readFileSync(path.join(root, qa.brief_path), 'utf8')
+  assert.match(brief, /harness owns process execution/u)
+  assert.match(brief, /execution-request\.json/u)
+  assert.match(brief, /cannot prove a browser verdict/u)
+  assert.doesNotMatch(brief, /Run that one validation/u)
+  for (const persona of ['qa-tester', 'verifier']) {
+    const projected = readFileSync(
+      path.join(root, `.cursor/agents/pan-${persona}.md`),
+      'utf8',
+    )
+    const tools = projected.match(/^tools:\s*\[([^\]]*)\]/mu)?.[1]
+    assert.ok(
+      tools,
+      `${persona} must declare an explicit Cursor tool allowlist`,
+    )
+    assert.doesNotMatch(tools, /\b(?:Bash|Shell|Terminal)\b/u)
+    assert.match(tools, /\bRead\b/u)
+    assert.match(tools, /\bWrite\b/u)
+  }
 })
 
 test('a request with no proof tags keeps QA', () => {
@@ -296,7 +329,7 @@ test('a return visit whose remediation declared no changed path keeps the first-
   assert.equal(worker?.scope, review.scope)
   assert.match(
     readFileSync(path.join(root, worker?.brief_path ?? ''), 'utf8'),
-    /execute your scope in full/u,
+    /grade current harness-collected observations for your scope in full/u,
   )
 })
 

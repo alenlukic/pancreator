@@ -119,6 +119,30 @@ test('scaffold refuses to overwrite a non-empty output without force', () => {
   )
 })
 
+test('read-only verify scaffolding is idempotent and retains completed worker work', () => {
+  const root = createTestTempDirectory('pan-verify-scaffold-')
+  const outputPath = 'runtime/logs/workflows/x/outputs/verify.json'
+  const invocation = {
+    invocation_id: 'verify-1',
+    rubric: [],
+    output: {
+      path: outputPath,
+      required_data: { verify: 'object', 'verify.verdict': 'string' },
+    },
+  } as unknown as Invocation
+  scaffoldStageOutput(root, invocation, outputPath)
+  const scaffold = readFileSync(path.join(root, outputPath), 'utf8')
+  scaffoldStageOutput(root, invocation, outputPath)
+  assert.equal(readFileSync(path.join(root, outputPath), 'utf8'), scaffold)
+  const completed = `${JSON.stringify({ summary: 'Independent grading complete', data: { verify: { verdict: 'fail_remedial' } } })}\n`
+  writeFileSync(path.join(root, outputPath), completed)
+  assert.throws(
+    () => scaffoldStageOutput(root, invocation, outputPath),
+    /already exists/u,
+  )
+  assert.equal(readFileSync(path.join(root, outputPath), 'utf8'), completed)
+})
+
 test('scaffold copies the contract manifest into a pending attestation', () => {
   const root = createTestTempDirectory('pan-scaffold-')
   const outputPath = 'runtime/logs/workflows/x/outputs/out.json'

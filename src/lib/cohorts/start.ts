@@ -54,7 +54,7 @@ import {
   liveChunkRuns,
   unstartedChunksOfCohort,
 } from './chunks.js'
-import { readRatifiedCohortPlan } from './plan.js'
+import { readRatifiedCohortPlan, ratifiedPlanReference } from './plan.js'
 import {
   cohortSessionForPlanRun,
   newestRun,
@@ -323,6 +323,7 @@ export function startCohort(
             branch: record.branch,
           },
           contextReferencePath: state.parent_spec_path,
+          approvedPlan: ratifiedPlanReference(root, state.plan_run_id),
           involvement,
           design: state.design_composition,
           cohort: {

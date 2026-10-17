@@ -33,90 +33,56 @@ function evidenceWorkerFixture(): InvocationEvidenceWorker {
   }
 }
 
-test('the evidence brief names the fast command only when no passed fast gate is current', () => {
+test('evidence briefs keep profile execution harness-owned for absent, current, and stale gate evidence', () => {
   const root = sharedFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
-  // The two evidence workers of a verify stage share this invocation id, so
-  // the role is what separates their recorded passes; the brief hands each
-  // worker the command that records its own.
-  const command =
-    '`./bin/pan repository-check fast --run run-fixture --role qa`'
-
-  // No gate evidence at all, as on a release run that never ran implement:
-  // the brief names the command, and the harness checkout is the place to
-  // run it from.
-  const withoutEvidence = renderEvidenceWorkerBrief(
-    invocation,
-    evidenceWorkerFixture(),
-  )
-
-  assert.ok(withoutEvidence.includes(command))
-  assert.ok(
-    renderEvidenceWorkerBrief(invocation, {
-      ...evidenceWorkerFixture(),
-      persona: 'reviewer',
-      role: 'review',
-    }).includes(
-      '`./bin/pan repository-check fast --run run-fixture --role review`',
-    ),
-    'the other worker of the same invocation is handed its own command',
-  )
-  assert.match(withoutEvidence, /from this checkout so the run records/u)
-  assert.doesNotMatch(withoutEvidence, /Harness root/u)
-  assert.doesNotMatch(withoutEvidence, /already ran `fast`/u)
-
-  // A passed fast gate at the current fingerprint is what the scope tells the
-  // worker to cite, so the brief says so instead of ordering a rerun.
-  invocation.inputs.references = [
+  const evidence = {
+    path: 'runtime/logs/workflows/run-fixture/agent/evidence/fast.json',
+    description: 'Gate evidence',
+    retrieval: 'conditional' as const,
+    condition: 'Cite this evidence.',
+  }
+  for (const gate of [
+    undefined,
     {
-      path: 'runtime/logs/workflows/run-fixture/agent/evidence/fast.json',
-      description: 'Gate evidence',
-      retrieval: 'conditional',
-      condition: 'Cite this evidence.',
-      gate_evidence: {
-        profile: 'fast',
-        fingerprint: 'fixture-fingerprint',
-        current: true,
-      },
+      profile: 'fast',
+      fingerprint: 'fixture-fingerprint',
+      current: true,
     },
-  ]
-
-  const withEvidence = renderEvidenceWorkerBrief(
-    invocation,
-    evidenceWorkerFixture(),
-  )
-
-  assert.ok(!withEvidence.includes(command))
-  assert.match(
-    withEvidence,
-    /The implement gate already ran `fast` at this workspace fingerprint\. Cite that gate evidence reference from your card/u,
-  )
-
-  // Superseded fast evidence, or a passed profile other than fast, does not
-  // stand in: the command returns.
-  invocation.inputs.references[0].gate_evidence = {
-    profile: 'fast',
-    fingerprint: 'older-fingerprint',
-    current: false,
+    {
+      profile: 'fast',
+      fingerprint: 'older-fingerprint',
+      current: false,
+    },
+    {
+      profile: 'static',
+      fingerprint: 'fixture-fingerprint',
+      current: true,
+    },
+  ]) {
+    invocation.inputs.references = gate
+      ? [{ ...evidence, gate_evidence: gate }]
+      : []
+    for (const worker of [
+      evidenceWorkerFixture(),
+      {
+        ...evidenceWorkerFixture(),
+        persona: 'reviewer',
+        role: 'review' as const,
+      },
+    ]) {
+      const brief = renderEvidenceWorkerBrief(invocation, worker)
+      assert.match(
+        brief,
+        /The harness owns process execution, repository-check profiles, and final output validation/u,
+      )
+      assert.match(brief, /Cite current gate evidence for profile results/u)
+      assert.doesNotMatch(brief, /pan repository-check fast/u)
+      assert.doesNotMatch(brief, /already ran `fast`/u)
+      if (gate) assert.ok(brief.includes(evidence.path))
+    }
   }
-  assert.ok(
-    renderEvidenceWorkerBrief(invocation, evidenceWorkerFixture()).includes(
-      command,
-    ),
-  )
-  invocation.inputs.references[0].gate_evidence = {
-    profile: 'static',
-    fingerprint: 'fixture-fingerprint',
-    current: true,
-  }
-  assert.ok(
-    renderEvidenceWorkerBrief(invocation, evidenceWorkerFixture()).includes(
-      command,
-    ),
-  )
 
-  // A run bound to a worktree carries the harness root, as the card does, so
-  // the brief names that directory instead of assuming this checkout.
   invocation.workspace_root = 'worktrees/operator/delivery-abc123-alpha'
   invocation.harness_root = '/srv/harness'
   invocation.installation_mode = 'self_development'
@@ -132,14 +98,12 @@ test('the evidence brief names the fast command only when no passed fast gate is
   )
 
   assert.ok(fromHarnessRoot.includes('/srv/harness'))
+  assert.ok(fromHarnessRoot.includes(invocation.workspace_root))
   assert.match(
     fromHarnessRoot,
-    /PANCREATOR_EXEC_ROOT=\/srv\/harness\/worktrees\/operator\/delivery-abc123-alpha \.\/bin\/pan/u,
+    /Execution observations are collected by the harness against this worktree before delegation/u,
   )
-  assert.match(
-    fromHarnessRoot,
-    /Bare `\.\/bin\/pan` remains the installation-root form for lifecycle and evidence commands/u,
-  )
+  assert.doesNotMatch(fromHarnessRoot, /pan repository-check fast/u)
   assert.doesNotMatch(fromHarnessRoot, /from this checkout/u)
 })
 

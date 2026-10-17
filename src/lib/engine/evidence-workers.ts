@@ -19,6 +19,7 @@ import { resolvePersonaMapping } from '../pipeline-config.js'
 import { runClaudeCode } from '../executors/claude-code.js'
 import { operationMutexPath, loadState } from '../state.js'
 import { stageBySlug } from '../workflow.js'
+import { scaffoldStageOutput } from '../requirements/scaffold.js'
 
 import {
   loadRunPipelineConfig,
@@ -35,6 +36,11 @@ import {
   ensureExecutorReady,
   pauseForExecutorPreflight,
 } from './executors.js'
+import {
+  archiveVerificationReport,
+  consumeEvidenceExecutionRequest,
+  prepareVerificationExecution,
+} from './verification-execution.js'
 
 export interface EvidenceWorkerDelegation {
   role: string
@@ -80,6 +86,9 @@ export function delegateEvidenceWorkers(
   const workflow = loadRunWorkflow(root, state)
   const stage = stageBySlug(workflow, state.current_stage)
   const invocation = readInvocation(root, state.current_invocation.json_path)
+  if (prepareVerificationExecution(root, state, invocation, options.roles)) {
+    scaffoldStageOutput(root, invocation, invocation.output.path)
+  }
   const pipelineConfig = loadRunPipelineConfig(root, state)
 
   const workspaceDir = workspaceDirectory(root, state)
@@ -111,6 +120,7 @@ export function delegateEvidenceWorkers(
         stdout_path: null,
         stderr_path: null,
       })
+
       continue
     }
 
@@ -191,7 +201,9 @@ export function delegateEvidenceWorkers(
       `${brief}\n\n## Evidence report destination\n\n` +
       `Write your complete evidence report as Markdown to ` +
       `\`${path.resolve(root, worker.evidence_path)}\`. ` +
-      `That file is the only file you write outside the workspace. ` +
+      `You may also select authorized observations in ` +
+      `\`${path.resolve(root, worker.evidence_path)}.execution-request.json\` ` +
+      `as an array of {id, reason}, without argv or other definitions. ` +
       `Do not submit the stage output; the stage worker owns it.\n`
     const configuredTimeout = mapping.options['timeout-ms']
     const timeoutMs = configuredTimeout ? Number(configuredTimeout) : undefined
@@ -207,6 +219,7 @@ export function delegateEvidenceWorkers(
             workspaceDir,
             installationRoot: root,
             runtimeDir: path.join(root, 'runtime'),
+            shellPolicy: 'deny',
             modelSpec: mapping.model_spec,
             modelVerification: cursorModelPredictionForSpec(
               root,
@@ -241,6 +254,10 @@ export function delegateEvidenceWorkers(
     const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stdout.json`
     const stderrPath = `${evidenceDir}/${invocation.invocation_id}.${mapping.executor}.${worker.role}.stderr.log`
 
+    for (const log of [stdoutPath, stderrPath]) {
+      const absolute = resolveInside(root, log)
+      if (fileExists(absolute)) archiveVerificationReport(absolute)
+    }
     writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
     writeTextAtomic(resolveInside(root, stderrPath), result.stderr)
 
@@ -264,6 +281,17 @@ export function delegateEvidenceWorkers(
               error: `evidence report not written at ${worker.evidence_path}`,
             }),
     })
+    if (
+      result.ok &&
+      invocation.verification_execution &&
+      consumeEvidenceExecutionRequest(root, state, invocation, evidenceAbsolute)
+    ) {
+      const rerun = delegateEvidenceWorkers(root, runId, {
+        ...options,
+        roles: [worker.role],
+      })
+      results.splice(results.length - 1, 1, ...rerun)
+    }
   }
 
   return results

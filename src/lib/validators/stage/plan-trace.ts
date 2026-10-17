@@ -20,7 +20,8 @@ import {
   workspaceRootFromInput,
 } from './evidence.js'
 import { intakeProductSpecFromRun } from './plan-lookups.js'
-import { profileCommandInText } from './verify.js'
+import { profileCommandInText } from '../profile-command.js'
+import { verificationExecutionOperationErrors } from '../verification-execution.js'
 
 /**
  * Shape check for the optional worker recommendation to change the run's
@@ -331,6 +332,7 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
 
   // ORCH-001: the gate runs each profile once, so a case must not rerun one.
   const testPlan = Array.isArray(data.test_plan) ? data.test_plan : []
+  const operationIds = new Set<string>()
 
   for (const [index, testCase] of testPlan.entries()) {
     if (!isRecord(testCase)) {
@@ -339,6 +341,52 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
 
     const caseId =
       typeof testCase.id === 'string' ? testCase.id : `test_plan[${index}]`
+    if (testCase.execution !== undefined) {
+      const execution = isRecord(testCase.execution) ? testCase.execution : null
+      const operations = execution?.operations
+      if (!Array.isArray(operations) || operations.length === 0) {
+        issues.push(
+          issue(
+            'plan.execution_shape',
+            `Case ${caseId} execution.operations must be a non-empty array.`,
+          ),
+        )
+      } else {
+        if (
+          !operations.some(
+            (operation) => isRecord(operation) && operation.required !== false,
+          )
+        ) {
+          issues.push(
+            issue(
+              'plan.execution_required',
+              `Case ${caseId} needs a mandatory operation; optional reproductions cannot supply its live evidence.`,
+            ),
+          )
+        }
+        for (const operation of operations) {
+          const errors = verificationExecutionOperationErrors(
+            input.root,
+            operation,
+            workspaceRoot,
+          )
+          if (isRecord(operation) && typeof operation.id === 'string') {
+            if (operationIds.has(operation.id))
+              errors.push('Duplicate operation id.')
+            operationIds.add(operation.id)
+            if (operation.criterion !== testCase.criterion)
+              errors.push('Operation criterion must match its case.')
+          }
+          if (errors.length)
+            issues.push(
+              issue(
+                'plan.execution_operation',
+                `Case ${caseId}: ${errors.join(' ')}`,
+              ),
+            )
+        }
+      }
+    }
     const text = ['setup', 'action', 'command', 'steps']
       .map((field) => testCase[field])
       .filter((entry): entry is string => typeof entry === 'string')

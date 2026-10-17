@@ -1,6 +1,7 @@
 /** The verify stage-output validator and its gate-evidence helpers. */
 
 import path from 'node:path'
+import { verificationExecutionGaps } from '../verification-execution.js'
 import {
   canonicalVerificationEvidencePath,
   normalizeVerificationEvidence,
@@ -12,7 +13,8 @@ import {
   type AcceptanceProof,
 } from '../../acceptance-proof.js'
 import type { HandlerResult, HandlerInput } from '../../requirements/types.js'
-import { loadRepositoryChecks } from '../../repository-checks.js'
+import { profileCommandInText } from '../profile-command.js'
+export { profileCommandInText } from '../profile-command.js'
 import { sharedChildFields, sharedEnum } from './field-contract.js'
 import {
   VERIFY_ACCEPTANCE_RULES,
@@ -62,58 +64,6 @@ function checkVerifyItems(
   }
 
   return valid
-}
-
-/** The repository-check profile command that free text names, if any. */
-export function profileCommandInText(
-  root: string,
-  text: string,
-): { profile: string; command: string } | null {
-  let profiles: Record<string, { commands: string[] }>
-
-  try {
-    profiles = loadRepositoryChecks(root).profiles
-  } catch {
-    return null
-  }
-
-  const boundary = String.raw`(?:^|[\s\x60'"(;&|])`
-  const terminal = String.raw`(?:$|[\s\x60'");&|])`
-
-  for (const [profile, definition] of Object.entries(profiles)) {
-    for (const command of definition.commands ?? []) {
-      const escaped = command.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-
-      if (new RegExp(`${boundary}${escaped}${terminal}`, 'u').test(text)) {
-        return { profile, command }
-      }
-    }
-
-    const literal = new RegExp(
-      `${boundary}(?:\\./bin/)?pan repository-check ${profile}${terminal}`,
-      'u',
-    )
-
-    if (literal.test(text)) {
-      return { profile, command: `pan repository-check ${profile}` }
-    }
-  }
-
-  // The literal form names a profile even when none is configured here. The
-  // `validate` subcommand runs no profile.
-  const anyProfile = new RegExp(
-    `${boundary}(?:\\./bin/)?pan repository-check ([a-z][a-z0-9_-]*)${terminal}`,
-    'u',
-  ).exec(text)
-
-  if (anyProfile && anyProfile[1] !== 'validate') {
-    return {
-      profile: anyProfile[1],
-      command: `pan repository-check ${anyProfile[1]}`,
-    }
-  }
-
-  return null
 }
 
 function currentGateEvidenceReferences(
@@ -194,6 +144,18 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   >
 
   normalizeVerificationEvidence(value)
+
+  if (value.result === 'success' && input.invocation) {
+    for (const gap of verificationExecutionGaps(
+      input.root,
+      input.invocation,
+      isRecord(value.data)
+        ? (value.data.verification_execution_requests ?? [])
+        : [],
+    )) {
+      issues.push(issue('verify.execution_evidence', gap))
+    }
+  }
 
   if (value.result === 'blocked') {
     const data = isRecord(value.data) ? value.data : {}

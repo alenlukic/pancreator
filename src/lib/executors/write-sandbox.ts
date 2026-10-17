@@ -102,14 +102,36 @@ function agentStateRoots(): string[] {
 /**
  * Renders a macOS `sandbox-exec` profile that allows everything except file
  * writes, then re-allows writes under the given roots and the temporary,
- * device, and per-user state directories the agent needs.
+ * device, and per-user state directories the agent needs. Strict collectors
+ * receive only their roots and /dev/null; subprocess denial is opt-in.
+ * Protected custody roots remain denied even when task writes are unrestricted.
+ * The boolean argument form preserves the collector profile API.
  */
 export function writeSandboxProfile(
   writeRoots: string[],
-  protectedRoots: string[] = [],
-  enforceWrites = true,
+  protectedRootsOrStrict: string[] | boolean = [],
+  enforceWritesOrDenySubprocesses?: boolean,
+  options: { strict?: boolean; denySubprocesses?: boolean } = {},
 ): string {
-  const allowed = [...subpaths(writeRoots), ...subpaths(agentStateRoots())]
+  const protectedRoots = Array.isArray(protectedRootsOrStrict)
+    ? protectedRootsOrStrict
+    : []
+  const strict =
+    typeof protectedRootsOrStrict === 'boolean'
+      ? protectedRootsOrStrict
+      : (options.strict ?? false)
+  const enforceWrites =
+    typeof protectedRootsOrStrict === 'boolean'
+      ? true
+      : (enforceWritesOrDenySubprocesses ?? true)
+  const denySubprocesses =
+    typeof protectedRootsOrStrict === 'boolean'
+      ? (enforceWritesOrDenySubprocesses ?? false)
+      : (options.denySubprocesses ?? false)
+  const allowed = [
+    ...subpaths(writeRoots),
+    ...(strict ? ['/dev/null'] : subpaths(agentStateRoots())),
+  ]
   const protectedPaths = subpaths(protectedRoots)
   const ancestors = new Set<string>()
   for (const protectedPath of protectedPaths) {
@@ -123,6 +145,7 @@ export function writeSandboxProfile(
   return [
     '(version 1)',
     '(allow default)',
+    ...(denySubprocesses ? ['(deny process-fork)'] : []),
     ...(enforceWrites
       ? [
           '(deny file-write*)',
@@ -171,8 +194,16 @@ function unavailable(reason: string, writeRoots: string[]): WriteSandbox {
  */
 export function resolveWriteSandbox(
   writeRoots: string[],
-  protectedRoots: string[] = [],
+  protectedRootsOrOptions:
+    | string[]
+    | { strict?: boolean; denySubprocesses?: boolean } = [],
 ): WriteSandbox {
+  const protectedRoots = Array.isArray(protectedRootsOrOptions)
+    ? protectedRootsOrOptions
+    : []
+  const options = Array.isArray(protectedRootsOrOptions)
+    ? {}
+    : protectedRootsOrOptions
   if (!custodyProtectionAvailable()) {
     return unavailable(
       `Write enforcement needs executable macOS sandbox-exec; this host is ${process.platform}.`,
@@ -188,7 +219,12 @@ export function resolveWriteSandbox(
         : ''
   if (reason && protectedRoots.length === 0)
     return unavailable(reason, writeRoots)
-  const profile = writeSandboxProfile(writeRoots, protectedRoots, reason === '')
+  const profile = writeSandboxProfile(
+    writeRoots,
+    protectedRoots,
+    reason === '',
+    options,
+  )
 
   return {
     mode: reason ? 'none' : 'sandbox-exec',

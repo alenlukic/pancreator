@@ -111,7 +111,7 @@
         {
           "path": "data.test_plan[]",
           "type": "object",
-          "format": "focused scenario for a live criterion, naming it in criterion; every live criterion needs at least one case, and test, review, and observe criteria need none. Setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
+          "format": "focused scenario for a live criterion, naming it in criterion; every live criterion needs at least one case, and test, review, and observe criteria need none. Optional execution.operations contains bounded version-1 VerificationExecutionOperation definitions from library/schemas/verification-execution.schema.json. When supplied it is non-empty, ids are unique across cases, and each operation names the case criterion. Legacy plans without execution remain valid; a required live operation without authority is an explicit verification gap. Setup, action, command, steps, and execution.operations MUST NOT substitute a configured repository-check profile command for a case"
         },
         {
           "path": "data.open_question_dispositions[].id",
@@ -212,6 +212,11 @@
           "path": "data.implementation",
           "type": "object",
           "format": "required unless the top-level result is blocked; the stage's required data names the complete child set"
+        },
+        {
+          "path": "data.verification_execution_operations[]",
+          "type": "object",
+          "format": "optional source-authorized reproduction definitions, each a version-1 VerificationExecutionOperation under library/schemas/verification-execution.schema.json; read-only outputs and requests cannot authorize commands"
         },
         {
           "path": "data.implementation.changed_files[]",
@@ -350,7 +355,10 @@
             "data.verify.dimensions.review.summary",
             "data.verify.dimensions.review.evidence[]",
             "data.verify.dimensions.qa.summary",
-            "data.verify.dimensions.qa.evidence[]"
+            "data.verify.dimensions.qa.evidence[]",
+            "data.verification_execution_requests[]",
+            "data.verification_execution_requests[].id",
+            "data.verification_execution_requests[].reason"
           ]
         }
       ],
@@ -499,7 +507,23 @@
         {
           "path": "data.verify.evidence_packet",
           "type": "object",
-          "format": "The same cumulative packet of incoming evidence, verifier observations, structural repairs, and actual final fast-check results."
+          "format": "The same cumulative packet of incoming evidence, independently graded raw execution observations, structural repairs, and actual final fast-check results. Required execution evidence must match the invocation and current source fingerprint."
+        },
+        {
+          "path": "data.verification_execution_requests[]",
+          "type": "object",
+          "required": ["id", "reason"],
+          "format": "optional array selecting declared operation ids with a non-empty reason; only id and reason are allowed, never executable definitions. Missing authority requires the existing blocked verification shape without a product verdict."
+        },
+        {
+          "path": "data.verification_execution_requests[].id",
+          "type": "string",
+          "format": "stable authorized operation id"
+        },
+        {
+          "path": "data.verification_execution_requests[].reason",
+          "type": "string",
+          "format": "non-empty explanation of the missing observation"
         }
       ]
     },
@@ -538,6 +562,11 @@
         }
       ],
       "fields": [
+        {
+          "path": "data.verification_execution_operations[]",
+          "type": "object",
+          "format": "optional source-authorized reproduction definitions, each a version-1 VerificationExecutionOperation under library/schemas/verification-execution.schema.json; read-only outputs and requests cannot authorize commands"
+        },
         {
           "path": "data.acceptance_results[]",
           "type": "object",
