@@ -415,7 +415,10 @@ skipped worker is recorded under `evidence_worker_skips` on the invocation,
 the verifier card states the reason, and that visit owes no
 `data.verify.qa_cases`. Without QA the verifier grades a `test` criterion
 from the test the implementation names for it plus the gate evidence, and a
-`test` criterion with no named test fails. An `observe` criterion records the
+`test` criterion with no named test records `evidence_unavailable`. Absence of
+evidence is not evidence of an issue: a criterion, verdict, or gate fails only
+on a cited defect, and an evidence gap is recorded in risks and never blocks
+the run (`VERIFY-001`). An `observe` criterion records the
 result `observe` and does not block the verdict. The validator refuses
 `observe` for any other proof, and any other result for an `observe`
 criterion. On a return visit after remediation the reviewer runs under its
@@ -2599,7 +2602,7 @@ Root cause: allocation, finalize, and merge ran without serialization. Two branc
 
 ### Prepare and land
 
-The verifier checks incoming evidence, extends that same packet with its own observations, repairs representation without changing the signal, and finishes with the fast profile. The packet retains source references, original hashes, previous attempts, repairs, and the actual gate results. Failed product checks or missing proof remain failures.
+The verifier checks incoming evidence, extends that same packet with its own observations, repairs representation without changing the signal, and finishes with the fast profile. The packet retains source references, original hashes, previous attempts, repairs, and the actual gate results. Failed product checks remain failures. Missing or unavailable proof is a recorded evidence gap and never a failure.
 
 Release owns coordination and integration, not verification. Choose major, minor, or patch and checkpoint one Unreleased changelog entry. Then run:
 

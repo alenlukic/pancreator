@@ -16,6 +16,20 @@ export interface RepositoryCheckBaselineComparison {
   passed: boolean
   explanation: string
   delta: RepositoryCheckDelta
+  /**
+   * Why the baseline could not decide the delta, when it could not. An empty
+   * baseline recorded no command, so every current diagnostic would read as
+   * new. That is absent evidence rather than a regression, and the gate
+   * records the gap instead of failing on the delta (`VERIFY-001`).
+   */
+  evidence_gap?: string
+}
+
+/** Whether a baseline recorded no command result at all. */
+export function isEmptyRepositoryCheckBaseline(
+  baseline: RepositoryCheckResult,
+): boolean {
+  return !Array.isArray(baseline.results) || baseline.results.length === 0
 }
 
 function emptyDelta(): RepositoryCheckDelta {
@@ -159,6 +173,21 @@ export function compareRepositoryCheckToBaseline(
   const counts =
     `${sorted.new.length} new, ${sorted.fixed.length} fixed, ` +
     `${sorted.carried.length} carried`
+
+  if (!passed && isEmptyRepositoryCheckBaseline(baseline)) {
+    const evidenceGap =
+      `The pre-implementation baseline for '${current.profile}' recorded ` +
+      `no command result, so it cannot tell an inherited diagnostic from a ` +
+      `new one (${counts}). Absent baseline evidence is not a regression, ` +
+      `so the gate does not fail on the delta.`
+
+    return {
+      passed: true,
+      explanation: evidenceGap,
+      delta,
+      evidence_gap: evidenceGap,
+    }
+  }
 
   if (!passed) {
     const first = delta.new.find(

@@ -32,7 +32,6 @@ import {
 } from './engine/evidence-gate.js'
 import {
   EVIDENCE_REPORT_COMPLETE_MARKER,
-  EVIDENCE_REPORT_VERDICT_PREFIX,
   evidenceWorkerAttempts,
   readEvidenceReportState,
 } from './render/delivery-prompt.js'
@@ -169,10 +168,11 @@ export function observeEvidenceReports(
         non_empty: body.trim().length > 0,
         complete: report.complete,
         verdict: report.verdict,
-        passes:
-          report.verdict === 'pass' ||
-          (report.verdict === null &&
-            !briefCarriesVerdictContract(root, newest.brief_path)),
+        defects: report.defects,
+        // VERIFY-001: only a cited defect gates. A `fail` that names no
+        // defect, or a report that states no verdict, is a pass with evidence
+        // gaps, because absence of evidence is not evidence of an issue.
+        passes: !(report.verdict === 'fail' && report.defects.length > 0),
       }
     },
   )
@@ -190,17 +190,6 @@ function readOptional(absolute: string): string {
   } catch {
     return ''
   }
-}
-
-/**
- * Whether the brief a worker ran under asked for a verdict line. A brief
- * rendered before the verdict contract existed never asked, so its silent
- * report keeps the stage worker's old right to run.
- */
-function briefCarriesVerdictContract(root: string, briefPath: string): boolean {
-  return readOptional(resolveInside(root, briefPath)).includes(
-    EVIDENCE_REPORT_VERDICT_PREFIX,
-  )
 }
 
 /** The ready marker for an invocation, or null when none was written. */

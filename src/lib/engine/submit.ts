@@ -10,6 +10,7 @@ import {
 } from '../verification-evidence.js'
 
 import { invariant } from '../errors.js'
+import { evidenceGapOnlyFailure, evidenceGapRisks } from '../evidence-gaps.js'
 import {
   fileExists,
   isRecord,
@@ -389,6 +390,33 @@ export function submitOutput(
     // the root diagnostic and drop the derivatives.
     const briefRenderFailed = briefErrors.length > 0
     const briefRenderedPath = invocation.output.operator_brief?.rendered_path
+
+    // VERIFY-001: an evidence gap is never a failure. A declared failure whose
+    // acceptance results record only gaps cites nothing a remediation could
+    // repair, so it is graded as success and the gaps become risks before any
+    // validator or gate reads the output.
+    const evidenceGapOverride = evidenceGapOnlyFailure(submittedValue)
+
+    if (evidenceGapOverride && isRecord(submittedValue)) {
+      const data = isRecord(submittedValue.data) ? submittedValue.data : {}
+      const priorRisks = Array.isArray(submittedValue.risks)
+        ? submittedValue.risks
+        : []
+
+      submittedValue.result = 'success'
+      submittedValue.risks = [
+        ...priorRisks,
+        ...evidenceGapRisks(data.acceptance_results),
+        evidenceGapOverride,
+      ]
+      advise('evidence_gap', [evidenceGapOverride])
+      persistRun(root, state, 'evidence_gap_failure_overridden', {
+        stage: stage.slug,
+        invocation_id: invocation.invocation_id,
+        reason: evidenceGapOverride,
+      })
+    }
+
     if (stage.persona === 'verifier' && isRecord(submittedValue)) {
       repairVerificationSubmission(
         root,
