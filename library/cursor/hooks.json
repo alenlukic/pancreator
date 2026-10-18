@@ -31,7 +31,7 @@
         "failClosed": false
       },
       {
-        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-visible-chat postToolUse",
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-governance-reminder",
         "matcher": ".*",
         "timeout": 5,
         "failClosed": false
@@ -45,7 +45,7 @@
         "failClosed": false
       },
       {
-        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-visible-chat postToolUseFailure",
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-governance-reminder",
         "matcher": ".*",
         "timeout": 5,
         "failClosed": false

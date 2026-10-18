@@ -135,8 +135,9 @@ test('expanded command content resolves through its canonical opening line', () 
   assert.match(response.additional_context ?? '', /^Role: pair$/mu)
 })
 
-test('an expanded bounded read-only command body carries only the principles reminder', () => {
+test('an expanded bounded read-only command body carries the common reminder', () => {
   const root = createFixture()
+  const common = invoke(root, 'common', 'ordinary request')
 
   for (const command of ['pan-status', 'pan-validate']) {
     const expanded = readFileSync(
@@ -144,23 +145,21 @@ test('an expanded bounded read-only command body carries only the principles rem
       'utf8',
     )
 
-    assert.deepEqual(invoke(root, `expanded-${command}`, expanded), {
-      continue: true,
-      additional_context: principlesReminder(root),
-    })
+    assert.deepEqual(invoke(root, `expanded-${command}`, expanded), common)
     assert.deepEqual(
       invoke(
         root,
         `expanded-arguments-${command}`,
         expanded.replaceAll('$ARGUMENTS', '63287_Sep-22-0314_fixture'),
       ),
-      { continue: true, additional_context: principlesReminder(root) },
+      common,
     )
   }
 })
 
-test('excluded sessions retain the principles and other hook events stay permissive', () => {
+test('excluded sessions retain common reminders and unrelated events stay permissive', () => {
   const root = createFixture()
+  const common = invoke(root, 'common', 'ordinary request')
 
   for (const prompt of [
     '/pan-meta-orchestrator',
@@ -168,10 +167,7 @@ test('excluded sessions retain the principles and other hook events stay permiss
     '/pan-status',
     './bin/pan horizon start fixture --headless',
   ]) {
-    assert.deepEqual(invoke(root, prompt, prompt), {
-      continue: true,
-      additional_context: principlesReminder(root),
-    })
+    assert.deepEqual(invoke(root, prompt, prompt), common)
   }
 
   assert.deepEqual(invoke(root, 'subagent', '/pan-pair', 'subagentStart'), {

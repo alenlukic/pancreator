@@ -54,11 +54,18 @@ export interface PromptContextResponse {
 }
 // The Copilot runtime in VS Code replaces a project hook's context on the
 // first prompt with its own, so session start carries the reminder too.
+const TOOL_HOOK_EVENTS = new Set([
+  'postToolUse',
+  'PostToolUse',
+  'postToolUseFailure',
+  'PostToolUseFailure',
+])
 const HOOK_EVENTS = new Set([
   'beforeSubmitPrompt',
   'UserPromptSubmit',
   'sessionStart',
   'SessionStart',
+  ...TOOL_HOOK_EVENTS,
 ])
 const HORIZON_SESSION_ROOT = 'runtime/logs/horizon'
 
@@ -77,7 +84,7 @@ const STANDALONE_COMMAND_ROLES: Record<string, TurnReminderRole> = {
   'pan-cleanup': 'cleanup',
 }
 
-/** Bounded read-only commands, which `OOS-2` excludes from the reminder. */
+/** Bounded read-only commands that do not select a persistent reminder role. */
 const EXCLUDED_COMMANDS = new Set([
   'pan-augment',
   'pan-status',
@@ -417,13 +424,12 @@ function resolveRole(
 }
 
 /**
- * Handle a prompt-submit hook payload: infer the conversation's reminder role
- * from the prompt, the stored conversation role, and live runs, record that
- * role in the turn reminder state file, and return the rendered governance
- * reminder as `additional_context`, ending with the current operating
- * principles from AGENTS.md. Excluded roles receive only the principles.
- * Other hook events and errors return only `{ continue: true }`, so the hook
- * never blocks a prompt.
+ * Render the same governance reminder for prompt, session, and tool hooks,
+ * ending with the current operating principles from AGENTS.md. Prompts select
+ * the role; tool cycles reuse the stored role without transcript inspection.
+ * Excluded roles receive the common reminder without persisting a role.
+ * Other events and errors return only `{ continue: true }`, so the hook
+ * never blocks.
  */
 export function resolvePromptContext(
   root: string,
@@ -447,13 +453,14 @@ export function resolvePromptContext(
     ].join('\n')
     const store = readConversationStore(root, registry, now)
     const runs = liveRuns(root)
-    const resolution = resolveRole(root, payload, store, runs)
+    const rolePayload =
+      payload.hook_event_name !== null &&
+      TOOL_HOOK_EVENTS.has(payload.hook_event_name)
+        ? { ...payload, prompt: '' }
+        : payload
+    const resolution = resolveRole(root, rolePayload, store, runs)
 
-    if (resolution.role === 'none') {
-      return { continue: true, additional_context: principles }
-    }
-
-    if (payload.conversation_id) {
+    if (payload.conversation_id && resolution.role !== 'none') {
       store.conversations[payload.conversation_id] = {
         role: resolution.role,
         mode: resolution.mode,
@@ -462,11 +469,15 @@ export function resolvePromptContext(
       writeConversationStore(root, registry, store)
     }
 
-    const reminder = renderTurnReminder(root, resolution.role, {
-      mode: resolution.mode,
-      registry,
-      liveRuns: runs,
-    })
+    const reminder = renderTurnReminder(
+      root,
+      resolution.role === 'none' ? 'unbound' : resolution.role,
+      {
+        mode: resolution.mode,
+        registry,
+        liveRuns: runs,
+      },
+    )
 
     return {
       continue: true,

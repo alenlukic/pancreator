@@ -230,6 +230,24 @@ test('Cursor context and stop responses print both host shapes in one object', a
     }
   })
 
+  await t.test('postToolUseFailure additional_context on both hosts', () => {
+    const bin = stubBin('{"additional_context":"governance reminder"}')
+
+    for (const payload of [vscodeTool('x'), copilotShell('ls')]) {
+      const result = runAdapter(
+        ['postToolUseFailure', 'pan-hook-stub'],
+        payload,
+        bin,
+      )
+
+      assert.equal(result.status, 0, result.stderr)
+      assert.deepEqual(
+        JSON.parse(result.stdout),
+        contextOutput('PostToolUseFailure', 'governance reminder'),
+      )
+    }
+  })
+
   await t.test('beforeSubmitPrompt additional_context', () => {
     const bin = stubBin('{"continue":true,"additional_context":"card"}')
 

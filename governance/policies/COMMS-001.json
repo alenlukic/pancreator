@@ -45,6 +45,10 @@
     "The operator-facing agent owns the shape of the rewritten summary. That agent MUST NOT pass raw subagent prose through to the operator.",
     "Chat-report issue and outcome shapes MUST remain judgment-only. The deterministic check does not test these shapes.",
     "This policy adopts Part 1 writing rules of ASD-STE100 and does not adopt the Part 2 controlled dictionary as a gate. Agents MUST NOT describe an artifact as conformant to ASD-STE100, because full conformance requires the dictionary.",
-    "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording."
+    "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording.",
+    {
+      "text": "The harness MUST deliver the same governance reminders, including COMMS-001 and the operating principles, on every user prompt and after every tool result or failure the host exposes. Reminder delivery MUST NOT depend on transcript availability or a prior silence check. Coverage: `tests/regression/turn-reminder-cycles.test.ts::tool cycles reissue the full governance reminder without transcript evidence`, `tests/regression/turn-reminder-cycles.test.ts::host hook templates deliver governance reminders on every tool cycle`.",
+      "audience": ["harness"]
+    }
   ]
 }
