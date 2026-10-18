@@ -11,8 +11,8 @@
 # dialect. It then translates the script's Cursor response:
 #   - allow, `{}`, and `{"continue":true}` print nothing, because a Copilot
 #     `permissionDecision: allow` would pre-approve the call;
-#   - a deny prints the agent message on stderr and exits 2, which both hosts
-#     honour as a deny;
+#   - a deny returns permissionDecision and permissionDecisionReason in both
+#     host shapes with exit 0, preserving the reason instead of a hook error;
 #   - additional context and a stop follow-up print one object carrying both
 #     the top-level shape the Copilot runtime reads and the
 #     `hookSpecificOutput` shape the VS Code local agent reads; each host
@@ -37,17 +37,22 @@ shift 2 2>/dev/null || true
 
 input="$(cat 2>/dev/null || true)"
 
+bootstrap_denial() {
+  printf '%s\n' '{"permissionDecision":"deny","permissionDecisionReason":"Pancreator hook could not start; verify the hook script and Python 3 installation.","hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Pancreator hook could not start; verify the hook script and Python 3 installation."}}'
+  exit 0
+}
+
 if [[ ! "$script" =~ ^pan-hook-[a-z-]+$ ]] || [[ "$script" == "pan-hook-adapter" ]] ||
   [[ ! -x "$SCRIPT_DIR/$script" ]]; then
   printf 'pan-hook-adapter: unknown hook script %s\n' "$script" >&2
-  [[ "$fail_closed" == true ]] && exit 2
+  [[ "$fail_closed" == true ]] && bootstrap_denial
   exit 0
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
   if [[ "$fail_closed" == true ]]; then
     printf '%s\n' 'pan-hook-adapter: python3 is unavailable; denying as fail-closed.' >&2
-    exit 2
+    bootstrap_denial
   fi
   exit 0
 fi
@@ -73,8 +78,18 @@ fail_closed = os.environ.get("PAN_HOOK_FAIL_CLOSED") == "true"
 
 
 def deny(message):
-    sys.stderr.write(message.strip() + "\n")
-    sys.exit(2)
+    reason = message.strip()
+    print(json.dumps({
+        "permissionDecision": "deny",
+        "permissionDecisionReason": reason,
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        },
+    }))
+    sys.stderr.write(reason + "\n")
+    sys.exit(0)
 
 
 def finish_without_output():
@@ -193,11 +208,17 @@ try:
         input=json.dumps(cursor_payload),
         capture_output=True,
         text=True,
-        timeout=25,
+        timeout=5 if fail_closed else 25,
         env={**os.environ, "PAN_HOOK_HOST": dialect},
     )
+    if fail_closed and result.returncode != 0:
+        deny("Pancreator guard exited with code " + str(result.returncode) + "; denying as fail-closed.")
     stdout = result.stdout.strip()
     response = (parse_json(stdout) or parse_json(stdout.splitlines()[-1])) if stdout else None
+except subprocess.TimeoutExpired:
+    if fail_closed:
+        deny("Pancreator guard timed out; denying as fail-closed.")
+    response = None
 except Exception:
     response = None
 
@@ -238,7 +259,7 @@ status=$?
 if [[ "$status" -ne 0 && "$status" -ne 2 ]]; then
   [[ "$fail_closed" == true ]] && {
     printf '%s\n' 'pan-hook-adapter: internal error; denying as fail-closed.' >&2
-    exit 2
+    bootstrap_denial
   }
   exit 0
 fi

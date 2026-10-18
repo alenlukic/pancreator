@@ -203,9 +203,20 @@ def allowlisted_segment(words):
     if command not in ALLOWED_COMMANDS:
         return False
     if command == "git":
-        if not args or args[0] not in ALLOWED_GIT_SUBCOMMANDS:
+        index = 0
+        while index < len(args):
+            arg = args[index]
+            if arg == "--no-pager":
+                index += 1
+            elif arg == "-C" and index + 1 < len(args):
+                index += 2
+            elif arg.startswith("-C") and len(arg) > 2:
+                index += 1
+            else:
+                break
+        if index >= len(args) or args[index] not in ALLOWED_GIT_SUBCOMMANDS:
             return False
-        return not any(arg in GIT_REFUSED_EXACT or refuses_long(arg, GIT_REFUSED_LONG) for arg in args)
+        return not any(arg in GIT_REFUSED_EXACT or refuses_long(arg, GIT_REFUSED_LONG) for arg in args[index + 1:])
     if command == "rg":
         for arg in args:
             if refuses_long(arg, RG_REFUSED_LONG):
@@ -259,26 +270,6 @@ def is_allowlisted(tokens):
     return bool(segments) and all(allowlisted_segment(segment) for segment in segments)
 
 
-def unbounded_lifecycle(tokens):
-    words = [value for kind, value, _, _ in tokens if kind == "word"]
-    index = next(i for i, word in enumerate(words) if is_pan_run(word)) + 1
-    while index < len(words):
-        word = words[index]
-        if word in {"--summary", "--quiet", "--stream", "--request", "-c"}:
-            return False
-        if word in {"--label", "--cwd", "--heartbeat-seconds"}:
-            index += 2
-            continue
-        if word == "--":
-            argv = words[index + 1:]
-            return len(argv) >= 2 and os.path.basename(argv[0]) == "pan" and argv[1] in {
-                "init", "status", "prepare", "submit", "pause", "resume", "decide",
-                "governance", "worktree", "waive-gate", "set-stage", "attribute",
-            }
-        return False
-    return False
-
-
 def verdict(command):
     command = command.strip()
     if not command:
@@ -294,8 +285,7 @@ def verdict(command):
     if is_wrapped(tokens):
         if len(command.encode("utf-8")) > 400 or "\n" in command:
             return "COMMAND_DISPLAY_TOO_LARGE: Write a prepared JSON request with a file tool before calling the shell. Submit only bin/pan-run --request <file.json>; do not embed the payload in that shell call."
-        if unbounded_lifecycle(tokens):
-            return "LIFECYCLE_OUTPUT_UNBOUNDED: Use bin/pan-run --summary -- for lifecycle commands, or a prepared request. Use --stream only when raw output was requested."
+        # pan-run selects bounded lifecycle output itself, including bootstrap calls.
         return None
     if is_allowlisted(tokens):
         return None

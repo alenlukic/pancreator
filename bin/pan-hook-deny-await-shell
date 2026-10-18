@@ -27,9 +27,8 @@ deny_await() {
   printf '{"permission":"deny","user_message":"AwaitShell is banned for Pancreator agents.","agent_message":"%s"}\n' "$await_message"
 }
 
-# The payload travels in the environment because the program itself is the
-# python3 -c argument; stdin cannot carry both.
-PAN_HOOK_PAYLOAD="$input" PAN_HOOK_AWAIT_MESSAGE="$await_message" \
+# File-edit payloads can exceed the process environment limit.
+PAN_HOOK_AWAIT_MESSAGE="$await_message" \
   PAN_HOOK_HOST_TOOLS="$HARNESS_ROOT/governance/registries/host_tools.json" \
   PAN_HOOK_AGENT_ROOT="${PANCREATOR_ROOT:-$HARNESS_ROOT}" python3 -c '
 import json, os, sys
@@ -80,7 +79,7 @@ def tool_input_of(payload):
     return tool_input if isinstance(tool_input, dict) else None
 
 try:
-    payload = json.loads(os.environ.get("PAN_HOOK_PAYLOAD", ""))
+    payload = json.load(sys.stdin)
 except Exception:
     payload = None
 if not isinstance(payload, dict):
@@ -167,7 +166,7 @@ if tool_name in rules["subagent"]:
         sys.exit(0)
 
 print(allow)
-' 2>/dev/null
+' 2>/dev/null <<<"$input"
 status=$?
 
 if [ "$status" -ne 0 ]; then
