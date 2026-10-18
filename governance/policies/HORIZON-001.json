@@ -27,7 +27,8 @@
     {
       "text": "A supervisor MUST write run-level waste into the durable run record. That waste is what a relaxed gate surfaces in chat. The record exists because post-run review needs the same evidence without a mid-run interruption.",
       "audience": ["supervisor"]
-    }
+    },
+    "HORIZON-001 is your bounding contract for the whole session, and you MUST keep abiding by it."
   ],
   "guidance_sources": [
     {

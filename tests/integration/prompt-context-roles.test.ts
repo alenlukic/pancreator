@@ -123,16 +123,30 @@ test('prose naming a pan command keeps the live supervisor role', () => {
   }
 })
 
-test('live run records distinguish cohort and long-horizon supervisors', () => {
+test('only /pan-horizon selects the long-horizon supervisor', () => {
   const { root: horizonRoot } = checkpoint('planning@created', LONG_HORIZON)
 
+  assert.equal(
+    role(
+      resolvePromptContext(horizonRoot, payload('bystander', 'ordinary reply')),
+    ),
+    'regular-supervisor',
+    'a live long-horizon run alone must not select the long-horizon role',
+  )
+  assert.equal(
+    role(resolvePromptContext(horizonRoot, payload('horizon', '/pan-horizon'))),
+    'long-horizon-supervisor',
+  )
   assert.equal(
     role(
       resolvePromptContext(horizonRoot, payload('horizon', 'ordinary reply')),
     ),
     'long-horizon-supervisor',
+    'the conversation that invoked /pan-horizon keeps the role',
   )
+})
 
+test('live run records distinguish cohort supervisors', () => {
   const { root: cohortRoot, state: cohortRun } = checkpoint('delivery@created')
 
   cohortRun.cohort = {
