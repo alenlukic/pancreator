@@ -7,6 +7,19 @@ the whole artifact before any source changes.
 
 ## Steps
 
+Use explicit identifier objects in new registries, such as
+`{ "id": "C-1", "statement": "Preserve the original requirement." }`.
+Documented identifier-prefixed strings remain supported without rewriting
+their narrative. Structured plan data is the authority for repeated criterion
+statements and proofs.
+
+On a retry, consult the scaffold's adjacent planning-correction bundle. Use
+mechanical mode only for its exact permitted fields and unchanged preservation
+facts, through the existing RFC 7386 patch route. Changes to scope, proof,
+ownership, migration limits, or missing preservation evidence require ordinary
+planning review. Materialized arrays and deletions receive the same checks as
+full outputs.
+
 1. Read the operator request referenced by the card.
 2. Write the product specification first: summary, user stories with ids
    (`US-*`), constraints, out-of-scope behavior, and open questions. Preserve

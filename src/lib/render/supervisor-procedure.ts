@@ -43,7 +43,17 @@ export function renderSupervisorProcedureBody(
           `'${externalDelegation}' executor with the complete canonical card ` +
           `(\`${delegation.canonical_markdown_path}\`) and awaits its ` +
           'result. You MUST NOT re-summarize, re-deliver, or paste the card ' +
-          'anywhere yourself.',
+          'anywhere yourself. Inspect the launch result before arming any watch. ' +
+          'A terminal failure before worker creation requires immediate recovery: ' +
+          'retain the error, correct the invocation, and retry the launch only with new information. ' +
+          'Do not arm a worker watch for a worker that was never created. ' +
+          'If the shell detaches, bind the exact returned shell record and worker launch identity, ' +
+          'then run the invocation watch before unrelated work. Never look up `latest` again. ' +
+          'If the launch returns in the foreground, record `pan watch ' +
+          invocation.run_id +
+          ' --foreground-returned --invocation ' +
+          invocation.invocation_id +
+          '` immediately with the original launch clock.',
         `3. The harness authors the delegation evidence at ` +
           `\`${delegation.delegation_artifact_path}\` and the execution ` +
           'audit beside it. You MUST NOT write either artifact.',
@@ -61,10 +71,10 @@ export function renderSupervisorProcedureBody(
             'an excerpt, or an added restatement MUST NOT substitute for it.',
           ...(delegation.watch_command
             ? [
-                '2a. Arm the watch in the same turn as that launch, before ' +
-                  'any other action. This step is unconditional: the `Task` ' +
-                  'call used `run_in_background: true`, so the platform ' +
-                  'always converts the launch into a background subagent. ' +
+                '2a. Inspect the launch result first. A terminal failure before worker creation ' +
+                  'requires immediate recovery; do not start a worker watch. A returned worker ' +
+                  'handle establishes the background target. Bind that exact identity and arm ' +
+                  'the watch in the same turn, before any unrelated action. ' +
                   'Run `' +
                   delegation.watch_command +
                   ' --mark-background --launched-at <iso-8601> ' +
@@ -203,6 +213,19 @@ export function renderSupervisorProcedureBody(
           '',
         ]
       : []),
+    'Use host shell bounds from `governance/registries/host_tools.json`: ordinary ' +
+      'Cursor `Shell` calls use `block_until_ms: 5000`; VS Code `run_in_terminal` ' +
+      'calls use `timeout: 5000`; Copilot `bash` calls use `initial_wait: 30`. ' +
+      'Watch calls use 330000 milliseconds on Cursor and VS Code, or ' +
+      '`initial_wait: 330` on Copilot. The cadence remains 60 seconds.',
+    '',
+    'On a sibling completion, retain every live sibling target. Reattach to its existing ' +
+      'ledger before unrelated work, or rearm the same invocation after the recorded ' +
+      '`sibling_handoff` and disclose the actual gap. On restart, inspect the original ' +
+      'worker handle and pinned shell record, attach to a live watcher, or recover its ' +
+      'stale lock and record the interruption interval. Never launch a replacement worker ' +
+      'merely because the watcher stopped, and never resolve a moving `latest` alias again.',
+    '',
     'Resolved paths for this invocation:',
     '',
     `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +

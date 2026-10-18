@@ -160,11 +160,18 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
     'the background arming form carries mark-background, launched-at, and handle',
   )
 
-  const launchIndex = procedure.indexOf('2a. Arm the watch')
+  const launchIndex = procedure.indexOf('2a.')
   const verdictIndex = procedure.indexOf('3a. Read the verdict')
 
   assert.ok(launchIndex > 0)
   assert.ok(launchIndex < verdictIndex)
+  const launchStep = procedure.slice(launchIndex, verdictIndex)
+  assert.match(launchStep, /terminal failure before worker creation/u)
+  assert.match(launchStep, /immediate recovery/u)
+  assert.ok(
+    launchStep.indexOf('terminal failure') <
+      launchStep.indexOf('--mark-background'),
+  )
 })
 
 // AC-006. A supervisor that read "launch the evidence workers, then the stage

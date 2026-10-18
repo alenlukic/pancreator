@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 import {
   mkdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
   existsSync,
@@ -26,7 +27,7 @@ import {
   worktreeReadiness,
   writeWorktreeIndex,
 } from '../../src/lib/worktrees.js'
-import { createFixture, writeJson } from '../helpers.js'
+import { createFixture } from '../helpers.js'
 import { createTestTempDirectory } from '../temp.js'
 
 function gitStatus(root: string): string {
@@ -39,8 +40,9 @@ function gitStatus(root: string): string {
 function configureHarness(
   root: string,
   overrides: Record<string, unknown>,
+  configName = 'config.json',
 ): void {
-  const configPath = path.join(root, 'config.json')
+  const configPath = path.join(root, configName)
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
@@ -77,14 +79,18 @@ test('self-development worktree receives local config before setup', () => {
   // The setup command records that it ran. Asserting only the copied file
   // left the case green when setup was bypassed entirely, which is the
   // ordering the case name promises.
-  writeJson(path.join(root, 'config_overrides.json'), {
-    marker: 'handoff-ok',
-    worktrees: {
-      setup: [
-        String.raw`node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config_overrides.json','utf8')); if(c.marker!=='handoff-ok') process.exit(1); fs.writeFileSync('setup-observed.txt', c.marker)"`,
-      ],
+  configureHarness(
+    root,
+    {
+      marker: 'handoff-ok',
+      worktrees: {
+        setup: [
+          String.raw`node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config_overrides.json','utf8')); if(c.marker!=='handoff-ok') process.exit(1); fs.writeFileSync('setup-observed.txt', c.marker)"`,
+        ],
+      },
     },
-  })
+    'config_overrides.json',
+  )
 
   const record = createWorktree(root, 'handoff')
   const worktreePath = path.join(root, record.path)
@@ -126,7 +132,14 @@ test('self-development worktree receives local config before setup', () => {
 })
 
 test('worktree handoff follows recognized local config', () => {
-  const withoutOverride = createFixture()
+  const withoutOverride = createTestTempDirectory('pan-worktrees-no-config-')
+
+  initTargetRepository(withoutOverride)
+  writeFileSync(
+    path.join(withoutOverride, 'config.json'),
+    JSON.stringify({ schema_version: 1 }),
+  )
+
   const withoutRecord = createWorktree(withoutOverride, 'plain')
 
   assert.equal(
@@ -144,10 +157,11 @@ test('worktree handoff follows recognized local config', () => {
 
   const legacyOnly = createFixture()
 
-  writeFileSync(
+  renameSync(
+    path.join(legacyOnly, 'config_overrides.json'),
     path.join(legacyOnly, 'config.local.json'),
-    `${JSON.stringify({ marker: 'legacy-only' }, null, 2)}\n`,
   )
+  configureHarness(legacyOnly, { marker: 'legacy-only' }, 'config.local.json')
 
   const legacyRecord = createWorktree(legacyOnly, 'legacy')
   const legacyWorktree = path.join(legacyOnly, legacyRecord.path)
@@ -167,9 +181,13 @@ test('worktree handoff follows recognized local config', () => {
 test('worktree handoff preserves local config precedence', () => {
   const root = createFixture()
 
-  writeJson(path.join(root, 'config_overrides.json'), {
-    marker: 'current-name',
-  })
+  configureHarness(
+    root,
+    {
+      marker: 'current-name',
+    },
+    'config_overrides.json',
+  )
   writeFileSync(
     path.join(root, 'config.local.json'),
     `${JSON.stringify({ marker: 'legacy-name' }, null, 2)}\n`,
@@ -211,9 +229,17 @@ test('target worktrees keep harness config at installation root', () => {
     installation_mode: 'embedded',
     workspace_root: '.',
   })
-  writeJson(path.join(embeddedHarness, 'config_overrides.json'), {
-    marker: 'embedded-harness',
+  execFileSync('git', ['add', 'config.json'], { cwd: embeddedHarness })
+  execFileSync('git', ['commit', '-qm', 'embedded installation identity'], {
+    cwd: embeddedHarness,
   })
+  configureHarness(
+    embeddedHarness,
+    {
+      marker: 'embedded-harness',
+    },
+    'config_overrides.json',
+  )
 
   const embeddedStatusBefore = gitStatus(embeddedHarness)
   const embeddedRecord = createWorktree(embeddedHarness, 'embedded-target')
@@ -251,9 +277,13 @@ test('target worktrees keep harness config at installation root', () => {
       installation_mode: 'detached',
       workspace_root: targetRoot,
     })
-    writeJson(path.join(detachedHarness, 'config_overrides.json'), {
-      marker: 'detached-harness',
-    })
+    configureHarness(
+      detachedHarness,
+      {
+        marker: 'detached-harness',
+      },
+      'config_overrides.json',
+    )
 
     const targetStatusBefore = gitStatus(targetRoot)
     const detachedRecord = createWorktree(detachedHarness, 'detached-target')
@@ -474,10 +504,14 @@ test('worktree resolution preserves legacy branches and rejects unavailable reco
 test('readiness names each missing item and passes a provisioned worktree', () => {
   const root = createFixture()
 
-  writeJson(path.join(root, 'config_overrides.json'), {
-    marker: 'handoff',
-    worktrees: { readiness_paths: ['deps', 'build'] },
-  })
+  configureHarness(
+    root,
+    {
+      marker: 'handoff',
+      worktrees: { readiness_paths: ['deps', 'build'] },
+    },
+    'config_overrides.json',
+  )
 
   const record = createWorktree(root, 'readiness-one')
   const worktreePath = path.join(root, record.path)
@@ -519,14 +553,18 @@ test('readiness names each missing item and passes a provisioned worktree', () =
 test('resolve adopts a Git-registered worktree at the expected path', () => {
   const root = createFixture()
 
-  writeJson(path.join(root, 'config_overrides.json'), {
-    marker: 'adopted',
-    worktrees: {
-      setup: [
-        String.raw`node -e "require('fs').writeFileSync('setup-ran','1')"`,
-      ],
+  configureHarness(
+    root,
+    {
+      marker: 'adopted',
+      worktrees: {
+        setup: [
+          String.raw`node -e "require('fs').writeFileSync('setup-ran','1')"`,
+        ],
+      },
     },
-  })
+    'config_overrides.json',
+  )
 
   const worktreePath = path.join(root, 'worktrees', 'operator', 'adopt-one')
 

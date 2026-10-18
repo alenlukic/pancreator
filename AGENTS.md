@@ -133,6 +133,8 @@ Before a long or multiline shell call, use a file tool to write a JSON request u
 
 Give every blocking `pan watch` call a 330-second block bound (330000 ms). When the platform detaches it, run `pan watch --attach <ledger>` at once and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Never call `AwaitShell` or any platform await tool as a timer.
 
+Use the host shell fields in `governance/registries/host_tools.json`: ordinary Cursor calls use `block_until_ms: 5000`, VS Code calls use `timeout: 5000`, and Copilot calls use `initial_wait: 30` (range 30–600 seconds). Watch calls use 330000 milliseconds on Cursor and VS Code, or `initial_wait: 330` on Copilot. Resolve a returned shell record once; retain its canonical identity through attach, rearm, and restart.
+
 ## Validation
 
 Use `runtime/repository-checks.json` as command authority. Do not infer a package manager, interpreter, runtime, or verification profile.

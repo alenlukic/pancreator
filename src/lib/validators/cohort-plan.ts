@@ -493,7 +493,7 @@ function longestSharedRun(parent: string[], child: string[]): number {
  * specifications trace, so both must count.
  */
 const LEADING_IDENTIFIER =
-  /^\s*([A-Za-z][A-Za-z0-9]*-?[0-9]+)\s*(?::|\.|-|—|–|\))/u
+  /^\s*([A-Za-z][A-Za-z0-9]*-?[0-9]+)\s*(?::|\.|-|—|–|\)|$)/u
 
 function leadingIdentifier(text: string): string | null {
   const match = LEADING_IDENTIFIER.exec(text)
@@ -501,12 +501,45 @@ function leadingIdentifier(text: string): string | null {
   return match ? match[1] : null
 }
 
-function originatingItemId(entry: unknown): string | null {
+/** Read an explicit id or a documented string prefix without rewriting the item. */
+export function originatingItemId(entry: unknown): string | null {
   if (isRecord(entry)) {
-    return typeof entry.id === 'string' ? entry.id : null
+    return typeof entry.id === 'string' && entry.id.trim() ? entry.id : null
   }
 
   return typeof entry === 'string' ? leadingIdentifier(entry) : null
+}
+
+/** Normalize array and meaningful keyed definitions without changing their narrative values. */
+export function originatingRegistryIds(collection: unknown): string[] {
+  if (Array.isArray(collection)) {
+    return collection.flatMap((entry) => {
+      const id = originatingItemId(entry)
+
+      return id === null ? [] : [id]
+    })
+  }
+
+  if (!isRecord(collection)) {
+    return []
+  }
+
+  return Object.entries(collection).flatMap(([key, entry]) => {
+    if (!key.trim()) return []
+    if (typeof entry === 'string') return entry.trim() ? [key] : []
+    if (!isRecord(entry)) return []
+    if ('id' in entry) {
+      const id = originatingItemId(entry)
+
+      return id === null ? [] : [id]
+    }
+
+    return ['statement', 'description', 'text'].some(
+      (field) => typeof entry[field] === 'string' && entry[field].trim(),
+    )
+      ? [key]
+      : []
+  })
 }
 
 const ORIGINATING_ITEM_KEYS = [
@@ -518,21 +551,13 @@ const ORIGINATING_ITEM_KEYS = [
 
 function originatingIds(data: Record<string, unknown>): string[] {
   const spec = isRecord(data.product_spec) ? data.product_spec : {}
-  const ids = new Set<string>()
+  const ids: string[] = []
 
   for (const key of ORIGINATING_ITEM_KEYS) {
-    const entries = Array.isArray(spec[key]) ? spec[key] : []
-
-    for (const entry of entries) {
-      const id = originatingItemId(entry)
-
-      if (id !== null) {
-        ids.add(id)
-      }
-    }
+    ids.push(...originatingRegistryIds(spec[key]))
   }
 
-  return [...ids].sort()
+  return ids.sort()
 }
 
 /**
@@ -547,10 +572,19 @@ function unlabeledOriginatingItems(data: Record<string, unknown>): string[] {
   const paths: string[] = []
 
   for (const key of ORIGINATING_ITEM_KEYS) {
-    const entries = Array.isArray(spec[key]) ? spec[key] : []
+    const collection = spec[key]
+    const entries = Array.isArray(collection)
+      ? collection.map((entry, index) => [String(index), entry] as const)
+      : isRecord(collection)
+        ? Object.entries(collection)
+        : []
 
-    entries.forEach((entry, index) => {
-      if (originatingItemId(entry) === null) {
+    entries.forEach(([index, entry]) => {
+      const ids = Array.isArray(collection)
+        ? originatingRegistryIds([entry])
+        : originatingRegistryIds({ [index]: entry })
+
+      if (ids.length === 0) {
         paths.push(`product_spec.${key}[${index}]`)
       }
     })
@@ -787,7 +821,7 @@ export function validateChildSpecifications(
     // counting those would report every shared boundary as a double trace.
     const inScope = sectionBody(content, 'In scope') ?? ''
 
-    for (const id of originatingIds(data)) {
+    for (const id of new Set(originatingIds(data))) {
       if (new RegExp(`\\b${id.replaceAll('.', '\\.')}\\b`, 'u').test(inScope)) {
         ownership.set(id, [...(ownership.get(id) ?? []), chunk.id])
       }
@@ -806,6 +840,17 @@ export function validateChildSpecifications(
   const deferred = undeliveredQuestionIds(data)
   const identified = new Set(originatingIds(data))
   const shared = new Set(plan.shared_items)
+
+  for (const id of identified) {
+    if (originatingIds(data).filter((entry) => entry === id).length > 1) {
+      issues.push(
+        issue(
+          'child.duplicate_item',
+          `Originating identifier '${id}' is declared more than once.`,
+        ),
+      )
+    }
+  }
 
   // A shared declaration suspends the double-trace rule for one item, so an id
   // the specification never declared would suspend nothing and read as an

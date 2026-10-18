@@ -2,6 +2,7 @@
 
 import { sha256 } from '../io.js'
 import { filterPolicyInstructionsForCard } from '../policy-instructions.js'
+import { invocationPolicyPointers } from '../render/invocation-markdown.js'
 import {
   guidanceInlineHeading,
   guidanceReferenceHeading,
@@ -170,7 +171,9 @@ const WORKER_LIFECYCLE_COMMAND_PATTERN =
  * the verdict with each check: the policies heading, each policy's header,
  * summary or current pointer, and agent instructions, guidance references
  * without inline bodies, prior-failure reasons, the delegation procedure, and
- * agent and harness requirement tables. With `supervisorProcedureMarkdown`,
+ * agent and harness requirement tables. Planning cards require full policy
+ * bodies when delivery proof is unusable, matching the renderer's eligibility.
+ * With `supervisorProcedureMarkdown`,
  * also rejects worker-visible lifecycle commands such as `pan submit`.
  */
 export function validateInvocationMarkdown(
@@ -180,6 +183,7 @@ export function validateInvocationMarkdown(
 ): { passed: boolean; checks: ValidationCheck[] } {
   const checks: ValidationCheck[] = []
   const normalized = normalizeMarkdownContent(markdown)
+  const pointers = invocationPolicyPointers(invocation)
 
   checks.push({
     id: 'policies.non_empty',
@@ -209,8 +213,7 @@ export function validateInvocationMarkdown(
         : `Markdown MUST include policy id and title for ${policy.id}`,
     })
 
-    const delivery = invocation.policy_delivery?.[policy.id]
-    const pointer = delivery?.mode === 'pointer' ? delivery : null
+    const pointer = pointers.get(policy.id)
 
     // A pointer block leaves the summary to the rule it points at.
     if (!pointer) {

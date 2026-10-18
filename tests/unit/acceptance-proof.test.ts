@@ -6,6 +6,7 @@ import test from 'node:test'
 import {
   ACCEPTANCE_PROOF_TYPES,
   acceptanceCriterionLines,
+  acceptanceCriterionStatements,
   acceptanceProofsFromMarkdown,
   isUserFacingPath,
   liveCriteriaDecision,
@@ -64,6 +65,28 @@ test('criterion lines of the acceptance section carry their proof tags', () => {
       ['AC-004', null],
     ],
   )
+})
+
+test('criterion statements share proof grammar and preserve wrapped and repeated views', () => {
+  const content = [
+    '  ## Acceptance criteria ',
+    '1. **AC-1** [proof: Test] Preserve the',
+    '   product facts.',
+    '2. _AC-2_ [proof: manual] Preserve the diagnostic.',
+    '  ## Dependencies',
+    '1. AC-999 [proof: live] Outside the section.',
+    '## Acceptance criteria',
+    '- `AC-1` [proof: test] A second authored view.',
+  ].join('\n')
+  assert.deepEqual(acceptanceCriterionStatements(content), [
+    { id: 'AC-1', tag: 'test', statement: 'Preserve the\n   product facts.' },
+    { id: 'AC-2', tag: 'manual', statement: 'Preserve the diagnostic.' },
+    { id: 'AC-1', tag: 'test', statement: 'A second authored view.' },
+  ])
+  assert.deepEqual(acceptanceCriterionLines(content), [
+    { id: 'AC-1', tag: 'test' },
+    { id: 'AC-2', tag: 'manual' },
+  ])
 })
 
 test('QA runs for a live criterion or unknown proofs and skips otherwise', () => {

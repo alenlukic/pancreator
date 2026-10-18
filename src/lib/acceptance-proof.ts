@@ -100,50 +100,61 @@ const CRITERION_LINE =
   /^\s*(?:[-*+]|\d+[.)])\s+[*_`]*(AC-[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*)[*_`]*(.*)$/u
 const PROOF_TAG = /\[proof:\s*([A-Za-z_-]+)\s*\]/iu
 
-function acceptanceSection(content: string): string | null {
-  const lines = content.split('\n')
-  const start = lines.findIndex((line) =>
-    /^#{1,6}\s+Acceptance criteria\s*$/iu.test(line.trim()),
-  )
-
-  if (start === -1) {
-    return null
-  }
-
-  const body: string[] = []
-
-  for (const line of lines.slice(start + 1)) {
-    if (/^#{1,6}\s+\S/u.test(line.trim())) {
-      break
+function acceptanceSections(content: string): string[] {
+  const sections: string[] = []
+  let body: string[] | null = null
+  for (const line of content.split('\n')) {
+    if (/^#{1,6}\s+Acceptance criteria\s*$/iu.test(line.trim())) {
+      if (body !== null) sections.push(body.join('\n'))
+      body = []
+    } else if (/^#{1,6}\s+\S/u.test(line.trim())) {
+      if (body !== null) sections.push(body.join('\n'))
+      body = null
+    } else {
+      body?.push(line)
     }
-
-    body.push(line)
   }
+  if (body !== null) sections.push(body.join('\n'))
+  return sections
+}
 
-  return body.join('\n')
+export interface AcceptanceCriterionStatement extends AcceptanceCriterionLine {
+  statement: string
+}
+
+function criterionStatements(section: string): AcceptanceCriterionStatement[] {
+  const criteria: AcceptanceCriterionStatement[] = []
+  for (const line of section.split('\n')) {
+    const match = CRITERION_LINE.exec(line)
+    if (match) {
+      criteria.push({
+        id: match[1],
+        tag: PROOF_TAG.exec(match[2])?.[1]?.toLowerCase() ?? null,
+        statement: match[2].replace(PROOF_TAG, '').trim(),
+      })
+    } else {
+      const previous = criteria.at(-1)
+      if (previous) previous.statement += `\n${line}`
+    }
+  }
+  return criteria
+}
+
+/** Criteria and wrapped statements from every authored acceptance section. */
+export function acceptanceCriterionStatements(
+  content: string,
+): AcceptanceCriterionStatement[] {
+  return acceptanceSections(content).flatMap(criterionStatements)
 }
 
 /** Every criterion line of a Markdown specification's acceptance section. */
 export function acceptanceCriterionLines(
   content: string,
 ): AcceptanceCriterionLine[] {
-  const section = acceptanceSection(content)
-
-  if (section === null) {
-    return []
-  }
-
-  return section.split('\n').flatMap((line) => {
-    const match = CRITERION_LINE.exec(line)
-
-    if (!match) {
-      return []
-    }
-
-    const tag = PROOF_TAG.exec(match[2])?.[1]?.toLowerCase() ?? null
-
-    return [{ id: match[1], tag }]
-  })
+  const section = acceptanceSections(content)[0]
+  return section === undefined
+    ? []
+    : criterionStatements(section).map(({ id, tag }) => ({ id, tag }))
 }
 
 /** Criterion proofs a Markdown specification's criterion lines declare. */

@@ -2,7 +2,13 @@ import { accessSync, constants, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson } from '../io.js'
+import { HOST_TOOLS_PATH, loadHostToolRegistry } from '../host-tools.js'
+import { errorMessage } from '../errors.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
+import { readBlockingReceipts } from '../watch/blocking.js'
+import { launchRecordPath, readLaunchRecord } from '../watch/launch.js'
+import { watchRecordPath } from '../watch/paths.js'
+import { readWatchRecord } from '../watch/record.js'
 
 const HOOKS_SOURCE = 'library/cursor/hooks.json'
 const HOOK_COMMAND_SUFFIX = 'bin/pan-hook-shell-monitor'
@@ -118,8 +124,65 @@ function sameEntries(
  *  - `bin/pan-run` exists and is executable.
  *  - The hook's embedded allowlist equals the DELEGATE-001 allowlist.
  */
-export function collectShellMonitorIssues(root: string): Issue[] {
+export function collectShellMonitorIssues(
+  root: string,
+  invocation?: { run_id: string; invocation_id: string },
+): Issue[] {
   const issues: Issue[] = []
+  if (invocation) {
+    const { run_id: runId, invocation_id: invocationId } = invocation
+    const launch = launchRecordPath(root, runId, invocationId)
+    if (
+      fileExists(path.join(root, launch)) &&
+      !readLaunchRecord(root, runId, invocationId)
+    ) {
+      issues.push({
+        code: 'shell_monitor.launch_identity_invalid',
+        message: 'The launch receipt has invalid identity or clock metadata.',
+        pointer: launch,
+      })
+    }
+    const ledger = watchRecordPath(root, runId, invocationId)
+    try {
+      const entries = readWatchRecord(root, runId, invocationId)
+      for (const receipt of readBlockingReceipts(path.join(root, ledger))) {
+        if (
+          receipt.ledger !== ledger ||
+          !entries.some(
+            (entry) =>
+              entry.watch_session_id === receipt.watch_session_id &&
+              entry.watcher_pid === receipt.watcher_pid &&
+              entry.watcher_process_identity ===
+                receipt.watcher_process_identity,
+          )
+        ) {
+          issues.push({
+            code: 'shell_monitor.blocking_identity_invalid',
+            message:
+              'The blocking receipt does not match its ledger session and watcher.',
+            pointer: `${ledger}.blocking.jsonl`,
+          })
+        }
+      }
+    } catch (error) {
+      issues.push({
+        code: 'shell_monitor.blocking_receipt_invalid',
+        message: errorMessage(error),
+        pointer: `${ledger}.blocking.jsonl`,
+      })
+    }
+  }
+  if (fileExists(path.join(root, HOST_TOOLS_PATH))) {
+    try {
+      loadHostToolRegistry(root)
+    } catch (error) {
+      issues.push({
+        code: 'shell_monitor.host_bounds_invalid',
+        message: errorMessage(error),
+        pointer: HOST_TOOLS_PATH,
+      })
+    }
+  }
   const hooksAbsolute = path.join(root, HOOKS_SOURCE)
   const hookScriptAbsolute = path.join(root, HOOK_COMMAND_SUFFIX)
   const panRunAbsolute = path.join(root, PAN_RUN_RELATIVE)
@@ -261,7 +324,15 @@ export function collectShellMonitorIssues(root: string): Issue[] {
 export function shellMonitorValidateHandler(
   input: HandlerInput,
 ): HandlerResult {
-  const issues = collectShellMonitorIssues(input.root)
+  const invocation = input.invocation
+  const issues = collectShellMonitorIssues(
+    input.root,
+    invocation &&
+      typeof invocation.run_id === 'string' &&
+      typeof invocation.invocation_id === 'string'
+      ? { run_id: invocation.run_id, invocation_id: invocation.invocation_id }
+      : undefined,
+  )
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
 }

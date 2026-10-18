@@ -13,6 +13,8 @@ import {
 import type { Invocation } from '../../src/lib/types.js'
 import { delegationExecutionPath } from '../../src/lib/validation/artifacts.js'
 import { executorProcessActivity } from '../../src/lib/watch/executor-process.js'
+import { invocationEvidencePaths } from '../../src/lib/watch/observe.js'
+import { launchRecordPath } from '../../src/lib/watch/launch.js'
 import {
   agentLiveness,
   deterministicStallCause,
@@ -285,7 +287,7 @@ test('AC-10: a stopped wrapper preserves the deterministic stopped cause', () =>
   )
 })
 
-test('AC-10: an audit older than the latest launch cannot complete a relaunched worker', () => {
+test('AC-10: stale and unmatched audits cannot complete a pinned worker; unbound launch ambiguity remains unknown', () => {
   const fixture = liveFixture()
   const auditPath = path.join(
     fixture.root,
@@ -318,7 +320,18 @@ test('AC-10: an audit older than the latest launch cannot complete a relaunched 
     delegationLivePaths(fixture.root, secondLaunch).record,
     JSON.stringify(secondLaunch),
   )
-  assert.equal(fixture.observe(), null)
+  assert.equal(fixture.observe()?.agent_id, 'copilot:current')
+  assert.equal(fixture.observe()?.stop, null)
+  const unbound = liveFixture()
+  writeFileSync(
+    delegationLivePaths(unbound.root, secondLaunch).record,
+    JSON.stringify({
+      ...secondLaunch,
+      launched_at: unbound.live.launched_at,
+      heartbeat_at: unbound.live.heartbeat_at,
+    }),
+  )
+  assert.equal(unbound.observe(), null)
 
   writeFileSync(
     auditPath,
@@ -334,6 +347,10 @@ test('AC-10: an audit older than the latest launch cannot complete a relaunched 
       session_id: 'current-session',
     }),
   )
+  assert.equal(fixture.observe()?.stop, null)
+  fixture.live.session_id = 'current-session'
+  fixture.live.child_ended_at = new Date(fixture.now).toISOString()
+  fixture.save()
   assert.equal(fixture.observe()?.stop?.status, 'completed')
 })
 
@@ -343,5 +360,113 @@ test('AC-10: future relay timestamps never establish live process activity', () 
     fixture.live[field] = new Date(fixture.now + 60_000).toISOString()
     fixture.save()
     assert.equal(fixture.observe(), null)
+  }
+})
+
+test('a launch pinned by process observation never becomes worker progress', () => {
+  const fixture = liveFixture()
+  const before = invocationEvidencePaths(
+    fixture.root,
+    fixture.invocation.run_id,
+    fixture.invocation,
+  )
+  assert.ok(fixture.observe())
+  const after = invocationEvidencePaths(
+    fixture.root,
+    fixture.invocation.run_id,
+    fixture.invocation,
+  )
+  assert.deepEqual(after, before)
+  assert.equal(
+    after.includes(
+      launchRecordPath(
+        fixture.root,
+        fixture.invocation.run_id,
+        fixture.invocation.invocation_id,
+      ),
+    ),
+    false,
+  )
+})
+
+test('a pre-v9.8.2 live record that carries only the relay exit still proves the child exited', () => {
+  const fixture = liveFixture()
+  fixture.live.session_id = 'current-session'
+  fixture.save()
+  const auditPath = path.join(
+    fixture.root,
+    delegationExecutionPath(
+      fixture.invocation.run_id,
+      fixture.invocation.invocation_id,
+      fixture.root,
+    ),
+  )
+  const recordedAt = new Date(fixture.now).toISOString()
+  mkdirSync(path.dirname(auditPath), { recursive: true })
+  writeFileSync(
+    auditPath,
+    JSON.stringify({
+      schema_version: 1,
+      run_id: fixture.invocation.run_id,
+      invocation_id: fixture.invocation.invocation_id,
+      stage: 'implement',
+      executor: 'copilot',
+      recorded_at: recordedAt,
+      session_id: 'current-session',
+      exit_code: 0,
+      timed_out: false,
+    }),
+  )
+  assert.equal(fixture.observe()?.stop, null)
+
+  fixture.live.ended_at = recordedAt
+  fixture.live.exit_code = 0
+  fixture.save()
+  assert.notEqual(fixture.observe()?.stop, null)
+
+  // A relay end without an exit code or signal is not an exit receipt.
+  delete fixture.live.exit_code
+  fixture.save()
+  assert.equal(fixture.observe()?.stop ?? null, null)
+})
+
+test('a missing-result audit proves failure only after the pinned child exits with a current audit', () => {
+  const fixture = liveFixture()
+  fixture.live.session_id = 'current-session'
+  fixture.save()
+  assert.ok(fixture.observe()?.stall_suppressed)
+  const auditPath = path.join(
+    fixture.root,
+    delegationExecutionPath(
+      fixture.invocation.run_id,
+      fixture.invocation.invocation_id,
+      fixture.root,
+    ),
+  )
+  const audit = {
+    schema_version: 1,
+    run_id: fixture.invocation.run_id,
+    invocation_id: fixture.invocation.invocation_id,
+    stage: 'implement',
+    executor: 'copilot',
+    recorded_at: new Date(fixture.now).toISOString(),
+    exit_code: 0,
+    timed_out: false,
+  }
+  mkdirSync(path.dirname(auditPath), { recursive: true })
+  writeFileSync(auditPath, JSON.stringify(audit))
+  assert.equal(fixture.observe()?.stop, null)
+
+  fixture.live.child_ended_at = audit.recorded_at
+  fixture.save()
+  assert.equal(fixture.observe()?.stop?.status, 'error')
+
+  for (const fields of [
+    { session_id: 'unrelated-session' },
+    { recorded_at: new Date(fixture.now + 1).toISOString() },
+    { recorded_at: new Date(fixture.now - 1).toISOString() },
+  ]) {
+    writeFileSync(auditPath, JSON.stringify({ ...audit, ...fields }))
+    assert.equal(fixture.observe()?.stop, null)
   }
 })

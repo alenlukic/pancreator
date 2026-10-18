@@ -1,12 +1,14 @@
 import path from 'node:path'
 
 import { PanError } from '../errors.js'
+import { planningCorrectionBundle } from '../render/contract.js'
 import { isHarnessShellCriterion } from '../validation/stage-output.js'
 import {
   fileExists,
   isRecord,
   readJson,
   readText,
+  resolveInside,
   writeJsonAtomic,
 } from '../io.js'
 import type {
@@ -28,6 +30,12 @@ import type {
  * scaffolds empty, and the card's field contract carries its item shape.
  */
 const ARRAY_RECORD_EXEMPLARS: Readonly<Record<string, readonly unknown[]>> = {
+  'product_spec.user_stories': [{ id: 'US-1', story: '<user story>' }],
+  'product_spec.constraints': [{ id: 'C-1', statement: '<constraint>' }],
+  'product_spec.out_of_scope': [
+    { id: 'OOS-1', statement: '<excluded behavior>' },
+  ],
+  'product_spec.open_questions': [{ id: 'Q-1', statement: '<question>' }],
   acceptance_results: [
     {
       id: '<criterion-id>',
@@ -321,9 +329,29 @@ export function scaffoldStageOutput(
     result: 'success',
   }
 
+  if (invocation.stage?.slug === 'plan' && invocation.prior_failure) {
+    const bundle = planningCorrectionBundle(root, invocation)
+    writeJsonAtomic(resolvePlanningBundlePath(root, outputPath), bundle)
+    if (bundle.mode === 'mechanical') {
+      const prior = readJson(
+        resolveInside(root, invocation.prior_failure.output_path),
+      )
+      if (isRecord(prior) && isRecord(prior.data)) {
+        scaffold.data = {
+          ...prior.data,
+          planning_correction: { mode: 'mechanical' },
+        }
+      }
+    }
+  }
+
   writeJsonAtomic(absolute, scaffold)
 
   return { status: 'scaffolded', output: scaffold }
+}
+
+function resolvePlanningBundlePath(root: string, outputPath: string): string {
+  return resolveInside(root, `${outputPath}.planning-correction.json`)
 }
 
 /**

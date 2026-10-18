@@ -24,6 +24,37 @@ export interface BackgroundLaunch {
   value: unknown
 }
 
+export interface ShellCallBounds {
+  argument: string
+  unit: 'milliseconds' | 'seconds'
+  minimum: number | null
+  maximum: number | null
+  ordinary: number
+  watch: number
+}
+
+/** Null extrema mean no independently available host schema establishes them. */
+export const HOST_SHELL_SCHEMAS = {
+  cursor: {
+    argument: 'block_until_ms',
+    unit: 'milliseconds',
+    minimum: null,
+    maximum: null,
+  },
+  vscode: {
+    argument: 'timeout',
+    unit: 'milliseconds',
+    minimum: null,
+    maximum: null,
+  },
+  'copilot-cli': {
+    argument: 'initial_wait',
+    unit: 'seconds',
+    minimum: 30,
+    maximum: 600,
+  },
+} as const
+
 export interface HostToolEntry {
   description: string
   owning_policy: string
@@ -37,6 +68,7 @@ export interface HostToolEntry {
    */
   when_argument: Partial<Record<AgentHost, Record<string, string>>>
   pending_probes: Partial<Record<AgentHost, string>>
+  bounds: Record<AgentHost, ShellCallBounds> | null
 }
 
 export interface HostToolRegistry {
@@ -171,6 +203,55 @@ function parseEntry(term: HostToolTerm, value: unknown): HostToolEntry {
       Record<AgentHost, Record<string, string>>
     >,
     pending_probes: pending as Partial<Record<AgentHost, string>>,
+    bounds:
+      term !== 'shell'
+        ? null
+        : perHost(value.bounds, 'shell.bounds', (entry, host) => {
+            invariant(
+              isRecord(entry) &&
+                typeof entry.argument === 'string' &&
+                entry.argument.length > 0 &&
+                (entry.unit === 'milliseconds' || entry.unit === 'seconds') &&
+                (entry.minimum === null || typeof entry.minimum === 'number') &&
+                (entry.maximum === null || typeof entry.maximum === 'number') &&
+                typeof entry.ordinary === 'number' &&
+                typeof entry.watch === 'number' &&
+                [entry.ordinary, entry.watch].every(
+                  (number) => Number.isFinite(number) && number > 0,
+                ),
+              `${HOST_TOOLS_PATH}: shell.bounds.${host} MUST declare positive calls and numeric or unknown tool bounds`,
+              { code: 'INVALID_HOST_TOOLS' },
+            )
+            const bounds: ShellCallBounds = {
+              argument: entry.argument,
+              unit: entry.unit,
+              minimum: entry.minimum,
+              maximum: entry.maximum,
+              ordinary: entry.ordinary,
+              watch: entry.watch,
+            }
+            const schema = HOST_SHELL_SCHEMAS[host]
+            invariant(
+              bounds.argument === schema.argument &&
+                bounds.unit === schema.unit &&
+                bounds.minimum === schema.minimum &&
+                bounds.maximum === schema.maximum &&
+                (bounds.minimum === null ||
+                  (bounds.minimum <= bounds.ordinary &&
+                    bounds.minimum <= bounds.watch)) &&
+                (bounds.maximum === null ||
+                  (bounds.ordinary <= bounds.maximum &&
+                    bounds.watch <= bounds.maximum)) &&
+                // Without schema extrema, project only the conservative
+                // ordinary example supported by the operating contract.
+                (schema.minimum !== null || bounds.ordinary === 5000) &&
+                bounds.watch * (bounds.unit === 'seconds' ? 1000 : 1) ===
+                  330_000,
+              `${HOST_TOOLS_PATH}: shell.bounds.${host} projection is outside the tool range or changes the watch bound`,
+              { code: 'INVALID_HOST_TOOLS' },
+            )
+            return bounds
+          }),
   }
 }
 

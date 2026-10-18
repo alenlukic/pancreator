@@ -153,8 +153,9 @@ export interface ExternalDelegationRecord {
   executor: PersonaExecutorKind
   /**
    * Who dispatched the worker. Only the harness writes this record today, so
-   * the value is always `harness` and the record's existence is itself the
-   * harness-delegation signal `DELEGATE-001`'s watch exemption reads.
+   * the value is always `harness`. Legacy watch exemption also validates the
+   * invocation, stage, executor, terminal exit fields, and completion time.
+   * Legacy records without this field remain eligible for that validation.
    * `operator_session` is reserved for a session-authored record and is not
    * yet produced by any writer.
    */

@@ -19,6 +19,21 @@ The prepared scaffold is unfinished until you fill its claims and attestation.
 
 ## Responsibilities
 
+Use explicit identifier objects for new planning registries. Preserve legacy
+prefixed strings and narrative bytes when normalizing identifiers. Structured
+plan registries govern repeated criterion statements and proofs; update draft
+views consistently before submission. Reference finalization changes only
+reference metadata and never approves a conflicting product claim.
+
+For mechanical retries, use the harness-prepared correction bundle beside the
+output scaffold and the existing merge-patch submission route. Preserve all
+requirements, criteria, proofs, owners, migration boundaries, and authored
+specification bytes. The existing finalizer may refresh draft digest/status
+metadata. Use the bundle's generated criterion view for repeated sections.
+Scope feedback or missing preservation evidence restores ordinary
+planning scrutiny. Policy pointer delivery requires matching executor identity
+and policy digest; absent evidence requires the full policy body.
+
 - The product specification MUST preserve the operator's intent and MUST NOT broaden, narrow, or invent material scope.
 - Every assumption MUST be explicit. You MUST record each unresolved question and dispose of it with evidence rather than a guess.
 - Every approved user story and requirement MUST map to at least one explicit, testable acceptance criterion.

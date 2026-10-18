@@ -3,6 +3,7 @@ import {
   appendFileSync,
   existsSync,
   readFileSync,
+  rmSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs'
@@ -10,16 +11,19 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { submitOutput } from '../../src/lib/engine.js'
+import { readInvocationRecord } from '../../src/lib/engine/core.js'
 import { loadState } from '../../src/lib/state.js'
 import type { TaskRecord } from '../../src/lib/types.js'
 import {
   DELEGATION_UNOBSERVED,
   foregroundReturnRecordPath,
+  launchRecordPath,
   markDelegationBackground,
   readForegroundReturn,
   readAuthorityOrder,
   readLaunchRecord,
   recordForegroundReturn,
+  recordInvocationLaunch,
   redlineRecordPath,
   summarizeDelegationObservation,
   watchInvocation,
@@ -169,18 +173,21 @@ test('a foreground-return attestation accepts a supervisor-recorded launch time 
   assert.equal(record.launched_at, launchedAt)
   assert.equal(record.launched_at_source, 'supervisor')
   assert.ok(record.elapsed_seconds > 0)
+  const fresh = preparedRun()
+
+  fillPreparedOutput(fresh.root, fresh.state)
   assert.throws(
     () =>
-      recordForegroundReturn(root, state.run_id, {
-        invocationId,
+      recordForegroundReturn(fresh.root, fresh.state.run_id, {
+        invocationId: fresh.invocationId,
         launchedAt: '2999-01-01T00:00:00.000Z',
       }),
     /is after the return time/u,
   )
   assert.throws(
     () =>
-      recordForegroundReturn(root, state.run_id, {
-        invocationId,
+      recordForegroundReturn(fresh.root, fresh.state.run_id, {
+        invocationId: fresh.invocationId,
         launchedAt: 'yesterday',
       }),
     /--launched-at MUST be an ISO-8601 wall-clock time/u,
@@ -615,6 +622,7 @@ test('an attested elapsed time below the watch wake span is labeled with both nu
 
 test('the external-executor exemption requires the delegation-execution record pan delegate writes', () => {
   const { root, state, invocationId } = preparedRun()
+  const { invocation } = readInvocationRecord(root, state, invocationId)
 
   fillPreparedOutput(root, state)
 
@@ -671,8 +679,9 @@ test('the external-executor exemption requires the delegation-execution record p
       schema_version: 1,
       run_id: state.run_id,
       invocation_id: 'another-invocation',
-      stage: 'plan',
-      executor: 'claude-code',
+      stage: invocation.stage.slug,
+      executor: invocation.stage.persona_executor ?? 'cursor',
+      recorded_at: new Date().toISOString(),
       delegation_kind: 'fresh',
       binary: 'claude',
       argv: [],
@@ -696,8 +705,9 @@ test('the external-executor exemption requires the delegation-execution record p
       schema_version: 1,
       run_id: state.run_id,
       invocation_id: invocationId,
-      stage: 'plan',
-      executor: 'claude-code',
+      stage: invocation.stage.slug,
+      executor: invocation.stage.persona_executor ?? 'cursor',
+      recorded_at: new Date().toISOString(),
       delegation_kind: 'fresh',
       binary: 'claude',
       argv: [],
@@ -725,5 +735,29 @@ test('the external-executor exemption requires the delegation-execution record p
   assert.equal(
     summarizeDelegationObservation(root, state.run_id, invocationId).source,
     'external_executor',
+  )
+
+  // The harness pins a Copilot launch while it judges process activity at
+  // submit. That bookkeeping must not cancel the execution record.
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+    workerHandle: 'copilot:launch-1',
+    executorLaunchId: 'launch-1',
+  })
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).source,
+    'external_executor',
+  )
+
+  rmSync(path.join(root, launchRecordPath(root, state.run_id, invocationId)))
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+    workerHandle: 'current-worker',
+  })
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).observed,
+    false,
   )
 })

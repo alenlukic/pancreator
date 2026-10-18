@@ -1,0 +1,1064 @@
+{
+  "provenance": {
+    "source": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/agent/outputs/00_plan-2_6c57dcf5.json",
+    "sha256": "f81950c826c197df2dee5cabe3cc287e3cf4c70f95e6f43e6ae27336f7da4d09",
+    "initial_source": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/agent/outputs/01_plan-1_8a857eb0.json",
+    "initial_sha256": "40a6cac960d504afd8f07fae59ee3f1f59f918cb6f48c19d3a7b3c260b92537e",
+    "sanitization": "Only data and specification text retained; no product facts, identifiers, paths, or narrative rewritten.",
+    "metrics_source": "runtime/inbox/queue/harness-repair-20261017T202500Z-ineff-planning-context.md",
+    "historical": {
+      "initial": {
+        "calls": 148,
+        "compactions": 3,
+        "executor_minutes": 21.704
+      },
+      "revision": {
+        "calls": 67,
+        "compactions": "unavailable",
+        "executor_minutes": 4.451
+      }
+    }
+  },
+  "initial_product_spec": {
+    "summary": "Repair TRACE-12, TRACE-13, TRACE-20, TRACE-22, TRACE-02, TRACE-03, and TRACE-21 so isolated workflow execution has honest gate ownership, faithful failure comparison, snapshot/candidate isolation, actor-aware scope enforcement, observable Copilot progress and liveness, and executable read-only verification. Deliver seven independent outcomes through a maximally useful two-cohort DAG, within the operator's three-cohort ceiling.",
+    "user_stories": [
+      {
+        "id": "US-01",
+        "description": "As a source worker, I can submit completed work with explicitly pending harness checks, so authoritative results can settle the attempt once.",
+        "origin": "TRACE-12"
+      },
+      {
+        "id": "US-02",
+        "description": "As a reviewer of baselined checks, I can distinguish unchanged failures from new or worsened failure substance despite volatile execution output.",
+        "origin": "TRACE-13"
+      },
+      {
+        "id": "US-03",
+        "description": "As an operator of isolated worktrees, I can continue a run on its valid snapshots and explicitly selected candidate executable while another session changes the shared controller.",
+        "origin": "TRACE-20"
+      },
+      {
+        "id": "US-04",
+        "description": "As an isolated verifier or ship worker, I receive a scope result based on my process's authority and mutations while actual unauthorized writes remain detectable.",
+        "origin": "TRACE-22"
+      },
+      {
+        "id": "US-05",
+        "description": "As a supervisor, I can observe a silent but live Copilot worker without a false stall and detect its actual termination or deterministic wrapper fault.",
+        "origin": "TRACE-02"
+      },
+      {
+        "id": "US-06",
+        "description": "As a supervisor, I can read sanitized Copilot launch, session, and progress evidence while its execution remains open.",
+        "origin": "TRACE-03"
+      },
+      {
+        "id": "US-07",
+        "description": "As a read-only QA worker or verifier, I receive prepared runtime outputs, independently collected execution observations, and a harness validation route needed for an honest verdict without a shell grant.",
+        "origin": "TRACE-21"
+      }
+    ],
+    "constraints": [
+      "C-01: Repair exactly the seven selected findings; other intake findings remain context unless tightly coupled correctness requires a change.",
+      "C-02: Maximize useful parallel delivery of independent, testable outcomes in separate worktrees with disjoint edit ownership, within three sequential cohorts.",
+      "C-03: Harness profiles remain harness-owned. Selected tests are not profile verdicts; pending work is not a pass. Preserve authoritative execution counts, idempotency, and entry-gate reuse.",
+      "C-04: Preserve assertion substance, stable failure identity, genuine multiplicity, command identity, exit code, signal, and timeout differences when normalizing execution noise.",
+      "C-05: Valid recorded snapshots remain authoritative. Corrupt required snapshots and invalid new-run configuration still fail. Do not mutate active_config, persistent model settings, or recorded snapshots to compensate for drift.",
+      "C-06: Preserve write policies and prevention/detection of real unauthorized writes. Shared checkout deltas alone do not identify an actor; absent enforcement or custody must be explicit.",
+      "C-07: Preserve the fixed 60-second watch cadence, attach/recovery behavior, and the distinction between running, completed, and successful results.",
+      "C-08: Streaming preserves synchronous delegation mutex ownership, prompt-on-stdin, credential isolation, model checks, resume/fallback semantics, bounded evidence, and cleanup.",
+      "C-09: Read-only stages receive no shell tool. Declared harness collection must precede grading of required execution observations; missing or stale evidence cannot become a pass."
+    ],
+    "out_of_scope": [
+      "OOS-01: Unselected TRACE repairs, general workflow redesign, release metadata edits, and retroactive waivers or changes to incident verdicts.",
+      "OOS-02: Token counts, native host UI changes, usage fallback, and cost investigation. Safe progress transport does not add token accounting."
+    ],
+    "open_questions": [
+      "Q-01: How can an honest worker submit before its harness-owned checks have run?",
+      "Q-02: Are matching failing test names sufficient evidence of baseline equivalence?",
+      "Q-03: Must controller drift change the run's recorded configuration or execution root?",
+      "Q-04: Can a shared installation-root snapshot prove which worker wrote a changed path?",
+      "Q-05: Does watch already have usable process evidence while external Copilot execution is open?",
+      "Q-06: Does incremental Copilot evidence require making the entire synchronous workflow engine asynchronous?",
+      "Q-07: Should shell-less QA and verification gain a general shell to satisfy execution obligations?",
+      "Q-08: Where can the exact original baseline/current diagnostic pair cited by the intake be recovered?"
+    ]
+  },
+  "data": {
+    "product_spec": {
+      "summary": "Repair TRACE-12, TRACE-13, TRACE-20, TRACE-22, TRACE-02, TRACE-03, and TRACE-21 so isolated workflow execution has honest gate ownership, faithful failure comparison, snapshot/candidate isolation, actor-aware scope enforcement, observable Copilot progress and liveness, and executable read-only verification. Deliver seven independent outcomes through a maximally useful two-cohort DAG, within the operator's three-cohort ceiling.",
+      "user_stories": [
+        {
+          "id": "US-01",
+          "description": "As a source worker, I can submit completed work with explicitly pending harness checks, so authoritative results can settle the attempt once.",
+          "origin": "TRACE-12"
+        },
+        {
+          "id": "US-02",
+          "description": "As a reviewer of baselined checks, I can distinguish unchanged failures from new or worsened failure substance despite volatile execution output.",
+          "origin": "TRACE-13"
+        },
+        {
+          "id": "US-03",
+          "description": "As an operator of isolated worktrees, I can continue a run on its valid snapshots and explicitly selected candidate executable while another session changes the shared controller.",
+          "origin": "TRACE-20"
+        },
+        {
+          "id": "US-04",
+          "description": "As an isolated verifier or ship worker, I receive a scope result based on my process's authority and mutations while actual unauthorized writes remain detectable.",
+          "origin": "TRACE-22"
+        },
+        {
+          "id": "US-05",
+          "description": "As a supervisor, I can observe a silent but live Copilot worker without a false stall and detect its actual termination or deterministic wrapper fault.",
+          "origin": "TRACE-02"
+        },
+        {
+          "id": "US-06",
+          "description": "As a supervisor, I can read sanitized Copilot launch, session, and progress evidence while its execution remains open.",
+          "origin": "TRACE-03"
+        },
+        {
+          "id": "US-07",
+          "description": "As a read-only QA worker or verifier, I receive prepared runtime outputs, independently collected execution observations, and a harness validation route needed for an honest verdict without a shell grant.",
+          "origin": "TRACE-21"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "C-01",
+          "description": "C-01: Repair exactly the seven selected findings; other intake findings remain context unless tightly coupled correctness requires a change."
+        },
+        {
+          "id": "C-02",
+          "description": "C-02: Maximize useful parallel delivery of independent, testable outcomes in separate worktrees with disjoint edit ownership, within three sequential cohorts."
+        },
+        {
+          "id": "C-03",
+          "description": "C-03: Harness profiles remain harness-owned. Selected tests are not profile verdicts; pending work is not a pass. Preserve authoritative execution counts, idempotency, and entry-gate reuse."
+        },
+        {
+          "id": "C-04",
+          "description": "C-04: Preserve assertion substance, stable failure identity, genuine multiplicity, command identity, exit code, signal, and timeout differences when normalizing execution noise."
+        },
+        {
+          "id": "C-05",
+          "description": "C-05: Valid recorded snapshots remain authoritative. Corrupt required snapshots and invalid new-run configuration still fail. Do not mutate active_config, persistent model settings, or recorded snapshots to compensate for drift."
+        },
+        {
+          "id": "C-06",
+          "description": "C-06: Preserve write policies and prevention/detection of real unauthorized writes. Shared checkout deltas alone do not identify an actor; absent enforcement or custody must be explicit."
+        },
+        {
+          "id": "C-07",
+          "description": "C-07: Preserve the fixed 60-second watch cadence, attach/recovery behavior, and the distinction between running, completed, and successful results."
+        },
+        {
+          "id": "C-08",
+          "description": "C-08: Streaming preserves synchronous delegation mutex ownership, prompt-on-stdin, credential isolation, model checks, resume/fallback semantics, bounded evidence, and cleanup."
+        },
+        {
+          "id": "C-09",
+          "description": "C-09: Read-only stages receive no shell tool. Declared harness collection must precede grading of required execution observations; missing or stale evidence cannot become a pass."
+        }
+      ],
+      "out_of_scope": [
+        {
+          "id": "OOS-01",
+          "description": "OOS-01: Unselected TRACE repairs, general workflow redesign, release metadata edits, and retroactive waivers or changes to incident verdicts."
+        },
+        {
+          "id": "OOS-02",
+          "description": "OOS-02: Token counts, native host UI changes, usage fallback, and cost investigation. Safe progress transport does not add token accounting."
+        }
+      ],
+      "open_questions": [
+        "Q-01: How can an honest worker submit before its harness-owned checks have run?",
+        "Q-02: Are matching failing test names sufficient evidence of baseline equivalence?",
+        "Q-03: Must controller drift change the run's recorded configuration or execution root?",
+        "Q-04: Can a shared installation-root snapshot prove which worker wrote a changed path?",
+        "Q-05: Does watch already have usable process evidence while external Copilot execution is open?",
+        "Q-06: Does incremental Copilot evidence require making the entire synchronous workflow engine asynchronous?",
+        "Q-07: Should shell-less QA and verification gain a general shell to satisfy execution obligations?",
+        "Q-08: Where can the exact original baseline/current diagnostic pair cited by the intake be recovered?"
+      ]
+    },
+    "engineering_plan": {
+      "approach": "Use existing workflow boundaries and no new packages. Cohort 1 repairs criterion ownership, failure normalization, snapshot/candidate isolation, and Copilot transport in separate worktrees. Cohort 2 independently consumes the integrated transport for custody and watch, and the integrated criterion/scaffold contract for mandatory read-only execution evidence. Keep the adapter synchronous using a Node relay; keep gate results separate from original self-claims; retain conservative diagnostic and custody fallbacks; expose bounded structured collection rather than granting read-only workers a shell. Existing light verification already includes the ship release gate, so no level change is recommended.",
+      "components": [
+        {
+          "id": "gate-contract",
+          "approach": "Add pending_harness only for resolved invocation-owned harness shell checks. Align schema, normalization, preflight, scaffold, and submit eligibility. Retain pre-gate validation of worker-owned claims and declared non-success short-circuiting. Resolve eligible pending entries from one authoritative deterministic run before success, retaining the original worker claims. Treat missing results and unauthorized skips as nonpassing; preserve explicit gate-disable authority and entry reuse.",
+          "interfaces": [
+            "CriterionResultValue and stage-output schema accept pending_harness under invocation ownership, not as a general judgment result.",
+            "validateStageOutput and validateOutputForSubmission agree on eligibility.",
+            "submitOutput and effectiveOutcome require authoritative resolution while preserving self-evaluation evidence.",
+            "scaffoldStageOutput and isUntouchedScaffold still reject unfinished outputs."
+          ],
+          "dependencies": [],
+          "migration": "Continue accepting existing valid pass/fail outputs. Do not reinterpret unevaluated as pending or rewrite old submissions/snapshots."
+        },
+        {
+          "id": "baseline-delta",
+          "approach": "Extract recognized runner failure records with stable case identity, assertion/error substance, and true occurrence counts. Remove only proven execution metadata in known positions. Keep raw-result readers, multiset delta output, conservative unsupported-output diagnostics, and independent command/status failures. Replay fixtures directly instead of rerunning long suites.",
+          "interfaces": [
+            "commandFailureDiagnostics and failureDiagnostics produce stable identities without discarding expected/actual values.",
+            "failureStatuses preserves command, exit, signal, and timeout meaning.",
+            "compareRepositoryCheckToBaseline retains its public comparison shape."
+          ],
+          "dependencies": [],
+          "migration": "Existing saved raw results remain inputs. Do not rewrite historical baselines; distinguish synthetic fixtures from recovered provenance-bearing transcripts."
+        },
+        {
+          "id": "lifecycle-isolation",
+          "approach": "Load a valid recorded snapshot before advisory inspection. Catch only known live-config/projection compatibility errors in the advisory branch and emit a specific visible advisory. Exercise and document the existing explicit PANCREATOR_EXEC_ROOT boundary so a healthy candidate build administers installation state despite controller compile failure. Preserve root identity and override cleanup.",
+          "interfaces": [
+            "loadRunPipelineConfig remains strict about required recorded snapshots.",
+            "runPipelineConfigAdvisories reports live incompatibility without replacing the recorded configuration.",
+            "bin/pan selects candidate executable code while PANCREATOR_ROOT, cwd, state indices, and lifecycle arguments stay bound to the installation."
+          ],
+          "dependencies": [],
+          "migration": "Legacy runs needing live config still fail for invalid live config. No settings translation, active_config edit, automatic build fallback, or stale-build substitution."
+        },
+        {
+          "id": "copilot-stream",
+          "approach": "Keep the synchronous adapter and delegation mutex. Add a Node relay with asynchronous CLI spawn, JSONL framing, streaming redaction, heartbeat, and child cleanup. The relay receives non-secret launch data and the prompt via stdin, credentials through environment only, writes sanitized live evidence before exit, and returns the final normalized result. Reuse the existing OpenAI adapter's child-process pattern.",
+          "interfaces": [
+            "DelegationLiveRecord version 1 binds run, invocation, role, attempt, launch time, relay and worker PID/start identities, wrapper link, optional observed session, heartbeat, event sequence, and terminal exit/error.",
+            "DelegationLiveEvent records stream, receipt sequence, timestamps, event kind, and sanitized bounded content. Preserve ordering within each stream; do not invent cross-stream provider ordering.",
+            "delegationLivePaths and loadDelegationLiveRecord validate invocation-bound paths and record versions.",
+            "Heartbeat is independent of output, defaults to 30 seconds, and never exceeds 60 seconds.",
+            "Final result audit stays separate and authoritative; a result event does not imply process exit.",
+            "Relay stdout carries only the final machine envelope. Sanitized live progress reaches inherited stderr/wrapper logs and the event file before exit; accumulated sanitized CLI captures return inside the envelope for audit without parent replay."
+          ],
+          "dependencies": [],
+          "migration": "Keep final execution audit/result compatibility, resume/fallback, model mismatch, and prompt-on-stdin. Old records without live metadata remain readable and do not imply liveness."
+        },
+        {
+          "id": "scope-custody",
+          "approach": "Consume the live identity and extend it with actual stageWriteRoots, enforcement mode/reason, and custody observations. Reuse resolveWriteSandbox and realpath handling rather than treating CLI read/add-dir roots as write permission. Classify own, foreign, and unverified changes using evidence; preserve strict workspace/release policy checks.",
+          "interfaces": [
+            "ExternalExecutorToolPolicy records read roots separately from write authority and actual enforcement capability.",
+            "harnessRootWrites and evaluateDeterministicCriteria use process custody instead of assuming every controller delta belongs to this worker.",
+            "Own denied/unauthorized attempts remain failures; proven external edits are observations; uncertain possible own writes produce an explicit unverified result with remedy."
+          ],
+          "dependencies": ["copilot-stream"],
+          "migration": "Do not silently trust old records without enforcement/custody. Unsupported platforms retain an explicit conservative evidence path, never a claimed enforced boundary."
+        },
+        {
+          "id": "process-watch",
+          "approach": "Consult invocation-bound live process/wrapper evidence when the agent index has no activity, including an unregistered platform handle. Fresh heartbeat and matching live process suppress only quiet fallback. Preserve deterministic same-call faults, terminal audit precedence, cadence, attach behavior, and active-worker submission refusal.",
+          "interfaces": [
+            "executorProcessActivity consumes live and final records using process start identity.",
+            "watchedAgentActivity and observeInvocation give available process evidence precedence over a missing index record.",
+            "quietStallApplies, deterministicStallCause, workerActivityRefusal, and assertWorkerNotStillActive agree on activity and terminal evidence."
+          ],
+          "dependencies": ["copilot-stream"],
+          "migration": "Retain unregistered handling for genuinely unknown agent ids, final-record fallback for old delegations, and explicit unverified state for absent/mismatched identity."
+        },
+        {
+          "id": "verification-evidence",
+          "approach": "Idempotently prepare runtime output scaffolds before read-only delegation. Add a bounded harness collector at existing preparation/evidence-dispatch boundaries; execute ratified case operations and declared source-authorized reproductions before their consuming QA/verifier grades them. Keep shell tools absent and final output validation harness-owned. Use manifests and raw observations, not implementer self-evaluation, as the independent grading input.",
+          "interfaces": [
+            "Version-1 VerificationExecutionOperation declares id, criterion or finding, argv, workspace-relative cwd, timeout_ms, write_roots, and evidence_paths; validate all fields and reject free-text shell execution.",
+            "data.test_plan[].execution.operations holds ratified live-case operations; data.verification_execution_operations holds declared source-authorized reproduction handoffs. Declarations cannot expand collector write policy.",
+            "VerificationExecutionEvidence binds run/invocation/attempt/operation, exact definition, source fingerprint, actual command/time/exit/signal, sanitized raw captures, provenance, and completeness.",
+            "Evidence roles select missing declared operations via <evidence-report>.execution-request.json; final verifiers use data.verification_execution_requests. Requests contain ids and reasons, never new executable authority.",
+            "Collect newly requested authorized observations and rerun only their evidence consumer, archiving earlier reports. Reuse unchanged operation-definition/source-fingerprint results; a file's mere presence is not completeness.",
+            "A final verifier lacking required evidence uses the existing blocked shape with blocking_reason and missing_evidence_paths, without a product verdict. Unknown operations require authorized recovery before the next visit.",
+            "Configured repository profile verdicts reuse gate evidence. Browser-required observations still require genuine policy-compliant browser evidence or an explicit environment gap."
+          ],
+          "dependencies": ["gate-contract"],
+          "migration": "Old plans with no required execution remain valid. Mandatory legacy free-text cases without structured authorized operations produce a specific evidence gap; do not evaluate their prose as shell or rewrite approved plans."
+        }
+      ],
+      "files": [
+        {
+          "path": "src/lib/types/workflow.ts",
+          "status": "modified",
+          "purpose": "gate-contract: extend the criterion result vocabulary with ownership-restricted pending_harness.",
+          "symbols": ["CriterionResultValue"]
+        },
+        {
+          "path": "src/lib/validation/stage-output.ts",
+          "status": "modified",
+          "purpose": "gate-contract: normalize and validate pending eligibility against the resolved invocation.",
+          "symbols": ["validateStageOutput"]
+        },
+        {
+          "path": "src/lib/engine/submit.ts",
+          "status": "modified",
+          "purpose": "gate-contract: order preflight and authoritative gate resolution without rewriting worker self-claims or rerunning gates.",
+          "symbols": ["submitOutput"]
+        },
+        {
+          "path": "src/lib/engine/submit-helpers.ts",
+          "status": "modified",
+          "purpose": "gate-contract: align blocking criterion states and effective outcome with resolved required gates.",
+          "symbols": ["effectiveOutcome", "blockingCriterionStateErrors"]
+        },
+        {
+          "path": "src/lib/engine/output-validation.ts",
+          "status": "modified",
+          "purpose": "gate-contract: give pre-submission validation the same pending ownership rules as submit.",
+          "symbols": ["validateOutputForSubmission"]
+        },
+        {
+          "path": "src/lib/requirements/scaffold.ts",
+          "status": "modified",
+          "purpose": "gate-contract: scaffold honest shell handoff while preserving unfinished-output detection; verification-evidence consumes the integrated API without a same-cohort edit.",
+          "symbols": ["scaffoldStageOutput", "isUntouchedScaffold"]
+        },
+        {
+          "path": "library/schemas/stage-output.schema.json",
+          "status": "modified",
+          "purpose": "gate-contract: document and accept the new result spelling subject to invocation-aware validation.",
+          "symbols": []
+        },
+        {
+          "path": "library/schemas/stage-output-requirements.json",
+          "status": "modified",
+          "purpose": "gate-contract in cohort 1 owns pending-result field guidance; verification-evidence in cohort 2 adds structured operation/request guidance after integration.",
+          "symbols": []
+        },
+        {
+          "path": "governance/policies/DEV-001.json",
+          "status": "modified",
+          "purpose": "gate-contract: replace impossible pre-gate pass requirements with honest harness ownership.",
+          "symbols": []
+        },
+        {
+          "path": "library/skills/write-stage-output.md",
+          "status": "modified",
+          "purpose": "gate-contract: explain worker claims versus pending and authoritative gate results.",
+          "symbols": []
+        },
+        {
+          "path": "tests/unit/validators-stage-output.test.ts",
+          "status": "modified",
+          "purpose": "gate-contract: reject invalid pending criteria and preserve existing result validation.",
+          "symbols": []
+        },
+        {
+          "path": "tests/unit/requirements-scaffold.test.ts",
+          "status": "modified",
+          "purpose": "gate-contract tests pending scaffold semantics in cohort 1; verification-evidence adds idempotent read-only preparation assertions in cohort 2.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/pending-harness-criteria.test.ts",
+          "status": "new",
+          "purpose": "gate-contract: count authoritative gates across full/patch submit, failure, disabled, entry-reuse, and repeat-submit routes.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/repository-checks/diagnostics.ts",
+          "status": "modified",
+          "purpose": "baseline-delta: stable failure record extraction and narrow execution-metadata normalization.",
+          "symbols": [
+            "commandFailureDiagnostics",
+            "failureDiagnostics",
+            "failureStatuses"
+          ]
+        },
+        {
+          "path": "src/lib/repository-checks/baselines.ts",
+          "status": "modified",
+          "purpose": "baseline-delta: retain multiset semantics and comparison compatibility with normalized substantive records.",
+          "symbols": ["compareRepositoryCheckToBaseline"]
+        },
+        {
+          "path": "tests/regression/repository-check-delta.test.ts",
+          "status": "modified",
+          "purpose": "baseline-delta: paired noise replay and substantive-change negative assertions.",
+          "symbols": []
+        },
+        {
+          "path": "tests/unit/repository-check-baseline.test.ts",
+          "status": "modified",
+          "purpose": "baseline-delta: exact occurrence, status, unknown-tool, and raw-reader behavior.",
+          "symbols": []
+        },
+        {
+          "path": "tests/fixtures/trace-friction/repository-check-noise-pair.json",
+          "status": "new",
+          "purpose": "baseline-delta: bounded sanitized replay inputs labeled with provenance or explicitly synthetic origin.",
+          "symbols": []
+        },
+        {
+          "path": "docs/baseline-diagnostics.md",
+          "status": "new",
+          "purpose": "baseline-delta: describe meaningful failure identity, metadata normalization boundaries, and evidence limits.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/engine/core.ts",
+          "status": "modified",
+          "purpose": "lifecycle-isolation: keep valid recorded snapshots authoritative across incompatible live advisory configuration.",
+          "symbols": ["loadRunPipelineConfig", "runPipelineConfigAdvisories"]
+        },
+        {
+          "path": "bin/pan",
+          "status": "modified",
+          "purpose": "lifecycle-isolation: preserve and harden explicit candidate-code versus installation-state root selection where regression tests expose a gap.",
+          "symbols": []
+        },
+        {
+          "path": "bin/run-built",
+          "status": "modified",
+          "purpose": "lifecycle-isolation: adjust only if needed to keep candidate build provenance and locks independent from controller failure.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/cli-build-wrappers-run-built.test.ts",
+          "status": "modified",
+          "purpose": "lifecycle-isolation: broken-controller/healthy-candidate root and override-cleanup regressions.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/lifecycle-snapshot-isolation.test.ts",
+          "status": "new",
+          "purpose": "lifecycle-isolation: valid-snapshot advisory recovery and strict snapshot/new-run negatives.",
+          "symbols": []
+        },
+        {
+          "path": "docs/lifecycle-isolation.md",
+          "status": "new",
+          "purpose": "lifecycle-isolation: document supported candidate execution, installation-state roots, and advisory remedies.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/executors/copilot-cli.ts",
+          "status": "modified",
+          "purpose": "copilot-stream: preserve the synchronous public result while delegating incremental transport to the relay.",
+          "symbols": [
+            "runCopilotCli",
+            "parseCopilotJsonl",
+            "CopilotInvocationRequest",
+            "CopilotInvocationResult"
+          ]
+        },
+        {
+          "path": "src/lib/executors/copilot-relay.ts",
+          "status": "new",
+          "purpose": "copilot-stream: asynchronous CLI pump, incremental framing/redaction, independent heartbeat, final result, and child cleanup behind a synchronous parent boundary.",
+          "symbols": ["runCopilotRelay"]
+        },
+        {
+          "path": "src/lib/executors/delegation-live.ts",
+          "status": "new",
+          "purpose": "copilot-stream defines versioned invocation-bound live evidence; scope-custody adds optional custody metadata in the next cohort.",
+          "symbols": [
+            "DelegationLiveRecord",
+            "DelegationLiveEvent",
+            "delegationLivePaths",
+            "loadDelegationLiveRecord",
+            "writeDelegationLiveRecord",
+            "appendDelegationLiveEvent"
+          ]
+        },
+        {
+          "path": "src/lib/engine/executors.ts",
+          "status": "modified",
+          "purpose": "copilot-stream wires the relay in cohort 1; scope-custody records actual write roots and enforcement in cohort 2. No same-cohort watch or verification edit.",
+          "symbols": ["createCopilotAdapter", "stageWriteRoots"]
+        },
+        {
+          "path": "src/lib/types/executors.ts",
+          "status": "modified",
+          "purpose": "copilot-stream adds optional live-result linkage; scope-custody later separates read roots, write roots, and enforcement metadata.",
+          "symbols": [
+            "ExternalExecutorRunResult",
+            "ExternalDelegationRecord",
+            "ExternalExecutorToolPolicy"
+          ]
+        },
+        {
+          "path": "src/lib/engine/delegate.ts",
+          "status": "modified",
+          "purpose": "copilot-stream binds invocation launch/final evidence; verification-evidence later ensures mandatory observations precede final read-only dispatch.",
+          "symbols": ["delegateInvocation"]
+        },
+        {
+          "path": "src/lib/engine/evidence-workers.ts",
+          "status": "modified",
+          "purpose": "copilot-stream binds evidence-role launches; verification-evidence later collects required operations, validates completeness, and refreshes only consuming roles.",
+          "symbols": ["delegateEvidenceWorkers", "EvidenceWorkerDelegation"]
+        },
+        {
+          "path": "tests/unit/copilot-executor.test.ts",
+          "status": "modified",
+          "purpose": "copilot-stream: framing, final result, model, credential, and resume compatibility.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/copilot-executor-cli.test.ts",
+          "status": "modified",
+          "purpose": "copilot-stream: CLI invocation, relay errors, exit, timeout, and cleanup behavior.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/copilot-live-evidence.test.ts",
+          "status": "new",
+          "purpose": "copilot-stream: handshake-controlled evidence-before-exit, independent heartbeat, redaction at all boundaries, and mutex retention.",
+          "symbols": []
+        },
+        {
+          "path": "docs/copilot-live-evidence.md",
+          "status": "new",
+          "purpose": "copilot-stream: publish live schema, capture paths, ordering, sanitization, and final-audit precedence.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/validation/state-criteria.ts",
+          "status": "modified",
+          "purpose": "scope-custody: stop inferring worker authorship from a shared controller delta alone.",
+          "symbols": ["harnessRootWrites"]
+        },
+        {
+          "path": "src/lib/validation/deterministic-criteria.ts",
+          "status": "modified",
+          "purpose": "scope-custody: classify own, foreign, and unverified mutations with evidence while retaining scope policy enforcement.",
+          "symbols": ["evaluateDeterministicCriteria"]
+        },
+        {
+          "path": "src/lib/executors/write-sandbox.ts",
+          "status": "modified",
+          "purpose": "scope-custody: reuse and, only where needed, extend actual process enforcement/capability evidence and realpath-safe roots.",
+          "symbols": [
+            "resolveWriteSandbox",
+            "writeSandboxProfile",
+            "WriteSandbox"
+          ]
+        },
+        {
+          "path": "tests/integration/workspace-write-scope.test.ts",
+          "status": "modified",
+          "purpose": "scope-custody: preserve authorized workspace, runtime, and release-metadata boundaries.",
+          "symbols": []
+        },
+        {
+          "path": "tests/regression/read-only-mutation.test.ts",
+          "status": "modified",
+          "purpose": "scope-custody: preserve existing mutation checks while distinguishing actor evidence.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/scope-process-custody.test.ts",
+          "status": "new",
+          "purpose": "scope-custody: concurrent foreign/own actors, committed and dirty changes, denied writes, path aliases, and unenforced fallback.",
+          "symbols": []
+        },
+        {
+          "path": "docs/scope-custody.md",
+          "status": "new",
+          "purpose": "scope-custody: document actual enforcement, attribution verdicts, and the missing-evidence remedy.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/watch/executor-process.ts",
+          "status": "modified",
+          "purpose": "process-watch: observe invocation-bound live process and wrapper records before final audit exists.",
+          "symbols": ["processBackedExecutor", "executorProcessActivity"]
+        },
+        {
+          "path": "src/lib/watch/observe.ts",
+          "status": "modified",
+          "purpose": "process-watch: select process evidence when indexed activity is absent and retain terminal precedence.",
+          "symbols": [
+            "watchedAgentActivity",
+            "watchedAgentStopped",
+            "observeInvocation"
+          ]
+        },
+        {
+          "path": "src/lib/watch/liveness.ts",
+          "status": "modified",
+          "purpose": "process-watch: suppress false quiet stalls while retaining repeated same-call deterministic faults and activity refusals.",
+          "symbols": [
+            "agentLiveness",
+            "deterministicStallCause",
+            "quietStallApplies",
+            "workerActivityRefusal"
+          ]
+        },
+        {
+          "path": "src/lib/engine/submit-checks.ts",
+          "status": "modified",
+          "purpose": "process-watch: keep active-worker submission guards consistent with process-backed observation.",
+          "symbols": [
+            "observeSubmissionDelegation",
+            "assertWorkerNotStillActive"
+          ]
+        },
+        {
+          "path": "tests/unit/watch-liveness.test.ts",
+          "status": "modified",
+          "purpose": "process-watch: fake-clock quiet and deterministic-fault precedence.",
+          "symbols": []
+        },
+        {
+          "path": "tests/regression/watch-process-exit-record.test.ts",
+          "status": "modified",
+          "purpose": "process-watch: final exit/result precedence, stale records, and failed termination.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/copilot-process-watch.test.ts",
+          "status": "new",
+          "purpose": "process-watch: seven 60-second wakes, unknown index, multiplexed/focused watches, PID reuse, and submission refusal.",
+          "symbols": []
+        },
+        {
+          "path": "docs/process-backed-watch.md",
+          "status": "new",
+          "purpose": "process-watch: document evidence basis, truthful terminal states, and unchanged recovery cadence.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/engine/prepare-artifacts.ts",
+          "status": "modified",
+          "purpose": "verification-evidence: idempotently prepare read-only scaffolds and declare collection/request artifacts before dispatch.",
+          "symbols": ["writeInvocationArtifacts"]
+        },
+        {
+          "path": "src/lib/context/inputs.ts",
+          "status": "modified",
+          "purpose": "verification-evidence: expose current collection manifests and raw evidence through existing audited runtime references.",
+          "symbols": ["buildInvocationInputs"]
+        },
+        {
+          "path": "src/lib/engine/verification-execution.ts",
+          "status": "new",
+          "purpose": "verification-evidence: validate declared operation authority, collect bounded observations, and bind completeness to source/attempt identity.",
+          "symbols": [
+            "VerificationExecutionOperation",
+            "VerificationExecutionEvidence",
+            "resolveVerificationExecutionOperations",
+            "collectVerificationExecutionEvidence"
+          ]
+        },
+        {
+          "path": "library/schemas/verification-execution.schema.json",
+          "status": "new",
+          "purpose": "verification-evidence: version the structured operation, request, and collection-manifest shapes.",
+          "symbols": []
+        },
+        {
+          "path": "src/lib/validators/stage/verify.ts",
+          "status": "modified",
+          "purpose": "verification-evidence: validate authoritative current observations, evidence gaps, and non-executing requests without weakening blocked/verdict rules.",
+          "symbols": ["validateVerifyOutput", "profileCommandInText"]
+        },
+        {
+          "path": "src/lib/validators/stage/plan-trace.ts",
+          "status": "modified",
+          "purpose": "verification-evidence: validate additive structured live-case execution definitions and reject configured profile substitutions.",
+          "symbols": ["validatePlanTrace"]
+        },
+        {
+          "path": "governance/policies/VERIFY-001.json",
+          "status": "modified",
+          "purpose": "verification-evidence: align mandatory independent observations with harness collection and shell-less worker authority.",
+          "symbols": []
+        },
+        {
+          "path": "library/personas/qa-tester.md",
+          "status": "modified",
+          "purpose": "verification-evidence: grade raw current observations and request declared missing operations rather than execute shell commands.",
+          "symbols": []
+        },
+        {
+          "path": "library/personas/verifier.md",
+          "status": "modified",
+          "purpose": "verification-evidence: define independent spot-check/dispute evidence, blocked gaps, and harness-owned final validation.",
+          "symbols": []
+        },
+        {
+          "path": "library/personas/planner.md",
+          "status": "modified",
+          "purpose": "verification-evidence: document structured execution declarations for future ratified live cases without changing proof semantics.",
+          "symbols": []
+        },
+        {
+          "path": "library/workflows/delivery/prompts/verify.md",
+          "status": "modified",
+          "purpose": "verification-evidence: remove impossible read-only shell duties and name the collection/recovery route.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/verify-qa-schedule.test.ts",
+          "status": "modified",
+          "purpose": "verification-evidence: prove mandatory collection precedes consuming QA and verifier delegation.",
+          "symbols": []
+        },
+        {
+          "path": "tests/integration/verification-execution-evidence.test.ts",
+          "status": "new",
+          "purpose": "verification-evidence: independent raw grading, requests/recollection, fingerprint invalidation, and authority/permission negatives.",
+          "symbols": []
+        },
+        {
+          "path": "docs/verification-execution.md",
+          "status": "new",
+          "purpose": "verification-evidence: operation authorship, manifest provenance, evidence requests, legacy-case migration, and recovery instructions.",
+          "symbols": []
+        }
+      ],
+      "risks": [
+        "Overnormalization can hide assertion regressions; retain literal expected/actual hashes and unknown error substance and assert exact delta identities.",
+        "Incremental sanitization can leak boundary-split secrets; sanitize before every sink and test stderr, malformed JSONL, split UTF-8, and truncation.",
+        "Liveness can be counterfeited by PID reuse, stale attempts, or early result events; bind process start identity and require final exit evidence.",
+        "OS enforcement can be unavailable; record capability honestly and keep incomplete custody explicitly unverified rather than ignoring shared mutations.",
+        "Collection can become an unauthorized command channel unless operation definitions, requests, roots, timeouts, and source fingerprints are validated separately.",
+        "Historical comparison replay may remain unavailable. Synthetic rule fixtures cannot prove equivalence of the original assertions.",
+        "Shared files are edited only across cohort boundaries: gate then verification for scaffold tests/field guidance, and stream then custody or verification for executor/delegation surfaces. Generated aggregate index refresh must serialize with integration."
+      ],
+      "validation": [
+        "Authority: runtime/repository-checks.json. Implementers use declared impacted checks plus their named tests; required fast/integration/static/configuration gates and final release checks remain harness-owned. Agents do not run full.",
+        "gate-contract: counted stub gates in tests/integration/pending-harness-criteria.test.ts plus stage-output/scaffold unit tests prove one authoritative execution, preflight parity, unresolved-result refusal, disabled authority, entry reuse, and full/merge-patch idempotency.",
+        "baseline-delta: tests/regression/repository-check-delta.test.ts and tests/unit/repository-check-baseline.test.ts replay saved bounded records directly and assert new/fixed/carried identities and counts. Do not rerun the historical long suite.",
+        "lifecycle-isolation: tests/integration/lifecycle-snapshot-isolation.test.ts and tests/integration/cli-build-wrappers-run-built.test.ts use separate candidate/controller fixtures, invalid live config, corrupt snapshots, and executable/root provenance assertions.",
+        "copilot-stream: tests/integration/copilot-live-evidence.test.ts holds a stub child open through a handshake and reads launch/session/tool/chat evidence before release; unit/CLI tests scan all sinks for seeded secrets and prove cleanup/final-audit parity.",
+        "scope-custody: tests/integration/scope-process-custody.test.ts uses distinct fixture actors and write roots, explicit enforced/unavailable modes, denied and actual own writes, symlink escape, controller commits/dirty edits, and uncertain attribution.",
+        "process-watch: tests/integration/copilot-process-watch.test.ts injects at least seven 60-second wakes with fresh silent wrappers and exercises same-call double faults, final failures, early result, PID reuse, focused/multiplexed observation, and active-submit refusal.",
+        "verification-evidence: tests/integration/verification-execution-evidence.test.ts proves structured collection and scaffolds precede shell-less consumers, grades raw observations independently, exercises authorized request/recollection, and rejects stale/unauthorized/profile-substituted or browser-substituted evidence.",
+        "AC-15 review reads the parent, seven children, and structured graph to verify four then three independent outcomes, exactly three forward edges, complete trace ownership, and the three-cohort ceiling.",
+        "Regenerate directly affected function-index documentation and policy projections with existing repository automation; serialize shared aggregate regeneration with cohort integration. No new toolchain or manual digest computation is required."
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "id": "AC-01",
+        "statement": "An otherwise valid source-worker success with pending harness shell checks runs the required gates once, records their actual outcomes, and settles without another source-worker invocation; selected test evidence is never promoted to a profile pass.",
+        "maps_to": ["US-01", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/pending-harness-criteria.test.ts submits fixture full and merge-patch outputs with counted harness gates and inspects preserved worker claims plus resolved deterministic records.",
+          "expected": "Exactly one required gate execution per authoritative attempt; honest original pending claims remain auditable; passing gates settle success without a second source-worker call and failing gates settle failure."
+        }
+      },
+      {
+        "id": "AC-02",
+        "statement": "Pending judgments/state/unknown criteria, unresolved required gates, and unauthorized skipped or untouched scaffold results cannot yield success; existing failed, blocked, disabled-gate, entry-reuse, and idempotent submission routes retain truthful results and execution counts.",
+        "maps_to": ["US-01", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/unit/validators-stage-output.test.ts, tests/unit/requirements-scaffold.test.ts, and tests/integration/pending-harness-criteria.test.ts exercise ownership, missing evidence, disabled authority, non-success, reused entry checks, and duplicate submission.",
+          "expected": "Invalid/unresolved pending entries and incomplete scaffolds are rejected. Explicitly disabled or reused checks retain their provenance. Non-success short-circuits and repeated submissions do not introduce extra gate executions or fabricated passes."
+        }
+      },
+      {
+        "id": "AC-03",
+        "statement": "Replayed failure records with identical assertion substance and occurrence counts produce zero new or fixed identities when only progress, counters, selection, temporary heads, or generated report metadata differ; historical evidence is labeled by provenance and never certified from names alone.",
+        "maps_to": ["US-02", "C-04"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/regression/repository-check-delta.test.ts replays provenance-bearing or explicitly synthetic paired records directly through the comparator and inspects exact diagnostic identities/counts.",
+          "expected": "Noise-only variants have empty new/fixed identity lists and unchanged substantive carried counts. Original-transcript replay is claimed only when the original assertion inputs were actually recovered."
+        }
+      },
+      {
+        "id": "AC-04",
+        "statement": "A new case, changed assertion including a literal expected/actual hash, increased genuine failure multiplicity, changed command/status/signal/timeout, or unknown error output remains a detectable new or worsened diagnostic; existing baseline readers and delta consumers retain their result shape.",
+        "maps_to": ["US-02", "C-04"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/unit/repository-check-baseline.test.ts and tests/regression/repository-check-delta.test.ts mutate one substantive dimension at a time, including unsupported tool output and repeated failure renderings versus genuine occurrences.",
+          "expected": "Every actual new/worsened failure is identified with the correct multiplicity/status; duplicate display and execution noise do not inflate counts; legacy saved raw inputs and public delta fields remain usable."
+        }
+      },
+      {
+        "id": "AC-05",
+        "statement": "A run with a valid recorded pipeline snapshot continues through lifecycle preparation and submission when live configuration/advisory projection is incompatible, emits a specific advisory, and preserves settings/snapshots; corrupt required snapshots and invalid new-run configuration still fail explicitly.",
+        "maps_to": ["US-03", "C-05"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/lifecycle-snapshot-isolation.test.ts creates isolated run/config fixtures, changes only live configuration/projection, and exercises recorded and legacy/new-run branches.",
+          "expected": "Valid snapshots remain authoritative with a named advisory for live incompatibility. Required corrupt/missing snapshots, unexpected I/O, and invalid live configuration genuinely required by a new/legacy run remain errors. Persistent configuration and snapshots are byte-identical."
+        }
+      },
+      {
+        "id": "AC-06",
+        "statement": "An explicitly selected healthy candidate executes lifecycle/worktree administration against the same installation state despite an intentionally unbuildable shared controller; state roots, argument resolution, executable provenance, override cleanup, and invalid-root errors remain correct.",
+        "maps_to": ["US-03", "C-05"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/cli-build-wrappers-run-built.test.ts creates healthy candidate and broken-controller fixtures, selects PANCREATOR_EXEC_ROOT, and records executed code provenance, working directory, state paths, descendant environment, and invalid-root diagnostics.",
+          "expected": "Only the selected candidate supplies executable/build code. Lifecycle/worktree operations use the original installation indices and roots; unrelated children do not inherit the override. Invalid candidates fail explicitly rather than selecting a different build."
+        }
+      },
+      {
+        "id": "AC-07",
+        "statement": "With proven process custody and unchanged isolated workspace authority, an unrelated session's dirty edits and clean commits in the controller remain external observations and do not fail isolated verifier or ship scope checks.",
+        "maps_to": ["US-04", "C-06"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/scope-process-custody.test.ts runs distinct fixture actors against controller/workspace roots, supplies real or stubbed enforced custody, and evaluates verifier/ship deterministic scope results.",
+          "expected": "Foreign paths retain their evidence and are not attributed as worker violations. Both dirty controller edits and unrelated clean commits allow an otherwise valid isolated worker's scope result to pass."
+        }
+      },
+      {
+        "id": "AC-08",
+        "statement": "Actual or denied own writes outside granted roots, wrong-attempt evidence, and path/symlink escapes cannot pass scope; unavailable enforcement or incomplete custody is reported explicitly and cannot silently authorize a possible own write, while existing workspace/release policy checks retain their behavior.",
+        "maps_to": ["US-04", "C-06"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/scope-process-custody.test.ts, tests/integration/workspace-write-scope.test.ts, and tests/regression/read-only-mutation.test.ts exercise own/foreign/unknown actors, unavailable sandbox, realpaths, release policies, and stale custody.",
+          "expected": "Proven own violations and denied attempts fail with paths and actor evidence. Unknown attribution is explicitly unverified with a remedy, never a clean pass or invented own-write allegation. Existing permitted workspace/release mutations still behave as specified."
+        }
+      },
+      {
+        "id": "AC-09",
+        "statement": "A silent Copilot worker with no agent-index activity and a matching live process plus fresh wrapper heartbeat remains running through at least seven 60-second wakes; missing indexed activity does not select quiet-fallback over available process evidence.",
+        "maps_to": ["US-05", "C-07"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/copilot-process-watch.test.ts and tests/unit/watch-liveness.test.ts inject seven or more 60-second wakes, a silent live process, fresh linked heartbeat, and absent/unregistered indexed activity.",
+          "expected": "The worker remains running beyond the five-minute quiet threshold with an explicit process evidence basis. No quiet_fallback stall is emitted while the matching process/wrapper evidence remains healthy."
+        }
+      },
+      {
+        "id": "AC-10",
+        "statement": "Two same-call deterministic faults retain the correct recovery cause, and real exit/result, nonzero exit, timeout, missing result, stale/wrong-attempt records, PID reuse, and early result events produce truthful terminal or unverified states; submission refuses a still-active worker and unrelated unknown agent ids remain unregistered.",
+        "maps_to": ["US-05", "C-07"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/copilot-process-watch.test.ts, tests/unit/watch-liveness.test.ts, and tests/regression/watch-process-exit-record.test.ts cover same-call double faults, focused/multiplexed watches, completion races, and the active-worker submission guard.",
+          "expected": "Dead/stopped/stale same-call faults retain named causes after two wakes. Early output/heartbeat alone cannot complete execution; failed or missing terminal results cannot become successful completion. Active submit refusal, unregistered handling, cadence, and attach semantics remain truthful."
+        }
+      },
+      {
+        "id": "AC-11",
+        "statement": "A delayed stub CLI makes launch identity and session/chat/tool/completion events readable incrementally before process exit, in per-stream order with unique sequences; concurrent observation can identify the run/invocation/attempt and wrapper without waiting for the final audit.",
+        "maps_to": ["US-06", "C-08"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/copilot-live-evidence.test.ts holds the stub CLI open with a handshake, emits split delayed JSONL events, and reads live files/progress sinks before allowing exit; cover both stage and evidence-role delegation.",
+          "expected": "Launch identity is available before result completion, observed session identity is published when emitted, each stream's events are ordered and uniquely sequenced, independent heartbeat continues through silence, and final audit is not needed to see open execution."
+        }
+      },
+      {
+        "id": "AC-12",
+        "statement": "Split secrets and UTF-8/JSONL chunks, stderr, malformed events, output bounds, spawn failure, timeout, interruption, resume/fallback, and model mismatch retain safe explicit results; no prompt or credential leaks, duplicate completion replay, orphan child, mutex loss, or false final success occurs.",
+        "maps_to": ["US-06", "C-08"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/unit/copilot-executor.test.ts, tests/integration/copilot-executor-cli.test.ts, and tests/integration/copilot-live-evidence.test.ts seed secrets across every boundary, inspect every sink, exercise error/timeout/catchable-signal cleanup, and compare final adapter results.",
+          "expected": "Secrets and prompts are absent from argv and evidence/display sinks; truncation/errors are explicit; launched children are reaped on tested exits; final result, model/resume behavior, and synchronous mutex ownership remain correct without live-event duplication."
+        }
+      },
+      {
+        "id": "AC-13",
+        "statement": "Before a read-only QA/verifier is delegated, its output scaffold and mandatory case/reproduction observations exist through declared harness collection; QA independently grades the raw evidence, final validation remains harness-owned, and supported executors still expose no shell to that stage.",
+        "maps_to": ["US-07", "C-09", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/verification-execution-evidence.test.ts and tests/integration/verify-qa-schedule.test.ts record scaffold, collection, evidence-role, and final-verifier dispatch order using shell-less adapters and independently graded fixture observations.",
+          "expected": "Scaffold and required current manifests/raw observations precede their consumer; implemented claims alone cannot satisfy QA. Worker shell capability stays absent and final output validation is invoked by the harness, not the read-only worker."
+        }
+      },
+      {
+        "id": "AC-14",
+        "statement": "Missing, stale, wrong-source/attempt, unauthorized, escaped-root, unbounded, or profile-substituted operations cannot produce a passing required observation; collectors report actual failure or evidence gaps, preserve provenance, and route authorized recollection before grading without overwriting worker work.",
+        "maps_to": ["US-07", "C-09", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "tests/integration/verification-execution-evidence.test.ts exercises source changes, declared id-only requests, archived role refresh, invalid definitions, path/symlink escape, profile substitutions, legacy free text, failed collection, missing browser observations, and idempotent preparation.",
+          "expected": "Only authorized bounded operations execute. Evidence binds the actual source/attempt/definition and exit. Invalid or incomplete observations remain explicit nonpasses; unchanged collection is reused, stale evidence is recollected, unsupported gaps follow the blocked route without a fabricated product verdict, and existing worker outputs remain intact."
+        }
+      },
+      {
+        "id": "AC-15",
+        "statement": "The handoff retains exactly the seven requested repairs in the documented two-cohort acyclic graph, with independent worktrees, four then three parallel outcomes, unique edit owners, and no dependency within a cohort.",
+        "maps_to": ["US-03", "C-01", "C-02", "OOS-01", "OOS-02"],
+        "proof": "review",
+        "verification": {
+          "method": "Review the parent specification, seven child specifications, engineering file ownership, and cohort_plan against the original seven-finding request.",
+          "expected": "Seven coherent standalone delivery chunks occupy cohorts 1 and 2; the only edges are stream to scope, stream to watch, and gate contract to verification. All items are owned/shared/deferred explicitly, no same-cohort source edit owner conflicts remain, and no unselected repair or excluded accounting/UI work is introduced."
+        }
+      }
+    ],
+    "test_plan": [],
+    "open_question_dispositions": [
+      {
+        "id": "Q-01",
+        "disposition": "resolved",
+        "answer": "Use ownership-restricted pending_harness for harness shell checks and resolve it from deterministic results at submit. Current pre-gate validation of successful self-evaluation causes the circularity; retain worker claims separately and reject unresolved required results.",
+        "evidence": [
+          "src/lib/validation/stage-output.ts: success rejects unfinished/skipped criterion states before deterministic execution.",
+          "src/lib/engine/submit.ts: output/claim validation and non-success decisions precede the shell gate runner.",
+          "src/lib/engine/submit-helpers.ts: blockingCriterionStateErrors and effectiveOutcome currently lack a pending resolution contract.",
+          "library/schemas/stage-output.schema.json: current vocabulary contains no honest harness-pending state."
+        ]
+      },
+      {
+        "id": "Q-02",
+        "disposition": "resolved",
+        "answer": "No. Matching names alone cannot prove equivalence. Preserve normalized assertion substance, identity, multiplicity, and status; remove only known execution metadata. The missing original transcript pair remains separately deferred in Q-08.",
+        "evidence": [
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md: TRACE-13 records twelve matching failure names and 93 new/16 fixed/248 carried diagnostic identities, without proving all assertions equal.",
+          "src/lib/repository-checks/diagnostics.ts: normalized lines and counts currently mix recognized failure and general command output.",
+          "src/lib/repository-checks/baselines.ts: comparison uses diagnostic multiset identities and independent failure statuses.",
+          "tests/regression/repository-check-delta.test.ts: existing fixture-based comparator regression pattern."
+        ]
+      },
+      {
+        "id": "Q-03",
+        "disposition": "resolved",
+        "answer": "No configuration migration is required. The recorded pipeline snapshot is already authoritative; isolate the live advisory parse error. Retain and document explicit candidate execution via PANCREATOR_EXEC_ROOT, using candidate code while preserving installation state/root identity.",
+        "evidence": [
+          "src/lib/engine/core.ts: loadRunPipelineConfig selects a recorded snapshot, while runPipelineConfigAdvisories separately parses live configuration.",
+          "bin/pan: PANCREATOR_EXEC_ROOT validates a candidate, invokes its run-built/CLI, preserves installation root, and clears the override for descendants.",
+          "bin/run-built: build provenance and locks are rooted in the selected execution checkout."
+        ]
+      },
+      {
+        "id": "Q-04",
+        "disposition": "resolved",
+        "answer": "No. Snapshot deltas establish a change, not the actor. Reuse process write-root enforcement and invocation custody; classify proven foreign activity separately and keep unknown attribution explicitly unverified instead of passing it or falsely charging the worker.",
+        "evidence": [
+          "src/lib/validation/state-criteria.ts: harnessRootWrites compares installation-root states and lacks actor identity.",
+          "src/lib/validation/deterministic-criteria.ts: returned harness-root paths become blocking scope evidence.",
+          "src/lib/executors/write-sandbox.ts: existing process enforcement explicitly addresses the inability of snapshots to identify concurrent actors and reports unavailable enforcement."
+        ]
+      },
+      {
+        "id": "Q-05",
+        "disposition": "resolved",
+        "answer": "Only final process evidence exists today. Add invocation-bound launch and heartbeat linkage and prefer it to quiet fallback when indexed activity is absent, retaining deterministic fault and terminal-result rules.",
+        "evidence": [
+          "src/lib/watch/executor-process.ts: executorProcessActivity reads the final delegation execution record and has no open-launch record.",
+          "src/lib/watch/observe.ts: indexed handle lookup can precede and exclude process fallback.",
+          "src/lib/watch/liveness.ts: no-readable-transcript fallback can apply despite the external process being alive.",
+          "src/lib/watch/process-evidence.ts: processStartIdentity and processRunning are existing reuse points."
+        ]
+      },
+      {
+        "id": "Q-06",
+        "disposition": "resolved",
+        "answer": "No. Keep the synchronous adapter/mutex and add an asynchronous relay child, following existing OpenAI adapter prior art. The relay writes live sanitized evidence while returning a final buffered machine result to its synchronous parent.",
+        "evidence": [
+          "src/lib/engine/executors.ts: createOpenAiAdapter uses a child-process bridge to preserve the synchronous delegation boundary.",
+          "src/lib/engine/delegate.ts: withOperationMutex encloses the synchronous adapter operation.",
+          "src/lib/executors/copilot-cli.ts: runCopilotCli uses spawnSync and parseCopilotJsonl derives final session/message from completed JSONL."
+        ]
+      },
+      {
+        "id": "Q-07",
+        "disposition": "resolved",
+        "answer": "No general shell grant. Choose mandatory declared harness execution before grading, idempotent scaffold preparation, raw-observation manifests, and harness-owned final validators. Missing or new unauthorized operation definitions remain explicit evidence gaps for authorized recovery.",
+        "evidence": [
+          "src/lib/engine/executors.ts: Copilot shell capability depends on workspace write roots; read-only policies omit it.",
+          "src/lib/engine/evidence-workers.ts: evidence dispatch is already a pre-stage boundary, but evidence roles inherit the stage policy.",
+          "src/lib/engine/prepare-artifacts.ts: automatic scaffold creation is currently planning-specific.",
+          "src/lib/validators/stage/verify.ts: existing blocked verification shape records missing evidence without a product verdict.",
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md: TRACE-21 describes scaffold, reproduction, and validation obligations unavailable through current read-only tools."
+        ]
+      },
+      {
+        "id": "Q-08",
+        "disposition": "deferred",
+        "answer": "The baseline-delta implementer must locate the retained original comparison inputs or an authorized local archive and record whether a provenance-bearing replay can be performed. If unrecoverable, report that specific historical limit and use explicitly synthetic fixtures for normalization rules; do not infer equal assertions from equal failure names or rerun the long historical suite.",
+        "evidence": [
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md names runtime/logs/shell/20261014T104643Z-node-32760b64/output.log as comparison evidence.",
+          "Planning attempted to read /Users/alen/Dev/pancreator/runtime/logs/shell/20261014T104643Z-node-32760b64/output.log; the file was unavailable at that path."
+        ]
+      }
+    ],
+    "cohort_plan": {
+      "parent_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md",
+      "chunks": [
+        {
+          "id": "gate-contract",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/gate-contract.md",
+          "depends_on": [],
+          "title": "TRACE-12: honest handoff of harness-owned checks"
+        },
+        {
+          "id": "baseline-delta",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/baseline-delta.md",
+          "depends_on": [],
+          "title": "TRACE-13: compare failure substance rather than execution noise"
+        },
+        {
+          "id": "lifecycle-isolation",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/lifecycle-isolation.md",
+          "depends_on": [],
+          "title": "TRACE-20: preserve recorded-run and candidate execution isolation"
+        },
+        {
+          "id": "copilot-stream",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/copilot-stream.md",
+          "depends_on": [],
+          "title": "TRACE-03: sanitized launch and progress evidence before exit"
+        },
+        {
+          "id": "scope-custody",
+          "cohort_index": 2,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/scope-custody.md",
+          "depends_on": ["copilot-stream"],
+          "title": "TRACE-22: actor-aware scope enforcement"
+        },
+        {
+          "id": "process-watch",
+          "cohort_index": 2,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/process-watch.md",
+          "depends_on": ["copilot-stream"],
+          "title": "TRACE-02: process-backed Copilot liveness and truthful recovery"
+        },
+        {
+          "id": "verification-evidence",
+          "cohort_index": 2,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/verification-evidence.md",
+          "depends_on": ["gate-contract"],
+          "title": "TRACE-21: mandatory execution evidence for shell-less verification"
+        }
+      ],
+      "edges": [
+        {
+          "from": "copilot-stream",
+          "to": "scope-custody"
+        },
+        {
+          "from": "copilot-stream",
+          "to": "process-watch"
+        },
+        {
+          "from": "gate-contract",
+          "to": "verification-evidence"
+        }
+      ],
+      "cohorts": [
+        {
+          "index": 1,
+          "chunks": [
+            "gate-contract",
+            "baseline-delta",
+            "lifecycle-isolation",
+            "copilot-stream"
+          ]
+        },
+        {
+          "index": 2,
+          "chunks": ["scope-custody", "process-watch", "verification-evidence"]
+        }
+      ],
+      "shared_items": ["C-01", "C-02", "OOS-01", "OOS-02"]
+    }
+  },
+  "specifications": {
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md": "# TRACE workflow friction repairs\n\n## Request and authority\n\nThe operator requested repairs for TRACE-12, TRACE-13, TRACE-20, TRACE-22,\nTRACE-02, TRACE-03, and TRACE-21, with a maximally parallel execution DAG\ncontaining at most three cohorts. The selected workspace is\n`worktrees/operator/trace-friction-t1`.\n\nThe request is recorded in\n`runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/request.md`.\nThe complete repair context is\n`runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md`, especially\nthe seven selected finding sections. Its other findings explain the incident;\nthey do not expand this authorization.\n\nThis parent contains the complete product and integration contract. Each\nreferenced child controls its own implementation scope. A child wins within\nthat scope; this parent wins for system-wide context and cross-chunk interfaces.\nPlan approval ratifies this hierarchy. It does not authorize a gate waiver,\nan executor substitution, a configuration change, or publication.\n\n## Product specification\n\n### Summary\n\nRemove seven documented obstacles to honest, isolated workflow execution.\nWorkers must be able to hand harness-owned checks to the harness, baseline\ncomparisons must distinguish failure substance from execution noise, lifecycle\noperations must honor valid recorded snapshots, and scope checks must establish\ncustody rather than charge every shared-controller edit to every worker.\nCopilot execution must expose sanitized progress and process identity before\nexit. Watch must use that evidence when no agent-index entry exists. Read-only\nverification must receive independently collected execution evidence and\nprepared runtime artifacts through an authorized harness path.\n\n### User stories\n\n- US-01: As a source worker, I can submit completed work with explicitly pending\n  harness checks, so their authoritative results can settle the attempt once.\n  Origin: TRACE-12.\n- US-02: As a reviewer of baselined checks, I can distinguish unchanged failures\n  from new or worsened failure substance, despite volatile output. Origin:\n  TRACE-13.\n- US-03: As an operator of isolated worktrees, I can continue a run on its valid\n  snapshots and candidate executable while another session edits the shared\n  controller. Origin: TRACE-20.\n- US-04: As an isolated verifier or ship worker, I receive a scope result based\n  on my process's authority and mutations, while real unauthorized writes remain\n  detectable. Origin: TRACE-22.\n- US-05: As a supervisor, I can observe a silent but live Copilot worker without\n  a false stall, and detect its actual termination or wrapper fault. Origin:\n  TRACE-02.\n- US-06: As a supervisor, I can read sanitized Copilot session and progress\n  evidence while execution is still open. Origin: TRACE-03.\n- US-07: As a read-only QA worker or verifier, I receive the runtime scaffold,\n  mandatory execution observations, and validation route needed for an honest\n  verdict without a general shell grant. Origin: TRACE-21.\n\n### Constraints\n\n- C-01: Repair exactly the seven selected findings; other intake findings remain\n  context unless a change is necessary to preserve these repairs' correctness.\n- C-02: Use the greatest useful parallelism supported by independent outcomes\n  and disjoint edit ownership, within three sequential cohorts.\n- C-03: Harness profiles remain harness-owned. Selected tests are not profile\n  verdicts; pending work is not a pass; a gate runs once per authoritative\n  attempt, with existing idempotency and entry-gate reuse preserved.\n- C-04: Baseline normalization must retain assertion substance, test identity,\n  failure multiplicity, command identity, exit code, signal, and timeout changes.\n- C-05: A valid recorded snapshot remains authoritative. Invalid snapshots and\n  invalid configuration needed to start a new run remain errors. Do not change\n  `active_config`, persistent model settings, or snapshots to repair drift.\n- C-06: Preserve workspace policies and detection or prevention of actual\n  unauthorized writes. A shared checkout delta alone does not identify its\n  author. Missing enforcement or custody evidence must be explicit.\n- C-07: Retain the 60-second watch cadence, the existing attach and recovery\n  rules, and the distinction between a live process, a completed worker, and a\n  successful product result.\n- C-08: Preserve synchronous delegation mutex ownership, prompt-on-stdin,\n  credential isolation, model checks, resume semantics, bounded output, and\n  timeout cleanup while adding incremental evidence.\n- C-09: Read-only stages receive no shell tool. Execution observations must be\n  collected independently through a bounded, declared harness operation before\n  the observation is graded. Missing evidence cannot become a pass.\n\n### Out of scope\n\n- OOS-01: Repairs for unselected TRACE findings, general workflow redesign,\n  release metadata changes, and retroactive waivers or alterations to incident\n  verdicts.\n- OOS-02: Token counts, native host UI changes, usage fallbacks, and cost\n  investigation. Event transport may carry safe session and tool metadata but\n  does not add token accounting or a new dashboard.\n\n### Open questions and dispositions\n\n- Q-01: How can a compliant source worker submit before harness profiles run?\n  Resolved: add `pending_harness` only for shell criteria the resolved invocation\n  assigns to the harness. Submission runs otherwise eligible checks and resolves\n  them through deterministic evidence, retaining the worker's original claim.\n  Current evidence: `src/lib/validation/stage-output.ts`,\n  `src/lib/engine/submit.ts`, `src/lib/engine/submit-helpers.ts`, and\n  `library/schemas/stage-output.schema.json`. The current success vocabulary and\n  pre-gate rejection order establish the circular contract.\n- Q-02: Are matching failing test names sufficient to pass the baseline?\n  Resolved: no. The intake explicitly preserves the possibility of changed\n  assertions, and the comparator counts diagnostic identities. Compare failure\n  records with normalized assertion substance and multiplicity, not names alone.\n  Evidence: TRACE-13 in the intake, `src/lib/repository-checks/diagnostics.ts`,\n  `src/lib/repository-checks/baselines.ts`, and\n  `tests/regression/repository-check-delta.test.ts`.\n- Q-03: Must controller drift change the run's configuration?\n  Resolved: no. `loadRunPipelineConfig` already selects the recorded snapshot;\n  `runPipelineConfigAdvisories` still parses the live configuration without an\n  error boundary. `bin/pan` already supports a candidate execution root while\n  keeping the installation root. These are the repair boundaries, not a\n  configuration migration. Evidence: `src/lib/engine/core.ts` and `bin/pan`.\n- Q-04: Can an installation-root snapshot prove an isolated worker made a write?\n  Resolved: no. The current `harnessRootWrites` compares shared checkout states.\n  Reuse process write-root enforcement and record custody, retaining conservative\n  treatment of genuinely unobservable writes. Evidence:\n  `src/lib/validation/state-criteria.ts`,\n  `src/lib/validation/deterministic-criteria.ts`, and\n  `src/lib/executors/write-sandbox.ts`.\n- Q-05: Is live process observation already available?\n  Resolved: partially. `executorProcessActivity` reads only a completed execution\n  record, and indexed-agent lookup can bypass that fallback. Extend it to the\n  new launch record and wrapper heartbeat before quiet-fallback classification.\n  Evidence: `src/lib/watch/executor-process.ts`,\n  `src/lib/watch/observe.ts`, `src/lib/watch/liveness.ts`, and\n  `src/lib/watch/process-evidence.ts`.\n- Q-06: Does streaming require converting the synchronous workflow engine?\n  Resolved: no. Keep the synchronous outer adapter and mutex, and run a Node\n  relay child that asynchronously reads the CLI. This follows the existing\n  OpenAI adapter's child-process boundary. Evidence:\n  `src/lib/engine/executors.ts`, `src/lib/engine/delegate.ts`, and\n  `src/lib/executors/copilot-cli.ts`.\n- Q-07: Should read-only QA gain a shell?\n  Resolved: no. Choose mandatory harness collection of declared execution\n  observations, plus harness-created scaffolds and harness validation. The\n  current evidence dispatcher is already a pre-worker boundary, but inherits\n  the stage's tool policy. Evidence: `src/lib/engine/evidence-workers.ts`,\n  `src/lib/engine/prepare-artifacts.ts`, `src/lib/engine/executors.ts`,\n  `src/lib/engine/output-validation.ts`, and TRACE-21 in the intake.\n- Q-08: Where can the exact historical baseline/current pair be recovered?\n  Deferred to the baseline implementation's evidence acquisition. The intake\n  identifies the comparison log\n  `runtime/logs/shell/20261014T104643Z-node-32760b64/output.log`, but that path was\n  absent when read during planning. Locate the original pair in retained run\n  evidence or an authorized local archive; retain provenance in replay fixtures.\n  If unavailable, report the historical replay as unavailable. Synthetic\n  variations can prove normalization rules, not equivalence of the missing\n  historical assertions. This is an evidence acquisition task, not an unresolved\n  architectural choice or permission to rerun the long suite.\n\n## Engineering plan\n\n### Architecture\n\nUse existing invocation preparation, executor adapters, evidence workers,\nrepository-check comparison, submission, and watch. Add only three bounded\nmechanisms where current interfaces lack the needed information: a Copilot relay\nwith a typed live record, process write custody evidence, and a verification\nexecution collector. No dependency or framework is needed.\n\n1. Gate ownership: introduce `pending_harness` in the shared criterion\n   vocabulary, schema, normalization, field contract, and scaffolder. Only\n   invocation-resolved harness shell criteria accept it. An untouched scaffold\n   still cannot submit. Preflight validates worker-owned claims first. Submission\n   resolves pending entries from authoritative deterministic checks before a\n   success can be recorded. Preserve the original self-evaluation alongside the\n   resolved evidence; never forge a worker pass. A policy-disabled gate has an\n   explicit disabled result and authority, not a fabricated execution. Missing,\n   skipped-without-authority, or failed required results cannot settle success.\n2. Failure comparison: parse recognized TAP/test-runner failure records into\n   command, stable case identity, assertion/error substance, and occurrence\n   counts. Restrict progress/hash removal to known execution metadata positions.\n   Do not erase arbitrary hexadecimal values inside expected/actual assertions.\n   Preserve conservative diagnostics for unsupported tools and independent\n   failure statuses. Retain readers for recorded raw-output results so replay\n   does not require a suite rerun or rewritten baselines.\n3. Lifecycle isolation: catch only typed live-configuration/projection\n   compatibility errors in advisory reads after a valid recorded snapshot is\n   established. Keep unrelated filesystem, snapshot, and program errors visible.\n   Make the existing candidate execution route durable and documented: use the\n   candidate's `bin/run-built`/CLI, preserve `PANCREATOR_ROOT` and the installation\n   working directory, and do not inherit `PANCREATOR_EXEC_ROOT` into unrelated\n   child fixtures. A controller compile failure must not prevent an explicitly\n   selected healthy candidate from administering the recorded run. Do not\n   silently select another build or preserve a stale build as current.\n4. Copilot transport: retain `ExternalExecutorAdapter.run` as synchronous. A\n   compiled Node relay reads its request on stdin, spawns Copilot asynchronously,\n   parses JSONL across arbitrary byte boundaries, and emits sanitized incremental\n   evidence while the outer adapter waits for a final machine result. Resolve\n   secrets from the child environment; never serialize credentials into the\n   relay request, argv, files, or progress records. The relay owns child cleanup.\n   Keep final stdout/stderr audit compatibility and do not replay live events a\n   second time at completion.\n   Reserve relay stdout for the final machine envelope. Forward sanitized live\n   progress through inherited stderr into the enclosing wrapper's log and the\n   append-only event file before exit. Carry accumulated sanitized CLI\n   stdout/stderr in the final envelope for audit compatibility; the parent must\n   not replay them as new live progress. This avoids buffering the only visible\n   progress channel behind the synchronous parent.\n5. Process custody: use existing `stageWriteRoots`, `resolveWriteSandbox`,\n   `processStartIdentity`, and wrapper records. Record actual write roots\n   separately from CLI read/add-dir roots. Bind each launch to run, invocation,\n   role, attempt, executor, PID plus start identity, and enforcement mode.\n   Only proven own writes or denied own attempts count against the worker.\n   Proven foreign mutations are recorded as external observations. When neither\n   enforcement nor sufficient actor evidence exists, record an explicit\n   unverified attribution result and remediation; do not silently ignore a\n   possible own write or call a shared delta proof of ownership.\n6. Process observation: consult the launch/heartbeat record even if a platform\n   handle has no agent-index entry. A fresh heartbeat and matching live process\n   suppress quiet-fallback, not deterministic faults. Two consecutive wakes for\n   the same dead/stopped/stale call retain their named stall cause. Final\n   execution evidence wins over heartbeat liveness. Missing result, failed exit,\n   timeout, malformed records, PID reuse, or a result emitted before exit cannot\n   falsely complete a worker.\n7. Read-only verification: prepare output scaffolds idempotently before all\n   read-only delegations. Before QA dispatch, collect ratified concrete case\n   operations; before final verifier dispatch, collect mandatory named\n   reproductions and spot checks. Use structured argv operations rather than\n   evaluating free-text case descriptions. Validate identity, workspace, write\n   roots, timeout, and authorized operation definitions, and reject profile\n   commands in live cases. Requests and manifests live in declared run evidence.\n   Reuse current gate evidence for profile verdicts. The harness produces raw\n   observations; QA/verifier independently grades them. Missing or new disputed\n   operations route to authorized collection/remediation before grading, rather\n   than asking a shell-less worker to run them or inventing a pass. Output\n   validation remains a harness operation on the final worker output.\n\n   The declaration shape is `data.test_plan[].execution.operations` for ratified\n   live cases and `data.verification_execution_operations` for source-authorized\n   reproduction handoffs. Each version-1 operation contains `id`, `criterion`\n   or `finding`, `argv`, `cwd`, `timeout_ms`, `write_roots`, and\n   `evidence_paths`. All paths resolve from the declared workspace or run\n   evidence root; they cannot grant writes outside the stage's collector policy.\n   Operation declarations are data, not worker tool grants.\n\n   For a dispute discovered after launch, an evidence worker writes the declared\n   `<evidence-report>.execution-request.json` sidecar; a stage verifier uses\n   `data.verification_execution_requests`. A request contains only operation ids\n   and the missing observation, never executable authority. The evidence\n   dispatcher collects a newly requested authorized operation and reruns only\n   its consuming evidence role against the new manifest. Cache by invocation,\n   operation definition, and source fingerprint; archive prior reports and do\n   not rerun an unchanged completed request. A final verifier that still lacks\n   a required observation returns the existing blocked shape with\n   `blocking_reason` and `missing_evidence_paths`, without a product verdict.\n   Its non-executing request travels through the existing authorized recovery\n   route. New operation definitions come from the plan or source-authorized\n   remediation before the next verification visit, not from a read-only worker.\n   No new workflow stage, automatic approval, or general execution endpoint is\n   introduced.\n\n### Shared handoff interfaces\n\nThe stream chunk defines an additive, versioned live-record contract in\n`src/lib/executors/delegation-live.ts`. Its state is separate from the immutable\nfinal execution audit. Include run/invocation/role/attempt identifiers, executor,\nlaunch time, relay and child PID/start identities, optional wrapper record path,\noptional observed session id, heartbeat timestamp, sequence number, and terminal\nexit/error information when known. A valid missing session id means \"not yet\nobserved\", not a made-up session. Heartbeat cadence is at most 60 seconds; use\n30 seconds by default. The linked wrapper is read using its record and\nheartbeat, not a presumed agent-index id. Bound records to their invocation and\nreject path escape or stale-attempt reuse.\n\nIncremental events retain source order within each stream, record their stream\nand sequence, and distinguish assistant, tool, session, completion, and diagnostic\nevents. Cross-stream receipt order is recorded rather than presented as a\nprovider-guaranteed ordering. Redaction happens before persistence or display,\nincluding secrets split across chunks; stdin prompts are never echoed. A final\n`result` event and process exit are separate observations.\n\nThe scope chunk extends that contract's custody metadata additively; it does not\nchange event sequencing or heartbeat semantics. The watch chunk consumes it and\ndoes not edit executor transport. The verification chunk consumes the gate\nownership contract and does not grant tools by editing executor adapters.\n\nVerification collection uses a separate versioned manifest with operation id,\ncase/criterion or finding id, run/invocation/attempt, argv, workspace-relative cwd,\nallowed scratch/output paths, timeout, start/end, exit/signal, sanitized raw\nevidence paths, and source fingerprint. Accept only operations ratified in a\nplan or supplied by an already source-authorized reproduction path and listed on\nthe invocation. A read-only worker's request may select a declared operation;\nit cannot authorize arbitrary commands. A missing definition routes to an\nexplicit evidence gap for authorized collection. Execution failure is evidence,\nnot necessarily a collector infrastructure failure.\n\n### Dependencies and migration\n\nNo new packages. Keep old final delegation records and raw repository-check\nresults readable. Older invocations without live records retain the existing\nexplicit fallback; lack of a new record is never proof of liveness. Previously\naccepted worker pass/fail outputs stay valid. `unevaluated` remains an unfinished\nscaffold value. New pending results are interpreted only under the resolved\ninvocation's harness ownership. Do not edit old snapshots to adopt a new\ncontract.\n\nFree-text historical live cases do not become executable shell strings. When\nmandatory collection lacks structured operations, report the missing operation\nand its authorized author instead of attempting an implicit translation.\nKeep direct collection artifacts separate from QA judgments and profile gates.\n\nEvery child updates its relevant tests, authored documentation, and module\nindex through existing repository tooling. Avoid manual changes to generated\nindexes. Shared aggregate index generation must be serialized with cohort\nintegration; it is bookkeeping, not another delivery outcome. Source code and\npolicy changes remain subject to a later proper release before landing.\n\n## Acceptance criteria\n\nThe structured plan output is the criterion registry. Each criterion below has\nexactly one owning child and a matching proof tag there.\n\n| Criterion | Outcome | Proof | Owner |\n| --- | --- | --- | --- |\n| AC-01 | Honest pending harness checks settle once without a source-worker reconciliation | test | gate-contract |\n| AC-02 | Invalid pending claims and pre-existing failure routes remain nonpassing | test | gate-contract |\n| AC-03 | Noise-only changes leave failure substance and multiplicity unchanged | test | baseline-delta |\n| AC-04 | New, changed, repeated, and status failures remain detectable | test | baseline-delta |\n| AC-05 | Valid snapshots survive invalid live advisory configuration | test | lifecycle-isolation |\n| AC-06 | A healthy selected candidate administers the same run despite controller build failure | test | lifecycle-isolation |\n| AC-07 | Proven unrelated controller writes do not fail isolated workers' scope | test | scope-custody |\n| AC-08 | Actual unauthorized writes and incomplete custody cannot silently pass | test | scope-custody |\n| AC-09 | A silent live Copilot worker survives more than five minutes of watch wakes | test | process-watch |\n| AC-10 | Terminal results, failures, and deterministic wrapper faults retain correct recovery | test | process-watch |\n| AC-11 | Ordered session/progress events and launch evidence are readable before exit | test | copilot-stream |\n| AC-12 | Streaming preserves redaction, boundedness, cleanup, and final audit semantics | test | copilot-stream |\n| AC-13 | Mandatory execution and scaffolds precede shell-less verification | test | verification-evidence |\n| AC-14 | Verification rejects missing, stale, unauthorized, or substituted evidence | test | verification-evidence |\n| AC-15 | The delivery hierarchy preserves the seven repairs in at most three maximally useful cohorts | review | lifecycle-isolation |\n\nAll runtime thresholds, permissions, and output shapes above can be proved by\ndeterministic subprocess and integration fixtures. There are no browser or native\nhost UI acceptance criteria. Therefore the live-only test plan is empty.\n\n## Validation\n\nUse `runtime/repository-checks.json` as command authority. Implementers run the\ndeclared impacted checks and their named new tests. The harness owns required\nfast/integration/static/configuration profiles and their baselines; it must not\nspend another profile execution to manufacture worker evidence. Do not run the\nfull profile from an agent.\n\nFixtures use temporary repositories, stub CLIs, injected clocks, wrapper records,\nand seeded secrets. Tests assert intermediate file/pipe observations before child\nexit, at least seven 60-second liveness wakes, exact diagnostic delta contents,\ndenied write attempts, and operation/source identity. No paid model call, personal\nbrowser, host configuration edit, or historical workflow mutation is needed.\n\nRecover historical comparison inputs if retained, copy only sanitized bounded\nfailure/progress records into provenance-bearing test fixtures, and replay the\ncomparator in process. If original assertion evidence is unavailable, record\nthat limit; do not certify the old pair from twelve matching failure names.\n\n## Cohorts and ownership\n\nCohort 1 starts four delivery runs in separate worktrees:\n`gate-contract`, `baseline-delta`, `lifecycle-isolation`, and `copilot-stream`.\nEach has its own operator outcome, tests, primary source files, and standalone\ncompletion state. These four have no dependency edge between them.\n\nAfter that cohort is integrated, cohort 2 starts three separate runs:\n`scope-custody` after `copilot-stream`, `process-watch` after `copilot-stream`,\nand `verification-evidence` after `gate-contract`. The two stream consumers\nmodify separate enforcement and observation modules. The verification consumer\nmodifies preparation/collection and policy, not the executor's tool grant.\n\nNo third cohort is required. Splitting streaming from liveness makes transport\nindependently testable while allowing watch, scope, and verification to proceed\nin parallel afterward. Merging those outcomes would reduce useful parallelism;\nsplitting a foundation into partial interfaces would create non-standalone\ndelivery units. The width is four followed by three, with only three true\ndependency edges. Cohort integration remains harness-owned.\n\nShared originating items are C-01, C-02, OOS-01, and OOS-02. Every child carries\nthem. All other story, constraint, and resolved question identifiers have one\nowner. Q-08 is explicitly deferred rather than implicitly resolved.\n\nPrimary edit ownership:\n\n| Chunk | Source ownership | Shared-file sequencing |\n| --- | --- | --- |\n| gate-contract | Criterion vocabulary, validation, submit, scaffold, output schemas, DEV-001 | verification-evidence consumes these after cohort 1 |\n| baseline-delta | Repository-check diagnostics and baseline comparison | no sibling edit to gate classification |\n| lifecycle-isolation | Live-config advisory boundary and candidate launcher | no sibling edit to core or launcher |\n| copilot-stream | Copilot CLI, relay, live-record module, external delegation | scope-custody extends custody after this merges |\n| scope-custody | Write enforcement, scope evaluation, executor custody fields | no watch or verification collection edits |\n| process-watch | Watch observation/liveness and submission activity guard | no transport edits |\n| verification-evidence | Prepare/collection boundaries, verification policy and authored guidance | no executor adapter or watch edits |\n\n## Risks and evidence limits\n\nThe original contradictions are product defects, not worker misconduct. The\nsmallest repairs above change their contracts; workers must not waive checks,\nfake passes, or grant themselves tools to proceed.\n\nStructured failure extraction can overnormalize assertion values; negative\nfixtures must keep literal expected/actual hashes significant. A relay can leak a\nsecret at a byte boundary; sanitize before every sink and test split chunks.\nPID reuse, process exit races, and stale resumes can counterfeit liveness;\nidentity checks and terminal audit precedence are mandatory.\n\nWrite enforcement is platform-dependent. Reuse the existing sandbox and record\nits actual capability; an unavailable sandbox is not an enforced boundary.\nFallback custody must distinguish established foreign activity from unknown\nactivity. Missing attribution cannot authorize a possible out-of-root write.\n\nThe new verification collector executes repository operations and therefore\nmust validate declared authority, roots, timeouts, and fingerprints. It is not a\ngeneral command service. This run plans that repair; it cannot invoke an\nunimplemented collector or validate future source changes.\n\nThe historical comparison log cited above was unavailable. Parent reference\ndigests are intentionally draft values for harness finalization. The planner has\nnot run or claimed a pass from the harness-owned planning validators.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/gate-contract.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before changing criterion ownership, submission ordering, or a contract consumed by another repair.\n\n# Honest submission of harness-owned checks\n\n## Objective\n\nRepair TRACE-12 so completed source work reaches its authoritative gates without\nan invented pass or a second source-worker reconciliation.\n\n## In scope\n\nOwn US-01, C-03, and Q-01. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nIntroduce `pending_harness` in `CriterionResultValue`, the stage-output schema,\nfield contract, normalizer, and scaffold. Permit it only for shell criteria the\nresolved invocation assigns to harness execution. Preserve `unevaluated` as\nunfinished scaffold state and update untouched-scaffold detection accordingly.\n\nPre-submission validation and submission must agree on eligibility. Keep\nworker-owned judgments, claims, attestation, and blocking artifact validation\nbefore expensive gates. Once eligible, run each gate once, settle pending checks\nfrom deterministic results, and compute the final outcome. Keep original worker\nclaims separate from the resolved gate evidence; do not overwrite them as passes.\nMissing results and unauthorized skips cannot satisfy a required pending check.\nAn explicitly disabled gate retains its authority and truthful disabled record.\n\nPrimary symbols: `validateStageOutput`, `validateOutputForSubmission`,\n`submitOutput`, `effectiveOutcome`, `blockingCriterionStateErrors`,\n`scaffoldStageOutput`, `isUntouchedScaffold`, and `CriterionResultValue`.\nUpdate DEV-001 and the stage-output writing guidance to explain honest handoff.\n\n## Out of scope\n\nDo not change baseline diagnostic meaning, watch recovery, executor transport,\nscope attribution, or verifier tool grants. General failing/blocked outputs\ncontinue to avoid irrelevant profile executions.\n\n## Acceptance criteria\n\n1. AC-01 [proof: test] An otherwise valid source-worker success with pending harness shell checks runs the required gates once, records their actual outcomes, and settles without another source-worker invocation; selected test evidence is never promoted to a profile pass.\n2. AC-02 [proof: test] Pending judgments/state/unknown criteria, unresolved required gates, and unauthorized skipped or untouched scaffold results cannot yield success; existing failed, blocked, disabled-gate, entry-reuse, and idempotent submission routes retain truthful results and execution counts.\n\n## Dependencies\n\nCohort 1. No dependencies. Downstream consumer: `verification-evidence`.\n\n## Validation\n\nExtend stage-output and scaffold unit tests and add\n`tests/integration/pending-harness-criteria.test.ts`. Use fixture workflows,\ncounted stub gates, and both full-output and merge-patch submission. Assert\npreflight/submission parity, gate-call count, immutable self-claim evidence,\nresolved evidence paths, and final outcomes. Include failed gate, missing result,\nexplicit disable, reused entry result, invalid pending kind, and duplicate submit.\nRequired repository profiles remain harness-owned.\n\n## Handoff contract\n\nPublish the exact accepted pending spelling, eligibility predicate, final\nresolution representation, and guard against unresolved required results.\n`verification-evidence` uses the finished schema/scaffold APIs and must not\nreintroduce a demand for workers to execute harness profiles.\n\nThis child governs this chunk and wins for its own scope. The parent governs\nsystem-wide context and wins for cross-chunk context. No source edits belong to\nthis planning attempt; a later delivery run implements this child.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/baseline-delta.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before deciding which transcript material is execution metadata or changing the comparison result contract.\n\n# Compare failure substance rather than execution noise\n\n## Objective\n\nRepair TRACE-13 without hiding changed assertions, additional failures, or\nincreased multiplicity.\n\n## In scope\n\nOwn US-02, C-04, and Q-02. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nKeep the multiset comparison boundary. Extract stable failure records from\nrecognized runner output, including case identity and assertion/error substance.\nNormalize known heartbeat counters, progress, selection messages, generated\nexecution identities, and generated report metadata only in their established\nmetadata positions. Expected/actual assertion hashes remain meaningful.\nPreserve command identity, exit status, signal, timeout, and conservative\nunsupported-command diagnostics. Do not count duplicate renderings of one\nfailure record as separate test occurrences.\n\nStart at `commandFailureDiagnostics`, `failureDiagnostics`,\n`failureStatuses`, and `compareRepositoryCheckToBaseline`. Preserve raw recorded\nresult compatibility. Add provenance-bearing replay fixtures and document what\nis normalized.\n\n## Out of scope\n\nDo not fix the twelve historical failing tests, waive an integration gate, alter\nold result files, rerun the long historical suite, or declare equivalence from\nfailure names alone. This chunk does not change gate submission ordering.\n\n## Acceptance criteria\n\n1. AC-03 [proof: test] Replayed failure records with identical assertion substance and occurrence counts produce zero new or fixed identities when only progress, counters, selection, temporary heads, or generated report metadata differ; historical evidence is labeled by provenance and never certified from names alone.\n2. AC-04 [proof: test] A new case, changed assertion including a literal expected/actual hash, increased genuine failure multiplicity, changed command/status/signal/timeout, or unknown error output remains a detectable new or worsened diagnostic; existing baseline readers and delta consumers retain their result shape.\n\n## Dependencies\n\nCohort 1. No dependencies or sibling consumers requiring a new API.\n\n## Validation\n\nExtend `tests/regression/repository-check-delta.test.ts` and\n`tests/unit/repository-check-baseline.test.ts`. Add fixtures under\n`tests/fixtures/trace-friction/` with source descriptions. Exercise\n`compareRepositoryCheckToBaseline` directly: no long suite execution is needed.\nCheck exact identity lists and multiplicities, not only the top-level boolean.\nInclude TAP assertion blocks, reordered progress, repeated renderings,\ngenuine duplicate cases, mixed tool output, truncated/unsupported output, literal\nassertion hashes, and passing commands.\n\nIf the original pair can be recovered, retain sanitized excerpts covering all\nfailure substance and compare their actual delta. If it cannot, disclose that\nspecific missing replay and prove the rules with explicitly synthetic variations.\nQ-08 remains deferred to this evidence acquisition; do not label it resolved\nuntil the original paired assertions have actually been read.\n\n## Handoff contract\n\nKeep `RepositoryCheckBaselineComparison` compatible. State any additive\ndiagnostic representation and conservative fallback. Do not make another chunk\nrewrite its baseline or invoke a test suite to adopt this change.\n\nThis child is authoritative for comparison semantics within this chunk. The\nparent is authoritative for system-wide and cross-chunk context; the child wins\nfor its scope and the parent wins across chunks.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/lifecycle-isolation.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before changing snapshot authority, candidate execution selection, or shared-root behavior.\n\n# Keep recorded runs independent of controller drift\n\n## Objective\n\nRepair TRACE-20 while retaining explicit build selection and strict validation\nof the configuration a run actually needs.\n\n## In scope\n\nOwn US-03, C-05, and Q-03. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nAt `loadRunPipelineConfig` and `runPipelineConfigAdvisories`, establish the valid\nrecorded snapshot first. Catch only known live-config/schema/projection\ncompatibility errors in advisory work. Record the cause and a remedy, and\ncontinue with the snapshot. Do not swallow snapshot corruption, unexpected I/O,\nor new-run configuration failures.\n\nUse the existing `PANCREATOR_EXEC_ROOT` selection in `bin/pan` as the supported\ncandidate execution boundary. Keep state, run/worktree indices, mutexes, and\nargument interpretation on the installation root. Build only the selected\ncandidate and remove the override from unrelated child invocations. Document\nthe exact wrapper invocation and root behavior in `docs/lifecycle-isolation.md`.\nKeep explicit invalid-root errors. Avoid an automatic build substitution or a\nper-run configuration adapter.\n\nPrimary symbols: `loadRunPipelineConfig`, `runPipelineConfigAdvisories`; shell\nentrypoints `bin/pan` and `bin/run-built` have no exported TypeScript symbols.\n\n## Out of scope\n\nDo not migrate settings, change `active_config`, revise old snapshots, select an\nexecutor by a configuration name, or change release ownership and landing.\nScope-custody and watch changes belong to their children.\n\n## Acceptance criteria\n\n1. AC-05 [proof: test] A run with a valid recorded pipeline snapshot continues through lifecycle preparation and submission when live configuration/advisory projection is incompatible, emits a specific advisory, and preserves settings/snapshots; corrupt required snapshots and invalid new-run configuration still fail explicitly.\n2. AC-06 [proof: test] An explicitly selected healthy candidate executes lifecycle/worktree administration against the same installation state despite an intentionally unbuildable shared controller; state roots, argument resolution, executable provenance, override cleanup, and invalid-root errors remain correct.\n3. AC-15 [proof: review] The handoff retains exactly the seven requested repairs in the documented two-cohort acyclic graph, with independent worktrees, four then three parallel outcomes, unique edit owners, and no dependency within a cohort.\n\n## Dependencies\n\nCohort 1. No dependencies. This chunk owns launcher and core changes; stream\nand gate siblings must not edit those files.\n\n## Validation\n\nAdd `tests/integration/lifecycle-snapshot-isolation.test.ts` and extend\n`tests/integration/cli-build-wrappers-run-built.test.ts`. Use two fixture\ncheckouts: deliberately fail controller compilation while the candidate remains\nvalid, and confirm which executable and state root handled each operation.\nChange live config independently from the immutable snapshot and assert both\nadvisory recovery and strict negative cases.\n\nReview the parent graph and child file ownership for AC-15. This checks the\nrequested execution DAG, not a change to the cohort scheduler.\n\n## Handoff contract\n\nDocument supported executable selection and advisory error codes. Preserve\nconfiguration-reader and state APIs for siblings. No temporary adapter or manual\nconfiguration repair may be a prerequisite to use the result.\n\nThe child governs its own repair and wins within that scope. The parent\ngoverns system-wide context and wins for cross-chunk behavior and ordering.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/copilot-stream.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before implementing the live-record schema, sanitization, mutex boundary, or downstream observation interface.\n\n# Publish Copilot launch and progress evidence before exit\n\n## Objective\n\nRepair TRACE-03 with a live evidence producer that remains compatible with the\nsynchronous delegation engine.\n\n## In scope\n\nOwn US-06, C-08, and Q-06. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nKeep `runCopilotCli` and `ExternalExecutorAdapter.run` synchronous at their\ncallers. Follow the existing OpenAI adapter's relay-child pattern: add\n`src/lib/executors/copilot-relay.ts` with `runCopilotRelay`, an asynchronous CLI pump, and\n`src/lib/executors/delegation-live.ts` with typed records/readers/writers. The\nrelay receives prompt and non-secret launch settings on stdin and credentials\nonly through its environment. Its final machine result returns to the adapter.\nReserve relay stdout for that machine envelope. Forward sanitized live progress\nthrough inherited stderr into the wrapper log and through the event file, with\nsanitized accumulated CLI captures included in the final envelope. The parent\ndoes not replay those captures as new progress.\n\nUse `processStartIdentity` and wrapper linkage from `PAN_RUN_RECORD`. Write\nlaunch evidence before CLI progress is expected, update heartbeat every\n30 seconds, and record observed session identity as soon as a valid event\nprovides it. Separate role/attempt/resume records so an earlier launch cannot\nimpersonate the active one. Keep the final execution audit separate.\n\nFrame JSONL across byte and UTF-8 boundaries; sanitize before writing or\ndisplaying. Preserve source ordering per stream and recorded receipt ordering\nacross streams. Record event sequences and bounded truncation explicitly.\nRetain chat, tool, session, completion, and diagnostic events without adding token\naccounting. Clean up the CLI/relay on errors, signal, and timeout.\n\nWire the producer through `createCopilotAdapter`, `delegateInvocation`, and\n`delegateEvidenceWorkers`. Do not migrate the engine to promises or release its\noperation mutex while a delegate is running. Document the wire format and\ncapture paths in `docs/copilot-live-evidence.md`.\n\n## Out of scope\n\nDo not change quiet-stall policy, scope-gate verdicts, granted tools, other\nexecutor behavior, or read-only verification execution. Those consumers can\nadopt the published contract later.\n\n## Acceptance criteria\n\n1. AC-11 [proof: test] A delayed stub CLI makes launch identity and session/chat/tool/completion events readable incrementally before process exit, in per-stream order with unique sequences; concurrent observation can identify the run/invocation/attempt and wrapper without waiting for the final audit.\n2. AC-12 [proof: test] Split secrets and UTF-8/JSONL chunks, stderr, malformed events, output bounds, spawn failure, timeout, interruption, resume/fallback, and model mismatch retain safe explicit results; no prompt or credential leaks, duplicate completion replay, orphan child, mutex loss, or false final success occurs.\n\n## Dependencies\n\nCohort 1. No dependencies. Consumers in cohort 2: `process-watch` and\n`scope-custody`. Both require this chunk's integrated typed live-record API.\n\n## Validation\n\nExtend `tests/unit/copilot-executor.test.ts` and\n`tests/integration/copilot-executor-cli.test.ts`. Add a deterministic delayed\nstub and `tests/integration/copilot-live-evidence.test.ts`. Gate the stub's exit\nwith a pipe/fixture handshake and assert evidence is visible before releasing\nit; duration-only assertions do not prove streaming. Seed secret values across\nevery chunk boundary and scan every persisted/display sink for their absence.\nTest final-result compatibility and both stage and evidence-role delegation.\n\n## Handoff contract\n\nPublish `DelegationLiveRecord`, `DelegationLiveEvent`,\n`delegationLivePaths`, `loadDelegationLiveRecord`, and the launch/update writers.\nThe record distinguishes relay PID, child PID, PID start identities, wrapper\npath, optional session, heartbeat, stream sequences, and terminal exit status.\nDo not encode a missing session as a fallback fake id.\n\nWatch consumes this API without transport edits. Scope custody can add\nwrite-enforcement metadata without redefining transport identity.\nThis child wins for its implementation scope. The parent wins for system-wide\nand cross-chunk interface requirements.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/scope-custody.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before deciding actor attribution, write-root enforcement, or conservative fallback behavior.\n\n# Attribute scope violations to the process that owns them\n\n## Objective\n\nRepair TRACE-22 without disabling detection of writes outside a worker's\nauthorized workspace.\n\n## In scope\n\nOwn US-04, C-06, and Q-04. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nConsume the integrated delegation live-record API. Record actual write roots\nfrom `stageWriteRoots`, separately from read/add-dir access. Reuse\n`resolveWriteSandbox` at external process launch and record its real enforcement\nmode and reason. Bind custody to run/invocation/role/attempt and process start\nidentity. Denied writes remain attributed attempts with evidence.\n\nReplace the unconditional shared-checkout ownership inference in\n`harnessRootWrites` and `evaluateDeterministicCriteria` with custody-aware\nclassification. Preserve workspace-delta, release-metadata, absorbed-path, and\nscope policy behavior outside this false attribution. Apply the new distinction\nto verifier and ship checks rather than introducing stage-specific bypasses.\n\nKnown enforced boundaries or complete actor evidence can establish that a\ncontroller change belongs elsewhere. A real own unauthorized write must fail.\nIf enforcement is unavailable and custody cannot settle a potentially relevant\nchange, emit an explicit unverified attribution with its missing evidence and\ncollection remedy; never claim either an own write or a clean pass by assumption.\nNormalize paths using existing realpath handling and reject symlink escapes.\nDocument custody and fallback rules in `docs/scope-custody.md`.\n\nPrimary symbols: `harnessRootWrites`, `evaluateDeterministicCriteria`,\n`stageWriteRoots`, `createCopilotAdapter`, `ExternalExecutorToolPolicy`, and\n`resolveWriteSandbox`. Keep transport and watch timing unchanged.\n\n## Out of scope\n\nDo not waive scope checks, trust a worker's assertion as sole cross-root proof,\nignore all controller changes, change permitted source policy, or change release\nlanding. No same-cohort edit to watch or verification collection.\n\n## Acceptance criteria\n\n1. AC-07 [proof: test] With proven process custody and unchanged isolated workspace authority, an unrelated session's dirty edits and clean commits in the controller remain external observations and do not fail isolated verifier or ship scope checks.\n2. AC-08 [proof: test] Actual or denied own writes outside granted roots, wrong-attempt evidence, and path/symlink escapes cannot pass scope; unavailable enforcement or incomplete custody is reported explicitly and cannot silently authorize a possible own write, while existing workspace/release policy checks retain their behavior.\n\n## Dependencies\n\nCohort 2. Depends on `copilot-stream`. No dependency on `process-watch` or\n`verification-evidence`.\n\n## Validation\n\nExtend `tests/integration/workspace-write-scope.test.ts` and\n`tests/regression/read-only-mutation.test.ts`; add\n`tests/integration/scope-process-custody.test.ts`. Use distinct fixture actors\nand roots; test simultaneous foreign and own writes, same-path mutations,\nuntracked/committed edits, denied writes, release metadata permissions, and\nmissing custody. Exercise enforced and unavailable-sandbox modes explicitly\nwithout describing a fallback observation as enforcement.\n\n## Handoff contract\n\nAdd custody fields to the live and final policy evidence without breaking old\nrecord readers. Report own, foreign, and unverified paths with evidence sources.\nExisting old invocations retain an explicit conservative fallback.\n\nThis child is authoritative for its scope enforcement repair. It wins within\nthat scope; the parent governs system-wide requirements and wins across chunks.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/process-watch.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before assigning liveness precedence, stall causes, terminal status, or submission refusal.\n\n# Observe Copilot process liveness without an agent-index entry\n\n## Objective\n\nRepair TRACE-02 by distinguishing a quiet running worker from a dead or\nunverifiable one.\n\n## In scope\n\nOwn US-05, C-07, and Q-05. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nUse the integrated typed live record and existing wrapper heartbeat readers.\nExtend `executorProcessActivity`; consult it before quiet-fallback when an\nindexed handle is absent or its lookup has no activity. Do not treat a handle\nstring as proof that the index registered a worker.\n\nRetain final execution audit precedence. A live record must match the active\nrun/invocation/role/attempt, process start identity, and wrapper link.\nFresh wrapper heartbeat plus matching live process suppresses silence-based\nstalling. A repeated deterministic fault for the same open call still produces\nthe existing named dead/stopped/stale cause after two wakes. Missing identity is\nunknown, not a match. Do not let heartbeat changes impersonate model progress.\n\nWire observation, display basis, and `assertWorkerNotStillActive` consistently\nfor focused and multiplexed watches. Preserve the fixed 60-second cadence,\nattach recovery, and terminal evidence requirements. Document the observation\nbasis in `docs/process-backed-watch.md`.\n\n## Out of scope\n\nDo not change the transport producer, launch a browser, adjust cadence, relax\nresult validity, or make running/error/unregistered states look completed.\n\n## Acceptance criteria\n\n1. AC-09 [proof: test] A silent Copilot worker with no agent-index activity and a matching live process plus fresh wrapper heartbeat remains running through at least seven 60-second wakes; missing indexed activity does not select quiet-fallback over available process evidence.\n2. AC-10 [proof: test] Two same-call deterministic faults retain the correct recovery cause, and real exit/result, nonzero exit, timeout, missing result, stale/wrong-attempt records, PID reuse, and early result events produce truthful terminal or unverified states; submission refuses a still-active worker and unrelated unknown agent ids remain unregistered.\n\n## Dependencies\n\nCohort 2. Depends on `copilot-stream`. No dependency on scope or verification.\n\n## Validation\n\nExtend `tests/unit/watch-liveness.test.ts` and\n`tests/regression/watch-process-exit-record.test.ts`; add\n`tests/integration/copilot-process-watch.test.ts`. Use an injected clock for\nseven or more 60-second observations and live fixture wrapper records, not a\nfive-minute sleep. Exercise focused/multiplexed watch and submission activity\nguards using identical evidence. Confirm final results override heartbeat\nliveness only after the required exit evidence exists.\n\n## Handoff contract\n\nConsume `DelegationLiveRecord` without requiring an agent-index schema change.\nPreserve the existing watch ledger fields and add a labeled process observation\nbasis where necessary. Do not invent a completed agent-index stop.\n\nThis child controls watch behavior for its repair and wins within that scope.\nThe parent controls system-wide and cross-chunk semantics and wins there.\n",
+    "runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/verification-evidence.md": "## Parent specification\n\n- Source: runtime/logs/workflows/63264_Oct-15-0547_trace-fricti/operator/specs/parent-specification.md\n- Selected range: complete file.\n- Content digest: sha256:6c6c17faba787d5fbd29534a36c034b6849c0eef682c680687ba77e11102b4fb\n- Read when: Before assigning execution authority, changing evidence freshness rules, or modifying verifier obligations.\n\n# Supply execution evidence before read-only verification\n\n## Objective\n\nRepair TRACE-21 through authorized harness collection, preserving shell-less\nQA and verifier policies.\n\n## In scope\n\nOwn US-07, C-09, and Q-07. Carry shared C-01, C-02, OOS-01, and OOS-02.\n\nUse the integrated scaffold and pending-gate contract. Prepare all read-only\noutputs idempotently in `writeInvocationArtifacts`; do not overwrite existing\nworker work. Keep final output validation harness-owned and remove contradictory\ninstructions that require a read-only worker to execute it.\n\nAdd `src/lib/engine/verification-execution.ts` with\n`resolveVerificationExecutionOperations` and\n`collectVerificationExecutionEvidence`, plus the versioned operation/evidence\nschema `library/schemas/verification-execution.schema.json`. Accept structured\nargv, workspace-relative cwd, bounded timeout, scratch/output roots, operation\nidentity, and expected evidence destinations. Do not run free text through a\nshell. Authority comes from an approved plan or an already source-authorized\nreproduction definition, declared on the invocation. A read-only request may\nselect an authorized operation but cannot define new executable authority.\n\nCollect mandatory live-case operations before QA evidence delegation. Collect\nrequired spot checks and pivotal/disputed reproductions before the final verifier\ndelegation. Integrate at preparation/evidence-dispatch boundaries and through\nexisting runtime input references; do not grant shell tools in executor adapters.\nWhen an operation is missing, route to authorized collection/remediation with an\nexplicit evidence gap before a verdict is graded. Browser cases still require\nthe browser policy's genuine live observation; stdout alone cannot replace one.\n\nRecord invocation/attempt/operation identity, source fingerprint, argv, actual\nexit/signal, sanitized raw observations, timing, and provenance. Keep profile\ngate evidence separate and reject configured profile execution as a live case.\nQA independently judges raw evidence rather than accepting implementer claims.\nRecollect stale evidence after source changes; do not relabel it current.\n\nUse `data.test_plan[].execution.operations` for approved live cases and\n`data.verification_execution_operations` for authorized reproduction handoffs.\nEach operation declares its id, criterion/finding, argv, cwd, timeout, permitted\nwrite roots, and evidence destinations. Validate that roots narrow rather than\nexpand collector authority. Add the authoring contract to the planner guidance.\n\nA role can select missing declared observations with the\n`<evidence-report>.execution-request.json` sidecar; the final verifier can use\n`data.verification_execution_requests`. These requests contain ids and reasons,\nnot executable definitions. Collect a newly requested authorized operation,\narchive prior role reports, and rerun only the consuming evidence role against\nthe updated manifest. An unchanged definition and source fingerprint reuse the\nrecorded collection rather than loop. A required operation that has no authorized\ndefinition follows the existing blocked verification shape, with missing paths\nand no product verdict, until authorized recovery supplies it for the next visit.\n\nUpdate VERIFY-001, QA/verifier personas, delivery verification guidance, schema\nfield documentation, and `docs/verification-execution.md`. Extend plan validation\nfor optional structured execution declarations without invalidating old plans\nthat owe no execution.\n\n## Out of scope\n\nDo not grant unrestricted shell access, execute arbitrary worker-authored\ncommands, turn profile runs into QA cases, change criterion proof types, or\nintroduce a general job scheduler. Legacy free-text mandatory cases with no\nauthorized operation remain explicitly uncollected until a permitted author\nsupplies one. Do not fabricate a live verdict from unavailable browser tools.\n\n## Acceptance criteria\n\n1. AC-13 [proof: test] Before a read-only QA/verifier is delegated, its output scaffold and mandatory case/reproduction observations exist through declared harness collection; QA independently grades the raw evidence, final validation remains harness-owned, and supported executors still expose no shell to that stage.\n2. AC-14 [proof: test] Missing, stale, wrong-source/attempt, unauthorized, escaped-root, unbounded, or profile-substituted operations cannot produce a passing required observation; collectors report actual failure or evidence gaps, preserve provenance, and route authorized recollection before grading without overwriting worker work.\n\n## Dependencies\n\nCohort 2. Depends on `gate-contract`. No dependency on `scope-custody` or\n`process-watch`. Reuse existing process enforcement helpers rather than requiring\ntheir new custody verdicts for this collection path.\n\n## Validation\n\nAdd `tests/integration/verification-execution-evidence.test.ts`; extend\n`tests/integration/verify-qa-schedule.test.ts` and\n`tests/unit/requirements-scaffold.test.ts`. Use fixture workflows with a live\nterminal case, conflicting evidence that needs a declared reproduction, and\nshell-less QA/verifier adapters. Verify collection precedes delegation, independent\ngrading sees exact observations, and source changes invalidate evidence.\n\nNegative tests cover arbitrary argv requests, free-text shell evaluation,\nsymlink/path escape, missing operation definitions, stale results, configured\nprofile substitutions, output scaffold clobbering, collection failures, and a\nbrowser case lacking genuine browser evidence. Gate fixtures exercise this\narchitecture; this repair itself has no browser/native UI acceptance case.\n\n## Handoff contract\n\nExpose a versioned `VerificationExecutionOperation` and\n`VerificationExecutionEvidence` contract. Document authorized operation authors,\nhow requests select operations, the pre-delegation collection boundary, and the\nevidence-gap/recollection route. Existing profile references continue to prove\ntest criteria; no worker must acquire a shell to grade them.\n\nThe child wins for this chunk's implementation scope. The parent governs\nsystem-wide context and wins for cross-chunk contracts and ownership.\n"
+  }
+}

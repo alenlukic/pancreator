@@ -382,7 +382,7 @@ test('AC-007: gap first line', async (t) => {
 
     assert.match(lines[0] ?? '', /observation gap/u)
     assert.match(lines[0] ?? '', /orphan_session/u)
-    assert.match(lines[1] ?? '', /timeout 3600s \(default bound\)/u)
+    assert.match(lines.slice(1).join('\n'), /Bound 3600s/u)
     assert.match(result.stdout, /1 observation gap recorded/u)
     assert.match(result.stdout, /\(timeout 3600s\)/u)
   })
@@ -427,18 +427,16 @@ test('AC-012: detached transport', async () => {
     stdout_tty: false,
     stderr_tty: false,
   })
-  // Awaitedness is never fabricated from a flag: it stays unknown, and the
-  // suspicion is what the record carries.
+  // Piped transport proves neither observation nor an unawaited timer.
   assert.equal(marker.await_status, 'unknown')
-  assert.equal(marker.unawaited_timer_suspected, true)
+  assert.equal(marker.unawaited_timer_suspected, false)
 
   const submitted = submitOutput(root, state.run_id, outputPath)
   const advisory = submitted.advisories.find((item) =>
     item.message.includes(DELEGATION_TIMER_UNAWAITED),
   )
 
-  assert.ok(advisory, 'the suspicion reaches the run advisories')
-  assert.equal(advisory.kind, 'delegation_supervision')
+  assert.equal(advisory, undefined)
 })
 
 test('AC-020: sibling handoff', async (t) => {

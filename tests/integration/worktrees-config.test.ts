@@ -279,6 +279,9 @@ test('a declared operator root keeps new worktrees where the operator put them',
   const root = createFixture()
 
   writeJson(path.join(root, 'config_overrides.json'), {
+    ...(JSON.parse(
+      readFileSync(path.join(root, 'config_overrides.json'), 'utf8'),
+    ) as Record<string, unknown>),
     worktrees: { root: 'runtime/worktrees/operator' },
   })
 

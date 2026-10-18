@@ -24,6 +24,7 @@
     "A missed observation is a `DELEGATE-001` violation whatever the outcome of the process. The agent MUST record the miss, the interval it left unobserved, and the reason in its report or stage output. It MUST resume the cadence at once.",
     "A catchable signal closes an active watch with one interrupted wake that names the signal. A restarted watch records an interruption or handoff gap as its first diagnostic. The agent MUST show that gap.",
     "A worker call that still returns in the foreground is a recovery case, not a launch mode. It exposes no observation point, so no fixed cadence binds it, and the starting agent MUST record launch evidence first. After the call returns it MUST record completion evidence with the elapsed time and a terminal-state inspection. Inside a harness run the completion evidence is `pan watch <run-id> --foreground-returned`, which reads the launch clock from `agent/evidence/<invocation-id>-launch.json`. `--launched-at` supplies the observed launch time and writes that record when no watch armed first, while an arming without it records the arming time. The delegation artifact's modification time is neither a launch signal nor a progress signal. The starting agent MUST run the command at once when a foreground launch returns with the worker output present.",
+    "The starting agent MUST inspect each launch result before arming a watch. A terminal failure before worker creation requires immediate recovery with the launch error retained; it MUST NOT start a worker watch. A detached launch MUST bind the exact returned worker identity and shell record, then observe it before unrelated work. Resolve `latest` once and retain the canonical record through every rearm and restart. On restart, reattach to a live watcher or record the interruption interval before rearming the same worker; a stopped watcher does not authorize a duplicate worker.",
     "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
     "The starting agent MUST NOT depend on the subagent to report back, because a report is a convenience rather than a guarantee.",
     "On a detected stall or crash, the starting agent MUST report the condition and MUST take or propose a recovery action.",
@@ -41,7 +42,7 @@
       "excerpt": true
     },
     {
-      "text": "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. A worker the harness delegated is exempt only when its harness-authored delegation execution record names the run and invocation.",
+      "text": "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record with matching parent observation receipts or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`. An execution record alone proves execution, never parent observation.",
       "audience": ["supervisor"]
     },
     "A watch MAY record `completed` when a `completed` agent state has an inspection in `--agent-state-evidence`. It MAY also complete when output stays plausible after one cadence. Without completed agent evidence, output within one cadence MUST NOT complete the watch. Output plausibility carries a false-positive risk because a worker can write complete-looking output and continue edits.",
@@ -74,7 +75,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "A background mark with no attached terminal MUST record the transport observation and carry `DELEGATION_TIMER_UNAWAITED` into the run advisories as a suspicion, never a proof. Coverage: `tests/integration/watch-repair-sessions.test.ts::AC-012: detached transport`.",
+      "text": "TTY presence MUST describe transport only. Matching foreground-return or attach blocking receipts establish parent observation; missing legacy receipts MUST remain unknown. Lifetime MUST use matching worker launch and terminal receipts, never output modification time or relay/wrapper exit alone. Coverage MUST union matching blocking intervals, clip to worker lifetime, and subtract disclosed gaps. Coverage: `tests/integration/g06-worker-observation.test.ts::receipt coverage ignores output changes and excludes gaps`.",
       "audience": ["harness"]
     },
     {
@@ -100,7 +101,7 @@
       "excerpt": true
     },
     {
-      "text": "An agent MUST give each wrapped shell call a block bound of 5 seconds or less. A `pan watch` call MUST keep the bound this policy already sets for it.",
+      "text": "An agent MUST use the host shell bounds in `governance/registries/host_tools.json`. Ordinary Cursor `Shell` calls use `block_until_ms: 5000`, VS Code `run_in_terminal` calls use `timeout: 5000`, and Copilot `bash` calls use `initial_wait: 30` (supported range 30–600 seconds). Watch calls MUST retain the separate 330-second block bound: `block_until_ms: 330000`, `timeout: 330000`, or `initial_wait: 330`, respectively. The 60-second observation cadence remains fixed.",
       "audience": ["agent"],
       "excerpt": true
     },

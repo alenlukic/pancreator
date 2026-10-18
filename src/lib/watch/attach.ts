@@ -19,6 +19,7 @@ import { processRunning, processStartIdentity } from './process-evidence.js'
 import { defaultSleep } from './session.js'
 import type { AgentLiveness } from './liveness.js'
 import { agentLiveness } from './liveness.js'
+import { appendBlockingReceipt } from './blocking.js'
 import type { AgentActivity } from '../agent-index/activity.js'
 
 /** Exit code the CLI returns when an attach session is orphaned. */
@@ -69,6 +70,7 @@ export interface WatchAttachOptions {
   now?: () => number
   /** Deliver newly observed ledger entries to the live display. */
   onEntry?: (entry: Record<string, unknown>) => void
+  identityProbe?: (pid: number) => string | null
 }
 
 export interface WatchAttachResult {
@@ -107,14 +109,34 @@ function readLedgerEntries(
     })
 }
 
-function inspectLedger(absolutePath: string): {
+function inspectLedger(
+  absolutePath: string,
+  pinnedSession?: unknown,
+): {
   watcherPid: number | null
   watcherIdentity: string | null
   terminalState: string | null
   latestWake: AttachLatestWake | null
   entries: Array<Record<string, unknown>>
+  sessionId: unknown
 } {
   const entries = readLedgerEntries(absolutePath)
+  const newestSession = [...entries]
+    .reverse()
+    .find((entry) => entry.event === 'session_started')
+  if (
+    pinnedSession !== undefined &&
+    newestSession?.watch_session_id !== pinnedSession
+  ) {
+    return {
+      watcherPid: null,
+      watcherIdentity: null,
+      terminalState: null,
+      latestWake: null,
+      entries: [],
+      sessionId: newestSession?.watch_session_id,
+    }
+  }
 
   let watcherPid: number | null = null
   let watcherIdentity: string | null = null
@@ -187,6 +209,7 @@ function inspectLedger(absolutePath: string): {
     terminalState,
     latestWake,
     entries: entries.slice(Math.max(0, lastSessionIdx)),
+    sessionId: newestSession?.watch_session_id,
   }
 }
 
@@ -245,6 +268,13 @@ export async function watchAttach(
 
   const lastIdentityCheckMs = new Map<string, number>()
   const delivered = new Map<string, { session: unknown; count: number }>()
+  const identityProbe = options.identityProbe ?? processStartIdentity
+  const pinned = new Map(
+    options.ledgers.map((ledger) => [
+      ledger,
+      inspectLedger(resolveInside(root, ledger)),
+    ]),
+  )
 
   for (;;) {
     let allDone = true
@@ -267,7 +297,12 @@ export async function watchAttach(
         terminalState,
         latestWake,
         entries,
-      } = inspectLedger(abs)
+        sessionId,
+      } = inspectLedger(abs, pinned.get(session.ledger)?.sessionId)
+      if (sessionId !== pinned.get(session.ledger)?.sessionId) {
+        session.state = 'orphaned'
+        continue
+      }
       const identity = entries[0]?.watch_session_id
       const prior = delivered.get(session.ledger)
       const offset =
@@ -296,11 +331,11 @@ export async function watchAttach(
           lastCheckMs === undefined ||
           nowMs - lastCheckMs >= Math.round(cadenceSeconds * 1000)
         const identityNow =
-          alive && identityDue ? processStartIdentity(watcherPid) : null
+          alive && identityDue ? identityProbe(watcherPid) : null
         const identityMatch =
           alive &&
           (watcherIdentity === null ||
-            identityNow === null ||
+            !identityDue ||
             identityNow === watcherIdentity)
 
         if (identityDue) {
@@ -365,6 +400,29 @@ export async function watchAttach(
   }
 
   const endedMs = now()
+  const parentIdentity = identityProbe(process.pid)
+  for (const session of sessions) {
+    const target = pinned.get(session.ledger)
+    if (
+      target?.watcherPid &&
+      target.watcherIdentity &&
+      parentIdentity &&
+      typeof target.sessionId === 'string'
+    ) {
+      appendBlockingReceipt(resolveInside(root, session.ledger), {
+        schema_version: 1,
+        ledger: session.ledger,
+        watch_session_id: target.sessionId,
+        watcher_pid: target.watcherPid,
+        watcher_process_identity: target.watcherIdentity,
+        parent_pid: process.pid,
+        parent_process_identity: parentIdentity,
+        started_at: startedAt,
+        ended_at: new Date(endedMs).toISOString(),
+        result: session.state ?? 'unknown',
+      })
+    }
+  }
   const exitCode =
     overallState === 'orphaned'
       ? WATCH_ATTACH_EXIT_ORPHANED

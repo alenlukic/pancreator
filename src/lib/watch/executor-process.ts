@@ -16,11 +16,13 @@ import {
 } from '../agent-index/shell-records.js'
 import {
   delegationLivePaths,
+  liveChildEndedAt,
   loadDelegationLiveRecord,
   type DelegationLiveRecord,
 } from '../executors/delegation-live.js'
 import { resolveRunLayout } from '../run-layout.js'
 import type { Invocation } from '../types.js'
+import { readLaunchRecord, recordInvocationLaunch } from './launch.js'
 import {
   delegationExecutionPath,
   loadDelegationExecutionRecord,
@@ -62,6 +64,16 @@ function latestLiveRecord(
   }
 
   const prefix = `${invocation.invocation_id}.copilot.stage.attempt-${invocation.attempt}.`
+  const launch = readLaunchRecord(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
+  const pinned =
+    launch?.executor_launch_id ??
+    (launch?.worker_handle?.startsWith('copilot:')
+      ? launch.worker_handle.slice('copilot:'.length)
+      : undefined)
   const records = names
     .filter((name) => name.startsWith(prefix) && name.endsWith('.live.json'))
     .map((name) =>
@@ -76,6 +88,7 @@ function latestLiveRecord(
     .filter(
       (record): record is DelegationLiveRecord =>
         record !== null &&
+        (!pinned || pinned === record.launch_id) &&
         Date.parse(record.launched_at) >= Date.parse(invocation.created_at),
     )
     .sort((a, b) => Date.parse(b.launched_at) - Date.parse(a.launched_at))
@@ -251,7 +264,24 @@ export function executorProcessActivity(
   )
 
   const { record: live, latestLaunchMs } = latestLiveRecord(root, invocation)
+  const launch = readLaunchRecord(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
+  if (live && !launch?.executor_launch_id) {
+    recordInvocationLaunch(root, invocation.run_id, invocation.invocation_id, {
+      defaultLaunchedAtMs: Date.parse(live.launched_at),
+      defaultSource: 'watch_arm',
+      ...(!launch?.worker_handle
+        ? { workerHandle: `copilot:${live.launch_id}` }
+        : {}),
+      executorLaunchId: live.launch_id,
+    })
+  }
   const recordedMs = record ? Date.parse(record.recorded_at) : NaN
+  // An exited child with no result has no session in its final audit.
+  // A supplied session must still match; absence can prove failure only.
   if (
     record === null ||
     record.invocation_id !== invocation.invocation_id ||
@@ -263,6 +293,16 @@ export function executorProcessActivity(
     recordedMs > nowMs ||
     recordedMs < Date.parse(invocation.created_at) ||
     (latestLaunchMs !== null && recordedMs < latestLaunchMs) ||
+    (latestLaunchMs !== null && live === null) ||
+    ((launch?.executor_launch_id ||
+      launch?.worker_handle?.startsWith('copilot:')) &&
+      live === null) ||
+    (live !== null &&
+      (liveChildEndedAt(live) === undefined ||
+        recordedMs < Date.parse(liveChildEndedAt(live)!) ||
+        !live.session_id ||
+        (record.session_id !== undefined &&
+          record.session_id !== live.session_id))) ||
     (!Number.isSafeInteger(record.exit_code) && record.timed_out !== true)
   ) {
     return live

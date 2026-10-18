@@ -178,6 +178,40 @@ test('an exit code recorded during the watch ends it while the pid stays alive',
   assert.equal(result.wakes, 1)
 })
 
+test('a replacement exit record cannot finish the pinned shell launch', async () => {
+  const root = createTestTempDirectory('watch-process-replaced-record-')
+  const directory = path.join(root, 'runtime/logs/shell/pinned')
+  mkdirSync(directory, { recursive: true })
+  const record = {
+    pid: process.pid,
+    wrapper_pid: process.pid,
+    started_at: new Date(Date.now() - 1000).toISOString(),
+    exit_code: null,
+  }
+  const file = path.join(directory, 'record.json')
+  writeFileSync(file, JSON.stringify(record))
+  await assert.rejects(
+    watchProcess(root, {
+      pid: process.pid,
+      label: 'pinned-shell',
+      exitRecordPath: 'runtime/logs/shell/pinned/record.json',
+      cadenceSeconds: 60,
+      timeoutSeconds: 120,
+      sleep: async () => {
+        writeFileSync(
+          file,
+          JSON.stringify({
+            ...record,
+            started_at: new Date().toISOString(),
+            exit_code: 0,
+          }),
+        )
+      },
+    }),
+    /pinned shell launch identity changed/u,
+  )
+})
+
 test('a process watch wakes at the exit rather than at the next cadence', async () => {
   const root = createTestTempDirectory('watch-process-early-wake-')
   const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 200)'], {
