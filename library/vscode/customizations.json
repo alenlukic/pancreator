@@ -16,7 +16,7 @@
     "Retry stale BYOK registration once for idle SDK sessions",
     "Resolve an unambiguous short chat.defaultModel ID in the Agents window",
     "Default GPT-6 Luna reasoning effort to High while preserving explicit choices",
-    "Collapse earlier chat tool calls when a new one renders, keeping operator-expanded calls open until collapsed"
+    "Collapse earlier chat tool calls when a new one renders, keeping operator-expanded calls open until collapsed and holding finished output steady while it re-renders"
   ],
   "provenance": {
     "picker": "Operator model-picker-patch-v2 recipe",
@@ -221,7 +221,7 @@
         "out/vs/sessions/sessions.desktop.main.js"
       ],
       "find": "static{this.userToggleEvent=\"chatCollapsibleUserToggle\"}",
-      "replace": "static{this.userToggleEvent=\"chatCollapsibleUserToggle\";/*tool-collapse-v1*/globalThis.__panTC??=(()=>{let S=new Map,P=new Map,U=new Set,A=new Set,I=v=>v?.toolCallId,R=s=>{let k=String(s??\"\"),r=S.get(k);r||S.set(k,r={h:new Set,a:new Set});return r};return{arrive(s,v){let i=I(v);if(!i||v.kind!==\"toolInvocation\")return;A.add(i);let r=R(s);if(r.a.has(i))return;for(let o of r.a)U.add(o);r.a.add(i);for(let h of r.h)h.i!==i&&(U.add(h.i),P.get(h.i)!==!0&&h.c())},reg(s,v,c){let r=R(s),h={i:I(v),c};r.h.add(h);return{dispose(){r.h.delete(h)}}},held(v){let i=I(v),p=P.get(i);return p===!1||p!==!0&&U.has(i)},keep(v){let i=I(v);return!!i&&A.has(i)&&!U.has(i)&&P.get(i)!==!1},pin(v,x){let i=I(v);i&&P.set(i,!!x)},wrap(f,v){this.held(v)?f.setExpanded(!1):P.get(I(v))===!0&&f.setExpanded(!0);f.domNode.addEventListener(\"chatCollapsibleUserToggle\",e=>{e.target===f.domNode&&this.pin(v,!f.isExpanded())})}}})()}",
+      "replace": "static{this.userToggleEvent=\"chatCollapsibleUserToggle\";/*tool-collapse-v2*/globalThis.__panTC??=(()=>{let S=new Map,P=new Map,U=new Set,A=new Set,G=new Map,I=v=>v?.toolCallId,R=s=>{let k=String(s??\"\"),r=S.get(k);r||S.set(k,r={h:new Set,a:new Set});return r};return{arrive(s,v){let i=I(v);if(!i||v.kind!==\"toolInvocation\")return;A.add(i);let r=R(s);if(r.a.has(i))return;for(let o of r.a)U.add(o);r.a.add(i);for(let h of r.h)h.i!==i&&(U.add(h.i),P.get(h.i)!==!0&&h.c())},reg(s,v,c){let r=R(s),h={i:I(v),c};r.h.add(h);return{dispose(){r.h.delete(h)}}},held(v){let i=I(v),p=P.get(i);return p===!1||p!==!0&&U.has(i)},keep(v){let i=I(v);return!!i&&A.has(i)&&!U.has(i)&&P.get(i)!==!1},pin(v,x){let i=I(v);i&&P.set(i,!!x)},cap(p){let i=I(p.toolInvocation),n=p.domNode;if(!i||!p._outputView?.isExpanded||!n?.isConnected||!n.offsetHeight)return;let t=Date.now();for(let[k,e]of G)t-e.t>1e3&&G.delete(k);let g=n.cloneNode(!0),a=n.querySelectorAll(\"*\"),b=g.querySelectorAll(\"*\"),s=[];a.forEach((c,j)=>{let d=b[j];if(!d)return;(c.scrollTop||c.scrollLeft)&&s.push([d,c.scrollTop,c.scrollLeft]);if(c instanceof HTMLCanvasElement)try{d.width=c.width;d.height=c.height;d.getContext(\"2d\")?.drawImage(c,0,0)}catch{}});G.set(i,{g,s,h:n.offsetHeight,t})},ghost(p){let v=p.toolInvocation,i=I(v),e=G.get(i);G.delete(i);if(!e||Date.now()-e.t>1e3||p.__panWant!==!0||this.held(v))return;let n=p.domNode,g=e.g,s=n.style,o=[s.position,s.minHeight,s.visibility],z=0,q=-1,k=0;g.setAttribute(\"aria-hidden\",\"true\");g.inert=!0;Object.assign(g.style,{position:\"absolute\",left:\"0\",top:\"0\",width:\"100%\",margin:\"0\",visibility:\"visible\",pointerEvents:\"none\"});o[0]||(s.position=\"relative\");s.minHeight=e.h+\"px\";s.visibility=\"hidden\";n.appendChild(g);let H=()=>{let t=n.getBoundingClientRect().top,b=t;for(let c of n.children)c!==g&&(b=Math.max(b,c.getBoundingClientRect().bottom));return Math.round(b-t)},f=()=>{if(z++===0)for(let[d,y,x]of e.s)d.scrollTop=y,d.scrollLeft=x;let h=H(),x=p._outputView?.isExpanded;k=h===q?k+1:0;q=h;if(p._store?.isDisposed||z>60||x&&k>2&&h>=e.h-2||x&&k>9){g.remove();[s.position,s.minHeight,s.visibility]=o}else requestAnimationFrame(f)};requestAnimationFrame(f)},wrap(f,v){this.held(v)?f.setExpanded(!1):(P.get(I(v))===!0||this.keep(v))&&f.setExpanded(!0);f.domNode.addEventListener(\"chatCollapsibleUserToggle\",e=>{e.target===f.domNode&&this.pin(v,!f.isExpanded())})}}})()}",
       "occurrences": 1
     },
     {
@@ -241,7 +241,7 @@
         "out/vs/sessions/sessions.desktop.main.js"
       ],
       "find": "this._register(this._terminalChatService.registerProgressPart(this))",
-      "replace": "this._register(this._terminalChatService.registerProgressPart(this)),this._register(globalThis.__panTC?.reg(this._sessionResource,this.toolInvocation,()=>this._usesCollapsibleWrapper?this._thinkingCollapsibleWrapper?.setExpanded(!1):this._toggleOutput(!1)))",
+      "replace": "this._register(this._terminalChatService.registerProgressPart(this)),this._register(globalThis.__panTC?.reg(this._sessionResource,this.toolInvocation,()=>this._usesCollapsibleWrapper?this._thinkingCollapsibleWrapper?.setExpanded(!1):this._toggleOutput(!1))),globalThis.__panTC?.ghost(this),(d=>{this.dispose=()=>{globalThis.__panTC?.cap(this);d.call(this)}})(this.dispose)",
       "occurrences": 1
     },
     {
@@ -271,7 +271,7 @@
         "out/vs/sessions/sessions.desktop.main.js"
       ],
       "find": "async _toggleOutput(e){",
-      "replace": "async _toggleOutput(e){if(globalThis.__panTC?.[e?\"held\":\"keep\"](this.toolInvocation))return!1;",
+      "replace": "async _toggleOutput(e){this.__panWant=e;if(globalThis.__panTC?.[e?\"held\":\"keep\"](this.toolInvocation))return!1;",
       "occurrences": 1
     },
     {
