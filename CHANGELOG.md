@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Accept successful filesystem verification when Git release proof does not apply ([verification fix](https://github.com/alenlukic/pancreator/commit/94bb1fa957e998bff471162945d4009a681139ff)).
+- Restore integration fixtures for current workflow, model, and CLI contracts, and split verification evidence tests below the source limit ([test repairs](https://github.com/alenlukic/pancreator/commit/94bb1fa957e998bff471162945d4009a681139ff)).
+
 ## [9.9.1] - 2026-10-18
 
 ### Fixed
