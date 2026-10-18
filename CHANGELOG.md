@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Run the verify stage's consolidating verifier only when every evidence worker's report states `pass`; a `fail` or missing verdict skips the verifier, records a remedial verify failure that cites the reports, and routes the stage to remediate ([evidence gate](src/lib/engine/evidence-gate.ts)).
+
 ## [9.6.0] - 2026-10-18
 
 ### Changed
