@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Normalize planning identifiers without rewriting authored scope, reject ownership and view conflicts, and keep parent and child views consistent. Deduplicate policy bodies only with matching executor and digest proof, retain full bodies otherwise, and bound mechanical merge patches ([planning repair](https://github.com/alenlukic/pancreator/commit/026dcc5a1db32628d842d6d18c540368db286894)).
+- Validate receiving worktree configuration before atomic publication, preserve override bytes and absence on failure, and retain the effective active configuration with redacted recovery errors ([configuration handoff](https://github.com/alenlukic/pancreator/commit/918d75c23ab1f07bdd165f4f9e734ec653769416)).
+- Bind worker observation to launch, process, and shell identities; pin aliases across rearming; and record observation gaps and lifetime coverage. Accept foreground launches without requiring a TTY, keep silent workers healthy while their heartbeat is fresh, and use supported host shell bounds while retaining the 60-second cadence and 330-second watch bound ([worker observation](https://github.com/alenlukic/pancreator/commit/5effe576cbeb7b8cfe28457a3f227158c5e2446d)).
+- Restore integrated compatibility and recognize legacy external executor dispatch evidence without weakening worker identity checks ([compatibility repair](https://github.com/alenlukic/pancreator/commit/eb8e99d4), [dispatch repair](https://github.com/alenlukic/pancreator/commit/6bef0aa8)).
+
 ## [9.8.1] - 2026-10-18
 
 ### Fixed
