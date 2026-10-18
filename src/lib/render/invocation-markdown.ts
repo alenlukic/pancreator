@@ -6,6 +6,7 @@ import {
   type PolicyRulePointer,
   renderContextReferenceBlock,
   renderPolicyBlocks,
+  policySectionDigest,
 } from '../policy-guidance.js'
 import { effectiveRepositoryCheckProfile } from '../verification.js'
 import type { Invocation, Criterion } from '../types.js'
@@ -56,7 +57,8 @@ function renderResolvedGateBound(
 /** Render an invocation card for both the operator and the assigned worker. */
 /** The pointer-delivered policies of a worker card, keyed by policy id. */
 export function invocationPolicyPointers(
-  invocation: Pick<Invocation, 'policy_delivery'>,
+  invocation: Pick<Invocation, 'policy_delivery'> &
+    Partial<Pick<Invocation, 'stage' | 'policies' | 'invocation_id'>>,
 ): Map<string, PolicyRulePointer> {
   const pointers = new Map<string, PolicyRulePointer>()
 
@@ -64,6 +66,24 @@ export function invocationPolicyPointers(
     invocation.policy_delivery ?? {},
   )) {
     if (delivery.mode === 'pointer') {
+      if (invocation.stage?.slug === 'plan') {
+        const policy = invocation.policies?.find(
+          (entry) => entry.id === policyId,
+        )
+        const executor = invocation.stage.persona_executor ?? 'cursor'
+        const matchingExecutor =
+          executor === 'cursor' &&
+          (delivery.host === undefined ||
+            delivery.host === 'cursor' ||
+            delivery.host === 'vscode')
+        if (
+          !policy ||
+          !matchingExecutor ||
+          !delivery.target.trim() ||
+          delivery.sha256 !== policySectionDigest(policy, 'agent')
+        )
+          continue
+      }
       pointers.set(policyId, {
         target: delivery.target,
         sha256: delivery.sha256,
@@ -612,6 +632,20 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             'what the failure or directive requires; the harness validates ' +
             'the merged document.',
           '',
+          ...(stage.slug === 'plan'
+            ? [
+                'Planning correction context is prepared beside the scaffold at ' +
+                  `\`${invocation.output.path}.planning-correction.json\`. ` +
+                  'Use mechanical mode only when that harness-owned bundle permits it. ' +
+                  'It names exact failed fields, current values, and preservation digests. ' +
+                  'Set `data.planning_correction` to `{ "mode": "mechanical" }` in the existing merge patch. ' +
+                  'The plan-trace validator compares the materialized data and specification bytes. ' +
+                  'A scope, proof, ownership, migration, or other design change requires ordinary planning review; ' +
+                  'remove `data.planning_correction` and follow the complete planning contract. ' +
+                  'A proved mechanical correction needs no blanket child reread.',
+                '',
+              ]
+            : []),
         ]
       : []),
     ...(operatorBrief
