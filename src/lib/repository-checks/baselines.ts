@@ -25,11 +25,32 @@ export interface RepositoryCheckBaselineComparison {
   evidence_gap?: string
 }
 
-/** Whether a baseline recorded no command result at all. */
+/**
+ * Printed by the impacted-test selector when it found no changed file and so
+ * ran no test. A baseline captured that way exercised nothing.
+ */
+export const IMPACTED_SELECTION_EMPTY_MARKER = 'No test selected.'
+
+/**
+ * Whether a baseline carries no evidence about the suite: it recorded no
+ * command result, or every non-probe command selected no test to run. Such a
+ * baseline cannot tell an inherited diagnostic from a new one.
+ */
 export function isEmptyRepositoryCheckBaseline(
   baseline: RepositoryCheckResult,
 ): boolean {
-  return !Array.isArray(baseline.results) || baseline.results.length === 0
+  if (!Array.isArray(baseline.results) || baseline.results.length === 0) {
+    return true
+  }
+
+  const commands = baseline.results.filter((result) => result.kind !== 'probe')
+
+  return (
+    commands.length > 0 &&
+    commands.every((result) =>
+      (result.stdout ?? '').includes(IMPACTED_SELECTION_EMPTY_MARKER),
+    )
+  )
 }
 
 function emptyDelta(): RepositoryCheckDelta {
@@ -175,11 +196,15 @@ export function compareRepositoryCheckToBaseline(
     `${sorted.carried.length} carried`
 
   if (!passed && isEmptyRepositoryCheckBaseline(baseline)) {
+    const reason =
+      Array.isArray(baseline.results) && baseline.results.length > 0
+        ? 'selected no test to run'
+        : 'recorded no command result'
     const evidenceGap =
-      `The pre-implementation baseline for '${current.profile}' recorded ` +
-      `no command result, so it cannot tell an inherited diagnostic from a ` +
-      `new one (${counts}). Absent baseline evidence is not a regression, ` +
-      `so the gate does not fail on the delta.`
+      `The pre-implementation baseline for '${current.profile}' ${reason}, ` +
+      `so it cannot tell an inherited diagnostic from a new one ` +
+      `(${counts}). Absent baseline evidence is not a regression, so the ` +
+      `gate does not fail on the delta.`
 
     return {
       passed: true,
