@@ -55,6 +55,32 @@
         "cursor": ["Shell"],
         "vscode": ["run_in_terminal"],
         "copilot-cli": ["bash"]
+      },
+      "bounds": {
+        "cursor": {
+          "argument": "block_until_ms",
+          "unit": "milliseconds",
+          "minimum": null,
+          "maximum": null,
+          "ordinary": 5000,
+          "watch": 330000
+        },
+        "vscode": {
+          "argument": "timeout",
+          "unit": "milliseconds",
+          "minimum": null,
+          "maximum": null,
+          "ordinary": 5000,
+          "watch": 330000
+        },
+        "copilot-cli": {
+          "argument": "initial_wait",
+          "unit": "seconds",
+          "minimum": 30,
+          "maximum": 600,
+          "ordinary": 30,
+          "watch": 330
+        }
       }
     }
   }

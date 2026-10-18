@@ -533,7 +533,8 @@ test('AC-16: --exit-record reports the exit status of a wrapped command', async 
         result.rearm_command,
         `./bin/pan watch --process ${process.pid} --label 'rearm' ` +
           `--output 'runtime/logs/shell/x/output.log' ` +
-          `--exit-record 'runtime/logs/shell/x/record.json' --timeout-seconds 0.2`,
+          `--exit-record 'runtime/logs/shell/x/record.json' --timeout-seconds 0.2 ` +
+          `--resume-process '${result.record_path}'`,
       )
     },
   )
@@ -649,6 +650,8 @@ test('pan watch --shell resolves one pan-run record to its process and paths', a
 
   await t.test('a timed-out --shell watch re-arms with --shell', async () => {
     const root = createTestTempDirectory('watch-shell-rearm-')
+
+    seed(root, { pid: process.pid, label: 'rearm' })
     const result = await watchProcess(root, {
       pid: process.pid,
       label: 'rearm',
@@ -662,7 +665,8 @@ test('pan watch --shell resolves one pan-run record to its process and paths', a
     assert.equal(result.state, 'timed_out')
     assert.equal(
       result.rearm_command,
-      `./bin/pan watch --shell '${directory}' --timeout-seconds 0.2`,
+      `./bin/pan watch --shell '${directory}' --timeout-seconds 0.2 ` +
+        `--resume-process '${result.record_path}'`,
     )
   })
 

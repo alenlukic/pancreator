@@ -466,13 +466,15 @@ export interface DelegationWatchSummary {
    * Widely separated starts cannot manufacture coverage from a raw span.
    */
   covered_seconds: number | null
-  /** `covered_seconds` over the launch-to-output elapsed time. */
+  /** `covered_seconds` over the matching launch-to-terminal receipt interval. */
   coverage_ratio: number | null
   /** What the ratio was computed from; null when no launch clock exists. */
   coverage_basis: 'launch_record' | 'unknown' | null
-  /** Awaitedness the transport could establish. Never fabricated. */
-  await_status: 'unknown' | null
-  /** The background mark ran with no attached terminal. */
+  /** Matching parent blocking evidence, independent of terminal transport. */
+  await_status: 'observed' | 'unknown' | null
+  lifetime_seconds?: number | null
+  lifetime_diagnostics?: string[]
+  /** Retained legacy field; terminal transport cannot establish this claim. */
   unawaited_timer_suspected: boolean
 }
 

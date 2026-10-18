@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict'
+import childProcess from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
 import { mkdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { getAgentByRunInvocation } from '../../src/lib/agent-index/activity.js'
-import { handleSubagentStart } from '../../src/lib/agent-index/hooks.js'
+import {
+  handleSubagentStart,
+  handleSubagentStop,
+} from '../../src/lib/agent-index/hooks.js'
 import { assertWorkerNotStillActive } from '../../src/lib/engine/submit-checks.js'
 import {
   delegationLivePaths,
@@ -21,10 +26,20 @@ import {
 import { processStartIdentity } from '../../src/lib/watch/process-evidence.js'
 import { formatWakeLine } from '../../src/lib/watch/record.js'
 import { watchedAgentActivity } from '../../src/lib/watch/observe.js'
-import { multiplexedTargets } from './watch-helpers.js'
+import {
+  multiplexedTargets,
+  writeTargetOutputPastCadence,
+} from './watch-helpers.js'
+import { watchAttach } from '../../src/lib/watch/attach.js'
+import { readBlockingReceipts } from '../../src/lib/watch/blocking.js'
+import { watchRecordPath } from '../../src/lib/watch/paths.js'
+import {
+  readLaunchRecord,
+  recordInvocationLaunch,
+} from '../../src/lib/watch/launch.js'
 
-function processFixture() {
-  const { root, targets } = multiplexedTargets(1)
+function processFixture(count = 1) {
+  const { root, targets } = multiplexedTargets(count)
   const target = targets[0]!
   const invocationPath = target.layout.invocation(
     target.invocationId,
@@ -95,7 +110,11 @@ function processFixture() {
         },
       }),
     )
-  const audit = (fields: Record<string, unknown> = {}) =>
+  const audit = (fields: Record<string, unknown> = {}) => {
+    live.child_pid = process.pid
+    live.child_start_identity = start
+    live.child_ended_at = new Date(now).toISOString()
+    refresh()
     writeFileSync(
       path.join(
         root,
@@ -118,10 +137,12 @@ function processFixture() {
         ...fields,
       }),
     )
+  }
 
   return {
     root,
     target,
+    targets,
     invocation,
     live,
     livePath,
@@ -135,6 +156,151 @@ function processFixture() {
     },
   }
 }
+
+test('G06: silent healthy sibling survives handoff, detached continuation and attach with the same identity', async (t) => {
+  const start = 'Sun Oct 18 00:00:00 2026'
+  const originalSpawn = childProcess.spawnSync
+  // Only this deterministic case supplies OS samples; live QA never does.
+  t.mock.method(
+    childProcess,
+    'spawnSync',
+    (
+      command: string,
+      args: string[],
+      options: childProcess.SpawnSyncOptions,
+    ) => {
+      if (command !== 'ps') return originalSpawn(command, args, options)
+      const stdout = args.includes('-A')
+        ? `${process.pid} 1 S 0:00.00 ${start}\n`
+        : args.includes('stat=')
+          ? 'S\n'
+          : `${start}\n`
+      return {
+        pid: process.pid,
+        status: 0,
+        signal: null,
+        stdout,
+        stderr: '',
+        output: [null, stdout, ''],
+      }
+    },
+  )
+  syncBuiltinESMExports()
+  t.after(() => {
+    t.mock.restoreAll()
+    syncBuiltinESMExports()
+  })
+  const fixture = processFixture(2)
+  const moved = fixture.targets[1]!
+  handleSubagentStart(fixture.root, {
+    event: 'subagentStart',
+    subagent_id: 'moved-worker',
+    task_text: `Read runtime/logs/workflows/${moved.runId}/agent/invocations/${moved.invocationId}.json`,
+  })
+  let quietWakes = 0
+  const result = await watchInvocations(
+    fixture.root,
+    fixture.targets.map(({ runId, invocationId }) => ({ runId, invocationId })),
+    {
+      now: fixture.now,
+      cadenceSeconds: 60,
+      timeoutSeconds: 600,
+      untilTerminal: true,
+      sleep: async (ms) => {
+        await fixture.sleep(ms)
+        if (quietWakes === 2) {
+          writeTargetOutputPastCadence(fixture.root, moved)
+          handleSubagentStop(fixture.root, {
+            event: 'subagentStop',
+            subagent_id: 'moved-worker',
+            status: 'completed',
+          })
+        }
+      },
+      onWake: (entry) => {
+        if (entry.run_id !== fixture.invocation.run_id) return
+        quietWakes += 1
+        assert.equal(entry.terminal_state, undefined)
+        assert.equal(entry.observation?.agent_activity?.stall_suppressed, true)
+        if (quietWakes > 1) assert.equal(entry.changed, false)
+      },
+    },
+  )
+  assert.equal(result.state, 'changed')
+  assert.deepEqual(
+    result.moved.map((item) => item.invocation_id),
+    [moved.invocationId],
+  )
+  assert.ok(quietWakes >= 2)
+  const { root, invocation } = fixture
+  const ledger = watchRecordPath(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
+  assert.equal(
+    readWatchRecord(root, invocation.run_id, invocation.invocation_id).at(-1)
+      ?.session_end_reason,
+    'sibling_handoff',
+  )
+  const pinned = readLaunchRecord(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )?.executor_launch_id
+  assert.equal(pinned, fixture.live.launch_id)
+  await fixture.sleep(74000)
+  let resumedWakes = 0
+  let release: (() => void) | undefined
+  const detached = watchInvocation(root, invocation.run_id, {
+    invocationId: invocation.invocation_id,
+    now: fixture.now,
+    cadenceSeconds: 60,
+    timeoutSeconds: 480,
+    sleep: async (ms) => {
+      await fixture.sleep(ms)
+      if (release === undefined)
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+      if (resumedWakes >= 5) {
+        fixture.output()
+        fixture.audit()
+      }
+    },
+    onWake: (entry) => {
+      resumedWakes += 1
+      if (!entry.terminal_state)
+        assert.equal(entry.observation?.agent_activity?.stall_suppressed, true)
+    },
+  })
+  const attached = await watchAttach(root, {
+    ledgers: [ledger],
+    now: fixture.now,
+    timeoutSeconds: 600,
+    untilTerminal: true,
+    sleep: async (ms) => {
+      await fixture.sleep(ms)
+      release?.()
+    },
+  })
+  assert.equal(attached.state, 'attach_completed')
+  assert.equal((await detached).state, 'completed')
+  assert.ok(quietWakes + resumedWakes >= 7)
+  assert.equal(
+    readLaunchRecord(root, invocation.run_id, invocation.invocation_id)
+      ?.executor_launch_id,
+    pinned,
+  )
+  const entries = readWatchRecord(
+    root,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
+  assert.equal(entries.find((entry) => entry.event === 'gap')?.gap?.seconds, 74)
+  assert.ok(entries.every((entry) => entry.terminal_state !== 'stalled'))
+  assert.ok(readBlockingReceipts(path.join(root, ledger)).length > 0)
+})
 
 for (const multiplexed of [false, true]) {
   test(`AC-09: ${multiplexed ? 'multiplexed' : 'focused'} Copilot watch survives seven silent 60-second wakes`, async () => {
@@ -193,8 +359,9 @@ for (const multiplexed of [false, true]) {
   })
 }
 
-test('AC-10: early result and plausible output cannot finish an active Copilot process or permit submission', async () => {
+test('AC-10: early result and plausible output cannot finish an active Copilot process or permit submission', async (t) => {
   const fixture = processFixture()
+  t.mock.method(Date, 'now', fixture.now)
   fixture.output()
   const stage = { persona: 'coder' } as StageDefinition
   assert.throws(
@@ -220,7 +387,7 @@ test('AC-10: early result and plausible output cannot finish an active Copilot p
   )
   assert.equal(result.state, 'unverified')
   assert.equal(result.wakes, 7)
-  fixture.audit({ recorded_at: new Date().toISOString() })
+  fixture.audit()
   assert.doesNotThrow(() =>
     assertWorkerNotStillActive(
       fixture.root,
@@ -275,8 +442,9 @@ test('AC-09: an indexed handle without usable activity still uses process eviden
 })
 
 for (const multiplexed of [false, true]) {
-  test(`AC-10: ${multiplexed ? 'multiplexed' : 'focused'} ambiguous launches cannot use an older audit to complete or permit submission`, async () => {
+  test(`AC-10: ${multiplexed ? 'multiplexed' : 'focused'} ambiguous launches cannot use an older audit to complete or permit submission`, async (t) => {
     const fixture = processFixture()
+    t.mock.method(Date, 'now', fixture.now)
     fixture.invocation.created_at = new Date(
       fixture.now() - 60_000,
     ).toISOString()
@@ -346,7 +514,18 @@ for (const multiplexed of [false, true]) {
     ).at(-1)
     assert.equal(last?.terminal_state, 'unverified')
 
-    fixture.audit({ recorded_at: new Date().toISOString() })
+    recordInvocationLaunch(
+      fixture.root,
+      fixture.invocation.run_id,
+      fixture.invocation.invocation_id,
+      {
+        defaultLaunchedAtMs: Date.parse(fixture.live.launched_at),
+        defaultSource: 'watch_arm',
+        executorLaunchId: fixture.live.launch_id,
+        workerHandle: `copilot:${fixture.live.launch_id}`,
+      },
+    )
+    fixture.audit()
     assert.doesNotThrow(() =>
       assertWorkerNotStillActive(
         fixture.root,

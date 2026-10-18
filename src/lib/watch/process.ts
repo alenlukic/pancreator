@@ -8,7 +8,7 @@ import {
   openSync,
   readFileSync,
   readSync,
-  readlinkSync,
+  realpathSync,
   statSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -57,7 +57,15 @@ export interface GenericWatchRecordEntry {
   wake: number
   watch_session_id: string
   watcher_pid?: number
+  watcher_process_identity?: string | null
   timeout_seconds?: number
+  subject_identity?: {
+    pid: number
+    start_identity: string | null
+    shell_record: string | null
+    exit_record_path: string | null
+    exit_record_identity: Record<string, unknown> | null
+  }
   wake_due_at?: string
   /** Process liveness observed on this wake, when knowable. */
   process_alive?: boolean
@@ -227,6 +235,8 @@ export interface ProcessWatchOptions {
    * `--shell`, so a timeout re-arm command uses the same short form.
    */
   shellRecord?: string
+  /** Prior generic ledger whose subject identity a continuation must retain. */
+  resumeProcess?: string
   cadenceSeconds?: number
   timeoutSeconds?: number
   sleep?: (milliseconds: number) => Promise<void>
@@ -364,21 +374,14 @@ export function resolveShellRecord(
 
   // `latest` moves with every wrapped command, so the watch pins the record
   // it names now.
-  try {
-    if (lstatSync(absolute).isSymbolicLink()) {
-      const target = readlinkSync(absolute)
-
-      if (!target.includes('/')) {
-        directory = path.posix.join(path.posix.dirname(directory), target)
-        absolute = resolveInsideRuntimeLogs(
-          recordRoot,
-          directory,
-          'A --shell record',
-        )
-      }
-    }
-  } catch {
-    // A missing directory is reported below with the record it lacks.
+  if (existsSync(absolute)) {
+    const canonical = realpathSync(absolute)
+    directory = path.relative(recordRoot, canonical).split(path.sep).join('/')
+    absolute = resolveInsideRuntimeLogs(
+      recordRoot,
+      directory,
+      'A --shell record',
+    )
   }
 
   const recordPath = path.posix.join(directory, 'record.json')
@@ -482,6 +485,14 @@ export async function watchProcess(
 
   const sleep = options.sleep ?? defaultSleep
   const now = options.now ?? Date.now
+  const shell = options.shellRecord
+    ? resolveShellRecord(root, options.shellRecord)
+    : null
+  invariant(
+    !shell || shell.pid === options.pid,
+    'The shell record does not name the watched process.',
+    { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+  )
 
   const record = genericWatchRecordPath(root, options.label, options.recordPath)
   const sessionId = randomUUID()
@@ -489,24 +500,61 @@ export async function watchProcess(
   const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
   const subject = String(options.pid)
+  const exitRecordPath = options.exitRecordPath ?? shell?.record_path
 
   // The identity captured at arm is what a later liveness answer is compared
   // against: a reused PID is an identity change, not the watched process.
   const identityProbe = options.identityProbe ?? processStartIdentity
-  const startIdentity = identityProbe(options.pid)
+  const currentStartIdentity = identityProbe(options.pid)
+  let priorIdentity: GenericWatchRecordEntry['subject_identity']
+  if (options.resumeProcess !== undefined) {
+    const priorPath = resolveInsideRuntimeLogs(
+      root,
+      options.resumeProcess,
+      'A process continuation',
+    )
+    const first: unknown = JSON.parse(
+      readFileSync(priorPath, 'utf8').split('\n')[0]!,
+    )
+    invariant(
+      isRecord(first) &&
+        first.schema_version === 1 &&
+        first.event === 'session_started' &&
+        first.subject === subject &&
+        isRecord(first.subject_identity) &&
+        first.subject_identity.pid === options.pid &&
+        (typeof first.subject_identity.start_identity === 'string' ||
+          first.subject_identity.start_identity === null) &&
+        first.subject_identity.shell_record === (shell?.directory ?? null) &&
+        first.subject_identity.exit_record_path === (exitRecordPath ?? null) &&
+        (first.subject_identity.exit_record_identity === null ||
+          isRecord(first.subject_identity.exit_record_identity)),
+      'The process continuation does not match the pinned subject identity.',
+      { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+    )
+    priorIdentity = {
+      pid: options.pid,
+      start_identity: first.subject_identity.start_identity,
+      shell_record: shell?.directory ?? null,
+      exit_record_path: exitRecordPath ?? null,
+      exit_record_identity: first.subject_identity.exit_record_identity,
+    }
+  }
+  const startIdentity = priorIdentity
+    ? priorIdentity.start_identity
+    : currentStartIdentity
+  const continuationMismatch =
+    priorIdentity !== undefined &&
+    (startIdentity === null || currentStartIdentity !== startIdentity)
   const aliveAtArm = processRunning(options.pid)
 
   const outputAbsolute = options.outputPath
     ? resolveInside(root, options.outputPath)
     : null
   const exitRecordAbsolute =
-    options.exitRecordPath === undefined
+    exitRecordPath === undefined
       ? null
-      : resolveInsideRuntimeLogs(
-          root,
-          options.exitRecordPath,
-          'An --exit-record path',
-        )
+      : resolveInsideRuntimeLogs(root, exitRecordPath, 'An --exit-record path')
 
   const append = (entry: GenericWatchRecordEntry): void => {
     appendJsonLine(record.absolute, entry)
@@ -527,27 +575,48 @@ export async function watchProcess(
     })
   }, options.onInterrupted)
 
+  let exitIdentity: Record<string, unknown> | null =
+    priorIdentity?.exit_record_identity ?? null
   const readExitRecord = (): {
     exitCode: number | null
     wrapperPid: number
   } => {
+    let raw: unknown
     try {
-      const raw: unknown = JSON.parse(
-        readFileSync(exitRecordAbsolute as string, 'utf8'),
-      )
-
-      if (isRecord(raw)) {
-        return {
-          exitCode: Number.isInteger(raw.exit_code)
-            ? (raw.exit_code as number)
-            : null,
-          wrapperPid: Number.isInteger(raw.wrapper_pid)
-            ? (raw.wrapper_pid as number)
-            : 0,
-        }
-      }
+      raw = JSON.parse(readFileSync(exitRecordAbsolute as string, 'utf8'))
     } catch {
       // An absent or partly written record reads as no exit code.
+      return { exitCode: null, wrapperPid: 0 }
+    }
+    if (isRecord(raw)) {
+      invariant(
+        raw.pid === options.pid,
+        'The exit record does not name the watched process.',
+        { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+      )
+      const identity = {
+        pid: raw.pid,
+        wrapper_pid: raw.wrapper_pid ?? null,
+        started_at: raw.started_at ?? null,
+        wrapper_process_identity: raw.wrapper_process_identity ?? null,
+      }
+      invariant(
+        exitIdentity === null ||
+          Object.entries(identity).every(
+            ([key, value]) => exitIdentity?.[key] === value,
+          ),
+        'The pinned shell launch identity changed during observation.',
+        { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+      )
+      exitIdentity = identity
+      return {
+        exitCode: Number.isInteger(raw.exit_code)
+          ? (raw.exit_code as number)
+          : null,
+        wrapperPid: Number.isInteger(raw.wrapper_pid)
+          ? (raw.wrapper_pid as number)
+          : 0,
+      }
     }
 
     return { exitCode: null, wrapperPid: 0 }
@@ -601,8 +670,9 @@ export async function watchProcess(
       state === 'timed_out'
         ? options.shellRecord
           ? [
-              `./bin/pan watch --shell ${shellSingleQuote(options.shellRecord)}`,
+              `./bin/pan watch --shell ${shellSingleQuote(shell!.directory)}`,
               `--timeout-seconds ${timeoutSeconds}`,
+              `--resume-process ${shellSingleQuote(record.relative)}`,
             ].join(' ')
           : [
               `./bin/pan watch --process ${options.pid}`,
@@ -614,6 +684,7 @@ export async function watchProcess(
                 ? [`--exit-record ${shellSingleQuote(options.exitRecordPath)}`]
                 : []),
               `--timeout-seconds ${timeoutSeconds}`,
+              `--resume-process ${shellSingleQuote(record.relative)}`,
             ].join(' ')
         : undefined
 
@@ -635,6 +706,8 @@ export async function watchProcess(
   }
 
   try {
+    // Read and pin the launch metadata before writing continuation evidence.
+    const exitCodeAtArm = recordedExitCode()
     append({
       schema_version: 1,
       event: 'session_started',
@@ -645,7 +718,15 @@ export async function watchProcess(
       wake: 0,
       watch_session_id: sessionId,
       watcher_pid: process.pid,
+      watcher_process_identity: processStartIdentity(process.pid),
       timeout_seconds: timeoutSeconds,
+      subject_identity: {
+        pid: options.pid,
+        start_identity: startIdentity,
+        shell_record: shell?.directory ?? null,
+        exit_record_path: exitRecordPath ?? null,
+        exit_record_identity: exitIdentity,
+      },
     })
 
     // Tracked across wakes so a wake can report bytes added since the last
@@ -703,9 +784,7 @@ export async function watchProcess(
       }
     }
 
-    const exitCodeAtArm = recordedExitCode()
-
-    if (!aliveAtArm || exitCodeAtArm !== null) {
+    if (continuationMismatch || !aliveAtArm || exitCodeAtArm !== null) {
       // The process was already gone when the watch armed, or its exit
       // record already holds a code. An integer exit code means the process
       // exited and the caller can rely on the status. Without one the

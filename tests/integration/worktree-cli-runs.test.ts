@@ -22,6 +22,9 @@ test('init --worktree creates a missing worktree and setup commands prepare it',
   const root = createFixture()
 
   writeJson(path.join(root, 'config_overrides.json'), {
+    ...(JSON.parse(
+      readFileSync(path.join(root, 'config_overrides.json'), 'utf8'),
+    ) as Record<string, unknown>),
     worktrees: {
       setup: [`node -e "require('fs').writeFileSync('setup-ran.txt', 'ok')"`],
     },
@@ -191,6 +194,9 @@ test('a worktree creation already provisioned is not provisioned twice', () => {
   const repositorySetupMarker = 'repository-setup-marker.txt'
 
   writeJson(path.join(root, 'config_overrides.json'), {
+    ...(JSON.parse(
+      readFileSync(path.join(root, 'config_overrides.json'), 'utf8'),
+    ) as Record<string, unknown>),
     marker: 'readiness',
     worktrees: {
       setup: [`node -e "require('node:fs').mkdirSync('${readinessPath}')"`],

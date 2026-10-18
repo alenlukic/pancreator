@@ -12,6 +12,8 @@ import test from 'node:test'
 
 import { collectShellMonitorIssues } from '../../src/lib/validators/shell-monitor.js'
 import { createTestTempDirectory } from '../temp.js'
+import { launchRecordPath } from '../../src/lib/watch/launch.js'
+import { watchRecordPath } from '../../src/lib/watch/paths.js'
 
 const REPO_ROOT = process.cwd()
 const HOOKS_SOURCE = 'library/cursor/hooks.json'
@@ -38,6 +40,80 @@ function setupRoot(): string {
 
   return root
 }
+
+test('optional observation receipts remain legacy compatible and reject invalid identities', () => {
+  const root = setupRoot()
+  const invocation = { run_id: 'metadata-run', invocation_id: 'metadata-inv' }
+  assert.deepEqual(collectShellMonitorIssues(root, invocation), [])
+  const launch = path.join(
+    root,
+    launchRecordPath(root, invocation.run_id, invocation.invocation_id),
+  )
+  mkdirSync(path.dirname(launch), { recursive: true })
+  writeFileSync(
+    launch,
+    JSON.stringify({
+      schema_version: 1,
+      ...invocation,
+      launched_at: new Date().toISOString(),
+      executor_launch_id: 42,
+    }),
+  )
+  assert.ok(
+    collectShellMonitorIssues(root, invocation).some(
+      (issue) => issue.code === 'shell_monitor.launch_identity_invalid',
+    ),
+  )
+  rmSync(launch)
+  const ledger = path.join(
+    root,
+    watchRecordPath(root, invocation.run_id, invocation.invocation_id),
+  )
+  writeFileSync(`${ledger}.blocking.jsonl`, '{"schema_version":1}\n')
+  assert.ok(
+    collectShellMonitorIssues(root, invocation).some(
+      (issue) => issue.code === 'shell_monitor.blocking_receipt_invalid',
+    ),
+  )
+  const now = new Date().toISOString()
+  writeFileSync(
+    ledger,
+    JSON.stringify({
+      schema_version: 1,
+      ...invocation,
+      event: 'session_started',
+      recorded_at: now,
+      watch_session_id: 'one',
+      watcher_pid: 123,
+      watcher_process_identity: 'fixture',
+    }) + '\n',
+  )
+  const receipt = {
+    schema_version: 1,
+    ledger: path.relative(root, ledger),
+    watch_session_id: 'one',
+    watcher_pid: 123,
+    watcher_process_identity: 'fixture',
+    parent_pid: 456,
+    parent_process_identity: 'fixture-parent',
+    started_at: now,
+    ended_at: now,
+    result: 'attach_completed',
+  }
+  writeFileSync(`${ledger}.blocking.jsonl`, JSON.stringify(receipt) + '\n')
+  assert.deepEqual(collectShellMonitorIssues(root, invocation), [])
+  writeFileSync(
+    `${ledger}.blocking.jsonl`,
+    JSON.stringify({ ...receipt, watch_session_id: 'replacement' }) + '\n',
+  )
+  assert.ok(
+    collectShellMonitorIssues(root, invocation).some(
+      (issue) => issue.code === 'shell_monitor.blocking_identity_invalid',
+    ),
+  )
+  rmSync(`${ledger}.blocking.jsonl`)
+  assert.deepEqual(collectShellMonitorIssues(root, invocation), [])
+})
 
 test('AC-19: shell-monitor validator pass and fail cases', async (t) => {
   await t.test('passes on the real repository', () => {

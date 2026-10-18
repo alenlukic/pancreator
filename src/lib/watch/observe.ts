@@ -12,7 +12,6 @@ import {
 } from '../git.js'
 import {
   getAgentByRunInvocation,
-  getAgentEntry,
   readAgentActivity,
   readAgentStop,
   type AgentActivity,
@@ -41,8 +40,13 @@ import {
   executorProcessActivity,
   processBackedExecutor,
 } from './executor-process.js'
-import { launchedMsFromRecord, readLaunchRecord } from './launch.js'
+import {
+  launchedMsFromRecord,
+  launchRecordPath,
+  readLaunchRecord,
+} from './launch.js'
 import { BLOCKED_OUTPUT_SNAPSHOT_PATTERN } from './blocked-snapshot.js'
+import { workerLifetime } from './lifetime.js'
 
 /**
  * Returns whether a root-relative path exists, with its size and modification
@@ -91,6 +95,7 @@ export function invocationEvidencePaths(
     path.basename(evidenceWatchRecordPath(root, runId, invocationId)),
     path.basename(evidenceWatchLockPath(root, runId, invocationId)),
     path.basename(evidenceReadyPath(root, runId, invocationId)),
+    path.basename(launchRecordPath(root, runId, invocationId)),
   ])
   const paths = new Set<string>()
 
@@ -273,9 +278,7 @@ function workspaceChangedFromInvocation(
 }
 
 /**
- * The indexed agent id behind one invocation: the launch record's handle when
- * the index knows it, else the newest agent registered for the run and
- * invocation ids its task text named.
+ * Discovery is permitted only before a launch pins the worker handle.
  */
 function watchedAgentId(root: string, invocation: Invocation): string | null {
   const handle = readLaunchRecord(
@@ -284,7 +287,7 @@ function watchedAgentId(root: string, invocation: Invocation): string | null {
     invocation.invocation_id,
   )?.worker_handle
 
-  if (handle && getAgentEntry(root, handle)) {
+  if (handle) {
     return handle
   }
 
@@ -533,12 +536,19 @@ export function isTerminalObservation(observation: WatchObservation): boolean {
 }
 
 /**
- * Seconds between the launch and the output the watch is about to call
- * terminal, or null when either time is unreadable. The launch time is the
- * one the launch record holds, which is also what the foreground-return
- * attestation reports.
+ * Compatibility name for receipt-based worker lifetime. Output timestamps
+ * remain confined to the completion heuristic below.
  */
 export function launchToOutputSeconds(
+  root: string,
+  runId: string,
+  invocationId: string,
+): number | null {
+  return workerLifetime(root, runId, invocationId).seconds
+}
+
+/** Output age is only a completion heuristic, never a worker lifetime. */
+export function launchToOutputAgeSeconds(
   root: string,
   runId: string,
   invocationId: string,

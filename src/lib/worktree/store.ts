@@ -3,11 +3,34 @@
  * self-development local configuration handoff into a new worktree.
  */
 
-import { copyFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import {
+  copyFileSync,
+  readFileSync,
+  lstatSync,
+  openSync,
+  writeFileSync,
+  closeSync,
+  renameSync,
+  unlinkSync,
+} from 'node:fs'
 import path from 'node:path'
 
 import { invariant, PanError, errorMessage } from '../errors.js'
-import { fileExists, resolveInside, toRepoRelative, ensureDir } from '../io.js'
+import {
+  fileExists,
+  resolveInside,
+  toRepoRelative,
+  ensureDir,
+  isRecord,
+} from '../io.js'
+import { parsePipelineConfig } from '../pipeline-config.js'
+import {
+  harnessConfigName,
+  mergeConfigValues,
+  LOCAL_CONFIG_PATH,
+  LEGACY_LOCAL_CONFIG_PATH,
+} from '../project-config/files.js'
 import {
   isSelfDevelopmentInstallation,
   configuredWorktreeRoot,
@@ -232,9 +255,9 @@ export function newWorktreeRoot(root: string): string {
 }
 
 /**
- * Copy the recognized local harness override into a new self-development
- * worktree before setup runs. Target installations keep harness configuration
- * at the installation root and receive no override copy.
+ * Validate the receiving merge, preserve its active selection, and atomically
+ * publish the recognized local override before setup. Refuse changed inputs
+ * before publication. Target installations retain installation-root ownership.
  *
  * Exported so a test can drive the copy failure directly; a worktree creation
  * that reaches this point has already added a Git worktree, which is too much
@@ -244,27 +267,106 @@ export function handoffSelfDevelopmentLocalConfig(
   installationRoot: string,
   worktreePath: string,
 ): void {
-  if (!isSelfDevelopmentInstallation(installationRoot)) {
-    return
-  }
-
   const configName = localConfigName(installationRoot)
   const sourcePath = path.join(installationRoot, configName)
-
-  if (!fileExists(sourcePath)) {
-    return
-  }
-
   const targetPath = path.join(worktreePath, configName)
+  let temporaryPath: string | undefined
+  let phase = 'read'
+  let fields = ['configuration']
 
   try {
-    copyFileSync(sourcePath, targetPath)
+    if (!isSelfDevelopmentInstallation(installationRoot)) {
+      return
+    }
+    if (!fileExists(sourcePath)) {
+      return
+    }
+
+    const trackedName = harnessConfigName(worktreePath)
+    invariant(trackedName !== null, 'Missing receiver tracked configuration.')
+    const trackedPath = path.join(worktreePath, trackedName)
+    const watchedPaths = [
+      path.join(worktreePath, 'config.json'),
+      path.join(worktreePath, 'project.json'),
+      path.join(worktreePath, LOCAL_CONFIG_PATH),
+      path.join(worktreePath, LEGACY_LOCAL_CONFIG_PATH),
+    ]
+    const before = watchedPaths.map(snapshotHandoffFile)
+    const tracked = JSON.parse(readFileSync(trackedPath, 'utf8')) as unknown
+    const receiverName = localConfigName(worktreePath)
+    const receiverBytes =
+      before[watchedPaths.indexOf(path.join(worktreePath, receiverName))]?.bytes
+    const previous = receiverBytes
+      ? mergeConfigValues(
+          tracked,
+          JSON.parse(receiverBytes.toString('utf8')) as unknown,
+        )
+      : tracked
+    const bytes = readFileSync(sourcePath)
+    phase = 'validation'
+    fields = ['override']
+    const override = JSON.parse(bytes.toString('utf8')) as unknown
+    invariant(isRecord(override), 'Override MUST contain an object.')
+    const candidate = mergeConfigValues(tracked, override)
+    fields = ['active_config']
+    invariant(
+      isRecord(previous) &&
+        isRecord(candidate) &&
+        candidate.active_config === previous.active_config,
+      'The receiving active_config MUST be preserved.',
+    )
+    fields = ['configuration']
+    parsePipelineConfig(candidate, 'candidate')
+
+    // A legacy source must never be hidden by a current-name destination.
+    fields = ['override']
+    invariant(
+      configName === LOCAL_CONFIG_PATH ||
+        receiverName === configName ||
+        receiverBytes === undefined,
+      'Receiver override filename precedence conflicts with the source.',
+    )
+    phase = 'staged_write'
+    const staged = path.join(worktreePath, `.${configName}.${randomUUID()}.tmp`)
+    const descriptor = openSync(staged, 'wx', 0o600)
+    temporaryPath = staged
+    try {
+      writeFileSync(descriptor, bytes)
+    } finally {
+      closeSync(descriptor)
+    }
+    invariant(
+      readFileSync(staged).equals(bytes),
+      'Staged override bytes changed.',
+    )
+    phase = 'pre_publication'
+    for (const [index, file] of watchedPaths.entries()) {
+      invariant(
+        sameHandoffFile(before[index], snapshotHandoffFile(file)),
+        'Receiving configuration changed during handoff. Retry.',
+      )
+    }
+    phase = 'publication'
+    renameSync(staged, targetPath)
+    temporaryPath = undefined
   } catch (error) {
-    // Without the wrapper this escaped as a bare Node.js filesystem error,
-    // so an agent facing it had no code to act on and no named operation.
+    // Parser messages can include model specs or JSON fragments. Retain only
+    // the field path, never the raw diagnostic or error cause.
+    if (phase === 'validation' && fields[0] === 'configuration') {
+      const message = errorMessage(error)
+      const field = message.match(/\bcandidate\.([a-zA-Z0-9_.-]+)/u)?.[1]
+      if (field) fields = [field]
+      const missingAlias = message.match(
+        /but ((?:anthropic|oai|open|cursor)\.(?:balanced|advanced|ultra)) is not defined in model_config/u,
+      )?.[1]
+      if (missingAlias) fields.push(`model_config.${missingAlias}`)
+    }
     throw new PanError(
-      `Failed to copy the local harness override '${configName}' into the ` +
-        `new worktree: ${errorMessage(error)}`,
+      `Configuration handoff from '${sourcePath}' to '${targetPath}' failed ` +
+        `during ${phase} at ${fields.join(', ')}. Correct these fields in ` +
+        `'${sourcePath}' for the receiver's tracked configuration, preserve ` +
+        'its active_config, then run ./bin/pan worktree create <unused-name> ' +
+        '--from <compatible-ref>. Keep the failed worktree for inspection.',
       {
         code: 'WORKTREE_OVERRIDE_COPY_FAILED',
         details: {
@@ -272,10 +374,66 @@ export function handoffSelfDevelopmentLocalConfig(
           file: configName,
           source: sourcePath,
           target: targetPath,
+          phase,
+          fields,
         },
       },
     )
+  } finally {
+    if (temporaryPath !== undefined) {
+      try {
+        unlinkSync(temporaryPath)
+      } catch {
+        throw new PanError(
+          `Configuration handoff cleanup failed for '${temporaryPath}'. ` +
+            'Remove this staged file, correct filesystem access, then retry ' +
+            './bin/pan worktree create <unused-name> --from <compatible-ref>.',
+          {
+            code: 'WORKTREE_OVERRIDE_COPY_FAILED',
+            details: {
+              operation: 'configuration_handoff',
+              file: configName,
+              source: sourcePath,
+              target: targetPath,
+              phase: 'cleanup',
+            },
+          },
+        )
+      }
+    }
   }
+}
+
+function snapshotHandoffFile(file: string) {
+  try {
+    const stat = lstatSync(file)
+    invariant(stat.isFile(), 'Configuration handoff requires regular files.')
+    return {
+      bytes: readFileSync(file),
+      dev: stat.dev,
+      ino: stat.ino,
+      mtime: stat.mtimeMs,
+      ctime: stat.ctimeMs,
+    }
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return undefined
+    }
+    throw error
+  }
+}
+
+function sameHandoffFile(
+  before: ReturnType<typeof snapshotHandoffFile>,
+  after: ReturnType<typeof snapshotHandoffFile>,
+): boolean {
+  return before === undefined || after === undefined
+    ? before === after
+    : before.dev === after.dev &&
+        before.ino === after.ino &&
+        before.mtime === after.mtime &&
+        before.ctime === after.ctime &&
+        before.bytes.equals(after.bytes)
 }
 
 /**

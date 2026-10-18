@@ -22,6 +22,12 @@ import {
 import { intakeProductSpecFromRun } from './plan-lookups.js'
 import { profileCommandInText } from '../profile-command.js'
 import { verificationExecutionOperationErrors } from '../verification-execution.js'
+import { originatingRegistryIds } from '../cohort-plan.js'
+import {
+  planningCorrectionErrors,
+  planningViewConflicts,
+} from '../../render/contract.js'
+import { readText, resolveInside } from '../../io.js'
 
 /**
  * Shape check for the optional worker recommendation to change the run's
@@ -59,37 +65,7 @@ export function verificationRecommendationIssues(
 
 /** Read equivalent array and keyed registry shapes without inventing identifiers that lack a definition. */
 export function traceRegistryIds(collection: unknown): string[] {
-  if (Array.isArray(collection)) {
-    return collection.flatMap((entry) =>
-      isRecord(entry) && typeof entry.id === 'string'
-        ? [entry.id]
-        : typeof entry === 'string'
-          ? [entry]
-          : [],
-    )
-  }
-
-  if (!isRecord(collection)) {
-    return []
-  }
-
-  return Object.entries(collection).flatMap(([id, entry]) => {
-    if (typeof entry === 'string' && entry.trim()) {
-      return [id]
-    }
-
-    if (isRecord(entry) && typeof entry.id === 'string') {
-      return [entry.id]
-    }
-
-    return isRecord(entry) &&
-      ['statement', 'description', 'text'].some(
-        (field) =>
-          typeof entry[field] === 'string' && (entry[field] as string).trim(),
-      )
-      ? [id]
-      : []
-  })
+  return originatingRegistryIds(collection)
 }
 
 /**
@@ -138,16 +114,48 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
-  if (Array.isArray(intakeStories)) {
-    for (const story of intakeStories) {
-      if (isRecord(story) && typeof story.id === 'string') {
-        storyIds.add(story.id)
+  for (const id of traceRegistryIds(intakeStories)) {
+    storyIds.add(id)
+  }
+
+  const declaredIds = new Set<string>()
+  for (const key of [
+    'user_stories',
+    'constraints',
+    'out_of_scope',
+    'open_questions',
+  ]) {
+    const collection = productSpec?.[key]
+    const ids = traceRegistryIds(collection)
+    const count = Array.isArray(collection)
+      ? collection.length
+      : isRecord(collection)
+        ? Object.keys(collection).length
+        : 0
+    if (ids.length !== count) {
+      issues.push(
+        issue(
+          'plan.unlabeled_item',
+          `product_spec.${key} contains an item without a meaningful identifier.`,
+        ),
+      )
+    }
+    for (const id of ids) {
+      if (declaredIds.has(id)) {
+        issues.push(
+          issue(
+            'plan.duplicate_item',
+            `Originating identifier '${id}' is declared more than once.`,
+          ),
+        )
       }
+      declaredIds.add(id)
     }
   }
 
+  const criterionIds = new Set<string>()
   for (const [index, item] of criteria.entries()) {
-    if (!isRecord(item) || typeof item.id !== 'string') {
+    if (!isRecord(item) || typeof item.id !== 'string' || !item.id.trim()) {
       issues.push(
         issue(
           'plan.criterion_id',
@@ -156,6 +164,16 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
       )
       continue
     }
+
+    if (criterionIds.has(item.id)) {
+      issues.push(
+        issue(
+          'plan.duplicate_criterion',
+          `Acceptance criterion '${item.id}' is declared more than once.`,
+        ),
+      )
+    }
+    criterionIds.add(item.id)
 
     const verification = isRecord(item.verification) ? item.verification : null
 
@@ -202,6 +220,14 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     for (const mapped of mapsTo) {
       if (typeof mapped === 'string' && mapped.startsWith('US-')) {
         referencedStories.add(mapped)
+        if (!storyIds.has(mapped)) {
+          issues.push(
+            issue(
+              'plan.maps_to_unknown',
+              `Criterion ${item.id} references unknown user story ${mapped}`,
+            ),
+          )
+        }
       } else if (typeof mapped === 'string' && mapped.startsWith('AC-')) {
         if (mapped !== item.id) {
           issues.push(
@@ -217,7 +243,9 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
         relatedTraceIds.has(mapped)
       ) {
         continue
-      } else if (typeof mapped === 'string' && mapped.includes('-')) {
+      } else if (typeof mapped === 'string' && declaredIds.has(mapped)) {
+        continue
+      } else if (typeof mapped === 'string' && mapped.trim()) {
         const catalog = loadRegistry(input.root)
 
         if (!catalog.entries.has(mapped)) {
@@ -228,6 +256,13 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
             ),
           )
         }
+      } else {
+        issues.push(
+          issue(
+            'plan.maps_to_invalid',
+            `Criterion ${item.id} maps_to MUST contain non-empty identifier strings`,
+          ),
+        )
       }
     }
   }
@@ -460,6 +495,39 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     ...openQuestionDispositionIssues(input, data, criteria, productSpec),
   )
   issues.push(...verificationRecommendationIssues(data, 'plan'))
+  for (const message of planningCorrectionErrors(
+    input.root,
+    input.invocation,
+    data,
+  )) {
+    issues.push(issue('plan.mechanical_preservation', message))
+  }
+  const cohort = isRecord(data.cohort_plan) ? data.cohort_plan : null
+  const viewPaths = [
+    cohort?.parent_spec_path,
+    ...(Array.isArray(cohort?.chunks)
+      ? cohort.chunks.filter(isRecord).map((chunk) => chunk.child_spec_path)
+      : []),
+  ]
+  for (const viewPath of viewPaths) {
+    if (typeof viewPath !== 'string') continue
+    if (!viewPath.trim()) {
+      issues.push(
+        issue('plan.view_path', 'A planning view path MUST be non-empty.'),
+      )
+      continue
+    }
+    const absolute = resolveInside(input.root, viewPath)
+    if (!fileExists(absolute)) continue
+    for (const id of planningViewConflicts(data, readText(absolute))) {
+      issues.push(
+        issue(
+          'plan.view_conflict',
+          `${viewPath} criterion ${id} conflicts with the structured plan. Refresh the draft view or review the changed plan; reference finalization cannot change authored facts.`,
+        ),
+      )
+    }
+  }
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
 }
@@ -556,32 +624,18 @@ function criterionProducerIssues(criteria: unknown[]): HandlerResult['issues'] {
 }
 
 /** Leading identifier of an inherited open question, e.g. `Q2` in `Q2: ...`. */
-const OPEN_QUESTION_ID_PATTERN = /^\s*([A-Za-z]+-?\d+)\s*[:.)]/u
-
 function openQuestionIds(spec: Record<string, unknown> | null): string[] {
-  const questions =
-    spec && Array.isArray(spec.open_questions) ? spec.open_questions : []
-  const ids: string[] = []
-
-  for (const question of questions) {
-    if (typeof question !== 'string') {
-      continue
-    }
-
-    const match = OPEN_QUESTION_ID_PATTERN.exec(question)
-
-    if (match) {
-      ids.push(match[1])
-    }
-  }
-
-  return ids
+  return traceRegistryIds(spec?.open_questions)
 }
 
 function openQuestionCount(spec: Record<string, unknown> | null): number {
-  return spec && Array.isArray(spec.open_questions)
-    ? spec.open_questions.length
-    : 0
+  const questions = spec?.open_questions
+
+  return Array.isArray(questions)
+    ? questions.length
+    : isRecord(questions)
+      ? Object.keys(questions).length
+      : 0
 }
 
 /**

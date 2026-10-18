@@ -8,6 +8,28 @@ gate ratifies the whole artifact before any source changes.
 
 ## Steps
 
+Treat structured plan data as the authority for repeated identifier registries
+and acceptance criteria. Use explicit objects, for example
+`{ "id": "C-1", "statement": "Preserve the original requirement." }`, for new
+stories, constraints, exclusions, and questions. Existing identifier-prefixed
+strings remain supported; preserve their narrative verbatim.
+
+Generate repeated acceptance lines with the same identifier, statement, and
+proof as the structured registry. Conflicting authored parent or child views
+fail validation. Reference finalization refreshes draft digest/status metadata
+only; it cannot reconcile different product facts. Approved plans stay pinned.
+
+For a retry, read the scaffold's adjacent planning-correction bundle first.
+A mechanical bundle names exact failures, permitted fields, current values,
+and preservation digests. Use the existing RFC 7386 patch route and preserve
+every product fact, criterion, proof, owner, migration limit, and authored
+specification byte. Draft digest/status metadata still uses normal finalization.
+Use the bundle's generated criterion view for repeated sections.
+Array replacement and null deletion still undergo checks after
+materialization. Missing preservation evidence or feedback about scope,
+proof, ownership, or migration requires ordinary planning review. A proved
+registry-shape correction does not require rereading every child.
+
 1. Read the operator request referenced by the card.
 2. Write the product specification first: summary, user stories with ids
    (`US-*`), constraints, out-of-scope behavior, and open questions. Open
