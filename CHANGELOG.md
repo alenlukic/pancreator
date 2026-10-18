@@ -1,12 +1,14 @@
 # Changelog
 
-## [Unreleased]
+## [9.9.0] - 2026-10-18
+
+### Added
+
+- Collapse earlier terminal tool calls when a new tool call renders in VS Code. Preserve calls the operator expands until the operator closes them ([editor patches](https://github.com/alenlukic/pancreator/commit/bb8c7a7a)).
 
 ### Fixed
 
-- Preserve hook refusal reasons through structured host responses, and accept bounded bootstrap commands and safe Git options ([hook fixes](https://github.com/alenlukic/pancreator/commit/36235dd265f47cc16b07afc1e54d0f4e5641c72f)).
-- Enforce guard decisions after child crashes, timeouts, and large tool payloads ([guard handling](bin/pan-hook-adapter)).
-- Cite common governance in reminders and keep workspace selection with the operator ([reminder source](src/lib/governance/prompt-context/cards.ts)).
+- Keep terminal output steady when a completed tool call renders again ([terminal display](https://github.com/alenlukic/pancreator/commit/cefe3e85)).
 
 ## [9.8.3] - 2026-10-18
 

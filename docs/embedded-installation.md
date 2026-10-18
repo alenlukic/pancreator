@@ -82,6 +82,7 @@ The captured customizations are:
 | Both model pickers     | Put Anthropic and OpenAI above Other Models; hide subscription upgrade rows while preserving update rows, search, native model identifiers, and selection callbacks. |
 | Copilot Agent Host     | On 1.139.1, refresh stale BYOK registration once for an idle SDK session. On 1.142.0, verify the native registration synchronization.                                |
 | Agents window defaults | Resolve an unambiguous short `chat.defaultModel` identifier to its provider model. Default GPT-6 Luna effort to High; explicit choices still win.                    |
+| Chat tool calls        | When a new live tool call renders, collapse earlier terminal tool calls in that session. A call the operator expands stays open until the operator collapses it.     |
 | Copilot governance     | Apply the six instruction edits and six settings in the canonical `library/vscode/instruction-patches.json`. Safety and security instructions stay.                  |
 
 The command does not select a default model, copy provider credentials, migrate themes, or install extensions. These are app patches and governance settings, not a copy of an operator's personal configuration.
@@ -598,7 +599,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `9.8.3`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `9.9.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is
