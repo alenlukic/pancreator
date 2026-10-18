@@ -21,6 +21,7 @@ import { getRunState } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
   EVIDENCE_REPORT_COMPLETE_MARKER,
+  evidenceDefectLine,
   evidenceVerdictLine,
 } from '../../src/lib/render.js'
 import {
@@ -193,7 +194,41 @@ test('an evidence-complete wake planted in the stage ledger never counts as the 
   )
 })
 
-test('a failing evidence verdict skips the verifier and routes verify to remediate', async () => {
+test('a fail verdict with no cited defect does not gate the verifier', async () => {
+  const { root, runId } = checkpoint('delivery@verify-prepared')
+  const invocation = resolveWatchedInvocation(root, runId)
+  const [review, qa] = invocation.evidence_workers ?? []
+
+  assert.ok(review && qa)
+
+  // The real failure: every criterion "unmet" only because evidence was
+  // unavailable, and no reviewer named a defect.
+  writeReport(
+    root,
+    review.evidence_path,
+    `# Review\n\n### AC-601: evidence_unavailable (collector aborted)\n\n` +
+      `${evidenceVerdictLine('fail')}\n${EVIDENCE_REPORT_COMPLETE_MARKER}\n`,
+  )
+  writeReport(
+    root,
+    qa.evidence_path,
+    `# QA\n\n${evidenceVerdictLine('pass')}\n${EVIDENCE_REPORT_COMPLETE_MARKER}\n`,
+  )
+
+  const clock = fakeClock()
+  const result = await watchEvidenceCompletion(root, runId, {
+    cadenceSeconds: CADENCE_SECONDS,
+    now: clock.now,
+    sleep: clock.sleep,
+  })
+
+  assert.equal(result.state, 'completed')
+  assert.equal(result.all_pass, true)
+  assert.equal(result.gate, null)
+  assert.notEqual(getRunState(root, runId).current_stage, 'remediate')
+})
+
+test('a failing evidence verdict that cites a defect skips the verifier and routes verify to remediate', async () => {
   const { root, runId } = checkpoint('delivery@verify-prepared')
   const invocation = resolveWatchedInvocation(root, runId)
   const [review, qa] = invocation.evidence_workers ?? []
@@ -203,8 +238,9 @@ test('a failing evidence verdict skips the verifier and routes verify to remedia
   writeReport(
     root,
     review.evidence_path,
-    `# Review\n\n### Finding: broken\n\n${evidenceVerdictLine('fail')}\n` +
-      `${EVIDENCE_REPORT_COMPLETE_MARKER}\n`,
+    `# Review\n\n### Finding: broken\n\n` +
+      `${evidenceDefectLine('src/lib/a.ts:10 drops the last item')}\n` +
+      `${evidenceVerdictLine('fail')}\n${EVIDENCE_REPORT_COMPLETE_MARKER}\n`,
   )
   writeReport(
     root,

@@ -223,9 +223,11 @@ export interface EvidenceRoleObservation {
   complete: boolean
   /** The last verdict line the report states, or null when it states none. */
   verdict: 'pass' | 'fail' | null
+  /** Each specific defect the report cites. Absent on older observations. */
+  defects?: string[]
   /**
-   * The report lets the consolidating worker run: it states `pass`, or it
-   * states nothing under a brief that predates the verdict contract.
+   * The report lets the consolidating worker run: it does not pair a `fail`
+   * verdict with at least one cited defect.
    */
   passes: boolean
 }

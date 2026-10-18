@@ -44,7 +44,8 @@ criterion or a change that touches a user-facing surface. Without QA, read no
 QA report and owe no `qa_cases`. Grade each `test` criterion from the test that
 the implementation's `acceptance_results` evidence or `tests_added` names for
 it, plus the card's gate evidence that the test ran and passed. A `test`
-criterion with no named test fails. Grade each `review` criterion from the
+criterion with no named test records `evidence_unavailable`; it fails only on a
+cited defect. Grade each `review` criterion from the
 review report and your spot checks. Record `observe` as the result of each
 `observe` criterion. It defers the criterion to a signal after ship and does
 not block the verdict.
@@ -59,8 +60,10 @@ not block the verdict.
    integration record and the chunk verify outputs the card lists. On a
    release run, the acceptance criteria and validation cases are the child
    specifications the card lists. Resolve repairable paths, aliases, and shapes
-   before declaring a report absent. A genuinely missing or empty required
-   report is a blocked stage: report `blocked` and name the missing proof.
+   before declaring a report absent. Absence of evidence is not evidence of
+   an issue: a criterion fails only on a cited defect, and evidence you cannot
+   obtain is recorded as `evidence_unavailable` with its reason and owner in
+   `risks`. An evidence gap never makes the verdict fail (`VERIFY-001`).
    Determine completeness from actual coverage, not a marker alone. Normalize a
    missing `<!-- evidence-report: complete -->` marker only when the existing
    evidence establishes completeness. Retain partial observations and state

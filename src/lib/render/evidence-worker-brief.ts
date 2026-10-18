@@ -4,6 +4,7 @@ import type { Invocation, InvocationEvidenceWorker } from '../types.js'
 import {
   EVIDENCE_REPORT_CASE_PREFIX,
   EVIDENCE_REPORT_COMPLETE_MARKER,
+  evidenceDefectLine,
   evidenceVerdictLine,
 } from './delivery-prompt.js'
 import { renderRemediationReturn } from './remediation-return.js'
@@ -35,7 +36,8 @@ export function renderEvidenceWorkerSkips(invocation: Invocation): string[] {
             "implementation's `acceptance_results` evidence or " +
             '`tests_added` names for it, plus the gate evidence that the ' +
             'test ran and passed. A `test` criterion with no named test ' +
-            'fails. Grade each `review` criterion from the review evidence ' +
+            'records `evidence_unavailable` with the gap; it fails only on a ' +
+            'cited defect. Grade each `review` criterion from the review evidence ' +
             'and your spot checks, and record `observe` as the result of ' +
             'each `observe` criterion.',
           '',
@@ -154,14 +156,21 @@ export function renderEvidenceWorkerBrief(
       `own \`${EVIDENCE_REPORT_CASE_PREFIX}\` heading, rather than holding ` +
       'the whole report for one write at the end. A run that is interrupted ' +
       'part way then keeps every case you had already recorded.',
+    'A criterion fails only on a specific defect you can point to: a cited ' +
+      'file and line, a failing test, a reproducible observation, or a ' +
+      'concrete contradiction. Absence of evidence is not evidence of an ' +
+      'issue. Record a criterion whose evidence is absent, unavailable, ' +
+      'stale, or environment-blocked as `evidence_unavailable` with the gap ' +
+      'reason and its owner. An evidence gap never counts as unmet and never ' +
+      'blocks the run.',
+    `For each defect, write one line \`${evidenceDefectLine('<file:line, test, or observation>')}\` ` +
+      'that names it.',
     'Once every case is recorded, write your dimension verdict on its own ' +
-      `line: \`${evidenceVerdictLine('pass')}\` when your dimension found ` +
-      'no blocker finding, failed acceptance criterion, or failed case, ' +
-      `and \`${evidenceVerdictLine('fail')}\` otherwise. A dimension that ` +
-      'lacks the evidence to judge is not a pass. The consolidating worker ' +
-      'runs only when every report states pass. Any other verdict, or none, ' +
-      'skips it and sends the run to remediation with your report as the ' +
-      'failure record.',
+      `line: \`${evidenceVerdictLine('fail')}\` only when you cited at ` +
+      `least one defect, and \`${evidenceVerdictLine('pass')}\` otherwise, ` +
+      'including when evidence gaps remain. The consolidating worker runs ' +
+      'unless a report states fail and cites a defect. The harness reads a ' +
+      'fail that cites no defect as a pass with evidence gaps.',
     `Write the line \`${EVIDENCE_REPORT_COMPLETE_MARKER}\` last, immediately ` +
       'after the verdict line. A report without it is read as incomplete.',
     'It MUST contain:',
@@ -179,8 +188,8 @@ export function renderEvidenceWorkerBrief(
       'files, and you MUST write only your report and execution request sidecar.',
     '- You MUST NOT run workflow lifecycle commands, write stage outputs or ' +
       'delegation artifacts, or launch further subagents.',
-    '- Report missing evidence and uncertainty instead of manufacturing ' +
-      'completion.',
+    '- Report missing evidence and uncertainty as evidence gaps instead of ' +
+      'manufacturing completion. A gap is not a defect.',
   ]
 
   return `${lines.join('\n')}\n`

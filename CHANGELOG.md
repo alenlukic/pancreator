@@ -1,5 +1,11 @@
 # Changelog
 
+## [9.8.0] - 2026-10-18
+
+### Changed
+
+- Fail a gate, stage, or evidence verdict only on a cited, specific defect. Missing, unretrievable, or environment-blocked evidence is recorded as a non-blocking `evidence_unavailable` gap with its owner and the run proceeds; an empty or missing baseline no longer turns every current diagnostic into a new failure ([evidence gaps](src/lib/evidence-gaps.ts)).
+
 ## [9.7.0] - 2026-10-18
 
 ### Changed

@@ -94,7 +94,6 @@ import {
 } from './model-evidence.js'
 import {
   harnessBaseline,
-  pauseForRepositoryCheckBaselineGaps,
   pauseForVerificationRecommendation,
   pendingVerificationRecommendation,
   type PrepareInvocationOptions,
@@ -327,13 +326,21 @@ export function prepareInvocation(
       return { state, invocation: null, advisories }
     }
 
+    // VERIFY-001: a baseline gap is unavailable evidence, never a reason to
+    // stop the run. The gate records the gap instead of failing on it, so
+    // preparation records it here and delegates the stage.
     const baselineGaps = repositoryCheckBaselineGaps(root, state, stage)
 
     if (baselineGaps.length > 0) {
-      pauseForRepositoryCheckBaselineGaps(root, state, stage, baselineGaps)
-      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
-
-      return { state, invocation: null, advisories }
+      recordRunAdvisories(
+        state,
+        { kind: 'evidence_gap', source: 'prepare', stage: stage.slug },
+        baselineGaps,
+      )
+      persistRun(root, state, 'repository_check_baseline_gap', {
+        stage: stage.slug,
+        gaps: baselineGaps,
+      })
     }
 
     // INDEX-001: a worker on Pancreator's own source reads the function index

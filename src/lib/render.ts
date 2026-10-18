@@ -13,6 +13,8 @@ export {
   EVIDENCE_REPORT_CASE_PREFIX,
   EVIDENCE_REPORT_COMPLETE_MARKER,
   EVIDENCE_REPORT_VERDICT_PREFIX,
+  EVIDENCE_REPORT_DEFECT_PREFIX,
+  evidenceDefectLine,
   evidenceVerdictLine,
   readEvidenceReportState,
   evidenceWorkerAttempts,

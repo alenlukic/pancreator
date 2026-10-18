@@ -72,6 +72,24 @@ export function evidenceVerdictLine(verdict: EvidenceVerdict): string {
 
 const EVIDENCE_VERDICT_LINE = /^<!-- evidence-verdict: (pass|fail) -->$/u
 
+/**
+ * Opening of the line that cites one specific defect behind a `fail`
+ * verdict: a file and line, a failing test, a reproducible observation, or a
+ * concrete contradiction.
+ *
+ * Operator directive of 2026-10-18: absence of evidence is not evidence of an
+ * issue. A `fail` verdict that cites no defect gates nothing, so the harness
+ * reads it as a pass with evidence gaps.
+ */
+export const EVIDENCE_REPORT_DEFECT_PREFIX = '<!-- evidence-defect: '
+
+/** The exact defect citation line for `citation`. */
+export function evidenceDefectLine(citation: string): string {
+  return `${EVIDENCE_REPORT_DEFECT_PREFIX}${citation} -->`
+}
+
+const EVIDENCE_DEFECT_LINE = /^<!-- evidence-defect: (.*\S.*) -->$/u
+
 /** What an evidence report on disk records so far. */
 export interface EvidenceReportState {
   complete: boolean
@@ -79,12 +97,15 @@ export interface EvidenceReportState {
   cases: string[]
   /** The last verdict line the report states, or null when it states none. */
   verdict: EvidenceVerdict | null
+  /** Each specific defect the report cites, in order. */
+  defects: string[]
 }
 
 /**
  * Reads an evidence report body and returns whether it carries the completion
- * marker line, the heading text of each case it records so far, in order, and
- * its last stated verdict. A malformed verdict line reads as no verdict.
+ * marker line, the heading text of each case it records so far, in order, its
+ * last stated verdict, and every defect it cites. A malformed verdict line
+ * reads as no verdict, and a defect line with no citation reads as none.
  */
 export function readEvidenceReportState(body: string): EvidenceReportState {
   const lines = body.split('\n')
@@ -102,6 +123,11 @@ export function readEvidenceReportState(body: string): EvidenceReportState {
       .filter((line) => line.startsWith(EVIDENCE_REPORT_CASE_PREFIX))
       .map((line) => line.slice(EVIDENCE_REPORT_CASE_PREFIX.length).trim()),
     verdict: verdicts[verdicts.length - 1] ?? null,
+    defects: lines.flatMap((line) => {
+      const match = EVIDENCE_DEFECT_LINE.exec(line.trim())
+
+      return match ? [(match[1] as string).trim()] : []
+    }),
   }
 }
 

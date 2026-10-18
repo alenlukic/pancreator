@@ -274,11 +274,13 @@ export function renderSupervisorProcedureBody(
                   'and is non-empty at its declared path; when a worker ' +
                   'returned its report in chat instead of writing the file, ' +
                   'persist the returned text there yourself verbatim. ' +
-                  'Launch the stage worker only when every report states ' +
-                  '`<!-- evidence-verdict: pass -->`; otherwise run the ' +
-                  'evidence watch, which records the failure and skips the ' +
-                  'stage worker. Submission rejects the stage output while ' +
-                  'any report is missing.',
+                  'Launch the stage worker unless a report states ' +
+                  '`<!-- evidence-verdict: fail -->` and cites a defect on ' +
+                  'an `<!-- evidence-defect: ... -->` line; in that case run ' +
+                  'the evidence watch, which records the failure and skips ' +
+                  'the stage worker. A fail with no cited defect is a pass ' +
+                  'with evidence gaps. Submission rejects the stage output ' +
+                  'while any report is missing.',
               ]),
         ]
       : invocation.scoped_return
