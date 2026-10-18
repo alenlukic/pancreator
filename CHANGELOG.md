@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Deliver role-specific governance reminders after tool results and failures without transcript checks ([tool-cycle routing](src/lib/governance/prompt-context/routing.ts)).
+
 ## [9.5.0] - 2026-10-17
 
 ### Added
