@@ -564,6 +564,10 @@
     {
       "version": "9.9.0",
       "commit": "3533dd0dea6e50dc99a0619a66c4d5f73fa15c46"
+    },
+    {
+      "version": "9.9.1",
+      "commit": "a624a49ce88b740ce8685dfb849d378c1c3635a1"
     }
   ]
 }
