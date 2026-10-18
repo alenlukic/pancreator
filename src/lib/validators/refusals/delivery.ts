@@ -168,6 +168,38 @@ export const CLAIMS_REFUSALS: readonly StageRefusal[] = [
 export const PLAN_REFUSALS: readonly StageRefusal[] = [
   { code: 'plan.criterion_id', paths: ['data.acceptance_criteria[].id'] },
   {
+    code: 'plan.unlabeled_item',
+    paths: [],
+    unowned_reason:
+      'The refusal validates originating identifiers in the authoritative intake registry, falling back to the embedded product specification; no single plan field owns that source.',
+  },
+  {
+    code: 'plan.duplicate_item',
+    paths: [],
+    unowned_reason:
+      'Identifier uniqueness is a relation across the authoritative originating registry collections.',
+  },
+  {
+    code: 'plan.duplicate_criterion',
+    paths: [],
+    unowned_reason:
+      'Criterion identifier uniqueness is a relation between items in the acceptance registry.',
+  },
+  {
+    code: 'plan.maps_to_invalid',
+    paths: ['data.acceptance_criteria[].maps_to'],
+  },
+  {
+    code: 'plan.mechanical_preservation',
+    paths: ['data.planning_correction.mode'],
+  },
+  {
+    code: 'plan.view_conflict',
+    paths: [],
+    unowned_reason:
+      'The refusal compares authored specification views with the structured acceptance registry, which is a relation to other documents.',
+  },
+  {
     code: 'plan.verification_missing',
     paths: [
       'data.acceptance_criteria[].verification',
