@@ -3,7 +3,12 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { EVIDENCE_REPORT_COMPLETE_MARKER } from '../../src/lib/render.js'
+import {
+  EVIDENCE_REPORT_COMPLETE_MARKER,
+  EVIDENCE_REPORT_VERDICT_PREFIX,
+  evidenceVerdictLine,
+  readEvidenceReportState,
+} from '../../src/lib/render.js'
 import { observeEvidenceReports } from '../../src/lib/watch-evidence.js'
 import type { InvocationEvidenceWorker } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -66,6 +71,8 @@ test('readiness needs the completion marker in every role newest declared report
       exists: false,
       non_empty: false,
       complete: false,
+      verdict: null,
+      passes: true,
     })
 
     write(root, 'e/qa-2.md', '# Report\n\n### Case: first\n')
@@ -86,4 +93,82 @@ test('readiness needs the completion marker in every role newest declared report
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('the verifier may run only when every report under a verdict brief states pass', () => {
+  const root = createTestTempDirectory('pan-evidence-verdict-')
+
+  try {
+    const report = (verdict: 'pass' | 'fail' | null): string =>
+      `# Report\n\n${verdict ? `${evidenceVerdictLine(verdict)}\n` : ''}` +
+      `${EVIDENCE_REPORT_COMPLETE_MARKER}\n`
+    const workers = [
+      worker('review', ['e/review-1.md']),
+      worker('qa', ['e/qa-1.md']),
+    ]
+
+    write(root, 'briefs/review-1.md', `${EVIDENCE_REPORT_VERDICT_PREFIX}`)
+    write(root, 'briefs/qa-1.md', `${EVIDENCE_REPORT_VERDICT_PREFIX}`)
+    write(root, 'e/review-1.md', report('pass'))
+    write(root, 'e/qa-1.md', report('pass'))
+
+    const passing = observeEvidenceReports(root, { evidence_workers: workers })
+
+    assert.equal(passing.all_complete, true)
+    assert.equal(passing.all_pass, true)
+
+    write(root, 'e/qa-1.md', report('fail'))
+
+    const failing = observeEvidenceReports(root, { evidence_workers: workers })
+
+    assert.equal(failing.all_complete, true)
+    assert.equal(failing.all_pass, false)
+    assert.deepEqual(
+      failing.roles.map((role) => [role.role, role.verdict, role.passes]),
+      [
+        ['review', 'pass', true],
+        ['qa', 'fail', false],
+      ],
+    )
+
+    // A complete report that states no verdict under a verdict brief is not
+    // a pass.
+    write(root, 'e/qa-1.md', report(null))
+    assert.equal(
+      observeEvidenceReports(root, { evidence_workers: workers }).all_pass,
+      false,
+    )
+
+    // A brief that predates the verdict contract never asked for one, so its
+    // silent report keeps the stage worker's right to run.
+    write(root, 'briefs/qa-1.md', '# Legacy brief\n')
+    assert.equal(
+      observeEvidenceReports(root, { evidence_workers: workers }).all_pass,
+      true,
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('the report reader takes the last well-formed verdict line and ignores malformed ones', () => {
+  assert.equal(readEvidenceReportState('# Report\n').verdict, null)
+  assert.equal(
+    readEvidenceReportState(`${evidenceVerdictLine('pass')}\n`).verdict,
+    'pass',
+  )
+  assert.equal(
+    readEvidenceReportState(`  ${evidenceVerdictLine('fail')}  \n`).verdict,
+    'fail',
+  )
+  assert.equal(
+    readEvidenceReportState(
+      `${evidenceVerdictLine('pass')}\n${evidenceVerdictLine('fail')}\n`,
+    ).verdict,
+    'fail',
+  )
+  assert.equal(
+    readEvidenceReportState('<!-- evidence-verdict: maybe -->\n').verdict,
+    null,
+  )
 })

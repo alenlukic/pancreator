@@ -7,17 +7,31 @@
  */
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { getRunState } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
-import { EVIDENCE_REPORT_COMPLETE_MARKER } from '../../src/lib/render.js'
 import {
+  EVIDENCE_REPORT_COMPLETE_MARKER,
+  evidenceVerdictLine,
+} from '../../src/lib/render.js'
+import {
+  EVIDENCE_GATE_EXIT_CODE,
   WATCH_NO_EVIDENCE_WORKERS,
+  evidenceWatchExitCode,
+  formatEvidenceWatchResult,
   readEvidenceReady,
   watchEvidenceCompletion,
 } from '../../src/lib/watch-evidence.js'
+import { evidenceGatePath } from '../../src/lib/watch/paths.js'
 import {
   evidenceReadyPath,
   evidenceWatchRecordPath,
@@ -175,6 +189,72 @@ test('an evidence-complete wake planted in the stage ledger never counts as the 
   assert.equal(
     summarizeDelegationObservation(root, runId, invocation.invocation_id)
       .observed,
+    false,
+  )
+})
+
+test('a failing evidence verdict skips the verifier and routes verify to remediate', async () => {
+  const { root, runId } = checkpoint('delivery@verify-prepared')
+  const invocation = resolveWatchedInvocation(root, runId)
+  const [review, qa] = invocation.evidence_workers ?? []
+
+  assert.ok(review && qa)
+
+  writeReport(
+    root,
+    review.evidence_path,
+    `# Review\n\n### Finding: broken\n\n${evidenceVerdictLine('fail')}\n` +
+      `${EVIDENCE_REPORT_COMPLETE_MARKER}\n`,
+  )
+  writeReport(
+    root,
+    qa.evidence_path,
+    `# QA\n\n${evidenceVerdictLine('pass')}\n${EVIDENCE_REPORT_COMPLETE_MARKER}\n`,
+  )
+
+  const clock = fakeClock()
+  const result = await watchEvidenceCompletion(root, runId, {
+    cadenceSeconds: CADENCE_SECONDS,
+    now: clock.now,
+    sleep: clock.sleep,
+  })
+
+  assert.equal(result.state, 'completed')
+  assert.equal(result.all_pass, false)
+  assert.equal(evidenceWatchExitCode(result), EVIDENCE_GATE_EXIT_CODE)
+  assert.deepEqual(result.gate?.failing_roles, [review.role])
+  assert.match(
+    formatEvidenceWatchResult(result),
+    new RegExp(`verifier gated: ${review.role} reported fail`, 'u'),
+  )
+
+  const state = getRunState(root, runId)
+  const recorded = state.stage_history.at(-1)
+
+  assert.equal(state.current_stage, 'remediate')
+  assert.equal(recorded?.stage, 'verify')
+  assert.equal(recorded?.outcome, 'failure')
+  assert.equal(
+    recorded?.output_path,
+    evidenceGatePath(root, runId, invocation.invocation_id),
+  )
+
+  const record = JSON.parse(
+    readFileSync(path.join(root, recorded?.output_path ?? ''), 'utf8'),
+  ) as {
+    result: string
+    artifacts: Array<{ path: string }>
+    data: { verify: { verdict: string } }
+  }
+
+  assert.equal(record.result, 'failure')
+  assert.equal(record.data.verify.verdict, 'fail_remedial')
+  assert.deepEqual(
+    record.artifacts.map((artifact) => artifact.path),
+    [review.evidence_path, qa.evidence_path],
+  )
+  assert.equal(
+    readEvidenceReady(root, runId, invocation.invocation_id)?.all_pass,
     false,
   )
 })

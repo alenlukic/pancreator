@@ -77,15 +77,11 @@ import {
   startReleaseProfilePrefetch,
 } from './prefetch.js'
 import {
-  classifyHorizonFailure,
   clearSameReasonTracker,
   collectHardFailureSignature,
-  type HorizonFailureAction,
   isSameReasonTrackedStage,
-  pauseForHorizonLadder,
-  pauseForSameReasonFailure,
-  recordSameReasonFailure,
 } from './limits.js'
+import { routeLadderedFailure } from './failure-route.js'
 import { applyTransition } from './transition.js'
 import { currentEntryGatePass } from './entry-gate.js'
 import { settleSubmissionModelEvidence } from './model-evidence.js'
@@ -101,7 +97,6 @@ import {
   submissionGateSkipReason,
   submittedInvocationId,
 } from './submit-helpers.js'
-import { recordOperatorFeedback } from './recovery.js'
 import {
   incompleteEvidenceReports,
   observeSubmissionDelegation,
@@ -798,72 +793,25 @@ export function submitOutput(
         clearSameReasonTracker(state, stage.slug)
       }
 
-      let sameReasonPauseTriggered = false
-      let horizonFailure: HorizonFailureAction | null = null
-      let horizonSignature: string[] = []
-
-      if (
+      const laddered =
         outcome === 'failure' &&
         (runHasContract(state.operator_involvement, 'long_horizon') ||
           isSameReasonTrackedStage(stage))
-      ) {
-        horizonSignature = collectHardFailureSignature(
-          stage,
-          validation.output.criteria,
-          evaluated.results,
-          allValidationErrors,
-        )
+          ? routeLadderedFailure(
+              root,
+              state,
+              stage,
+              collectHardFailureSignature(
+                stage,
+                validation.output.criteria,
+                evaluated.results,
+                allValidationErrors,
+              ),
+            )
+          : null
 
-        if (runHasContract(state.operator_involvement, 'long_horizon')) {
-          horizonFailure = classifyHorizonFailure(
-            state,
-            stage,
-            horizonSignature,
-          )
-        } else {
-          sameReasonPauseTriggered = recordSameReasonFailure(
-            state,
-            stage.slug,
-            horizonSignature,
-          )
-        }
-      }
-
-      if (horizonFailure?.kind === 'retry') {
-        applyTransition(root, state, stage, 'failure', {
-          overrideTarget: stage.slug,
-        })
-        nextState = state.current_stage
-      } else if (horizonFailure?.kind === 'route') {
-        applyTransition(root, state, stage, 'failure')
-        nextState = state.current_stage
-      } else if (horizonFailure?.kind === 'strategy') {
-        recordOperatorFeedback(
-          root,
-          state,
-          stage,
-          horizonFailure.target,
-          'revise',
-          state.horizon_ladder?.directive ??
-            'Change strategy and do not repeat the prior approach.',
-          'away',
-        )
-        applyTransition(root, state, stage, 'failure', {
-          overrideTarget: horizonFailure.target,
-        })
-        nextState = state.current_stage
-      } else if (horizonFailure?.kind === 'exhausted') {
-        pauseForHorizonLadder(
-          root,
-          state,
-          stage,
-          horizonSignature,
-          horizonFailure.reason,
-        )
-        nextState = 'paused'
-      } else if (sameReasonPauseTriggered) {
-        pauseForSameReasonFailure(root, state, stage)
-        nextState = 'paused'
+      if (laddered) {
+        nextState = laddered.nextState
       } else if (stage.gate === 'operator') {
         // An operator gate owns the transition, not only the happy path. A failed
         // review that routes straight back to implementation would spend the
