@@ -7,39 +7,42 @@ import {
   landingFixture,
   makeCandidate,
   readLandingLog,
+  setProfileCommand,
 } from './release-landing-helpers.js'
 
-test('test profile flags and ship repair flags cannot execute tests during release', () => {
-  const root = landingFixture()
-  const workspace = makeCandidate(
-    root,
-    'no-release-tests',
-    '### Fixed\n\n- Move all test execution to verify.',
-  )
-  const head = git(workspace, ['rev-parse', 'HEAD'])
+test('deprecated profile and repair flags cannot execute tests during release', () => {
   for (const extra of [
     { verifyProfiles: ['full'] },
     { verifyProfiles: ['impacted-release'] },
     { repairNote: 'repair a failed test' },
   ]) {
-    assert.throws(
-      () =>
-        landRelease(root, {
-          worktree: 'no-release-tests',
-          bump: 'patch',
-          ...extra,
-        }),
-      { code: 'LANDING_VERIFY_STAGE_REQUIRED' },
+    const root = landingFixture()
+    const workspace = makeCandidate(
+      root,
+      'no-release-tests',
+      '### Fixed\n\n- Move all test execution to verify.',
     )
-    assert.equal(git(workspace, ['rev-parse', 'HEAD']), head)
+    for (const profile of ['full', 'impacted-release']) {
+      setProfileCommand(root, profile, 'exit 17')
+    }
+    const result = landRelease(root, {
+      worktree: 'no-release-tests',
+      bump: 'patch',
+      ...extra,
+    })
+    assert.equal(result.status, 'landed')
+    assert.equal(result.tip_after, git(workspace, ['rev-parse', 'HEAD']))
+    assert.deepEqual(result.verified_profiles, [])
+    assert.equal(result.verification_basis, 'not_applicable')
+    const events = readLandingLog(root)
+    assert.ok(
+      events.some(
+        (entry) => entry.event === 'deprecated_verification_options_ignored',
+      ),
+    )
+    assert.equal(
+      events.some((entry) => entry.step === 'verify' || entry.step === 'build'),
+      false,
+    )
   }
-  assert.equal(
-    readLandingLog(root).some(
-      (entry) =>
-        entry.step === 'allocate' ||
-        entry.step === 'finalize' ||
-        entry.step === 'build',
-    ),
-    false,
-  )
 })

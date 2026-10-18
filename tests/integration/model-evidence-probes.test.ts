@@ -38,6 +38,7 @@ import { submitAsSupervisor } from '../run-helpers.js'
 import { claudeStubPath, checkpoint, withStub } from './delivery-helpers.js'
 import { CADENCE_SECONDS } from './watch-helpers.js'
 import {
+  CURSOR_MODEL_VARIANT,
   MODEL_EVIDENCE_VARIANT,
   preparedRunCheckpoint,
   withFakeCursorAgent,
@@ -66,7 +67,7 @@ async function submitWatched(
 }
 
 function createdRunCheckpoint(name: 'delivery@created' | 'planning@created') {
-  const created = checkpoint(name)
+  const created = checkpoint(name, CURSOR_MODEL_VARIANT)
 
   return { root: created.root, run: created.state }
 }

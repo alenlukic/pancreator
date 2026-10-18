@@ -269,16 +269,20 @@ test('moves succeeded inbox request to complete through the full delivery workfl
   const scopeResult = shipHistory?.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )
-  const priorGateResult = shipHistory?.deterministic.find(
-    (item) => item.id === 'ship.prior_gates_current',
-  )
-
   assert.equal(scopeResult?.passed, true)
   assert.match(scopeResult?.explanation ?? '', /permitted release metadata/u)
-  assert.equal(priorGateResult?.passed, true)
-  assert.match(
-    priorGateResult?.explanation ?? '',
-    /do not invalidate the reviewed implementation fingerprint/u,
+  assert.deepEqual(
+    shipHistory?.deterministic.map((item) => item.id),
+    ['scope.no_unapproved_changes'],
+  )
+  const verifyHistory = final.stage_history.find(
+    (item) => item.stage === 'verify',
+  )
+
+  assert.ok(
+    verifyHistory?.deterministic.some(
+      (item) => item.id === 'verify.final_fast' && item.passed,
+    ),
   )
 })
 

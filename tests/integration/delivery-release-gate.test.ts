@@ -119,6 +119,13 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   assertNoShellGate(verified.record.evaluation.deterministic)
   assert.equal(fullRuns(root), 0)
 
+  // Bind the proof to the source entering this gate, after fixture setup.
+  const sourceAtEntry = gitSourceContentFingerprint(
+    root,
+    RELEASE_LANDING_METADATA_PATHS,
+  )
+
+  assert.ok(sourceAtEntry)
   // Ship entry runs full once and hands its suite profile to the card.
   const progress: string[] = []
   const ship = prepareInvocation(root, runId, {
@@ -142,10 +149,7 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   // The executed full pass records the source it verified, so a land that
   // integrates nothing can reuse the proof.
   assert.deepEqual(gate.verified_source, {
-    fingerprint: gitSourceContentFingerprint(
-      root,
-      RELEASE_LANDING_METADATA_PATHS,
-    ),
+    fingerprint: sourceAtEntry,
     profile: 'full',
   })
   assert.ok(profilePath)

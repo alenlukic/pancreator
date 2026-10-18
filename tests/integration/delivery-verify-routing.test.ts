@@ -16,6 +16,7 @@ import {
   attachTargetInstructionEvidence,
   createFixture,
   makeOutput,
+  writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
@@ -26,8 +27,8 @@ test('an infrastructure failure preserves the environment-blocked route', () => 
 
   // The environment-blocked route classifies a QA-persona shell gate against
   // a failed baseline of the same profile, and only interior profiles are
-  // baselined. The library verify stage carries no repository-check gate, so
-  // this fixture's verify stage declares a fast gate of its own.
+  // baselined. Give the infrastructure check its own criterion so the test
+  // distinguishes it from verify's configuration and final fast checks.
   const verifyPath = path.join(
     root,
     'library/workflows/delivery/stages/verify.json',
@@ -164,7 +165,7 @@ test('governance and artifact defects are advisory before ship and never loop to
   )
 })
 
-test('ship owns governance artifact review and routes to remediation instead of implementation', () => {
+test('ship carries the supplied release data to approval without artifact review', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'delivery',
@@ -184,29 +185,35 @@ test('ship owns governance artifact review and routes to remediation instead of 
     getRunState(root, runId),
   )
 
+  // A supplied reference is carried forward even when its target is absent.
+  output.data.release = {
+    ...(output.data.release as Record<string, unknown>),
+    evidence_packet: 'runtime/supplied-verification.json',
+  }
   writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
 
   const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
-  assert.equal(submitted.record.outcome, 'failure')
-  // Ship carries an operator gate, so a failure stops for a decision first.
+  assert.equal(submitted.record.outcome, 'success')
   assert.equal(submitted.state.status, 'awaiting_operator')
   assert.equal(submitted.state.pending_action.type, 'operator_approval')
   assert.equal(
     submitted.state.pending_action.type === 'operator_approval' &&
       submitted.state.pending_action.outcome,
-    'failure',
+    'success',
   )
   assert.equal(submitted.state.current_stage, 'ship')
-  assert.notEqual(submitted.state.current_stage, 'implement')
-  assert.ok(
-    (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
+  assert.deepEqual(submitted.record.evaluation.validation_errors, [])
+  assert.deepEqual(
+    submitted.record.evaluation.governance_artifact_warnings ?? [],
+    [],
   )
 
-  const decided = decideRun(root, runId, 'approve', 'Accept the failure route.')
+  const decided = decideRun(root, runId, 'approve', 'Accept the release.')
 
-  assert.equal(decided.status, 'running')
-  assert.equal(decided.current_stage, 'remediate')
+  assert.equal(decided.status, 'succeeded')
+  assert.equal(decided.current_stage, null)
 })
 
 test('baseline capture disclosed dirty paths and predecessor provenance', () => {

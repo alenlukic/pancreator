@@ -71,6 +71,16 @@ test('delivery workflow runs to completion without a Git repository', () => {
       `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
     )
 
+    if (stageSlug === 'verify') {
+      const finalFast = submitted.record.evaluation.deterministic.find(
+        (item) => item.id === 'verify.final_fast',
+      )
+
+      assert.ok(finalFast)
+      assert.equal(finalFast.passed, true)
+      assert.equal(finalFast.verified_source, undefined)
+    }
+
     if (stageSlug === 'ship') {
       decideRun(root, runId, 'approve', 'fixture approval')
     }

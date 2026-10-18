@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { createFixture } from '../fixture-template.js'
+import { createStyleFixture as createFixture } from './style-fixture.js'
 
 function git(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
@@ -25,7 +25,12 @@ function runStyle(root: string, args: string[]) {
       'style',
       ...args,
     ],
-    { cwd: root, encoding: 'utf8' },
+    {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 60_000,
+      maxBuffer: 4 * 1024 * 1024,
+    },
   )
 }
 
@@ -80,7 +85,8 @@ test('CLI text output labels the selected file count and passes when clean', () 
   assert.equal(result.status, 0)
   assert.match(result.stdout, /^Style scan: passed$/mu)
   assert.match(result.stdout, /^Languages: .+$/mu)
-  assert.match(result.stdout, /^Files: \d+$/mu)
+  assert.match(result.stdout, /^Files: 1$/mu)
+  assert.match(result.stdout, /^- editable: src\/module\.ts — 0 issues$/mu)
 })
 
 test('CLI forwards a selected worktree to the scanned workspace', () => {

@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -22,6 +28,7 @@ import {
 } from '../../src/lib/review-scope.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
 import { createFixture, sharedFixture } from '../fixture-template.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('cleanup card resolves librarian runtime governance', () => {
   const root = createFixture()
@@ -872,7 +879,7 @@ test('the review card scopes the closure from the bound worktree when the main c
 
 test('a target review card keeps its closure at the installation root', () => {
   const root = createFixture()
-  const target = createFixture()
+  const target = createTestTempDirectory('review-target-')
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     installation_mode?: string
@@ -883,11 +890,25 @@ test('a target review card keeps its closure at the installation root', () => {
   config.workspace_root = target
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
+  const policyPath = path.join(target, 'governance/policies/GLOBAL-002.json')
+
+  mkdirSync(path.dirname(policyPath), { recursive: true })
+  writeFileSync(
+    policyPath,
+    readFileSync(
+      path.join(root, 'governance/policies/GLOBAL-002.json'),
+      'utf8',
+    ),
+  )
+
   const git = (args: string[]) =>
     execFileSync('git', args, { cwd: target, encoding: 'utf8' }).trim()
-  const base = git(['rev-parse', 'HEAD'])
 
-  const policyPath = path.join(target, 'governance/policies/GLOBAL-002.json')
+  git(['init', '-q'])
+  git(['add', 'governance/policies/GLOBAL-002.json'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'fixture'])
+
+  const base = git(['rev-parse', 'HEAD'])
   const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
     instructions: string[]
   }

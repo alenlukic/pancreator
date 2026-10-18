@@ -4,11 +4,22 @@ import test from 'node:test'
 import { prepareInvocation } from '../../src/lib/engine.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
-  assertNoShellGate,
   checkpoint,
   failingVerify,
   submitStageOutput,
 } from './delivery-helpers.js'
+
+function assertShellGatesSkipped(
+  deterministic: { type: string; id: string; skipped?: boolean }[],
+): void {
+  const shellGates = deterministic.filter((item) => item.type === 'shell')
+
+  assert.deepEqual(
+    shellGates.map((item) => item.id),
+    ['verify.configuration', 'verify.final_fast', 'verify.fast_wall_ceiling'],
+  )
+  assert.ok(shellGates.every((item) => item.skipped === true))
+}
 
 test('a failing verify verdict routes without executing any repository-check profile', () => {
   const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
@@ -16,7 +27,7 @@ test('a failing verify verdict routes without executing any repository-check pro
 
   assert.equal(
     verifyStage.criteria.some((item) => item.type === 'shell'),
-    false,
+    true,
   )
 
   const failed = submitStageOutput(
@@ -32,9 +43,9 @@ test('a failing verify verdict routes without executing any repository-check pro
 
   assert.equal(failed.record.outcome, 'failure')
   assert.equal(failed.state.current_stage, 'remediate')
-  assertNoShellGate(failed.record.evaluation.deterministic)
+  assertShellGatesSkipped(failed.record.evaluation.deterministic)
 
-  // The scope state criterion still evaluates when no shell gate exists.
+  // Scope still evaluates when the shell gates are skipped.
   const scope = failed.record.evaluation.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )
@@ -70,7 +81,7 @@ test('an unevaluated verify criterion blocks success', () => {
   )
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.current_stage, 'remediate')
-  assertNoShellGate(submitted.record.evaluation.deterministic)
+  assertShellGatesSkipped(submitted.record.evaluation.deterministic)
   assert.match(
     submitted.record.evaluation.validation_errors.join('\n'),
     /Criterion 'verify\.tests_correct' remains unevaluated/u,
@@ -107,7 +118,7 @@ test('a blocked verify submission pauses without product-field errors', () => {
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.current_stage, 'verify')
   assert.deepEqual(submitted.record.evaluation.validation_errors, [])
-  assertNoShellGate(submitted.record.evaluation.deterministic)
+  assertShellGatesSkipped(submitted.record.evaluation.deterministic)
 })
 
 test('implementation same-reason failure twice pauses before a third attempt', () => {

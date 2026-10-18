@@ -7,13 +7,27 @@ import {
   setRunStage,
 } from '../../src/lib/engine.js'
 import { resetCursorAgentCapabilities } from '../../src/lib/executors/cursor-probe.js'
+import { syncCursorProjection } from '../../src/lib/projection.js'
 import { writeFixtureCursorCatalog } from '../helpers.js'
-import { checkpoint } from './delivery-helpers.js'
+import { checkpoint, routePersonas } from './delivery-helpers.js'
 import type { CheckpointVariant } from './delivery-helpers.js'
 
+export const CURSOR_MODEL_VARIANT: CheckpointVariant = {
+  key: 'cursor-model-evidence',
+  fixture: (root) => {
+    routePersonas(
+      root,
+      ['coder', 'planner'],
+      'cursor:gpt-5.6-sol[reasoning=high]',
+    )
+    writeFixtureCursorCatalog(root)
+    syncCursorProjection(root, { write: true })
+  },
+}
+
 export const MODEL_EVIDENCE_VARIANT: CheckpointVariant = {
+  ...CURSOR_MODEL_VARIANT,
   key: 'model-evidence',
-  fixture: writeFixtureCursorCatalog,
   afterCreate: (root, runId) => {
     recordSupervisorModelEvidence(root, runId, 'GPT 5.6 Sol', 'metadata')
   },

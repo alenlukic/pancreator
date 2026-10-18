@@ -218,7 +218,7 @@ Rank by absolute cost removed from the critical path, and separate one-time
 cost from cost paid every run.
 
 Read the configured `fast_wall` ceiling and the advisory
-`ship.fast_wall_ceiling` criterion as the authority for the current suite budget. Judge a suite-cost
+`verify.fast_wall_ceiling` criterion as the authority for the current suite budget. Judge a suite-cost
 change by its delta against the base revision as well as that configured budget.
 Cost that sits off the critical path is a note.
 

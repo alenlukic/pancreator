@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { createFixture } from '../fixture-template.js'
+import { createStyleFixture as createFixture } from './style-fixture.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
   checkpointStyleArtifacts,
@@ -71,6 +71,7 @@ test('the first scan selects the committed eligible set, not only the dirty tree
 
   assert.equal(bare.checkpoint_head, null)
   assert.equal(bare.base, bare.head)
+  assert.deepEqual(paths(bare.files), ['src/committed.ts'])
   assert.deepEqual(paths(bare.files).sort(), paths(all.files).sort())
 
   const committed = bare.files.find(
@@ -95,6 +96,7 @@ test('the scan selects only extensions a detected language owns', () => {
   const root = createFixture()
 
   write(root, 'src/module.ts', CLEAN_SOURCE)
+  write(root, 'src/component.tsx', 'export const view = <div />\n')
   write(root, 'scripts/build.mjs', CLEAN_SOURCE)
   write(root, 'tools/report.py', 'def run():\n    return 1\n')
   write(root, 'tools/report.rb', 'def run\n  1\nend\n')
@@ -107,6 +109,7 @@ test('the scan selects only extensions a detected language owns', () => {
   assert.ok(result.languages.includes('typescript'))
   assert.ok(result.languages.includes('python'))
   assert.ok(selected.includes('src/module.ts'))
+  assert.ok(selected.includes('src/component.tsx'))
   assert.ok(selected.includes('scripts/build.mjs'))
   assert.ok(selected.includes('tools/report.py'))
   assert.equal(selected.includes('tools/report.rb'), false)
@@ -197,7 +200,10 @@ test('scan selects dirty, untracked, and deleted files and --all adds unchanged 
   git(root, ['add', 'src'])
   git(root, ['commit', '-qm', 'initial source'])
 
-  checkpointStyleArtifacts(root, { workspace_root: root })
+  const checkpoint = checkpointStyleArtifacts(root, { workspace_root: root })
+
+  assert.equal(checkpoint.status, 'passed')
+  assert.equal(checkpoint.wrote_checkpoint, true)
 
   write(root, 'src/dirty.ts', 'export const total = 2\n')
   write(root, 'src/untracked.ts', CLEAN_SOURCE)

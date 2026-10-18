@@ -24,6 +24,7 @@ import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import {
   BRIEFS,
   checkpoint,
+  legacyEntryCheckpoint,
   checksVariant,
   failingVerify,
   fullFailsUntil,
@@ -38,7 +39,7 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
     workflow,
     runId,
     invocation: verifyInvocation,
-  } = checkpoint('delivery@verify-prepared')
+  } = legacyEntryCheckpoint('delivery@verify-prepared')
 
   assert.ok(verifyInvocation)
 
@@ -394,7 +395,7 @@ test('a criterion waiver preserves the prepared invocation and finished output f
 // so an operator directive aimed at the release gate was silently ignored and
 // the run stalled at the same refusal on every prepare.
 test('an operator waiver reaches the ship entry gate, and a directive that cannot reach it is refused by name', () => {
-  const { root, runId, workflow } = checkpoint(
+  const { root, runId, workflow } = legacyEntryCheckpoint(
     'delivery@verify-prepared',
     checksVariant('checks=full-always-fails', {
       static: { probes: [], commands: [PASS] },

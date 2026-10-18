@@ -27,12 +27,8 @@ function recordedValidations(
   )
 }
 
-/**
- * A blocked ship submission wrote no release packet, so the validators that
- * read it have nothing to judge. Failing them buried
- * the block itself under one failure per absent release field.
- */
-test('a blocked ship submission reports its release validators as not applicable', () => {
+/** Release coordination must preserve the block without inspecting artifacts. */
+test('a blocked ship submission awaits operator approval without running release validators', () => {
   const { root, runId, workflow } = checkpoint('delivery@ship-prepared')
   const submitted = submitStageOutput(
     root,
@@ -57,15 +53,13 @@ test('a blocked ship submission reports its release validators as not applicable
 
   assert.equal(validations.has('PR-DESCRIPTION-VALIDATE-001'), false)
 
-  for (const registryId of ['RELEASE-VALIDATE-001']) {
-    const result = validations.get(registryId)
-
-    assert.ok(result, `${registryId} recorded no result`)
-    assert.equal(result.status, 'not_applicable')
-    assert.equal(result.exit_code, 0)
-    assert.match(
-      result.issues[0]?.message ?? '',
-      /reported blocked, so it produced no target/u,
-    )
-  }
+  assert.equal(validations.has('RELEASE-VALIDATE-001'), false)
+  assert.equal(submitted.state.status, 'awaiting_operator')
+  assert.equal(submitted.state.pending_action.type, 'operator_approval')
+  assert.equal(
+    submitted.state.pending_action.type === 'operator_approval' &&
+      submitted.state.pending_action.outcome,
+    'blocked',
+  )
+  assert.equal(submitted.state.current_stage, 'ship')
 })

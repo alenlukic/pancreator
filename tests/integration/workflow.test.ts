@@ -201,50 +201,46 @@ test('consolidation routes verify failure back to consolidate and keeps the ship
   }
 })
 
-test('the release gate is a ship entry gate that routes to remediate for two loops', () => {
+test('verification owns the final checks and ship only coordinates release', () => {
   const root = sharedFixture()
 
-  for (const [slug, failure] of [
-    ['delivery', 'remediate'],
-    ['metacritic', 'consolidate'],
-  ] as const) {
+  for (const slug of [
+    'delivery',
+    'delivery-chunk',
+    'delivery-candidate',
+    'metacritic',
+  ]) {
     const workflow = loadWorkflow(root, slug)
-    const ship = stageBySlug(workflow, 'ship')
-    const fullSuite = ship.criteria.find(
-      (item) => item.id === 'ship.full_suite',
+    const verify = stageBySlug(workflow, 'verify')
+
+    assert.deepEqual(
+      verify.criteria
+        .filter((item) => item.type === 'shell')
+        .map((item) => [item.id, item.command]),
+      [
+        ['verify.configuration', 'pan repository-check configuration'],
+        ['verify.final_fast', 'pan repository-check fast'],
+        ['verify.fast_wall_ceiling', 'pan tests wall'],
+      ],
+      slug,
     )
 
-    assert.deepEqual(ship.entry_gate, {
-      criterion: 'ship.full_suite',
-      failure,
-      max_loops: 2,
-    })
-    assert.equal(fullSuite?.type, 'shell')
-    assert.equal(fullSuite?.command, 'pan repository-check full')
+    if (slug === 'delivery' || slug === 'metacritic') {
+      const ship = stageBySlug(workflow, 'ship')
 
-    // No interior stage carries a full-profile gate.
+      assert.equal(ship.persona, 'release-steward')
+      assert.equal(ship.entry_gate, undefined)
+      assert.deepEqual(ship.criteria, [])
+      assert.equal(ship.context.gate_evidence, false)
+      assert.equal(ship.context.suite_profile, false)
+    }
+
     for (const stage of workflow.stages) {
-      if (stage.slug === 'ship') {
-        continue
-      }
-
       assert.equal(stage.entry_gate, undefined)
       assert.deepEqual(
-        stage.criteria
-          .filter((item) => item.command === 'pan repository-check full')
-          .map((item) => item.id),
-        [],
-        `${slug}/${stage.slug} must not gate on the full profile`,
-      )
-    }
-  }
-
-  for (const slug of ['delivery-chunk', 'delivery-candidate']) {
-    for (const stage of loadWorkflow(root, slug).stages) {
-      assert.deepEqual(
-        stage.criteria
-          .filter((item) => item.command === 'pan repository-check full')
-          .map((item) => item.id),
+        stage.criteria.filter(
+          (item) => item.command === 'pan repository-check full',
+        ),
         [],
         `${slug}/${stage.slug} must not gate on the full profile`,
       )
@@ -256,10 +252,20 @@ test('an entry gate must name a shell criterion of its stage and another stage',
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
   const ship = stageBySlug(workflow, 'ship')
-  const original = ship.entry_gate
+  const original = {
+    criterion: 'ship.full_suite',
+    failure: 'remediate',
+    max_loops: 2,
+  }
 
-  assert.ok(original)
-
+  // Generic entry gates still validate retained and custom workflow snapshots.
+  ship.criteria.push({
+    id: original.criterion,
+    type: 'shell',
+    hard: true,
+    statement: 'Run the custom workflow release profile.',
+    command: 'pan repository-check full',
+  })
   ship.entry_gate = { ...original, criterion: 'ship.release_packet' }
   assert.throws(
     () => validateWorkflow(root, workflow, 'fixture'),

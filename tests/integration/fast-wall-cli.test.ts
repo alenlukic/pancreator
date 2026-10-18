@@ -14,7 +14,6 @@ import { createFixture } from '../fixture-template.js'
 import {
   checkpoint,
   prepareCheckpointRun,
-  submitCurrentStage,
   submitStageOutput,
 } from './delivery-helpers.js'
 
@@ -123,17 +122,17 @@ test('tests wall reports the average and succeeds over its soft ceiling', () => 
   assert.equal(passReport.permitted_ceiling_ms, 100)
 })
 
-test('the advisory ship criterion exposes an over-ceiling average without blocking', () => {
+test('the advisory verify criterion exposes an over-ceiling average without blocking', () => {
   const root = createFixture()
 
   configureFastWall(root)
   writeSeries(root, [{ wall_clock_ms: 200 }])
 
   for (const workflow of ['delivery', 'metacritic']) {
-    const ship = stageBySlug(loadWorkflow(root, workflow), 'ship')
+    const verify = stageBySlug(loadWorkflow(root, workflow), 'verify')
     const stage = {
-      ...ship,
-      criteria: ship.criteria.filter(
+      ...verify,
+      criteria: verify.criteria.filter(
         (criterion) => criterion.id === 'verify.fast_wall_ceiling',
       ),
     }
@@ -153,7 +152,7 @@ test('the advisory ship criterion exposes an over-ceiling average without blocki
       snapshot,
       root,
       {},
-      'ship',
+      'verify',
       { data: {} } as StageOutput,
       undefined,
       null,
@@ -194,14 +193,11 @@ test('a breached suite-cost advisory records run state and queues performance tu
     },
   })
 
-  const verified = submitCurrentStage(root, runId, 'success')
-
-  assert.equal(verified.record.outcome, 'success')
   writeSeries(root, [{ wall_clock_ms: 200 }])
   const submitted = submitStageOutput(
     root,
     runId,
-    stageBySlug(workflow, 'ship'),
+    stageBySlug(workflow, 'verify'),
     'success',
   )
   const advisory = submitted.advisories.find(
