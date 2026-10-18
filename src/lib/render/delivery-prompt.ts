@@ -54,19 +54,45 @@ export const EVIDENCE_REPORT_CASE_PREFIX = '### '
 export const EVIDENCE_REPORT_COMPLETE_MARKER =
   '<!-- evidence-report: complete -->'
 
+/** The dimension verdict an evidence worker states in its report. */
+export type EvidenceVerdict = 'pass' | 'fail'
+
+/**
+ * Opening of the verdict line an evidence worker writes immediately before
+ * its completion marker. The consolidating worker runs only when every
+ * declared report states `pass`, so the supervisor never spends a verifier on
+ * a verdict the evidence already decided.
+ */
+export const EVIDENCE_REPORT_VERDICT_PREFIX = '<!-- evidence-verdict: '
+
+/** The exact verdict line for `verdict`. */
+export function evidenceVerdictLine(verdict: EvidenceVerdict): string {
+  return `${EVIDENCE_REPORT_VERDICT_PREFIX}${verdict} -->`
+}
+
+const EVIDENCE_VERDICT_LINE = /^<!-- evidence-verdict: (pass|fail) -->$/u
+
 /** What an evidence report on disk records so far. */
 export interface EvidenceReportState {
   complete: boolean
   /** Heading text of each case the report already holds, in order. */
   cases: string[]
+  /** The last verdict line the report states, or null when it states none. */
+  verdict: EvidenceVerdict | null
 }
 
 /**
  * Reads an evidence report body and returns whether it carries the completion
- * marker line and the heading text of each case it records so far, in order.
+ * marker line, the heading text of each case it records so far, in order, and
+ * its last stated verdict. A malformed verdict line reads as no verdict.
  */
 export function readEvidenceReportState(body: string): EvidenceReportState {
   const lines = body.split('\n')
+  const verdicts = lines.flatMap((line) => {
+    const match = EVIDENCE_VERDICT_LINE.exec(line.trim())
+
+    return match ? [match[1] as EvidenceVerdict] : []
+  })
 
   return {
     complete: lines.some(
@@ -75,6 +101,7 @@ export function readEvidenceReportState(body: string): EvidenceReportState {
     cases: lines
       .filter((line) => line.startsWith(EVIDENCE_REPORT_CASE_PREFIX))
       .map((line) => line.slice(EVIDENCE_REPORT_CASE_PREFIX.length).trim()),
+    verdict: verdicts[verdicts.length - 1] ?? null,
   }
 }
 

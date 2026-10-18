@@ -42,6 +42,7 @@ import {
   type WatchRecordEntry,
 } from '../lib/watch/types.js'
 import {
+  evidenceWatchExitCode,
   formatEvidenceWatchResult,
   watchEvidenceCompletion,
 } from '../lib/watch-evidence.js'
@@ -569,7 +570,7 @@ async function runWatchCommand(
     })
 
     print(json ? result : formatEvidenceWatchResult(result), json)
-    process.exitCode = WATCH_EXIT_CODES[result.state]
+    process.exitCode = evidenceWatchExitCode(result)
     return
   }
 

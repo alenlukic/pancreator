@@ -4,6 +4,7 @@ import type { Invocation, InvocationEvidenceWorker } from '../types.js'
 import {
   EVIDENCE_REPORT_CASE_PREFIX,
   EVIDENCE_REPORT_COMPLETE_MARKER,
+  evidenceVerdictLine,
 } from './delivery-prompt.js'
 import { renderRemediationReturn } from './remediation-return.js'
 
@@ -153,9 +154,16 @@ export function renderEvidenceWorkerBrief(
       `own \`${EVIDENCE_REPORT_CASE_PREFIX}\` heading, rather than holding ` +
       'the whole report for one write at the end. A run that is interrupted ' +
       'part way then keeps every case you had already recorded.',
-    `Write the line \`${EVIDENCE_REPORT_COMPLETE_MARKER}\` last, and only ` +
-      'once every case is recorded. A report without it is read as ' +
-      'incomplete.',
+    'Once every case is recorded, write your dimension verdict on its own ' +
+      `line: \`${evidenceVerdictLine('pass')}\` when your dimension found ` +
+      'no blocker finding, failed acceptance criterion, or failed case, ' +
+      `and \`${evidenceVerdictLine('fail')}\` otherwise. A dimension that ` +
+      'lacks the evidence to judge is not a pass. The consolidating worker ' +
+      'runs only when every report states pass. Any other verdict, or none, ' +
+      'skips it and sends the run to remediation with your report as the ' +
+      'failure record.',
+    `Write the line \`${EVIDENCE_REPORT_COMPLETE_MARKER}\` last, immediately ` +
+      'after the verdict line. A report without it is read as incomplete.',
     'It MUST contain:',
     '',
     '- Every finding or executed case with a severity or result, the exact ' +

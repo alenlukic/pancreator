@@ -27,7 +27,12 @@ import {
   writeJsonAtomic,
 } from './io.js'
 import {
+  recordEvidenceGateFailure,
+  type EvidenceGateResult,
+} from './engine/evidence-gate.js'
+import {
   EVIDENCE_REPORT_COMPLETE_MARKER,
+  EVIDENCE_REPORT_VERDICT_PREFIX,
   evidenceWorkerAttempts,
   readEvidenceReportState,
 } from './render/delivery-prompt.js'
@@ -49,6 +54,7 @@ import {
   DEFAULT_STALL_TIMEOUT_SECONDS,
   DEFAULT_WATCH_CADENCE_SECONDS,
   DEFAULT_WATCH_TIMEOUT_SECONDS,
+  WATCH_EXIT_CODES,
   WATCH_TIMEOUT_BELOW_CADENCE,
   type EvidenceRoleObservation,
   type WatchRecordEntry,
@@ -57,6 +63,9 @@ import {
 
 export const WATCH_NO_EVIDENCE_WORKERS = 'WATCH_NO_EVIDENCE_WORKERS'
 
+/** Exit status of an evidence watch whose gate skipped the stage worker. */
+export const EVIDENCE_GATE_EXIT_CODE = 5
+
 /** Wait for the run mutex this long before giving up the audit event. */
 const READY_EVENT_MUTEX_WAIT_MS = 250
 
@@ -64,6 +73,8 @@ export interface EvidenceReadiness {
   roles: EvidenceRoleObservation[]
   /** Every declared role's newest report carries the completion marker. */
   all_complete: boolean
+  /** Every declared role's newest report lets the stage worker run. */
+  all_pass: boolean
 }
 
 /** The ready marker the watch writes once every report is complete. */
@@ -77,7 +88,10 @@ export interface EvidenceReadyRecord {
     path: string
     /** Modification time of the completed report. */
     completed_at: string
+    verdict?: 'pass' | 'fail' | null
   }>
+  /** Every report lets the stage worker run. Absent on older markers. */
+  all_pass?: boolean
   recorded_at: string
 }
 
@@ -113,6 +127,12 @@ export interface EvidenceWatchResult {
   elapsed_seconds: number
   watch_session_id: string
   terminal_basis: 'evidence_complete' | null
+  /** Every report lets the stage worker run; meaningful on `completed`. */
+  all_pass: boolean
+  /** The recorded gate failure when a report did not pass. */
+  gate: EvidenceGateResult | null
+  /** Why a failing gate was not recorded yet, such as a pending request. */
+  gate_deferred: string | null
 }
 
 const defaultSleep = (milliseconds: number): Promise<void> =>
@@ -138,13 +158,8 @@ export function observeEvidenceReports(
       const attempts = evidenceWorkerAttempts(worker)
       const newest = attempts[attempts.length - 1] as (typeof attempts)[number]
       const absolute = resolveInside(root, newest.evidence_path)
-      let body = ''
-
-      try {
-        body = readFileSync(absolute, 'utf8')
-      } catch {
-        body = ''
-      }
+      const body = readOptional(absolute)
+      const report = readEvidenceReportState(body)
 
       return {
         role: worker.role,
@@ -152,7 +167,12 @@ export function observeEvidenceReports(
         path: newest.evidence_path,
         exists: fileExists(absolute),
         non_empty: body.trim().length > 0,
-        complete: readEvidenceReportState(body).complete,
+        complete: report.complete,
+        verdict: report.verdict,
+        passes:
+          report.verdict === 'pass' ||
+          (report.verdict === null &&
+            !briefCarriesVerdictContract(root, newest.brief_path)),
       }
     },
   )
@@ -160,7 +180,27 @@ export function observeEvidenceReports(
   return {
     roles,
     all_complete: roles.length > 0 && roles.every((role) => role.complete),
+    all_pass: roles.length > 0 && roles.every((role) => role.passes),
   }
+}
+
+function readOptional(absolute: string): string {
+  try {
+    return readFileSync(absolute, 'utf8')
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Whether the brief a worker ran under asked for a verdict line. A brief
+ * rendered before the verdict contract existed never asked, so its silent
+ * report keeps the stage worker's old right to run.
+ */
+function briefCarriesVerdictContract(root: string, briefPath: string): boolean {
+  return readOptional(resolveInside(root, briefPath)).includes(
+    EVIDENCE_REPORT_VERDICT_PREFIX,
+  )
 }
 
 /** The ready marker for an invocation, or null when none was written. */
@@ -299,6 +339,8 @@ export async function watchEvidenceCompletion(
   const finish = (
     state: WatchTerminalState,
     roles: EvidenceRoleObservation[],
+    gate: EvidenceGateResult | null = null,
+    gateDeferred: string | null = null,
   ): EvidenceWatchResult => {
     const endedMs = now()
 
@@ -319,10 +361,14 @@ export async function watchEvidenceCompletion(
       elapsed_seconds: Math.round((endedMs - startedMs) / 1000),
       watch_session_id: sessionId,
       terminal_basis: state === 'completed' ? 'evidence_complete' : null,
+      all_pass: roles.length > 0 && roles.every((role) => role.passes),
+      gate,
+      gate_deferred: gateDeferred,
     }
   }
 
   const complete = (roles: EvidenceRoleObservation[]): EvidenceWatchResult => {
+    const allPass = roles.every((role) => role.passes)
     const record: EvidenceReadyRecord = {
       schema_version: 1,
       run_id: runId,
@@ -332,14 +378,57 @@ export async function watchEvidenceCompletion(
         attempt: role.attempt,
         path: role.path,
         completed_at: completedAt(root, role.path),
+        verdict: role.verdict,
       })),
+      all_pass: allPass,
       recorded_at: new Date(now()).toISOString(),
     }
 
     writeJsonAtomic(resolveInside(root, readyPath), record)
     recordEvidenceReadyEvent(root, runId, record, readyPath)
 
-    return finish('completed', roles)
+    if (allPass) {
+      return finish('completed', roles)
+    }
+
+    // A pending observation request can still change a report, so the
+    // gate waits for `pan prepare` to consume it and the rerun to decide.
+    const pending = (invocation.evidence_workers ?? [])
+      .flatMap((worker) => evidenceWorkerAttempts(worker).slice(-1))
+      .filter((attempt) =>
+        fileExists(
+          resolveInside(
+            root,
+            `${attempt.evidence_path}.execution-request.json`,
+          ),
+        ),
+      )
+      .map((attempt) => attempt.evidence_path)
+
+    if (pending.length > 0) {
+      return finish(
+        'completed',
+        roles,
+        null,
+        `execution request pending for ${pending.join(', ')}`,
+      )
+    }
+
+    return finish(
+      'completed',
+      roles,
+      recordEvidenceGateFailure(
+        root,
+        runId,
+        invocationId,
+        roles.map((role) => ({
+          role: role.role,
+          attempt: role.attempt,
+          path: role.path,
+          verdict: role.passes ? 'pass' : role.verdict,
+        })),
+      ),
+    )
   }
 
   try {
@@ -466,18 +555,46 @@ export async function watchEvidenceCompletion(
   }
 }
 
+/** The process exit status for a finished evidence watch. */
+export function evidenceWatchExitCode(result: EvidenceWatchResult): number {
+  return result.state === 'completed' && !result.all_pass
+    ? EVIDENCE_GATE_EXIT_CODE
+    : WATCH_EXIT_CODES[result.state]
+}
+
 /** One-line operator text for a finished evidence watch. */
 export function formatEvidenceWatchResult(result: EvidenceWatchResult): string {
   const roles = result.roles
     .map(
       (role) =>
-        `${role.role}${role.complete ? '' : role.non_empty ? ' (incomplete)' : ' (missing)'}`,
+        `${role.role}${
+          !role.complete
+            ? role.non_empty
+              ? ' (incomplete)'
+              : ' (missing)'
+            : ` (${role.verdict ?? 'no verdict'})`
+        }`,
     )
     .join(', ')
+  const blocking = result.roles
+    .filter((role) => !role.passes)
+    .map((role) => `${role.role} reported ${role.verdict ?? 'no verdict'}`)
+    .join(', ')
+
+  if (result.state === 'completed' && !result.all_pass) {
+    return result.gate
+      ? `verifier gated: ${blocking}. The harness recorded the failure at ` +
+          `${result.gate.output_path} and moved the run to ` +
+          `${result.gate.next_state ?? 'its failure transition'}. Do not ` +
+          'launch the stage worker; continue with the next stage.'
+      : `verifier gated: ${blocking}; ${result.gate_deferred ?? 'gate deferred'}. ` +
+          `Do not launch the stage worker. Run \`pan prepare ${result.run_id}\`, ` +
+          'relaunch each consumer it names, then rerun this watch.'
+  }
 
   return result.state === 'completed'
     ? `evidence complete: roles ${roles}; marker ${result.ready_path}. ` +
-        'Launch the stage worker now.'
+        'Every report passed; launch the stage worker now.'
     : `evidence watch ${result.state} after ${result.wakes} wake(s): roles ${roles}. ` +
         `Each report must end with ${EVIDENCE_REPORT_COMPLETE_MARKER}. ` +
         'Inspect the evidence workers; relaunch a stopped one with ' +

@@ -252,8 +252,16 @@ export function renderSupervisorProcedureBody(
                   `\`${delegation.watch_command} --until-evidence-complete\` ` +
                   'as a foreground shell call. Never poll the reports with a ' +
                   'timer or a script. It exits 0 within one cadence of the ' +
-                  'moment every report carries its completion marker; launch ' +
-                  'the stage worker in that same turn. Exit 2 or 3 means an ' +
+                  'moment every report carries its completion marker and ' +
+                  'states `pass`; launch the stage worker in that same turn. ' +
+                  'Exit 5 means the verifier is gated: a report stated a ' +
+                  'verdict other than pass. You MUST NOT launch the stage ' +
+                  'worker then. The harness has already recorded the stage ' +
+                  'failure from the reports and moved the run along its ' +
+                  'failure route; continue with `pan prepare`. When the exit ' +
+                  '5 output names a pending execution request instead, run ' +
+                  '`pan prepare`, relaunch each consumer it names, and rerun ' +
+                  'the watch. Exit 2 or 3 means an ' +
                   'evidence worker stopped: inspect it, and relaunch it with ' +
                   '`pan worker record --role <role> --new-attempt`. When a ' +
                   'worker returned its report in chat instead of writing the ' +
@@ -266,8 +274,11 @@ export function renderSupervisorProcedureBody(
                   'and is non-empty at its declared path; when a worker ' +
                   'returned its report in chat instead of writing the file, ' +
                   'persist the returned text there yourself verbatim. ' +
-                  'Submission rejects the stage output while any report is ' +
-                  'missing.',
+                  'Launch the stage worker only when every report states ' +
+                  '`<!-- evidence-verdict: pass -->`; otherwise run the ' +
+                  'evidence watch, which records the failure and skips the ' +
+                  'stage worker. Submission rejects the stage output while ' +
+                  'any report is missing.',
               ]),
         ]
       : invocation.scoped_return
