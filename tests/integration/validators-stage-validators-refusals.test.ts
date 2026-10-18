@@ -11,7 +11,12 @@ import {
   validateVerifyOutput,
   undeclaredBlockingFieldIssues,
 } from '../../src/lib/validators/stage-validators.js'
-import { UNCOVERED_REFUSAL_SOURCES } from '../../src/lib/validators/refusals.js'
+import {
+  UNCOVERED_REFUSAL_SOURCES,
+  type StageRefusal,
+  type ValidatorBlockingFields,
+} from '../../src/lib/validators/refusals.js'
+import { isRecord } from '../../src/lib/io.js'
 import { createFixture, writeJson } from '../helpers.js'
 import {
   claimsValidatorInput,
@@ -53,6 +58,60 @@ test('mandatory plan execution refusal declares its blocking field', () => {
     ]),
     [],
   )
+})
+
+test('G01 plan refusal declarations expose field ownership and relational reasons', () => {
+  const plan = STAGE_VALIDATOR_REFUSALS.find(
+    (entry) =>
+      entry.stage === 'plan' && entry.registry_id === 'PLAN-TRACE-VALIDATE-001',
+  )
+  assert.ok(plan)
+  for (const code of [
+    'plan.unlabeled_item',
+    'plan.duplicate_item',
+    'plan.duplicate_criterion',
+    'plan.maps_to_invalid',
+    'plan.mechanical_preservation',
+    'plan.view_conflict',
+  ]) {
+    const refusal: StageRefusal | undefined = plan.refusals.find(
+      (entry) => entry.code === code,
+    )
+    assert.ok(refusal, code)
+    if (refusal.paths.length === 0) {
+      assert.ok(refusal.unowned_reason, code)
+    } else {
+      const contract: unknown = JSON.parse(
+        readFileSync(
+          path.join(
+            process.cwd(),
+            'library/schemas/stage-output-requirements.json',
+          ),
+          'utf8',
+        ),
+      )
+      assert.ok(isRecord(contract))
+      assert.deepEqual(
+        undeclaredBlockingFieldIssues(contract, [
+          {
+            stage: 'plan',
+            registry_id: plan.registry_id,
+            fields: refusal.paths,
+          },
+        ]),
+        [],
+        code,
+      )
+      const declared: ValidatorBlockingFields | undefined =
+        VALIDATOR_BLOCKING_FIELDS.find(
+          (entry) =>
+            entry.stage === 'plan' && entry.registry_id === plan.registry_id,
+        )
+      for (const field of refusal.paths) {
+        assert.ok(declared?.fields.includes(field), `${code}: ${field}`)
+      }
+    }
+  }
 })
 
 test('field contract validator rejects enforced_fields that lack a declared shape', () => {

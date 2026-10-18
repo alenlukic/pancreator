@@ -15,6 +15,9 @@
           "registry_id": "PLAN-TRACE-VALIDATE-001",
           "enforcement": "blocks",
           "enforced_fields": [
+            "data.planning_correction.mode",
+            "data.cohort_plan.parent_spec_path",
+            "data.cohort_plan.chunks[].child_spec_path",
             "data.acceptance_criteria[].id",
             "data.acceptance_criteria[].maps_to",
             "data.acceptance_criteria[].verification",
@@ -37,6 +40,20 @@
         }
       ],
       "fields": [
+        {
+          "path": "data.cohort_plan.parent_spec_path",
+          "type": "string"
+        },
+        {
+          "path": "data.cohort_plan.chunks[].child_spec_path",
+          "type": "string"
+        },
+        {
+          "path": "data.planning_correction.mode",
+          "type": "string",
+          "enum": ["mechanical"],
+          "format": "optional; mechanical correction requires the invocation's preservation bundle and may change only its permitted registry fields while preserving authored facts and specification bytes"
+        },
         {
           "path": "data.design_plan",
           "type": "object",

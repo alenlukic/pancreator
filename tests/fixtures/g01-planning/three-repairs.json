@@ -1,0 +1,666 @@
+{
+  "provenance": {
+    "source": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/outputs/00_plan-2_9425fcdb.json",
+    "sha256": "483dee8751e7aace8f60ad14209ae07accb1e0d7f31ad044b845c10c42e1bf15",
+    "initial_source": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/outputs/01_plan-1_7a2e6888.json",
+    "initial_sha256": "893d73e9358f369504814ece13219c8bd95a54fe6ec26e6144623ebaa6c34094",
+    "sanitization": "Only data and specification text retained; no product facts, identifiers, paths, or narrative rewritten.",
+    "metrics_source": "runtime/inbox/queue/harness-repair-20261017T202500Z-ineff-planning-context.md",
+    "historical": {
+      "initial": {
+        "calls": 149,
+        "compactions": "unavailable",
+        "executor_minutes": 11.681
+      },
+      "revision": {
+        "calls": 98,
+        "compactions": "unavailable",
+        "executor_minutes": 6.594
+      }
+    }
+  },
+  "initial_product_spec": {
+    "summary": "Repair TRACE-08 so worktree-bound approvals route correctly, TRACE-09 so concurrent sibling prepares join one baseline, and TRACE-04 so a restricted no-shell planner can complete canonical planning artifacts through harness-owned bookkeeping.",
+    "user_stories": [
+      {
+        "id": "US-01",
+        "statement": "As an operator approving a worktree-bound plan, I want the harness to choose single delivery or cohort fan-out without forwarding an incompatible worktree option.",
+        "origin": "TRACE-08"
+      },
+      {
+        "id": "US-02",
+        "statement": "As a supervisor preparing ready siblings concurrently, I want one shared baseline capture whose result every sibling can join and adopt.",
+        "origin": "TRACE-09"
+      },
+      {
+        "id": "US-03",
+        "statement": "As a planner restricted to file tools, I want prepared output scaffolds and canonical parent-reference finalization that work without a shell, invented values, or supervisor field edits.",
+        "origin": "TRACE-04"
+      }
+    ],
+    "constraints": [
+      "C-01: Preserve the existing run and operator-owned approval; this stage writes planning artifacts only and later authorized delivery runs own source repair.",
+      "C-02: Use the selected managed planning worktree; isolate parallel chunks in their own branches and worktrees and prepare one release only after integration.",
+      "C-03: Preserve one shared baseline per required interior profile, its artifact and capture provenance, configuration checks, and diagnostic-delta semantics; preparation must not capture the release/full profile.",
+      "C-04: Keep the planner's restricted tool policy; do not grant an unrestricted shell or directory capability merely for bookkeeping.",
+      "C-05: Use canonical trimmed-content parent digests, never fabricated values, and refresh every declared child reference after a parent revision before ratification.",
+      "C-06: Preserve single-chunk worktree selection, routing opt-out, approval durability, genuine routing guards, recovery commands, and idempotent handoff reuse.",
+      "C-07: Preserve target/source ownership and secrets; do not inspect or patch third-party compiled code, dependency trees, or caches, and do not turn partial evidence into a completed verdict.",
+      "C-08: Hand repair evidence to the integrated release owner to extend the intake and reconcile the three authorized findings against repair and release commits after delivery and release."
+    ],
+    "out_of_scope": [
+      "OOS-01: Repairing any intake finding other than TRACE-04, TRACE-08, and TRACE-09.",
+      "OOS-02: Native UI repair, telemetry streaming, usage aggregation, invented cost estimates, or adding duplicate modelMetrics and agentMetrics views.",
+      "OOS-03: Changing active configuration, model/executor mappings, verification level, operator approvals, publication authority, or release metadata during planning."
+    ],
+    "open_questions": [
+      "Q-01: What does a worktree selection mean for a single-chunk route versus a cohort route?",
+      "Q-02: Which present coordination paths prevent sibling preparations from joining the shared baseline?",
+      "Q-03: Which bounded harness-owned operations make the planner contract executable without shell access?"
+    ]
+  },
+  "data": {
+    "product_spec": {
+      "summary": "Repair TRACE-08 so worktree-bound approvals route correctly, TRACE-09 so concurrent sibling prepares join one baseline, and TRACE-04 so a restricted no-shell planner can complete canonical planning artifacts through harness-owned bookkeeping.",
+      "user_stories": [
+        {
+          "id": "US-01",
+          "statement": "As an operator approving a worktree-bound plan, I want the harness to choose single delivery or cohort fan-out without forwarding an incompatible worktree option.",
+          "origin": "TRACE-08"
+        },
+        {
+          "id": "US-02",
+          "statement": "As a supervisor preparing ready siblings concurrently, I want one shared baseline capture whose result every sibling can join and adopt.",
+          "origin": "TRACE-09"
+        },
+        {
+          "id": "US-03",
+          "statement": "As a planner restricted to file tools, I want prepared output scaffolds and canonical parent-reference finalization that work without a shell, invented values, or supervisor field edits.",
+          "origin": "TRACE-04"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "C-01",
+          "statement": "Preserve the existing run and operator-owned approval; this stage writes planning artifacts only and later authorized delivery runs own source repair."
+        },
+        {
+          "id": "C-02",
+          "statement": "Use the selected managed planning worktree; isolate parallel chunks in their own branches and worktrees and prepare one release only after integration."
+        },
+        {
+          "id": "C-03",
+          "statement": "Preserve one shared baseline per required interior profile, its artifact and capture provenance, configuration checks, and diagnostic-delta semantics; preparation must not capture the release/full profile."
+        },
+        {
+          "id": "C-04",
+          "statement": "Keep the planner's restricted tool policy; do not grant an unrestricted shell or directory capability merely for bookkeeping."
+        },
+        {
+          "id": "C-05",
+          "statement": "Use canonical trimmed-content parent digests, never fabricated values, and refresh every declared child reference after a parent revision before ratification."
+        },
+        {
+          "id": "C-06",
+          "statement": "Preserve single-chunk worktree selection, routing opt-out, approval durability, genuine routing guards, recovery commands, and idempotent handoff reuse."
+        },
+        {
+          "id": "C-07",
+          "statement": "Preserve target/source ownership and secrets; do not inspect or patch third-party compiled code, dependency trees, or caches, and do not turn partial evidence into a completed verdict."
+        },
+        {
+          "id": "C-08",
+          "statement": "Hand repair evidence to the integrated release owner to extend the intake and reconcile the three authorized findings against repair and release commits after delivery and release."
+        }
+      ],
+      "out_of_scope": [
+        {
+          "id": "OOS-01",
+          "statement": "Repairing any intake finding other than TRACE-04, TRACE-08, and TRACE-09."
+        },
+        {
+          "id": "OOS-02",
+          "statement": "Native UI repair, telemetry streaming, usage aggregation, invented cost estimates, or adding duplicate modelMetrics and agentMetrics views."
+        },
+        {
+          "id": "OOS-03",
+          "statement": "Changing active configuration, model/executor mappings, verification level, operator approvals, publication authority, or release metadata during planning."
+        }
+      ],
+      "open_questions": [
+        "Q-01: What does a worktree selection mean for a single-chunk route versus a cohort route?",
+        "Q-02: Which present coordination paths prevent sibling preparations from joining the shared baseline?",
+        "Q-03: Which bounded harness-owned operations make the planner contract executable without shell access?"
+      ]
+    },
+    "engineering_plan": {
+      "approach": "Keep the existing synchronous engine and durable workflow contracts. Split three independent repairs into one parallel cohort: normalize worktree options inside the shared route branch; opt baseline operations into bounded short-lock waits and join active capture outside the cohort mutex; pre-scaffold planning invocations and finalize declared parent references through one common pre-validation materialization hook. Add no runtime dependencies or global queue.",
+      "components": [
+        {
+          "name": "Route selection",
+          "chunk": "route-worktrees",
+          "design": "In routeDelivery, select one versus multiple chunks before applying worktreeName. Pass it only to startSingleDeliveryRun; cohort fan-out derives its own worktrees. Cover automatic operator/away approval and retry through the shared path. Keep existing dirty-tree, opt-out, idempotency, and failed-handoff behavior."
+        },
+        {
+          "name": "Shared baseline join",
+          "chunk": "baseline-join",
+          "design": "Add optional OperationMutexOptions to withCohortSession, defaulting to current immediate refusal. Baseline claim/record/release opt into a 5000 ms short-lock wait. Extend claimCohortBaselineCapture with optional join budget/progress options; the engine passes 3600000 ms while the primitive default stays fail-fast. Inspect state under the short lock, poll a live peer outside it at 100 ms using the existing synchronous wait pattern and a monotonic deadline, report joining immediately and each 60 seconds, adopt complete publication, and elect one replacement after a released or dead owner."
+        },
+        {
+          "name": "Baseline failure and provenance",
+          "chunk": "baseline-join",
+          "design": "Validate the claimant before record, retain foreign-release no-op behavior, preserve all baseline pointer/provenance and valid failed-diagnostic records, release on a thrown capture or environment-probe block, and never publish partial profile sets. Timeout diagnostics name the cohort, holder, elapsed budget, and ./bin/pan prepare <waiting-run-id>. Do not change unrelated run mutex policy."
+        },
+        {
+          "name": "Planning preparation",
+          "chunk": "planner-bookkeeping",
+          "design": "After the complete invocation/manifest is built, writeInvocationArtifacts invokes the existing scaffoldStageOutput for planning and creates operator/specs. Preserve authored output and untouched-scaffold semantics. Resolve the planning scaffold requirement to harness ownership without changing assessment, spotfix, or source-worker requirements."
+        },
+        {
+          "name": "Canonical reference finalization",
+          "chunk": "planner-bookkeeping",
+          "design": "Add finalizePlanningReferences in one small cohort specification module. Invoke it through materializeOutputSubmission after full-output or merge-patch resolution, before strict validators in both validation and submission. A documented harness-pending token is valid only in a draft. Build one canonical parent snapshot with buildContextReference, preflight every declared run-local path/block, atomically update only digest and owned reference-status metadata, audit changed paths, and reject concurrent parent changes. Restrict this to the active unratified planning invocation; never rewrite worker claims or ratified/foreign context. Pure validators remain strict and nonmutating."
+        },
+        {
+          "name": "Contract and handoff alignment",
+          "chunk": "planner-bookkeeping",
+          "design": "Update canonical planning instructions and scoped automation resolution to describe harness-prepared scaffolds, draft references, and finalization ownership. Preserve executor restrictions, regenerate affected projections/function indexes through existing automation, and leave release and intake reconciliation with the integrated release owner."
+        }
+      ],
+      "files": [
+        {
+          "path": "src/lib/cohorts/delivery.ts",
+          "chunk": "route-worktrees",
+          "symbols": ["maybeStartDelivery", "retryDeliveryRoute"],
+          "status": "modified",
+          "purpose": "Normalize options in their shared private routeDelivery branch; leave single-delivery and handoff persistence semantics intact."
+        },
+        {
+          "path": "tests/integration/cohort-plan-routing.test.ts",
+          "chunk": "route-worktrees",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Add CLI approval with a bound planning worktree and multiple chunks; retain one-chunk, retry, opt-out, away-mode, and genuine failure assertions."
+        },
+        {
+          "path": "src/lib/cohorts/baselines.ts",
+          "chunk": "baseline-join",
+          "symbols": [
+            "claimCohortBaselineCapture",
+            "recordCohortBaselines",
+            "releaseCohortBaselineClaim",
+            "CohortBaselineClaim"
+          ],
+          "status": "modified",
+          "purpose": "Add optional bounded joining, progress and short-lock queueing; check publication ownership and preserve claim recovery."
+        },
+        {
+          "path": "src/lib/cohorts/state.ts",
+          "chunk": "baseline-join",
+          "symbols": ["withCohortSession"],
+          "status": "modified",
+          "purpose": "Thread optional existing OperationMutexOptions to withOperationMutex; default behavior stays unchanged."
+        },
+        {
+          "path": "src/lib/engine/baselines.ts",
+          "chunk": "baseline-join",
+          "symbols": ["ensureWorkflowRepositoryCheckBaselines"],
+          "status": "modified",
+          "purpose": "Opt sibling preparation into joining; propagate progress and preserve capture, release, adoption, and provenance behavior."
+        },
+        {
+          "path": "tests/integration/cohorts-gating.test.ts",
+          "chunk": "baseline-join",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Cover live claim defaults, bounded joining, ownership checks, dead owner, release and timeout."
+        },
+        {
+          "path": "tests/integration/cohort-baseline-concurrency.test.ts",
+          "chunk": "baseline-join",
+          "symbols": [],
+          "status": "new",
+          "purpose": "New synchronized multi-process preparation fixture proving one capture per profile and successful adoption by three siblings."
+        },
+        {
+          "path": "src/lib/engine/prepare-artifacts.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": ["writeInvocationArtifacts"],
+          "status": "modified",
+          "purpose": "Create the planning output scaffold and specification directory after the invocation contract is complete."
+        },
+        {
+          "path": "src/lib/requirements/resolve.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": ["resolveRequirements"],
+          "status": "modified",
+          "purpose": "Resolve the bounded planning scaffold exception to harness ownership, preserving all other invocation kinds and requirements."
+        },
+        {
+          "path": "src/lib/cohorts/specifications.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": ["finalizePlanningReferences"],
+          "status": "new",
+          "purpose": "Proposed new exported finalizer. Reuse buildContextReference and atomic I/O; preflight run-local paths and update only bounded reference metadata with audit evidence."
+        },
+        {
+          "path": "src/lib/engine/submit-helpers.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": ["materializeOutputSubmission"],
+          "status": "modified",
+          "purpose": "Call the shared finalizer for the active unratified planning output after full-output/merge-patch materialization, before consumers validate it."
+        },
+        {
+          "path": "tests/integration/planning-workflow.test.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Cover prelaunch scaffolding, resolved ownership, no-shell file-only completion, directory provisioning and preservation on reprepare."
+        },
+        {
+          "path": "tests/unit/requirements-scaffold.test.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Preserve manifest copying, idempotence, authored-output refusal, and untouched-scaffold detection."
+        },
+        {
+          "path": "tests/unit/planning-reference-finalization.test.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "new",
+          "purpose": "New focused tests for canonical basis, all-child refresh, idempotence, path/symlink restrictions, write failures, concurrent parent edits and worker-claim preservation."
+        },
+        {
+          "path": "tests/integration/output-validate-parity.test.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Assert validation/submission parity for full and merge-patch plans and unchanged workflow state during draft validation."
+        },
+        {
+          "path": "tests/unit/cohort-plan-validator.test.ts",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Retain strict pending/stale/missing-reference rejection; prove finalized drafts satisfy existing handlers."
+        },
+        {
+          "path": "library/workflows/planning/prompts/plan.md",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Replace no-shell worker command prerequisites with harness preparation/finalization and explicit draft reference semantics."
+        },
+        {
+          "path": "library/personas/planner.md",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Document executable bookkeeping ownership and retain evidence and nonfabrication duties."
+        },
+        {
+          "path": "governance/policies/AUTO-001.json",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Make the bounded planning scaffold ownership exception explicit without transferring unrelated automation."
+        },
+        {
+          "path": "governance/policies/COHORT-001.json",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Document harness-owned draft reference finalization before ratification; preserve canonical audited-reference invariants."
+        },
+        {
+          "path": "docs/workflow-authoring.md",
+          "chunk": "planner-bookkeeping",
+          "symbols": [],
+          "status": "modified",
+          "purpose": "Describe draft finalization during output materialization, its audit and path bounds, and strict final validation."
+        }
+      ],
+      "dependencies": [
+        "Reuse src/lib/io.ts::withOperationMutex and OperationMutexOptions; do not change its global defaults.",
+        "Reuse src/lib/context/references.ts::buildContextReference and its canonical trimmed reference basis.",
+        "Reuse src/lib/requirements/scaffold.ts::scaffoldStageOutput and isUntouchedScaffold.",
+        "Preserve src/lib/validators/cohort-plan.ts::validateCohortPlan and validateChildSpecifications as pure strict consumers.",
+        "Use existing workflow fixtures, process synchronization patterns, requirement resolution, projection automation and docs index generation. No added package is needed."
+      ],
+      "risks": [
+        "Source and runtime roots differ: every delivery source edit targets the managed workspace, while specification paths and harness commands use the declared harness root.",
+        "No mandatory persistent-state migration is planned; optional join inputs and existing baseline pointers must remain backward compatible.",
+        "Lock inversion or holding the cohort lock during capture would serialize unrelated actions; tests must show the wait happens after unlocking.",
+        "Valid failed-diagnostic baselines must remain distinguishable from incomplete or environment-blocked capture.",
+        "Finalization before ratification is permitted bounded metadata materialization, not permission to refresh approved or foreign context silently.",
+        "The original TRACE-04 execution conflict is retained in the unchanged parent. The supervisor supplied the canonical parent digest for this retry, resolving the reference blocker without changing worker permissions. The permanent harness preparation/finalization repair remains assigned to planner-bookkeeping; current deterministic validation is pending.",
+        "Generated instruction projections and function-index entries must be refreshed through existing automation in delivery, not edited by this planner."
+      ],
+      "migration": "No package, active configuration, release metadata, baseline pointer schema, or mandatory cohort-state migration. Newly prepared planning invocations gain the executable contract; prior invocation snapshots and approvals are not rewritten.",
+      "validation": [
+        {
+          "scope": "routing",
+          "method": "Existing cohort-plan-routing integration fixture extended through actual CLI approval and retry.",
+          "expected": "Multi-chunk approval succeeds with workspace targeting; one-chunk and failure paths remain correct and idempotent."
+        },
+        {
+          "scope": "baseline coordination",
+          "method": "Three process-level prepares synchronized by a barrier; count required baseline profile executions and compare durable pointers. Inject short join/update budgets for failure cases.",
+          "expected": "One capture per required profile, three completed invocations, accurate capture provenance, explicit recoverable failures, and unchanged unrelated lock behavior."
+        },
+        {
+          "scope": "no-shell planning",
+          "method": "Actual restricted worker-tool fixture fills the prepared scaffold and writes parent/children; common harness finalization precedes existing strict validators.",
+          "expected": "Valid plan without worker shell or supervisor digest edits; parent revisions refresh every child and leave substantive claims unchanged."
+        },
+        {
+          "scope": "output parity and safety",
+          "method": "Full-output and merge-patch validation/submission parity plus run-local path, symlink, missing input, concurrent edit, and write-failure tests.",
+          "expected": "Both entry paths accept the same finalized data; unsafe/incomplete/foreign or approved context never becomes a pass or an out-of-scope write."
+        },
+        {
+          "scope": "instructions and delivery gates",
+          "method": "Review canonical instruction ownership and regenerated projections/indexes. Delivery iterates with the declared impacted profile; the harness runs static, configuration, fast and impacted-integration gates and the resolved integrated release profile.",
+          "expected": "No no-shell worker prerequisite requires unavailable tools; no profile is duplicated as a QA case and no verification-level change is assumed."
+        }
+      ]
+    },
+    "acceptance_criteria": [
+      {
+        "id": "AC-01",
+        "statement": "Approving a managed-worktree planning run with several chunks and --worktree starts cohort 1 with distinct derived chunk worktrees and preserves the recorded approval.",
+        "maps_to": ["US-01", "C-01", "C-02", "C-06"],
+        "proof": "test",
+        "verification": {
+          "method": "Extend cohort-plan-routing integration coverage through CLI operator and away approvals of a worktree-bound multi-chunk fixture.",
+          "expected": "Approval remains durable, exactly one session starts only the first cohort, and every chunk has its own derived worktree without COHORT_WORKTREE_NOT_APPLICABLE."
+        }
+      },
+      {
+        "id": "AC-02",
+        "statement": "Single-chunk explicit and default worktree selection, routing opt-out, and genuine route guards retain their existing behavior.",
+        "maps_to": ["US-01", "C-06"],
+        "proof": "test",
+        "verification": {
+          "method": "Retain and extend routing integration cases for explicit worktree, inherited/default worktree, no-autostart, unavailable child and dirty planning tree.",
+          "expected": "Single delivery uses the intended tree; opt-out starts nothing; actual invalid inputs still produce their concrete refusal rather than being ignored."
+        }
+      },
+      {
+        "id": "AC-03",
+        "statement": "Automatic routing and explicit retry reuse an existing handoff without duplicate sessions or runs, and genuine failures retain the approved plan plus an actionable retry command.",
+        "maps_to": ["US-01", "C-01", "C-06"],
+        "proof": "test",
+        "verification": {
+          "method": "Exercise automatic routing, repeated route, and failure-then-retry; assert durable handoffs, approval and run/session counts.",
+          "expected": "One delivery handoff is adopted, approval is unchanged, duplicate work does not start, and the recorded recovery command routes the same plan."
+        }
+      },
+      {
+        "id": "AC-04",
+        "statement": "Three ready sibling prepares started concurrently complete against one shared baseline collection, with one execution per required interior profile and matching adopted artifact provenance.",
+        "maps_to": ["US-02", "C-02", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "Launch three preparation processes in an isolated cohort fixture; hold the capture winner on a barrier until followers join; count commands and compare state.",
+          "expected": "All three create valid invocations, each required interior profile executes once, no release/full baseline runs, and all pointers name the same artifact/capturer/capture workspace without contention errors."
+        }
+      },
+      {
+        "id": "AC-05",
+        "statement": "Released or dead capture ownership elects one replacement, foreign publication is rejected, capture/probe failure leaves no partial published baseline, and an expired join reports its holder and retry command.",
+        "maps_to": ["US-02", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "Run tests/integration/cohorts-gating.test.ts and tests/integration/cohort-baseline-concurrency.test.ts through the existing test runner. Their isolated fixtures use process barriers and injected short budgets for owner exit, explicit release, competing successors, foreign record, capture exception, environment-probe block and timeout. Assert the recovery command as diagnostic text; the verifier does not execute the lifecycle command.",
+          "expected": "Exactly one successor owns capture, existing valid failed-check baseline semantics remain intact, incomplete collections are not published, and timeout names cohort/holder/bound with ./bin/pan prepare <waiting-run-id>."
+        }
+      },
+      {
+        "id": "AC-06",
+        "statement": "Brief cohort mutex contention queues baseline bookkeeping within its bound, capture waits outside the session mutex, and unrelated run operations retain immediate contention refusal.",
+        "maps_to": ["US-02", "C-03"],
+        "proof": "test",
+        "verification": {
+          "method": "Hold/release the short cohort mutex while baseline operations enter; separately keep a capture open and attempt a different session update and a conflicting same-run operation.",
+          "expected": "Baseline updates complete after a brief holder exits, unrelated session work proceeds during capture, and ordinary same-run mutation keeps RUN_OPERATION_IN_PROGRESS rather than entering a new global queue."
+        }
+      },
+      {
+        "id": "AC-07",
+        "statement": "A planning invocation receives its output scaffold and specification directory before a no-shell worker starts, re-preparation preserves authored work, and an untouched scaffold is not completion evidence.",
+        "maps_to": ["US-03", "C-04"],
+        "proof": "test",
+        "verification": {
+          "method": "Prepare the real planning workflow under a restricted-tool fixture; inspect output and directory before worker launch; repeat preparation and exercise untouched-scaffold detection.",
+          "expected": "The complete contract is scaffolded before launch without a worker shell, authored content survives, and observers do not mark an untouched scaffold completed."
+        }
+      },
+      {
+        "id": "AC-08",
+        "statement": "A file-only planning fixture reaches valid child references through harness finalization, and a parent revision refreshes every declared child using the canonical trimmed basis without changing worker claims.",
+        "maps_to": ["US-03", "C-04", "C-05"],
+        "proof": "test",
+        "verification": {
+          "method": "Fill a prepared plan with three draft children using only allowed file tools; finalize and validate; revise the parent including whitespace and Unicode cases; compare every reference, audit and substantive field before/after.",
+          "expected": "All declared references equal buildContextReference and the canonical digest command basis; a repeat is idempotent, revision leaves no stale/pending value, and worker verdicts, risks, proofs and scope are byte-preserved."
+        }
+      },
+      {
+        "id": "AC-09",
+        "statement": "Output validation and submission finalize the same materialized plan, including merge patches, reject unsafe or incomplete inputs explicitly, and never rewrite ratified or foreign specifications.",
+        "maps_to": ["US-03", "C-01", "C-05", "C-07"],
+        "proof": "test",
+        "verification": {
+          "method": "Extend output-validate parity for full and merge-patch forms plus finalizer cases for traversal, symlink escapes, duplicate/ambiguous blocks, missing children, write failure, parent mutation, and foreign/approved plans.",
+          "expected": "Both paths agree; active draft reference metadata alone may change; every invalid case produces a concrete failure without gate advancement or out-of-scope writes. Direct child validation still rejects stale or pending digests."
+        }
+      },
+      {
+        "id": "AC-10",
+        "statement": "Planning prompts, scaffold requirement resolution, and guidance assign bookkeeping to the harness, document draft and finalized references, and preserve restricted executor permissions and strict final validators.",
+        "maps_to": [
+          "US-03",
+          "C-04",
+          "C-05",
+          "C-07",
+          "OOS-01",
+          "OOS-02",
+          "OOS-03"
+        ],
+        "proof": "review",
+        "verification": {
+          "method": "Review canonical prompts/policies, scoped requirement resolution, executor allowlists, finalization audit boundaries, and generated projections/function index after repository automation.",
+          "expected": "No-shell planning has no worker scaffold/digest command prerequisite, no unrelated persona ownership or permission expansion occurs, and finalization cannot manufacture an implementation, UI, or release verdict."
+        }
+      },
+      {
+        "id": "AC-11",
+        "statement": "The repair handoff assigns intake reconciliation to the integrated release owner and requires evidence for TRACE-08, TRACE-09, and TRACE-04 after implementation and release.",
+        "maps_to": [
+          "US-01",
+          "C-01",
+          "C-02",
+          "C-07",
+          "C-08",
+          "OOS-01",
+          "OOS-02",
+          "OOS-03"
+        ],
+        "proof": "review",
+        "verification": {
+          "method": "Review the chunk and integrated-release handoff, finding identifiers, evidence links and repair-scope boundaries.",
+          "expected": "Each authorized finding has an evidence owner; the integrated release owner is instructed to update the intake against actual repair/release commits, without premature completion claims or parallel intake edits."
+        }
+      }
+    ],
+    "test_plan": [],
+    "open_question_dispositions": [
+      {
+        "id": "Q-01",
+        "disposition": "resolved",
+        "answer": "The CLI forwards --worktree as DeliveryRouteOptions.worktreeName. The shared route rejects it on the multi-chunk branch, while the single branch consumes it. Apply delivery-worktree selection only after choosing the single route; multi-chunk commands retain workspace targeting while fan-out derives separate worktrees.",
+        "evidence": [
+          "src/cli/args.ts::deliveryRouteOptions",
+          "src/lib/cohorts/delivery.ts::routeDelivery and startSingleDeliveryRun",
+          "src/lib/cohorts/state.ts::DeliveryRouteOptions",
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md:199-206"
+        ]
+      },
+      {
+        "id": "Q-02",
+        "disposition": "resolved",
+        "answer": "Current preparation holds a per-run mutex. Cohort state updates use an immediately refusing shared mutex, and another live baseline claimant independently causes COHORT_BASELINE_CAPTURE_IN_PROGRESS. Capture already runs outside the session critical section. Coordinate both the short state update and the long claim rather than serializing supervisor preparation or broadening all locks. This does not assert the historical mutex holder's duration.",
+        "evidence": [
+          "src/lib/engine/prepare.ts::prepareInvocation",
+          "src/lib/cohorts/state.ts::withCohortSession",
+          "src/lib/cohorts/baselines.ts::claimCohortBaselineCapture",
+          "src/lib/engine/baselines.ts::ensureWorkflowRepositoryCheckBaselines",
+          "src/lib/io.ts::withOperationMutex and OperationMutexOptions",
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md:207-214"
+        ]
+      },
+      {
+        "id": "Q-03",
+        "disposition": "resolved",
+        "answer": "Choose harness preparation and a bounded common finalizer instead of new worker permissions. The scaffold and reference builder already supply the necessary deterministic primitives, but preparation does not yet wire them for planning and finalization is proposed work. Move the planning-specific automation contract to executable harness ownership, retain strict final validators, and use the common materialized-output boundary for parity.",
+        "evidence": [
+          "src/lib/engine/prepare-artifacts.ts::writeInvocationArtifacts",
+          "src/lib/requirements/scaffold.ts::scaffoldStageOutput and isUntouchedScaffold",
+          "src/lib/context/references.ts::buildContextReference",
+          "src/lib/engine/submit-helpers.ts::materializeOutputSubmission",
+          "src/lib/engine/output-validation.ts::validateOutputForSubmission",
+          "src/lib/validators/cohort-plan.ts::validateChildSpecifications",
+          "src/lib/executors/copilot-cli.ts::COPILOT_READ_TOOLS, COPILOT_WRITE_TOOLS and COPILOT_SHELL_TOOLS",
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md:162-172",
+          "Current execution tool inventory: view, rg, glob, apply_patch, and a parallel wrapper; no command tool."
+        ]
+      }
+    ],
+    "cohort_plan": {
+      "parent_spec_path": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md",
+      "chunks": [
+        {
+          "id": "route-worktrees",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/route-worktrees.md",
+          "depends_on": [],
+          "title": "Route worktree-bound approvals correctly",
+          "acceptance_criteria": ["AC-01", "AC-02", "AC-03", "AC-11"]
+        },
+        {
+          "id": "baseline-join",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/baseline-join.md",
+          "depends_on": [],
+          "title": "Join one shared baseline during concurrent preparation",
+          "acceptance_criteria": ["AC-04", "AC-05", "AC-06"]
+        },
+        {
+          "id": "planner-bookkeeping",
+          "cohort_index": 1,
+          "child_spec_path": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/planner-bookkeeping.md",
+          "depends_on": [],
+          "title": "Make no-shell planning bookkeeping executable",
+          "acceptance_criteria": ["AC-07", "AC-08", "AC-09", "AC-10"]
+        }
+      ],
+      "edges": [],
+      "cohorts": [
+        {
+          "index": 1,
+          "chunks": ["route-worktrees", "baseline-join", "planner-bookkeeping"]
+        }
+      ],
+      "shared_items": ["C-01", "C-02", "C-07", "OOS-01", "OOS-02", "OOS-03"],
+      "parallel_justification": "Each finding has an independent operator outcome, distinct primary source and regression boundary, and a valid standalone completion state. Three isolated runs reduce review coupling and fit the default parallelism of four; one integrated release retains shared release safety. There is no prerequisite edge.",
+      "readiness": "ready_for_harness_validation_before_ratification"
+    },
+    "retry_remediation": {
+      "prior_invocation_id": "01_plan-1_7a2e6888",
+      "feedback_path": "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/decisions/away-feedback-1.md",
+      "preserved_scope": ["TRACE-08", "TRACE-09", "TRACE-04"],
+      "incidents": [
+        {
+          "id": "canonical-parent-reference",
+          "status": "solved",
+          "cause": "The file-only worker could not invoke the required canonical digest operation during attempt 1.",
+          "resolution": "The supervisor ran the canonical command from the harness root and recorded the result in the remediation feedback. This worker copied that supplied digest into all three child references and updated their status notes while leaving the parent unchanged.",
+          "command": "./bin/pan context digest runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md",
+          "command_owner": "supervisor",
+          "content_sha256": "271063a2aa3ebf7599df45e6cd35992aa080a6beb319e3fbd89edd3f496d4269",
+          "evidence": [
+            "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/decisions/away-feedback-1.md",
+            "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/route-worktrees.md",
+            "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/baseline-join.md",
+            "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/planner-bookkeeping.md"
+          ]
+        },
+        {
+          "id": "constraint-and-exclusion-registry",
+          "status": "solved",
+          "cause": "The plan trace validator treated each prior prose string as its complete identifier, so C-* and OOS-* mappings did not resolve.",
+          "resolution": "Replaced only those two arrays with records exposing id and statement. Retained the original text, criterion mappings, child ownership, and shared-item declarations.",
+          "evidence": [
+            "src/lib/validators/stage/plan-trace.ts::validatePlanTrace",
+            "src/lib/validators/cohort-plan.ts::originatingItemId",
+            "data.product_spec.constraints",
+            "data.product_spec.out_of_scope"
+          ]
+        },
+        {
+          "id": "ac05-evidence-producer",
+          "status": "solved",
+          "cause": "The recovery-command assertion contained pan prepare while verification named no permitted evidence producer, triggering criterionProducerIssues.",
+          "resolution": "AC-05 now names the existing cohorts-gating test file and planned concurrency test file as producers. The timeout and exact recovery-command assertion remain expected diagnostic output; takeover and failure coverage remain intact.",
+          "evidence": [
+            "src/lib/validators/stage/plan-trace.ts::criterionProducerIssues",
+            "data.acceptance_criteria.AC-05",
+            "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/baseline-join.md"
+          ]
+        }
+      ],
+      "attestation_basis": {
+        "status": "complete_card_and_required_context_read",
+        "delivery": "external_executor_inline",
+        "contract_manifest": "absent_in_current_invocation_snapshot",
+        "digest": "No worker contract digest was delivered. None is invented or copied from the supervisor card. The supplied parent digest is a separate context-reference digest.",
+        "evidence": [
+          "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/invocations/00_plan-2_9425fcdb.md",
+          "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/invocations/00_plan-2_9425fcdb.json",
+          "src/lib/engine/prepare-artifacts.ts::writeInvocationArtifacts",
+          "src/lib/validation/attestation.ts::validateInvocationAttestation"
+        ],
+        "required_reads": [
+          "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/request.md",
+          "runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md",
+          "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/outputs/01_plan-1_7a2e6888.json",
+          "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/decisions/away-feedback-1.md",
+          "library/personas/planner.md",
+          "AGENTS.md",
+          "docs/target-repo-primer.md",
+          "runtime/repository-checks.json"
+        ]
+      },
+      "advisory_scaffold": {
+        "status": "not_run_by_worker",
+        "disposition": "Do not replay over authored work, per supervisor remediation feedback."
+      },
+      "validation": {
+        "status": "pending_supervisor_execution",
+        "worker_commands_run": [],
+        "worker_review": "Read the validator implementations and reviewed the revised registries, producer wording, all eleven proof tags, three child references, and unchanged cohort ownership. This is file review, not an executed deterministic check.",
+        "next_action": "From the harness root, the supervisor runs output validation for the current output and invocation before assessment or ratification.",
+        "cwd": "/Users/alen/Dev/pancreator",
+        "command": "./bin/pan output validate --run 63264_Oct-15-1082_trace-fricti --file runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/outputs/00_plan-2_9425fcdb.json --invocation runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/invocations/00_plan-2_9425fcdb.json"
+      }
+    }
+  },
+  "specifications": {
+    "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md": "# TRACE friction repair: parent specification\n\n## Status\n\nPlanning draft for run `63264_Oct-15-1082_trace-fricti`, invocation\n`01_plan-1_7a2e6888`. This is not a ratified plan. The substantive plan is\nrecorded below; canonical child-reference finalization is blocked by the\ncurrent execution capability. No source changes, workflow lifecycle actions,\nor validation commands were performed by this planner.\n\n## Request and evidence\n\nThe operator requests repairs for TRACE-08, TRACE-09, and TRACE-04, using\nmanaged worktree `trace-friction-parallel`. Source paths below resolve in\n`/Users/alen/Dev/pancreator/worktrees/operator/trace-friction-parallel`.\nRuntime paths and commands resolve in `/Users/alen/Dev/pancreator`.\n\nThe original request is\n`runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/request.md`.\nThe complete intake was read by reference:\n\n- Source: `runtime/inbox/queue/63265_Oct-14-0900_trace-copilo-run-friction.md`\n- Selected range: the complete file.\n- Content digest: `sha256:873219a680b28a42d4c71deaa396b8685b3a295a497164db6367e62a54205541`\n- Read when: consult the intake before a decision about the originating findings or scope outside a chunk.\n\nThe authorized definitions are TRACE-04 at lines 162-172, TRACE-08 at\n199-206, and TRACE-09 at 207-214. The intake's repair constraints are at\n430-438. Other findings supply context, not additional authorization.\n\n## Product specification\n\n### Summary\n\nAn approved plan bound to a managed worktree must route successfully whether\nit contains one chunk or several. Sibling delivery runs must be able to\nprepare concurrently while sharing one pre-implementation baseline. A\nplanner without shell access must be able to produce complete planning\nartifacts through harness-provided scaffolding and canonical reference\nfinalization.\n\n### User stories\n\n- US-01: As an operator approving a worktree-bound plan, I want the harness to select the correct delivery route without an incompatible worktree argument stopping fan-out. Origin: TRACE-08.\n- US-02: As a supervisor preparing ready siblings together, I want them to join one shared baseline capture, so ordinary concurrency does not require sequential recovery. Origin: TRACE-09.\n- US-03: As a planner with file tools but no shell, I want output preparation and parent-reference bookkeeping to be executable within my contract, including revisions of the parent. Origin: TRACE-04.\n\n### Constraints\n\n- C-01: Preserve the existing run and operator-owned approval. This stage produces planning artifacts only; source repairs begin in later authorized delivery runs.\n- C-02: Use the selected managed worktree as the planning/integration context. Each parallel delivery chunk receives its own branch and worktree; release preparation happens once after integration through the existing release authority.\n- C-03: Keep exactly one shared baseline per required interior profile, including its capture workspace, capturer, artifact, fingerprint, configuration checks, and existing diagnostic-delta semantics. Never capture the release/full profile merely to prepare a sibling.\n- C-04: Keep the planner's restricted tool policy. Do not grant an unrestricted shell or directory capability merely for output bookkeeping.\n- C-05: Use the canonical trimmed-content reference basis. Never invent, zero-fill, or hand-calculate a digest; every declared child must reach the final parent by an audited reference. A parent revision refreshes all dependent references before ratification.\n- C-06: Preserve single-chunk explicit/default worktree selection, approval durability, routing opt-out, failed-route recovery, and idempotent reuse of existing runs or sessions.\n- C-07: Keep target/source ownership and secret protections. Do not inspect or patch third-party compiled code, dependency trees, or caches. Preserve partial-evidence versus completed-verdict distinctions.\n- C-08: Supply repair evidence for the three authorized findings and a handoff to the integrated release owner to extend the intake and reconcile them against repair and release commits after delivery and release.\n\n### Out of scope\n\n- OOS-01: Repairs to TRACE-01 through TRACE-28 other than TRACE-04, TRACE-08, and TRACE-09, even where the intake reports related symptoms.\n- OOS-02: Native UI fixes, telemetry streaming, usage aggregation, invented cost estimates, and summing duplicate modelMetrics/agentMetrics views. This plan makes no claim that those surfaces are repaired.\n- OOS-03: Changing active configuration, model/executor mappings, verification level, operator approvals, publication authority, or release metadata during this planning stage.\n\n### Questions and dispositions\n\n- Q-01: What does a worktree selection mean for each route?\n  Resolved: `src/cli/args.ts::deliveryRouteOptions` forwards `--worktree`;\n  `src/lib/cohorts/delivery.ts::routeDelivery` rejects that option for\n  multiple chunks, while the single route uses it. Select the route first,\n  pass the option to the single route only, and let a cohort continue to\n  derive distinct worktrees. Evidence: those current source functions,\n  `DeliveryRouteOptions` in `src/lib/cohorts/state.ts`, and TRACE-08.\n- Q-02: Why are sibling preparations incompatible with current baseline coordination?\n  Resolved: `prepareInvocation` holds a per-run lock, but\n  `withCohortSession` refuses a live session lock immediately.\n  `claimCohortBaselineCapture` also throws on a different live capturer;\n  capture itself runs outside the session lock. Both the brief mutex race\n  and the long-lived claim need coordination. Evidence:\n  `src/lib/engine/prepare.ts`, `src/lib/cohorts/state.ts`,\n  `src/lib/cohorts/baselines.ts`, `src/lib/engine/baselines.ts`, and\n  `src/lib/io.ts::withOperationMutex`. This explains current code; it does\n  not assert which lock a historical process held.\n- Q-03: How can no-shell planning satisfy scaffolding and canonical digest requirements?\n  Resolved as an architecture decision: make these bounded operations\n  harness-owned. Preparation invokes the existing scaffold helper and\n  creates the specification directory. A common pre-validation finalizer\n  uses `buildContextReference` to write only declared child-reference\n  metadata. Evidence: current `writeInvocationArtifacts` omits output\n  scaffolding, `scaffoldStageOutput` already supplies the required shape,\n  `buildContextReference` documents the same trimmed basis as the digest\n  command, and both submission paths materialize an output through\n  `materializeOutputSubmission`. TRACE-04 and the current tool inventory\n  establish the capability gap. This finalizer is proposed work, not an\n  existing feature.\n\nNo question asks what an earlier commit removed or guaranteed. No historical\nchange is inferred from the present workspace.\n\n## Engineering plan\n\n### Architecture\n\nUse the existing synchronous engine, durable cohort records, scaffold\nautomation, reference helper, and strict validators. Add no dependency,\nframework, scheduler, broad retry layer, or alternate workflow.\n\n#### Routing\n\nNormalize worktree selection at the route branch in\n`src/lib/cohorts/delivery.ts`, shared by automatic approval and explicit\nretry. A cohort route accepts the command's workspace targeting context\nwithout forwarding a single delivery worktree into fan-out. The route\ncontinues to derive each chunk worktree, check a committed planning tree,\nreuse an existing session, and record a concrete failure and retry command\nfor actual failures. Keep single-delivery routing unchanged. Cover the CLI\napproval boundary, not only a helper call.\n\n#### Baseline coordination\n\nKeep the per-run prepare lock and the short cohort state critical section.\nExtend `withCohortSession` with optional `OperationMutexOptions`; its default\nremains immediate refusal. Only baseline claim/record/release operations opt\ninto a bounded 5,000 ms wait for the short session update.\n\nExtend `claimCohortBaselineCapture` with optional bounded join/progress\noptions. The default preserves its low-level immediate-refusal behavior.\n`ensureWorkflowRepositoryCheckBaselines` opts into joining for up to\n3,600,000 ms. Inspect the durable baseline/claim under the short lock; when\nanother live process owns capture, release the lock and poll at 100 ms\noutside it. Use the repository's synchronous `Atomics.wait` pattern rather\nthan shell timers. Emit a join message immediately and a progress update at\nleast every 60 seconds. Use a monotonic elapsed-time budget.\n\nAfter publication, adopt the recorded pointers. After claim release or a\ndead owner, reacquire under the lock and elect exactly one replacement.\nRecord validates the current claimant before publishing; foreign release\nkeeps its existing no-op semantics. Baseline collection and repository\nchecks stay outside the session lock. Preserve valid failed-check baseline\nrecords; an environment-probe failure or thrown capture does not publish a\npartial collection and releases its claim.\n\nTimeouts identify cohort, holder, elapsed bound, and the exact\n`./bin/pan prepare <waiting-run-id>` recovery command. A timeout is an\nexplicit incomplete preparation, never an empty or passing baseline.\nOrdinary unrelated run operations keep their existing fail-fast behavior.\nThe one-hour join and five-second update bounds are engineering defaults,\nnot new operator policy or test-runtime targets. Tests inject short budgets\nand use deterministic process barriers instead of long real waits.\n\n#### No-shell planning\n\nAfter an invocation's manifest and output contract are complete,\n`writeInvocationArtifacts` invokes `scaffoldStageOutput` for planning\ninvocations and ensures the run's `operator/specs/` directory exists.\nPreserve idempotence and refuse to overwrite worker-authored output.\nAn untouched scaffold must still be recognized by watch as unfinished.\n\nAdd one small module, `src/lib/cohorts/specifications.ts`, exporting\n`finalizePlanningReferences`. Its input is the active planning invocation\nand materialized output; it operates only on the parent and children\ndeclared in that output under the current run's specification directory.\nA worker may write `harness-pending` in the draft reference digest field.\nThat is a declared draft token, never an accepted digest.\n\nInvoke the helper from the common `materializeOutputSubmission` path used\nby output validation and submission, after full-output or merge-patch\nmaterialization, before strict plan/child validators. Both paths therefore\nsee the same final references. Document that draft artifact finalization\ncan occur while validation leaves workflow state unchanged. Direct\nvalidator entry points stay pure and still reject a pending or stale\nreference.\n\nPreflight every declared path and reference block before any writes.\nReject paths outside the active run, traversal, symlink escapes, a parent\nused as a child, duplicate children, missing files, or ambiguous blocks.\nUse the existing `buildContextReference`, including its canonical trimming,\nand existing atomic writes. Update only digest and explicitly\nharness-owned reference-status metadata. Do not rewrite scope, acceptance\ncriteria, proof tags, worker results, risks, or self-evaluations.\n\nFinalize every declared child against one parent snapshot, verify that the\nparent has not changed before accepting the result, and report a concurrent\nedit as an explicit failure requiring a fresh finalization. A failed write\ncannot advance the gate; retry is idempotent. Keep a run-local audit record\nof parent digest and changed reference paths. This happens only for the\nactive unratified planning output; it must not silently repin an already\nratified specification or another run's context.\n\nUpdate the canonical planning prompt, planner guidance, and automation\nownership so no-shell planners are not told to execute the scaffold or\ndigest CLI. The planning scaffold requirement must resolve to the harness;\nleave assessment, spotfix, and source-worker ownership unchanged. Teach\nrequirement resolution the bounded planning exception, rather than changing\nall workflow tools. Preserve strict final digest checks and executor\nallowlists. Regenerate affected projections and function-index entries\nthrough repository automation in delivery.\n\n### Files and dependencies\n\nThe structured stage output lists the exported entry symbols from the\nfunction index. Test and documentation files carry empty symbol lists\nbecause they export no implementation entry point. New symbols are marked\nas proposed additions. Existing `io`, reference, scaffold, and mutex\nhelpers are reuse dependencies, not instructions to edit unrelated code.\n\nPrimary ownership:\n\n| Chunk | Source boundary | Regression boundary |\n| --- | --- | --- |\n| route-worktrees | `src/lib/cohorts/delivery.ts` | `tests/integration/cohort-plan-routing.test.ts` |\n| baseline-join | `src/lib/cohorts/{baselines,state}.ts`, `src/lib/engine/baselines.ts` | `tests/integration/cohorts-gating.test.ts`, new concurrent preparation fixture |\n| planner-bookkeeping | preparation artifacts, requirement resolution, output materialization, new specification finalizer, canonical planning instructions | planning workflow, scaffold, output-validation parity, and child-specification tests |\n\nThere is no chunk dependency. Shared integration risks are semantic:\npreparation must still distinguish an untouched scaffold from finished\noutput, and finalization must run before routing consumes a ratified plan.\nThose existing boundaries remain unchanged.\n\n### Migration and risks\n\nNo new package, configuration setting, release metadata, baseline-pointer\nschema, or mandatory cohort-state migration is required. Join options are\noptional. Existing recorded baselines remain adoptable. Old live claims\nare inspected through the same durable state; do not require a new lock\nfile to recognize them.\n\nPrepared invocations are immutable snapshots. The repair affects new\npreparations; it does not authorize rewriting this invocation or a prior\napproval. A later supervisor may reprepare through the lifecycle API when\nappropriate.\n\nKey risks are lock inversion, accepting partial baseline publication,\nwaiting on a stale claim, finalization outside permitted runtime paths,\naccidentally changing worker claims, and changing parent content after\nreferences have been finalized. The regression cases target each boundary.\nNo release success or production behavior is claimed by this planning\nartifact.\n\n## Acceptance and validation\n\nThe stage output carries the complete AC statements and mappings. Ownership:\n\n| Criteria | Owner | Proof | Required observation |\n| --- | --- | --- | --- |\n| AC-01 | route-worktrees | test | Worktree-bound multi-chunk CLI approval starts the correct fan-out. |\n| AC-02 | route-worktrees | test | Single-delivery selection and routing guards retain their behavior. |\n| AC-03 | route-worktrees | test | Retry and repeated routing adopt one durable handoff. |\n| AC-04 | baseline-join | test | Three concurrent prepares execute each required baseline profile once. |\n| AC-05 | baseline-join | test | Owner failure, takeover, and bounded waiting remain explicit and recoverable. |\n| AC-06 | baseline-join | test | Brief session contention queues without serializing unrelated operations. |\n| AC-07 | planner-bookkeeping | test | No-shell launch receives a real scaffold and specification directory. |\n| AC-08 | planner-bookkeeping | test | Finalization and parent revision refresh every declared reference canonically. |\n| AC-09 | planner-bookkeeping | test | Submission and validation agree and reject unsafe or incomplete input. |\n| AC-10 | planner-bookkeeping | review | Instructions assign executable ownership and preserve restricted tools. |\n| AC-11 | route-worktrees | review | Delivery evidence reaches intake reconciliation after integrated release. |\n\nAll criteria use test or review proof. No rendered browser/app surface\nchanges; `data.test_plan` is deliberately empty. Browser QA is not owed.\n\nDelivery agents use the `impacted` iteration profile declared in\n`runtime/repository-checks.json` against the changed workspace. Existing\nstatic, configuration, fast, and impacted-integration gates remain\nharness-owned. The integrated release uses the existing resolved release\nprofile; this plan requests no verification-level change. No profile was\nrun by the planner.\n\n## Cohort hierarchy and traceability\n\nOne cohort contains `route-worktrees`, `baseline-join`, and\n`planner-bookkeeping`. Edges are empty and every `depends_on` is empty.\nThe default maximum parallelism of four accommodates three chunks. The\nharness creates separate delivery-chunk runs and integrates their verified\nbranches before starting one release run.\n\nThe split is justified because each finding is independently repairable\nand has a separate primary module/test boundary. Combining them would\ncouple a route regression, cross-process baseline changes, and planning\ncontract changes in one implementation and review. One extra release is\nnot introduced. Each chunk remains complete and useful if its siblings\nare delayed.\n\n| Originating items | Disposition |\n| --- | --- |\n| US-01, C-06, C-08, Q-01 | Owned by route-worktrees. |\n| US-02, C-03, Q-02 | Owned by baseline-join. |\n| US-03, C-04, C-05, Q-03 | Owned by planner-bookkeeping. |\n| C-01, C-02, C-07, OOS-01, OOS-02, OOS-03 | Shared by all three children and declared in `shared_items`. |\n\nAll originating items are assigned. No product question is deferred or\nescalated. The completion blocker below concerns execution capability, not\nan unanswered scope decision.\n\n## Current contract conflict and recovery\n\nUnsolved incident: this planner has view, glob, rg, and apply_patch\ncapabilities, but no command execution tool. The invocation declares\nadvisory `pan output scaffold` automation before authoring and requires\n`pan context digest` after the parent is written. Neither operation was\ninvocable. The advisory scaffold gap is recorded; the mandatory canonical\ndigest requirement cannot be satisfied through an allowed file-only\naction and blocks completion. The specifications directory and output\nalso did not exist when inspected.\n\nThese drafts are authored deliverables and a terminal conflict report,\nnot a claim that scaffold automation ran. Child blocks deliberately state\n`unavailable-command-not-run`, rather than a zero, stale, or invented\ndigest. They are not validator-ready. No command was attempted and no\nautomation success or validation result is fabricated.\n\nThe smallest current-run workaround is for the supervisor with command\ncapability to run the canonical context digest command from the harness\nroot on this final parent, fill only the three reference digest fields and\ntheir explicit status notes, and run output validation. The supervisor\nmust retain this incident in the retry's risks. The advisory scaffold gap\ndoes not independently require a replay; do not overwrite this authored\nreport or represent the missing operation as a command success. The durable\nrepair is the planner-bookkeeping chunk; it removes the need for supervisor\nreference edits on future planning invocations.\n\nExact canonical digest command:\n\n```sh\n./bin/pan context digest runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md\n```\n\nThe output's `data.completion_blocker` records the original scaffold and\nvalidation commands, their targets, and their unexecuted status. This\nplanner has not submitted, approved, paused, or reconfigured the run.\n",
+    "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/route-worktrees.md": "# Route worktree-bound plans\n\n## Parent specification\n\n- Source: `runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md`\n- Selected range: the complete file.\n- Content digest: `sha256:271063a2aa3ebf7599df45e6cd35992aa080a6beb319e3fbd89edd3f496d4269`\n- Reference status: current; canonical digest supplied by the supervisor in `runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/decisions/away-feedback-1.md`.\n- Read when: read the parent before deciding shared constraints, integration behavior, or another chunk's scope.\n\n## Objective\n\nRepair TRACE-08 so approval of a managed-worktree planning run reaches\ndelivery without a cohort receiving an incompatible single-worktree\nselection.\n\n## In scope\n\n- Own US-01, C-06, C-08, and Q-01.\n- Share C-01, C-02, C-07, OOS-01, OOS-02, and OOS-03 with the other chunks.\n- Select the route before applying the delivery-worktree option in `src/lib/cohorts/delivery.ts`. Both approval and retry use that branch.\n- Preserve the worktree used to target the approval command. For fan-out, derive one worktree per chunk through the existing cohort implementation.\n- Retain explicit/default single-delivery selection, opt-out, clean-tree guards, session/run adoption, and durable failure recovery.\n- Add a CLI-level approval regression using a worktree-bound planning fixture, as well as route and retry cases.\n- Provide the integrated release owner a reconciliation handoff for the three authorized findings; this chunk does not edit the live intake during concurrent delivery.\n\n## Out of scope\n\nBaseline synchronization and planner finalization belong to the sibling\nchunks. Do not broaden this repair to telemetry, native UI, other intake\nfindings, operator approval changes, or publication.\n\n## Acceptance criteria\n\n1. AC-01 [proof: test] Approving a managed-worktree planning run with several chunks and --worktree starts cohort 1 with distinct derived chunk worktrees and preserves the recorded approval.\n2. AC-02 [proof: test] Single-chunk explicit and default worktree selection, routing opt-out, and genuine route guards retain their existing behavior.\n3. AC-03 [proof: test] Automatic routing and explicit retry reuse an existing handoff without duplicate sessions or runs, and genuine failures retain the approved plan plus an actionable retry command.\n4. AC-11 [proof: review] The repair handoff assigns intake reconciliation to the integrated release owner and requires evidence for TRACE-08, TRACE-09, and TRACE-04 after implementation and release.\n\n## Dependencies\n\nNo chunk dependencies. Reuse existing delivery routing, worktree derivation,\nplan parsing, and handoff persistence. This chunk is independently useful\nwithout either sibling.\n\n## Validation\n\nExtend `tests/integration/cohort-plan-routing.test.ts`. Create a planning\nrun in a managed worktree, record a multi-chunk ratified plan through the\nfixture helpers, and approve through the CLI with its worktree selection.\nExpect one approved plan, one cohort, only first-cohort runs, and different\nchunk worktrees. Repeat through operator and away approval paths.\n\nExercise one-chunk explicit/default selection, no-autostart, dirty planning\ntree refusal, failure followed by retry, and a repeated successful route.\nAssert run/session counts and durable handoff records, not only exit text.\nUse the repository's impacted iteration lane; leave deterministic gate\nprofiles and release validation to the harness.\n\n## Handoff contract\n\nDeliver a verified delivery-chunk branch, tests, and finding-specific\nevidence. Release metadata belongs to the one integrated release run.\nThe release owner extends the originating intake after delivery and release\nand cites the repair/release commits for the three authorized findings.\n\nThis child governs its own chunk scope and wins within that scope. The\nparent governs system-wide and cross-chunk context and wins for that\ncontext. Consult the parent by reference; do not copy its body.\n\nAttempt 2 completes this reference using the supervisor's canonical command\nresult recorded in the remediation feedback. The parent remains unchanged;\nits blocker narrative records the historical first attempt. This worker\nran no command. The revised stage output records the recovery, and harness\nvalidation remains pending before ratification or downstream delivery.\n",
+    "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/baseline-join.md": "# Join shared baseline preparation\n\n## Parent specification\n\n- Source: `runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md`\n- Selected range: the complete file.\n- Content digest: `sha256:271063a2aa3ebf7599df45e6cd35992aa080a6beb319e3fbd89edd3f496d4269`\n- Reference status: current; canonical digest supplied by the supervisor in `runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/decisions/away-feedback-1.md`.\n- Read when: consult the parent before changing a common workflow guarantee or a sibling's interface.\n\n## Objective\n\nRepair TRACE-09 so concurrent sibling preparations share one baseline\ncapture instead of requiring the supervisor to retry ready siblings\nsequentially.\n\n## In scope\n\n- Own US-02, C-03, and Q-02.\n- Share C-01, C-02, C-07, OOS-01, OOS-02, and OOS-03 across the cohort.\n- Add optional mutex options to `withCohortSession`; preserve its default refusal behavior.\n- Give baseline state updates a bounded 5,000 ms queue and the engine's claim operation a 3,600,000 ms join budget, with injectable short budgets for tests.\n- Inspect the durable claim under the session mutex, then wait outside it. Poll with the existing synchronous wait pattern at 100 ms, reporting progress on entry and at least every 60 seconds.\n- On publication, adopt the same pointers; on dead/released ownership, elect one capturer. Validate ownership before recording.\n- Preserve failed-diagnostic baseline semantics, capture provenance, probe failures, and claim cleanup. Do not publish partial profile sets.\n- Cover real concurrent prepare processes with deterministic synchronization, not a sequence of helper calls posing as concurrency.\n\n## Out of scope\n\nThe routing and no-shell planner contracts are owned elsewhere. Do not\nchange ordinary run-operation mutex policy, add a global queue, move\nrepository checks into the session lock, or change release-profile\nexecution.\n\n## Acceptance criteria\n\n1. AC-04 [proof: test] Three ready sibling prepares started concurrently complete against one shared baseline collection, with one execution per required interior profile and matching adopted artifact provenance.\n2. AC-05 [proof: test] Released or dead capture ownership elects one replacement, foreign publication is rejected, capture/probe failure leaves no partial published baseline, and an expired join reports its holder and retry command.\n3. AC-06 [proof: test] Brief cohort mutex contention queues baseline bookkeeping within its bound, capture waits outside the session mutex, and unrelated run operations retain immediate contention refusal.\n\n## Dependencies\n\nNo sibling dependency. Reuse `withOperationMutex` and its\n`OperationMutexOptions`, process liveness checks, existing cohort\nclaim/pointer fields, and the repository-check capture pipeline.\nDo not introduce a mandatory persistent-state migration.\n\n## Validation\n\nExtend `tests/integration/cohorts-gating.test.ts` and add\n`tests/integration/cohort-baseline-concurrency.test.ts`. Start three\nseparate preparation processes in isolated fixture worktrees. Hold the\nwinner's baseline command on a deterministic barrier until both followers\nhave reached the join path, then release it. Count profile invocations and\ncompare all recorded pointers, capturer identities, and capture workspace.\nEvery preparation must produce its own valid invocation without contention\nrefusals.\n\nUse controlled claim-owner exit and explicit release for takeover cases.\nRun these cases through the named test files, including competing successors,\nforeign publication, capture exception, and environment-probe block. Assert\nexactly one replacement, no partial published collection, and preservation\nof valid failed-check baseline semantics. Inject a short join deadline;\nassert that the timeout names the cohort, holder, elapsed bound, and exact\n`./bin/pan prepare <waiting-run-id>` recovery command as diagnostic output.\nThe test runner produces this evidence; the verifier does not execute that\nlifecycle command. Check unprepared state instead of measuring host wall\ntime. Hold the short session mutex separately to exercise the other\ncontention path. Confirm ordinary same-run mutation still refuses concurrent\nuse.\n\nRun selected impacted tests during iteration. The harness owns configuration,\nstatic, fast, and impacted integration gates.\n\n## Handoff contract\n\nReturn a verified chunk branch and evidence connecting the concurrency,\nfailure, and provenance assertions to TRACE-09. Provide that evidence to\nthe integrated release owner for later intake reconciliation.\n\nFor this unit, the child is authoritative and wins on its own scope. Shared\nsystem context is governed by the parent, which wins across chunks.\nResolve the parent through the audited reference rather than a copied\nspecification.\n\nAttempt 2 completes this reference using the supervisor's canonical command\nresult recorded in the remediation feedback. The parent remains unchanged;\nits blocker narrative records the historical first attempt. This worker\nran no command. The revised stage output records the recovery, and harness\nvalidation remains pending before ratification or downstream delivery.\n",
+    "runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/planner-bookkeeping.md": "# Make no-shell planning executable\n\n## Parent specification\n\n- Source: `runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/operator/specs/parent-specification.md`\n- Selected range: the complete file.\n- Content digest: `sha256:271063a2aa3ebf7599df45e6cd35992aa080a6beb319e3fbd89edd3f496d4269`\n- Reference status: current; canonical digest supplied by the supervisor in `runtime/logs/workflows/63264_Oct-15-1082_trace-fricti/agent/decisions/away-feedback-1.md`.\n- Read when: read the parent before an ownership decision spans planning, delivery, or common policies.\n\n## Objective\n\nRepair TRACE-04 by assigning deterministic planning bookkeeping to the\nharness, so a planner restricted to file tools can finish a valid plan\nwithout fabricated digests or supervisor field repairs.\n\n## In scope\n\n- Own US-03, C-04, C-05, and Q-03.\n- Share C-01, C-02, C-07, OOS-01, OOS-02, and OOS-03 with sibling work.\n- Prepare the output scaffold and run-local specification directory before launch, after the complete invocation contract is available.\n- Reuse `scaffoldStageOutput` without overwriting authored work; keep untouched scaffolds nonterminal to observers.\n- Add `finalizePlanningReferences` in `src/lib/cohorts/specifications.ts` and invoke it through the shared `materializeOutputSubmission` boundary after merge-patch resolution.\n- Accept `harness-pending` only as an explicitly documented draft digest token. Strict child validators still require a canonical digest after harness finalization.\n- Use `buildContextReference` for the parent's trimmed-content digest. Finalize all declared children from one snapshot and audit only reference metadata changes.\n- Bound every write to declared files inside the active run's specifications directory; preflight traversal, aliases, symlinks, missing files, duplicates, and reference-block ambiguity.\n- Reject concurrent parent edits and unsafe finalization explicitly; never change worker verdicts, scope, proof tags, or risks to make a plan pass.\n- Wire the same finalization into validation and submission, restricted to the active unratified planning output. Do not repin approved or foreign plans.\n- Align canonical planning instructions and the planner's scaffold requirement with harness ownership while preserving other personas' requirements and restricted tool allowlists.\n\n## Out of scope\n\nDo not enable a shell, introduce a new executor, change existing approvals,\nrepair other read-only stages, or relax digest verification. The separate\nroute and shared-baseline fixes are not prerequisites.\n\n## Acceptance criteria\n\n1. AC-07 [proof: test] A planning invocation receives its output scaffold and specification directory before a no-shell worker starts, re-preparation preserves authored work, and an untouched scaffold is not completion evidence.\n2. AC-08 [proof: test] A file-only planning fixture reaches valid child references through harness finalization, and a parent revision refreshes every declared child using the canonical trimmed basis without changing worker claims.\n3. AC-09 [proof: test] Output validation and submission finalize the same materialized plan, including merge patches, reject unsafe or incomplete inputs explicitly, and never rewrite ratified or foreign specifications.\n4. AC-10 [proof: review] Planning prompts, scaffold requirement resolution, and guidance assign bookkeeping to the harness, document draft and finalized references, and preserve restricted executor permissions and strict final validators.\n\n## Dependencies\n\nNo chunk dependency and no new runtime package. Reuse the scaffold and\ncontext-reference helpers, atomic writes, requirement applicability, output\nmaterialization, and child validators. A small dedicated finalizer keeps\nreference mutation out of pure validator handlers.\n\n## Validation\n\nExtend planning workflow preparation and requirements-scaffold tests.\nExercise a file-only worker fixture under the actual restricted allowlist:\nfill its existing scaffold, write a parent and at least three children,\nthen let the harness finalize and run the existing plan/child validators.\nAssert that no worker shell command or supervisor reference edit occurred.\n\nChange the parent text, including non-ASCII content and surrounding\nwhitespace cases, and repeat finalization. Every digest must equal the\nreference helper and canonical digest command result; no old digest or\npending token may remain. Finalizing unchanged input twice must be\nidempotent. Snapshot substantive child content and worker claims before\nfinalization and compare them afterwards.\n\nExtend `tests/integration/output-validate-parity.test.ts` for full outputs\nand merge patches. Add focused finalizer cases for absent children,\npath traversal, symlink escape, duplicate/ambiguous blocks, changed parent\nduring finalization, partial write failure, and approved/foreign runs.\nPure child-validator tests must still reject stale and pending references.\nLeave the final profile gates to the harness.\n\n## Handoff contract\n\nDeliver the verified chunk branch, canonical policy/prompt updates, generated\nprojection/index updates made by existing automation, and evidence for\nTRACE-04. Hand the evidence to the integrated release owner.\n\nThis child has authority over its own repair scope and wins there. The\nparent has authority over system-wide and cross-chunk concerns and wins\nfor those concerns. Consult its reference rather than copying the parent.\n\nAttempt 2 completes this reference using the supervisor's canonical command\nresult recorded in the remediation feedback. The parent remains unchanged;\nits blocker narrative records the historical first attempt. This worker\nran no command. The revised stage output retains the TRACE-04 conflict and\nthis recovery in its risks. Harness validation remains pending before\nratification or downstream delivery; the permanent bookkeeping repair is\nstill assigned to this chunk.\n"
+  }
+}

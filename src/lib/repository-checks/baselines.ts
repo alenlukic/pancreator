@@ -16,6 +16,41 @@ export interface RepositoryCheckBaselineComparison {
   passed: boolean
   explanation: string
   delta: RepositoryCheckDelta
+  /**
+   * Why the baseline could not decide the delta, when it could not. An empty
+   * baseline recorded no command, so every current diagnostic would read as
+   * new. That is absent evidence rather than a regression, and the gate
+   * records the gap instead of failing on the delta (`VERIFY-001`).
+   */
+  evidence_gap?: string
+}
+
+/**
+ * Printed by the impacted-test selector when it found no changed file and so
+ * ran no test. A baseline captured that way exercised nothing.
+ */
+export const IMPACTED_SELECTION_EMPTY_MARKER = 'No test selected.'
+
+/**
+ * Whether a baseline carries no evidence about the suite: it recorded no
+ * command result, or every non-probe command selected no test to run. Such a
+ * baseline cannot tell an inherited diagnostic from a new one.
+ */
+export function isEmptyRepositoryCheckBaseline(
+  baseline: RepositoryCheckResult,
+): boolean {
+  if (!Array.isArray(baseline.results) || baseline.results.length === 0) {
+    return true
+  }
+
+  const commands = baseline.results.filter((result) => result.kind !== 'probe')
+
+  return (
+    commands.length > 0 &&
+    commands.every((result) =>
+      (result.stdout ?? '').includes(IMPACTED_SELECTION_EMPTY_MARKER),
+    )
+  )
 }
 
 function emptyDelta(): RepositoryCheckDelta {
@@ -159,6 +194,25 @@ export function compareRepositoryCheckToBaseline(
   const counts =
     `${sorted.new.length} new, ${sorted.fixed.length} fixed, ` +
     `${sorted.carried.length} carried`
+
+  if (!passed && isEmptyRepositoryCheckBaseline(baseline)) {
+    const reason =
+      Array.isArray(baseline.results) && baseline.results.length > 0
+        ? 'selected no test to run'
+        : 'recorded no command result'
+    const evidenceGap =
+      `The pre-implementation baseline for '${current.profile}' ${reason}, ` +
+      `so it cannot tell an inherited diagnostic from a new one ` +
+      `(${counts}). Absent baseline evidence is not a regression, so the ` +
+      `gate does not fail on the delta.`
+
+    return {
+      passed: true,
+      explanation: evidenceGap,
+      delta,
+      evidence_gap: evidenceGap,
+    }
+  }
 
   if (!passed) {
     const first = delta.new.find(

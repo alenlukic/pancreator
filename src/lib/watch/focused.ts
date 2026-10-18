@@ -27,7 +27,7 @@ import { deterministicStallCause, quietStallApplies } from './liveness.js'
 import { resolveWatchedInvocation, watchRecordPath } from './paths.js'
 import {
   agentStopVerdict,
-  launchToOutputSeconds,
+  launchToOutputAgeSeconds,
   observeInvocation,
   OUTPUT_SCAFFOLD_ORDER_ADVISORY,
   watchedAgentStopped,
@@ -300,7 +300,7 @@ export async function watchInvocation(
     const initial = observe()
     const initialEvidence = completionEvidenceForObservation(
       initial,
-      launchToOutputSeconds(root, runId, invocationId),
+      launchToOutputAgeSeconds(root, runId, invocationId),
       cadenceSeconds,
       agentState,
       agentStateEvidence,
@@ -456,7 +456,7 @@ export async function watchInvocation(
       const activityNow = observation.agent_activity ?? null
       const evidence = completionEvidenceForObservation(
         observation,
-        launchToOutputSeconds(root, runId, invocationId),
+        launchToOutputAgeSeconds(root, runId, invocationId),
         cadenceSeconds,
         agentState,
         agentStateEvidence,

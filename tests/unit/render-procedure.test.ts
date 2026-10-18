@@ -160,11 +160,18 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
     'the background arming form carries mark-background, launched-at, and handle',
   )
 
-  const launchIndex = procedure.indexOf('2a. Arm the watch')
+  const launchIndex = procedure.indexOf('2a.')
   const verdictIndex = procedure.indexOf('3a. Read the verdict')
 
   assert.ok(launchIndex > 0)
   assert.ok(launchIndex < verdictIndex)
+  const launchStep = procedure.slice(launchIndex, verdictIndex)
+  assert.match(launchStep, /terminal failure before worker creation/u)
+  assert.match(launchStep, /immediate recovery/u)
+  assert.ok(
+    launchStep.indexOf('terminal failure') <
+      launchStep.indexOf('--mark-background'),
+  )
 })
 
 // AC-006. A supervisor that read "launch the evidence workers, then the stage
@@ -236,6 +243,13 @@ test('a prepared verify stage orders every evidence worker before the stage work
     procedure,
   )
   assert.match(procedure, /Never poll the reports with a timer or a script/u)
+
+  // The verifier runs only on passing evidence; a gated exit forbids it.
+  assert.match(procedure, /completion marker and states `pass`/u)
+  assert.match(
+    procedure,
+    /Exit 5 means the verifier is gated[^]*You MUST NOT launch the stage worker then/u,
+  )
 })
 
 // A stage with no evidence worker has nothing to order, so its procedure is

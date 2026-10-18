@@ -29,6 +29,8 @@ import {
   writeAgentStateEvidence,
 } from './watch-helpers.js'
 import { ledgerEntry, seedLedger } from './watch-repair-helpers.js'
+import { delegationLivePaths } from '../../src/lib/executors/delegation-live.js'
+import { appendBlockingReceipt } from '../../src/lib/watch/blocking.js'
 
 /** Seed a launch record and a one- or two-session ledger for coverage cases. */
 function seedCoverageFixture(options: {
@@ -56,7 +58,35 @@ function seedCoverageFixture(options: {
         ).toISOString(),
         defaultLaunchedAtMs: outputMtime,
         defaultSource: 'watch_arm',
+        workerHandle: 'copilot:coverage',
       },
+    )
+    const identity = {
+      run_id: fixture.state.run_id,
+      invocation_id: fixture.invocationId,
+      role: 'stage',
+      attempt: 1,
+      launch_id: 'coverage',
+    }
+    writeFileSync(
+      delegationLivePaths(fixture.root, identity).record,
+      JSON.stringify({
+        ...identity,
+        schema_version: 1,
+        executor: 'copilot',
+        launched_at: new Date(
+          outputMtime - options.lifetimeSeconds * 1000,
+        ).toISOString(),
+        child_ended_at: new Date(outputMtime).toISOString(),
+        heartbeat_at: new Date(outputMtime).toISOString(),
+        relay_pid: process.pid,
+        relay_start_identity: 'fixture-start',
+        child_pid: process.pid,
+        child_start_identity: 'fixture-start',
+        sequence: 1,
+        stream_sequences: { stdout: 0, stderr: 0 },
+        truncated: false,
+      }),
     )
   }
 
@@ -83,6 +113,8 @@ function seedCoverageFixture(options: {
         start,
         {
           watch_session_id: sessionId,
+          watcher_pid: process.pid,
+          watcher_process_identity: 'fixture-start',
         },
       ),
       ledgerEntry(fixture.state.run_id, fixture.invocationId, 'armed', start, {
@@ -106,6 +138,23 @@ function seedCoverageFixture(options: {
         },
       ),
     )
+    const ledger = watchRecordPath(
+      fixture.root,
+      fixture.state.run_id,
+      fixture.invocationId,
+    )
+    appendBlockingReceipt(path.join(fixture.root, ledger), {
+      schema_version: 1,
+      ledger,
+      watch_session_id: sessionId,
+      watcher_pid: process.pid,
+      watcher_process_identity: 'fixture-start',
+      parent_pid: process.pid,
+      parent_process_identity: 'fixture-start',
+      started_at: start,
+      ended_at: lastWake,
+      result: 'attach_completed',
+    })
   })
 
   seedLedger(fixture.root, fixture.state.run_id, fixture.invocationId, entries)

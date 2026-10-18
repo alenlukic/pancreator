@@ -10,6 +10,51 @@
 
 - Keep terminal output steady when a completed tool call renders again ([terminal display](https://github.com/alenlukic/pancreator/commit/cefe3e85)).
 
+## [9.8.3] - 2026-10-18
+
+### Fixed
+
+- Accept a Copilot worker whose live record carries only the relay's `ended_at`, as written by relays before v9.8.2, as an exited child, so a stage delegated before an upgrade can still be submitted instead of refusing with `WORKER_STILL_ACTIVE` ([executor process](src/lib/watch/executor-process.ts)).
+
+## [9.8.2] - 2026-10-18
+
+### Fixed
+
+- Normalize planning identifiers without rewriting authored scope, reject ownership and view conflicts, and keep parent and child views consistent. Deduplicate policy bodies only with matching executor and digest proof, retain full bodies otherwise, and bound mechanical merge patches ([planning repair](https://github.com/alenlukic/pancreator/commit/026dcc5a1db32628d842d6d18c540368db286894)).
+- Validate receiving worktree configuration before atomic publication, preserve override bytes and absence on failure, and retain the effective active configuration with redacted recovery errors ([configuration handoff](https://github.com/alenlukic/pancreator/commit/918d75c23ab1f07bdd165f4f9e734ec653769416)).
+- Bind worker observation to launch, process, and shell identities; pin aliases across rearming; and record observation gaps and lifetime coverage. Accept foreground launches without requiring a TTY, keep silent workers healthy while their heartbeat is fresh, and use supported host shell bounds while retaining the 60-second cadence and 330-second watch bound ([worker observation](https://github.com/alenlukic/pancreator/commit/5effe576cbeb7b8cfe28457a3f227158c5e2446d)).
+- Restore integrated compatibility and recognize legacy external executor dispatch evidence without weakening worker identity checks ([compatibility repair](https://github.com/alenlukic/pancreator/commit/eb8e99d4), [dispatch repair](https://github.com/alenlukic/pancreator/commit/6bef0aa8)).
+
+## [9.8.1] - 2026-10-18
+
+### Fixed
+
+- Treat a pre-implementation baseline whose every command selected no test (`No test selected.`) as an evidence gap, so an impacted-test baseline captured with no changed files no longer turns every current diagnostic into a new failure ([baseline comparison](src/lib/repository-checks/baselines.ts)).
+
+## [9.8.0] - 2026-10-18
+
+### Changed
+
+- Fail a gate, stage, or evidence verdict only on a cited, specific defect. Missing, unretrievable, or environment-blocked evidence is recorded as a non-blocking `evidence_unavailable` gap with its owner and the run proceeds; an empty or missing baseline no longer turns every current diagnostic into a new failure ([evidence gaps](src/lib/evidence-gaps.ts)).
+
+## [9.7.0] - 2026-10-18
+
+### Changed
+
+- Run the verify stage's consolidating verifier only when every evidence worker's report states `pass`; a `fail` or missing verdict skips the verifier, records a remedial verify failure that cites the reports, and routes the stage to remediate ([evidence gate](src/lib/engine/evidence-gate.ts)).
+
+## [9.6.0] - 2026-10-18
+
+### Changed
+
+- Keep every role's tool-result governance reminder under the 10 KiB host limit, measured with the operating principles block, and replace the long-horizon reminder body with a pointer to its bounding contract ([reminder profiles](governance/registries/turn_reminder_profiles.json)).
+- Select the long-horizon supervisor role only after an explicit `/pan-horizon` command ([prompt-context routing](src/lib/governance/prompt-context/routing.ts)).
+- Tighten the invariants: drop maintainability from the non-tradeable list and permit inspection of compiled output, caches, and dependencies when a task or debugging hypothesis needs it ([operating card](AGENTS.md)).
+
+### Removed
+
+- Remove the daily conform and style landing exception from the invariants and release policies, and disable the daily quality job ([schedule configuration](config.json)).
+
 ## [9.5.1] - 2026-10-18
 
 ### Fixed

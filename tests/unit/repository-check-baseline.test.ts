@@ -146,6 +146,68 @@ test('baseline comparison rejects a new diagnostic from the same command', () =>
   assert.match(comparison.explanation, /1 new, 0 fixed, 1 carried/u)
 })
 
+test('an empty baseline is a recorded evidence gap and never fails the gate on delta alone', () => {
+  const empty: RepositoryCheckResult = { ...passedCheck(), results: [] }
+  const current = failedCheck(
+    '/workspace/src/b.ts:3:1 error Inherited or new failure no-new\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(empty, current)
+
+  assert.equal(comparison.passed, true)
+  assert.ok(comparison.evidence_gap)
+  assert.match(comparison.explanation, /recorded no command result/u)
+  // The delta is still recorded for the reader, with every diagnostic new.
+  assert.ok((comparison.delta.counts?.new ?? 0) > 0)
+
+  // A populated baseline still fails on a genuinely new diagnostic.
+  const populated = compareRepositoryCheckToBaseline(passedCheck(), current)
+
+  assert.equal(populated.passed, false)
+  assert.equal(populated.evidence_gap, undefined)
+})
+
+test('a baseline whose only command selected no test is an evidence gap, while a baseline that ran tests still gates', () => {
+  const probe = {
+    ...passedCheck().results[0]!,
+    kind: 'probe' as const,
+    command: 'node --version',
+    stdout: 'v22.0.0\n',
+  }
+  const noSelection: RepositoryCheckResult = {
+    ...passedCheck(),
+    results: [
+      probe,
+      {
+        ...passedCheck().results[0]!,
+        command:
+          './bin/pan tests impacted --lane integration --changed pan-dev',
+        stdout: 'No changed files. No test selected.\n',
+      },
+    ],
+  }
+  const current = failedCheck('not ok 1 - inherited or new failure\n')
+
+  const comparison = compareRepositoryCheckToBaseline(noSelection, current)
+
+  assert.equal(comparison.passed, true)
+  assert.ok(comparison.evidence_gap)
+  assert.match(comparison.explanation, /selected no test to run/u)
+
+  const ranTests: RepositoryCheckResult = {
+    ...noSelection,
+    results: [
+      probe,
+      { ...noSelection.results[1]!, stdout: 'ok 1 - selected test\n' },
+    ],
+  }
+
+  assert.equal(
+    compareRepositoryCheckToBaseline(ranTests, current).passed,
+    false,
+  )
+})
+
 test('baseline delta credits a repaired inherited failure as fixed', () => {
   const baseline = failedCheck(
     '/workspace/src/a.ts:10:2 error Unexpected value no-example\n' +
