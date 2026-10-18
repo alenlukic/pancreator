@@ -1,5 +1,29 @@
 # Changelog
 
+## [9.8.0] - 2026-10-18
+
+### Changed
+
+- Fail a gate, stage, or evidence verdict only on a cited, specific defect. Missing, unretrievable, or environment-blocked evidence is recorded as a non-blocking `evidence_unavailable` gap with its owner and the run proceeds; an empty or missing baseline no longer turns every current diagnostic into a new failure ([evidence gaps](src/lib/evidence-gaps.ts)).
+
+## [9.7.0] - 2026-10-18
+
+### Changed
+
+- Run the verify stage's consolidating verifier only when every evidence worker's report states `pass`; a `fail` or missing verdict skips the verifier, records a remedial verify failure that cites the reports, and routes the stage to remediate ([evidence gate](src/lib/engine/evidence-gate.ts)).
+
+## [9.6.0] - 2026-10-18
+
+### Changed
+
+- Keep every role's tool-result governance reminder under the 10 KiB host limit, measured with the operating principles block, and replace the long-horizon reminder body with a pointer to its bounding contract ([reminder profiles](governance/registries/turn_reminder_profiles.json)).
+- Select the long-horizon supervisor role only after an explicit `/pan-horizon` command ([prompt-context routing](src/lib/governance/prompt-context/routing.ts)).
+- Tighten the invariants: drop maintainability from the non-tradeable list and permit inspection of compiled output, caches, and dependencies when a task or debugging hypothesis needs it ([operating card](AGENTS.md)).
+
+### Removed
+
+- Remove the daily conform and style landing exception from the invariants and release policies, and disable the daily quality job ([schedule configuration](config.json)).
+
 ## [9.5.1] - 2026-10-18
 
 ### Fixed

@@ -12,6 +12,10 @@ export type { InvocationContractBlock } from './render/contract.js'
 export {
   EVIDENCE_REPORT_CASE_PREFIX,
   EVIDENCE_REPORT_COMPLETE_MARKER,
+  EVIDENCE_REPORT_VERDICT_PREFIX,
+  EVIDENCE_REPORT_DEFECT_PREFIX,
+  evidenceDefectLine,
+  evidenceVerdictLine,
   readEvidenceReportState,
   evidenceWorkerAttempts,
   orderedWorkerActions,
@@ -20,6 +24,7 @@ export {
 export type {
   InvocationWorkerAction,
   EvidenceReportState,
+  EvidenceVerdict,
 } from './render/delivery-prompt.js'
 export { renderSupervisorProcedureMarkdown } from './render/supervisor-procedure.js'
 export { renderEvidenceWorkerBrief } from './render/evidence-worker-brief.js'

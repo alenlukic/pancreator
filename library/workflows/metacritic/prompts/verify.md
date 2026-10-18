@@ -40,8 +40,9 @@ the verdict.
 1. Read the card, the consolidation record with its claims and acceptance
    criteria, and every parallel evidence report listed under the card's inputs.
    Resolve repairable paths, aliases, and shapes before declaring a report absent.
-   A genuinely missing or empty required report is a blocked stage: report
-   `blocked` and name the missing proof.
+   A criterion fails only on a cited defect. Record evidence you cannot obtain
+   as `evidence_unavailable` with its reason and owner; a gap never makes the
+   verdict fail (`VERIFY-001`).
 2. Reconcile the reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
 3. Spot-check, do not redo. Verify the reports' critical claims: rerun one

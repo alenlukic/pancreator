@@ -192,7 +192,7 @@
       "text": "Each `bin/pan-run` record MUST store `cursor_conversation_id`, `parent_record`, and `wrapper_process_identity`. Nested wrappers MUST inherit `PAN_RUN_RECORD` from the enclosing record.",
       "audience": ["agent"]
     },
-    "For a stage with evidence workers, the supervisor MUST block on `pan watch <run-id> --until-evidence-complete` in the turn that launches them. When that watch returns, the supervisor launches the stage worker and arms `pan watch <run-id> --mark-background` for it."
+    "For a stage with evidence workers, the supervisor MUST block on `pan watch <run-id> --until-evidence-complete` in the turn that launches them. When that watch exits 0, every report passed, and the supervisor launches the stage worker and arms `pan watch <run-id> --mark-background` for it. When it exits 5, a report did not pass: the supervisor MUST NOT launch the stage worker, because the harness has recorded the stage failure from the reports and routed the run."
   ],
   "requirements": [
     {

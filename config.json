@@ -162,7 +162,7 @@
     "jobs": [
       {
         "id": "daily-quality",
-        "enabled": true,
+        "enabled": false,
         "hour": 4,
         "minute": 30,
         "workspace": ".",

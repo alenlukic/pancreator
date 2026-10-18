@@ -132,6 +132,11 @@ export interface DeterministicResult {
   baseline_evidence_path?: string
   preexisting_failure?: boolean
   environment_blocked?: boolean
+  /**
+   * Why the gate could not judge its delta: an empty or unreadable baseline.
+   * Unavailable evidence is recorded here and never fails the gate.
+   */
+  evidence_gap?: string
   repository_check_delta?: RepositoryCheckDelta
   failure_classifications?: GateFailureClassification[]
   /**

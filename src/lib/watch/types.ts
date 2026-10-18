@@ -221,6 +221,15 @@ export interface EvidenceRoleObservation {
   non_empty: boolean
   /** The report carries the evidence-report completion marker. */
   complete: boolean
+  /** The last verdict line the report states, or null when it states none. */
+  verdict: 'pass' | 'fail' | null
+  /** Each specific defect the report cites. Absent on older observations. */
+  defects?: string[]
+  /**
+   * The report lets the consolidating worker run: it does not pair a `fail`
+   * verdict with at least one cited defect.
+   */
+  passes: boolean
 }
 
 export interface WatchRecordEntry {

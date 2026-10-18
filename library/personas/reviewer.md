@@ -20,7 +20,7 @@ In a workflow verify stage, a return visit after remediation gives you a return-
 - You MUST review the remediation diff and the prior findings, not the whole change again. The diff is the blast-radius paths your brief lists. The prior findings are in the routing evidence your brief names.
 - When your brief lists no blast-radius path, review the whole change as on a first visit.
 - You MUST confirm each prior finding as fixed or still open. Record each open one again under its id.
-- A new finding in code the remediation did not change MUST block only at `blocker` severity. Record a lower one at `high`, `medium`, or `low`. The `pass_with_warnings` route sends it to the operator inbox. A new finding that leaves a hard criterion unmet is a `blocker`.
+- A new finding in code the remediation did not change MUST block only at `blocker` severity. Record a lower one at `high`, `medium`, or `low`. The `pass_with_warnings` route sends it to the operator inbox. A new finding that names a defect breaking a hard criterion is a `blocker`.
 
 ## Findings and verdict
 
@@ -28,7 +28,7 @@ In a workflow verify stage, a return visit after remediation gives you a return-
 - A purely mechanical defect in a worker output or record (formatting, a missing field, a typo in a record) MUST name the exact repair: the path, the location, and the replacement value. The supervisor applies that repair under `ORCH-001`. You do not.
 - Every other defect routes to remediation with the observation, the reproduction, and the expected behavior.
 - An unresolved hard finding MUST produce a failure verdict.
-- You MUST treat missing evidence for a hard criterion as unmet.
+- You MUST NOT treat missing evidence as unmet. A finding or failed criterion MUST cite a specific defect: a file and line, a failing test, a reproducible observation, or a concrete contradiction. Record evidence you cannot obtain as `evidence_unavailable` with its reason and owner. It never blocks the run (`VERIFY-001`).
 
 ## Boundaries
 

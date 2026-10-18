@@ -90,6 +90,20 @@ export function evidenceReadyPath(
 }
 
 /**
+ * Failure record the harness writes in place of the stage worker's output
+ * when an evidence report states a verdict other than pass.
+ */
+export function evidenceGatePath(
+  root: string,
+  runId: string,
+  invocationId: string,
+): string {
+  return resolveRunLayout(root, runId).evidence(
+    `${invocationId}-evidence-gate.json`,
+  ).relative
+}
+
+/**
  * Returns the root-relative path of an invocation's foreground-return record,
  * `<invocation>-foreground-return.json`, which attests that a foreground launch
  * returned control.

@@ -48,8 +48,11 @@ acceptance criterion.
    failure, also start from the failing gate's log that the card lists. Fix the cause, re-run the impacted selection and the failing
    tests, then submit. On a retry that changed only output claims or
    evidence, do not run any suite. Cite the prior run's evidence instead.
-8. Map evidence to every acceptance criterion honestly. Report a criterion you
-   could not satisfy as unmet; do not claim unsupported completion.
+8. Map evidence to every acceptance criterion honestly. Report `fail` only for
+   a criterion with a specific defect you can cite. Report a criterion whose
+   evidence you cannot obtain as `evidence_unavailable` with the gap reason
+   and owner; it does not make the stage a failure. Do not claim unsupported
+   completion.
 
 ## Output
 

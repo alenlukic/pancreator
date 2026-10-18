@@ -39,16 +39,16 @@ test('a missing baseline artifact pauses the run before delegation', () => {
 
   const prepared = prepareInvocation(root, runId)
 
-  // The worker cannot influence a missing baseline, so the run pauses and
-  // does not spend the stage attempt.
-  assert.equal(prepared.invocation, null)
-  assert.equal(prepared.state.status, 'paused')
-  assert.equal(prepared.state.pending_action.type, 'operator_decision')
-  assert.match(prepared.state.pause_reason ?? '', /cannot be delegated/u)
-  assert.match(prepared.state.pause_reason ?? '', /implement\.lint/u)
-  assert.match(
-    prepared.state.pause_reason ?? '',
-    /baseline artifact is missing/u,
+  // VERIFY-001: a missing baseline is unavailable evidence. The run records
+  // the gap as an advisory and delegates the stage instead of pausing.
+  assert.notEqual(prepared.invocation, null)
+  assert.notEqual(prepared.state.status, 'paused')
+  assert.ok(
+    (prepared.state.advisories ?? []).some(
+      (advisory) =>
+        advisory.kind === 'evidence_gap' &&
+        /baseline artifact is missing/u.test(advisory.message),
+    ),
   )
 })
 
@@ -81,7 +81,7 @@ test('a wiped baseline map degrades gates to absolute judgment without recapture
   assert.deepEqual(getRunState(root, runId).repository_check_baselines, {})
 })
 
-test('a repository-check gate fails closed when its baseline disappears', () => {
+test('a repository-check gate records a gap and passes when its baseline disappears', () => {
   const { root, runId, state, workflow } = checkpoint(
     'delivery@implement-prepared',
     checksVariant('checks=green-static-fast', {
@@ -104,13 +104,17 @@ test('a repository-check gate fails closed when its baseline disappears', () => 
     (result) => result.id === 'implement.lint',
   )
 
-  // A green exit code is not proof of parity when the gate cannot compare.
-  assert.equal(staticResult?.passed, false)
-  assert.match(staticResult?.explanation ?? '', /baseline artifact is missing/u)
-  assert.equal(submitted.record.outcome, 'failure')
+  // VERIFY-001: a missing baseline cannot show a regression, so the gate
+  // records the gap and the stage proceeds.
+  assert.equal(staticResult?.passed, true)
+  assert.match(
+    staticResult?.evidence_gap ?? '',
+    /baseline artifact is missing/u,
+  )
+  assert.equal(submitted.record.outcome, 'success')
 })
 
-test('an incompatible baseline artifact pauses the run before delegation', () => {
+test('an incompatible baseline artifact is recorded as a gap and the stage still delegates', () => {
   const { root, runId, state } = checkpoint(
     'delivery@implement-baselined',
     GREEN_CHECKS,
@@ -128,7 +132,72 @@ test('an incompatible baseline artifact pauses the run before delegation', () =>
 
   const prepared = prepareInvocation(root, runId)
 
-  assert.equal(prepared.invocation, null)
-  assert.equal(prepared.state.status, 'paused')
-  assert.match(prepared.state.pause_reason ?? '', /incompatible with its gate/u)
+  assert.notEqual(prepared.invocation, null)
+  assert.notEqual(prepared.state.status, 'paused')
+  assert.ok(
+    (prepared.state.advisories ?? []).some(
+      (advisory) =>
+        advisory.kind === 'evidence_gap' &&
+        /incompatible with its gate/u.test(advisory.message),
+    ),
+  )
+})
+
+test('a declared failure whose acceptance results are only evidence gaps does not fail the stage', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@implement-prepared',
+    GREEN_CHECKS,
+  )
+
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'implement'),
+    'failure',
+    [],
+    (output) => {
+      const data = output.data as { acceptance_results?: unknown[] }
+
+      data.acceptance_results = (data.acceptance_results ?? []).map((item) => ({
+        ...(item as Record<string, unknown>),
+        result: 'evidence_unavailable',
+        gap_reason: 'collector aborted before launch',
+      }))
+    },
+  )
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.notEqual(getRunState(root, runId).current_stage, 'implement')
+  assert.ok(
+    (getRunState(root, runId).advisories ?? []).some(
+      (advisory) => advisory.kind === 'evidence_gap',
+    ),
+  )
+})
+
+test('a declared failure that cites a failed acceptance criterion still fails', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@implement-prepared',
+    GREEN_CHECKS,
+  )
+
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'implement'),
+    'failure',
+    [],
+    (output) => {
+      const data = output.data as { acceptance_results?: unknown[] }
+
+      data.acceptance_results = (data.acceptance_results ?? []).map(
+        (item, index) => ({
+          ...(item as Record<string, unknown>),
+          result: index === 0 ? 'fail' : 'evidence_unavailable',
+        }),
+      )
+    },
+  )
+
+  assert.equal(submitted.record.outcome, 'failure')
 })

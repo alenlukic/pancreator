@@ -54,19 +54,66 @@ export const EVIDENCE_REPORT_CASE_PREFIX = '### '
 export const EVIDENCE_REPORT_COMPLETE_MARKER =
   '<!-- evidence-report: complete -->'
 
+/** The dimension verdict an evidence worker states in its report. */
+export type EvidenceVerdict = 'pass' | 'fail'
+
+/**
+ * Opening of the verdict line an evidence worker writes immediately before
+ * its completion marker. The consolidating worker runs only when every
+ * declared report states `pass`, so the supervisor never spends a verifier on
+ * a verdict the evidence already decided.
+ */
+export const EVIDENCE_REPORT_VERDICT_PREFIX = '<!-- evidence-verdict: '
+
+/** The exact verdict line for `verdict`. */
+export function evidenceVerdictLine(verdict: EvidenceVerdict): string {
+  return `${EVIDENCE_REPORT_VERDICT_PREFIX}${verdict} -->`
+}
+
+const EVIDENCE_VERDICT_LINE = /^<!-- evidence-verdict: (pass|fail) -->$/u
+
+/**
+ * Opening of the line that cites one specific defect behind a `fail`
+ * verdict: a file and line, a failing test, a reproducible observation, or a
+ * concrete contradiction.
+ *
+ * Operator directive of 2026-10-18: absence of evidence is not evidence of an
+ * issue. A `fail` verdict that cites no defect gates nothing, so the harness
+ * reads it as a pass with evidence gaps.
+ */
+export const EVIDENCE_REPORT_DEFECT_PREFIX = '<!-- evidence-defect: '
+
+/** The exact defect citation line for `citation`. */
+export function evidenceDefectLine(citation: string): string {
+  return `${EVIDENCE_REPORT_DEFECT_PREFIX}${citation} -->`
+}
+
+const EVIDENCE_DEFECT_LINE = /^<!-- evidence-defect: (.*\S.*) -->$/u
+
 /** What an evidence report on disk records so far. */
 export interface EvidenceReportState {
   complete: boolean
   /** Heading text of each case the report already holds, in order. */
   cases: string[]
+  /** The last verdict line the report states, or null when it states none. */
+  verdict: EvidenceVerdict | null
+  /** Each specific defect the report cites, in order. */
+  defects: string[]
 }
 
 /**
  * Reads an evidence report body and returns whether it carries the completion
- * marker line and the heading text of each case it records so far, in order.
+ * marker line, the heading text of each case it records so far, in order, its
+ * last stated verdict, and every defect it cites. A malformed verdict line
+ * reads as no verdict, and a defect line with no citation reads as none.
  */
 export function readEvidenceReportState(body: string): EvidenceReportState {
   const lines = body.split('\n')
+  const verdicts = lines.flatMap((line) => {
+    const match = EVIDENCE_VERDICT_LINE.exec(line.trim())
+
+    return match ? [match[1] as EvidenceVerdict] : []
+  })
 
   return {
     complete: lines.some(
@@ -75,6 +122,12 @@ export function readEvidenceReportState(body: string): EvidenceReportState {
     cases: lines
       .filter((line) => line.startsWith(EVIDENCE_REPORT_CASE_PREFIX))
       .map((line) => line.slice(EVIDENCE_REPORT_CASE_PREFIX.length).trim()),
+    verdict: verdicts[verdicts.length - 1] ?? null,
+    defects: lines.flatMap((line) => {
+      const match = EVIDENCE_DEFECT_LINE.exec(line.trim())
+
+      return match ? [(match[1] as string).trim()] : []
+    }),
   }
 }
 

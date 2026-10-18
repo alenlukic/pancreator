@@ -46,8 +46,10 @@ deliberate choice rather than an accident.
 
 ## Verdicts
 
-- Pass only when every hard criterion has direct, current, complete evidence.
-- Fail when a hard criterion lacks evidence or the evidence contradicts the
-  claim.
+- Fail only when the evidence shows a specific defect: a cited file and line,
+  a failing test, a reproducible observation, or a contradiction of the claim.
+- Absent, unavailable, stale, or environment-blocked evidence is an evidence
+  gap, not a failure. Record the gap with its reason and owner, and pass on the
+  evidence that exists (`VERIFY-001`).
 - Escalate when the evidence is ambiguous in a way you cannot resolve from the
   artifacts, and record exactly what would settle it.

@@ -643,8 +643,8 @@ test('a profile gate whose baseline cannot resolve is never served from the cach
   assert.equal(firstResult.cached, undefined)
   assert.equal(markerCount(root), 1)
 
-  // Run B expects a `fast` baseline and has none, so the gate fails closed
-  // even against a recorded pass.
+  // Run B expects a `fast` baseline and has none, so the gate skips the cache
+  // and reruns. The missing baseline is a recorded gap, not a failure.
   const second = fixtureState(root, 'run-b')
 
   second.state.repository_check_baselines = {}
@@ -660,8 +660,9 @@ test('a profile gate whose baseline cannot resolve is never served from the cach
 
   assert.ok(gapResult)
   assert.equal(gapResult.cached, undefined)
-  assert.equal(gapResult.passed, false)
-  assert.match(gapResult.explanation ?? '', /fails closed/u)
+  assert.equal(gapResult.passed, true)
+  assert.ok(gapResult.evidence_gap)
+  assert.match(gapResult.explanation ?? '', /records the gap/u)
   assert.equal(markerCount(root), 2)
 
   // Run C matches run A, so the recorded pass is accepted.

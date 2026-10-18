@@ -370,8 +370,18 @@ supervisor blocks on the evidence-complete watch in the launch turn:
 It exits `0` within one cadence of the moment every role's newest report
 carries the `<!-- evidence-report: complete -->` marker, writes
 `agent/evidence/<invocation-id>-evidence-ready.json`, and appends an
-`evidence_ready` run event. The supervisor then launches the stage worker in
-the same turn and arms its ordinary watch. Exit `2` means the reports and the
+`evidence_ready` run event. Each report states its dimension verdict on a
+`<!-- evidence-verdict: pass -->` or `<!-- evidence-verdict: fail -->` line
+before the completion marker. When every report states `pass`, the
+supervisor launches the stage worker in the same turn and arms its ordinary
+watch. When any report states `fail` or no verdict, the verifier never runs:
+the watch exits `5`, writes `agent/evidence/<invocation-id>-evidence-gate.json`
+as the stage's failure record citing the reports, appends an
+`evidence_gate_failed` run event, and moves the run along the stage's failure
+transition through the same retry and same-reason limits a submission meets.
+A report rendered from a brief that predates the verdict line is not gated.
+A pending execution request defers the gate until `pan prepare` consumes it.
+Exit `2` means the reports and the
 workers stopped changing for the stall bound, and exit `3` means the bound
 passed. The evidence watch keeps its own ledger,
 `agent/evidence/<invocation-id>-evidence-watch.jsonl`, records no launch, and
@@ -405,7 +415,10 @@ skipped worker is recorded under `evidence_worker_skips` on the invocation,
 the verifier card states the reason, and that visit owes no
 `data.verify.qa_cases`. Without QA the verifier grades a `test` criterion
 from the test the implementation names for it plus the gate evidence, and a
-`test` criterion with no named test fails. An `observe` criterion records the
+`test` criterion with no named test records `evidence_unavailable`. Absence of
+evidence is not evidence of an issue: a criterion, verdict, or gate fails only
+on a cited defect, and an evidence gap is recorded in risks and never blocks
+the run (`VERIFY-001`). An `observe` criterion records the
 result `observe` and does not block the verdict. The validator refuses
 `observe` for any other proof, and any other result for an `observe`
 criterion. On a return visit after remediation the reviewer runs under its
@@ -2589,7 +2602,7 @@ Root cause: allocation, finalize, and merge ran without serialization. Two branc
 
 ### Prepare and land
 
-The verifier checks incoming evidence, extends that same packet with its own observations, repairs representation without changing the signal, and finishes with the fast profile. The packet retains source references, original hashes, previous attempts, repairs, and the actual gate results. Failed product checks or missing proof remain failures.
+The verifier checks incoming evidence, extends that same packet with its own observations, repairs representation without changing the signal, and finishes with the fast profile. The packet retains source references, original hashes, previous attempts, repairs, and the actual gate results. Failed product checks remain failures. Missing or unavailable proof is a recorded evidence gap and never a failure.
 
 Release owns coordination and integration, not verification. Choose major, minor, or patch and checkpoint one Unreleased changelog entry. Then run:
 

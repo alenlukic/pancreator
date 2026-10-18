@@ -751,8 +751,11 @@ export function runShellCheck(
   )
 
   const commandSucceeded = exitCode === 0 && !errorMessageText
+  // VERIFY-001: a baseline the run expected but cannot read is unavailable
+  // evidence. It cannot show the change introduced a diagnostic, so the gate
+  // records the gap instead of failing closed.
   const passed = baselineGap
-    ? false
+    ? !skipped
     : !skipped &&
       (baselineComparison
         ? baselineComparison.passed || failureClassification.reclassifiedPass
@@ -807,7 +810,12 @@ export function runShellCheck(
     hard: Boolean(criterion.hard),
     passed,
     ...(baselineGap
-      ? { explanation: `${baselineGap} The gate fails closed.` }
+      ? {
+          explanation:
+            `${baselineGap} Absent baseline evidence is not a regression, ` +
+            'so the gate records the gap and does not fail.',
+          evidence_gap: baselineGap,
+        }
       : skipped
         ? {
             disabled: true,
@@ -820,6 +828,9 @@ export function runShellCheck(
               explanation:
                 classificationExplanation ?? baselineComparison.explanation,
               repository_check_delta: baselineComparison.delta,
+              ...(baselineComparison.evidence_gap
+                ? { evidence_gap: baselineComparison.evidence_gap }
+                : {}),
               ...(inheritedFailureOnly ? { preexisting_failure: true } : {}),
               ...(environmentBlocked ? { environment_blocked: true } : {}),
             }

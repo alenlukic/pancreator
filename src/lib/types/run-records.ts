@@ -163,6 +163,8 @@ export interface RunAdvisory {
     | 'baseline_adoption'
     /** A hard criterion a compatibility path passed without satisfying. */
     | 'gate_bypass'
+    /** A declared failure graded as success because it cited only evidence gaps. */
+    | 'evidence_gap'
     /** A ship stage whose executing build is not the workspace it releases. */
     | 'build_currency'
     /** A returning verify stage whose interior profile refresh failed. */

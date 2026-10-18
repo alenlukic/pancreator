@@ -32,20 +32,18 @@ Do not retry the blocked step without new information. Put that naming in a dura
 
 ## Invariants
 
-These constraints are never traded for the objective, for convenience, or for speed. Every MUST and MUST NOT on a card, in a policy, or in a persona is either one of these or a fragile procedure. Each one holds as written.
+These constraints hold as written and are never traded for speed or convenience. Every other MUST or MUST NOT is either one of these or a fragile procedure.
 
-- You MUST NOT trade correctness, security, maintainability, or an explicit operator constraint for convenience or short-term speed.
-- You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Commit and merge on your own judgment, on a branch that lands on `pan-dev`. Nothing lands on `pan-dev` without a proper version: a change to an installable harness input reaches `pan-dev` only inside a release (the branch carries the release commit and the `release/index.json` commit for a new `VERSION`). You MUST NOT land such a change directly on `pan-dev` or `main`, and the operator promotes `pan-dev` to `main` and pushes. Approvals, stage changes, pauses, and irreversible decisions are operator-owned, and a waiver is too unless away mode authors one within its own guardrails.
-- Operator directive of 2026-09-26: the daily conform and style job may fast-forward `pan-dev` with commits that carry the `Pancreator-Daily-Quality:` trailer and change only the surface paths in `governance/registries/daily_quality_surfaces.json`. Those commits are the only exception. Every other installable change still lands only inside a release. `bin/install` accepts drift from the indexed release only when every drifting commit is a marked daily commit.
-- You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every workflow lifecycle action.
-- You MUST NOT inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
-- You MUST NOT run concurrent mutating workflows against one workspace. Worktree isolation separates tracked source trees. It does not separate the release version sequence, the `pan-dev` branch, or `release/index.json`. Release preparation MUST serialize those shared resources through the allocation authority.
-- You MUST NOT change Pancreator release metadata outside a self-development ship stage or `/pan-release`, and MUST NOT edit `release/index.json` before the release commit exists.
-- You MUST land on `pan-dev` only through `pan release land`, which holds the landing mutex, integrates, allocates, finalizes, and fast-forwards. Verification and evidence repair belong to the verifier before release. You MUST NOT merge into `pan-dev` by any other means, and MUST NOT use `git merge`, `git update-ref`, or `pan worktree reconcile --into-branch pan-dev` as a substitute.
-- Browser inspection MUST follow `BROWSER-001`: an isolated context, never the operator's personal browser or host settings.
-- You MUST NOT manufacture completion. Report missing evidence and uncertainty instead.
-- You MUST NOT infer or broaden an operator override. The operator's actual words define its scope.
-- You MUST NOT change an existing `active_config` unless the operator explicitly directs that change. Configuration names MUST NOT identify an executor. Select executors through `config_overrides.json.model_config`.
+- You MUST NOT trade correctness, security, or an explicit operator constraint for convenience or short-term speed.
+- You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Approvals, stage changes, pauses, and irreversible decisions are also operator-owned.
+- Commit and merge on your own judgment, on a branch that lands on `pan-dev`. An installable harness change reaches `pan-dev` only inside a release, and only through `pan release land`. Never use `git merge`, `git update-ref`, or `pan worktree reconcile --into-branch pan-dev` instead. The operator promotes `pan-dev` to `main`.
+- You MUST NOT change release metadata outside a self-development ship stage or `/pan-release`, or edit `release/index.json` before the release commit exists.
+- You MUST NOT run concurrent mutating workflows against one workspace. Release preparation serializes the version sequence, `pan-dev`, and `release/index.json` through the allocation authority.
+- You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every lifecycle action.
+- You MUST NOT change compiled output, caches, virtual environments, dependency trees, or third-party code. You MAY inspect them when the task needs it or a debugging hypothesis points there, and SHOULD otherwise avoid them.
+- Browser inspection follows `BROWSER-001`.
+- You MUST NOT manufacture completion, or infer or broaden an operator override. Report missing evidence and uncertainty.
+- You MUST NOT change an existing `active_config` without an explicit operator direction. Select executors through `config_overrides.json.model_config`. Configuration names never identify an executor.
 
 ## Authority and context
 

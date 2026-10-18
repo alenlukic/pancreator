@@ -236,6 +236,13 @@ test('a prepared verify stage orders every evidence worker before the stage work
     procedure,
   )
   assert.match(procedure, /Never poll the reports with a timer or a script/u)
+
+  // The verifier runs only on passing evidence; a gated exit forbids it.
+  assert.match(procedure, /completion marker and states `pass`/u)
+  assert.match(
+    procedure,
+    /Exit 5 means the verifier is gated[^]*You MUST NOT launch the stage worker then/u,
+  )
 })
 
 // A stage with no evidence worker has nothing to order, so its procedure is

@@ -22,7 +22,6 @@ import {
   resolveInside,
   writeTextAtomic,
 } from '../io.js'
-import { resolveRunLayout } from '../run-layout.js'
 import { panCommand } from '../project-config.js'
 import { loadVerificationFile } from '../verification.js'
 import {
@@ -219,40 +218,6 @@ export function pauseForVerificationRecommendation(
     `Apply it with: ${panCommand(root)} verification ${state.run_id} set ${recommendation.level}`,
     `Or keep '${state.verification?.level}' and continue: ${panCommand(root)} resume ${state.run_id}`,
   ])
-}
-
-/**
- * Pauses the run for an operator decision because a repository-check baseline
- * cannot support the stage's gate, and writes a decision record pointing at the
- * baseline evidence and the resume and abort commands. Mutates the state
- * without persisting it.
- */
-export function pauseForRepositoryCheckBaselineGaps(
-  root: string,
-  state: RunState,
-  stage: StageDefinition,
-  gaps: string[],
-): void {
-  const reason =
-    `Stage '${stage.slug}' cannot be delegated because a repository-check ` +
-    `baseline does not support its gate. ${gaps.join(' ')}`
-
-  state.status = 'paused'
-  state.pause_reason = reason
-  state.pending_action = { type: 'operator_decision' }
-
-  writeDecision(
-    root,
-    state,
-    'Workflow paused by a repository-check baseline gap',
-    reason,
-    [
-      'Inspect the named baseline evidence under ' +
-        `${resolveRunLayout(root, state.run_id).evidence('.').relative}`,
-      `Recapture the baselines by resuming this run from the first source stage: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
-      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
-    ],
-  )
 }
 
 /**
