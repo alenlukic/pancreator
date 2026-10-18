@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "byte_budget": 16384,
+  "byte_budget": 10240,
   "state": {
     "max_age_days": 30,
     "max_entries": 256
@@ -19,12 +19,6 @@
           "type": "policy",
           "policy_id": "COMMS-001",
           "instruction_sha256": "9b80059903acf662e4329a674d6b643752d8267f13ce0302911adc6423766814"
-        },
-        {
-          "id": "comms-terminal",
-          "type": "policy",
-          "policy_id": "COMMS-001",
-          "instruction_sha256": "0574a864e9e4472d729f81595311418c1aa3a286ff2c55f29f5e66073d8284a4"
         },
         {
           "id": "comms-incidents",
@@ -57,30 +51,6 @@
           "instruction_sha256": "2d7bcd87f810759715cc55eccfaa9d46e76093a736d78e40247ea69988136438"
         },
         {
-          "id": "principles-objective",
-          "type": "policy",
-          "policy_id": "PRINCIPLES-001",
-          "instruction_sha256": "a12b97f0f896dbb48124eabf4017bfcd1e46b903f28d0fca0c94dc176d589bee"
-        },
-        {
-          "id": "principles-priority",
-          "type": "policy",
-          "policy_id": "PRINCIPLES-001",
-          "instruction_sha256": "74f89e6cbf9af4798f905846aa56a5058e4cdf9b7d87926d0a27a1ff611a9b47"
-        },
-        {
-          "id": "principles-judgment",
-          "type": "policy",
-          "policy_id": "PRINCIPLES-001",
-          "instruction_sha256": "9c593365139ce3be111790d006d5ee2f2d68de1acab8e49efdc43be0229014f5"
-        },
-        {
-          "id": "principles-escalation",
-          "type": "policy",
-          "policy_id": "PRINCIPLES-001",
-          "instruction_sha256": "517014b1e0bf9e05f9c892bfe16b904829da4c5ce9e0b900c86fb5cbd2705915"
-        },
-        {
           "id": "principles-no-permission",
           "type": "policy",
           "policy_id": "PRINCIPLES-001",
@@ -98,7 +68,7 @@
           "sections": {
             "self_development": {
               "heading": "## Invariants",
-              "content_sha256": "020fa69a8a0f5092a523f7b9740ab34d69aec27540050f5fae0d2bff241b6135"
+              "content_sha256": "fffc9299e9db3d39d370b13da55331130c8544a42aad5a9c4c60c553555f19a9"
             },
             "embedded": {
               "heading": "## Change and safety boundaries",
@@ -221,46 +191,10 @@
       "extends": "delegating",
       "selectors": [
         {
-          "id": "horizon-progress",
+          "id": "horizon-contract",
           "type": "policy",
           "policy_id": "HORIZON-001",
-          "instruction_sha256": "36ce8f6e69b2a547fce7460367b9d14b8c6139d683dab27d46eeac68c4a31b2c"
-        },
-        {
-          "id": "horizon-hard-blocks",
-          "type": "policy",
-          "policy_id": "HORIZON-001",
-          "instruction_sha256": "44c368a0bb7a33cf6cb273525443d5b138ecbd04e77cb0696894bde4a01b2a33"
-        },
-        {
-          "id": "horizon-cost",
-          "type": "policy",
-          "policy_id": "HORIZON-001",
-          "instruction_sha256": "2569b6d14101f15c67ea6bbb8a827d63ffe575502d3d409016b17360bd25dc19"
-        },
-        {
-          "id": "horizon-self-caused",
-          "type": "policy",
-          "policy_id": "HORIZON-001",
-          "instruction_sha256": "aeb17166d76960b50882274a4ec0309c0ea0c70899e05cb3c84229030542b37c"
-        },
-        {
-          "id": "horizon-lifecycle",
-          "type": "policy",
-          "policy_id": "HORIZON-001",
-          "instruction_sha256": "a993a5c7133f5ae8bf924759ac84e0d08caf3c19e4838af1cb80e0befe16536c"
-        },
-        {
-          "id": "horizon-rebuild",
-          "type": "policy",
-          "policy_id": "HORIZON-001",
-          "instruction_sha256": "5af5b49fa04881ee47fd47dd87dcbe789af56e9bf0c0996ea6c19c3609835742"
-        },
-        {
-          "id": "horizon-verification",
-          "type": "policy",
-          "policy_id": "HORIZON-001",
-          "instruction_sha256": "d1bf914118547ff10c696053d0e5c1ff29039fea9b4e46036e09e33ada9be193"
+          "instruction_sha256": "accc68eca9250a8a4ea38b197967313f07dc4ce36bcae44a238af48fdb7ca13d"
         }
       ]
     },
@@ -417,7 +351,7 @@
       ]
     },
     "cleanup": {
-      "extends": "common",
+      "extends": "delegating",
       "selectors": [
         {
           "id": "cleanup-approval",

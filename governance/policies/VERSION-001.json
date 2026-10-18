@@ -18,8 +18,7 @@
     "The release steward MUST use the shared local release phases for checkpoint, fetch, integration, reconciliation, release commit, index commit, and landing operations.",
     "Release commands and the release steward MUST NOT run tests, inspect, collect, or check evidence, review artifact diagnostics, validate release artifacts, or gate on validation. The verifier owns evidence correctness and the final fast profile check. Workflow release MUST carry forward the incoming data.verify.evidence_packet reference without checking it. Standalone /pan-release MUST NOT require workflow verification records or invent stage proofs.",
     "The release steward MUST NOT push, create or merge a pull request, publish, deploy, or invent a commit hash.",
-    "When /pan-release finds no committed or worktree changes after the last release bump, and no release candidate needs regeneration, it MUST stop. It MUST NOT change files or increment VERSION.",
-    "Operator directive of 2026-09-26: the daily conform and style job MAY land commits on pan-dev without a release when every such commit carries the Pancreator-Daily-Quality: trailer and changes only the surface paths listed in governance/registries/daily_quality_surfaces.json. bin/install MUST accept drift from the indexed release that consists entirely of such commits and MUST record daily_quality_head in the install marker. Every other installable change MUST still require a full release cycle."
+    "When /pan-release finds no committed or worktree changes after the last release bump, and no release candidate needs regeneration, it MUST stop. It MUST NOT change files or increment VERSION."
   ],
   "guidance_sources": [
     {

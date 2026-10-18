@@ -16,7 +16,6 @@ import {
 } from '../../io.js'
 import type { RunState } from '../../types.js'
 import {
-  CARD_PATH,
   ROLE_SET,
   TURN_REMINDER_STATE_PATH,
   loadTurnReminderRegistry,
@@ -24,7 +23,7 @@ import {
   type TurnReminderRole,
 } from './registry.js'
 import { liveRuns } from './cards.js'
-import { cardSection, renderTurnReminder } from './reminders.js'
+import { principlesReminder, renderTurnReminder } from './reminders.js'
 
 interface ConversationRecord {
   role: Exclude<TurnReminderRole, 'none'>
@@ -67,7 +66,6 @@ const HOOK_EVENTS = new Set([
   'SessionStart',
   ...TOOL_HOOK_EVENTS,
 ])
-const HORIZON_SESSION_ROOT = 'runtime/logs/horizon'
 
 const SUPERVISOR_COMMAND_ROLES: Record<string, TurnReminderRole> = {
   'pan-start': 'regular-supervisor',
@@ -324,45 +322,11 @@ function writeConversationStore(
   })
 }
 
-function hasLiveHorizonSession(root: string): boolean {
-  const directory = path.join(root, HORIZON_SESSION_ROOT)
-
-  try {
-    return readdirSync(directory, { withFileTypes: true }).some((entry) => {
-      if (!entry.isDirectory()) {
-        return false
-      }
-
-      try {
-        const value = readJson(path.join(directory, entry.name, 'session.json'))
-        return (
-          isRecord(value) &&
-          (value.status === 'created' || value.status === 'running')
-        )
-      } catch {
-        return false
-      }
-    })
-  } catch {
-    return false
-  }
-}
-
-function inferredSupervisorRole(
-  root: string,
-  runs: RunState[],
-): TurnReminderRole | null {
-  if (
-    hasLiveHorizonSession(root) ||
-    runs.some(
-      (run) =>
-        run.horizon !== undefined ||
-        run.operator_involvement?.contracts?.includes('long_horizon') === true,
-    )
-  ) {
-    return 'long-horizon-supervisor'
-  }
-
+/**
+ * The supervisor role live runs imply. Long-horizon is never inferred: only a
+ * conversation that invoked `/pan-horizon` carries that role.
+ */
+function inferredSupervisorRole(runs: RunState[]): TurnReminderRole | null {
   if (runs.some((run) => run.cohort !== undefined)) {
     return 'cohort-supervisor'
   }
@@ -400,13 +364,12 @@ function resolveRole(
   const stored = payload.conversation_id
     ? store.conversations[payload.conversation_id]
     : undefined
-  const inferred = inferredSupervisorRole(root, runs)
+  const inferred = inferredSupervisorRole(runs)
 
   if (stored) {
     if (
       stored.role === 'regular-supervisor' ||
-      stored.role === 'cohort-supervisor' ||
-      stored.role === 'long-horizon-supervisor'
+      stored.role === 'cohort-supervisor'
     ) {
       if (!inferred) {
         return { role: 'unbound', mode: 'unbound' }
@@ -447,10 +410,7 @@ export function resolvePromptContext(
       return { continue: true }
     }
 
-    const principles = [
-      'Remember the operating principles; you MUST abide by these:',
-      cardSection(root, CARD_PATH, '## Mission and operating principles'),
-    ].join('\n')
+    const principles = principlesReminder(root)
     const store = readConversationStore(root, registry, now)
     const runs = liveRuns(root)
     const rolePayload =
