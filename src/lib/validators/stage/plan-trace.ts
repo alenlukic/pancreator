@@ -243,6 +243,8 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
         relatedTraceIds.has(mapped)
       ) {
         continue
+      } else if (typeof mapped === 'string' && declaredIds.has(mapped)) {
+        continue
       } else if (typeof mapped === 'string' && mapped.trim()) {
         const catalog = loadRegistry(input.root)
 
@@ -509,6 +511,12 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   ]
   for (const viewPath of viewPaths) {
     if (typeof viewPath !== 'string') continue
+    if (!viewPath.trim()) {
+      issues.push(
+        issue('plan.view_path', 'A planning view path MUST be non-empty.'),
+      )
+      continue
+    }
     const absolute = resolveInside(input.root, viewPath)
     if (!fileExists(absolute)) continue
     for (const id of planningViewConflicts(data, readText(absolute))) {

@@ -37,7 +37,11 @@ import {
 import { isTerminalObservation, observePath } from './observe.js'
 import { validForegroundReturn, workerLifetime } from './lifetime.js'
 import { readBlockingReceipts } from './blocking.js'
-import { readLaunchRecord } from './launch.js'
+import {
+  isHarnessExecutorPin,
+  launchRecordPath,
+  readLaunchRecord,
+} from './launch.js'
 
 /**
  * Reads an invocation's foreground-return record. Returns null when the file is
@@ -704,7 +708,8 @@ export function summarizeDelegationObservation(
     readForegroundReturn(root, runId, invocationId),
   )
 
-  // An execution audit proves worker completion, not parent observation.
+  // Legacy harness dispatch acknowledged completion without a native watch.
+  // Once a launch or observation exists, its stronger contract owns the result.
   const executionRecord = loadDelegationExecutionRecord(
     root,
     runId,
@@ -714,9 +719,24 @@ export function summarizeDelegationObservation(
     executionRecord !== null &&
     executionRecord.run_id === runId &&
     executionRecord.invocation_id === invocationId
+  // The harness pins a process-backed launch from its own live record while
+  // it judges activity. That pin is not supervisor observation.
+  const launch = readLaunchRecord(root, runId, invocationId)
+  const supervisorLaunchRecorded =
+    launch !== null
+      ? !isHarnessExecutorPin(launch)
+      : fileExists(
+          resolveInside(root, launchRecordPath(root, runId, invocationId)),
+        )
   const source: DelegationObservationSource | null =
     executionRecordMatches &&
-    (watch.await_status === 'observed' || foregroundValid)
+    (watch.await_status === 'observed' ||
+      foregroundValid ||
+      (!supervisorLaunchRecorded &&
+        ![
+          watchRecordPath(root, runId, invocationId),
+          foregroundReturnRecordPath(root, runId, invocationId),
+        ].some((relative) => fileExists(resolveInside(root, relative)))))
       ? 'external_executor'
       : watch.terminal_state === 'completed'
         ? 'watch_completed'

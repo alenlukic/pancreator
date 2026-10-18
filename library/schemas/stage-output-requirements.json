@@ -16,6 +16,8 @@
           "enforcement": "blocks",
           "enforced_fields": [
             "data.planning_correction.mode",
+            "data.cohort_plan.parent_spec_path",
+            "data.cohort_plan.chunks[].child_spec_path",
             "data.acceptance_criteria[].id",
             "data.acceptance_criteria[].maps_to",
             "data.acceptance_criteria[].verification",
@@ -38,6 +40,14 @@
         }
       ],
       "fields": [
+        {
+          "path": "data.cohort_plan.parent_spec_path",
+          "type": "string"
+        },
+        {
+          "path": "data.cohort_plan.chunks[].child_spec_path",
+          "type": "string"
+        },
         {
           "path": "data.planning_correction.mode",
           "type": "string",

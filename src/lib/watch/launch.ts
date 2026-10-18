@@ -86,6 +86,22 @@ export function launchRecordPath(
 }
 
 /**
+ * True when the harness alone pinned a process-backed executor launch from its
+ * own live record. Such a record carries no supervisor arming, handle, or
+ * launch time, so it is bookkeeping rather than supervisor observation.
+ */
+export function isHarnessExecutorPin(launch: LaunchRecord): boolean {
+  return (
+    launch.executor_launch_id !== undefined &&
+    launch.worker_handle === `copilot:${launch.executor_launch_id}` &&
+    launch.launched_at_source === 'watch_arm' &&
+    launch.launch_mode === 'unknown' &&
+    !launch.platform_returned_at &&
+    !launch.platform_detached_at
+  )
+}
+
+/**
  * Reads an invocation's launch record. Returns null when the file is missing,
  * unparseable, not schema version 1, names another invocation, or lacks a
  * launch time.

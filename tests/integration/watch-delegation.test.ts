@@ -3,6 +3,7 @@ import {
   appendFileSync,
   existsSync,
   readFileSync,
+  rmSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs'
@@ -15,11 +16,13 @@ import type { TaskRecord } from '../../src/lib/types.js'
 import {
   DELEGATION_UNOBSERVED,
   foregroundReturnRecordPath,
+  launchRecordPath,
   markDelegationBackground,
   readForegroundReturn,
   readAuthorityOrder,
   readLaunchRecord,
   recordForegroundReturn,
+  recordInvocationLaunch,
   redlineRecordPath,
   summarizeDelegationObservation,
   watchInvocation,
@@ -169,18 +172,21 @@ test('a foreground-return attestation accepts a supervisor-recorded launch time 
   assert.equal(record.launched_at, launchedAt)
   assert.equal(record.launched_at_source, 'supervisor')
   assert.ok(record.elapsed_seconds > 0)
+  const fresh = preparedRun()
+
+  fillPreparedOutput(fresh.root, fresh.state)
   assert.throws(
     () =>
-      recordForegroundReturn(root, state.run_id, {
-        invocationId,
+      recordForegroundReturn(fresh.root, fresh.state.run_id, {
+        invocationId: fresh.invocationId,
         launchedAt: '2999-01-01T00:00:00.000Z',
       }),
     /is after the return time/u,
   )
   assert.throws(
     () =>
-      recordForegroundReturn(root, state.run_id, {
-        invocationId,
+      recordForegroundReturn(fresh.root, fresh.state.run_id, {
+        invocationId: fresh.invocationId,
         launchedAt: 'yesterday',
       }),
     /--launched-at MUST be an ISO-8601 wall-clock time/u,
@@ -725,5 +731,29 @@ test('the external-executor exemption requires the delegation-execution record p
   assert.equal(
     summarizeDelegationObservation(root, state.run_id, invocationId).source,
     'external_executor',
+  )
+
+  // The harness pins a Copilot launch while it judges process activity at
+  // submit. That bookkeeping must not cancel the execution record.
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+    workerHandle: 'copilot:launch-1',
+    executorLaunchId: 'launch-1',
+  })
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).source,
+    'external_executor',
+  )
+
+  rmSync(path.join(root, launchRecordPath(root, state.run_id, invocationId)))
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+    workerHandle: 'current-worker',
+  })
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).observed,
+    false,
   )
 })

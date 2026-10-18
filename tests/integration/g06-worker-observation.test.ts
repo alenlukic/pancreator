@@ -38,6 +38,7 @@ import {
   watchProcess,
 } from '../../src/lib/watch/process.js'
 import { delegationLivePaths } from '../../src/lib/executors/delegation-live.js'
+import { delegationExecutionPath } from '../../src/lib/validation/artifacts.js'
 import { createTestTempDirectory } from '../helpers.js'
 import {
   watchedAgentActivity,
@@ -325,6 +326,20 @@ for (const invalid of [
     writeFileSync(
       path.join(root, foregroundReturnRecordPath(root, run, invocation)),
       JSON.stringify(receipt),
+    )
+    const auditPath = path.join(
+      root,
+      delegationExecutionPath(run, invocation, root),
+    )
+    mkdirSync(path.dirname(auditPath), { recursive: true })
+    writeFileSync(
+      auditPath,
+      JSON.stringify({
+        schema_version: 1,
+        run_id: run,
+        invocation_id: invocation,
+        executor: 'claude-code',
+      }),
     )
     assert.equal(workerLifetime(root, run, invocation).seconds, null)
     const summary = summarizeDelegationObservation(root, run, invocation)

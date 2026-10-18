@@ -279,6 +279,8 @@ export function executorProcessActivity(
     })
   }
   const recordedMs = record ? Date.parse(record.recorded_at) : NaN
+  // An exited child with no result has no session in its final audit.
+  // A supplied session must still match; absence can prove failure only.
   if (
     record === null ||
     record.invocation_id !== invocation.invocation_id ||
@@ -298,7 +300,8 @@ export function executorProcessActivity(
       (live.child_ended_at === undefined ||
         recordedMs < Date.parse(live.child_ended_at) ||
         !live.session_id ||
-        record.session_id !== live.session_id)) ||
+        (record.session_id !== undefined &&
+          record.session_id !== live.session_id))) ||
     (!Number.isSafeInteger(record.exit_code) && record.timed_out !== true)
   ) {
     return live

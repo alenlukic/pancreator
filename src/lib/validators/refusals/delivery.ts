@@ -194,6 +194,13 @@ export const PLAN_REFUSALS: readonly StageRefusal[] = [
     paths: ['data.planning_correction.mode'],
   },
   {
+    code: 'plan.view_path',
+    paths: [
+      'data.cohort_plan.parent_spec_path',
+      'data.cohort_plan.chunks[].child_spec_path',
+    ],
+  },
+  {
     code: 'plan.view_conflict',
     paths: [],
     unowned_reason:

@@ -33,7 +33,10 @@ import {
 import { watchAttach } from '../../src/lib/watch/attach.js'
 import { readBlockingReceipts } from '../../src/lib/watch/blocking.js'
 import { watchRecordPath } from '../../src/lib/watch/paths.js'
-import { readLaunchRecord } from '../../src/lib/watch/launch.js'
+import {
+  readLaunchRecord,
+  recordInvocationLaunch,
+} from '../../src/lib/watch/launch.js'
 
 function processFixture(count = 1) {
   const { root, targets } = multiplexedTargets(count)
@@ -356,8 +359,9 @@ for (const multiplexed of [false, true]) {
   })
 }
 
-test('AC-10: early result and plausible output cannot finish an active Copilot process or permit submission', async () => {
+test('AC-10: early result and plausible output cannot finish an active Copilot process or permit submission', async (t) => {
   const fixture = processFixture()
+  t.mock.method(Date, 'now', fixture.now)
   fixture.output()
   const stage = { persona: 'coder' } as StageDefinition
   assert.throws(
@@ -383,7 +387,7 @@ test('AC-10: early result and plausible output cannot finish an active Copilot p
   )
   assert.equal(result.state, 'unverified')
   assert.equal(result.wakes, 7)
-  fixture.audit({ recorded_at: new Date().toISOString() })
+  fixture.audit()
   assert.doesNotThrow(() =>
     assertWorkerNotStillActive(
       fixture.root,
@@ -438,8 +442,9 @@ test('AC-09: an indexed handle without usable activity still uses process eviden
 })
 
 for (const multiplexed of [false, true]) {
-  test(`AC-10: ${multiplexed ? 'multiplexed' : 'focused'} ambiguous launches cannot use an older audit to complete or permit submission`, async () => {
+  test(`AC-10: ${multiplexed ? 'multiplexed' : 'focused'} ambiguous launches cannot use an older audit to complete or permit submission`, async (t) => {
     const fixture = processFixture()
+    t.mock.method(Date, 'now', fixture.now)
     fixture.invocation.created_at = new Date(
       fixture.now() - 60_000,
     ).toISOString()
@@ -509,7 +514,18 @@ for (const multiplexed of [false, true]) {
     ).at(-1)
     assert.equal(last?.terminal_state, 'unverified')
 
-    fixture.audit({ recorded_at: new Date().toISOString() })
+    recordInvocationLaunch(
+      fixture.root,
+      fixture.invocation.run_id,
+      fixture.invocation.invocation_id,
+      {
+        defaultLaunchedAtMs: Date.parse(fixture.live.launched_at),
+        defaultSource: 'watch_arm',
+        executorLaunchId: fixture.live.launch_id,
+        workerHandle: `copilot:${fixture.live.launch_id}`,
+      },
+    )
+    fixture.audit()
     assert.doesNotThrow(() =>
       assertWorkerNotStillActive(
         fixture.root,

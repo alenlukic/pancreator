@@ -40,7 +40,11 @@ import {
   executorProcessActivity,
   processBackedExecutor,
 } from './executor-process.js'
-import { launchedMsFromRecord, readLaunchRecord } from './launch.js'
+import {
+  launchedMsFromRecord,
+  launchRecordPath,
+  readLaunchRecord,
+} from './launch.js'
 import { BLOCKED_OUTPUT_SNAPSHOT_PATTERN } from './blocked-snapshot.js'
 import { workerLifetime } from './lifetime.js'
 
@@ -91,6 +95,7 @@ export function invocationEvidencePaths(
     path.basename(evidenceWatchRecordPath(root, runId, invocationId)),
     path.basename(evidenceWatchLockPath(root, runId, invocationId)),
     path.basename(evidenceReadyPath(root, runId, invocationId)),
+    path.basename(launchRecordPath(root, runId, invocationId)),
   ])
   const paths = new Set<string>()
 
