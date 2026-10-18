@@ -15,6 +15,8 @@ import {
   delegationExecutionPath,
   loadDelegationExecutionRecord,
 } from '../validation.js'
+import { resolveRunLayout } from '../run-layout.js'
+import type { ExternalDelegationRecord } from '../types.js'
 
 import {
   DEFAULT_WATCH_CADENCE_SECONDS,
@@ -683,12 +685,53 @@ export function summarizeForegroundReturn(
   }
 }
 
+function validLegacyExecutionRecord(
+  root: string,
+  runId: string,
+  invocationId: string,
+  record: ExternalDelegationRecord,
+): boolean {
+  const invocationPath = resolveRunLayout(root, runId).invocation(
+    invocationId,
+    '.json',
+  ).absolute
+  if (!fileExists(invocationPath)) return false
+  const invocation = readJson(invocationPath)
+  const recordedMs =
+    typeof record.recorded_at === 'string'
+      ? Date.parse(record.recorded_at)
+      : NaN
+
+  return (
+    isRecord(invocation) &&
+    invocation.schema_version === 1 &&
+    invocation.run_id === runId &&
+    invocation.invocation_id === invocationId &&
+    isRecord(invocation.stage) &&
+    typeof invocation.stage.slug === 'string' &&
+    invocation.stage.slug.length > 0 &&
+    record.stage === invocation.stage.slug &&
+    record.executor === (invocation.stage.persona_executor ?? 'cursor') &&
+    (record.delegated_by === undefined || record.delegated_by === 'harness') &&
+    typeof invocation.created_at === 'string' &&
+    Number.isFinite(Date.parse(invocation.created_at)) &&
+    Number.isFinite(recordedMs) &&
+    recordedMs >= Date.parse(invocation.created_at) &&
+    recordedMs <= Date.now() &&
+    typeof record.timed_out === 'boolean' &&
+    (Number.isSafeInteger(record.exit_code) ||
+      (record.exit_code === null && record.timed_out))
+  )
+}
+
 /**
  * Decide whether the harness saw the delegation reach its terminal state.
  * A completed watch, a watch whose last wake observed the final output, or a
  * foreground-return attestation satisfies the terminal observation gate.
  * Legacy completed ledgers retain that compatibility, with unknown parent
  * await status and coverage unless matching blocking receipts exist.
+ * Legacy harness dispatch also requires a matching stage/executor, a terminal
+ * exit audit, and a completion time within the invocation's chronology.
  *
  * `externalExecutor` describes who owns the dispatch in an operator session,
  * and reaches the refusal wording only. The exemption itself reads the
@@ -736,7 +779,8 @@ export function summarizeDelegationObservation(
         ![
           watchRecordPath(root, runId, invocationId),
           foregroundReturnRecordPath(root, runId, invocationId),
-        ].some((relative) => fileExists(resolveInside(root, relative)))))
+        ].some((relative) => fileExists(resolveInside(root, relative))) &&
+        validLegacyExecutionRecord(root, runId, invocationId, executionRecord)))
       ? 'external_executor'
       : watch.terminal_state === 'completed'
         ? 'watch_completed'

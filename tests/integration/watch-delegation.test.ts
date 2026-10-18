@@ -11,6 +11,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { submitOutput } from '../../src/lib/engine.js'
+import { readInvocationRecord } from '../../src/lib/engine/core.js'
 import { loadState } from '../../src/lib/state.js'
 import type { TaskRecord } from '../../src/lib/types.js'
 import {
@@ -621,6 +622,7 @@ test('an attested elapsed time below the watch wake span is labeled with both nu
 
 test('the external-executor exemption requires the delegation-execution record pan delegate writes', () => {
   const { root, state, invocationId } = preparedRun()
+  const { invocation } = readInvocationRecord(root, state, invocationId)
 
   fillPreparedOutput(root, state)
 
@@ -677,8 +679,9 @@ test('the external-executor exemption requires the delegation-execution record p
       schema_version: 1,
       run_id: state.run_id,
       invocation_id: 'another-invocation',
-      stage: 'plan',
-      executor: 'claude-code',
+      stage: invocation.stage.slug,
+      executor: invocation.stage.persona_executor ?? 'cursor',
+      recorded_at: new Date().toISOString(),
       delegation_kind: 'fresh',
       binary: 'claude',
       argv: [],
@@ -702,8 +705,9 @@ test('the external-executor exemption requires the delegation-execution record p
       schema_version: 1,
       run_id: state.run_id,
       invocation_id: invocationId,
-      stage: 'plan',
-      executor: 'claude-code',
+      stage: invocation.stage.slug,
+      executor: invocation.stage.persona_executor ?? 'cursor',
+      recorded_at: new Date().toISOString(),
       delegation_kind: 'fresh',
       binary: 'claude',
       argv: [],
