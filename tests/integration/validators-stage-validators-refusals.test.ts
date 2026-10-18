@@ -465,13 +465,26 @@ test('every stage-output validator refusal is classified in the canonical declar
       continue
     }
 
-    // The declaration only pays off where the worker reads it, so the shipped
-    // contract has to carry every path the handler can refuse on.
-    const enforced = new Set(
-      contract.stages[entry.stage]?.validators.find(
-        (validator) => validator.registry_id === entry.registry_id,
-      )?.enforced_fields ?? [],
+    // Legacy release handlers remain classified, but no current ship card
+    // delegates validation or declares fields those handlers can require.
+    const validator = contract.stages[entry.stage]?.validators.find(
+      (candidate) => candidate.registry_id === entry.registry_id,
     )
+
+    if (entry.registry_id === 'RELEASE-VALIDATE-001') {
+      assert.equal(validator, undefined)
+      assert.deepEqual(
+        VALIDATOR_BLOCKING_FIELDS.filter(
+          (fields) => fields.registry_id === entry.registry_id,
+        ),
+        [],
+      )
+      continue
+    }
+
+    // Active validators must declare every field their workers can be refused on.
+    assert.ok(validator, `${label} has no active field contract`)
+    const enforced = new Set(validator.enforced_fields ?? [])
     const declared = new Set(
       VALIDATOR_BLOCKING_FIELDS.filter(
         (fields) =>

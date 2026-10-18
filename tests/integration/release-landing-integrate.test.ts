@@ -40,7 +40,7 @@ test('two consecutive callers serialize and an unexpired holder is never stolen'
   second.release()
 })
 
-test('a candidate behind pan-dev stops before merging or allocating even for metadata changes', () => {
+test('a candidate behind pan-dev integrates metadata changes before allocating', () => {
   const root = landingFixture()
   const workspace = makeCandidate(
     root,
@@ -50,18 +50,18 @@ test('a candidate behind pan-dev stops before merging or allocating even for met
   const head = git(workspace, ['rev-parse', 'HEAD'])
   advanceTip(root)
   const tip = git(root, ['rev-parse', 'pan-dev'])
-  assert.throws(
-    () => landRelease(root, { worktree: 'behind-tip', bump: 'patch' }),
-    /lacks pan-dev|does not contain/u,
-  )
-  assert.equal(git(workspace, ['rev-parse', 'HEAD']), head)
-  assert.equal(git(root, ['rev-parse', 'pan-dev']), tip)
-  assert.equal(
-    readLandingLog(root).some(
-      (entry) => entry.step === 'allocate' || entry.step === 'integrate',
-    ),
-    false,
-  )
+  const result = landRelease(root, { worktree: 'behind-tip', bump: 'patch' })
+  assert.equal(result.status, 'landed')
+  assert.notEqual(result.tip_after, head)
+  assert.equal(result.tip_before, tip)
+  assert.equal(git(workspace, ['rev-parse', 'HEAD']), result.tip_after)
+  assert.equal(git(root, ['rev-parse', 'pan-dev']), result.tip_after)
+  for (const ancestor of [head, tip]) {
+    assert.equal(git(workspace, ['merge-base', ancestor, 'HEAD']), ancestor)
+  }
+  const steps = readLandingLog(root).map((entry) => entry.step)
+  assert.ok(steps.indexOf('integrate') >= 0)
+  assert.ok(steps.indexOf('allocate') > steps.indexOf('integrate'))
 })
 
 test('a dirty landing target is refused before allocation', () => {

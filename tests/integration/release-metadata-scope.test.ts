@@ -113,6 +113,8 @@ const PRIOR_GATES_CRITERION = {
 function shipStageWithPriorGates(): StageDefinition {
   const shipStage = stage()
 
+  // Retained generic ship snapshots evaluate this legacy state criterion.
+  shipStage.persona = 'orchestrator'
   shipStage.criteria = [{ ...PRIOR_GATES_CRITERION }]
 
   return shipStage

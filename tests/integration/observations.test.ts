@@ -132,11 +132,21 @@ function validateShip(
 function validatorRoot(): string {
   const root = createTestTempDirectory('pan-ship-observations-')
 
-  mkdirSync(path.join(root, 'library/schemas'), { recursive: true })
-  writeFileSync(
-    path.join(root, CONTRACT),
-    readFileSync(path.join(process.cwd(), CONTRACT)),
-  )
+  // The retained validator reads the field contract from its legacy run.
+  writeJsonFile(root, CONTRACT, {
+    stages: {
+      ship: {
+        validators: [],
+        fields: [
+          {
+            path: 'data.release.observations[]',
+            type: 'object',
+            required: ['criterion', 'signal', 'source', 'window', 'check'],
+          },
+        ],
+      },
+    },
+  })
 
   return root
 }

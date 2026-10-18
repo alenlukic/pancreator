@@ -512,7 +512,7 @@ test('AC-016: arming bound', async () => {
   assert.equal(cli.status, 0, cli.stderr)
   assert.equal(JSON.parse(cli.stdout).timeout_seconds, 90)
 
-  // The arming line reaches a piped stderr, which is what an agent shell has.
+  // The watch context and resolved bound also reach a piped stderr.
   const piped = runCli(custom.root, [
     'watch',
     custom.state.run_id,
@@ -525,13 +525,14 @@ test('AC-016: arming bound', async () => {
   ])
 
   assert.equal(piped.status, 0, piped.stderr)
-  const [arming, ...context] = (piped.stderr.split('\n')[0] ?? '').split('; ')
   const invocation = currentInvocation(custom.root, custom.state)
 
-  assert.match(arming ?? '', /armed at .*: cadence 60s, timeout 90s$/u)
-  assert.deepEqual(context, [
-    `run ${custom.state.run_id}`,
-    `persona ${invocation.stage.persona}`,
-    `model ${invocation.stage.model}`,
+  assert.deepEqual(piped.stderr.split('\n').slice(0, 6), [
+    `── Watch · ${invocation.stage.persona} ──`,
+    `  Run: ${custom.state.run_id}`,
+    `  Invocation: ${custom.invocationId}`,
+    `  Model: ${invocation.stage.model}`,
+    '  Observe every 60s · Bound 90s',
+    '',
   ])
 })

@@ -137,8 +137,15 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
     audiences('COMMS-001').filter(
       (audience) => audience.length !== 1 || audience[0] !== 'agent',
     ),
-    [],
-    'every COMMS-001 instruction carries audience agent',
+    [['harness']],
+    'only reminder delivery carries audience harness',
+  )
+  assert.deepEqual(
+    audienceFor(
+      'COMMS-001',
+      'The harness MUST deliver the same governance reminders',
+    ),
+    ['harness'],
   )
   // The chat shapes stay judgment-only, so no validator and no handbook
   // selection may bind to COMMS-001.
@@ -427,18 +434,29 @@ test('a long-horizon provider cannot cover a regular consumer', () => {
   )
 })
 
-test('mode governance explains every rule and carries the two canonical tables', () => {
+test('mode governance explains operational rules and carries its reminder and canonical tables', () => {
   const catalog = loadPolicyCatalog(sharedFixture())
   const horizon = catalog.get('HORIZON-001')
   const regular = catalog.get('SINGLERUN-001')
 
   assert.ok(horizon)
   assert.ok(regular)
+
+  const reminders = horizon.instructions.filter((instruction) =>
+    instruction.text.startsWith(horizon.id),
+  )
+  const operationalInstructions = horizon.instructions.filter(
+    (instruction) => !reminders.includes(instruction),
+  )
+
+  assert.equal(reminders.length, 1)
+  assert.match(reminders[0].text, /bounding contract/u)
+  assert.ok(reminders[0].audience.includes('agent'))
   assert.ok(
-    horizon.instructions.every((instruction) =>
+    operationalInstructions.every((instruction) =>
       /\bbecause\b/iu.test(instruction.text),
     ),
-    'every long-horizon instruction states its reason',
+    'every operational long-horizon instruction states its reason',
   )
   assert.ok(
     horizon.instructions.some((instruction) =>
@@ -473,7 +491,9 @@ test('mode governance explains every rule and carries the two canonical tables',
     [
       horizonPolicy.title,
       horizonPolicy.summary,
-      ...horizonPolicy.instructions.map((instruction) => instruction.text),
+      ...horizonPolicy.instructions
+        .filter((instruction) => !reminders.includes(instruction))
+        .map((instruction) => instruction.text),
       regularPolicy.title,
       regularPolicy.summary,
       ...regularPolicy.instructions.map((instruction) => instruction.text),

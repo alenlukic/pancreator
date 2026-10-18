@@ -11,6 +11,7 @@ import {
 import { createFixture, writeJson } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
 import type { RunState } from '../../src/lib/types.js'
+import { installLegacyReleaseEntry } from './delivery-helpers.js'
 
 /**
  * One vitest-shaped failure headline plus the indented detail lines a runner
@@ -42,6 +43,7 @@ function shipEntryGate(
 } {
   const root = createFixture()
 
+  installLegacyReleaseEntry(root)
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     ...CHECKS,
     profiles: {
@@ -115,6 +117,7 @@ test('the entry gate credits a declared known-failing case as baseline', () => {
 test('an undeclared failure still fails the gate beside a credited one', () => {
   const root = createFixture()
 
+  installLegacyReleaseEntry(root)
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     ...CHECKS,
     profiles: {

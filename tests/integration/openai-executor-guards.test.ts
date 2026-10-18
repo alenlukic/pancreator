@@ -215,20 +215,23 @@ test('pan doctor reports openai readiness only when a mapping needs it', () => {
 
 test('an alias family value may not carry the openai prefix', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'config.json')
+  const configPath = path.join(root, 'config_overrides.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-    oai: Record<string, string>
+    model_config: Record<string, Record<string, string>>
   }
 
-  // An alias family names a tier, never a runtime. Allowing a prefix here
-  // would let one tier silently move a persona onto another executor.
-  config.oai.balanced = 'openai:gpt-6-astra'
+  // Provider tiers allow only the configured host executors. Direct OpenAI
+  // routing remains a persona mapping rather than a model_config executor.
+  config.model_config.oai = { balanced: 'openai:gpt-6-astra' }
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const validated = pan(root, ['validate'])
 
   assert.equal(validated.status, 1)
-  assert.match(`${validated.stdout}${validated.stderr}`, /oai/u)
+  assert.match(
+    `${validated.stdout}${validated.stderr}`,
+    /model_config\.oai\.balanced MUST use one of these executors/u,
+  )
 })
 
 test('an orchestrator persona is still refused on an external executor', () => {

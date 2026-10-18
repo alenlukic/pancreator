@@ -7,6 +7,16 @@ import { createFixture } from '../fixture-template.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
+function parseCliError(stderr: string): { error: string; message: string } {
+  const value: unknown = JSON.parse(stderr)
+
+  assert.ok(typeof value === 'object' && value !== null)
+  assert.ok('error' in value && typeof value.error === 'string')
+  assert.ok('message' in value && typeof value.message === 'string')
+
+  return { error: value.error, message: value.message }
+}
+
 test('pan spend validates the reporting window before credential lookup', () => {
   const root = createFixture()
   const result = spawnSync(
@@ -58,9 +68,12 @@ test('pan spend refuses --trends without --canvas and bad brackets before creden
       },
     )
 
-    assert.notEqual(result.status, 0)
-    assert.match(result.stderr, /INVALID_ARGUMENT/u)
-    assert.match(result.stderr, message)
+    assert.equal(result.status, 1, result.stderr)
+
+    const error = parseCliError(result.stderr)
+
+    assert.equal(error.error, 'INVALID_ARGUMENT')
+    assert.match(error.message, message)
     assert.doesNotMatch(result.stderr, /CREDENTIAL_MISSING/u)
   }
 })

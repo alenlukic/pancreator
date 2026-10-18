@@ -315,8 +315,10 @@ export function evaluateDeterministicCriteria(
             criterion.id === 'verify.final_fast') &&
           checked.passed &&
           !checked.disabled &&
-          !checked.skipped
+          !checked.skipped &&
+          afterSnapshot.kind === 'git'
         ) {
+          // Filesystem runs have no Git release-source proof to issue.
           const profile = repositoryCheckProfileName(checked.command ?? '')
           const fingerprint = releaseSourceFingerprint(workspaceDir)
           if (profile && fingerprint && fingerprint === sourceBefore) {

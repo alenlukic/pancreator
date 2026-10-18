@@ -18,6 +18,7 @@ import { makeOutput, writeCanonicalDelegation, writeJson } from '../helpers.js'
 import { submitAsSupervisor } from '../run-helpers.js'
 import type { CheckpointVariant } from './delivery-helpers.js'
 import {
+  CURSOR_MODEL_VARIANT,
   MODEL_EVIDENCE_VARIANT,
   preparedRunCheckpoint,
   verifyRun,
@@ -27,6 +28,7 @@ import {
 const CATALOGLESS_MODEL_EVIDENCE_VARIANT: CheckpointVariant = {
   key: 'catalogless-model-evidence',
   fixture: (root) => {
+    CURSOR_MODEL_VARIANT.fixture?.(root)
     rmSync(path.join(root, 'governance/registries/cursor_model_catalog.json'), {
       force: true,
     })

@@ -96,10 +96,17 @@ test('watch display observes only appended Copilot chat and tools without changi
   })
   assert.equal(result.state, 'timed_out')
   assert.equal(WATCH_EXIT_CODES[result.state], 3)
-  assert.match(lines[0] ?? '', /chat: worker chat 1\n  tools: Read/u)
-  assert.match(lines[1] ?? '', /chat: worker chat 2\n  tools: Shell/u)
-  assert.doesNotMatch(lines[1] ?? '', /chat 1|tools: Read/u)
-  assert.doesNotMatch(lines[2] ?? '', /chat:|tools:|private input/u)
+  assert.match(
+    lines[0] ?? '',
+    /── Message ──\n  worker chat 1\n\n── Tool ──\n  Read\n/u,
+  )
+  assert.match(
+    lines[1] ?? '',
+    /── Message ──\n  worker chat 2\n\n── Tool ──\n  Shell\n/u,
+  )
+  assert.doesNotMatch(lines[1] ?? '', /chat 1|Read/u)
+  assert.doesNotMatch(lines.join('\n'), /private input/u)
+  assert.doesNotMatch(lines[2] ?? '', /── (?:Message|Tool) ──/u)
   const entries = readWatchRecord(root, state.run_id, invocationId)
   assert.equal(
     entries.filter((entry) => entry.event === 'armed').length,
@@ -164,8 +171,11 @@ test('live Copilot discovery requires a unique prompt matching the run and outpu
     `${JSON.stringify({ type: 'assistant.message', data: { content: 'live text', toolRequests: [{ name: 'view' }] } })}\n`,
   )
   const display = new WatchDisplay(root)
-  assert.match(display.wake(entry), /chat: live text\n  tools: Read/u)
-  assert.doesNotMatch(display.wake(entry), /chat:|tools:/u)
+  assert.match(
+    display.wake(entry),
+    /── Message ──\n  live text\n\n── Tool ──\n  Read\n/u,
+  )
+  assert.doesNotMatch(display.wake(entry), /── (?:Message|Tool) ──/u)
   sessionFile('ambiguous', `${state.run_id}\nOutput: ${outputPath}`)
   assert.equal(liveCopilotTranscript(root, entry), null)
 })
@@ -290,15 +300,21 @@ test('watch display primes historical activity at arming and displays only subse
   display.start(entry)
   appendFileSync(transcript, record('fresh first wake', 'bash'))
   const first = display.wake({ ...entry, event: 'wake', wake: 1 })
-  assert.match(first, /chat: fresh first wake\n  tools: Shell/u)
+  assert.match(
+    first,
+    /── Message ──\n  fresh first wake\n\n── Tool ──\n  Shell\n/u,
+  )
   assert.doesNotMatch(first, /history|Read|skipped/u)
   appendFileSync(transcript, record('fresh second wake', 'glob'))
   const second = display.wake({ ...entry, event: 'wake', wake: 2 })
-  assert.match(second, /chat: fresh second wake\n  tools: Glob/u)
+  assert.match(
+    second,
+    /── Message ──\n  fresh second wake\n\n── Tool ──\n  Glob\n/u,
+  )
   assert.doesNotMatch(second, /first wake|Shell|history/u)
   assert.doesNotMatch(
     display.wake({ ...entry, event: 'wake', wake: 3 }),
-    /chat:|tools:/u,
+    /── (?:Message|Tool) ──/u,
   )
 })
 

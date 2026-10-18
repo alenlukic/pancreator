@@ -301,6 +301,8 @@ test('the redline record names the non-authoritative categories and the AGENTS.m
       'session_mode',
       'model_tool_suggestions',
       'command_execution_hints',
+      'authority_framing',
+      'subagent_trust',
     ],
   )
   assert.deepEqual(

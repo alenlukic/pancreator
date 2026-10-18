@@ -12,6 +12,23 @@ const PAN_RUN = path.join(process.cwd(), 'bin', 'pan-run')
 const PROCESS_TIMEOUT_MS = 30_000
 const PROCESS_MAX_BUFFER = 4 * 1024 * 1024
 
+function quietEnvironment(root: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, PANCREATOR_ROOT: root }
+
+  // The tested wrapper owns its record, formatting, and progress descriptor.
+  for (const name of Object.keys(env)) {
+    if (
+      name.startsWith('PAN_RUN_') ||
+      name === 'PAN_VERBOSE' ||
+      name === 'PAN_PROGRESS_FD'
+    ) {
+      delete env[name]
+    }
+  }
+
+  return env
+}
+
 function runQuiet(
   source: string,
   options: {
@@ -21,17 +38,8 @@ function runQuiet(
     nested?: boolean
   } = {},
 ): SpawnSyncReturns<string> & { root: string; progress: string } {
-  // An inherited operator diagnostic would change the output and fail these
-  // cases.
-  const env = { ...process.env }
-  delete env.PAN_VERBOSE
-  delete env.PAN_RUN_HEARTBEAT_SECONDS
-  // An interactive `npm test` exports its own progress sink, which would take
-  // the heartbeat lines this file captures.
-  delete env.PAN_PROGRESS_FD
-
   const root = createTestTempDirectory('run-quiet-')
-  env.PANCREATOR_ROOT = root
+  const env = quietEnvironment(root)
 
   if (options.verbose) {
     env.PAN_VERBOSE = '1'
@@ -65,9 +73,10 @@ function recordDirectories(root: string): string[] {
   const dir = path.join(root, 'runtime', 'logs', 'shell')
 
   return existsSync(dir)
-    ? readdirSync(dir)
+    ? readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => path.join(dir, entry.name))
         .sort()
-        .map((name) => path.join(dir, name))
     : []
 }
 
@@ -148,9 +157,8 @@ test('quiet command streams successful output in verbose mode', () => {
   assertRecordFiles(result.root, 0)
 })
 
-// OUTPUT-001 cites this name. Each heartbeat line carries the latest output,
-// so a line that stops changing exposes a silent command, and the lines reach
-// only the opted-in PAN_PROGRESS_FD sink.
+// OUTPUT-001 cites this name. Quiet progress sends new output once and emits
+// compact heartbeats between updates, only to the opted-in PAN_PROGRESS_FD sink.
 test('progress ticks mark intervals in which the command produced output', () => {
   const result = runQuiet(
     "process.stdout.write('first\\n'); setTimeout(() => process.stdout.write('second\\n'), 1500); setTimeout(() => {}, 3000)",
@@ -160,15 +168,16 @@ test('progress ticks mark intervals in which the command produced output', () =>
   assert.equal(result.status, 0)
   assert.equal(result.stdout, '')
   assert.equal(result.stderr, '')
-  assert.match(
-    result.progress,
-    /\[pan-run\] \S+ started pid=\d+; watch with \.\/bin\/pan watch --shell runtime\/logs\/shell\/\S+\n/u,
+  assert.match(result.progress, /^── Command ──\n\n/u)
+  assert.match(result.progress, /^♥ \d{2,}:\d{2}$/mu)
+  assert.deepEqual(
+    result.progress
+      .split('\n')
+      .filter((line) => line === '  first' || line === '  second'),
+    ['  first', '  second'],
   )
-  assert.match(
-    result.progress,
-    /\[pan-run\] node running \d+s pid=\d+ \+\d+B\n {2}first\n/u,
-  )
-  assert.match(result.progress, /\+\d+B\n(?: {2}first\n)? {2}second\n/u)
+  assert.doesNotMatch(result.progress, /\[pan-run\]/u)
+  assertRecordFiles(result.root, 0)
 })
 
 test('AC-11: quiet mode forwards captured heartbeat lines to the progress sink', () => {
@@ -188,14 +197,8 @@ test('AC-11: quiet mode forwards captured heartbeat lines to the progress sink',
 test('AC-11: quiet mode with no progress sink copies heartbeat lines to stderr as they arrive', async () => {
   const root = createTestTempDirectory('pan-run-quiet-no-sink-')
   const seen = path.join(root, 'heartbeat-seen')
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    PANCREATOR_ROOT: root,
-    PAN_REVIEW_TOKEN: 'fake-heartbeat-value-123',
-  }
-  delete env.PAN_VERBOSE
-  delete env.PAN_PROGRESS_FD
-  delete env.PAN_RUN_HEARTBEAT_SECONDS
+  const env = quietEnvironment(root)
+  env.PAN_REVIEW_TOKEN = 'fake-heartbeat-value-123'
   // The command finishes only after the test saw its heartbeat on stderr, so
   // a copy made at exit instead of on arrival fails the run.
   const source = [
@@ -248,10 +251,38 @@ test('a nested quiet wrapper beats to the sink the outer wrapper exported', () =
   assert.equal(result.status, 0)
   assert.equal(result.stdout, '')
   assert.equal(result.stderr, '')
-  assert.match(
-    result.progress,
-    /\[pan-run\] node running \d+s pid=\d+ (\+\d+B\n {2}inner|no new output for \d+s \(last: inner\))/u,
-    'the inner wrapper reached the outer sink',
+  assert.match(result.progress, /^ {2}inner$/mu)
+  assert.match(result.progress, /^♥ \d{2,}:\d{2}$/mu)
+  assert.equal(result.progress.match(/^── Command ──$/gmu)?.length, 1)
+
+  const directories = recordDirectories(result.root)
+  const records = directories.map((directory) => ({
+    directory,
+    record: JSON.parse(
+      readFileSync(path.join(directory, 'record.json'), 'utf8'),
+    ) as { label: string; parent_record: string; exit_code: number },
+  }))
+  const outer = records.find(({ record }) => record.label === 'run-quiet')
+  const inner = records.find(
+    ({ record }) => record.label === path.basename(process.execPath),
   )
-  assert.match(result.progress, /\[pan-run\] run-quiet running /u)
+
+  assert.equal(records.length, 2)
+  assert.ok(outer)
+  assert.ok(inner)
+  assert.equal(outer.record.exit_code, 0)
+  assert.equal(inner.record.exit_code, 0)
+  assert.equal(
+    inner.record.parent_record,
+    path.relative(result.root, outer.directory),
+  )
+  assert.equal(
+    readFileSync(path.join(outer.directory, 'output.log'), 'utf8'),
+    '',
+    'inner progress bypasses the outer capture and reaches its sink directly',
+  )
+  assert.equal(
+    readFileSync(path.join(inner.directory, 'output.log'), 'utf8'),
+    'inner\n',
+  )
 })
