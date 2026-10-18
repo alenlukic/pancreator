@@ -198,6 +198,16 @@ function renderReminderContent(
 }
 
 /**
+ * The operating principles every reminder ends with, read from the live card.
+ */
+export function principlesReminder(root: string): string {
+  return [
+    'Remember the operating principles; you MUST abide by these:',
+    cardSection(root, CARD_PATH, '## Mission and operating principles'),
+  ].join('\n')
+}
+
+/**
  * Render the governance reminder text for a role: its profile's resolved lines
  * grouped by source, followed by the active card path and digest. Throws
  * through `invalid` when the role has no profile, a selector is stale, or the
@@ -230,7 +240,12 @@ export function renderTurnReminder(
       options.liveRuns ?? liveRuns(root),
     )
   const content = renderReminderContent(role, profile, lines, card)
-  const byteLength = Buffer.byteLength(content, 'utf8')
+  // The budget covers the full injected payload, principles included, because
+  // hosts truncate hook context past roughly 10 KiB.
+  const byteLength = Buffer.byteLength(
+    `${content}\n\n${principlesReminder(root)}`,
+    'utf8',
+  )
 
   if (byteLength > registry.byte_budget) {
     invalid(
