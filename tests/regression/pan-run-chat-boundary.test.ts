@@ -108,6 +108,34 @@ test('chat boundary: the submitted command contains only a request path and retu
   )
 })
 
+test('bootstrap lifecycle argv receives bounded output without explicit wrapper flags', () => {
+  const root = createTestTempDirectory('pan-run-bootstrap-')
+  const executable = path.join(root, 'pan')
+  const payload = JSON.stringify({
+    status: 'ready',
+    details: Array.from({ length: 120 }, (_, index) => ({ index })),
+  })
+
+  writeFileSync(
+    executable,
+    `#!/usr/bin/env bash\nprintf '%s\\n' '${payload}'\n`,
+    {
+      mode: 0o755,
+    },
+  )
+
+  const result = runPanRun(
+    ['--', executable, 'governance', 'card', '--mode', 'unbound'],
+    { root },
+  )
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /status: ready/u)
+  assert.doesNotMatch(result.stdout, /"details"|"index"/u)
+  assert.ok(result.stdout.trim().split('\n').length <= 10)
+  assert.equal(readRecord(root).summary, true)
+})
+
 test('chat boundary: long inline programs and multiline calls are refused before execution', () => {
   for (const command of [
     `bin/pan-run -- node -e '${'x;'.repeat(250)}'`,
@@ -122,14 +150,8 @@ test('chat boundary: long inline programs and multiline calls are refused before
     assert.match(result.agent_message ?? '', /--request/u)
   }
 
-  const lifecycle = hookResult(
-    'bin/pan-run -- ./bin/pan init --request input.md',
-  )
-
-  assert.equal(lifecycle.permission, 'deny')
-  assert.match(lifecycle.agent_message ?? '', /LIFECYCLE_OUTPUT_UNBOUNDED/u)
-
   for (const command of [
+    'bin/pan-run -- ./bin/pan init --request input.md',
     'bin/pan-run --summary -- ./bin/pan status run',
     'bin/pan-run --stream -- ./bin/pan status run --json',
     'bin/pan-run -- ./bin/pan watch run',

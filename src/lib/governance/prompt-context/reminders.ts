@@ -24,7 +24,7 @@ import {
   type TurnReminderRole,
   type TurnReminderSelector,
 } from './registry.js'
-import { activeCard, fallbackCard, liveRuns, type ActiveCard } from './cards.js'
+import { activeCard, fallbackCard, type ActiveCard } from './cards.js'
 
 export interface ResolvedReminderLine {
   selector_id: string
@@ -231,14 +231,7 @@ export function renderTurnReminder(
   }
 
   const lines = resolveTurnReminderLines(root, profile, registry)
-  const card =
-    options.card ??
-    activeCard(
-      root,
-      role,
-      options.mode ?? null,
-      options.liveRuns ?? liveRuns(root),
-    )
+  const card = options.card ?? activeCard(root)
   const content = renderReminderContent(role, profile, lines, card)
   // The budget covers the full injected payload, principles included, because
   // hosts truncate hook context past roughly 10 KiB.

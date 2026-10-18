@@ -33,6 +33,24 @@ function runAdapter(
   }
 }
 
+function assertDenied(result: HookResult): void {
+  assert.equal(result.status, 0, result.stderr)
+
+  const output = JSON.parse(result.stdout) as {
+    permissionDecision: string
+    permissionDecisionReason: string
+    hookSpecificOutput: Record<string, unknown>
+  }
+
+  assert.equal(output.permissionDecision, 'deny')
+  assert.ok(output.permissionDecisionReason.length > 0)
+  assert.deepEqual(output.hookSpecificOutput, {
+    hookEventName: 'PreToolUse',
+    permissionDecision: 'deny',
+    permissionDecisionReason: output.permissionDecisionReason,
+  })
+}
+
 const copilotShell = (command: string) => ({
   sessionId: 'session-1',
   toolName: 'bash',
@@ -66,7 +84,7 @@ function stubBin(response: string): string {
   return bin
 }
 
-test('the shell guard denies an unwrapped command with exit 2 for both hosts and prints nothing on allow', async (t) => {
+test('the shell guard returns a structured denial for both hosts and prints nothing on allow', async (t) => {
   const guard = [
     '--fail-closed',
     'beforeShellExecution',
@@ -75,8 +93,7 @@ test('the shell guard denies an unwrapped command with exit 2 for both hosts and
 
   await t.test('Copilot CLI bash, unwrapped', () => {
     const result = runAdapter(guard, copilotShell('npm test'))
-    assert.equal(result.status, 2)
-    assert.equal(result.stdout, '')
+    assertDenied(result)
     assert.match(result.stderr, /bin\/pan-run/u)
   })
 
@@ -85,7 +102,7 @@ test('the shell guard denies an unwrapped command with exit 2 for both hosts and
       guard,
       vscodeTool('run_in_terminal', { command: 'npm test' }),
     )
-    assert.equal(result.status, 2)
+    assertDenied(result)
     assert.match(result.stderr, /bin\/pan-run/u)
   })
 
@@ -118,13 +135,13 @@ test('the deny hook refuses foreground subagents, waits, and agent session tools
 
   await t.test('VS Code runSubagent', () => {
     const result = runAdapter(guard, vscodeTool('runSubagent', { prompt: 'x' }))
-    assert.equal(result.status, 2)
+    assertDenied(result)
     assert.match(result.stderr, /pan delegate <run-id> --headless/u)
   })
 
   await t.test('Copilot task in sync mode', () => {
     const result = runAdapter(guard, copilotTool('task', { mode: 'sync' }))
-    assert.equal(result.status, 2)
+    assertDenied(result)
     assert.match(result.stderr, /mode: "background"/u)
   })
 
@@ -142,7 +159,7 @@ test('the deny hook refuses foreground subagents, waits, and agent session tools
       guard,
       copilotTool('read_bash', { shellId: '2', delay: 30 }),
     )
-    assert.equal(result.status, 2)
+    assertDenied(result)
     assert.match(result.stderr, /platform await/u)
   })
 
@@ -156,7 +173,7 @@ test('the deny hook refuses foreground subagents, waits, and agent session tools
       guard,
       copilotTool('read_agent', { agent_id: 'a', wait: true, timeout: 120 }),
     )
-    assert.equal(result.status, 2)
+    assertDenied(result)
     assert.match(result.stderr, /platform await/u)
   })
 
@@ -171,7 +188,7 @@ test('the deny hook refuses foreground subagents, waits, and agent session tools
   for (const toolName of ['create_session', 'send_message']) {
     await t.test(`Agent Host ${toolName}`, () => {
       const result = runAdapter(guard, copilotTool(toolName, {}))
-      assert.equal(result.status, 2)
+      assertDenied(result)
       assert.match(result.stderr, /cannot observe/u)
     })
   }
@@ -186,24 +203,22 @@ test('the deny hook refuses foreground subagents, waits, and agent session tools
 test('fail-closed decides an unreadable payload and an unknown script', () => {
   const args = ['preToolUse', 'pan-hook-deny-await-shell']
 
-  assert.equal(runAdapter(['--fail-closed', ...args], 'not json').status, 2)
+  assertDenied(runAdapter(['--fail-closed', ...args], 'not json'))
   assert.equal(runAdapter(args, 'not json').status, 0)
-  assert.equal(
-    runAdapter(['--fail-closed', 'preToolUse', 'rm'], vscodeTool('x')).status,
-    2,
+  assertDenied(
+    runAdapter(['--fail-closed', 'preToolUse', 'rm'], vscodeTool('x')),
   )
 })
 
 test('a crashing guard denies only when registered fail-closed', () => {
   const bin = stubBin('not json')
 
-  assert.equal(
+  assertDenied(
     runAdapter(
       ['--fail-closed', 'preToolUse', 'pan-hook-stub'],
       vscodeTool('x'),
       bin,
-    ).status,
-    2,
+    ),
   )
   assert.equal(
     runAdapter(['preToolUse', 'pan-hook-stub'], vscodeTool('x'), bin).status,

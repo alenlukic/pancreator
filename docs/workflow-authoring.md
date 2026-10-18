@@ -460,6 +460,23 @@ which rewrites the payload and the response for the host. Name host tools
 through `governance/registries/host_tools.json` rather than by one host's tool
 name.
 
+Permission denials return `permissionDecision: "deny"` and
+`permissionDecisionReason` with exit 0, in both the Copilot top-level output
+and VS Code's `hookSpecificOutput`. Exit 2 hides the reason behind a generic
+hook failure in Copilot. An allowed call prints no permission decision, so
+normal host approvals still apply. Fail-closed adapters reject a child crash,
+invalid output, or a five-second timeout before the host's ten-second limit.
+Large tool arguments travel over stdin rather than environment variables.
+
+The shell guard accepts lifecycle calls through `bin/pan-run`, which already
+selects bounded output. Read-only Git calls may use `--no-pager` and `-C`;
+configuration overrides, executable helpers, and output redirection still
+require the wrapper. Long or multiline shell commands use prepared requests.
+
+Governance reminders cite the common operating card. They do not select a
+worktree or choose a run or session card from global runtime state. The
+operator's command and its resolved card own workspace selection.
+
 Treat the local `.cursor/` tree and the projected VS Code files as ignored and
 disposable. Run `./bin/pan models --sync` after a canonical projection, a
 mapped-model change, or a `hosts` change.

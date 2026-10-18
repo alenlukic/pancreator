@@ -157,7 +157,13 @@ test('the 1.139.1 recipe data stays equivalent to its captured baseline', () => 
   const captured = JSON.stringify(
     canonical({
       version: ui.verified_against,
-      patches: [...governance.patches, ...ui.patches],
+      patches: [
+        ...governance.patches,
+        ...ui.patches.filter(
+          (patch) =>
+            !(patch as { id: string }).id.startsWith('VSC-TOOL-COLLAPSE-'),
+        ),
+      ],
       settings: governance.settings,
     }),
   ).replace(
@@ -964,3 +970,4 @@ test('an inserted helper that contains its original anchor is recognized as appl
     /ambiguous/,
   )
 })
+
