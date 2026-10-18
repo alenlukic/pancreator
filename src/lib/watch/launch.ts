@@ -41,6 +41,8 @@ export interface LaunchRecord {
    * supplied none. Null is a recorded answer, not a missing one.
    */
   worker_handle: string | null
+  /** Executor launch pinned separately from a host's opaque worker handle. */
+  executor_launch_id?: string
   /**
    * When the platform returned control for the launch, and when it detached
    * the launch into the background, as evidenced at the first background
@@ -64,6 +66,7 @@ export interface LaunchRecordOptions {
   defaultSource: Exclude<LaunchTimeSource, 'supervisor'>
   launchMode?: LaunchRecord['launch_mode']
   workerHandle?: string
+  executorLaunchId?: string
   /** ISO-8601 platform control-return and detach times, when reported. */
   platformReturnedAt?: string
   platformDetachedAt?: string
@@ -106,8 +109,22 @@ export function readLaunchRecord(
 
     return isRecord(value) &&
       value.schema_version === 1 &&
+      value.run_id === runId &&
       value.invocation_id === invocationId &&
-      typeof value.launched_at === 'string'
+      (value.worker_handle === undefined ||
+        value.worker_handle === null ||
+        (typeof value.worker_handle === 'string' &&
+          value.worker_handle.length > 0)) &&
+      (value.launch_mode === undefined ||
+        (typeof value.launch_mode === 'string' &&
+          ['background', 'foreground', 'unknown'].includes(
+            value.launch_mode,
+          ))) &&
+      (value.executor_launch_id === undefined ||
+        (typeof value.executor_launch_id === 'string' &&
+          value.executor_launch_id.length > 0)) &&
+      typeof value.launched_at === 'string' &&
+      Number.isFinite(Date.parse(value.launched_at))
       ? (value as unknown as LaunchRecord)
       : null
   } catch {
@@ -141,9 +158,20 @@ export function resolveLaunchMs(
   invocationId: string,
   options: LaunchRecordOptions,
 ): number {
+  const existing = readLaunchRecord(root, runId, invocationId)
+  if (
+    existing?.launched_at_source === 'supervisor' &&
+    options.launchedAt !== undefined
+  ) {
+    invariant(
+      Date.parse(options.launchedAt) === Date.parse(existing.launched_at),
+      'An established supervisor launch clock cannot be changed.',
+      { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+    )
+  }
   return options.launchedAt !== undefined
     ? parseIsoTime(options.launchedAt, '--launched-at')
-    : (launchedMsFromRecord(readLaunchRecord(root, runId, invocationId)) ??
+    : (launchedMsFromRecord(existing) ??
         Math.floor(options.defaultLaunchedAtMs))
 }
 
@@ -164,6 +192,13 @@ export function recordInvocationLaunch(
   options: LaunchRecordOptions,
 ): LaunchRecord {
   const existing = readLaunchRecord(root, runId, invocationId)
+  invariant(
+    !existing?.worker_handle ||
+      !options.workerHandle ||
+      existing.worker_handle === options.workerHandle,
+    'An established worker handle cannot be changed by rearming a watch.',
+    { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+  )
   const launchedMs = resolveLaunchMs(root, runId, invocationId, options)
   const launchMode =
     options.launchMode && options.launchMode !== 'unknown'
@@ -173,17 +208,19 @@ export function recordInvocationLaunch(
   // The platform return and detach clocks are recorded once, at the first
   // supply, and a later supply fills a gap without moving a recorded one.
   const platformReturnedAt =
-    options.platformReturnedAt !== undefined
+    existing?.platform_returned_at ??
+    (options.platformReturnedAt !== undefined
       ? new Date(
           parseIsoTime(options.platformReturnedAt, '--platform-returned-at'),
         ).toISOString()
-      : (existing?.platform_returned_at ?? null)
+      : null)
   const platformDetachedAt =
-    options.platformDetachedAt !== undefined
+    existing?.platform_detached_at ??
+    (options.platformDetachedAt !== undefined
       ? new Date(
           parseIsoTime(options.platformDetachedAt, '--platform-detached-at'),
         ).toISOString()
-      : (existing?.platform_detached_at ?? null)
+      : null)
 
   // An impossible order is rejected before the record every later reader
   // trusts is touched.
@@ -200,6 +237,8 @@ export function recordInvocationLaunch(
     }
   }
 
+  const executorLaunchId =
+    options.executorLaunchId ?? existing?.executor_launch_id
   const record: LaunchRecord = {
     schema_version: 1,
     run_id: runId,
@@ -211,6 +250,9 @@ export function recordInvocationLaunch(
         ? 'supervisor'
         : (existing?.launched_at_source ?? options.defaultSource),
     worker_handle: options.workerHandle ?? existing?.worker_handle ?? null,
+    ...(executorLaunchId !== undefined
+      ? { executor_launch_id: executorLaunchId }
+      : {}),
     platform_returned_at: platformReturnedAt,
     platform_returned_at_source:
       platformReturnedAt !== null
@@ -221,6 +263,13 @@ export function recordInvocationLaunch(
     platform_detached_at: platformDetachedAt,
     recorded_at: new Date().toISOString(),
   }
+
+  invariant(
+    existing?.executor_launch_id === undefined ||
+      record.executor_launch_id === existing.executor_launch_id,
+    'An established executor launch identity cannot be changed.',
+    { code: 'WATCH_LAUNCH_IDENTITY_MISMATCH' },
+  )
 
   writeJsonAtomic(
     resolveInside(root, launchRecordPath(root, runId, invocationId)),
@@ -278,17 +327,12 @@ export function markDelegationBackground(
     )
   }
 
-  // The transport the mark was made over. No attached terminal means the
-  // timer may be running unawaited; it is a suspicion to carry, never a
-  // proof, and a flag alone never fabricates awaitedness either.
+  // TTY presence describes transport, not whether the caller awaited it.
   const transport = {
     stdin_tty: Boolean(process.stdin.isTTY),
     stdout_tty: Boolean(process.stdout.isTTY),
     stderr_tty: Boolean(process.stderr.isTTY),
   }
-  const anyTerminal =
-    transport.stdin_tty || transport.stdout_tty || transport.stderr_tty
-
   writeJsonAtomic(absolute, {
     schema_version: 1,
     run_id: runId,
@@ -308,7 +352,7 @@ export function markDelegationBackground(
         : false,
     transport,
     await_status: 'unknown',
-    unawaited_timer_suspected: !anyTerminal,
+    unawaited_timer_suspected: false,
     marked_at: markedAt,
     watch_record_path: watchRecordPath(root, runId, invocationId),
     launch_record_path: launchRecordPath(root, runId, invocationId),

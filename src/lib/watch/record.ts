@@ -34,11 +34,10 @@ import {
   foregroundReturnRecordPath,
   watchRecordPath,
 } from './paths.js'
-import {
-  isTerminalObservation,
-  launchToOutputSeconds,
-  observePath,
-} from './observe.js'
+import { isTerminalObservation, observePath } from './observe.js'
+import { validForegroundReturn, workerLifetime } from './lifetime.js'
+import { readBlockingReceipts } from './blocking.js'
+import { readLaunchRecord } from './launch.js'
 
 /**
  * Reads an invocation's foreground-return record. Returns null when the file is
@@ -64,9 +63,15 @@ export function readForegroundReturn(
 
     return isRecord(value) &&
       value.schema_version === 1 &&
+      value.run_id === runId &&
       value.invocation_id === invocationId &&
+      value.launch_mode === 'foreground' &&
       typeof value.launched_at === 'string' &&
-      typeof value.returned_at === 'string'
+      Number.isFinite(Date.parse(value.launched_at)) &&
+      typeof value.returned_at === 'string' &&
+      Date.parse(value.returned_at) >= Date.parse(value.launched_at) &&
+      isRecord(value.observation) &&
+      typeof value.observation.output_present === 'boolean'
       ? (value as unknown as ForegroundReturnRecord)
       : null
   } catch {
@@ -291,7 +296,10 @@ export function readWatchRecord(
       try {
         const parsed = JSON.parse(line) as unknown
 
-        return isRecord(parsed) && parsed.schema_version === 1
+        return isRecord(parsed) &&
+          parsed.schema_version === 1 &&
+          parsed.run_id === runId &&
+          parsed.invocation_id === invocationId
           ? [parsed as unknown as WatchRecordEntry]
           : []
       } catch {
@@ -351,6 +359,8 @@ function lastWakeObservedFinalOutput(
  */
 function watchSessionSpans(
   entries: WatchRecordEntry[],
+  receipts: ReturnType<typeof readBlockingReceipts>,
+  ledger: string,
 ): Array<{ startMs: number; endMs: number }> {
   const spans: Array<{ startMs: number; endMs: number }> = []
   const bySessionId = new Map<string, WatchRecordEntry[]>()
@@ -391,19 +401,54 @@ function watchSessionSpans(
       Number.isFinite(endMs) &&
       endMs >= startMs
     ) {
-      spans.push({ startMs, endMs })
+      const session = group[0]
+      for (const receipt of receipts) {
+        if (
+          receipt.ledger !== ledger ||
+          receipt.watch_session_id !== session?.watch_session_id ||
+          receipt.watcher_pid !== session.watcher_pid ||
+          receipt.watcher_process_identity !== session.watcher_process_identity
+        )
+          continue
+        const start = Math.max(startMs, Date.parse(receipt.started_at))
+        const end = Math.min(endMs, Date.parse(receipt.ended_at))
+        if (end >= start) spans.push({ startMs: start, endMs: end })
+      }
     }
   }
 
   return spans
 }
 
-/** Total milliseconds covered by the union of the given intervals. */
-function unionCoverageMs(
+function subtractDisclosedGaps(
   spans: Array<{ startMs: number; endMs: number }>,
-): number {
+  entries: WatchRecordEntry[],
+): Array<{ startMs: number; endMs: number }> {
+  let remaining = spans
+  for (const entry of entries) {
+    if (entry.event !== 'gap' || !entry.gap) continue
+    const from = Date.parse(entry.gap.from)
+    const to = Date.parse(entry.gap.to)
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) continue
+    remaining = remaining.flatMap((span) => {
+      if (to <= span.startMs || from >= span.endMs) return [span]
+      return [
+        ...(from > span.startMs
+          ? [{ startMs: span.startMs, endMs: from }]
+          : []),
+        ...(to < span.endMs ? [{ startMs: to, endMs: span.endMs }] : []),
+      ]
+    })
+  }
+  return remaining
+}
+
+/** Disjoint intervals covered by the union of all accepted spans. */
+function unionWatchSpans(
+  spans: Array<{ startMs: number; endMs: number }>,
+): Array<{ startMs: number; endMs: number }> {
   const sorted = [...spans].sort((left, right) => left.startMs - right.startMs)
-  let covered = 0
+  const union: Array<{ startMs: number; endMs: number }> = []
   let currentStart: number | null = null
   let currentEnd: number | null = null
 
@@ -414,7 +459,7 @@ function unionCoverageMs(
       span.startMs > currentEnd
     ) {
       if (currentStart !== null && currentEnd !== null) {
-        covered += currentEnd - currentStart
+        union.push({ startMs: currentStart, endMs: currentEnd })
       }
 
       currentStart = span.startMs
@@ -425,10 +470,10 @@ function unionCoverageMs(
   }
 
   if (currentStart !== null && currentEnd !== null) {
-    covered += currentEnd - currentStart
+    union.push({ startMs: currentStart, endMs: currentEnd })
   }
 
-  return covered
+  return union
 }
 
 /** Summarize the watch record `pan submit` carries into the stage record. */
@@ -514,17 +559,46 @@ export function summarizeDelegationWatch(
             1000,
         )
       : null
+  const ledger = watchRecordPath(root, runId, invocationId)
+  const receipts = readBlockingReceipts(resolveInside(root, ledger))
+  const lifetime = workerLifetime(root, runId, invocationId)
+  const foreground = readForegroundReturn(root, runId, invocationId)
+  const launch = readLaunchRecord(root, runId, invocationId)
+  const spans = watchSessionSpans(entries, receipts, ledger)
+  if (validForegroundReturn(launch, foreground)) {
+    spans.push({
+      startMs: Date.parse(foreground.launched_at),
+      endMs: Date.parse(foreground.returned_at),
+    })
+  }
+  const clippedSpans =
+    lifetime.started_ms !== null && lifetime.ended_ms !== null
+      ? spans
+          .map((span) => ({
+            startMs: Math.max(span.startMs, lifetime.started_ms!),
+            endMs: Math.min(span.endMs, lifetime.ended_ms!),
+          }))
+          .filter((span) => span.endMs >= span.startMs)
+      : spans
+  const observedSpans = subtractDisclosedGaps(
+    unionWatchSpans(clippedSpans),
+    entries,
+  )
+  const parentObserved = clippedSpans.length > 0
   const coveredSeconds =
-    entries.length > 0
-      ? unionCoverageMs(watchSessionSpans(entries)) / 1000
+    parentObserved && lifetime.started_ms !== null && lifetime.ended_ms !== null
+      ? observedSpans.reduce(
+          (total, span) => total + span.endMs - span.startMs,
+          0,
+        ) / 1000
       : null
 
-  // The ratio reads against the launch-to-output elapsed time when a launch
-  // clock exists. A missing or unreadable clock is reported as unknown
+  // The ratio reads only matching launch and terminal receipts.
+  // A missing or unreadable clock is reported as unknown
   // rather than passed off as a numerical result.
-  const launchToOutput = launchToOutputSeconds(root, runId, invocationId)
+  const launchToOutput = lifetime.seconds
   const coverageBasis: DelegationWatchSummary['coverage_basis'] =
-    launchToOutput !== null && launchToOutput >= 0
+    launchToOutput !== null && launchToOutput >= 0 && parentObserved
       ? 'launch_record'
       : entries.length > 0
         ? 'unknown'
@@ -534,7 +608,7 @@ export function summarizeDelegationWatch(
     launchToOutput !== null &&
     launchToOutput > 0 &&
     coveredSeconds !== null
-      ? coveredSeconds / launchToOutput
+      ? Math.min(1, coveredSeconds / launchToOutput)
       : null
 
   return {
@@ -569,10 +643,14 @@ export function summarizeDelegationWatch(
     covered_seconds: coveredSeconds,
     coverage_ratio: coverageRatio,
     coverage_basis: coverageBasis,
-    await_status:
-      isRecord(marker) && marker.await_status === 'unknown' ? 'unknown' : null,
-    unawaited_timer_suspected:
-      isRecord(marker) && marker.unawaited_timer_suspected === true,
+    await_status: parentObserved
+      ? 'observed'
+      : entries.length > 0 || marker !== null
+        ? 'unknown'
+        : null,
+    lifetime_seconds: lifetime.seconds,
+    lifetime_diagnostics: lifetime.diagnostics,
+    unawaited_timer_suspected: false,
   }
 }
 
@@ -604,8 +682,9 @@ export function summarizeForegroundReturn(
 /**
  * Decide whether the harness saw the delegation reach its terminal state.
  * A completed watch, a watch whose last wake observed the final output, or a
- * foreground-return attestation satisfies `DELEGATE-001`; a harness-delegated
- * stage is exempt because `pan delegate` writes its delegation evidence itself.
+ * foreground-return attestation satisfies the terminal observation gate.
+ * Legacy completed ledgers retain that compatibility, with unknown parent
+ * await status and coverage unless matching blocking receipts exist.
  *
  * `externalExecutor` describes who owns the dispatch in an operator session,
  * and reaches the refusal wording only. The exemption itself reads the
@@ -620,10 +699,12 @@ export function summarizeDelegationObservation(
 ): DelegationObservation {
   const watch = summarizeDelegationWatch(root, runId, invocationId)
   const foregroundReturn = summarizeForegroundReturn(root, runId, invocationId)
+  const foregroundValid = validForegroundReturn(
+    readLaunchRecord(root, runId, invocationId),
+    readForegroundReturn(root, runId, invocationId),
+  )
 
-  // The exemption rests on the execution record `pan delegate` writes. A
-  // hand-supplied output for a harness-dispatched stage has no such record
-  // and is as unobserved as any other.
+  // An execution audit proves worker completion, not parent observation.
   const executionRecord = loadDelegationExecutionRecord(
     root,
     runId,
@@ -633,15 +714,17 @@ export function summarizeDelegationObservation(
     executionRecord !== null &&
     executionRecord.run_id === runId &&
     executionRecord.invocation_id === invocationId
-  const source: DelegationObservationSource | null = executionRecordMatches
-    ? 'external_executor'
-    : watch.terminal_state === 'completed'
-      ? 'watch_completed'
-      : watch.last_wake_observed_final_output
-        ? 'watch_observed_final_output'
-        : foregroundReturn.output_present_at_return === true
-          ? 'foreground_return'
-          : null
+  const source: DelegationObservationSource | null =
+    executionRecordMatches &&
+    (watch.await_status === 'observed' || foregroundValid)
+      ? 'external_executor'
+      : watch.terminal_state === 'completed'
+        ? 'watch_completed'
+        : watch.last_wake_observed_final_output
+          ? 'watch_observed_final_output'
+          : foregroundValid
+            ? 'foreground_return'
+            : null
 
   return {
     observed: source !== null,

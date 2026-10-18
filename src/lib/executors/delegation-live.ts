@@ -43,6 +43,8 @@ export interface DelegationLiveRecord extends DelegationLiveIdentity {
   stream_sequences: { stdout: number; stderr: number }
   truncated: boolean
   ended_at?: string
+  /** Child process exit clock; relay finalization and wrapper drain are separate. */
+  child_ended_at?: string
   exit_code?: number | null
   signal?: string
   error?: string
@@ -247,6 +249,7 @@ export function loadDelegationLiveRecord(
     'session_id',
     'resumed_from_session_id',
     'ended_at',
+    'child_ended_at',
     'signal',
     'error',
   ] as const) {
@@ -264,6 +267,12 @@ export function loadDelegationLiveRecord(
     (value.exit_code !== undefined &&
       value.exit_code !== null &&
       !Number.isSafeInteger(value.exit_code)) ||
+    (value.child_ended_at !== undefined &&
+      (!value.child_pid ||
+        !Number.isFinite(Date.parse(value.child_ended_at)) ||
+        Date.parse(value.child_ended_at) < Date.parse(value.launched_at) ||
+        (value.ended_at !== undefined &&
+          Date.parse(value.child_ended_at) > Date.parse(value.ended_at)))) ||
     (value.ended_at !== undefined &&
       (!Number.isFinite(Date.parse(value.ended_at)) ||
         Date.parse(value.ended_at) < Date.parse(value.launched_at)))
@@ -333,6 +342,8 @@ export function updateDelegationLiveRecord(
     record.requested_session_id !== previous.requested_session_id ||
     record.launched_at !== previous.launched_at ||
     record.relay_start_identity !== previous.relay_start_identity ||
+    (previous.child_ended_at !== undefined &&
+      record.child_ended_at !== previous.child_ended_at) ||
     (previous.child_pid !== undefined &&
       (record.child_pid !== previous.child_pid ||
         record.child_start_identity !== previous.child_start_identity)) ||

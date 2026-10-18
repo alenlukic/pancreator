@@ -414,6 +414,9 @@ async function runWatchCommand(
               : {}),
           }),
       ...(genericRecord ? { recordPath: genericRecord } : {}),
+      ...(option(args, '--resume-process') !== null
+        ? { resumeProcess: option(args, '--resume-process')! }
+        : {}),
       cadenceSeconds: genericCadence,
       timeoutSeconds: processTimeout,
       onWake: genericOnWake,

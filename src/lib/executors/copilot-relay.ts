@@ -620,6 +620,14 @@ export async function runCopilotRelay(
       fault(`Failed to spawn Copilot CLI: ${error.message}`)
     })
     child.on('exit', () => {
+      if (record) {
+        record.child_ended_at = new Date().toISOString()
+        try {
+          persist()
+        } catch (error) {
+          fault(`Copilot child exit evidence failed: ${errorMessage(error)}`)
+        }
+      }
       // Descendants can inherit the pipes and otherwise delay close forever.
       killGroup('SIGKILL')
     })

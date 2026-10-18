@@ -285,7 +285,7 @@ test('AC-10: a stopped wrapper preserves the deterministic stopped cause', () =>
   )
 })
 
-test('AC-10: an audit older than the latest launch cannot complete a relaunched worker', () => {
+test('AC-10: stale and unmatched audits cannot complete a pinned worker; unbound launch ambiguity remains unknown', () => {
   const fixture = liveFixture()
   const auditPath = path.join(
     fixture.root,
@@ -318,7 +318,18 @@ test('AC-10: an audit older than the latest launch cannot complete a relaunched 
     delegationLivePaths(fixture.root, secondLaunch).record,
     JSON.stringify(secondLaunch),
   )
-  assert.equal(fixture.observe(), null)
+  assert.equal(fixture.observe()?.agent_id, 'copilot:current')
+  assert.equal(fixture.observe()?.stop, null)
+  const unbound = liveFixture()
+  writeFileSync(
+    delegationLivePaths(unbound.root, secondLaunch).record,
+    JSON.stringify({
+      ...secondLaunch,
+      launched_at: unbound.live.launched_at,
+      heartbeat_at: unbound.live.heartbeat_at,
+    }),
+  )
+  assert.equal(unbound.observe(), null)
 
   writeFileSync(
     auditPath,
@@ -334,6 +345,10 @@ test('AC-10: an audit older than the latest launch cannot complete a relaunched 
       session_id: 'current-session',
     }),
   )
+  assert.equal(fixture.observe()?.stop, null)
+  fixture.live.session_id = 'current-session'
+  fixture.live.child_ended_at = new Date(fixture.now).toISOString()
+  fixture.save()
   assert.equal(fixture.observe()?.stop?.status, 'completed')
 })
 
