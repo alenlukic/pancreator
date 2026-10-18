@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Collapse earlier terminal tool calls when a new tool call renders in VS Code. Preserve calls the operator expands until the operator closes them ([editor patches](https://github.com/alenlukic/pancreator/commit/bb8c7a7a)).
+
+### Fixed
+
+- Keep terminal output steady when a completed tool call renders again ([terminal display](https://github.com/alenlukic/pancreator/commit/cefe3e85)).
+
 ## [9.5.1] - 2026-10-18
 
 ### Fixed
