@@ -123,16 +123,30 @@ test('prose naming a pan command keeps the live supervisor role', () => {
   }
 })
 
-test('live run records distinguish cohort and long-horizon supervisors', () => {
+test('only /pan-horizon selects the long-horizon supervisor', () => {
   const { root: horizonRoot } = checkpoint('planning@created', LONG_HORIZON)
 
+  assert.equal(
+    role(
+      resolvePromptContext(horizonRoot, payload('bystander', 'ordinary reply')),
+    ),
+    'regular-supervisor',
+    'a live long-horizon run alone must not select the long-horizon role',
+  )
+  assert.equal(
+    role(resolvePromptContext(horizonRoot, payload('horizon', '/pan-horizon'))),
+    'long-horizon-supervisor',
+  )
   assert.equal(
     role(
       resolvePromptContext(horizonRoot, payload('horizon', 'ordinary reply')),
     ),
     'long-horizon-supervisor',
+    'the conversation that invoked /pan-horizon keeps the role',
   )
+})
 
+test('live run records distinguish cohort supervisors', () => {
   const { root: cohortRoot, state: cohortRun } = checkpoint('delivery@created')
 
   cohortRun.cohort = {
@@ -305,7 +319,7 @@ test('malformed input and unreadable resolver state fail open', () => {
   rmSync(statePath, { recursive: true })
 })
 
-test('excluded commands carry principles only and non-prompt events carry no reminder', () => {
+test('excluded commands carry common reminders and unrelated events carry no reminder', () => {
   const root = createFixture()
 
   for (const prompt of [
@@ -319,14 +333,11 @@ test('excluded commands carry principles only and non-prompt events carry no rem
     const response = resolvePromptContext(root, payload(prompt, prompt))
 
     assert.equal(response.continue, true)
-    assert.equal(role(response), null)
+    assert.equal(role(response), 'unbound')
+    assert.match(response.additional_context ?? '', /^\[COMMS-001\]$/mu)
     assert.match(
       response.additional_context ?? '',
-      /^Remember the operating principles; you MUST abide by these:\n/u,
-    )
-    assert.doesNotMatch(
-      response.additional_context ?? '',
-      /Pancreator governance reminder/u,
+      /^Remember the operating principles; you MUST abide by these:\n/mu,
     )
   }
 

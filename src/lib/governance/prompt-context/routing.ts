@@ -16,7 +16,6 @@ import {
 } from '../../io.js'
 import type { RunState } from '../../types.js'
 import {
-  CARD_PATH,
   ROLE_SET,
   TURN_REMINDER_STATE_PATH,
   loadTurnReminderRegistry,
@@ -24,7 +23,7 @@ import {
   type TurnReminderRole,
 } from './registry.js'
 import { liveRuns } from './cards.js'
-import { cardSection, renderTurnReminder } from './reminders.js'
+import { principlesReminder, renderTurnReminder } from './reminders.js'
 
 interface ConversationRecord {
   role: Exclude<TurnReminderRole, 'none'>
@@ -54,13 +53,19 @@ export interface PromptContextResponse {
 }
 // The Copilot runtime in VS Code replaces a project hook's context on the
 // first prompt with its own, so session start carries the reminder too.
+const TOOL_HOOK_EVENTS = new Set([
+  'postToolUse',
+  'PostToolUse',
+  'postToolUseFailure',
+  'PostToolUseFailure',
+])
 const HOOK_EVENTS = new Set([
   'beforeSubmitPrompt',
   'UserPromptSubmit',
   'sessionStart',
   'SessionStart',
+  ...TOOL_HOOK_EVENTS,
 ])
-const HORIZON_SESSION_ROOT = 'runtime/logs/horizon'
 
 const SUPERVISOR_COMMAND_ROLES: Record<string, TurnReminderRole> = {
   'pan-start': 'regular-supervisor',
@@ -77,7 +82,7 @@ const STANDALONE_COMMAND_ROLES: Record<string, TurnReminderRole> = {
   'pan-cleanup': 'cleanup',
 }
 
-/** Bounded read-only commands, which `OOS-2` excludes from the reminder. */
+/** Bounded read-only commands that do not select a persistent reminder role. */
 const EXCLUDED_COMMANDS = new Set([
   'pan-augment',
   'pan-status',
@@ -317,45 +322,11 @@ function writeConversationStore(
   })
 }
 
-function hasLiveHorizonSession(root: string): boolean {
-  const directory = path.join(root, HORIZON_SESSION_ROOT)
-
-  try {
-    return readdirSync(directory, { withFileTypes: true }).some((entry) => {
-      if (!entry.isDirectory()) {
-        return false
-      }
-
-      try {
-        const value = readJson(path.join(directory, entry.name, 'session.json'))
-        return (
-          isRecord(value) &&
-          (value.status === 'created' || value.status === 'running')
-        )
-      } catch {
-        return false
-      }
-    })
-  } catch {
-    return false
-  }
-}
-
-function inferredSupervisorRole(
-  root: string,
-  runs: RunState[],
-): TurnReminderRole | null {
-  if (
-    hasLiveHorizonSession(root) ||
-    runs.some(
-      (run) =>
-        run.horizon !== undefined ||
-        run.operator_involvement?.contracts?.includes('long_horizon') === true,
-    )
-  ) {
-    return 'long-horizon-supervisor'
-  }
-
+/**
+ * The supervisor role live runs imply. Long-horizon is never inferred: only a
+ * conversation that invoked `/pan-horizon` carries that role.
+ */
+function inferredSupervisorRole(runs: RunState[]): TurnReminderRole | null {
   if (runs.some((run) => run.cohort !== undefined)) {
     return 'cohort-supervisor'
   }
@@ -393,13 +364,12 @@ function resolveRole(
   const stored = payload.conversation_id
     ? store.conversations[payload.conversation_id]
     : undefined
-  const inferred = inferredSupervisorRole(root, runs)
+  const inferred = inferredSupervisorRole(runs)
 
   if (stored) {
     if (
       stored.role === 'regular-supervisor' ||
-      stored.role === 'cohort-supervisor' ||
-      stored.role === 'long-horizon-supervisor'
+      stored.role === 'cohort-supervisor'
     ) {
       if (!inferred) {
         return { role: 'unbound', mode: 'unbound' }
@@ -417,13 +387,12 @@ function resolveRole(
 }
 
 /**
- * Handle a prompt-submit hook payload: infer the conversation's reminder role
- * from the prompt, the stored conversation role, and live runs, record that
- * role in the turn reminder state file, and return the rendered governance
- * reminder as `additional_context`, ending with the current operating
- * principles from AGENTS.md. Excluded roles receive only the principles.
- * Other hook events and errors return only `{ continue: true }`, so the hook
- * never blocks a prompt.
+ * Render the same governance reminder for prompt, session, and tool hooks,
+ * ending with the current operating principles from AGENTS.md. Prompts select
+ * the role; tool cycles reuse the stored role without transcript inspection.
+ * Excluded roles receive the common reminder without persisting a role.
+ * Other events and errors return only `{ continue: true }`, so the hook
+ * never blocks.
  */
 export function resolvePromptContext(
   root: string,
@@ -441,19 +410,17 @@ export function resolvePromptContext(
       return { continue: true }
     }
 
-    const principles = [
-      'Remember the operating principles; you MUST abide by these:',
-      cardSection(root, CARD_PATH, '## Mission and operating principles'),
-    ].join('\n')
+    const principles = principlesReminder(root)
     const store = readConversationStore(root, registry, now)
     const runs = liveRuns(root)
-    const resolution = resolveRole(root, payload, store, runs)
+    const rolePayload =
+      payload.hook_event_name !== null &&
+      TOOL_HOOK_EVENTS.has(payload.hook_event_name)
+        ? { ...payload, prompt: '' }
+        : payload
+    const resolution = resolveRole(root, rolePayload, store, runs)
 
-    if (resolution.role === 'none') {
-      return { continue: true, additional_context: principles }
-    }
-
-    if (payload.conversation_id) {
+    if (payload.conversation_id && resolution.role !== 'none') {
       store.conversations[payload.conversation_id] = {
         role: resolution.role,
         mode: resolution.mode,
@@ -462,11 +429,15 @@ export function resolvePromptContext(
       writeConversationStore(root, registry, store)
     }
 
-    const reminder = renderTurnReminder(root, resolution.role, {
-      mode: resolution.mode,
-      registry,
-      liveRuns: runs,
-    })
+    const reminder = renderTurnReminder(
+      root,
+      resolution.role === 'none' ? 'unbound' : resolution.role,
+      {
+        mode: resolution.mode,
+        registry,
+        liveRuns: runs,
+      },
+    )
 
     return {
       continue: true,
