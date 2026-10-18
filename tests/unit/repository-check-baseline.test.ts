@@ -167,6 +167,43 @@ test('an empty baseline is a recorded evidence gap and never fails the gate on d
   assert.equal(populated.evidence_gap, undefined)
 })
 
+test('a baseline whose only command selected no test is an evidence gap, while a baseline that ran tests still gates', () => {
+  const probe = {
+    ...passedCheck().results[0]!,
+    kind: 'probe' as const,
+    command: 'node --version',
+    stdout: 'v22.0.0\n',
+  }
+  const noSelection: RepositoryCheckResult = {
+    ...passedCheck(),
+    results: [
+      probe,
+      {
+        ...passedCheck().results[0]!,
+        command: './bin/pan tests impacted --lane integration --changed pan-dev',
+        stdout: 'No changed files. No test selected.\n',
+      },
+    ],
+  }
+  const current = failedCheck('not ok 1 - inherited or new failure\n')
+
+  const comparison = compareRepositoryCheckToBaseline(noSelection, current)
+
+  assert.equal(comparison.passed, true)
+  assert.ok(comparison.evidence_gap)
+  assert.match(comparison.explanation, /selected no test to run/u)
+
+  const ranTests: RepositoryCheckResult = {
+    ...noSelection,
+    results: [
+      probe,
+      { ...noSelection.results[1]!, stdout: 'ok 1 - selected test\n' },
+    ],
+  }
+
+  assert.equal(compareRepositoryCheckToBaseline(ranTests, current).passed, false)
+})
+
 test('baseline delta credits a repaired inherited failure as fixed', () => {
   const baseline = failedCheck(
     '/workspace/src/a.ts:10:2 error Unexpected value no-example\n' +
