@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Format the no-selection baseline regression test so the static profile carries no new Prettier diagnostic ([baseline test](tests/unit/repository-check-baseline.test.ts)).
+
 ## [9.8.1] - 2026-10-18
 
 ### Fixed

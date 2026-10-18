@@ -180,7 +180,8 @@ test('a baseline whose only command selected no test is an evidence gap, while a
       probe,
       {
         ...passedCheck().results[0]!,
-        command: './bin/pan tests impacted --lane integration --changed pan-dev',
+        command:
+          './bin/pan tests impacted --lane integration --changed pan-dev',
         stdout: 'No changed files. No test selected.\n',
       },
     ],
@@ -201,7 +202,10 @@ test('a baseline whose only command selected no test is an evidence gap, while a
     ],
   }
 
-  assert.equal(compareRepositoryCheckToBaseline(ranTests, current).passed, false)
+  assert.equal(
+    compareRepositoryCheckToBaseline(ranTests, current).passed,
+    false,
+  )
 })
 
 test('baseline delta credits a repaired inherited failure as fixed', () => {
