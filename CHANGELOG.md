@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Treat a pre-implementation baseline whose every command selected no test (`No test selected.`) as an evidence gap, so an impacted-test baseline captured with no changed files no longer turns every current diagnostic into a new failure ([baseline comparison](src/lib/repository-checks/baselines.ts)).
+
 ## [9.8.0] - 2026-10-18
 
 ### Changed
