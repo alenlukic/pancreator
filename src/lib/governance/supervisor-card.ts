@@ -13,6 +13,7 @@ import {
   writeTextAtomic,
 } from '../io.js'
 import { policySectionDigest } from '../policy-guidance.js'
+import { proceduralExceptionContext } from '../procedural-exceptions.js'
 import { loadPolicySources, resolvePolicies } from '../policies.js'
 import { readRedlineRecord, redlineRecordPath } from '../watch/redline.js'
 import { readWorktreeIndex } from '../worktrees.js'
@@ -245,6 +246,7 @@ export function renderSupervisorCard(
       : null,
     worktree: runWorktree(root, state),
     baseConduct: null,
+    proceduralExceptions: proceduralExceptionContext(root, state.run_id),
     run: {
       run_id: state.run_id,
       workflow_slug: workflow.slug,

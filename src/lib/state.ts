@@ -649,11 +649,12 @@ export function persist(
     state_ref: stateReference,
   }
 
-  // The appended line carries a trailing newline, so budget for it here to
-  // keep every physical event-log line under the cap.
+  // Exception bodies stay immutable when retention rewrites journal paths.
+  // The trailing newline also counts toward the physical event-line cap.
   if (
-    Buffer.byteLength(JSON.stringify(event), 'utf8') + 1 >=
-    MAX_EVENT_LINE_BYTES
+    eventType === 'procedural_exception_recorded' ||
+    eventType === 'procedural_exception_resolved' ||
+    Buffer.byteLength(JSON.stringify(event), 'utf8') + 1 >= MAX_EVENT_LINE_BYTES
   ) {
     const payloadDigest = sha256(payload)
     const payloadArtifact = resolveRunLayout(root, state.run_id).artifactJson(

@@ -471,7 +471,7 @@ test('a CLI exit cleans descendants that retain its pipes and ignore SIGTERM', a
 
 for (const kind of ['stage', 'evidence'] as const) {
   test(
-    `${kind} dispatch publishes its actual identity while delegation retains its mutex boundary`,
+    `${kind} dispatch publishes its actual identity with scoped delegation locks`,
     { timeout: 60_000 },
     async (context) => {
       const { createServer } = await import('node:net')
@@ -559,14 +559,16 @@ for (const kind of ['stage', 'evidence'] as const) {
         assert.equal(record?.wrapper_record_path, '/wrapper/record')
         const mutex = operationMutexPath(run.root, run.runId)
         if (kind === 'stage') {
+          assert.doesNotThrow(() => withOperationMutex(mutex, () => undefined))
+          const launchMutex = `${mutex}.delegate`
           assert.equal(
-            Number(readFileSync(mutex, 'utf8').trim()),
+            Number(readFileSync(launchMutex, 'utf8').trim()),
             running.child.pid,
           )
           assert.throws(
             () =>
-              withOperationMutex(mutex, () =>
-                assert.fail('delegate released its mutex'),
+              withOperationMutex(launchMutex, () =>
+                assert.fail('delegate released its launch mutex'),
               ),
             /operation.*progress|busy|held|mutex/iu,
           )
@@ -576,6 +578,9 @@ for (const kind of ['stage', 'evidence'] as const) {
         assert.equal(result.ok, true, result.error ?? '')
         assert.ok(loadDelegationLiveRecord(run.root, identity)?.ended_at)
         assert.equal(existsSync(mutex), false)
+        if (kind === 'stage') {
+          assert.equal(existsSync(`${mutex}.delegate`), false)
+        }
       } finally {
         socket?.destroy()
         running.child.kill('SIGTERM')

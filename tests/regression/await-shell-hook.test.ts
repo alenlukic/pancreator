@@ -99,6 +99,107 @@ test('AC-002: pan-hook-deny-await-shell denies AwaitShell and Await and allows o
   }
 })
 
+test('indexed invocation workers cannot launch primary or alternate agents and missing identity evidence fails closed', () => {
+  const root = createTestTempDirectory('worker-launch-hook-')
+  const directory = path.join(root, 'runtime/logs/agents')
+  mkdirSync(directory, { recursive: true })
+  const index = path.join(directory, 'index.json')
+  writeFileSync(
+    index,
+    JSON.stringify({
+      agents: [
+        { agent_id: 'worker', run_id: 'run', invocation_id: 'invocation' },
+      ],
+      aliases: { session: 'worker' },
+    }),
+  )
+  const env = { ...process.env, PANCREATOR_ROOT: root }
+  const withoutPython = { ...env, PATH: pathWithoutPython() }
+  for (const tool_name of [
+    'Task',
+    'task',
+    'runSubagent',
+    'create_session',
+    'send_message',
+    'functions.task',
+  ]) {
+    assert.equal(
+      runHook(
+        JSON.stringify({
+          conversation_id: 'session',
+          tool_name,
+          tool_input: { mode: 'background', run_in_background: true },
+        }),
+        env,
+      ).permission,
+      'deny',
+      tool_name,
+    )
+    const fallback = runHook(
+      JSON.stringify({
+        conversation_id: 'session',
+        tool_name,
+        tool_input: { mode: 'background', run_in_background: true },
+      }),
+      withoutPython,
+    )
+    assert.equal(fallback.permission, 'deny', `${tool_name} without Python`)
+    assert.match(String(fallback.agent_message), /authority.*unavailable/iu)
+  }
+  assert.equal(
+    runHook(
+      JSON.stringify({
+        conversation_id: 'session',
+        tool_name: 'view',
+      }),
+      env,
+    ).permission,
+    'allow',
+  )
+  writeFileSync(index, 'not JSON')
+  const denied = runHook(
+    JSON.stringify({
+      conversation_id: 'session',
+      tool_name: 'Task',
+      tool_input: { run_in_background: true },
+    }),
+    env,
+  )
+  assert.equal(denied.permission, 'deny')
+  assert.match(
+    String(denied.agent_message),
+    /index is unavailable or malformed/,
+  )
+})
+
+test('authority interpreter execution failure denies launches and sessions while allowing ordinary reads', () => {
+  const tools = pathWithoutPython()
+  const python = path.join(tools, 'python3')
+  writeFileSync(python, '#!/bin/sh\nexit 19\n')
+  chmodSync(python, 0o755)
+  const env = { ...process.env, PATH: tools }
+  for (const tool of [
+    'Task',
+    'task',
+    'runSubagent',
+    'create_session',
+    'send_message',
+    'functions.task',
+    'AwaitShell',
+  ]) {
+    const result = runHook(
+      payload(tool, { mode: 'background', run_in_background: true }),
+      env,
+    )
+    assert.equal(result.permission, 'deny', tool)
+    assert.match(
+      String(result.agent_message),
+      /authority.*unavailable|pan watch/iu,
+    )
+  }
+  assert.equal(runHook(payload('view'), env).permission, 'allow')
+})
+
 test('AC-002: pan-hook-deny-await-shell denies a Task unless run_in_background is true', async (t) => {
   for (const [label, toolInput] of [
     ['an empty tool_input', {}],
@@ -136,7 +237,7 @@ test('AC-002: pan-hook-deny-await-shell denies a Task unless run_in_background i
   }
 })
 
-test('C-013: a fault in the Task path allows the Task and keeps the AwaitShell ban', async (t) => {
+test('C-013: malformed inputs preserve ordinary routing but unavailable authority denies launches', async (t) => {
   await t.test('an unparsable JSON-string tool_input allows the Task', () => {
     assert.deepEqual(runHook(payload('Task', '{not json')), {
       permission: 'allow',
@@ -148,8 +249,9 @@ test('C-013: a fault in the Task path allows the Task and keeps the AwaitShell b
   })
 
   const withoutPython = { ...process.env, PATH: pathWithoutPython() }
-  await t.test('without python3 on PATH the Task is allowed', () => {
-    assert.deepEqual(runHook(payload('Task'), withoutPython), {
+  await t.test('without python3 on PATH launch authority stays denied', () => {
+    assert.equal(runHook(payload('Task'), withoutPython).permission, 'deny')
+    assert.deepEqual(runHook(payload('view'), withoutPython), {
       permission: 'allow',
     })
   })

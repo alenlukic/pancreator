@@ -349,7 +349,13 @@ function renderPolicyCursorRule(policy) {
   }
   const instructions = (policy.instructions ?? [])
     .filter(appliesToAgent)
-    .map((instruction) => instructionText(instruction))
+    .map((instruction) => {
+      const predicates = Object.entries(instruction.capabilities ?? {})
+      const text = instructionText(instruction)
+      return predicates.length === 0
+        ? text
+        : `When ${predicates.map(([key, value]) => `${key} capability is ${value ? 'authorized' : 'absent'}`).join(' and ')}: ${text}`
+    })
     .filter((instruction) => typeof instruction === 'string')
 
   return [
@@ -366,6 +372,12 @@ function renderPolicyCursorRule(policy) {
     '',
     policy.summary,
     '',
+    ...(policy.instructions.some((instruction) => instruction.capabilities)
+      ? [
+          'Invocation-bound stage and evidence workers have no delegation capability. Shell capability follows the actual offered tools; conditional clauses apply only when their predicates match.',
+          '',
+        ]
+      : []),
     ...instructions.map((instruction) => `- ${instruction}`),
     ...(policy.guidance_sources ?? []).flatMap((guidance) => [
       '',

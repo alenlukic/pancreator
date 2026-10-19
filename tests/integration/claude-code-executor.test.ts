@@ -15,6 +15,7 @@ import { delegationValidationPath } from '../../src/lib/validation.js'
 import { loadPipelineConfigSnapshot } from '../../src/lib/pipeline-config.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
+import { withInitialPolicyReminder } from '../../src/lib/policy-delivery.js'
 import {
   claudeCodeToolPolicy,
   createClaudeCodeAdapter,
@@ -285,7 +286,7 @@ test('a mixed-executor delivery run completes with a claude-code verify', () => 
           assert.ok(!delegated.execution.argv.includes('Write'))
         }
 
-        // The delegation artifact is the canonical card byte for byte.
+        // The artifact preserves the reminder and canonical card byte for byte.
         const delegationArtifact = readFileSync(
           invocationFile(
             root,
@@ -296,7 +297,10 @@ test('a mixed-executor delivery run completes with a claude-code verify', () => 
           'utf8',
         )
 
-        assert.equal(delegationArtifact, markdown)
+        assert.equal(
+          delegationArtifact,
+          withInitialPolicyReminder(invocation, markdown),
+        )
         assert.ok(
           existsSync(
             invocationFile(
@@ -471,7 +475,7 @@ test('operator revision resumes the session; fallback and post-failure retries d
         invocationFile(root, runId, round3Id, '.delegation.md'),
         'utf8',
       ),
-      round3Markdown,
+      withInitialPolicyReminder(round3.invocation, round3Markdown),
     )
 
     // Fail this attempt so the retry contract applies.

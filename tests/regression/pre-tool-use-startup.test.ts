@@ -4,11 +4,15 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { readIndex, writeIndex } from '../../src/lib/agent-index/store.js'
 import { renderTurnReminder } from '../../src/lib/governance/prompt-context.js'
 import { createFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const BIN = path.join(process.cwd(), 'bin')
+const AUTHORITY_ROOT = createTestTempDirectory('startup-guard-authority-')
+mkdirSync(path.join(AUTHORITY_ROOT, 'runtime/logs/agents'), { recursive: true })
+writeIndex(AUTHORITY_ROOT, readIndex(AUTHORITY_ROOT), new Date().toISOString())
 
 function runGuard(
   tool: string,
@@ -36,6 +40,7 @@ function runGuard(
       encoding: 'utf8',
       timeout: 20_000,
       maxBuffer: 2 * 1024 * 1024,
+      env: { ...process.env, PANCREATOR_ROOT: AUTHORITY_ROOT },
     },
   )
 }

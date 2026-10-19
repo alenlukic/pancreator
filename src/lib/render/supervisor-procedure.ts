@@ -5,6 +5,7 @@ import { renderPolicyBlocks } from '../policy-guidance.js'
 import type { Invocation } from '../types.js'
 import { DELEGATION_HEADING } from '../validation/artifacts.js'
 import { orderedWorkerActions } from './delivery-prompt.js'
+import { watchRecordPath, evidenceWatchRecordPath } from '../watch/paths.js'
 
 /**
  * Render the supervisor delivery procedure: policies, resolved paths, and the
@@ -34,6 +35,17 @@ export function renderSupervisorProcedureBody(
   // persona's model mapping, and an ad-hoc spawn runs the executor default.
   const namedAgent =
     cursorAgentName(delegation.cursor_agent_path) ?? delegation.persona
+  const harnessRoot = invocation.harness_root ?? process.cwd()
+  const stageLedger = watchRecordPath(
+    harnessRoot,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
+  const evidenceLedger = evidenceWatchRecordPath(
+    harnessRoot,
+    invocation.run_id,
+    invocation.invocation_id,
+  )
 
   // `pan watch` command prefix built in `prepare`.
   // Both forms render under the same guard below.
@@ -99,7 +111,7 @@ export function renderSupervisorProcedureBody(
                   'cadence until a verdict or its bound — one hour by ' +
                   'default — so run `pan watch` as a foreground blocking ' +
                   'shell call for that lifetime. When the platform detaches ' +
-                  'the blocking call, run `pan watch --attach <ledger>` at ' +
+                  `the blocking call, run \`pan watch --attach ${stageLedger}\` at ` +
                   'once to rejoin the session, rerun the same attach command on each ' +
                   '`attach_wake` return (exit 7 at the 300-second backstop), and read the ' +
                   'printed liveness summary rather than arming a second watch. Give every blocking ' +
@@ -250,6 +262,8 @@ export function renderSupervisorProcedureBody(
             ? [
                 '1b. In the launch turn, block on ' +
                   `\`${delegation.watch_command} --until-evidence-complete\` ` +
+                  'without stage launch flags. If detached, attach to ' +
+                  `\`pan watch --attach ${evidenceLedger}\`. ` +
                   'as a foreground shell call. Never poll the reports with a ' +
                   'timer or a script. It exits 0 within one cadence of the ' +
                   'moment every report carries its completion marker and ' +
@@ -263,7 +277,7 @@ export function renderSupervisorProcedureBody(
                   '`pan prepare`, relaunch each consumer it names, and rerun ' +
                   'the watch. Exit 2 or 3 means an ' +
                   'evidence worker stopped: inspect it, and relaunch it with ' +
-                  '`pan worker record --role <role> --new-attempt`. When a ' +
+                  `\`pan worker record ${invocation.run_id} --role <role> --new-attempt\`. When a ` +
                   'worker returned its report in chat instead of writing the ' +
                   'file, persist the returned text there yourself verbatim, ' +
                   'then rerun the watch. Submission rejects the stage output ' +

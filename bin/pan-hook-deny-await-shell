@@ -11,9 +11,8 @@
 # bin/pan-hook-adapter sets it and translates another host's payload and
 # response. governance/registries/host_tools.json maps each host's tools.
 #
-# A fault in a background-capable subagent path allows the launch, while
-# the await tools stay denied. A subagent tool with no background mode is
-# always denied.
+# When authority cannot be evaluated, agent launches and sessions stay denied.
+# Ordinary tools remain available, and await tools stay denied.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -88,6 +87,30 @@ if not isinstance(payload, dict):
 host = os.environ.get("PAN_HOOK_HOST", "cursor")
 rules = host_rules(host)
 tool_name = payload.get("tool_name")
+
+# A worker identity comes from the harness index, never a model-supplied role.
+worker = False
+index_available = False
+identity = payload.get("conversation_id") or payload.get("agent_id")
+try:
+    with open(os.path.join(os.environ["PAN_HOOK_AGENT_ROOT"], "runtime/logs/agents/index.json"), encoding="utf-8") as handle:
+        index = json.load(handle)
+    index_available = isinstance(index, dict) and isinstance(index.get("agents"), list)
+    resolved = (index.get("aliases") or {}).get(identity, identity)
+    worker = any(
+        entry.get("agent_id") == resolved and entry.get("run_id") and entry.get("invocation_id")
+        for entry in index.get("agents", []) if isinstance(entry, dict)
+    )
+except (OSError, ValueError, TypeError, AttributeError):
+    worker = False
+
+launch_names = set(rules["subagent"] + rules["session"] + ["Task", "task", "runSubagent", "create_session", "send_message"])
+if (worker or (identity and not index_available)) and isinstance(tool_name, str) and tool_name.rsplit(".", 1)[-1] in launch_names:
+    if not index_available:
+        deny("Agent authority cannot be verified.", "The agent index is unavailable or malformed. Restore indexed identity before launching another agent; the current worker can still finish its own output.")
+        sys.exit(0)
+    deny("Invocation workers cannot launch agents.", "Return the required output or evidence report. The authorized caller owns fan-out and observation.")
+    sys.exit(0)
 
 if tool_name in rules["await"] and tool_name in rules["await_when"]:
     arguments = tool_input_of(payload)
@@ -171,9 +194,11 @@ status=$?
 
 if [ "$status" -ne 0 ]; then
   # python3 is missing, crashed, or could not parse the payload. Keep the
-  # AwaitShell ban with a textual match and allow every other tool.
-  if printf '%s' "$input" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"(AwaitShell|Await)"'; then
+  # AwaitShell ban and worker boundary with conservative textual matches.
+  if printf '%s' "$input" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"([^"]*[.:/])?(AwaitShell|Await|read_agent)"'; then
     deny_await
+  elif printf '%s' "$input" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"([^"]*[.:/])?(Task|task|runSubagent|create_session|send_message)"'; then
+    printf '%s\n' '{"permission":"deny","user_message":"Agent launch authority is unavailable.","agent_message":"Agent launch authority is unavailable because the permission hook failed. Restore the hook before launching a subagent or alternate agent session."}'
   else
     printf '%s\n' '{"permission":"allow"}'
   fi

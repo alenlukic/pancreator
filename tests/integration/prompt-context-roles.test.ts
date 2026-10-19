@@ -277,8 +277,21 @@ test('resolving a prompt writes only the conversation state file', () => {
 })
 
 test('malformed input and unreadable resolver state fail open', () => {
+  const assertUnavailable = (
+    response: ReturnType<typeof resolvePromptContext>,
+  ): void => {
+    assert.equal(response.continue, true)
+    assert.match(
+      response.additional_context ?? '',
+      /reminder delivery unavailable/,
+    )
+    assert.match(
+      response.additional_context ?? '',
+      /no recurring delivery is verified/,
+    )
+  }
   const malformed = resolvePromptContext(createFixture(), '{')
-  assert.deepEqual(malformed, { continue: true })
+  assertUnavailable(malformed)
 
   const unknownFieldRoot = createFixture()
   const unknownField = resolvePromptContext(
@@ -294,12 +307,11 @@ test('malformed input and unreadable resolver state fail open', () => {
   mkdirSync(path.dirname(statePath), { recursive: true })
   mkdirSync(statePath)
 
-  assert.deepEqual(
+  assertUnavailable(
     resolvePromptContext(
       unreadableRoot,
       payload('unreadable', 'ordinary request'),
     ),
-    { continue: true },
   )
 
   const internalErrorRoot = createFixture()
@@ -308,12 +320,11 @@ test('malformed input and unreadable resolver state fail open', () => {
     '{ invalid\n',
   )
 
-  assert.deepEqual(
+  assertUnavailable(
     resolvePromptContext(
       internalErrorRoot,
       payload('internal', 'ordinary request'),
     ),
-    { continue: true },
   )
 
   rmSync(statePath, { recursive: true })

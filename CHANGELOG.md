@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Deliver policy instructions through matching instruction receipts and scoped reminders, and retain uncovered guidance and legacy contracts ([invocation context](docs/invocation-context.md)).
+- Read primer orientation before broad discovery, align worker guidance with actual tools, and keep harness check ownership concise ([workflow authoring](docs/workflow-authoring.md)).
+- Assign review dimension launches to the authorized caller and preserve worker command observation duties ([review squad](library/skills/review-squad.md)).
+
+### Added
+
+- Record procedural exceptions through commands and permitted artifacts in the shared workflow event stream, with actor attribution, replay protection, and linked resolutions ([exception ledger](docs/invocation-context.md#procedural-exception-ledger)).
+
+### Fixed
+
+- Preserve original exception actors when a revision omits pending records, and retain explicit record and null semantics ([submission](src/lib/engine/submit-helpers.ts)).
+- Keep executor guards, worktree resolution, baseline classification, and test scratch cleanup consistent with the instruction contract ([workflow authoring](docs/workflow-authoring.md)).
+
 ## [9.9.2] - 2026-10-18
 
 ### Fixed

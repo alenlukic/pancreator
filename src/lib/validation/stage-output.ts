@@ -1,6 +1,10 @@
 /** Stage-output normalization and validation against the stage contract. */
 
 import { errorMessage } from '../errors.js'
+import {
+  proceduralExceptionRecords,
+  validateProceduralException,
+} from '../procedural-exceptions.js'
 import { isRecord, resolveInside, fileExists } from '../io.js'
 import type {
   StageOutput,
@@ -249,6 +253,12 @@ export function validateStageOutput(
     issues.push({ code, message })
   }
   const output = normalizeStageOutput(value, invocation)
+  try {
+    for (const record of proceduralExceptionRecords(value))
+      validateProceduralException(record)
+  } catch (error) {
+    addIssue('procedural_exception.invalid', errorMessage(error))
+  }
   const record = isRecord(value) ? value : {}
 
   if (!isRecord(value)) {

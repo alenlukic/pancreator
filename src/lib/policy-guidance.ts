@@ -5,6 +5,7 @@ import type {
   Policy,
   PolicyGuidance,
   PolicyGuidanceReference,
+  PolicyCapabilities,
 } from './types.js'
 import type { PolicyCardAudience } from './policy-instructions.js'
 import {
@@ -229,6 +230,7 @@ export function renderPolicyBlocks(
   supersededIds: ReadonlySet<string> = new Set(),
   instrumentIds: ReadonlySet<string> = new Set(),
   pointers: ReadonlyMap<string, PolicyRulePointer> = new Map(),
+  capabilities?: PolicyCapabilities,
 ): string[] {
   if (policies.length === 0) {
     return ['- Only global boundaries apply.']
@@ -238,7 +240,9 @@ export function renderPolicyBlocks(
     const pointer = pointers.get(policy.id)
     const seen = new Set<string>()
     const instructions = policy.instructions.filter((instruction) => {
-      if (!policyInstructionAppliesToCard(instruction, audience)) {
+      if (
+        !policyInstructionAppliesToCard(instruction, audience, capabilities)
+      ) {
         return false
       }
 
@@ -246,7 +250,11 @@ export function renderPolicyBlocks(
       // policy marks as excerpts stay on the card.
       if (
         pointer &&
-        (typeof instruction === 'string' || instruction.excerpt !== true)
+        (pointer.instruction_sha256
+          ? pointer.instruction_sha256.includes(
+              sha256(policyInstructionText(instruction)),
+            )
+          : typeof instruction === 'string' || instruction.excerpt !== true)
       ) {
         return false
       }
@@ -310,10 +318,19 @@ export interface PolicyRulePointer {
   target: string
   /** `policySectionDigest` of the policy at the card's audience. */
   sha256: string
+  instruction_sha256?: string[]
+  route?: string
 }
 
 /** The sentence that stands in for a pointer-delivered policy's body. */
 export function policyRulePointerSentence(pointer: PolicyRulePointer): string {
+  if (pointer.instruction_sha256) {
+    return (
+      `> Covered instructions: ${pointer.instruction_sha256.length} via ` +
+      `${pointer.route} \`${pointer.target}\` · snapshot ` +
+      `\`sha256:${pointer.sha256}\`. Uncovered instructions follow.`
+    )
+  }
   return (
     `> Full text: always-apply rule \`${pointer.target}\` · section ` +
     `\`sha256:${pointer.sha256}\`. It binds you as this card does.`

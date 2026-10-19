@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { withInitialPolicyReminder } from '../../src/lib/policy-delivery.js'
 import { execFileSync, spawn } from 'node:child_process'
 import { once } from 'node:events'
 import {
@@ -16,11 +17,16 @@ import { createServer, type Socket } from 'node:net'
 import { createCopilotAdapter } from '../../src/lib/engine/executors.js'
 import {
   decideRun,
+  delegateInvocation,
   getRunState,
   prepareInvocation,
 } from '../../src/lib/engine.js'
 import { operationMutexPath } from '../../src/lib/state.js'
 import { processIsAlive, withOperationMutex } from '../../src/lib/io.js'
+import {
+  listProceduralExceptions,
+  recordProceduralException,
+} from '../../src/lib/procedural-exceptions.js'
 import {
   COPILOT_CLI_REQUIRED_FLAGS,
   copilotCliPreflight,
@@ -32,7 +38,7 @@ import type {
 } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
 import { pinFixturePersonaModel } from '../fixture-template.js'
-import { makeOutput, writeJson } from '../helpers.js'
+import { attestRunCard, makeOutput, writeJson } from '../helpers.js'
 import { submitAsSupervisor } from '../run-helpers.js'
 import { checkpoint, runWorkflow } from './delivery-helpers.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
@@ -328,10 +334,49 @@ test(
         assert.equal(record.requested_session_id, session)
         assert.equal(record.ended_at, undefined)
         const mutex = operationMutexPath(root, runId)
-        assert.equal(Number(readFileSync(mutex, 'utf8').trim()), child.pid)
+        assert.doesNotThrow(() => withOperationMutex(mutex, () => undefined))
+        const launchMutex = `${mutex}.delegate`
+        assert.equal(
+          Number(readFileSync(launchMutex, 'utf8').trim()),
+          child.pid,
+        )
         assert.throws(
-          () => withOperationMutex(mutex, () => assert.fail('mutex released')),
+          () => delegateInvocation(root, runId),
           /operation.*progress|busy|held|mutex/iu,
+        )
+        const invocationId = getRunState(root, runId).current_invocation?.id
+        assert.ok(invocationId)
+        const file = resolveRunLayout(root, runId).evidence(
+          `${invocationId}-worker-exception.json`,
+        )
+        writeJson(file.absolute, {
+          schema_version: 1,
+          client_id: 'live-worker',
+          affected: 'worker-ledger',
+          classification: 'harness_defect',
+          observed_defect:
+            'A live delegation previously held the mutation mutex.',
+          evidence: ['live-executor-handshake'],
+          workaround: 'Serialize only state commits.',
+          justification:
+            'Keep worker accountability available during execution.',
+          preserved_constraints: [
+            'authorization',
+            'scope',
+            'event serialization',
+          ],
+          required_follow_up: 'Retain live delegation regression.',
+        })
+        const receipt = recordProceduralException(root, runId, file.relative)
+        assert.equal(receipt.actor.invocation_id, invocationId)
+        assert.equal(
+          recordProceduralException(root, runId, file.relative).id,
+          receipt.id,
+        )
+        assert.ok(
+          listProceduralExceptions(root, runId).some(
+            (entry) => entry.id === receipt.id,
+          ),
         )
         return record
       }
@@ -375,6 +420,7 @@ test(
       )
       assert.equal(getRunState(root, runId).status, 'awaiting_operator')
       decideRun(root, runId, 'revise', 'Tighten the rollout risks.')
+      attestRunCard(root, runId)
       const revision = prepareInvocation(root, runId).invocation
       assert.ok(revision)
       connection = once(server, 'connection', { signal: context.signal })
@@ -435,12 +481,15 @@ test(
       )
       assert.equal(
         input('session-fallback').prompt,
-        readFileSync(
-          resolveRunLayout(root, runId).invocation(
-            revision.invocation_id,
-            '.md',
-          ).absolute,
-          'utf8',
+        withInitialPolicyReminder(
+          revision,
+          readFileSync(
+            resolveRunLayout(root, runId).invocation(
+              revision.invocation_id,
+              '.md',
+            ).absolute,
+            'utf8',
+          ),
         ),
       )
       sockets.at(-1)?.write('release')
@@ -465,6 +514,16 @@ test(
         fresh.session_id,
       )
       assert.equal(existsSync(operationMutexPath(root, runId)), false)
+      assert.equal(
+        existsSync(`${operationMutexPath(root, runId)}.delegate`),
+        false,
+      )
+      const workerEntries = listProceduralExceptions(root, runId)
+      assert.equal(workerEntries.length, 2)
+      assert.deepEqual(
+        new Set(workerEntries.map((entry) => entry.actor.invocation_id)),
+        new Set([first.invocation.invocation_id, revision.invocation_id]),
+      )
       assert.equal(new Set(records().map((record) => record.launch_id)).size, 3)
 
       for (const record of records()) {

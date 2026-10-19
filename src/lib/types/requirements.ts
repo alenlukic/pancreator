@@ -97,9 +97,15 @@ export interface PolicyArtifactAuthority {
 
 export type PolicyAudience = 'agent' | 'supervisor' | 'harness' | 'operator'
 
+export interface PolicyCapabilities {
+  shell: boolean
+  delegation: boolean
+}
+
 export interface PolicyInstruction {
   text: string
   audience: PolicyAudience[]
+  capabilities?: Partial<PolicyCapabilities>
   /**
    * Keep this instruction on a card that delivers its policy as a pointer to
    * a projected always-apply rule. Marks a clause a worker has to meet on
@@ -116,13 +122,27 @@ export interface PolicyInstruction {
  * `host` and names a Cursor rule.
  */
 export type PolicyDelivery =
-  | { mode: 'inline' }
+  | { mode: 'inline'; diagnostic?: string }
   | {
       mode: 'pointer'
       target: string
       sha256: string
       host?: 'cursor' | 'vscode'
+      coverage?: PolicyDeliveryCoverage
     }
+
+export interface PolicyDeliveryCoverage {
+  invocation_id: string
+  role: 'worker' | 'supervisor'
+  executor: string
+  host: 'cursor' | 'vscode' | null
+  route: 'projection' | 'initial_reminder' | 'verified_reminder'
+  status: 'verified' | 'prepared' | 'unsupported'
+  source: string
+  content: string
+  content_sha256: string
+  instruction_sha256: string[]
+}
 
 export interface Policy {
   id: string

@@ -14,6 +14,7 @@
  * delegation evidence.
  */
 import { randomUUID } from 'node:crypto'
+import { reconcileProceduralExceptions } from './procedural-exceptions.js'
 import { readFileSync, statSync } from 'node:fs'
 
 import { invariant } from './errors.js'
@@ -22,6 +23,7 @@ import {
   fileExists,
   isRecord,
   readJson,
+  readText,
   resolveInside,
   withOperationMutex,
   writeJsonAtomic,
@@ -268,6 +270,18 @@ export async function watchEvidenceCompletion(
 ): Promise<EvidenceWatchResult> {
   const invocation = resolveWatchedInvocation(root, runId, options.invocationId)
   const invocationId = invocation.invocation_id
+  for (const worker of invocation.evidence_workers ?? []) {
+    for (const attempt of evidenceWorkerAttempts(worker)) {
+      if (
+        fileExists(resolveInside(root, attempt.evidence_path)) &&
+        readEvidenceReportState(
+          readText(resolveInside(root, attempt.evidence_path)),
+        ).complete
+      ) {
+        reconcileProceduralExceptions(root, runId, attempt.evidence_path)
+      }
+    }
+  }
 
   invariant(
     (invocation.evidence_workers ?? []).length > 0,
@@ -492,6 +506,9 @@ export async function watchEvidenceCompletion(
       wakes += 1
 
       const readiness = observeEvidenceReports(root, invocation)
+      for (const role of readiness.roles) {
+        if (role.complete) reconcileProceduralExceptions(root, runId, role.path)
+      }
       const fingerprint = observeInvocation(
         root,
         invocation,

@@ -57,6 +57,9 @@ export function updateFiles(
   }
 
   for (const filePath of files) {
+    if (isContentAddressedArtifact(filePath)) {
+      continue
+    }
     const content = textFileContent(filePath)
 
     if (content === null) {

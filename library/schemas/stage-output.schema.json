@@ -15,6 +15,11 @@
   ],
   "additionalProperties": true,
   "properties": {
+    "procedural_exceptions": {
+      "type": "array",
+      "items": { "$ref": "procedural-exception.schema.json" },
+      "description": "Pending accountability records imported independently of the product verdict. These records grant no authority."
+    },
     "$operator": {
       "type": "object",
       "description": "Optional operator-first header: headline, status, next_action."

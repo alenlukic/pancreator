@@ -53,6 +53,11 @@ After changing `active_config` or a model value, run:
 ```
 
 This regenerates the ignored local `.cursor/` surface from the canonical sources declared in `governance/registries/projection_manifest.json`, including the active model mapping in `.cursor/agents/pan-<persona>.md` frontmatter. `./bin/pan validate` validates the canonical projection sources even when local `.cursor/` output is absent; when a local projection exists, it also fails on drift. It also fails when a canonical agent template is unmapped, its `library/personas/<persona>.md` contract is missing, or a workflow worker template is missing.
+Managed self-development worktree resolution uses the candidate's build wrapper
+and projection renderer when its projection source exists. The installation
+continues to own run state. A candidate build or rendering failure is explicit;
+resolution never replaces that candidate's projection with the installation's
+renderer after such a failure.
 New runs copy the active mapping to `pipeline-config.snapshot.json`; every
 invocation records the resolved model and configuration name. Because Cursor
 subagent files are project-global, preparing an existing run fails if the live
@@ -75,6 +80,18 @@ sets `delegated_by` to `harness`, captures the exact argument vector and returne
 session, and records any model and tool-policy evidence. Submission exempts a
 worker from watch evidence only when that harness-authored execution record
 names the active run and invocation.
+
+External delegation holds a separate launch ownership mutex across executor
+execution. The run mutation mutex protects only preparation and state commits,
+so a live worker can append procedural exception records. Final commits reload
+the current state before adding executor results; a changed invocation or stopped
+run keeps its state and the completed execution evidence.
+
+Stage observation uses `pan watch <run-id> --invocation <invocation-id>
+--mark-background`. Evidence observation uses `pan watch <run-id> --invocation
+<invocation-id> --until-evidence-complete` without stage launch flags. Each
+procedure names the actual ledger returned by the run layout resolver for
+`pan watch --attach`; evidence and stage ledgers are distinct.
 
 A headless Cursor invocation consumes the prepared referenced-delivery artifact,
 not a newly composed prompt. The adapter passes the persona's `model_spec`
@@ -375,28 +392,38 @@ Every `harness` instruction MUST name a same-policy requirement id or a
 citation MUST NOT serve two instructions of one policy. Repository validation
 enforces that mapping in self-development.
 
-### Pointer delivery on worker cards
+### Capability and delivery on worker cards
 
-A policy that `governance/registries/projection_manifest.json` projects as an
-always-apply Cursor rule (a `policy-rule` transform) already reaches every
-Cursor session. A worker card prepared for a Cursor executor therefore renders
-that policy as a pointer: its header, the rule path, and the section digest
-that `policySectionDigest` computes over the inline form. An external executor
-receives no Cursor rules, so its card keeps every policy inline.
+A structured instruction MAY carry a `capabilities` predicate with `shell`
+and/or `delegation` booleans. Fresh workers receive only matching duties.
+Ordinary workers cannot delegate; an orchestrator retains its coordination
+capability. Evidence workers are shellless. Historical snapshots without
+capability fields retain their original audience interpretation.
 
-The pointer names the instruction file of the host that prepared the card:
-`.cursor/rules/` for Cursor and `.github/instructions/` for VS Code.
-`workerCardHost` reads `PAN_HOST`, then a Cursor conversation id, then the
-single enabled host. When it cannot tell, every policy stays inline. A VS Code
-pointer appears only when its projected file exists.
+Fresh version-1 context contracts require instruction-level delivery coverage
+before replacing policy text with a pointer. Coverage binds invocation, role,
+executor, host, route, status, source content, content digest, and the exact
+instruction digests. A projected file, policy ID, configured hook, or prepared
+receipt alone proves no delivery. Uncovered applicable clauses remain inline.
+Missing, stale, unsupported, or misrouted evidence leaves an explicit diagnostic.
+
+The initial reminder is snapshotted beside the invocation and included in
+native and external launch packets. Its receipt verifies these exact packet
+bytes, not future hook execution or recurring delivery. A worker receiving only
+the card must retrieve the named snapshot when the reminder is absent. No
+initial receipt claims recurring coverage. A native projection or recurring
+receipt requires a supported native executor and known host. Current producers
+conservatively inline other instructions rather than infer session delivery.
 
 A structured instruction MAY set `excerpt: true`. The card then quotes that
 instruction under the pointer, for a clause a worker has to meet on the card
 itself. Keep excerpts few: each one grows every Cursor worker card.
 
 The invocation JSON records each policy's mode under `policy_delivery`. Card
-validation fails when a pointer's digest no longer matches the policy's
-section, and a card without `policy_delivery` is checked as fully inline.
+validation checks the policy snapshot and covered instruction digests. Saved
+contracts without `context_contract_version` keep their historical pointer
+interpretation. See [Invocation context](invocation-context.md) for the audit
+matrix, primer trigger, and procedural recovery contract.
 
 ## Instruction hierarchy
 

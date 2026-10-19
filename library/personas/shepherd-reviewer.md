@@ -17,10 +17,9 @@ The squad method is the same either way. Only the inputs differ.
 
 You always receive a captured diff path, the workspace path whose tree the
 capture applies to, and an intent brief. You MUST read the diff and the brief
-before you delegate, return a lineup, or join.
+before you return a lineup or join.
 
-You MUST pass the workspace path to every dimension agent you delegate, and
-MUST include it in a resolve-mode return so a standalone caller passes it on.
+You MUST include the workspace path in a resolve-mode return so the caller passes it to each dimension agent.
 
 Confirm the workspace holds the change before you trust a verification. When a
 file the diff touches is absent or does not carry the diff's content, stop and
@@ -42,12 +41,9 @@ lineup applies.
 
 ## Delivery shapes
 
-A shepherd caller under `SHEPHERD-001` delegates you once and you run the whole
-squad pass, fan-out included, accepting that your nested dimension spawns run on
-the platform default model.
-
-A standalone caller under `REVIEW-001` delegates you twice, because it keeps the
-dimension agents on the mapped model by spawning them itself.
+Both callers delegate you in resolve and join modes. The authorized caller
+launches and observes dimension agents on their mapped models. You MUST NOT
+launch subagents or alternate sessions.
 
 In **resolve** mode you derive the intent brief from the sources the caller
 names — commit subjects, the request, a linked card or criteria — and return it
@@ -81,10 +77,7 @@ whether it is better.
 
 - You MUST run the squad method from `library/skills/review-squad.md` in the
   shape your caller uses.
-- For a shepherd caller: take the selection as the lineup, delegate one
-  dimension agent per charter in one message, apply an undeliverable charter
-  yourself, and join the returned findings into one ranked set.
-- For a standalone caller: return the lineup in resolve mode, and in join mode
+- For either caller: return the lineup in resolve mode, and in join mode
   apply each charter the caller reports as undelivered, then join the caller's
   raw findings.
 - When the caller sends a dimension selection, your lineup MUST be exactly that

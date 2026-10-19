@@ -4,6 +4,7 @@
  */
 
 import { rmSync } from 'node:fs'
+import { reconcileProceduralExceptionsLocked } from '../procedural-exceptions.js'
 import {
   repairVerificationSubmission,
   finishVerificationEvidence,
@@ -53,6 +54,7 @@ import {
   delegationValidationPath,
   evaluateDeterministicCriteria,
   expectedDelegationSource,
+  expectedDelegationContent,
   relocateMisplacedDelegationArtifact,
   validateDelegationMarkdown,
   validateInvocationAttestation,
@@ -144,6 +146,13 @@ export function submitOutput(
   const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
+    // Import accountable recovery even when the product output later fails.
+    reconcileProceduralExceptionsLocked(
+      root,
+      state,
+      submittedPath,
+      submittedRaw,
+    )
 
     const materialized = materializeOutputSubmission(
       root,
@@ -308,7 +317,11 @@ export function submitOutput(
         const delegationMarkdown = readText(delegationAbsolute)
         const delegationValidation = fileExists(deliveredAbsolute)
           ? validateDelegationMarkdown(
-              readText(deliveredAbsolute),
+              expectedDelegationContent(
+                invocation,
+                readText(deliveredAbsolute),
+                mode,
+              ),
               delegationMarkdown,
               mode,
             )

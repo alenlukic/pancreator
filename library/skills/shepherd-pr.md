@@ -149,14 +149,15 @@ A new claim in that reply is a new item.
 2. Capture the diff against the last pushed SHA to a file under the session
    directory.
 3. Select the review dimensions for this batch, as the next section states.
-4. Delegate one `pan-shepherd-reviewer` subagent with: the captured diff path,
+4. Delegate `pan-shepherd-reviewer` in resolve mode with: the captured diff path,
    the repository root as the review workspace path, an intent brief listing
    each accepted item and why it was accepted, the ledger path, and the
    dimension selection.
-5. The subagent runs exactly the selected dimensions per
-   `library/skills/review-squad.md`. It returns a ranked finding set with a pass
-   or fail verdict for those dimensions, and edits nothing. Its model comes from
-   the `shepherd-reviewer` mapping in `config.json`.
+5. Launch and observe the returned dimension charters yourself per
+   `library/skills/review-squad.md`, using projected mappings and `DELEGATE-001`.
+   Delegate the reviewer in join mode with the raw finding files and any
+   undelivered charters. It returns a ranked finding set and verdict, and edits
+   nothing. Its model comes from the `shepherd-reviewer` mapping in `config.json`.
 6. On fail, repair the blocking findings and re-review the delta with the same
    selection. A repair that reaches a surface outside the selection widens it
    for the re-review, with the reason recorded.

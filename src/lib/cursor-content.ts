@@ -32,7 +32,12 @@ export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
     .filter((instruction) =>
       policyInstructionAppliesToCard(instruction, 'agent'),
     )
-    .map((instruction) => instruction.text)
+    .map((instruction) => {
+      const predicates = Object.entries(instruction.capabilities ?? {})
+      return predicates.length === 0
+        ? instruction.text
+        : `When ${predicates.map(([key, value]) => `${key} capability is ${value ? 'authorized' : 'absent'}`).join(' and ')}: ${instruction.text}`
+    })
 
   return [
     '---',
@@ -48,6 +53,12 @@ export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
     '',
     policy.summary,
     '',
+    ...(policy.instructions.some((instruction) => instruction.capabilities)
+      ? [
+          'Invocation-bound stage and evidence workers have no delegation capability. Shell capability follows the actual offered tools; conditional clauses apply only when their predicates match.',
+          '',
+        ]
+      : []),
     ...instructions.map((instruction) => `- ${instruction}`),
     ...(policy.guidance ?? []).flatMap((guidance) =>
       renderGuidanceBlock(2, guidance),

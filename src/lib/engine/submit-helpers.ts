@@ -266,6 +266,8 @@ export interface MaterializedSubmission {
 
 /**
  * Materialize a full output document from either accepted submission form.
+ * Pending exception inputs belong to their declaring invocation, so revisions
+ * retain them only when the patch explicitly supplies them.
  *
  * The caller supplies `expectedInvocationId` from the run's active card, and
  * `null` when the run has none. The expectation is never derived from the
@@ -330,6 +332,13 @@ export function materializeOutputSubmission(
     readJson(resolveInside(root, revisedFrom.output_path)),
     submittedValue.patch,
   )
+
+  if (
+    isRecord(value) &&
+    submittedValue.patch.procedural_exceptions === undefined
+  ) {
+    delete value.procedural_exceptions
+  }
 
   finalizePlanningReferences(root, state, value, expectedInvocationId)
 

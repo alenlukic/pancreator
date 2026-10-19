@@ -10,7 +10,7 @@ import { gitShowFile } from '../git.js'
 import type { ReviewDimensionSelection } from '../review-dimensions.js'
 import { type ReviewScope, conflictsByTier } from '../review-scope.js'
 import type { WorktreeRecord } from '../worktrees.js'
-import type { Policy, RequirementManifest } from '../types.js'
+import type { Invocation, Policy, RequirementManifest } from '../types.js'
 import type { StandaloneMode } from './modes.js'
 
 interface BaseConductPolicy {
@@ -287,6 +287,7 @@ export function renderGovernanceCardMarkdown(options: {
   reviewDimensions?: ReviewDimensionSelection | null
   /** Present only on the supervisor card, which binds to one run. */
   run?: GovernanceCardRunBinding | null
+  proceduralExceptions?: NonNullable<Invocation['procedural_exception_context']>
 }): string {
   const { mode, policies, requirements, requestPath } = options
   const run = options.run ?? null
@@ -309,6 +310,8 @@ export function renderGovernanceCardMarkdown(options: {
         .map(policyIdOf)
         .filter((id): id is string => id !== null),
     ),
+    new Map(),
+    mode.kind === 'supervisor' ? { shell: true, delegation: true } : undefined,
   )
 
   return `${[
@@ -366,6 +369,17 @@ export function renderGovernanceCardMarkdown(options: {
     '',
     ...policyBlocks,
     '',
+    ...(options.proceduralExceptions
+      ? [
+          '## Procedural recovery',
+          '',
+          `Ledger: \`${options.proceduralExceptions.command}\`. Recording grants no authorization, waiver, gate result, or scope change.`,
+          ...options.proceduralExceptions.unresolved.map(
+            (entry) => `- ${entry.id}: ${entry.affected}; ${entry.follow_up}`,
+          ),
+          '',
+        ]
+      : []),
     ...(options.baseConduct ? renderBaseConduct(options.baseConduct) : []),
     ...(options.reviewDimensions
       ? renderReviewDimensions(options.reviewDimensions, mode.kind)

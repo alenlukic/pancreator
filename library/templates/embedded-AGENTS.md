@@ -28,7 +28,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 ## Target repository primer
 
 - `PRIMER-001` governs the target-repository primer at `.pancreator/docs/target-repo-primer.md`.
-- Before expanding target-repository context, every agent MUST read the primer. A missing or unbuilt primer blocks substantive target work except for the librarian rebuilding it through `/pan-build-docs`.
+- Before broad discovery of unknown architecture, ownership, or implementation surfaces, agents MUST read available bounded primer orientation. Supplied plans, inputs, named paths, direct dependencies, and target instructions do not alone trigger that read. An absent or unbuilt primer alone MUST NOT block bounded work with sufficient context; report the actual information gap and `/pan-build-docs` when orientation is needed.
 - The primer is orientation, not authority. Agents SHOULD NOT open or search files merely because the primer references them; a referenced file MAY be read for a concrete task-specific need.
 - The operator request, the target repository's `AGENTS.md`, this card, the active invocation card, and applicable policies retain precedence over primer content.
 
