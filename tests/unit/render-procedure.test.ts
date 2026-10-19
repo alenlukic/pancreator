@@ -20,6 +20,10 @@ import type {
   Policy,
 } from '../../src/lib/types.js'
 import { baseInvocation, delegatedInvocation } from './render-helpers.js'
+import {
+  watchRecordPath,
+  evidenceWatchRecordPath,
+} from '../../src/lib/watch/paths.js'
 
 function evidenceWorkerFixture(): InvocationEvidenceWorker {
   return {
@@ -118,7 +122,7 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
   const delegateDigest = 'd'.repeat(64)
   const redlineRecordPath =
     'runtime/logs/workflows/run-fixture/agent/delegation-redlines.md'
-  const watchCommand = './bin/pan delegate watch run-fixture'
+  const watchCommand = './bin/pan watch run-fixture'
 
   assert.ok(invocation.delegation)
   invocation.delegation.policies = resolvePolicies(root, {
@@ -134,6 +138,11 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
   ]
 
   const procedure = renderSupervisorProcedureMarkdown(invocation)
+  assert.ok(
+    procedure.includes(
+      `pan watch --attach ${watchRecordPath(root, invocation.run_id, invocation.invocation_id)}`,
+    ),
+  )
 
   assert.ok(
     procedure.includes(`\`DELEGATE-001\`: \`sha256:${delegateDigest}\``),
@@ -220,6 +229,11 @@ test('a prepared verify stage orders every evidence worker before the stage work
   )
 
   const procedure = renderSupervisorProcedureMarkdown(invocation)
+  assert.ok(
+    procedure.includes(
+      `pan watch --attach ${evidenceWatchRecordPath(root, invocation.run_id, invocation.invocation_id)}`,
+    ),
+  )
 
   for (const action of actions) {
     assert.ok(

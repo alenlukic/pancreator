@@ -1,5 +1,9 @@
 import { invariant } from './errors.js'
-import type { PolicyAudience, PolicyInstruction } from './types.js'
+import type {
+  PolicyAudience,
+  PolicyInstruction,
+  PolicyCapabilities,
+} from './types.js'
 
 export type PolicyCardAudience = 'agent' | 'supervisor' | 'operator'
 
@@ -98,11 +102,27 @@ export function normalizePolicyInstruction(
     `${source}.excerpt MUST be a boolean when present.`,
     { code: 'INVALID_POLICY' },
   )
+  if (value.capabilities !== undefined) {
+    invariant(
+      isRecord(value.capabilities) &&
+        Object.keys(value.capabilities).length > 0 &&
+        Object.entries(value.capabilities).every(
+          ([key, required]) =>
+            (key === 'shell' || key === 'delegation') &&
+            typeof required === 'boolean',
+        ),
+      `${source}.capabilities MUST contain only boolean shell or delegation predicates.`,
+      { code: 'INVALID_POLICY' },
+    )
+  }
 
   return {
     text: value.text,
     audience: audiences,
     ...(value.excerpt === true ? { excerpt: true } : {}),
+    ...(isRecord(value.capabilities)
+      ? { capabilities: value.capabilities }
+      : {}),
   }
 }
 
@@ -141,9 +161,19 @@ function normalizedPolicyInstruction(
 export function policyInstructionAppliesToCard(
   instruction: PolicyInstruction | string,
   audience: PolicyCardAudience,
+  capabilities?: PolicyCapabilities,
 ): boolean {
   const normalized = normalizedPolicyInstruction(instruction)
   const audiences = new Set(normalized.audience)
+  if (
+    capabilities &&
+    Object.entries(normalized.capabilities ?? {}).some(
+      ([key, required]) =>
+        capabilities[key as keyof PolicyCapabilities] !== required,
+    )
+  ) {
+    return false
+  }
 
   // Harness-only instructions live in JSON snapshots for audit and deterministic
   // coverage mapping, but they never render on a card.
@@ -174,11 +204,12 @@ export function policyInstructionAppliesToCard(
 export function filterPolicyInstructionsForCard(
   instructions: readonly (PolicyInstruction | string)[],
   audience: PolicyCardAudience,
+  capabilities?: PolicyCapabilities,
 ): PolicyInstruction[] {
   return instructions
     .map(normalizedPolicyInstruction)
     .filter((instruction) =>
-      policyInstructionAppliesToCard(instruction, audience),
+      policyInstructionAppliesToCard(instruction, audience, capabilities),
     )
 }
 

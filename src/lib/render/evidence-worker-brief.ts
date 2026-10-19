@@ -129,6 +129,7 @@ export function renderEvidenceWorkerBrief(
       'cannot prove a browser verdict.',
     'You MUST NOT run a cost-bearing or mutating command, any shell command, ' +
       'or a repository-check profile. Request authorized observations by id.',
+    'You MUST NOT launch subagents or alternate sessions. The authorized caller owns fan-out, observation, and recovery.',
     '',
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
@@ -145,6 +146,10 @@ export function renderEvidenceWorkerBrief(
     '',
     ...renderVerificationExecution(invocation),
     '## Report contract',
+    '',
+    'For a justified procedural workaround, preserve correctness, security, authorization, scope, target instructions, required evidence, and gate enforcement. Recording grants no waiver or permission.',
+    'Keep pending records and any exact recording error in one `## Procedural exceptions` section with one JSON fence containing `{"procedural_exceptions":[...]}` before the verdict and completion marker. Each version-1 record names client_id, affected, classification, observed_defect, evidence, workaround, justification, preserved_constraints, and outcome or required_follow_up.',
+    `The harness imports these records independently of the report verdict. Retrieve them with \`pan exception list ${invocation.run_id} --unresolved\`; the caller can reconcile using \`pan exception reconcile ${invocation.run_id} --artifact ${worker.evidence_path}\`.`,
     '',
     `Write your report as Markdown to \`${worker.evidence_path}\`.`,
     `To request a missing declared observation, write an array of ` +

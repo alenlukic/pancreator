@@ -24,6 +24,10 @@ import {
 } from './registry.js'
 import { liveRuns } from './cards.js'
 import { principlesReminder, renderTurnReminder } from './reminders.js'
+import {
+  initialPolicyReminder,
+  isInvocationContext,
+} from '../../policy-delivery.js'
 
 interface ConversationRecord {
   role: Exclude<TurnReminderRole, 'none'>
@@ -391,8 +395,8 @@ function resolveRole(
  * ending with the current operating principles from AGENTS.md. Prompts select
  * the role; tool cycles reuse the stored role without transcript inspection.
  * Excluded roles receive the common reminder without persisting a role.
- * Other events and errors return only `{ continue: true }`, so the hook
- * never blocks.
+ * Other events return only `{ continue: true }`. Errors disclose unavailable
+ * delivery without blocking the session.
  */
 export function resolvePromptContext(
   root: string,
@@ -411,6 +415,45 @@ export function resolvePromptContext(
     }
 
     const principles = principlesReminder(root)
+    const indexPath = path.join(root, 'runtime/logs/agents/index.json')
+    if (payload.conversation_id && fileExists(indexPath)) {
+      const index = readJson(indexPath)
+      if (isRecord(index) && Array.isArray(index.agents)) {
+        const aliases = isRecord(index.aliases) ? index.aliases : {}
+        const identity =
+          aliases[payload.conversation_id] ?? payload.conversation_id
+        const worker = index.agents.find(
+          (entry: unknown) =>
+            isRecord(entry) &&
+            entry.agent_id === identity &&
+            typeof entry.run_id === 'string' &&
+            typeof entry.invocation_id === 'string',
+        )
+        if (isRecord(worker) && typeof worker.run_id === 'string') {
+          const run = liveRuns(root).find(
+            (entry) => entry.run_id === worker.run_id,
+          )
+          const active = run?.current_invocation
+          if (active && active.id === worker.invocation_id) {
+            const snapshot = readJson(path.resolve(root, active.json_path))
+            if (
+              isInvocationContext(snapshot) &&
+              snapshot.context_contract_version === 1
+            ) {
+              const reminder = initialPolicyReminder(snapshot, active.json_path)
+              return {
+                continue: true,
+                additional_context: `${reminder.reminder.content}\n\n${principles}`,
+              }
+            }
+          }
+          return {
+            continue: true,
+            additional_context: `Invocation-bound worker reminder unavailable. Read the complete invocation and its pinned initial reminder; recurring delivery is unverified.\n\n${principles}`,
+          }
+        }
+      }
+    }
     const store = readConversationStore(root, registry, now)
     const runs = liveRuns(root)
     const rolePayload =
@@ -443,7 +486,10 @@ export function resolvePromptContext(
       continue: true,
       additional_context: `${reminder.content}\n\n${principles}`,
     }
-  } catch {
-    return { continue: true }
+  } catch (error) {
+    return {
+      continue: true,
+      additional_context: `Pancreator reminder delivery unavailable (${error instanceof Error ? error.name : 'unknown error'}). Read the active governance contract and its pinned reminder; no recurring delivery is verified.`,
+    }
   }
 }

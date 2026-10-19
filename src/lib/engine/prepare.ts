@@ -4,6 +4,9 @@
  */
 
 import path from 'node:path'
+import { proceduralExceptionContext } from '../procedural-exceptions.js'
+import { initialPolicyReminder } from '../policy-delivery.js'
+import { writeTextAtomic, resolveInside } from '../io.js'
 import { prepareVerificationExecution } from './verification-execution.js'
 import { scaffoldStageOutput } from '../requirements/scaffold.js'
 import {
@@ -22,6 +25,7 @@ import {
 import { resolveBriefVocabulary } from '../briefs/scaffold.js'
 import { invariant } from '../errors.js'
 import { withOperationMutex } from '../io.js'
+import { stageWriteRoots } from '../executors/scope-custody.js'
 import {
   assertSupervisorCardAttested,
   renderSupervisorCard,
@@ -685,7 +689,17 @@ export function prepareInvocation(
       ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       ...(fastWall ? { fast_wall: fastWall } : {}),
       policies,
+      context_contract_version: 1,
+      capabilities: {
+        shell: stageWriteRoots(
+          root,
+          workspaceDirectory(root, state),
+          stage,
+        ).includes(workspaceDirectory(root, state)),
+        delegation: stage.persona === 'orchestrator',
+      },
       policy_delivery: policyDeliveryPlan(root, policies, {
+        invocationId,
         executor: externalExecutor ?? 'cursor',
         host: workerCardHost(root),
         mode: isSelfDevelopmentInstallation(root)
@@ -802,6 +816,34 @@ export function prepareInvocation(
         retrieval: 'required',
       })
     }
+
+    if (stage.persona !== 'orchestrator') {
+      const { reminder, coverage } = initialPolicyReminder(
+        invocation,
+        jsonPath.replace(/\.json$/u, '.initial-reminder.md'),
+      )
+      const host = workerCardHost(root)
+      for (const receipt of Object.values(coverage)) receipt.host = host
+      invocation.initial_policy_reminder = reminder
+      writeTextAtomic(resolveInside(root, reminder.source), reminder.content)
+      invocation.policy_delivery = policyDeliveryPlan(root, policies, {
+        invocationId,
+        executor: externalExecutor ?? 'cursor',
+        host,
+        coverage,
+        mode: isSelfDevelopmentInstallation(root)
+          ? 'self_development'
+          : isDetachedInstallation(root)
+            ? 'detached'
+            : 'embedded',
+      })
+    }
+
+    invocation.procedural_exception_context = proceduralExceptionContext(
+      root,
+      runId,
+      stage.persona,
+    )
 
     writeInvocationArtifacts({
       root,

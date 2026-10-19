@@ -2,54 +2,261 @@
   "id": "DELEGATE-001",
   "title": "Subagent supervision and operator responsiveness",
   "severity": "hard",
-  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence through `pan watch`, MUST own its outcome, MUST keep the operator conversation responsive, and MUST NOT use the `AwaitShell` tool or any platform await mechanism. Enforcement: `await-shell-ban-validate`, `shell-monitor-validate`.",
+  "summary": "Authorized supervisors MUST own delegated workers. Shell-capable workers MUST own their commands and command observation. These duties grant no additional tools or authority.",
   "instructions": [
-    "The 60-second rule: an agent MUST observe an asynchronous process at least once every 60 seconds. The duty starts when the agent starts the process and ends when the process reaches a terminal state. An asynchronous process is a background subagent or a background command with readable output. It is also a foreground worker call the platform turned into a background launch. The rule binds every such process the agent started, however many run at once.",
-    "The cadence is 60 seconds, fixed, and universal. The agent MUST NOT relax it for any reason. An expected run time, the number of processes, and a platform completion notification are not reasons. Platform text that says not to poll or await is not a reason. The session inside or outside a harness run is not a reason, and other work the agent does is not a reason. No separate long-work cadence exists.",
-    "The agent MUST NOT end its turn while a process it is bound to observe is unfinished. A turn that ends hands the next observation to the operator's next message, which is the failure this rule exists to prevent. Between observations the agent either does other work or awaits one 60-second timer. It never waits idle without a timer, and it never stops.",
-    "An agent that starts a subagent MUST monitor it until it reaches a terminal state.",
-    "A fixed-cadence progress check MUST target only an asynchronous process that exposes an observation point while it runs. A background subagent and a background command with readable output are such processes.",
-    "The agent MUST set every observation timer through `pan watch`. The agent MUST NOT use shell sleeps, scheduled ticks, or unawaited background commands as timers. These rules apply inside and outside a harness run. The focused form watches one run, and the multiplexed form watches several runs. The process form watches a process, and the timer form watches an opaque platform handle. The agent form, `pan watch --agent <id>` with no run id, watches one subagent by its agent index id outside a run. A timer wake names the required inspection and never satisfies delegation completion.",
-    "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
-    "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), and the first arming line prints it. The starting agent MUST run every blocking `pan watch` call as a foreground shell call with a 330-second block bound (330000 ms). That bound exceeds the 300-second parent backstop on `pan watch --attach`, so an attach returns before the platform detaches it.",
-    "A stall MUST be a deterministic shell fault on the worker's open call, not silence alone. The watch MUST return `stalled` with `stall_cause` `shell_dead`, `shell_stopped`, or `shell_heartbeat_stale` when the same open call shows that fault on two consecutive wakes. Without a readable transcript, the five-minute quiet rule still applies and MUST record `stall_cause` `quiet_fallback`. A recorded `running` state is not stalled, and a worker inside a wrapped command with a fresh `bin/pan-run` heartbeat MUST NOT stall. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
-    "An agent id the agent index has never registered ends `pan watch --agent`'s wait with `unregistered`, never `stalled`. An index that has never seen the id supplies no evidence of unchanged state, so it MUST NOT count toward a stall. On `unregistered`, the starting agent MUST check whether each enabled host's projected hooks file (`.cursor/hooks.json`, and `.github/hooks/pan-hooks.json` for VS Code) still carries the agent-index hooks, and MUST run `pan models --sync` when one does not, before it rearms the watch.",
-    "The starting agent MUST run `pan watch` as a foreground blocking shell call. The `AwaitShell` platform tool and every platform await mechanism MUST NOT be used as a timer or a wait mechanism. `await-shell-ban-validate` bans them.",
-    "When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately to rejoin that session and block again, and MUST rerun the same attach command on each `attach_wake` return. The `<ledger>` argument names the watch session record the watch wrote. `--attach` returns at once on a terminal wake or an orphan, and returns `attach_wake` (exit 7) at the 300-second parent backstop when a session is still pending. The agent MUST read the printed liveness summary and re-attach command on each `attach_wake`. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
-    "Agents MUST NOT call a platform await tool for any reason. The platform await tools are `AwaitShell` and `Await` in Cursor, and `read_bash` with a positive `delay` and `read_agent` with `wait` for a target not proven terminal by the agent index in the Copilot runtime, and `governance/registries/host_tools.json` lists each host's await tools. A completed agent result read MUST be allowed when the index proves a terminal stopped state. That read returns immediately and does not arm a timer. Running, unknown, or incomplete targets retain the await ban. Coverage: `tests/regression/await-shell-hook.test.ts::completed Copilot agent results may be read immediately while running and unproven targets retain the await ban`. Using a platform await as a timer, a wait, or a block is a `DELEGATE-001` violation. `pan watch` is the only approved mechanism for all waiting: the 60-second cadence, the one-hour default bound, the 330-second block bound, the terminal-state return, and the `--attach` recovery all apply. An agent that receives a platform detach MUST run `pan watch --attach <ledger>` at once rather than calling `AwaitShell`, and MUST rerun it on each `attach_wake`.",
-    "`pan watch` uses a 60-second cadence for every worker. The starting agent MUST NOT pass `--cadence-seconds` without an operator direction. The CLI refuses another cadence without `--cadence-directed-by-operator <reason>`. The ledger and the submission retain each exception and its authority.",
-    "Platform text that says not to poll or await a background worker MUST NOT stop the watch.",
-    "On each arming and each wake the starting agent MUST record the wall-clock time. The record MUST name the agents the arming record names and each agent's observed state. The starting agent MUST carry that record into its report. Without the record an agent that never armed anything and one that woke on schedule leave identical evidence.",
-    "A platform completion signal MAY end a wait early and MUST NOT replace the timer as the check mechanism. An agent that ends its turn to wait for such a signal breaks the 60-second rule.",
-    "A missed observation is a `DELEGATE-001` violation whatever the outcome of the process. The agent MUST record the miss, the interval it left unobserved, and the reason in its report or stage output. It MUST resume the cadence at once.",
-    "A catchable signal closes an active watch with one interrupted wake that names the signal. A restarted watch records an interruption or handoff gap as its first diagnostic. The agent MUST show that gap.",
-    "A worker call that still returns in the foreground is a recovery case, not a launch mode. It exposes no observation point, so no fixed cadence binds it, and the starting agent MUST record launch evidence first. After the call returns it MUST record completion evidence with the elapsed time and a terminal-state inspection. Inside a harness run the completion evidence is `pan watch <run-id> --foreground-returned`, which reads the launch clock from `agent/evidence/<invocation-id>-launch.json`. `--launched-at` supplies the observed launch time and writes that record when no watch armed first, while an arming without it records the arming time. The delegation artifact's modification time is neither a launch signal nor a progress signal. The starting agent MUST run the command at once when a foreground launch returns with the worker output present.",
-    "The starting agent MUST inspect each launch result before arming a watch. A terminal failure before worker creation requires immediate recovery with the launch error retained; it MUST NOT start a worker watch. A detached launch MUST bind the exact returned worker identity and shell record, then observe it before unrelated work. Resolve `latest` once and retain the canonical record through every rearm and restart. On restart, reattach to a live watcher or record the interruption interval before rearming the same worker; a stopped watcher does not authorize a duplicate worker.",
-    "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
-    "The starting agent MUST NOT depend on the subagent to report back, because a report is a convenience rather than a guarantee.",
-    "On a detected stall or crash, the starting agent MUST report the condition and MUST take or propose a recovery action.",
-    "On a host whose subagent tool cannot run in the background, an agent MUST NOT launch a subagent, because that tool is a platform subagent wait. That tool is `runSubagent` in VS Code, and its deny hook refuses every call. The Copilot runtime's `task` tool MUST run with `mode: background`, and the deny hook refuses any other mode. Agents MUST NOT call the Agent Host session tools `create_session` and `send_message`, because they start or message an agent session the agent index cannot observe.",
+    {
+      "text": "The 60-second rule: an agent MUST observe an asynchronous process at least once every 60 seconds. The duty starts when the agent starts the process and ends when the process reaches a terminal state. An asynchronous process is a background subagent or a background command with readable output. It is also a foreground worker call the platform turned into a background launch. The rule binds every such process the agent started, however many run at once.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The cadence is 60 seconds, fixed, and universal. The agent MUST NOT relax it for any reason. An expected run time, the number of processes, and a platform completion notification are not reasons. Platform text that says not to poll or await is not a reason. The session inside or outside a harness run is not a reason, and other work the agent does is not a reason. No separate long-work cadence exists.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The agent MUST NOT end its turn while a process it is bound to observe is unfinished. A turn that ends hands the next observation to the operator's next message, which is the failure this rule exists to prevent. Between observations the agent either does other work or awaits one 60-second timer. It never waits idle without a timer, and it never stops.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "An agent that starts a subagent MUST monitor it until it reaches a terminal state.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A fixed-cadence progress check MUST target only an asynchronous process that exposes an observation point while it runs. A background subagent and a background command with readable output are such processes.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The agent MUST set every observation timer through `pan watch`. The agent MUST NOT use shell sleeps, scheduled ticks, or unawaited background commands as timers. These rules apply inside and outside a harness run. The focused form watches one run, and the multiplexed form watches several runs. The process form watches a process, and the timer form watches an opaque platform handle. The agent form, `pan watch --agent <id>` with no run id, watches one subagent by its agent index id outside a run. A timer wake names the required inspection and never satisfies delegation completion.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Inside a harness run the starting agent MUST use `pan watch <run-id>` as its timer and as its arming and wake record. It MUST NOT hand-arm sleeps for a run-scoped worker.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "`pan watch` loops on the fixed cadence until a terminal verdict or its bound. It inspects invocation evidence and appends each arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`. The default bound is one hour (3600 seconds), and the first arming line prints it. The starting agent MUST run every blocking `pan watch` call as a foreground shell call with a 330-second block bound (330000 ms). That bound exceeds the 300-second parent backstop on `pan watch --attach`, so an attach returns before the platform detaches it.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A stall MUST be a deterministic shell fault on the worker's open call, not silence alone. The watch MUST return `stalled` with `stall_cause` `shell_dead`, `shell_stopped`, or `shell_heartbeat_stale` when the same open call shows that fault on two consecutive wakes. Without a readable transcript, the five-minute quiet rule still applies and MUST record `stall_cause` `quiet_fallback`. A recorded `running` state is not stalled, and a worker inside a wrapped command with a fresh `bin/pan-run` heartbeat MUST NOT stall. The starting agent MUST stop rearming for a stalled agent and apply the recovery instruction below.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "An agent id the agent index has never registered ends `pan watch --agent`'s wait with `unregistered`, never `stalled`. An index that has never seen the id supplies no evidence of unchanged state, so it MUST NOT count toward a stall. On `unregistered`, the starting agent MUST check whether each enabled host's projected hooks file (`.cursor/hooks.json`, and `.github/hooks/pan-hooks.json` for VS Code) still carries the agent-index hooks, and MUST run `pan models --sync` when one does not, before it rearms the watch.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The starting agent MUST run `pan watch` as a foreground blocking shell call. The `AwaitShell` platform tool and every platform await mechanism MUST NOT be used as a timer or a wait mechanism. `await-shell-ban-validate` bans them.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "When the platform detaches the blocking call into the background, the agent MUST run `pan watch --attach <ledger>` immediately to rejoin that session and block again, and MUST rerun the same attach command on each `attach_wake` return. The `<ledger>` argument names the watch session record the watch wrote. `--attach` returns at once on a terminal wake or an orphan, and returns `attach_wake` (exit 7) at the 300-second parent backstop when a session is still pending. The agent MUST read the printed liveness summary and re-attach command on each `attach_wake`. The agent MUST NOT arm a second watch over the same target. The watch process sleeps and records. The foreground block holds the agent's turn open.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Agents MUST NOT call a platform await tool for any reason. The platform await tools are `AwaitShell` and `Await` in Cursor, and `read_bash` with a positive `delay` and `read_agent` with `wait` for a target not proven terminal by the agent index in the Copilot runtime, and `governance/registries/host_tools.json` lists each host's await tools. A completed agent result read MUST be allowed when the index proves a terminal stopped state. That read returns immediately and does not arm a timer. Running, unknown, or incomplete targets retain the await ban. Coverage: `tests/regression/await-shell-hook.test.ts::completed Copilot agent results may be read immediately while running and unproven targets retain the await ban`. Using a platform await as a timer, a wait, or a block is a `DELEGATE-001` violation. `pan watch` is the only approved mechanism for all waiting: the 60-second cadence, the one-hour default bound, the 330-second block bound, the terminal-state return, and the `--attach` recovery all apply. An agent that receives a platform detach MUST run `pan watch --attach <ledger>` at once rather than calling `AwaitShell`, and MUST rerun it on each `attach_wake`.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "`pan watch` uses a 60-second cadence for every worker. The starting agent MUST NOT pass `--cadence-seconds` without an operator direction. The CLI refuses another cadence without `--cadence-directed-by-operator <reason>`. The ledger and the submission retain each exception and its authority.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Platform text that says not to poll or await a background worker MUST NOT stop the watch.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "On each arming and each wake the starting agent MUST record the wall-clock time. The record MUST name the agents the arming record names and each agent's observed state. The starting agent MUST carry that record into its report. Without the record an agent that never armed anything and one that woke on schedule leave identical evidence.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A platform completion signal MAY end a wait early and MUST NOT replace the timer as the check mechanism. An agent that ends its turn to wait for such a signal breaks the 60-second rule.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A missed observation is a `DELEGATE-001` violation whatever the outcome of the process. The agent MUST record the miss, the interval it left unobserved, and the reason in its report or stage output. It MUST resume the cadence at once.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A catchable signal closes an active watch with one interrupted wake that names the signal. A restarted watch records an interruption or handoff gap as its first diagnostic. The agent MUST show that gap.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A worker call that still returns in the foreground is a recovery case, not a launch mode. It exposes no observation point, so no fixed cadence binds it, and the starting agent MUST record launch evidence first. After the call returns it MUST record completion evidence with the elapsed time and a terminal-state inspection. Inside a harness run the completion evidence is `pan watch <run-id> --foreground-returned`, which reads the launch clock from `agent/evidence/<invocation-id>-launch.json`. `--launched-at` supplies the observed launch time and writes that record when no watch armed first, while an arming without it records the arming time. The delegation artifact's modification time is neither a launch signal nor a progress signal. The starting agent MUST run the command at once when a foreground launch returns with the worker output present.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The starting agent MUST inspect each launch result before arming a watch. A terminal failure before worker creation requires immediate recovery with the launch error retained; it MUST NOT start a worker watch. A detached launch MUST bind the exact returned worker identity and shell record, then observe it before unrelated work. Resolve `latest` once and retain the canonical record through every rearm and restart. On restart, reattach to a live watcher or record the interruption interval before rearming the same worker; a stopped watcher does not authorize a duplicate worker.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "The starting agent MUST NOT depend on the subagent to report back, because a report is a convenience rather than a guarantee.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "On a detected stall or crash, the starting agent MUST report the condition and MUST take or propose a recovery action.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "On a host whose subagent tool cannot run in the background, an agent MUST NOT launch a subagent, because that tool is a platform subagent wait. That tool is `runSubagent` in VS Code, and its deny hook refuses every call. The Copilot runtime's `task` tool MUST run with `mode: background`, and the deny hook refuses any other mode. Agents MUST NOT call the Agent Host session tools `create_session` and `send_message`, because they start or message an agent session the agent index cannot observe.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
     {
       "text": "On a host without a background subagent launch, a supervisor MUST launch each stage worker with `pan delegate <run-id> --headless` as a wrapped background command and MUST observe it with `pan watch <run-id>`.",
-      "audience": ["supervisor"]
+      "audience": ["supervisor"],
+      "capabilities": {
+        "delegation": true
+      }
     },
-    "`bin/pan-hook-shell-monitor` MUST guard the platform shell tool of every host: `Shell` in Cursor, `run_in_terminal` in VS Code, and `bash` in Copilot CLI.",
-    "Background-plus-watch rule by role. Every agent that starts a subagent MUST launch it in the background and MUST NOT wait on the platform's subagent wait. In Cursor the launch sets `run_in_background: true` on the `Task` call, and the `preToolUse` deny hook refuses every `Task` call without that flag in every installation. (1) Any agent outside an in-run worker delegation, which is the operator session or a child agent that launches an auxiliary subagent: it MUST observe the subagent in the same turn with `pan watch --agent <id>`. (2) Supervisor (in-run worker delegation): it MUST run `pan watch <run-id> --mark-background` in the same turn as the launch, because it blocks on the watch for the worker result; when the platform detaches the blocking `pan watch` call, the supervisor MUST run `pan watch --attach <ledger>` at once.",
-    "Worker model evidence is best-effort. When no probe answer lands, the harness MUST record the run snapshot's projected model as a labeled `default`. Every display MUST distinguish that projected default from a probed `match` or `recorded` result. A probed model that contradicts the run snapshot remains a hard `MODEL_EVIDENCE_MISMATCH` failure.",
+    {
+      "text": "`bin/pan-hook-shell-monitor` MUST guard the platform shell tool of every host: `Shell` in Cursor, `run_in_terminal` in VS Code, and `bash` in Copilot CLI.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Background-plus-watch rule by role. Every agent that starts a subagent MUST launch it in the background and MUST NOT wait on the platform's subagent wait. In Cursor the launch sets `run_in_background: true` on the `Task` call, and the `preToolUse` deny hook refuses every `Task` call without that flag in every installation. (1) Any agent outside an in-run worker delegation, which is the operator session or a child agent that launches an auxiliary subagent: it MUST observe the subagent in the same turn with `pan watch --agent <id>`. (2) Supervisor (in-run worker delegation): it MUST run `pan watch <run-id> --mark-background` in the same turn as the launch, because it blocks on the watch for the worker result; when the platform detaches the blocking `pan watch` call, the supervisor MUST run `pan watch --attach <ledger>` at once.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Worker model evidence is best-effort. When no probe answer lands, the harness MUST record the run snapshot's projected model as a labeled `default`. Every display MUST distinguish that projected default from a probed `match` or `recorded` result. A probed model that contradicts the run snapshot remains a hard `MODEL_EVIDENCE_MISMATCH` failure.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
     {
       "text": "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging). Such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "For a worker invocation that an operator session delegated, `pan submit` MUST require a completed watch record with matching parent observation receipts or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`. An execution record alone proves execution, never parent observation.",
-      "audience": ["supervisor"]
+      "audience": ["supervisor"],
+      "capabilities": {
+        "delegation": true
+      }
     },
-    "A watch MAY record `completed` when a `completed` agent state has an inspection in `--agent-state-evidence`. It MAY also complete when output stays plausible after one cadence. Without completed agent evidence, output within one cadence MUST NOT complete the watch. Output plausibility carries a false-positive risk because a worker can write complete-looking output and continue edits.",
-    "Every completed watch wake MUST record `terminal_basis` as `agent_state` or `output_plausible`.",
-    "Read-only stages MUST NOT receive a shell tool. They keep authorized read, search, and runtime output tools. Source stages keep shell access. These rules apply to external executors. Read-only verification uses recorded gate evidence instead of process commands.",
-    "A supervisor of several concurrent runs MUST launch the ready worker of each distinct run in one message, each with `run_in_background: true`. It MUST NOT launch two workers for one run and MUST NOT exceed the recorded parallelism limit. In the same turn it MUST block on the outstanding launches together with one multiplexed `pan watch --targets <run-id>:<invocation-id>,... --mark-background` call.",
-    "A supervisor of concurrent runs SHOULD arm the multiplexed wait with `--until-terminal`. It records routine sibling progress on every cadence without a return. It returns for the first completed, stalled, or unverifiable target, or at the bound. Each return closes other sessions with a sibling handoff, and the next arming records each gap. The supervisor MUST rearm siblings promptly after the moved run advances because a returned watch observes nothing. It MUST reattach to an existing watch without claiming continuous observation or duplicating the watch.",
+    {
+      "text": "A watch MAY record `completed` when a `completed` agent state has an inspection in `--agent-state-evidence`. It MAY also complete when output stays plausible after one cadence. Without completed agent evidence, output within one cadence MUST NOT complete the watch. Output plausibility carries a false-positive risk because a worker can write complete-looking output and continue edits.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Every completed watch wake MUST record `terminal_basis` as `agent_state` or `output_plausible`.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Read-only stages MUST NOT receive a shell tool. They keep authorized read, search, and runtime output tools. Source stages keep shell access. These rules apply to external executors. Read-only verification uses recorded gate evidence instead of process commands.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A supervisor of several concurrent runs MUST launch the ready worker of each distinct run in one message, each with `run_in_background: true`. It MUST NOT launch two workers for one run and MUST NOT exceed the recorded parallelism limit. In the same turn it MUST block on the outstanding launches together with one multiplexed `pan watch --targets <run-id>:<invocation-id>,... --mark-background` call.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "A supervisor of concurrent runs SHOULD arm the multiplexed wait with `--until-terminal`. It records routine sibling progress on every cadence without a return. It returns for the first completed, stalled, or unverifiable target, or at the bound. Each return closes other sessions with a sibling handoff, and the next arming records each gap. The supervisor MUST rearm siblings promptly after the moved run advances because a returned watch observes nothing. It MUST reattach to an existing watch without claiming continuous observation or duplicating the watch.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
     {
       "text": "The harness MUST preserve the existing launch clock when `--mark-background` re-arms a watch. Coverage: `tests/integration/watch-launch.test.ts::a mark-background re-arm preserves the existing launch clock`.",
       "audience": ["harness"]
@@ -93,60 +300,99 @@
     {
       "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "`bin/pan-run` MUST print its command header before helper work. Nested wrappers MAY reuse the enclosing header. Verbose mode prints the wrapper PID. A top-level wrapped call with no header 5 seconds after launch MUST be treated as a stalled launch.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "An agent MUST use the host shell bounds in `governance/registries/host_tools.json`. Ordinary Cursor `Shell` calls use `block_until_ms: 5000`, VS Code `run_in_terminal` calls use `timeout: 5000`, and Copilot `bash` calls use `initial_wait: 30` (supported range 30–600 seconds). Watch calls MUST retain the separate 330-second block bound: `block_until_ms: 330000`, `timeout: 330000`, or `initial_wait: 330`, respectively. The 60-second observation cadence remains fixed.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "On a stalled launch the agent MUST run `bin/pan-run -- bin/pan-unstick` at once. When it releases nothing, the agent MUST report the stalled call with its terminal and elapsed time. `bin/pan-unstick` releases only a stalled Cursor shell launcher. In VS Code and Copilot CLI the agent MUST report the stalled call instead, because their shell tools have no launcher it can release.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "An agent MUST NOT issue parallel shell calls when any of them builds or runs tests in the same worktree. It MUST run them one after another.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "An agent MUST observe a long or backgrounded wrapped command through the `pan watch --shell <record>` command that `bin/pan-run` prints at start, on the 60-second cadence.",
-      "audience": ["agent"]
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "The wrapper's heartbeat cadence MUST NOT exceed 60 seconds.",
-      "audience": ["agent"]
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "`bin/pan-run` writes one record directory per command under `runtime/logs/shell/`. `runtime/logs/shell/latest` names the newest record. An agent MUST read the record files as the evidence of a wrapped command. `record.json.ended_at` null means the command still runs, and a numeric `exit_code` means it finished. A `heartbeat.json` younger than two heartbeat cadences means the wrapper is alive. Growth in `log_bytes` or a newer `last_output_at` means output progress, and `recent_lines` is the tail.",
-      "audience": ["agent"]
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "`pan watch --process` has no `stalled` state. It reports `exited`, `elapsed`, `timed_out`, `unverified`, or `interrupted`. At its bound it prints a rearm command, and the agent MUST rearm it on the same cadence. A `timed_out` process watch is a bound, not a verdict on the command.",
-      "audience": ["agent"]
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "An agent that runs a long wrapped command MUST read `heartbeat.json` and its `recent_lines` on each watch wake. It MUST NOT stop its own command because the command is silent while the heartbeat is fresh. It MAY stop the command when the heartbeat is older than two cadences and `record.json.ended_at` is null. An operator directive is the only other reason.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "Only a watch verdict `stalled` (exit 2) is a stall signal. A supervisor MUST NOT treat `unverified` (exit 4) or `timed_out` (exit 3) as a stall. A file modification time is not a stall signal, and a quiet transcript is not one. On `unverified` or `timed_out`, the supervisor MUST inspect the worker before any recovery. A worker inside a live wrapped command gets a rearmed watch with `--agent-state running`.",
-      "audience": ["supervisor"]
+      "audience": ["supervisor"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "Before any recovery on a `stalled` verdict, the supervisor MUST inspect the worker's open call and linked `bin/pan-run` record. The verdict line names the open shell call, the linked record, the heartbeat age, and the last line. The supervisor MUST read that record's `heartbeat.json` and `pan worker state` before it acts. A `heartbeat.json` younger than two cadences or a growing `log_bytes` means the worker is inside a live command. The supervisor MUST then rearm the watch with `--agent-state running` and MUST NOT interrupt the worker or the command. No output for minutes with a fresh heartbeat is a silent command, such as a long test or build, and not a stall.",
-      "audience": ["supervisor"]
+      "audience": ["supervisor"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "A supervisor MUST NOT interrupt a worker or a wrapped command except under one of three conditions. (1) The wrapper crashed, with `record.json.ended_at` null, `heartbeat.json` older than two cadences, and `wrapper_pid` dead. (2) The watch verdict is `stalled` with `stall_cause` `quiet_fallback`, no linked record runs, and the agent index shows no new event. (3) An operator directive names the interruption. The interrupting agent MUST record the record path, the heartbeat age, and the tail it read.",
-      "audience": ["supervisor"]
+      "audience": ["supervisor"],
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "The `shell-monitor-validate` requirement MUST confirm that `library/cursor/hooks.json` declares a fail-closed `beforeShellExecution` entry whose command contains `pan-hook-shell-monitor`, that `bin/pan-hook-shell-monitor` and `bin/pan-run` exist and are executable, and that the hook's embedded allowlist equals the allowlist this policy states. Coverage: `tests/unit/shell-monitor-validator.test.ts`.",
@@ -187,13 +433,64 @@
     {
       "text": "The harness watch and the parent agent form two layers. The parent MUST regain control at each verdict and at least every 300 seconds on `pan watch --attach`. A liveness of `finished` or `failed` with no matching watch verdict is a contradiction the parent MUST record before interrupting the watcher.",
       "audience": ["agent"],
-      "excerpt": true
+      "excerpt": true,
+      "capabilities": {
+        "delegation": true
+      }
     },
     {
       "text": "Each `bin/pan-run` record MUST store `cursor_conversation_id`, `parent_record`, and `wrapper_process_identity`. Nested wrappers MUST inherit `PAN_RUN_RECORD` from the enclosing record.",
-      "audience": ["agent"]
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
     },
-    "For a stage with evidence workers, the supervisor MUST block on `pan watch <run-id> --until-evidence-complete` in the turn that launches them. When that watch exits 0, every report passed, and the supervisor launches the stage worker and arms `pan watch <run-id> --mark-background` for it. When it exits 5, a report did not pass: the supervisor MUST NOT launch the stage worker, because the harness has recorded the stage failure from the reports and routed the run."
+    {
+      "text": "For a stage with evidence workers, the supervisor MUST block on `pan watch <run-id> --until-evidence-complete` in the turn that launches them. When that watch exits 0, every report passed, and the supervisor launches the stage worker and arms `pan watch <run-id> --mark-background` for it. When it exits 5, a report did not pass: the supervisor MUST NOT launch the stage worker, because the harness has recorded the stage failure from the reports and routed the run.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": true
+      }
+    },
+    {
+      "text": "Invocation-bound stage and evidence workers MUST NOT launch subagents or alternate agent sessions. The authorized caller owns fan-out, observation, recovery, and coordination.",
+      "audience": ["agent"],
+      "capabilities": {
+        "delegation": false
+      }
+    },
+    {
+      "text": "Shell-capable workers MUST run shell commands inside `bin/pan-run`, except unchained read-only git status/log/diff/show/rev-parse, ls, rg, cat, pwd, and ps. Long or multiline commands MUST use a JSON request under `runtime/commands/` with label and exactly one of argv or script. Submit only the wrapper request command, within 400 UTF-8 bytes on one line.",
+      "audience": ["agent"],
+      "capabilities": {
+        "shell": true,
+        "delegation": false
+      }
+    },
+    {
+      "text": "For their own commands, workers MUST use host bounds from `governance/registries/host_tools.json`: Cursor 5000 ms, VS Code 5000 ms, Copilot initial_wait 30 seconds. Wrapped commands retain command evidence, identity, and a heartbeat no slower than 60 seconds. A missing header after five seconds is a stalled launch; use `bin/pan-run -- bin/pan-unstick` in Cursor and report the stalled call in other hosts.",
+      "audience": ["agent"],
+      "capabilities": {
+        "shell": true,
+        "delegation": false
+      }
+    },
+    {
+      "text": "Workers MUST observe their own background commands every 60 seconds through the exact `pan watch --shell <record>` printed by `bin/pan-run`. Use a 330-second foreground shell bound for watches. On detach, immediately run `pan watch --attach <ledger>` and repeat on every attach_wake. Retain the canonical record identity, read heartbeat.json and recent_lines on each wake, and finish observation before ending the turn. A fresh heartbeat forbids stopping a silent command; only an operator directive or a heartbeat older than two cadences permits it.",
+      "audience": ["agent"],
+      "capabilities": {
+        "shell": true,
+        "delegation": false
+      }
+    },
+    {
+      "text": "Workers MUST NOT use platform await tools as timers or waits. Completed result reads may return immediately with terminal evidence. Workers MUST retain wrapper process identity and inherited PAN_RUN_RECORD, and MUST record observation gaps. Workers MUST NOT run parallel shell commands when any builds or tests the same worktree.",
+      "audience": ["agent"],
+      "capabilities": {
+        "shell": true,
+        "delegation": false
+      }
+    }
   ],
   "requirements": [
     {

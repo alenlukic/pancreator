@@ -470,12 +470,33 @@ test('a verify visit reads configuration and impacted integration evidence from 
     readFileSync(path.join(root, pointer.json_path), 'utf8'),
   ) as {
     inputs: { references: Array<{ gate_evidence?: { profile?: string } }> }
-    policy_delivery?: Record<string, { mode: string; target?: string }>
+    policy_delivery?: Record<
+      string,
+      {
+        mode: string
+        diagnostic?: string
+        coverage?: {
+          invocation_id: string
+          status: string
+          instruction_sha256: string[]
+        }
+      }
+    >
+    invocation_id: string
   }
 
-  // A prepared Cursor card points at the projected always-apply policies.
+  // Projected files alone do not prove that the worker received their bytes.
   for (const policyId of ['PRINCIPLES-001', 'DELEGATE-001', 'COMMS-001']) {
-    assert.equal(invocation.policy_delivery?.[policyId]?.mode, 'pointer')
+    const delivery = invocation.policy_delivery?.[policyId]
+    assert.ok(delivery)
+    if (delivery.mode === 'pointer') {
+      assert.equal(delivery.coverage?.status, 'verified')
+      assert.equal(delivery.coverage?.invocation_id, invocation.invocation_id)
+      assert.ok(delivery.coverage.instruction_sha256.length > 0)
+    } else {
+      assert.equal(delivery.mode, 'inline')
+      assert.equal(delivery.diagnostic, 'missing_delivery_evidence')
+    }
   }
 
   assert.equal(invocation.policy_delivery?.['GLOBAL-001']?.mode, 'inline')

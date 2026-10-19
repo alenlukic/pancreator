@@ -8,6 +8,7 @@ import { findProjectRoot } from './lib/io.js'
 import { panCommand } from './lib/project-config/resolve.js'
 import type { CliContext } from './cli/context.js'
 import { docsCommand } from './cli/docs.js'
+import { exceptionsCommand } from './cli/exceptions.js'
 import {
   assertWorktreeOptionSupported,
   hasFlag,
@@ -121,6 +122,8 @@ async function main(): Promise<void> {
   }
 
   switch (command) {
+    case 'exception':
+      return exceptionsCommand(context)
     case 'help':
     case '--help':
     case '-h':

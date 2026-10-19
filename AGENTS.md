@@ -69,7 +69,7 @@ Resolve and read your governance card first. Do this before repository explorati
 
 This file, `docs/target-repo-primer.md`, and `runtime/repository-checks.json` do not satisfy that step. They carry no policy body. An agent that reads only them has not read its governance.
 
-Then read `docs/target-repo-primer.md` and `runtime/repository-checks.json` before repository exploration. Read a primer reference when the task gives you a concrete reason.
+Then read `runtime/repository-checks.json`. Read available bounded orientation in `docs/target-repo-primer.md` before broad repository discovery under `PRIMER-001`. Supplied paths and their direct dependencies do not alone trigger that read. An absent or unbuilt primer alone does not block bounded work with sufficient context. Read a primer reference when the task gives you a concrete reason.
 
 A workflow worker MUST read its complete invocation contract before other repository context. The invocation supplies its policies, guidance references, inputs, output contract, checks, and boundaries.
 

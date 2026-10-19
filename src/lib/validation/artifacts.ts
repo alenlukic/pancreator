@@ -5,6 +5,7 @@
 
 import { rmSync } from 'node:fs'
 import path from 'node:path'
+import { withInitialPolicyReminder } from '../policy-delivery.js'
 
 import {
   resolveInside,
@@ -315,6 +316,18 @@ export function expectedDelegationSource(
   }
 
   return { path: canonicalPath, mode: 'verbatim' }
+}
+
+/** Fresh external launches include the verified reminder; native and resumed delivery do not. */
+export function expectedDelegationContent(
+  invocation: Invocation,
+  markdown: string,
+  mode: InvocationDeliveryMode,
+): string {
+  return mode === 'verbatim' &&
+    (invocation.stage.persona_executor ?? 'cursor') !== 'cursor'
+    ? withInitialPolicyReminder(invocation, markdown)
+    : markdown
 }
 
 /**

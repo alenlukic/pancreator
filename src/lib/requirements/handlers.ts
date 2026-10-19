@@ -1,7 +1,10 @@
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
-import { expectedDelegationSource } from '../validation/artifacts.js'
+import {
+  expectedDelegationContent,
+  expectedDelegationSource,
+} from '../validation/artifacts.js'
 import {
   validateDelegationMarkdown,
   validateInvocationMarkdown,
@@ -178,7 +181,11 @@ function delegationValidateHandler(input: HandlerInput): HandlerResult {
   // `expectedDelegationSource` consults the invocation contract and, for
   // external executors, the harness-authored execution record.
   const source = expectedDelegationSource(input.root, input.invocation as never)
-  const expected = readText(path.join(input.root, source.path))
+  const expected = expectedDelegationContent(
+    input.invocation as never,
+    readText(path.join(input.root, source.path)),
+    source.mode,
+  )
   const delegation = readText(path.join(input.root, input.targetPath))
   const result = validateDelegationMarkdown(expected, delegation, source.mode)
 

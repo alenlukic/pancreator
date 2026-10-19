@@ -6,6 +6,11 @@ const STANDALONE_MODE_NAMES =
 
 export const HELP_BODY = `Usage:
   pan help
+  pan exception record <run-id> --file <permitted-json-path> [--json]
+  pan exception list <run-id> [--unresolved] [--id <entry-id>] [--json]
+  pan exception resolve <run-id> --entry <entry-id> --file <permitted-json-path> [--json]
+  pan exception reconcile <run-id> --artifact <permitted-output-or-report-path> [--json]
+      Records and linked resolutions append to the run event log. Entries document evidence and justification; they grant no authorization, waiver, scope change, or gate result. The harness derives actor attribution from the invocation and permitted artifact.
   pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--with-design] [--operator-artifacts] [--context-reference <repo-relative-file>] [--json] [--no-autostart | --autostart [--max-parallel <n>]]
       The default workflow is planning, the entry point for delivery work. Approving its ratified plan routes the work: a plan of one chunk starts one delivery run (implement, verify, remediate, ship); a plan of two or more chunks opens a cohort session and starts cohort 1. --workflow delivery skips planning for an operator who brings a ratified specification as the request.
       --worktree binds the planning run to the named worktree. A routed single-chunk delivery run inherits that worktree, so plan-time work in it carries forward in place; without --worktree, that route derives and creates its own delivery worktree. A plan of two or more chunks derives one isolated worktree per cohort chunk from the committed head, and the route refuses while the planning worktree holds uncommitted work.
@@ -420,6 +425,35 @@ export function validatePanInvocation(
     )
   const surface = applicable[0]?.tokens.join(' ') ?? null
   const acceptedOptions = [...accepted].sort()
+
+  if (!unknown && surface === 'watch') {
+    const options = new Set(
+      argv.map(normalizedOption).filter((option) => option !== null),
+    )
+    const stageOptions = [
+      '--foreground-returned',
+      '--mark-background',
+      '--agent-state',
+      '--agent-state-evidence',
+      '--handle',
+      '--launched-at',
+      '--platform-returned-at',
+      '--platform-detached-at',
+      '--agent',
+      '--model',
+    ]
+    const incompatible = options.has('--until-evidence-complete')
+      ? stageOptions.find((option) => options.has(option))
+      : undefined
+    if (incompatible) {
+      return {
+        valid: false,
+        surface,
+        accepted_options: acceptedOptions,
+        error: `--until-evidence-complete cannot be combined with ${incompatible}; evidence observation does not record a stage launch.`,
+      }
+    }
+  }
 
   return unknown
     ? {

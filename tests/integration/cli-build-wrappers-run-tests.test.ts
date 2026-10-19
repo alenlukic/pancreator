@@ -262,11 +262,100 @@ test('run-tests records nothing when the compiled fast lane is empty', () => {
   }
 })
 
-// Fixtures never touch the shared OS temp directory. The wrapper hands the
-// suite a directory under the root, fences git discovery at it so a fixture
-// without its own repository reads as none, and discards it when the suite
-// ends, whatever the suite's exit status. How the discard is carried out is
-// the next case's contract; this one pins that the directory is gone.
+test('run-tests reports stale marker cleanup failure and preserves the suite exit status', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')
+
+  try {
+    mkdirSync(scratch, { recursive: true })
+    writeFileSync(path.join(scratch, '.removing-stale'), '0\nstale\n')
+    const remover = path.join(fixture.root, 'tools', 'rm')
+    writeFileSync(
+      remover,
+      '#!/bin/bash\nfor arg in "$@"; do case "$arg" in */.removing-stale) exit 13;; esac; done\nexec /bin/rm "$@"\n',
+    )
+    chmodSync(remover, 0o755)
+
+    const result = runTests(fixture, [
+      '/bin/bash',
+      '-c',
+      `printf ran > "${observed}"; exit 7`,
+    ])
+
+    assert.equal(result.status, 7, result.stderr)
+    assert.equal(readFileSync(observed, 'utf8'), 'ran')
+    assert.match(result.stderr, /cannot remove stale scratch marker/u)
+    assert.deepEqual(scratchRuns(fixture.root), [])
+    assert.equal(existsSync(path.join(scratch, '.removing-stale')), true)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('run-tests ordering cleanup failure preserves execution with an available or missing helper', () => {
+  for (const helperAvailable of [true, false]) {
+    const fixture = createBuildScriptFixture()
+    const observed = path.join(fixture.root, 'observed')
+    const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests.noindex')
+    try {
+      mkdirSync(scratch, { recursive: true })
+      writeFileSync(
+        path.join(scratch, 'file-durations.json'),
+        JSON.stringify({
+          schema_version: 1,
+          recorded_at: '2026-10-18T00:00:00.000Z',
+          files: [],
+        }),
+      )
+      if (!helperAvailable) {
+        rmSync(
+          path.join(fixture.root, 'dist', 'src', 'lib', 'test-file-order.js'),
+        )
+      }
+      const remover = path.join(fixture.root, 'tools', 'rm')
+      writeFileSync(
+        remover,
+        '#!/bin/bash\nfor arg in "$@"; do case "$arg" in */.ordered-*) exit 13;; esac; done\nexec /bin/rm "$@"\n',
+      )
+      chmodSync(remover, 0o755)
+      const result = runTests(fixture, [
+        '/bin/bash',
+        '-c',
+        `printf ran > "${observed}"; exit 7`,
+      ])
+      assert.equal(result.status, 7, result.stderr)
+      assert.equal(readFileSync(observed, 'utf8'), 'ran')
+      assert.match(result.stderr, /cannot remove ordering scratch/u)
+      assert.equal(
+        result.stderr.includes('could not order test files'),
+        !helperAvailable,
+      )
+      assert.deepEqual(scratchRuns(fixture.root), [])
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  }
+})
+
+test('run-tests explicitly refuses unavailable isolated scratch without executing the suite', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+  try {
+    const allocator = path.join(fixture.root, 'tools', 'mktemp')
+    writeFileSync(allocator, '#!/bin/sh\nexit 13\n')
+    chmodSync(allocator, 0o755)
+    const result = runTests(fixture, ['/bin/bash', '-c', `touch "${observed}"`])
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /cannot allocate isolated test scratch/u)
+    assert.equal(existsSync(observed), false)
+    assert.deepEqual(scratchRuns(fixture.root), [])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// Git discovery and package type must also stop at the isolated suite root.
 test('run-tests scopes the suite to a scratch directory it discards afterwards', () => {
   const fixture = createBuildScriptFixture()
   const observed = path.join(fixture.root, 'observed')

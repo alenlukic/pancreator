@@ -230,7 +230,9 @@ export function validateInvocationMarkdown(
       // A pointer stands for the policy's inline section. It holds only while
       // its digest still names that section, so a policy edited after the
       // card was prepared fails the card rather than point at other text.
-      const expected = policySectionDigest(policy, 'agent')
+      const expected = pointer.instruction_sha256
+        ? pointer.sha256
+        : policySectionDigest(policy, 'agent')
       const sentence = policyRulePointerSentence(pointer)
 
       checks.push({
@@ -249,7 +251,14 @@ export function validateInvocationMarkdown(
     const renderedInstructions = filterPolicyInstructionsForCard(
       policy.instructions,
       'agent',
-    ).filter((instruction) => !pointer || instruction.excerpt === true)
+      invocation.capabilities,
+    ).filter(
+      (instruction) =>
+        !pointer ||
+        (pointer.instruction_sha256
+          ? !pointer.instruction_sha256.includes(sha256(instruction.text))
+          : instruction.excerpt === true),
+    )
 
     for (const [index, instruction] of renderedInstructions.entries()) {
       const text = instruction.text
@@ -477,7 +486,9 @@ export function validateInvocationMarkdown(
       })
     }
 
-    for (const requirement of harnessRequirements) {
+    for (const requirement of invocation.context_contract_version
+      ? []
+      : harnessRequirements) {
       const line =
         `\`${requirement.registry_id}@${requirement.registry_version}\` — ` +
         `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement})`

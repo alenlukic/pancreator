@@ -4,6 +4,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import {
   copyFileSync,
   readFileSync,
@@ -55,6 +56,33 @@ export function syncSelfDevelopmentWorktreeProjection(
     fileExists(path.join(worktreePath, 'config.json')) &&
     isSelfDevelopmentInstallation(worktreePath)
   ) {
+    if (fileExists(path.join(worktreePath, 'src', 'lib', 'projection.ts'))) {
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        PANCREATOR_ROOT: worktreePath,
+      }
+      delete env.PANCREATOR_BUILD_READY
+      delete env.PANCREATOR_EXEC_ROOT
+      const result = spawnSync(
+        path.join(worktreePath, 'bin', 'run-built'),
+        [
+          '--',
+          process.execPath,
+          '--input-type=module',
+          '--eval',
+          'import { syncCursorProjection } from "./dist/src/lib/projection.js"; syncCursorProjection(process.cwd(), { write: true });',
+        ],
+        { cwd: worktreePath, env, encoding: 'utf8' },
+      )
+      invariant(
+        result.status === 0 && result.error === undefined,
+        `Candidate projection refresh failed in ${worktreePath}: ` +
+          (result.error?.message ?? result.stderr ?? `exit ${result.status}`),
+        { code: 'WORKTREE_PROJECTION_FAILED' },
+      )
+      return
+    }
+    // Minimal installations without harness source use the installed renderer.
     syncCursorProjection(worktreePath, { write: true })
   }
 }

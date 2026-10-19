@@ -10,6 +10,7 @@ import type {
   ContextReferenceStatus,
   Policy,
   PolicyDelivery,
+  PolicyCapabilities,
   RequirementManifest,
 } from './requirements.js'
 import type {
@@ -374,6 +375,14 @@ export interface FastWallStageSummary {
 }
 
 export interface Invocation {
+  /** Absent on historical cards, whose instruction contract remains intact. */
+  capabilities?: PolicyCapabilities
+  context_contract_version?: 1
+  initial_policy_reminder?: { source: string; content: string; sha256: string }
+  procedural_exception_context?: {
+    command: string
+    unresolved: { id: string; affected: string; follow_up: string }[]
+  }
   $operator: {
     headline: string
     summary: string

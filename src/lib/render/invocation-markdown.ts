@@ -1,6 +1,7 @@
 /** The invocation card Markdown and its policy pointers. */
 
 import { GATE_CACHE_ACCEPTANCE_RULE } from '../gate-cache.js'
+import { resolvePolicyCoverage } from '../policy-delivery.js'
 import { renderSuiteProfileSection } from '../suite-profile.js'
 import {
   type PolicyRulePointer,
@@ -58,7 +59,12 @@ function renderResolvedGateBound(
 /** The pointer-delivered policies of a worker card, keyed by policy id. */
 export function invocationPolicyPointers(
   invocation: Pick<Invocation, 'policy_delivery'> &
-    Partial<Pick<Invocation, 'stage' | 'policies' | 'invocation_id'>>,
+    Partial<
+      Pick<
+        Invocation,
+        'stage' | 'policies' | 'invocation_id' | 'context_contract_version'
+      >
+    >,
 ): Map<string, PolicyRulePointer> {
   const pointers = new Map<string, PolicyRulePointer>()
 
@@ -66,6 +72,34 @@ export function invocationPolicyPointers(
     invocation.policy_delivery ?? {},
   )) {
     if (delivery.mode === 'pointer') {
+      if (invocation.context_contract_version) {
+        const coverage = delivery.coverage
+        const policy = invocation.policies?.find((item) => item.id === policyId)
+        if (
+          !coverage ||
+          !policy ||
+          coverage.host !== (delivery.host ?? null) ||
+          delivery.sha256 !== policySectionDigest(policy, 'agent')
+        )
+          continue
+        const { covered, diagnostic } = resolvePolicyCoverage(
+          policy,
+          coverage,
+          {
+            invocationId: invocation.invocation_id ?? '',
+            executor: invocation.stage?.persona_executor ?? 'cursor',
+            host: delivery.host ?? null,
+          },
+        )
+        if (diagnostic) continue
+        pointers.set(policyId, {
+          target: coverage.source,
+          sha256: coverage.content_sha256,
+          instruction_sha256: covered,
+          route: coverage.route,
+        })
+        continue
+      }
       if (invocation.stage?.slug === 'plan') {
         const policy = invocation.policies?.find(
           (entry) => entry.id === policyId,
@@ -136,7 +170,27 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     new Set(),
     new Set(),
     invocationPolicyPointers(invocation),
+    invocation.capabilities,
   )
+  if (invocation.procedural_exception_context) {
+    const context = invocation.procedural_exception_context
+    policies.push(
+      '',
+      '### Procedural recovery',
+      '',
+      `Ledger: \`${context.command}\`. Recording grants no authorization, waiver, gate result, or scope change.`,
+      'Record pending justifications in top-level procedural_exceptions, or a report section with one JSON fence before the verdict and completion marker. Include any recording error and reconcile with `pan exception reconcile <run-id> --artifact <artifact>`.',
+      ...context.unresolved.map(
+        (entry) => `- ${entry.id}: ${entry.affected}; ${entry.follow_up}`,
+      ),
+    )
+  }
+  if (invocation.initial_policy_reminder) {
+    policies.push(
+      '',
+      `Initial reminder snapshot: \`${invocation.initial_policy_reminder.source}\` (sha256:${invocation.initial_policy_reminder.sha256}). Read this source if it did not accompany the launch. It pins the initial launch packet only; recurring delivery is unverified.`,
+    )
+  }
   const requirements = invocation.requirements
     ? [
         ...invocation.requirements.automation_requirements,
@@ -164,11 +218,17 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ),
       ]
     : []
-  const harnessRequirementLines = harnessRequirements.map(
-    (requirement) =>
-      `- \`${requirement.registry_id}@${requirement.registry_version}\` — ` +
-      `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement}); harness-owned, no agent action.`,
-  )
+  const harnessRequirementLines = invocation.context_contract_version
+    ? harnessRequirements.length > 0
+      ? [
+          'The harness runs and routes deterministic checks from the invocation manifest; cite its recorded evidence.',
+        ]
+      : []
+    : harnessRequirements.map(
+        (requirement) =>
+          `- \`${requirement.registry_id}@${requirement.registry_version}\` — ` +
+          `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement}); harness-owned, no agent action.`,
+      )
 
   const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
   const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>

@@ -287,7 +287,7 @@
           "id": "shepherd-review",
           "type": "policy",
           "policy_id": "SHEPHERD-001",
-          "instruction_sha256": "00ab355edcf7a4078b5806a3a7ededf5ec8b081edb3cf65bd4adde235babaff0"
+          "instruction_sha256": "8becb40203ffc7c24d77ba808e0360e3e05eae3120ed16b091fea4a8c8a07d89"
         },
         {
           "id": "shepherd-branch",

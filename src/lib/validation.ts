@@ -21,6 +21,7 @@ export {
   sessionRecordPath,
   loadDelegationExecutionRecord,
   expectedDelegationSource,
+  expectedDelegationContent,
   attestationValidationPath,
   buildValidationArtifact,
 } from './validation/artifacts.js'

@@ -12,8 +12,9 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 One reviewer reading a whole diff carries every review lens at once and drops
 some of them. A squad splits the lenses.
 
-The reviewer stays the coordinator. It delegates one narrow charter per
-dimension, then joins the returned findings into one ranked set.
+The reviewer stays the coordinator. In resolve mode it returns one narrow
+charter per dimension. The authorized caller launches and observes the
+dimension agents, then returns their raw findings for the reviewer's join.
 
 The squad changes only how findings are gathered. The coordinator still owns
 the verdict, the remediation boundary, and routing.
@@ -94,21 +95,16 @@ it is absent and this paragraph does not apply.
 3. Resolve the lineup. State which conditional dimensions activated and which
    ones the diff skipped. When the caller sent a selection, the lineup is that
    set. State the default-lineup dimensions it leaves out.
-4. Delegate one subagent per dimension in the lineup, in one message, so they
+4. The authorized caller delegates one subagent per dimension in the lineup, in one message, so they
    run at the same time.
    Each prompt MUST carry the captured diff path, the review workspace path,
    the intent brief, the dimension charter text, and the finding shape.
-5. These dimension agents are nested spawns, so Cursor runs them on its default
-   model by platform behavior.
-   A shepherd review accepts that for charter-scoped finding work.
-   A standalone session under `REVIEW-001` does not, and issues this fan-out
-   itself at the top level, then returns the raw findings to the coordinator.
-   Either way a dimension agent sits at the nesting limit and MUST NOT spawn
-   further subagents.
-6. When a subagent cannot start, apply that charter yourself before you join the
-   results. Do not drop a dimension from a stated lineup without saying so. A
-   standalone session reports an undelivered charter to the coordinator at
-   join time rather than applying it.
+5. Both shepherd and standalone callers issue the fan-out at the top level,
+   using projected model mappings and `DELEGATE-001` observation. Invocation
+   workers and dimension agents MUST NOT launch subagents or alternate sessions.
+6. When a dimension agent cannot start, the caller reports the undelivered
+   charter to the coordinator at join time. The coordinator applies it before
+   joining, and records the gap. Do not silently drop a selected dimension.
 7. Join the findings. Merge duplicates, drop what the intent brief already
    answers, then rank. Under `REVIEW-001` the session does not do this: it
    returns the raw findings to the coordinator, which joins them in join mode.

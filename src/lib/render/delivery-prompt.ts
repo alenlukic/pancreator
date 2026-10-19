@@ -4,6 +4,7 @@
  */
 
 import { cursorAgentName } from '../projection.js'
+import { withInitialPolicyReminder } from '../policy-delivery.js'
 import type {
   InvocationEvidenceWorker,
   EvidenceWorkerAttempt,
@@ -313,5 +314,5 @@ export function renderInvocationDeliveryPrompt(
       : []),
   ]
 
-  return `${lines.join('\n')}\n`
+  return withInitialPolicyReminder(invocation, `${lines.join('\n')}\n`)
 }

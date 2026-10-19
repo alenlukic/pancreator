@@ -11,7 +11,8 @@ import { parsePersonaMapping } from './executors/mapping.js'
 import { createCursorModelResolver } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
 import { policySectionDigest } from './policy-guidance.js'
-import type { Policy, PolicyDelivery } from './types.js'
+import { resolvePolicyCoverage } from './policy-delivery.js'
+import type { Policy, PolicyDelivery, PolicyDeliveryCoverage } from './types.js'
 import { fileExists, readText, sha256, writeTextAtomic } from './io.js'
 import {
   loadPipelineConfig,
@@ -259,6 +260,8 @@ export function policyDeliveryPlan(
     executor: string
     mode: CursorInstallationMode
     host?: ProjectHost | null
+    invocationId?: string
+    coverage?: Record<string, PolicyDeliveryCoverage>
   },
 ): Record<string, PolicyDelivery> {
   const host = options.host === undefined ? 'cursor' : options.host
@@ -283,6 +286,33 @@ export function policyDeliveryPlan(
   return Object.fromEntries(
     policies.map((policy): [string, PolicyDelivery] => {
       const target = targets.get(policy.id)
+      if (options.invocationId) {
+        const coverage = options.coverage?.[policy.id]
+        const { diagnostic } = resolvePolicyCoverage(policy, coverage, {
+          invocationId: options.invocationId,
+          executor: options.executor,
+          host,
+        })
+        if (diagnostic || !coverage) {
+          return [
+            policy.id,
+            {
+              mode: 'inline',
+              diagnostic: diagnostic ?? 'missing_delivery_evidence',
+            },
+          ]
+        }
+        return [
+          policy.id,
+          {
+            mode: 'pointer',
+            target: coverage.source,
+            sha256: policySectionDigest(policy, 'agent'),
+            ...(host ? { host } : {}),
+            coverage,
+          },
+        ]
+      }
 
       return [
         policy.id,

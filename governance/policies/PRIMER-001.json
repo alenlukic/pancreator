@@ -2,11 +2,11 @@
   "id": "PRIMER-001",
   "title": "Target repository primer",
   "severity": "hard",
-  "summary": "Agents MUST use the target repository primer as bounded orientation, MUST read it before expanding target-repository context, and MUST NOT follow its file references without a task-specific need.",
+  "summary": "Agents MUST read available bounded primer orientation before broad repository discovery. Supplied paths and their direct dependencies do not alone trigger that read.",
   "instructions": [
-    "Before expanding target-repository context, every agent MUST read the target repository primer at the harness-relative path `docs/target-repo-primer.md`. In an embedded installation, Cursor filesystem access MUST use `.pancreator/docs/target-repo-primer.md`.",
+    "Before broad repository discovery, agents MUST read available bounded orientation in the harness-relative `docs/target-repo-primer.md` (embedded: `.pancreator/docs/target-repo-primer.md`). Broad discovery locates unknown architecture, ownership, or implementation surfaces beyond supplied paths and their direct dependencies. Reading supplied plans, inputs, named source paths, direct dependencies, or target instructions does not alone trigger this read.",
     "The primer is orientation rather than authority. The operator request, target repository `AGENTS.md`, active invocation card, and applicable policies MUST retain precedence over primer content.",
     "Agents SHOULD NOT open, search, or otherwise follow references from the primer merely because they are listed. An agent MAY inspect a referenced file when it can state a concrete task-specific reason that the file is needed.",
-    "When the primer is absent or marked unbuilt, non-librarian agents MUST stop before substantive target-repository work and direct the operator to run `/pan-build-docs`. The librarian MAY create a missing primer or regenerate an existing primer."
+    "An absent or unbuilt primer alone MUST NOT block bounded work with sufficient task context. Agents MUST report the actual information gap when correctness depends on missing orientation and name `/pan-build-docs` as the supplying action. The librarian MAY create or regenerate the primer. Target instruction discovery, required reads, and read validation remain independent obligations."
   ]
 }

@@ -4,10 +4,13 @@ import { chmodSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { readIndex } from '../../src/lib/agent-index/store.js'
+import { readIndex, writeIndex } from '../../src/lib/agent-index/store.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const BIN = path.join(process.cwd(), 'bin')
+const AUTHORITY_ROOT = createTestTempDirectory('hook-adapter-authority-')
+mkdirSync(path.join(AUTHORITY_ROOT, 'runtime/logs/agents'), { recursive: true })
+writeIndex(AUTHORITY_ROOT, readIndex(AUTHORITY_ROOT), new Date().toISOString())
 
 interface HookResult {
   status: number | null
@@ -24,6 +27,7 @@ function runAdapter(
     input: typeof payload === 'string' ? payload : JSON.stringify(payload),
     encoding: 'utf8',
     timeout: 20_000,
+    env: { ...process.env, PANCREATOR_ROOT: AUTHORITY_ROOT },
   })
 
   return {

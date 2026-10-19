@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { withInitialPolicyReminder } from '../../src/lib/policy-delivery.js'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -224,13 +225,16 @@ test('an openai stage runs the tool loop and submits its own output', async () =
         invocationFile(root, runId, invocation.invocation_id, '.delegation.md'),
         'utf8',
       ),
-      card,
+      withInitialPolicyReminder(invocation, card),
     )
 
     const requests = endpoint.requests()
     const firstInput = requests[0]?.body.input as { content?: string }[]
 
-    assert.equal(firstInput[0]?.content, card)
+    assert.equal(
+      firstInput[0]?.content,
+      withInitialPolicyReminder(invocation, card),
+    )
     assert.equal(requests.length, 6)
 
     for (const request of requests) {
@@ -523,9 +527,12 @@ test('a revision resumes the session and a failed resume falls back', async () =
         invocationFile(root, runId, round3.invocation_id, '.delegation.md'),
         'utf8',
       ),
-      readFileSync(
-        invocationFile(root, runId, round3.invocation_id, '.md'),
-        'utf8',
+      withInitialPolicyReminder(
+        round3,
+        readFileSync(
+          invocationFile(root, runId, round3.invocation_id, '.md'),
+          'utf8',
+        ),
       ),
     )
   } finally {
@@ -602,9 +609,12 @@ test('a retry after a failed attempt starts fresh with the full card', async () 
     assert.equal(input.length, 1)
     assert.equal(
       input[0]?.content,
-      readFileSync(
-        invocationFile(root, runId, retry.invocation_id, '.md'),
-        'utf8',
+      withInitialPolicyReminder(
+        retry,
+        readFileSync(
+          invocationFile(root, runId, retry.invocation_id, '.md'),
+          'utf8',
+        ),
       ),
     )
   } finally {

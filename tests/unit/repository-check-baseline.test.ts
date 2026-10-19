@@ -146,7 +146,7 @@ test('baseline comparison rejects a new diagnostic from the same command', () =>
   assert.match(comparison.explanation, /1 new, 0 fixed, 1 carried/u)
 })
 
-test('an empty baseline is a recorded evidence gap and never fails the gate on delta alone', () => {
+test('an empty baseline records an evidence gap without crediting current failures', () => {
   const empty: RepositoryCheckResult = { ...passedCheck(), results: [] }
   const current = failedCheck(
     '/workspace/src/b.ts:3:1 error Inherited or new failure no-new\n',
@@ -154,7 +154,7 @@ test('an empty baseline is a recorded evidence gap and never fails the gate on d
 
   const comparison = compareRepositoryCheckToBaseline(empty, current)
 
-  assert.equal(comparison.passed, true)
+  assert.equal(comparison.passed, false)
   assert.ok(comparison.evidence_gap)
   assert.match(comparison.explanation, /recorded no command result/u)
   // The delta is still recorded for the reader, with every diagnostic new.
@@ -167,7 +167,7 @@ test('an empty baseline is a recorded evidence gap and never fails the gate on d
   assert.equal(populated.evidence_gap, undefined)
 })
 
-test('a baseline whose only command selected no test is an evidence gap, while a baseline that ran tests still gates', () => {
+test('a baseline whose only command selected no test cannot credit current failures', () => {
   const probe = {
     ...passedCheck().results[0]!,
     kind: 'probe' as const,
@@ -190,7 +190,7 @@ test('a baseline whose only command selected no test is an evidence gap, while a
 
   const comparison = compareRepositoryCheckToBaseline(noSelection, current)
 
-  assert.equal(comparison.passed, true)
+  assert.equal(comparison.passed, false)
   assert.ok(comparison.evidence_gap)
   assert.match(comparison.explanation, /selected no test to run/u)
 
@@ -206,6 +206,30 @@ test('a baseline whose only command selected no test is an evidence gap, while a
     compareRepositoryCheckToBaseline(ranTests, current).passed,
     false,
   )
+})
+
+test('probe-only and zero-test baselines cannot grandfather a current failure', () => {
+  const current = failedCheck('not ok - current failure\n')
+  const result = passedCheck().results[0]!
+  for (const results of [
+    [{ ...result, kind: 'probe' as const, stdout: 'v22.0.0\n' }],
+    [{ ...result, stdout: 'TAP version 13\n1..0\n# tests 0\n' }],
+    [{ ...result, stdout: 'ℹ tests 0\nℹ pass 0\n' }],
+  ]) {
+    const comparison = compareRepositoryCheckToBaseline(
+      { ...passedCheck(), results },
+      current,
+    )
+    assert.equal(comparison.passed, false)
+    assert.ok(comparison.evidence_gap)
+    assert.equal(
+      compareRepositoryCheckToBaseline(
+        { ...passedCheck(), results },
+        passedCheck(),
+      ).passed,
+      true,
+    )
+  }
 })
 
 test('baseline delta credits a repaired inherited failure as fixed', () => {

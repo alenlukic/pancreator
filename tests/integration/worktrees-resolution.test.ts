@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import {
+  chmodSync,
   mkdirSync,
   readFileSync,
   renameSync,
@@ -334,9 +335,64 @@ test('worktree creation and branch restoration refresh disposable Cursor project
   assert.deepEqual(validateProjectionDrift(worktreePath).errors, [])
 })
 
-// AC-016. HR-008's incident fast-forwarded a worktree on its recorded branch:
-// the head moved, the branch name did not, and a refresh keyed to a branch
-// switch never ran. The resolve-time refresh must follow the head.
+test('root-driven worktree resolution uses the candidate build and never overwrites its projection with the installation renderer', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'candidate-renderer')
+  const workspace = path.join(root, record.path)
+  const source = path.join(workspace, 'src', 'lib')
+  const built = path.join(workspace, 'dist', 'src', 'lib')
+  mkdirSync(source, { recursive: true })
+  mkdirSync(built, { recursive: true })
+  writeFileSync(path.join(source, 'projection.ts'), 'candidate source\n')
+  writeFileSync(
+    path.join(built, 'projection.js'),
+    [
+      'import { writeFileSync } from "node:fs";',
+      'export function syncCursorProjection(root, options) {',
+      '  if (root !== process.cwd() || !options.write || process.env.PANCREATOR_BUILD_READY || process.env.PANCREATOR_EXEC_ROOT) throw Error("wrong build context");',
+      '  writeFileSync(".cursor/agents/pan-coder.md", "candidate renderer\\n");',
+      '}',
+    ].join('\n'),
+  )
+  const wrapper = path.join(workspace, 'bin', 'run-built')
+  writeFileSync(wrapper, '#!/bin/sh\nshift\nexec "$@"\n')
+  chmodSync(wrapper, 0o755)
+  const projection = path.join(workspace, '.cursor', 'agents', 'pan-coder.md')
+  writeFileSync(projection, 'candidate renderer\n')
+
+  const answer = execFileSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'dist', 'src', 'cli.js'),
+      'worktree',
+      'resolve',
+      record.name,
+      '--json',
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PANCREATOR_ROOT: root,
+        PANCREATOR_BUILD_READY: '1',
+      },
+    },
+  )
+  assert.match(answer, /candidate-renderer/u)
+  assert.equal(readFileSync(projection, 'utf8'), 'candidate renderer\n')
+  writeFileSync(
+    path.join(built, 'projection.js'),
+    'export function syncCursorProjection() { throw Error("candidate broken"); }',
+  )
+  assert.throws(
+    () => resolveWorktreeWorkspace(root, record.name),
+    /Candidate projection refresh failed.*candidate broken/su,
+  )
+  assert.equal(readFileSync(projection, 'utf8'), 'candidate renderer\n')
+})
+
+// HR-008 moved the head without switching branches, which must also refresh.
 test('worktree resolution refreshes the projection after a same-branch head move', () => {
   const root = createFixture()
   const record = createWorktree(root, 'projection-head-move')

@@ -3,6 +3,7 @@
  */
 
 import path from 'node:path'
+import { reconcileProceduralExceptions } from '../procedural-exceptions.js'
 
 import { invariant } from '../errors.js'
 import { cursorModelPredictionForSpec } from '../executors/cursor-probe.js'
@@ -111,6 +112,7 @@ export function delegateEvidenceWorkers(
     }
 
     if (fileExists(evidenceAbsolute) && readText(evidenceAbsolute).trim()) {
+      reconcileProceduralExceptions(root, runId, worker.evidence_path)
       results.push({
         ...base,
         skipped: 'already_present',
@@ -264,6 +266,8 @@ export function delegateEvidenceWorkers(
     const present =
       fileExists(evidenceAbsolute) &&
       readText(evidenceAbsolute).trim().length > 0
+    if (present)
+      reconcileProceduralExceptions(root, runId, worker.evidence_path)
 
     results.push({
       ...base,

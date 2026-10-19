@@ -54,6 +54,8 @@ export type {
   PolicyArtifactAuthority,
   PolicyAudience,
   PolicyDelivery,
+  PolicyDeliveryCoverage,
+  PolicyCapabilities,
   PolicyGuidance,
   PolicyGuidanceReference,
   PolicyInstruction,

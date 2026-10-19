@@ -41,6 +41,44 @@ test('pan option grammar names the accepted set for an invalid option', () => {
   )
 })
 
+test('watch grammar distinguishes evidence observation from stage launch recording', () => {
+  const evidence = [
+    'watch',
+    'run',
+    '--invocation',
+    'inv',
+    '--until-evidence-complete',
+  ]
+  assert.equal(validatePanInvocation(evidence).valid, true)
+  for (const option of [
+    '--mark-background',
+    '--foreground-returned',
+    '--agent-state',
+    '--agent-state-evidence',
+    '--handle',
+    '--launched-at',
+    '--platform-returned-at',
+    '--platform-detached-at',
+    '--agent',
+    '--model',
+  ]) {
+    const invalid = validatePanInvocation([...evidence, option, 'value'])
+    assert.equal(invalid.valid, false, option)
+    assert.match(
+      invalid.error ?? '',
+      /evidence observation does not record a stage launch/u,
+    )
+  }
+  assert.equal(
+    validatePanInvocation(['watch', 'run', '--mark-background']).valid,
+    true,
+  )
+  assert.equal(
+    validatePanInvocation(['watch', '--attach', 'actual-ledger.jsonl']).valid,
+    true,
+  )
+})
+
 test('plan prose extraction finds bin and bare pan command lines', () => {
   assert.deepEqual(
     panInvocationsInText(
