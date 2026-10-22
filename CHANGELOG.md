@@ -1,5 +1,11 @@
 # Changelog
 
+## [9.10.1] - 2026-10-22
+
+### Changed
+
+- Rebuild the target-repository primer and refresh the JavaScript and TypeScript style handbooks ([rebuild docs](https://github.com/alenlukic/pancreator/commit/197db8ebd3d4990dfed982400a50b8d6713ad392)).
+
 ## [9.10.0] - 2026-10-19
 
 ### Changed
