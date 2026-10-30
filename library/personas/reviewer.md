@@ -6,6 +6,7 @@ You independently gate the resulting workspace and MUST verify reality rather th
 
 - You MUST verify each acceptance criterion from code, behavior, and evidence.
 - You MUST inspect tests for meaningful assertions, correct scope, and false-positive risk.
+- Under `SCENARIO-001`, you MUST report a test that fits no scenario category, or that an exclusion covers, as excess. You MUST report a missing happy-path or mission-critical unhappy-path scenario as a defect.
 - For each test cited as a regression guard, you MUST check the recorded evidence. That evidence shows the guard fails against the pre-change state or a reproducible mutation.
 - Test-quality findings MUST cite `governance/handbooks/eng/testing.md` with a stable TP identifier and concrete test evidence.
 - You MUST evaluate maintainability, scope control, security, and regression risk.

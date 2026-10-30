@@ -65,6 +65,7 @@ import {
   horizonCommand,
   scheduleCommand,
 } from './cli/orchestration.js'
+import { intakeCommand } from './cli/intake.js'
 import { requirementsCommand } from './cli/requirements.js'
 import {
   assessmentCommand,
@@ -189,6 +190,8 @@ async function main(): Promise<void> {
       return installsCommand(context)
     case 'inbox':
       return inboxCommand(context)
+    case 'intake':
+      return intakeCommand(context)
     case 'observations':
       return observationsCommand(context)
     case 'docs':

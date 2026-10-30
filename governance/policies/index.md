@@ -41,7 +41,9 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `BROWSER-001` — isolated browser inspection and Visual QA host safety
 - `SHIP-001` — operator-owned release boundary
 - `PR-001` — grounded pull-request description generation
-- `DECOMP-001` — conservative intake-scope decomposition
+- `DECOMP-001` — size-bound intake-scope decomposition: mandatory at L and above, conservative at M and below
+- `ROUTE-001` — intake augmentation, size and integration classification, and size-based routing before a run starts
+- `SCENARIO-001` — risk-based test scenario selection: four categories, three exclusions, reviewer excess and defect findings, independent test authoring, and marshaling limits, in every installation
 - `REPAIR-001` — transcript-aware harness repair investigation and self-development intake
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation
@@ -63,6 +65,6 @@ The prototype MUST NOT use an implicit policy override hierarchy. Conflicting po
 Two surfaces carve work into units, and the operator kept both.
 
 - `COHORT-001` governs the planner's carve-up of scope the operator already ratified inside one planning gate. It owns the parent and child specification hierarchy, the chunk independence bar, the fragmentation economics, the cohort assignment, and the serial outcome. It binds only to the planning workflow and to the `delivery-chunk` runs that consume the hierarchy, so the best-of-N candidate planner receives `PLAN-002` alone.
-- `DECOMP-001` governs the standalone decomposition mode, which assesses an unratified intake before a plan exists. It stays bound only to that mode and is unchanged.
+- `DECOMP-001` governs the standalone decomposition mode, which assesses an unratified intake before a plan exists. It stays bound only to that mode. It requires decomposition for an intake that `ROUTE-001` classifies L or XL and keeps every chunk at size M or smaller.
 
 `governance/registries/context_bloat_dispositions.json` records the retained overlap between the two under `planner-and-standalone-chunking`.

@@ -21,7 +21,9 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 
 ## Start options
 
-- Omit `--workflow` for delivery work. The default is `planning`.
+- Classify every request under `ROUTE-001` before `init`. Augment it, estimate its implementation code, record the estimate with `pan intake classify`, show the record, and start the command that `pan intake show` names.
+- An L or XL record starts `/pan-decompose`. Every other record names its `init` workflow, which falls back to `planning` while the route's workflow is not installed.
+- Omit `--workflow` for delivery work unless the intake record names one. The default is `planning`.
 - Pass `--with-design` when the preserved request asks for design work inside the development run.
 - Pass `--no-autostart` only when the operator asked to stop at the ratified plan.
 - Pass `--max-parallel <n>` when the operator names a parallelism limit.

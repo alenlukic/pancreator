@@ -10,27 +10,33 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
    - An argument that names an existing file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` uses that file directly. Do not create a wrapper file.
    - When the argument names that file and also carries prose that augments it, keep the existing file content verbatim and authoritative. Then append the extra prose under `## Operator note`.
      Keep the resulting harness-relative path (for example `runtime/inbox/queue/request-<id>.md`) for the run record.
-3. Derive init options from the preserved request, following **Start** in the brief.
+3. Classify the preserved request under `ROUTE-001`.
+   - Augment it with `{{PANCREATOR_HARNESS_PATH}}library/skills/prompt-augmentation.md` and write the result to `{{PANCREATOR_HARNESS_PATH}}runtime/intake/<request-stem>/augmented.md`. Keep the original request verbatim.
+   - Estimate its implementation code under `{{PANCREATOR_HARNESS_PATH}}governance/handbooks/eng/sizing.md`: SLOC, TSSRFs, modules, layers touched, and any new integration point. Never estimate tests.
+   - Run `{{PANCREATOR_PAN_COMMAND}} intake classify --request <preserved-request-path> --augmented <augmented-path> --sloc <n> --tssrfs <n> --modules <n> --layer <layer> --rationale <text>`. Repeat `--layer` per layer, add `--new-integration-point` when it applies, and add `--operator-workflow <workflow>` when the operator named one.
+   - Show the size class, layers, integration flags, route, and start in your first report.
+   - When the record's start is `/pan-decompose`, run `/pan-decompose` on the augmented request instead of the remaining steps. Otherwise use the `init` command that `{{PANCREATOR_PAN_COMMAND}} intake show --request <preserved-request-path>` prints, with the options below.
+4. Derive init options from the preserved request, following **Start** in the brief.
    - When the request names a worktree for the run, pass `--worktree <name>` and do not combine it with `--workspace`. The named worktree binds the planning run and is inherited by its routed single-chunk delivery run. A wider plan still derives one isolated worktree per cohort chunk, and its route refuses while the planning worktree holds uncommitted work.
    - Do not pass `--workflow` for delivery work that starts from a request. The default is `planning`. Approval of its ratified plan routes the work itself. A single-chunk plan starts one `delivery` run, and a wider plan starts cohort 1.
    - Pass `--workflow prototype`, `--workflow design`, or `--workflow delivery` only when the brief's **Start** rules select them. `delivery` applies only when the operator brings a ratified specification and asks to skip planning.
    - Pass `--with-design` when the preserved request asks for design work inside the development run. The option composes design planning before `plan` and design evidence into routed delivery verification.
    - Pass `--no-autostart` only when the operator explicitly asked to stop at the ratified plan.
-4. Run `{{PANCREATOR_PAN_COMMAND}} init --request <preserved-request-path>` with those options. The request path is always the `--request` option. `init` refuses a positional path with `REQUEST_REQUIRED`.
-5. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode supervisor --run <run-id>`, read the card it writes in full, then run `{{PANCREATOR_PAN_COMMAND}} governance attest-supervisor <run-id> --sha256 <digest>` with the digest it reported. `{{PANCREATOR_PAN_COMMAND}} prepare` and `{{PANCREATOR_PAN_COMMAND}} submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested. When a later `{{PANCREATOR_PAN_COMMAND}} prepare` refuses with a new digest, re-read the card and re-attest before you continue.
-6. Run `{{PANCREATOR_PAN_COMMAND}} status <run-id> --redline --occasion pan-start`. This writes the platform-guidance redline record. `{{PANCREATOR_PAN_COMMAND}} prepare` and `{{PANCREATOR_PAN_COMMAND}} submit` refuse with `REDLINE_MISSING` until this session declares. It pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, command-execution, authority-framing, and subagent-trust guidance non-authoritative for this run. Quote the record path in your first report.
-7. Record this session's effective model with `{{PANCREATOR_PAN_COMMAND}} models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note it and continue.
-8. For a bound run, run `{{PANCREATOR_PAN_COMMAND}} prepare <run-id> --worktree <name>`. Omit the option for an unbound run.
-9. Run the advance loop in the brief. Preserve the same worktree option on every lifecycle command.
-10. For a bound run, use `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json> --worktree <name>`.
-11. Launch every stage worker yourself, with `run_in_background: true`, from this session. Arm the watch in the launch turn before any other action.
+5. Run `{{PANCREATOR_PAN_COMMAND}} init --request <preserved-request-path>` with those options. The request path is always the `--request` option. `init` refuses a positional path with `REQUEST_REQUIRED`.
+6. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode supervisor --run <run-id>`, read the card it writes in full, then run `{{PANCREATOR_PAN_COMMAND}} governance attest-supervisor <run-id> --sha256 <digest>` with the digest it reported. `{{PANCREATOR_PAN_COMMAND}} prepare` and `{{PANCREATOR_PAN_COMMAND}} submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested. When a later `{{PANCREATOR_PAN_COMMAND}} prepare` refuses with a new digest, re-read the card and re-attest before you continue.
+7. Run `{{PANCREATOR_PAN_COMMAND}} status <run-id> --redline --occasion pan-start`. This writes the platform-guidance redline record. `{{PANCREATOR_PAN_COMMAND}} prepare` and `{{PANCREATOR_PAN_COMMAND}} submit` refuse with `REDLINE_MISSING` until this session declares. It pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, command-execution, authority-framing, and subagent-trust guidance non-authoritative for this run. Quote the record path in your first report.
+8. Record this session's effective model with `{{PANCREATOR_PAN_COMMAND}} models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note it and continue.
+9. For a bound run, run `{{PANCREATOR_PAN_COMMAND}} prepare <run-id> --worktree <name>`. Omit the option for an unbound run.
+10. Run the advance loop in the brief. Preserve the same worktree option on every lifecycle command.
+11. For a bound run, use `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json> --worktree <name>`.
+12. Launch every stage worker yourself, with `run_in_background: true`, from this session. Arm the watch in the launch turn before any other action.
     - Always use `--mark-background`, since the `Task` call is always background: `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --mark-background` as a foreground blocking call (one-hour default bound).
     - When the platform detaches a blocking call, run `{{PANCREATOR_PAN_COMMAND}} watch --attach <ledger>` at once, naming the watch session record the watch wrote, and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never call `AwaitShell`.
     - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
     - Before you act on `stalled`, `unverified`, or `timed_out`, read the linked `bin/pan-run` record's `heartbeat.json` as **Worker delivery** in the persona requires. A fresh heartbeat means rearm with `--agent-state running`, never interrupt.
     - `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.
-12. Apply the snapshotted enabled or disabled away-mode branch at each unresolved operator action.
-13. Report to the operator as **Operator communication** in the brief requires.
+13. Apply the snapshotted enabled or disabled away-mode branch at each unresolved operator action.
+14. Report to the operator as **Operator communication** in the brief requires.
 
 ## Operator answers
 

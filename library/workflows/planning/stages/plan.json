@@ -62,7 +62,7 @@
       "id": "plan.test_plan_covers",
       "type": "judgment",
       "hard": true,
-      "statement": "Every acceptance criterion carries one proof type (test, review, live, or observe) that fits how it is proven, and the test plan gives every live criterion at least one executable verification case that a later stage can run without editing source."
+      "statement": "Every acceptance criterion carries one proof type (test, review, live, or observe) that fits how it is proven, and the test plan gives every live criterion at least one executable verification case that a later stage can run without editing source. Every test scenario carries exactly one SCENARIO-001 category, every criterion with a happy path or a mission-critical unhappy path has that scenario, and no scenario covers a low-probability low-impact, vanishingly improbable, or provably unreachable case."
     }
   ],
   "transitions": {

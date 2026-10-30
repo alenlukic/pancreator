@@ -970,4 +970,3 @@ test('an inserted helper that contains its original anchor is recognized as appl
     /ambiguous/,
   )
 })
-

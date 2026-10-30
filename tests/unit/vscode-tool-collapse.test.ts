@@ -15,12 +15,8 @@ test('tool collapse keeps only the newest live call open and honors operator exp
   )!
   const sandbox: { globalThis?: unknown } = {}
   sandbox.globalThis = sandbox
-  runInNewContext(
-    `class Part{${core.replace}}`,
-    sandbox,
-  )
-  const coordinator = (sandbox as { __panTC: Record<string, Function> })
-    .__panTC
+  runInNewContext(`class Part{${core.replace}}`, sandbox)
+  const coordinator = (sandbox as { __panTC: Record<string, Function> }).__panTC
   const live = (id: string) => ({ kind: 'toolInvocation', toolCallId: id })
   const collapsed: string[] = []
   const register = (session: string, call: object) =>
@@ -59,12 +55,18 @@ test('tool collapse keeps only the newest live call open and honors operator exp
   assert.equal(coordinator.held!(third), false)
   assert.equal(coordinator.held!(other), false)
 
-  coordinator.arrive!('session', { kind: 'toolInvocationSerialized', toolCallId: 'old' })
+  coordinator.arrive!('session', {
+    kind: 'toolInvocationSerialized',
+    toolCallId: 'old',
+  })
   assert.equal(coordinator.held!(third), false)
 
   assert.equal(coordinator.keep!(third), true)
   assert.equal(coordinator.keep!(second), false)
-  assert.equal(coordinator.keep!({ kind: 'toolInvocationSerialized', toolCallId: 'old' }), false)
+  assert.equal(
+    coordinator.keep!({ kind: 'toolInvocationSerialized', toolCallId: 'old' }),
+    false,
+  )
   coordinator.pin!(third, false)
   assert.equal(coordinator.keep!(third), false)
 })

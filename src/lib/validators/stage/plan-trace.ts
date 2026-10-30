@@ -490,6 +490,7 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
+  issues.push(...testScenarioIssues(input.root, data, criterionIds))
   issues.push(...criterionProducerIssues(criteria))
   issues.push(
     ...openQuestionDispositionIssues(input, data, criteria, productSpec),
@@ -579,6 +580,76 @@ const WORKER_PRODUCIBLE_EVIDENCE = [
  * proved only that way is unmeetable as written. `pan context card` is the
  * read-only render that gives a card-shaped criterion a legitimate producer.
  */
+// SCENARIO-001: the list stays optional so plans written before it remain
+// valid; a supplied list must be well formed and trace to real criteria.
+function testScenarioIssues(
+  root: string,
+  data: Record<string, unknown>,
+  criterionIds: Set<string>,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+  if (data.test_scenarios === undefined) return issues
+  if (!Array.isArray(data.test_scenarios)) {
+    return [
+      issue('plan.scenario_shape', 'data.test_scenarios MUST be an array.'),
+    ]
+  }
+
+  const categories = sharedEnum(root, 'plan', 'data.test_scenarios[].category')
+  const seen = new Set<string>()
+  for (const [index, item] of data.test_scenarios.entries()) {
+    const label = `Test scenario ${index + 1}`
+    if (
+      !isRecord(item) ||
+      typeof item.id !== 'string' ||
+      !item.id.trim() ||
+      typeof item.scenario !== 'string' ||
+      !item.scenario.trim()
+    ) {
+      issues.push(
+        issue(
+          'plan.scenario_shape',
+          `${label} MUST state a non-empty id and scenario.`,
+        ),
+      )
+      continue
+    }
+    if (seen.has(item.id)) {
+      issues.push(
+        issue(
+          'plan.scenario_duplicate',
+          `Test scenario '${item.id}' is declared more than once.`,
+        ),
+      )
+    }
+    seen.add(item.id)
+    if (
+      !categories.has(typeof item.category === 'string' ? item.category : '')
+    ) {
+      issues.push(
+        issue(
+          'plan.scenario_category',
+          `Test scenario '${item.id}' MUST carry exactly one category: ` +
+            `${[...categories].join(', ')}.`,
+        ),
+      )
+    }
+    if (
+      typeof item.criterion !== 'string' ||
+      !criterionIds.has(item.criterion)
+    ) {
+      issues.push(
+        issue(
+          'plan.scenario_criterion',
+          `Test scenario '${item.id}' MUST name an acceptance criterion ` +
+            'defined in data.acceptance_criteria.',
+        ),
+      )
+    }
+  }
+  return issues
+}
+
 function criterionProducerIssues(criteria: unknown[]): HandlerResult['issues'] {
   const issues: HandlerResult['issues'] = []
 

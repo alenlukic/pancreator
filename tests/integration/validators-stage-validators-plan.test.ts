@@ -130,6 +130,7 @@ function writePlanWithQuestions(
     },
   ],
   testPlan: unknown[] = [],
+  testScenarios?: unknown,
 ): void {
   writeFileSync(
     path.join(root, target),
@@ -148,6 +149,9 @@ function writePlanWithQuestions(
         },
         acceptance_criteria: criteria,
         test_plan: testPlan,
+        ...(testScenarios === undefined
+          ? {}
+          : { test_scenarios: testScenarios }),
         open_question_dispositions: dispositions,
       },
     })}\n`,
@@ -664,6 +668,9 @@ test('plan field contract declares every validator-enforced shape', () => {
     'data.engineering_plan.files[].status',
     'data.engineering_plan.files[].purpose',
     'data.test_plan[]',
+    'data.test_scenarios[]',
+    'data.test_scenarios[].category',
+    'data.test_scenarios[].criterion',
     'data.open_question_dispositions[].id',
     'data.open_question_dispositions[].answer',
     'data.open_question_dispositions[].disposition',
@@ -745,4 +752,57 @@ test('plan trace requires one proof type per criterion and a case only for live 
     ],
   )
   assert.deepEqual(codes(), [])
+})
+
+test('plan trace validates SCENARIO-001 test scenarios when supplied', () => {
+  const root = validatorFixtureRoot('pan-plan-scenarios-')
+  const target = 'output.json'
+  const criteria = [
+    {
+      id: 'AC-01',
+      maps_to: ['US-1'],
+      verification: { method: 'unit test', expected: 'passes' },
+      proof: 'test',
+    },
+  ]
+  const scenario = (id: string, category: string, criterion = 'AC-01') => ({
+    id,
+    criterion,
+    category,
+    scenario: 'The validator accepts a well-formed plan.',
+  })
+  const codes = (scenarios?: unknown): string[] => {
+    writePlanWithQuestions(root, target, [], [], criteria, [], scenarios)
+    return validatePlanTrace({
+      root,
+      targetPath: target,
+      requirement: planTraceRequirement,
+    }).issues.map((item) => item.code)
+  }
+
+  assert.deepEqual(codes(), [])
+  assert.deepEqual(
+    codes([
+      scenario('TS-01', 'happy_path'),
+      scenario('TS-02', 'critical_unhappy_path'),
+      scenario('TS-03', 'probable_edge_case'),
+      scenario('TS-04', 'hidden_edge_case'),
+    ]),
+    [],
+  )
+  assert.deepEqual(
+    codes([
+      scenario('TS-01', 'happy_path'),
+      scenario('TS-01', 'coverage_padding'),
+      scenario('TS-02', 'happy_path', 'AC-99'),
+      { id: 'TS-03', criterion: 'AC-01', category: 'happy_path' },
+    ]),
+    [
+      'plan.scenario_duplicate',
+      'plan.scenario_category',
+      'plan.scenario_criterion',
+      'plan.scenario_shape',
+    ],
+  )
+  assert.deepEqual(codes({}), ['plan.scenario_shape'])
 })

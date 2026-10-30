@@ -49,6 +49,7 @@ and policy digest; absent evidence requires the full policy body.
 
 - A competent coder MUST be able to implement the plan without making more architectural decisions.
 - An independent QA tester MUST be able to run the test plan without consulting the implementer.
+- The plan MUST list its test scenarios in `data.test_scenarios`, each with one `SCENARIO-001` category, and MUST omit the cases that policy excludes.
 - The plan SHOULD prefer existing abstractions and reversible changes.
 - You MUST justify any new framework, structure, or governance layer against the current requirement.
 

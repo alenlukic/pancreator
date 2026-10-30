@@ -141,6 +141,10 @@ export const HELP_BODY = `Usage:
       List every regular file directly under each runtime/inbox/ lifecycle directory, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status. Unreadable items remain visible with a reason.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
+  pan intake classify --request <repo-relative-file> --sloc <n> --tssrfs <n> --modules <n> --layer <layer> [--layer <layer> ...] [--new-integration-point] --rationale <text> [--augmented <repo-relative-file>] [--operator-workflow <slug>] [--reason <text>] [--json]
+      Classify a request by the sizing handbook (governance/handbooks/eng/sizing.md) and append the result to runtime/intake/<request-stem>/classification.json. Estimates count implementation code only. The record holds the size class, the integration flags, the route, and the first step, and prints the command that starts it. A route workflow that is not installed falls back to planning; --operator-workflow overrides the route. A request that already holds a record needs --reason.
+  pan intake show --request <repo-relative-file> [--json]
+      Print a request's current intake classification and the command that starts its route.
   pan observations [--root <installation-root>] [--all] [--json]
       List the post-ship observation items every run's latest successful ship output records in data.release.observations, with run id, criterion, signal, source, window, check, shipped_at, and due_at (shipped_at plus the window). An item is open while its window runs and due once it elapses or when the window does not parse. --all adds resolved items with their resolution. --root reads the runs and resolution ledger of that installation root, such as a path that pan installs list reports. Nothing queries the named source.
   pan observations resolve <run-id> <criterion-id> --status confirmed|refuted (--note <text> | --note-file <path>) [--intake <path>] [--root <installation-root>]

@@ -1,0 +1,27 @@
+{
+  "id": "ROUTE-001",
+  "title": "Intake classification and size-based routing",
+  "severity": "hard",
+  "summary": "Before a run starts, the supervisor MUST augment the request, estimate its implementation size, record a durable classification through `pan intake classify`, and start the route that record names unless the operator overrides it.",
+  "instructions": [
+    "Before `pan init`, the supervisor MUST augment the preserved request under the prompt-augmentation skill and MUST write the result to `runtime/intake/<request-stem>/augmented.md`. The original request MUST stay verbatim and remains the reference for `intake.request_covered`.",
+    "The supervisor MUST estimate the request's implementation code under the sizing handbook: SLOC, TSSRFs, modules, the horizontal layers touched, and whether it adds a new integration point. It MUST NOT estimate test code, and it MUST round SLOC up when unsure.",
+    "The supervisor MUST record the estimate with `pan intake classify --request <request> --augmented <augmented> --rationale <text>` and its estimate options before `pan init`. The supervisor MUST NOT write or edit the classification record by hand.",
+    "The supervisor's first operator report MUST show the size class, the layers touched, the integration and new-integration-point flags, the route, and the start the record names.",
+    "The supervisor MUST start the record's start: an L or XL route starts `/pan-decompose` on the augmented request, and any other route starts `pan init` with the workflow the record names. `pan intake show --request <request>` prints the exact next command.",
+    "When the operator names a workflow, that choice MUST win. The supervisor MUST record it with `--operator-workflow <workflow>` and MUST NOT reroute it.",
+    "When a route's workflow is not installed, the record falls back to `planning` and states the reason. The supervisor MUST report that fallback and MUST NOT invent a workflow.",
+    "When a stage reports that the work exceeds its class's SLOC hard max or adds an unplanned new integration point, the supervisor MUST reclassify with `pan intake classify --reason <text>`. The supervisor MUST report the new route. Rerouting an active run stays an operator-owned stage change."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/eng/sizing.md",
+      "start_heading": "## Definitions",
+      "read_trigger": "Read this guidance before you estimate, classify, or reroute an intake."
+    },
+    {
+      "path": "library/skills/prompt-augmentation.md",
+      "read_trigger": "Read this guidance before you augment an intake request."
+    }
+  ]
+}

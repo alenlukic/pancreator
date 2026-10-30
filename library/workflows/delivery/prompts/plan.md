@@ -51,13 +51,20 @@ full outputs.
    behavior, not implementation internals. A `test`, `review`, or `observe`
    criterion needs no case: gate evidence, the review, or a post-ship signal
    proves it.
+8. List the test scenarios under `SCENARIO-001` in `data.test_scenarios`. Give
+   each one exactly one category: `happy_path`, `critical_unhappy_path`,
+   `probable_edge_case`, or `hidden_edge_case`. Omit low-probability
+   low-impact, vanishingly improbable, and provably unreachable cases, and do
+   not chase coverage.
 
 ## Output
 
 Populate `data.product_spec` (`summary`, `user_stories`, `constraints`,
 `out_of_scope`, `open_questions`), `data.engineering_plan` (`approach`,
 `components`, `files`, `risks`, `validation`), `data.acceptance_criteria`,
-`data.test_plan`, and `data.open_question_dispositions`. Each disposition
+`data.test_plan`, `data.test_scenarios`, and `data.open_question_dispositions`.
+Each test scenario states `id`, the `criterion` it proves, its `category`, and
+the `scenario` in one sentence. Each disposition
 states the question `id`, a `disposition` of `resolved`, `deferred`, or
 `escalated`, an `answer` naming the answer or the decision still required, and
 `evidence`, which is required and must be non-empty for a resolved question.

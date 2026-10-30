@@ -1,22 +1,32 @@
 {
   "id": "DECOMP-001",
-  "title": "Conservative scope decomposition",
+  "title": "Size-bound scope decomposition",
   "severity": "hard",
-  "summary": "Intake scope MUST remain intact by default and MAY be decomposed only when independently valuable chunks materially reduce execution risk without creating disproportionate workflow overhead or coordination cost.",
+  "summary": "An intake classified L or XL MUST be decomposed into chunks of size M or smaller with minimal dependencies. An intake classified M or smaller remains intact by default and MAY be decomposed only when independently valuable chunks materially reduce execution risk without disproportionate workflow overhead or coordination cost.",
   "instructions": [
-    "The decomposer MUST default to retain. Large file count, many implementation layers, or a long prose specification MUST NOT independently trigger decomposition.",
-    "Before decomposition, every proposed chunk MUST pass the independence gate: it has one coherent operator outcome, independently testable acceptance criteria, and a valid standalone completion state. It has no dependency on a later chunk except through an explicit stable interface or durable artifact.",
+    "The decomposer MUST read the request's intake classification with `pan intake show --request <file>` and MUST copy its size class into the `## Intake classification` section as `Size class: <class>`. When no record exists, the decomposer MUST classify the request under the sizing handbook and MUST state that the class is its own estimate.",
+    "When the intake size class is L or XL, the decision MUST be `decompose`. The hard-trigger and pressure-indicator thresholds below do not apply to that decision, and the threshold assessment MUST state that the size class decided it.",
+    "When the intake size class is M or smaller, the decomposer MUST default to retain. Large file count, many implementation layers, or a long prose specification MUST NOT independently trigger decomposition.",
+    "Every chunk MUST be size M or smaller under the sizing handbook. Each chunk MUST carry a `### Classification` section that states its size class, SLOC estimate, TSSRF count, module count, layers touched, whether it adds a new integration point, and its route. An XS or S chunk routes to `one-shot`, and an M chunk routes to `standard`.",
+    "Before decomposition, every proposed chunk MUST pass the independence gate: it has one coherent operator outcome, independently testable acceptance criteria, and a valid standalone completion state. It has no dependency on a later chunk except through an explicit stable interface or durable artifact. When an L or XL request has no split that passes the gate, the decomposer MUST sequence chunks through explicit stable handoff contracts and MUST name the remaining coupling in risks and unknowns.",
     "A split MUST NOT be organized only by technical layer, file type, implementation phase, test work, documentation work, or agent specialty. Supporting tests, documentation, migration work, and governance changes SHOULD remain with the operator outcome they enable.",
     "Shared schema, data migration, security, permission, rollout, or compatibility work MUST remain atomic with its consuming behavior. That work separates only when the foundation is independently useful, safely deployable, and verifiable before downstream work begins.",
-    "The decomposer MAY decompose the request only when the independence gate passes. The request MUST also show at least one hard trigger, or at least four strong pressure indicators across at least three distinct complexity dimensions.",
+    "For an M or smaller intake, the decomposer MAY decompose the request only when the independence gate passes. The request MUST also show at least one hard trigger, or at least four strong pressure indicators across at least three distinct complexity dimensions.",
     "The decomposer MUST treat hard triggers as limited to three cases. The first case is multiple independently ratifiable or releasable operator outcomes that each justify a systematic run. The second case is a prerequisite discovery or foundation step that must resolve a stable contract before downstream scope planning is safe. The third case is multiple independent high-risk migrations or rollout surfaces that require separate validation and rollback decisions.",
     "The decomposer MUST count strong pressure indicators from a fixed list. The list holds more than twelve non-duplicative acceptance criteria that span multiple outcomes, or three or more bounded subsystems with limited shared state. It holds three or more material contract, persistence, security, operational, or governance change domains. It holds three or more independent validation environments, owners, or rollback surfaces. It holds three or more independently reviewable workstreams that can avoid shared-file contention. It holds unresolved decisions concentrated in a prerequisite whose outcome would materially invalidate downstream planning.",
-    "The decomposer MUST explicitly compare the expected reduction in implementation, review, and remediation risk against the overhead of more workflow runs. That overhead covers intake, planning, review, QA, release, and coordination. Marginal cases MUST remain one larger chunk.",
-    "A decomposition SHOULD contain two to four chunks. More than five chunks MUST include an explicit justification. That justification shows why each chunk passes the independence gate and why a merge of adjacent chunks would materially increase risk.",
-    "No chunk SHOULD be smaller than one economically meaningful systematic run. The decomposer MUST merge small supporting changes into the nearest owning outcome unless they are a necessary independently verifiable prerequisite.",
-    "Chunk dependencies MUST form a directed acyclic graph, MUST minimize dependency edges, and MUST identify stable handoff contracts. Bidirectional dependencies or repeated shared-file ownership SHOULD cause chunks to be merged or resequenced.",
+    "The decomposer MUST explicitly compare the expected reduction in implementation, review, and remediation risk against the overhead of more workflow runs. That overhead covers intake, planning, review, QA, release, and coordination. Marginal M-or-smaller cases MUST remain one larger chunk, and an L or XL decomposition MUST use the fewest chunks that keep every chunk at size M or smaller.",
+    "A decomposition SHOULD contain two to four chunks. More than five chunks MUST include an explicit justification. That justification shows why each chunk passes the independence gate or needs its handoff contract, and why a merge of adjacent chunks would exceed size M or materially increase risk.",
+    "No chunk SHOULD be smaller than one economically meaningful run. The decomposer MUST merge small supporting changes into the nearest owning outcome unless they are a necessary independently verifiable prerequisite.",
+    "Chunk dependencies MUST form a directed acyclic graph, MUST minimize dependency edges, and MUST identify stable handoff contracts. Bidirectional dependencies or repeated shared-file ownership SHOULD cause chunks to be merged or resequenced, unless the merge would exceed size M.",
     "Every original requirement, constraint, out-of-scope statement, and open question MUST appear in requirement traceability exactly once as owned, shared, or intentionally deferred. The decomposer MUST NOT silently drop, broaden, or invent scope.",
     "The decomposition artifact MUST run its resolved policy-bound validator under VALID-001 before it is presented as complete."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/eng/sizing.md",
+      "start_heading": "## Definitions",
+      "read_trigger": "Read this guidance before you classify an intake or a chunk by size."
+    }
   ],
   "requirements": [
     {

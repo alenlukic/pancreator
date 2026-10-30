@@ -1,0 +1,24 @@
+{
+  "id": "SCENARIO-001",
+  "title": "Risk-based test scenario selection",
+  "severity": "hard",
+  "summary": "Agents planning, writing, or reviewing tests MUST select scenarios by likelihood and impact under the four categories and three exclusions the test scenario handbook defines, in self-development and in target installations.",
+  "instructions": [
+    "Agents planning, writing, reviewing, or testing tests MUST read the complete test scenario guidance this policy references, and MUST apply it before completion.",
+    "The plan stage MUST list every test scenario in `data.test_scenarios`. Each scenario MUST carry exactly one category: `happy_path`, `critical_unhappy_path`, `probable_edge_case`, or `hidden_edge_case`.",
+    "A one-shot agent with no plan stage MUST list its scenarios, with categories, before it writes code, and MUST record them in its output.",
+    "Agents MUST NOT plan or write a test for a low-probability, low-impact case, a vanishingly improbable case, or a provably unreachable case.",
+    "Agents MUST NOT pursue a coverage percentage for its own sake, and MUST NOT try to cover every edge case exhaustively.",
+    "The reviewer MUST report a planned scenario or added test that fits no category as excess. The reviewer MUST report a missing happy-path or mission-critical unhappy-path scenario as a defect.",
+    "A test author working beside the implementer MUST NOT read the implementer's work in progress. It works from the plan, the acceptance criteria, the scenarios, and the interface schema when one exists.",
+    "Marshaling test code to the actual interfaces MAY change call sites, imports, names, and fixture shapes. It MUST NOT delete a scenario, loosen an assertion, or change an expected outcome. A behavioral mismatch is a defect for remediation.",
+    "Marshaling MUST run in a source-allowed step before the read-only verdict. It MUST NOT move into the verify stage."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/eng/test-scenarios.md",
+      "start_heading": "## Categories",
+      "read_trigger": "Read this guidance before you plan, write, review, or test test scenarios."
+    }
+  ]
+}

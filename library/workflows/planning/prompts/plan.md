@@ -68,6 +68,11 @@ registry-shape correction does not require rereading every child.
    behavior, not implementation internals. A `test`, `review`, or `observe`
    criterion needs no case: gate evidence, the review, or a post-ship signal
    proves it.
+   Then list the test scenarios under `SCENARIO-001` in `data.test_scenarios`.
+   Give each one exactly one category: `happy_path`, `critical_unhappy_path`,
+   `probable_edge_case`, or `hidden_edge_case`. Omit low-probability
+   low-impact, vanishingly improbable, and provably unreachable cases, and do
+   not chase coverage.
 8. Carve the ratified scope into chunks. A chunk owns one coherent operator
    outcome, carries independently testable acceptance criteria, and reaches a
    valid standalone completion state. Default to one chunk. Split only when
@@ -133,7 +138,11 @@ registry-shape correction does not require rereading every child.
 Populate `data.product_spec` (`summary`, `user_stories`, `constraints`,
 `out_of_scope`, `open_questions`), `data.engineering_plan` (`approach`,
 `components`, `files`, `risks`, `validation`), `data.acceptance_criteria`,
-`data.test_plan`, `data.open_question_dispositions`, and `data.cohort_plan`.
+`data.test_plan`, `data.test_scenarios`, `data.open_question_dispositions`, and
+`data.cohort_plan`. Each test scenario states `id`, the `criterion` it proves,
+its `category`, and the `scenario` in one sentence. The validator rejects an
+unknown category with `plan.scenario_category` and an unknown criterion with
+`plan.scenario_criterion`.
 
 Fill the prepared scaffold after reading the card. Its pending attestation and
 unevaluated criteria are placeholders, and its presence does not show completion.

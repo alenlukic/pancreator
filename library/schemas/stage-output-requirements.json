@@ -29,6 +29,11 @@
             "data.engineering_plan.files[].status",
             "data.engineering_plan.files[].purpose",
             "data.test_plan[]",
+            "data.test_scenarios[]",
+            "data.test_scenarios[].id",
+            "data.test_scenarios[].criterion",
+            "data.test_scenarios[].category",
+            "data.test_scenarios[].scenario",
             "data.open_question_dispositions[].id",
             "data.open_question_dispositions[].answer",
             "data.open_question_dispositions[].disposition",
@@ -129,6 +134,37 @@
           "path": "data.test_plan[]",
           "type": "object",
           "format": "focused scenario for a live criterion, naming it in criterion; every live criterion needs at least one case, and test, review, and observe criteria need none. Optional execution.operations contains bounded version-1 VerificationExecutionOperation definitions from library/schemas/verification-execution.schema.json. When supplied it is non-empty, ids are unique across cases, and each operation names the case criterion. Legacy plans without execution remain valid; a required live operation without authority is an explicit verification gap. Setup, action, command, steps, and execution.operations MUST NOT substitute a configured repository-check profile command for a case"
+        },
+        {
+          "path": "data.test_scenarios[]",
+          "type": "object",
+          "required": ["id", "criterion", "category", "scenario"],
+          "format": "optional for compatibility with existing plans; the SCENARIO-001 test scenario list. Each entry names one acceptance criterion it proves and exactly one category. Ids are unique"
+        },
+        {
+          "path": "data.test_scenarios[].id",
+          "type": "string"
+        },
+        {
+          "path": "data.test_scenarios[].criterion",
+          "type": "string",
+          "format": "acceptance criterion id defined in data.acceptance_criteria"
+        },
+        {
+          "path": "data.test_scenarios[].category",
+          "type": "string",
+          "enum": [
+            "happy_path",
+            "critical_unhappy_path",
+            "probable_edge_case",
+            "hidden_edge_case"
+          ],
+          "format": "SCENARIO-001 category: happy_path, critical_unhappy_path (a mission-critical failure), probable_edge_case (a highly probable edge case), or hidden_edge_case (a hard-to-detect edge case of low but non-vanishing probability)"
+        },
+        {
+          "path": "data.test_scenarios[].scenario",
+          "type": "string",
+          "format": "one sentence naming the behavior the scenario proves"
         },
         {
           "path": "data.open_question_dispositions[].id",

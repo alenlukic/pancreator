@@ -227,6 +227,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'hypervisor',
   'horizon',
   'inbox',
+  'intake',
   'installs',
   'observations',
   'output',

@@ -1,5 +1,17 @@
 # Changelog
 
+## [10.0.0] - 2026-10-30
+
+### Changed
+
+- Classify each intake by implementation size and route, and decompose L and XL work at intake ([intake](https://github.com/alenlukic/pancreator/commit/9a3ea2f495087f5b4c8a276ec9ef80185c1aadf5)).
+- Select test scenarios by risk category, and omit excluded cases ([scenarios](https://github.com/alenlukic/pancreator/commit/af3cce78a83b06bf09d38ea26b7b201ad1967db6)).
+
+### Added
+
+- Record a durable intake classification through `pan intake classify` and `pan intake show` ([intake](https://github.com/alenlukic/pancreator/commit/9a3ea2f495087f5b4c8a276ec9ef80185c1aadf5)).
+- Bind `SCENARIO-001` and `data.test_scenarios` so plans list each scenario with one category ([scenarios](https://github.com/alenlukic/pancreator/commit/af3cce78a83b06bf09d38ea26b7b201ad1967db6)).
+
 ## [9.10.1] - 2026-10-22
 
 ### Changed

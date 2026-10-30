@@ -200,7 +200,8 @@
         "RUNTIME-001",
         "PAUSE-001",
         "WAIVER-001",
-        "WORK-001"
+        "WORK-001",
+        "ROUTE-001"
       ]
     },
     {
@@ -213,7 +214,7 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "coder",
@@ -233,7 +234,7 @@
       "persona": "metacritic",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "metacritic",
@@ -260,7 +261,7 @@
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "reviewer",
@@ -280,7 +281,7 @@
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "BROWSER-001"]
+      "policies": ["ENG-001", "BROWSER-001", "SCENARIO-001"]
     },
     {
       "persona": "qa-tester",
@@ -317,7 +318,7 @@
       "persona": "planner",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "planner",
@@ -330,7 +331,7 @@
       "persona": "verifier",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "BROWSER-001"]
+      "policies": ["ENG-001", "BROWSER-001", "SCENARIO-001"]
     },
     {
       "persona": "verifier",
@@ -364,7 +365,7 @@
       "persona": "remediator",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "remediator",
@@ -398,7 +399,7 @@
       "persona": "remediator-severe",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "remediator-severe",
@@ -677,7 +678,7 @@
       "persona": "debloater",
       "workflow": "*",
       "stage": "*",
-      "policies": ["DEBLOAT-001", "WORK-001", "ENG-001"]
+      "policies": ["DEBLOAT-001", "WORK-001", "ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "debloater",
@@ -814,7 +815,7 @@
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "WORK-001", "SPOT-001"]
+      "policies": ["ENG-001", "WORK-001", "SPOT-001", "SCENARIO-001"]
     },
     {
       "persona": "spotfixer",
@@ -858,7 +859,7 @@
       "persona": "designer",
       "workflow": "standalone",
       "stage": "polish",
-      "policies": ["BRIEF-001", "REPO-001", "ENG-001"]
+      "policies": ["BRIEF-001", "REPO-001", "ENG-001", "SCENARIO-001"]
     },
     {
       "persona": "researcher",

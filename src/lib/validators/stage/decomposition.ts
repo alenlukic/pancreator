@@ -2,6 +2,7 @@
 
 import path from 'node:path'
 
+import type { SizeClass } from '../../intake/classification.js'
 import { readText } from '../../io.js'
 import { parseMarkdown, hasHeading } from '../../markdown.js'
 import type { HandlerInput, HandlerResult } from '../../requirements/types.js'
@@ -24,6 +25,7 @@ export function validateDecompositionArtifact(
 
   const requiredHeadings = [
     'decision',
+    'intake classification',
     'scope summary',
     'threshold assessment',
     'fragmentation economics',
@@ -55,6 +57,29 @@ export function validateDecompositionArtifact(
       issue(
         'decomposition.decision',
         'Decision section MUST contain exactly retain or decompose',
+      ),
+    )
+  }
+
+  const intakeSize = sizeClassIn(
+    sectionBody(content, '##', 'Intake classification'),
+  )
+
+  if (intakeSize === null) {
+    issues.push(
+      issue(
+        'decomposition.intake_size',
+        'Intake classification MUST state Size class: XS, S, M, L, or XL',
+      ),
+    )
+  } else if (
+    (intakeSize === 'L' || intakeSize === 'XL') &&
+    normalizedDecision === 'retain'
+  ) {
+    issues.push(
+      issue(
+        'decomposition.size_requires_decompose',
+        `A ${intakeSize} intake MUST be decomposed into chunks of size M or smaller`,
       ),
     )
   }
@@ -164,6 +189,7 @@ export function validateDecompositionArtifact(
       'dependencies',
       'validation',
       'handoff contract',
+      'classification',
     ]
 
     for (const [index, match] of chunkMatches.entries()) {
@@ -202,6 +228,17 @@ export function validateDecompositionArtifact(
           ),
         )
       }
+
+      const chunkSize = sizeClassIn(sectionBody(block, '###', 'Classification'))
+
+      if (chunkSize !== 'XS' && chunkSize !== 'S' && chunkSize !== 'M') {
+        issues.push(
+          issue(
+            'decomposition.chunk_size',
+            `Chunk ${index + 1} classification MUST state Size class: XS, S, or M`,
+          ),
+        )
+      }
     }
 
     if (!/\bDAG\b|directed acyclic graph/iu.test(content)) {
@@ -215,4 +252,26 @@ export function validateDecompositionArtifact(
   }
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
+
+/** Text under a heading up to the next heading of the same or higher level. */
+function sectionBody(content: string, marker: string, title: string): string {
+  const heading = new RegExp(`^${marker} ${title}\\s*$`, 'imu').exec(content)
+
+  if (heading?.index === undefined) {
+    return ''
+  }
+
+  const remainder = content.slice(heading.index + heading[0].length)
+  const next = new RegExp(`^#{1,${marker.length}}\\s+`, 'mu').exec(remainder)
+
+  return remainder.slice(0, next?.index)
+}
+
+function sizeClassIn(section: string): SizeClass | null {
+  const match = /^\s*[-*]?\s*Size class:\s*`?(XS|S|M|L|XL)`?\s*$/imu.exec(
+    section,
+  )
+
+  return (match?.[1]?.toUpperCase() as SizeClass | undefined) ?? null
 }

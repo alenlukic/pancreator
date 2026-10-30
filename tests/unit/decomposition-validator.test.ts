@@ -33,6 +33,10 @@ function validate(content: string) {
 
 const COMMON = `# Scope decomposition
 
+## Intake classification
+
+Size class: M
+
 ## Scope summary
 
 Preserve the requested operator outcome.
@@ -74,8 +78,8 @@ Run /pan-start with the retained intake.
   assert.deepEqual(result.issues, [])
 })
 
-test('decomposition validator accepts complete low-coupling chunks', () => {
-  const result = validate(`${COMMON.replace(
+function decomposed(chunkTwoSize: string): string {
+  return `${COMMON.replace(
     'No hard trigger is present, only one pressure indicator applies',
     'A hard trigger is present and four pressure indicators span three dimensions',
   ).replace(
@@ -126,6 +130,11 @@ Run focused contract tests.
 
 Publish the stable interface consumed by Chunk 2.
 
+### Classification
+
+Size class: S
+Route: one-shot
+
 ## Chunk 2: Consumer behavior
 
 ### Objective
@@ -156,6 +165,11 @@ Run integration and regression tests.
 
 No downstream dependency.
 
+### Classification
+
+Size class: ${chunkTwoSize}
+Route: standard
+
 ## Risks and unknowns
 
 The stable contract may require operator ratification.
@@ -163,10 +177,47 @@ The stable contract may require operator ratification.
 ## Next action
 
 Run Chunk 1 through /pan-start.
-`)
+`
+}
+
+test('decomposition validator accepts complete low-coupling chunks', () => {
+  const result = validate(decomposed('M'))
 
   assert.equal(result.status, 'passed')
   assert.deepEqual(result.issues, [])
+})
+
+test('decomposition validator holds L intakes and chunks to the size rubric', () => {
+  const retainedLarge =
+    validate(`${COMMON.replace('Size class: M', 'Size class: L')}
+
+## Decision
+
+retain
+
+## Retained intake spec
+
+Build everything in one run.
+
+## Risks and unknowns
+
+None.
+
+## Next action
+
+Run /pan-start.
+`)
+  const oversizedChunk = validate(decomposed('L'))
+
+  assert.ok(
+    retainedLarge.issues.some(
+      (item) => item.code === 'decomposition.size_requires_decompose',
+    ),
+  )
+  assert.deepEqual(
+    oversizedChunk.issues.map((item) => item.code),
+    ['decomposition.chunk_size'],
+  )
 })
 
 test('decomposition validator rejects unstructured over-fragmentation', () => {
