@@ -15,7 +15,7 @@ import {
 import { policySectionDigest } from '../policy-guidance.js'
 import { proceduralExceptionContext } from '../procedural-exceptions.js'
 import { loadPolicySources, resolvePolicies } from '../policies.js'
-import { readRedlineRecord, redlineRecordPath } from '../watch/redline.js'
+import { readRedlineRecord } from '../watch/redline.js'
 import { readWorktreeIndex } from '../worktrees.js'
 import type { WorktreeRecord } from '../worktrees.js'
 import {
@@ -422,10 +422,10 @@ export function redlineCurrent(
 }
 
 /**
- * Refuse a lifecycle action while the current supervisor card is unattested,
- * or while the current supervisor session has written no redline declaration.
+ * Refuse a lifecycle action while the current supervisor card is unattested.
  * A run without a card (created before the card existed) passes; it gains a
- * card on its next prepare and is bound from then on.
+ * card on its next prepare and is bound from then on. A redline record is
+ * optional and never refuses prepare or submit.
  */
 export function assertSupervisorCardAttested(
   root: string,
@@ -442,27 +442,6 @@ export function assertSupervisorCardAttested(
   }
 
   assertCardDigestAttested(root, state, action, card)
-
-  // OPERATOR-001: the redline is written at start and on every resume. The
-  // attestation marks the session, so the redline must name its generation.
-  const redline = redlineCurrent(root, state)
-
-  invariant(
-    redline.current,
-    `pan ${action} refused: supervisor session ${redline.generation} of run ` +
-      `${state.run_id} has written no platform-guidance redline. Run ` +
-      `${redlineCommand(root, state.run_id)} after attesting the card, then ` +
-      'quote the record path in your report.',
-    {
-      code: 'REDLINE_MISSING',
-      details: {
-        run_id: state.run_id,
-        session_generation: redline.generation,
-        declared_generations: redline.declared,
-        redline_record_path: redlineRecordPath(root, state.run_id),
-      },
-    },
-  )
 }
 
 function assertCardDigestAttested(
@@ -592,8 +571,7 @@ export function attestSupervisorCard(
     )
 
     // Every attestation opens a supervisor session generation, including a
-    // re-attestation of an unchanged digest on resume. The redline record must
-    // then carry a declaration for that generation.
+    // re-attestation of an unchanged digest on resume.
     card.attested_sha256 = card.sha256
 
     if (card.policy_sections) {

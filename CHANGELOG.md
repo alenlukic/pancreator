@@ -1,5 +1,23 @@
 # Changelog
 
+## [10.1.0] - 2026-10-30
+
+### Changed
+
+- Deliver fewer policy instructions to workers, and keep harness-only rules on the harness audience ([governance trim](runtime/inbox/queue/63258_Oct-21-1140_governance-trim.md)).
+- Permit reads of caches and virtual environments, and keep edit and delete forbidden ([protected paths](governance/policies/GLOBAL-002.json)).
+- Make supervisor redlines optional, and make `platform_guidance_conflicts` optional ([redlines](docs/operator-guide.md)).
+- Use the class name `host question tool` in ASK-001 ([ASK-001](governance/policies/ASK-001.json)).
+- Collapse the ORCH-001 waste instructions into one instruction ([ORCH-001](governance/policies/ORCH-001.json)).
+
+### Added
+
+- Share the test-iteration procedure through `library/skills/iterate-tests.md` ([iterate tests](library/skills/iterate-tests.md)).
+
+### Removed
+
+- Remove the unused `orch-redline` turn reminder selector ([reminders](governance/registries/turn_reminder_profiles.json)).
+
 ## [10.0.0] - 2026-10-30
 
 ### Changed

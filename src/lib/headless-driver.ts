@@ -11,12 +11,8 @@ import { getRunState } from './engine/run-status.js'
 import { prepareInvocation } from './engine/prepare.js'
 import { submitOutput } from './engine/submit.js'
 import { personaExecutorOf } from './executors/mapping.js'
-import {
-  attestSupervisorCard,
-  redlineCurrent,
-} from './governance/supervisor-card.js'
+import { attestSupervisorCard } from './governance/supervisor-card.js'
 import { readJson } from './io.js'
-import { writeRedlineRecord } from './watch/redline.js'
 import type {
   Invocation,
   PendingAction,
@@ -191,22 +187,7 @@ export function driveRun(
         `attesting the supervisor card ${card.path} on the operator's behalf`,
       )
       attestSupervisorCard(root, runId, card.sha256)
-      writeRedlineRecord(root, runId, 'pan-start')
       supervisorCardAttestedBy = options.attestedBy ?? 'headless-driver'
-      continue
-    }
-
-    if (card && !redlineCurrent(root, state).current) {
-      if (!options.attestSupervisorCard) {
-        handoffReason = `supervisor session ${card.session_generation} has written no platform-guidance redline; a supervisor must run pan status --redline before the harness prepares an invocation`
-        stop = { type: 'unresolved', reason: handoffReason }
-        break
-      }
-
-      options.onProgress?.(
-        "writing the platform-guidance redline on the operator's behalf",
-      )
-      writeRedlineRecord(root, runId, 'pan-start')
       continue
     }
 

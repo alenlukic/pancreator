@@ -347,9 +347,9 @@ export function hostToolTranslations(
 }
 
 /**
- * Registry drift against the owning policy: each host tool name MUST appear in
- * that policy's summary or instructions, so the rule an agent reads names the
- * tool the hooks enforce.
+ * Registry drift against the owning policy: `question_tool` requires the class
+ * phrase `host question tool`, while every other term requires each host tool
+ * name in that policy's summary or instructions.
  */
 export function hostToolPolicyIssues(
   registry: HostToolRegistry,
@@ -365,6 +365,18 @@ export function hostToolPolicyIssues(
       issues.push(
         `${HOST_TOOLS_PATH}: ${term} names missing owning policy ${entry.owning_policy}`,
       )
+      continue
+    }
+
+    // ASK-001 names the host question tool as a class. Host identities live
+    // in this registry, so question_tool does not repeat each tool name.
+    if (term === 'question_tool') {
+      if (!text.includes('host question tool')) {
+        issues.push(
+          `${HOST_TOOLS_PATH}: ${entry.owning_policy} does not name the host question tool`,
+        )
+      }
+
       continue
     }
 

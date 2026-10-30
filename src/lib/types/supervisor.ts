@@ -65,8 +65,8 @@ export interface SupervisorCardState {
   attested_at?: string
   /**
    * Counts attestations. Each `/pan-start` and `/pan-resume` attests, so each
-   * increment opens one supervisor session. The redline record must carry a
-   * declaration for the current generation before prepare or submit proceed.
+   * increment opens one supervisor session. A redline declaration for that
+   * generation is optional and never required for prepare or submit.
    */
   session_generation?: number
 }

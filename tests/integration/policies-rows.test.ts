@@ -151,9 +151,10 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
   // selection may bind to COMMS-001.
   assert.equal(catalog.get('COMMS-001')?.requirements, undefined)
   assert.equal(catalog.get('COMMS-001')?.guidance, undefined)
-  assert.deepEqual(audienceFor('OPERATOR-001', '--redline --occasion'), [
-    'supervisor',
-  ])
+  assert.deepEqual(
+    audienceFor('OPERATOR-001', 'platform_guidance_conflicts[]'),
+    ['agent'],
+  )
   assert.deepEqual(audienceFor('OPERATOR-001', 'A non-empty `--note`'), [
     'supervisor',
   ])

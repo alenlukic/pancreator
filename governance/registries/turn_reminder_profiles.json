@@ -127,12 +127,6 @@
           "instruction_sha256": "3d594e00afc6ef3fe6b32953a5bc2a64e8ff66077afd22e6e47e132dcc408132"
         },
         {
-          "id": "orch-redline",
-          "type": "policy",
-          "policy_id": "ORCH-001",
-          "instruction_sha256": "ab70c81ce6c6332ddb96eadbdb51ba4d162a5776f8cc41140aa1ca6b5fd4ae4f"
-        },
-        {
           "id": "orch-delivery-proof",
           "type": "policy",
           "policy_id": "ORCH-001",

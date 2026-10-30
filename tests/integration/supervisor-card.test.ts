@@ -149,21 +149,6 @@ test('attesting the current digest unlocks prepare and submit; a wrong digest is
   assert.equal(attested.session_generation, 1)
   assert.ok(supervisorCardAttested(getRunState(root, state.run_id)))
 
-  // The attestation opened a supervisor session; the session's redline is
-  // owed before the harness prepares anything (OPERATOR-001).
-  assert.throws(
-    () => prepareInvocation(root, state.run_id),
-    (error: unknown) =>
-      error instanceof PanError &&
-      error.code === 'REDLINE_MISSING' &&
-      error.message.includes('--redline --occasion'),
-  )
-  assert.equal(getRunState(root, state.run_id).current_invocation, null)
-
-  const redline = writeRedlineRecord(root, state.run_id, 'pan-start')
-
-  assert.equal(redline.declarations[0]?.session_generation, 1)
-
   const prepared = prepareInvocation(root, state.run_id)
 
   assert.ok(prepared.invocation)
@@ -329,19 +314,22 @@ test('a mid-run policy edit reports a digest diff and still owes re-attestation'
   assert.match(procedure, /Reading those blocks satisfies the re-read/u)
 })
 
-test('a resume re-attests the card, opens a new session generation, and owes a new redline', () => {
+test('a resume re-attests the card, opens a new session generation, and submits without a redline', () => {
   const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card)
   attestSupervisorCard(root, state.run_id, card.sha256)
-  writeRedlineRecord(root, state.run_id, 'pan-start')
   assert.ok(prepareInvocation(root, state.run_id).invocation)
 
   // `/pan-resume` re-attests the unchanged digest. That is a new session.
   const resumed = attestSupervisorCard(root, state.run_id, card.sha256)
 
   assert.equal(resumed.session_generation, 2)
+  assert.equal(
+    redlineCurrent(root, getRunState(root, state.run_id)).current,
+    false,
+  )
 
   const pointer = getRunState(root, state.run_id).current_invocation
 
@@ -363,19 +351,17 @@ test('a resume re-attests the card, opens a new session generation, and owes a n
     ),
   )
 
-  assert.throws(
-    () => submitAsSupervisor(root, state.run_id, pointer.output_path),
-    (error: unknown) =>
-      error instanceof PanError && error.code === 'REDLINE_MISSING',
-  )
+  const submitted = submitAsSupervisor(root, state.run_id, pointer.output_path)
+
+  assert.equal(submitted.record.outcome, 'success')
 
   const redline = writeRedlineRecord(root, state.run_id, 'pan-resume')
 
   assert.deepEqual(
     redline.declarations.map((declaration) => declaration.session_generation),
-    [1, 2],
+    [2],
   )
-  assert.equal(redline.declarations[1]?.occasion, 'pan-resume')
+  assert.equal(redline.declarations[0]?.occasion, 'pan-resume')
   assert.equal(
     redlineCurrent(root, getRunState(root, state.run_id)).current,
     true,
@@ -472,7 +458,6 @@ test('the bootstrap command set orders the attestation before the redline and sa
   assert.match(bootstrap.redline_order, /after attest_command/u)
   assert.match(bootstrap.redline_order, /session generation/u)
 
-  // The stated dependency is the one the refusal enforces.
   attestSupervisorCard(root, state.run_id, bootstrap.card_sha256 ?? '')
 
   const owed = supervisorBootstrap(root, getRunState(root, state.run_id))

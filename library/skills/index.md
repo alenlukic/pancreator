@@ -51,6 +51,8 @@ exist.
 
 ## Stage-aligned
 
+- [`iterate-tests.md`](iterate-tests.md) - select iteration tests and leave
+  profile execution to the gates.
 - [`review-squad.md`](review-squad.md) - shepherd review by one agent per
   review dimension, coordinated under `SHEPHERD-001`.
 - [`update-release-metadata.md`](update-release-metadata.md) - release metadata

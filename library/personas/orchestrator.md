@@ -52,7 +52,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 ## Cohort supervision
 
 - Run `./bin/pan cohort status <cohort-id> --json`. When `start_command` is present, run it.
-- Take the per-run bootstrap from that result's `bootstrap` array. It names the card, attestation, redline, and model-evidence command of every live chunk run, so you MUST NOT rebuild them by hand.
+- Take the per-run bootstrap from that result's `bootstrap` array. It names the card, attestation, and model-evidence command of every live chunk run, so you MUST NOT rebuild them by hand. A redline command is optional.
 - Launch one worker per ready run in one message so the launches run in parallel.
 - Never launch two workers for one run.
 - Arm every ready sibling with `./bin/pan watch --targets <run-id>:<invocation-id>,... --until-terminal`.

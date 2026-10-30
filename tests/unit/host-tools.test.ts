@@ -116,13 +116,21 @@ test('policy drift names each tool the owning policy omits and each missing poli
   )
 
   assert.ok(
-    issues.some((issue) => issue.includes('`vscode/askQuestions`')),
+    issues.some((issue) => issue.includes('host question tool')),
     issues.join('\n'),
   )
-  assert.ok(!issues.some((issue) => issue.includes('`ask_user`')))
   assert.ok(
     issues.some((issue) =>
       issue.includes('missing owning policy DELEGATE-001'),
     ),
+  )
+
+  const matchingAskIssues = hostToolPolicyIssues(registry, (policyId) =>
+    policyId === 'ASK-001' ? 'Use the host question tool.' : null,
+  )
+
+  assert.ok(
+    !matchingAskIssues.some((issue) => issue.includes('ASK-001')),
+    matchingAskIssues.join('\n'),
   )
 })

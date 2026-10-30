@@ -435,8 +435,7 @@ export function governanceCommand({ root, pan, args }: CliContext): void {
       sha256: card.sha256,
       attested_at: card.attested_at,
       session_generation: card.session_generation,
-      next_command: `${pan} status ${runId} --redline --occasion <pan-start|pan-resume>`,
-      then: `${pan} prepare ${runId}`,
+      next_command: `${pan} prepare ${runId}`,
     })
     return
   }

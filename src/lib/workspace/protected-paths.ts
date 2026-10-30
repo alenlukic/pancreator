@@ -3,8 +3,8 @@ import path from 'node:path'
 /**
  * Paths outside agent remit. These are third-party dependencies, virtual
  * environments, caches, generated output, and compiled artifacts. Pancreator
- * deliberately excludes them from workspace fingerprints and agents MUST NOT
- * read, edit, create, delete, or report them as implementation work.
+ * deliberately excludes them from workspace fingerprints. Agents MUST NOT
+ * edit, create, or delete them, and MAY read them when the task needs it.
  */
 const PROTECTED_DIRECTORY_NAMES = new Set([
   '.cache',
@@ -64,7 +64,7 @@ export function normalizeProtectedPath(value: string): string {
 /**
  * True when a path lies in or is a compiled artifact, cache, virtual
  * environment, or dependency directory, or has a compiled-file suffix: the
- * paths agents must not read or change.
+ * paths agents must not change.
  */
 export function isProtectedWorkspacePath(value: string): boolean {
   const normalized = normalizeProtectedPath(value)
@@ -83,8 +83,9 @@ export function isProtectedWorkspacePath(value: string): boolean {
   return PROTECTED_FILE_SUFFIXES.some((suffix) => normalized.endsWith(suffix))
 }
 
+/** Card-boundary text: forbid mutating protected trees; allow a task-driven read. */
 export const PROTECTED_PATH_RULE =
-  'You MUST NOT read, edit, create, delete, index, validate, or report compiled artifacts, caches, virtual environments, or third-party dependency/package directories (including .venv, venv, .pyenv, site-packages, node_modules, vendor, dist, build, coverage, __pycache__, and tool caches). They are outside agent remit even when present or changed.'
+  'You MUST NOT edit, create, or delete compiled artifacts, caches, virtual environments, or third-party dependency/package directories (including .venv, venv, .pyenv, site-packages, node_modules, vendor, dist, build, coverage, __pycache__, and tool caches). You MAY read them when the task needs it or a debugging hypothesis points there.'
 
 /** Git exclude pathspecs that drop every protected directory and compiled-file suffix from a Git command. */
 export function protectedGitPathspecs(): string[] {

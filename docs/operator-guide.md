@@ -500,12 +500,10 @@ On VS Code the hooks also observe platform guidance as it arrives:
   log against the catalog. It reports entry ids, files, and counts, and never
   copies logged content. Turn the log on with
   `chat.agentDebugLog.fileLogging.enabled`, and turn it off afterwards, because
-  it records prompts. `pan doctor` reports the setting. `OPERATOR-001` requires the supervisor to write it at
-  `/pan-start` and every `/pan-resume` and to quote the path in its first
-  report. The duty is enforced: each `pan governance attest-supervisor` opens a
-  supervisor session generation, and `pan prepare` and `pan submit` refuse with
-  `REDLINE_MISSING` until the record carries a declaration for the current
-  generation. A later conflict is still recorded under `OPERATOR-001`.
+  it records prompts. `pan doctor` reports the setting. The redline record is
+  optional. `pan prepare` and `pan submit` do not refuse when it is absent.
+  A later conflict MAY still be recorded in `platform_guidance_conflicts[]`
+  under `OPERATOR-001`.
 
 ### Run top-level workflow QA
 
@@ -1707,7 +1705,7 @@ This is an operator-owned decision. The operator may run it directly or explicit
 
 ## Workspace mutation contract
 
-Pancreator does not recursively index the workspace. During a `source_allowed` stage, the worker may edit tracked source files within declared scope. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are outside agent remit and must never be read, edited, created, deleted, validated, or reported. Git-visible fingerprints and stage evidence track relevant source state.
+Pancreator does not recursively index the workspace. During a `source_allowed` stage, the worker may edit tracked source files within declared scope. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories must not be edited, created, or deleted, and may be read when the task needs it or a debugging hypothesis points there. Git-visible fingerprints and stage evidence track relevant source state.
 
 The verifier owns incoming and self-produced evidence structure. It preserves the original, repairs equivalent field shapes and recorded citation aliases, and records each repair in the same cumulative evidence packet. Structural defects do not block when the actual signal is unchanged. Missing real proof, failed assertions, stale source, and contradictions remain substantive verification concerns. Release consumes the supplied outcome without inspecting or validating evidence.
 

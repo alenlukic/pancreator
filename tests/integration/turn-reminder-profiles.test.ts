@@ -47,7 +47,6 @@ const EXPECTED_SELECTORS: Record<
     'orch-pending',
     'orch-continuation',
     'orch-watch',
-    'orch-redline',
     'orch-delivery-proof',
     'orch-reconcile',
     'single-run-recovery',
