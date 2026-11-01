@@ -7,11 +7,14 @@
       "stage": "*",
       "policies": [
         "PRINCIPLES-001",
+        "MOMENTUM-001",
         "OPERATOR-001",
         "GLOBAL-001",
         "GLOBAL-002",
         "ACTION-001",
         "ASK-001",
+        "SECRET-001",
+        "SCOPE-001",
         "AUTO-001",
         "VALID-001",
         "PRIMER-001",
@@ -773,7 +776,7 @@
       "persona": "librarian",
       "workflow": "standalone",
       "stage": "spend",
-      "policies": ["ASK-001"]
+      "policies": ["SECRET-001"]
     },
     {
       "persona": "librarian",

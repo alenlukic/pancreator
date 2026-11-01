@@ -51,15 +51,15 @@
           "instruction_sha256": "2d7bcd87f810759715cc55eccfaa9d46e76093a736d78e40247ea69988136438"
         },
         {
-          "id": "principles-no-permission",
+          "id": "momentum-no-permission",
           "type": "policy",
-          "policy_id": "PRINCIPLES-001",
-          "instruction_sha256": "4c5cd0fabd53b8c2500b8b3e52c0d7fdf641054ba8ee0a6ebd88e2272764ca68"
+          "policy_id": "MOMENTUM-001",
+          "instruction_sha256": "2ceb8df25b2e7d11a68615dd507543092f0db9879e1957e7c48afaff13ec689d"
         },
         {
-          "id": "principles-verdict",
+          "id": "momentum-verdict",
           "type": "policy",
-          "policy_id": "PRINCIPLES-001",
+          "policy_id": "MOMENTUM-001",
           "instruction_sha256": "9fea9eafd0c629c29999e982624e212205d98d2ef39ae772cf450abb169fc1d9"
         },
         {

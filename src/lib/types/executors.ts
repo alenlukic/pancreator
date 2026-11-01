@@ -93,7 +93,7 @@ export interface ExternalExecutorToolPolicy {
   custody_records?: string[]
   write_boundary?: DelegationWriteBoundary
   per_path_write_policy: boolean
-  scope_gate: 'scope.no_unapproved_changes'
+  scope_gate: 'scope.no_unattributed_changes'
 }
 
 /**

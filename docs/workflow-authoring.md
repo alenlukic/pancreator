@@ -127,7 +127,7 @@ delegation contract unchanged.
   - `runtime_only` - may write only under `runtime/` (intake, plan).
   - `read_only` - may not change any tracked content (verify and every review
     stage; `VERIFY-001` keeps verification read-only).
-    Any policy other than `source_allowed` adds the deterministic criterion `scope.no_unapproved_changes`. This criterion detects external or unattributed contamination: a stage may report top-level `workspace_changes` with `attribution: internal` and every changed path to preserve attribution without blocking.
+    Any policy other than `source_allowed` adds the deterministic criterion `scope.no_unattributed_changes`. This criterion detects external or unattributed contamination: a stage may report top-level `workspace_changes` with `attribution: internal` and every changed path to preserve attribution without blocking.
 - `gate` - what decides advancement after a valid, successful output:
   - `operator` - pause for explicit operator approval (intake, ship).
   - `supervisor` - pause for independent supervisor judgment of the judgment

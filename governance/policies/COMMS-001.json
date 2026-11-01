@@ -4,7 +4,6 @@
   "severity": "hard",
   "summary": "Every report an agent writes to the operator in chat MUST state the outcome first, stay under the prose cap, name the next action, and keep answers and tool context visible in chat.",
   "instructions": [
-    "COMMS-001 governs operator-facing chat output, and GLOBAL-001 governs the durable record. An agent MUST apply each policy to its own surface.",
     "Operator chat reports MUST state the outcome, consequence, and next action. They MUST use plain language and avoid unnecessary workflow mechanics.",
     "The prose of one chat response MUST hold at most 250 words. It SHOULD hold fewer than 100 words.",
     "Agents MUST count every word outside a table cell or a fenced code block as prose. A bullet item longer than one sentence counts as prose.",
@@ -38,13 +37,12 @@
     "An agent MUST answer every operator question in visible operator-facing chat. Hidden reasoning, a Thinking block, raw tool output, and a watch ledger MUST NOT satisfy that duty.",
     "Every turn that invokes a shell command or a tool MUST include a concise operator-facing update of one line in that same turn. The update MUST name the action. A turn MUST NOT consist of only tool calls or shell commands.",
     "An agent MUST put a significant result in visible operator-facing chat before the next tool call. A turn MAY state a confirmed result, invoke a tool, and end with the concise update for that tool.",
+    "Narration beyond the one-line tool update MAY come only before a tool call. It MUST carry a finding the operator needs. A due report states the work done, not the work planned.",
     "Long-running shell and worker observation MUST keep the `pan watch` cadence that DELEGATE-001 sets. The agent MUST still write the concise operator-facing update this policy requires in the same turn that starts the command or worker.",
-    "These visible-chat rules MUST bind every supervisor, workflow worker, standalone agent, and subagent.",
     "An agent MUST report a failure with its cause and one named next action.",
     "An operator-facing agent MUST rewrite the summary of a subagent that COMMS-001 does not bind. The rewrite MUST happen before that summary reaches the operator.",
     "The operator-facing agent owns the shape of the rewritten summary. That agent MUST NOT pass raw subagent prose through to the operator.",
     "Chat-report issue and outcome shapes MUST remain judgment-only. The deterministic check does not test these shapes.",
-    "This policy adopts Part 1 writing rules of ASD-STE100 and does not adopt the Part 2 controlled dictionary as a gate. Agents MUST NOT describe an artifact as conformant to ASD-STE100, because full conformance requires the dictionary.",
     "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording.",
     {
       "text": "The harness MUST deliver the same governance reminders, including COMMS-001 and the operating principles, on every user prompt and after every tool result or failure the host exposes. Reminder delivery MUST NOT depend on transcript availability or a prior silence check. Coverage: `tests/regression/turn-reminder-cycles.test.ts::tool cycles reissue the full governance reminder without transcript evidence`, `tests/regression/turn-reminder-cycles.test.ts::host hook templates deliver governance reminders on every tool cycle`.",

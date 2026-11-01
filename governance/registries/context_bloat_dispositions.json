@@ -207,6 +207,19 @@
         "tests/unit/one-shot-workflow.test.ts",
         "tests/unit/intake-classification.test.ts"
       ]
+    },
+    {
+      "id": "catalog-and-valid-supervisor-judgment",
+      "category": "duplicate",
+      "sources": [
+        "governance/criteria/index.md",
+        "governance/policies/VALID-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "The criteria catalog and VALID-001 both carry the supervisor-judgment exception for expensive, flaky, or ambiguous deterministic fails. Authors read the catalog. Agents receive VALID-001 on every card.",
+      "evidence": [
+        "tests/integration/policies-contexts.test.ts: VALID-001 is in the universal policy set"
+      ]
     }
   ]
 }

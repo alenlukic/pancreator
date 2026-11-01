@@ -64,11 +64,8 @@ test('COMMS-001 states visible answers, same-turn tool updates, result order, an
     'a significant result MUST precede the next tool call',
   )
   assert.ok(
-    hasAll(
-      comms,
-      'supervisor, workflow worker, standalone agent, and subagent',
-    ),
-    'the visible-chat rules MUST bind every agent role',
+    hasAll(comms, 'every user prompt', 'after every tool result'),
+    'harness reminder delivery MUST carry COMMS-001 on every prompt and tool cycle',
   )
 })
 

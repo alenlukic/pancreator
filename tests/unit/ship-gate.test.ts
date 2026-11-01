@@ -242,7 +242,7 @@ test('worktree-bound release coordination does not add a local-release validatio
   assert.equal(absent.advisories.length, 1)
   assert.match(absent.advisories[0] ?? '', /Custody fallback/u)
   assert.equal(
-    absent.results.find((item) => item.id === 'scope.no_unapproved_changes')
+    absent.results.find((item) => item.id === 'scope.no_unattributed_changes')
       ?.passed,
     true,
   )
@@ -303,7 +303,7 @@ test('worktree-less release coordination does not manufacture a bypassed validat
   assert.equal(evaluated.advisories.length, 1)
   assert.match(evaluated.advisories[0] ?? '', /Custody fallback/u)
   assert.equal(
-    evaluated.results.find((item) => item.id === 'scope.no_unapproved_changes')
+    evaluated.results.find((item) => item.id === 'scope.no_unattributed_changes')
       ?.passed,
     true,
   )

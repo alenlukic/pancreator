@@ -160,7 +160,7 @@ export interface CursorAgentRequest {
   /** The headless stage contract requires --trust instead of capability fallback. */
   requireTrust?: boolean
   /**
-   * Harness installation root the credential search starts from. ASK-001
+   * Harness installation root the credential search starts from. SECRET-001
    * resolves `CURSOR_API_KEY` from the installation or its workspace `.env`,
    * which a worktree `cwd` does not carry, so the two roots stay separate.
    */
@@ -399,7 +399,7 @@ function runCursorAgent(
   const startedAt = Date.now()
   const spawned = spawnUnderSandbox(launch, {
     cwd: request.cwd,
-    // ASK-001: a CURSOR_API_KEY in the process environment wins, otherwise the
+    // SECRET-001: a CURSOR_API_KEY in the process environment wins, otherwise the
     // installation or workspace .env supplies it. Every cursor-agent spawn
     // authenticates the same way the model probe does, so the horizon arbiter
     // or an external-executor stage never fails auth that the probe passed.
@@ -660,9 +660,9 @@ export function createCursorAgentAdapter(
   const toolPolicy = {
     granted_roots: grantedRoots,
     per_path_write_policy: false,
-    scope_gate: 'scope.no_unapproved_changes' as const,
+    scope_gate: 'scope.no_unattributed_changes' as const,
   }
-  // ASK-001 forbids persisting a secret value, and the child's streams become
+  // SECRET-001 forbids persisting a secret value, and the child's streams become
   // durable run evidence. The CLI is not expected to echo its credential;
   // this is the layer that holds if a release ever starts to.
   const apiKey =

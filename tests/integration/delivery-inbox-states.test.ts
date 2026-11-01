@@ -267,13 +267,13 @@ test('moves succeeded inbox request to complete through the full delivery workfl
   )
   const shipHistory = final.stage_history.find((item) => item.stage === 'ship')
   const scopeResult = shipHistory?.deterministic.find(
-    (item) => item.id === 'scope.no_unapproved_changes',
+    (item) => item.id === 'scope.no_unattributed_changes',
   )
   assert.equal(scopeResult?.passed, true)
   assert.match(scopeResult?.explanation ?? '', /permitted release metadata/u)
   assert.deepEqual(
     shipHistory?.deterministic.map((item) => item.id),
-    ['scope.no_unapproved_changes'],
+    ['scope.no_unattributed_changes'],
   )
   const verifyHistory = final.stage_history.find(
     (item) => item.stage === 'verify',

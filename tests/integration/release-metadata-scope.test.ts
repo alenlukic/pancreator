@@ -51,7 +51,7 @@ function evaluate(root: string, mutate: () => void) {
     stage(),
     before,
     root,
-  ).results.find((result) => result.id === 'scope.no_unapproved_changes')
+  ).results.find((result) => result.id === 'scope.no_unattributed_changes')
 }
 
 test('self-development release metadata policy permits bounded docs changes', () => {
@@ -129,6 +129,7 @@ function priorGatesState(options: {
     before: string
     after: string
     scopePassed?: boolean
+    scopeCriterionId?: string
   }>
   directives?: Array<{
     before: string
@@ -189,7 +190,7 @@ function priorGatesState(options: {
         validation_errors: ['packet shape'],
         deterministic: [
           {
-            id: 'scope.no_unapproved_changes',
+            id: attempt.scopeCriterionId ?? 'scope.no_unattributed_changes',
             type: 'state',
             hard: true,
             passed: attempt.scopePassed ?? true,
@@ -359,6 +360,59 @@ test('ship prior-gates fails when an earlier ship attempt failed its scope windo
         before: qa.fingerprint,
         after: afterAttemptOne.fingerprint,
         scopePassed: false,
+      },
+    ],
+  })
+
+  writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## [9.9.9]\n')
+
+  const priorGates = evaluateDeterministicCriteria(
+    root,
+    runDirectory,
+    state,
+    shipStageWithPriorGates(),
+    afterAttemptOne,
+    root,
+  ).results.find((result) => result.id === 'ship.prior_gates_current')
+
+  assert.ok(priorGates)
+  assert.equal(priorGates.passed, false)
+})
+
+// A run that began before the criterion rename records its scope failure under
+// the retired id. The chain must still read that failure rather than treat the
+// window as unchecked and accountable.
+test('ship prior-gates fails when an earlier attempt failed under the retired scope id', () => {
+  const root = createFixture()
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: root,
+    state_root: 'runtime',
+  })
+  const runDirectory = path.join(root, 'runtime', 'logs', 'workflows', 'legacy')
+
+  mkdirSync(runDirectory, { recursive: true })
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    "export const base = 'reviewed'\n",
+  )
+
+  const qa = gitWorkspaceSnapshot(roots.workspace_root)
+
+  writeFileSync(path.join(root, 'VERSION'), '9.9.9\n')
+
+  const afterAttemptOne = gitWorkspaceSnapshot(roots.workspace_root)
+  const state = priorGatesState({
+    runId: 'legacy',
+    root,
+    stateRoot: roots.state_root,
+    qaFingerprint: qa.fingerprint,
+    shipAttempts: [
+      {
+        before: qa.fingerprint,
+        after: afterAttemptOne.fingerprint,
+        scopePassed: false,
+        scopeCriterionId: 'scope.no_unapproved_changes',
       },
     ],
   })

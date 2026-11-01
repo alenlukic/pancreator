@@ -144,7 +144,7 @@
         "runtime_only",
         "read_only"
       ],
-      "description": "Declared mutation expectation. source_allowed may modify product source. release_metadata_only identifies expected self-development release files. runtime_only and read_only normally avoid tracked target changes. For every non-source_allowed stage, scope.no_unapproved_changes detects external or unattributed contamination; worker-attributed internal changes remain visible evidence but do not block."
+      "description": "Declared mutation expectation. source_allowed may modify product source. release_metadata_only identifies expected self-development release files. runtime_only and read_only normally avoid tracked target changes. For every non-source_allowed stage, scope.no_unattributed_changes detects external or unattributed contamination; worker-attributed internal changes remain visible evidence but do not block."
     },
     "gate": {
       "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],

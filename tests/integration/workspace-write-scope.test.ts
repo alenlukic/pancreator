@@ -91,7 +91,7 @@ function scopeResult(
     gitWorkspaceSnapshot(workspaceDir, { commitBase: before.head }),
     {},
     harnessBefore,
-  ).results.find((result) => result.id === 'scope.no_unapproved_changes')
+  ).results.find((result) => result.id === 'scope.no_unattributed_changes')
 }
 
 // Eval run 63310_Aug-30-1404: the workers stayed inside the run workspace

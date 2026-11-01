@@ -27,7 +27,11 @@ test('tool cycles reissue the full governance reminder without transcript eviden
 
   assert.match(initial.additional_context ?? '', /^Role: pair$/mu)
   assert.match(initial.additional_context ?? '', /^\[COMMS-001\]$/mu)
-  assert.match(initial.additional_context ?? '', /^\[PRINCIPLES-001\]$/mu)
+  assert.match(initial.additional_context ?? '', /^\[MOMENTUM-001\]$/mu)
+  assert.match(
+    initial.additional_context ?? '',
+    /^Remember the operating principles; you MUST abide by these:$/mu,
+  )
 
   for (const hook_event_name of TOOL_EVENTS) {
     for (const transcript_path of [undefined, '/missing/transcript.jsonl']) {

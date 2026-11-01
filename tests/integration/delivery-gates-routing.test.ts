@@ -47,7 +47,7 @@ test('a failing verify verdict routes without executing any repository-check pro
 
   // Scope still evaluates when the shell gates are skipped.
   const scope = failed.record.evaluation.deterministic.find(
-    (item) => item.id === 'scope.no_unapproved_changes',
+    (item) => item.id === 'scope.no_unattributed_changes',
   )
 
   assert.ok(scope)

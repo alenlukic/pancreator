@@ -26,8 +26,8 @@ const COMMON = [
   'comms-visible',
   'comms-tool-turn',
   'comms-result-order',
-  'principles-no-permission',
-  'principles-verdict',
+  'momentum-no-permission',
+  'momentum-verdict',
   'card-invariants',
 ]
 

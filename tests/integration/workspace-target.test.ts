@@ -263,7 +263,7 @@ test('scope guard catches edits inside the targeted nested repo during a non-sou
 
   const submitted = submitAsSupervisor(root, runId, invocation.output.path)
   const scope = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'scope.no_unapproved_changes',
+    (item) => item.id === 'scope.no_unattributed_changes',
   )
 
   assert.ok(scope)

@@ -117,7 +117,7 @@ test('an authorized session runs a prompt task and records its outcome', () => {
   ])
   assert.equal(artifact.granted_roots.includes(root), false)
   assert.deepEqual(artifact.tool_policy.granted_roots, artifact.granted_roots)
-  assert.equal(artifact.tool_policy.scope_gate, 'scope.no_unapproved_changes')
+  assert.equal(artifact.tool_policy.scope_gate, 'scope.no_unattributed_changes')
   assert.equal(artifact.scope_check.passed, true)
   assert.deepEqual(artifact.scope_check.unapproved_changes, [])
   // The host decides which boundary ran; both record which one it was.

@@ -1,0 +1,14 @@
+{
+  "id": "SCOPE-001",
+  "title": "Workspace contamination",
+  "severity": "hard",
+  "summary": "A tracked change MUST be treated as clean when every blocking path is attributed to the active worker in the run workspace. Every other tracked change MUST be treated as contamination.",
+  "instructions": [
+    "A tracked change is clean when every changed blocking path is explicitly traced to the active worker and lies in the run workspace. Worker-attributed edits MUST NOT fail `scope.no_unattributed_changes`.",
+    {
+      "text": "The harness MUST inject `scope.no_unattributed_changes` for any stage whose `workspace_policy` is not `source_allowed`. `release_metadata_only` identifies expected self-development release paths. Coverage: `tests/regression/read-only-mutation.test.ts::read-only stage fails when a source workspace change is unattributed`.",
+      "audience": ["harness"]
+    },
+    "A tracked change MUST be treated as contamination when it is external, mixed, unknown, or unattributed, or when it falls outside the clean rules above. A tracked change in the harness root MUST be treated as contamination when the run works in another directory. A failing result MUST name the paths that caused it."
+  ]
+}

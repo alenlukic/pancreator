@@ -43,7 +43,7 @@ import {
 /**
  * Evaluate a stage's deterministic criteria at submission and return the
  * results, the after workspace snapshot, and advisories. Adds
- * `scope.no_unapproved_changes` for a stage that is not source-allowed: it
+ * `scope.no_unattributed_changes` for a stage that is not source-allowed: it
  * fails on unattributed workspace changes, commit-absorbed paths no live run
  * owns, and any write to the harness root outside `runtime/`. Runs each shell
  * gate unless an override, the verification level, or `gateSkipReason` disables
@@ -177,7 +177,7 @@ export function evaluateDeterministicCriteria(
     scopePassed = !changed
     const absorbedNote = absorbedRunAttributionNote(absorbedOwners, state)
     results.push({
-      id: 'scope.no_unapproved_changes',
+      id: 'scope.no_unattributed_changes',
       type: 'state',
       hard: true,
       passed: !changed,

@@ -55,7 +55,7 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   assert.equal(failed.record.outcome, 'failure')
   assert.ok(
     failed.record.evaluation.deterministic.some(
-      (item) => item.id === 'scope.no_unapproved_changes' && !item.passed,
+      (item) => item.id === 'scope.no_unattributed_changes' && !item.passed,
     ),
   )
   assert.equal(failed.state.status, 'failed')
@@ -83,7 +83,7 @@ test('read-only stage fails when a source workspace change is unattributed', () 
 
   const passed = submitAsSupervisor(root, attributed.run_id, second.output.path)
   const cleanliness = passed.record.evaluation.deterministic.find(
-    (item) => item.id === 'scope.no_unapproved_changes',
+    (item) => item.id === 'scope.no_unattributed_changes',
   )
 
   assert.equal(cleanliness?.passed, true)
@@ -109,7 +109,7 @@ test('prepared read-only scope reports missing launches without changing the cle
   writeCanonicalDelegation(root, invocation)
   const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
   const scope = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'scope.no_unapproved_changes',
+    (item) => item.id === 'scope.no_unattributed_changes',
   )
   assert.equal(scope?.passed, true)
   assert.match(scope?.explanation ?? '', /Custody fallback/u)

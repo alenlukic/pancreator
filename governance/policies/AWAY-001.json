@@ -9,7 +9,10 @@
     "The top-level supervisor MUST consume safe pending actions until the run becomes terminal or reaches a blocker it cannot clear.",
     "Disabled runs MUST keep every operator stop.",
     "The supervisor MUST decide each away-mode action itself and MUST record it with `pan away decide`, naming the action and the reason. Any other agent MUST NOT rank, select, or apply an away-mode option.",
-    "Pan code MUST refuse a decision when away mode is disabled, an unanswered operator question stands, the run has no permitted blocker, the action is outside the snapshotted `allowed_actions`, or a required argument is missing. A refusal MUST leave the run state and the ledger unchanged.",
+    {
+      "text": "The harness MUST refuse a decision when away mode is disabled, an unanswered operator question stands, the run has no permitted blocker, the action is outside the snapshotted `allowed_actions`, or a required argument is missing. A refusal MUST leave the run state and the ledger unchanged. Coverage: `tests/unit/away-mode.test.ts::pan away decide refuses every action on an operator-only pause`.",
+      "audience": ["harness"]
+    },
     "Away mode MUST NOT run push, publication, deployment, or branch-deletion actions. It MAY run a gate-waiver action when the guardrails allow it. The blocker MUST be a criterion backed only by cost, speed, wall time, or administration, or a failure with a mechanical root cause. It SHOULD NOT waive a criterion that protects correctness or security.",
     "A gate waiver is appropriate for a blocker with a mechanical or administrative root cause. It is also appropriate for a criterion whose only backing is cost, speed, or wall time. It is appropriate for a blocker whose blast radius is limited enough to remediate separately. The supervisor MUST carry the reason in the decision note, and the harness MUST record that reason on the waiver.",
     "The cohort plan route MAY create branches and worktrees under an away-mode approval, as the cohort policy provides.",

@@ -139,7 +139,7 @@ function setup(
         gitWorkspaceSnapshot(workspace, { commitBase: before.head }),
         {},
         harnessBefore,
-      ).results.find((item) => item.id === 'scope.no_unapproved_changes')
+      ).results.find((item) => item.id === 'scope.no_unattributed_changes')
       assert.ok(result)
       return { ...result, explanation: result.explanation ?? '' }
     },

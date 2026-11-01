@@ -286,7 +286,7 @@ export function executePromptTask(
       granted_roots: grantedRoots,
       named_grants: namedGrants,
       per_path_write_policy: false,
-      scope_gate: 'scope.no_unapproved_changes',
+      scope_gate: 'scope.no_unattributed_changes',
     },
     scope_check: {
       passed: unapprovedChanges.length === 0,

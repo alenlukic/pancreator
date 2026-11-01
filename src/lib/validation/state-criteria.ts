@@ -38,6 +38,16 @@ export const FINGERPRINT_BOUND_STATE_CRITERIA: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * Criterion ids that record the workspace scope adjudication of a ship
+ * attempt. The retired id stays so a run that began before the rename keeps
+ * its recorded failures, rather than treating them as a missing check.
+ */
+const SCOPE_CRITERION_IDS: ReadonlySet<string> = new Set([
+  'scope.no_unattributed_changes',
+  'scope.no_unapproved_changes',
+])
+
+/**
  * Evaluate a state criterion against run history. Only
  * `ship.prior_gates_current` has an evaluator: it passes when review and QA (or
  * a joint verify stage) succeeded or are operator-waived, and the QA evidence
@@ -141,7 +151,7 @@ interface AccountableWindow {
  * delta, newest last.
  *
  * A ship attempt is accountable for the window between its own before and
- * after snapshots, and `scope.no_unapproved_changes` adjudicates that window
+ * after snapshots, and `scope.no_unattributed_changes` adjudicates that window
  * against the real snapshot delta. An out-of-stage attribution record spans
  * the same kind of window for work the operator directed between stages, but
  * nothing recomputes its delta here: it carries the chain only when the
@@ -157,8 +167,8 @@ function accountableWindowsSinceQa(
     .slice(state.stage_history.indexOf(qaEvidence) + 1)
     .filter((item) => item.stage === 'ship')
     .map((attempt): AccountableWindow => {
-      const scope = attempt.deterministic.find(
-        (result) => result.id === 'scope.no_unapproved_changes',
+      const scope = attempt.deterministic.find((result) =>
+        SCOPE_CRITERION_IDS.has(result.id),
       )
 
       return {

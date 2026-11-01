@@ -1,5 +1,5 @@
 /**
- * Six delivery runs failed `scope.no_unapproved_changes` at ship and closed
+ * Six delivery runs failed `scope.no_unattributed_changes` at ship and closed
  * only through an operator waiver. Each one had performed the release commit
  * its own stage contract mandates, and the scope comparison read every
  * committed path as a change because a commit removes the path from
@@ -177,7 +177,7 @@ function scopeResult(
     root,
   )
   const scope = results.find(
-    (result) => result.id === 'scope.no_unapproved_changes',
+    (result) => result.id === 'scope.no_unattributed_changes',
   )
 
   assert.ok(scope, 'the scope criterion must be evaluated')

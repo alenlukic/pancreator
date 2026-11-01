@@ -1,5 +1,23 @@
 # Changelog
 
+## [10.3.0] - 2026-11-01
+
+### Changed
+
+- Move judgment, workspace contamination, and secret rules into dedicated policies ([MOMENTUM-001](governance/policies/MOMENTUM-001.json)).
+- Reduce PRINCIPLES-001, COMMS-001, ASK-001, AWAY-001, and VALID-001 ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json)).
+- Rename the contamination criterion to `scope.no_unattributed_changes` ([SCOPE-001](governance/policies/SCOPE-001.json)).
+
+### Added
+
+- Add policy MOMENTUM-001 for judgment and momentum ([MOMENTUM-001](governance/policies/MOMENTUM-001.json)).
+- Add policy SCOPE-001 for workspace contamination ([SCOPE-001](governance/policies/SCOPE-001.json)).
+- Add policy SECRET-001 for secret handling ([SECRET-001](governance/policies/SECRET-001.json)).
+
+### Fixed
+
+- Keep a failed ship attempt under the retired criterion id accountable ([state-criteria](src/lib/validation/state-criteria.ts)).
+
 ## [10.2.1] - 2026-11-01
 
 ### Changed

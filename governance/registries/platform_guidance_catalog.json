@@ -273,8 +273,8 @@
         "path": "src/extension/intents/node/toolCallingLoop.ts",
         "line": 390
       },
-      "harness_authority": "PRINCIPLES-001",
-      "default_authority_followed": "PRINCIPLES-001: escalate only under its named conditions, and otherwise keep working."
+      "harness_authority": "MOMENTUM-001",
+      "default_authority_followed": "MOMENTUM-001: escalate only under its named conditions, and otherwise keep working."
     },
     {
       "id": "VG-14",

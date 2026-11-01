@@ -4,7 +4,10 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in thi
 
 Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, stage, optional detected workspace `technology`, and optional active run `contract`. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card. Technology-scoped rows MUST activate only when the resolved target workspace contains the corresponding declared markers or source files. A policy that depends on durable static guidance MUST declare it through `guidance_sources`; the resolver MUST snapshot the selected guidance content into the invocation rather than require the worker to open the source file.
 
-- `PRINCIPLES-001` — agent operating principles: mission, ranked optimization order, invariants, default biases, slack rule, autonomy and escalation defaults
+- `PRINCIPLES-001` — agent operating principles: mission, ranked optimization order, invariants, default biases, and instruction layering
+- `MOMENTUM-001` — agent momentum: autonomy, escalation, turn-ending, and cost-rule class
+- `SECRET-001` — secret lookup and non-disclosure
+- `SCOPE-001` — workspace contamination: clean worker-attributed changes and the injected gate
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
 - `PRIMER-001` — target repository primer as bounded orientation

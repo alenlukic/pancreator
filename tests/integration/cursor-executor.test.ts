@@ -180,7 +180,7 @@ test('the Cursor adapter delivers stdin, records roots, and rejects model drift'
     assert.deepEqual(passed.tool_policy, {
       granted_roots: [workspace, runtime],
       per_path_write_policy: false,
-      scope_gate: 'scope.no_unapproved_changes',
+      scope_gate: 'scope.no_unattributed_changes',
     })
     assert.ok(passed.argv.includes(modelSpec))
     assert.ok(passed.argv.includes('--workspace'))

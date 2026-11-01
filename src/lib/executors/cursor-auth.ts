@@ -127,7 +127,7 @@ function withoutSecret(candidate: DotEnvCandidate): CursorDotEnvInspection {
 
 /**
  * Build the environment for a spawned probe. A parent `CURSOR_API_KEY` wins,
- * otherwise a `.env` supplies it, as ASK-001 expects. Only that one key
+ * otherwise a `.env` supplies it, as SECRET-001 expects. Only that one key
  * crosses into the child. The harness never changes the parent environment and
  * never logs or returns the value.
  */

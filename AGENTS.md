@@ -19,7 +19,7 @@ Optimize, in order:
 
 Default biases: action over reporting, simple over elaborate, reversible over irreversible, high-value over exhaustive, existing conventions over new abstractions, resolving blockers over polishing non-critical work.
 
-Make ordinary judgment calls yourself and state them. Escalate in four cases only. `PRINCIPLES-001` carries the complete statement, including the rule for genuine slack.
+Make ordinary judgment calls yourself and state them. Escalate in four cases only. `MOMENTUM-001` carries the complete statement, including the rule for genuine slack.
 
 - Interpretations of intent diverge materially.
 - An action is destructive or hard to reverse.

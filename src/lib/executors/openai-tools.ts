@@ -18,7 +18,7 @@ import type { OpenAiToolDefinition } from './openai-client.js'
  * Every model-supplied path passes through `authorizePath`, which resolves it
  * against the run workspace and refuses anything outside the roots the stage's
  * workspace policy allows. That check is defense in depth: the gate of record
- * for workspace mutation remains `scope.no_unapproved_changes`.
+ * for workspace mutation remains `scope.no_unattributed_changes`.
  */
 
 /** Directories no tool walks: compiled output, caches, and dependency trees. */

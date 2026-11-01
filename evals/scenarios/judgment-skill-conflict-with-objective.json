@@ -5,12 +5,12 @@
   "policy_instructions": [
     {
       "policy_id": "PRINCIPLES-001",
-      "instruction": 11,
+      "instruction": 8,
       "summary": "When a skill's procedure conflicts with the objective, keep its hard constraints, resolve the rest by the ranked list, and report the conflict."
     },
     {
       "policy_id": "PRINCIPLES-001",
-      "instruction": 10,
+      "instruction": 7,
       "summary": "A SHOULD or prose preference yields to the principles when judgment shows a better path; the deviation is recorded."
     }
   ],

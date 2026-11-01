@@ -114,7 +114,7 @@ test('submit relocates workspace-root delegation artifact before validation', ()
   )
   assert.ok(
     submitted.record.evaluation.deterministic.some(
-      (item) => item.id === 'scope.no_unapproved_changes' && item.passed,
+      (item) => item.id === 'scope.no_unattributed_changes' && item.passed,
     ),
   )
 })

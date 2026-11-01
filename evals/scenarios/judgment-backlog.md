@@ -5,7 +5,7 @@ graders, which score run records: terminal state, stage order, attempt
 discipline, profile executions, and structured output fields. Those graders
 cannot read a diff or judge a stage report, so the decision each scenario is
 really about is checked by a reviewer until the grader below exists.
-`PRINCIPLES-001` is the policy under test; when a scenario fails on judgment,
+`PRINCIPLES-001` and `MOMENTUM-001` are the policies under test; when a scenario fails on judgment,
 fix the priority, invariant, or skill boundary, not the scenario.
 
 | Scenario                                  | Judgment check a reviewer applies                                                                                                                                                        | Grader that would automate it                                                                                            |

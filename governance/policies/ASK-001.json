@@ -4,10 +4,7 @@
   "severity": "hard",
   "summary": "Agents MUST use the host question tool for operator input, and MUST ask in chat with the gap flagged when it is unavailable.",
   "instructions": [
-    "Before an agent reports a needed secret as missing, it MUST check the repository-local `.env` file when that file exists.",
-    "An agent MUST use a secret only for its authorized operation.",
-    "An agent MUST NOT print, quote, persist, or expose a secret value.",
-    "An agent that a host client runs MUST use the host question tool when it needs operator clarification or an operator decision. It needs one only under the escalation conditions `PRINCIPLES-001` states. An ordinary judgment call is made and reported, not asked.",
+    "An agent that a host client runs MUST use the host question tool when it needs operator clarification or an operator decision. It needs one only under the escalation conditions `MOMENTUM-001` states. An ordinary judgment call is made and reported, not asked.",
     "When the host question tool is unavailable, the agent MUST ask in its normal response channel and state that the tool was unavailable. A headless or external-executor persona MUST use this fallback and MUST NOT call a host question tool, because no operator client hosts its session.",
     "A worker inside a run MUST write the question and the unavailability into its stage output. It MUST use the structured `operator_question` field, with a non-empty question, reason, and evidence.",
     "An agent that asked a question MUST NOT proceed on an assumed answer to it, and MUST NOT fail silently."

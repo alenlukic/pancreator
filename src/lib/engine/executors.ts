@@ -287,7 +287,7 @@ function claudeCodeWriteRules(root: string, workspaceDir: string): string[] {
 /**
  * Stage-derived tool policy for a claude-code invocation. Mutating stages get
  * unrestricted file tools; every other stage may write only inside the harness
- * runtime tree. This is defense in depth — `scope.no_unapproved_changes`
+ * runtime tree. This is defense in depth — `scope.no_unattributed_changes`
  * remains the gate of record for workspace mutation.
  */
 export function claudeCodeToolPolicy(
@@ -668,7 +668,7 @@ export interface CopilotToolPolicy {
  * `task` subagent tool, the question tool, or a built-in MCP server. The
  * CLI verifies file paths against its working directory and `--add-dir`
  * roots, so the harness root and the projected agents directory join them
- * when they sit outside the workspace. `scope.no_unapproved_changes` remains
+ * when they sit outside the workspace. `scope.no_unattributed_changes` remains
  * the gate of record for workspace mutation.
  */
 export function copilotToolPolicy(
@@ -842,7 +842,7 @@ export function createCopilotAdapter(context: {
             ? { write_boundary: result.write_boundary }
             : {}),
           per_path_write_policy: false,
-          scope_gate: 'scope.no_unapproved_changes',
+          scope_gate: 'scope.no_unattributed_changes',
         },
         ...(modelError !== null
           ? { error: modelError }

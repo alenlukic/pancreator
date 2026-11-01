@@ -189,7 +189,7 @@ drift check.
 Cursor's CLI exposes workspace roots but no per-path write policy. The process
 therefore receives the stage workspace through `--workspace` and the harness
 runtime tree through `--add-dir`. Its delegation record names both roots and
-states that no per-path policy was applied. `scope.no_unapproved_changes`
+states that no per-path policy was applied. `scope.no_unattributed_changes`
 remains the gate of record for workspace mutation.
 
 ### Supervisor governance card and attestation
@@ -1429,7 +1429,7 @@ A persona mapping in `config_overrides.json` may name its executor with a prefix
 
 For compatibility, Pancreator still reads a legacy nested `personas` object in a named configuration. A nested entry wins over a flat key for the same persona. Pancreator emits only the flat shape.
 
-An external-executor persona runs in that runtime rather than a Cursor subagent. Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may use an external executor, including mutating stages; non-mutating stages receive file-write tools only in the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record. The `orchestrator` records the supervisor's model and stays in the operator's editor session. It accepts the in-host `cursor` executor, or `copilot` when the VS Code host is enabled; it cannot launch a separate supervisor process.
+An external-executor persona runs in that runtime rather than a Cursor subagent. Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may use an external executor, including mutating stages; non-mutating stages receive file-write tools only in the harness runtime tree, and `scope.no_unattributed_changes` remains the gate of record. The `orchestrator` records the supervisor's model and stays in the operator's editor session. It accepts the in-host `cursor` executor, or `copilot` when the VS Code host is enabled; it cannot launch a separate supervisor process.
 
 `oai:` names the OpenAI provider tier, while `openai:` names the external executor. They are distinct; tracked persona values use only provider-tier aliases.
 
