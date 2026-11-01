@@ -10,7 +10,11 @@ import { fileExists, resolveInside, ensureDir, writeTextAtomic } from '../io.js'
 import { keywordRunSuffix } from '../naming.js'
 import { makeUniqueRunId } from '../state.js'
 import { resolvePolicies } from '../policies.js'
-import { isTargetInstallation, harnessPathPrefix } from '../project-config.js'
+import {
+  harnessPathPrefix,
+  isTargetInstallation,
+  panCommand,
+} from '../project-config.js'
 import { resolveRequirements } from '../requirements/resolve.js'
 import { readTargetExtensionManifest } from '../target-authoring/manifest.js'
 import {
@@ -236,6 +240,7 @@ export function buildGovernanceCard(
         'accessed from the target repository.'
       : null,
     worktree,
+    panCommand: panCommand(root),
   })
   const absolute = resolveInside(root, relativePath)
 

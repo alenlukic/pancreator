@@ -21,6 +21,7 @@ import {
   type DelegationObservation,
 } from '../watch.js'
 import { panCommand } from '../project-config.js'
+import { DEFAULT_PAN_COMMAND, undeliveredClauses } from '../policy-clause.js'
 import { evidenceWorkerAttempts, readEvidenceReportState } from '../render.js'
 import { watchedAgentActivity } from '../watch.js'
 import { WORKER_STILL_ACTIVE } from '../watch/types.js'
@@ -35,6 +36,9 @@ import type {
   RunAdvisory,
   StageDefinition,
 } from '../types.js'
+
+/** Submit refusal code for a fired deferred clause with no receipt. */
+export const DEFERRED_CLAUSE_UNDELIVERED = 'DEFERRED_CLAUSE_UNDELIVERED'
 
 /**
  * Every incomplete report among the invocation's evidence workers. A missing
@@ -92,6 +96,57 @@ export function incompleteEvidenceReports(
   }
 
   return incompleteReports
+}
+
+/**
+ * A deferred policy clause whose trigger fired during the worker's run must
+ * have reached the worker. The hook route and `pan governance clause` both
+ * leave a receipt; a fired trigger with none rejects the submission without
+ * consuming an attempt.
+ */
+export function assertDeferredClausesDelivered(
+  root: string,
+  invocation: Invocation,
+): void {
+  const undelivered = undeliveredClauses(root, invocation.invocation_id)
+
+  if (undelivered.length === 0) return
+
+  const pan = ((): string => {
+    try {
+      return panCommand(root)
+    } catch {
+      return DEFAULT_PAN_COMMAND
+    }
+  })()
+
+  invariant(
+    undelivered.length === 0,
+    `Deferred policy clauses fired for invocation '${invocation.invocation_id}' ` +
+      `without a delivery receipt: ` +
+      undelivered
+        .map((entry) => `${entry.policy_id} (${entry.trigger})`)
+        .join(', ') +
+      `. Load each one with ` +
+      undelivered
+        .map(
+          (entry) =>
+            `${pan} governance clause --policy ${entry.policy_id} ` +
+            `--trigger '${entry.trigger}' --invocation ${invocation.invocation_id}`,
+        )
+        .join(' ; ') +
+      `, apply it, then submit again.`,
+    {
+      code: DEFERRED_CLAUSE_UNDELIVERED,
+      details: {
+        invocation_id: invocation.invocation_id,
+        undelivered: undelivered.map((entry) => ({
+          policy_id: entry.policy_id,
+          trigger: entry.trigger,
+        })),
+      },
+    },
+  )
 }
 
 /**

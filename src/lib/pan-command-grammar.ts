@@ -192,6 +192,10 @@ export const HELP_BODY = `Usage:
   pan output validate (<run-id> | --run <run-id>) --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance prompt-context
+  pan governance clause --policy <policy-id> --trigger <tool:class|event:id|path:glob> [--invocation <invocation-id>] [--audience <agent|supervisor>] [--capabilities <shell,delegation>] [--json]
+      Print the deferred clauses of one policy for one trigger, in the text a card renders, and record a receipt under runtime/policy-clauses/<invocation-id or session>.jsonl. The Deferred policy index on each card names the trigger, the digest, and this command. The receipt proves the clauses reached the agent; pan submit reads it.
+  pan governance pre-tool-clause
+      Hook entry point. Reads a preToolUse payload on stdin and answers with permission allow, or deny with the deferred clauses the call triggers when the scope holds no receipt for them. The denial records the receipt, so the same call passes on retry. Held classes: browser, edit, git-remote, question.
   pan governance audit-directives [--json]
   pan governance refresh-digests [--check] [--json]
       Self-development only. Rewrites the content digests governance/registries/turn_reminder_profiles.json pins after an edit to a pinned source, so nobody recomputes them by hand. A card selector takes the digest of its section under the pinned heading in each mode's card (AGENTS.md, then the embedded and detached templates). A policy selector whose digest matches no current instruction recovers the pinned text from the policy file at HEAD, then from its earlier commits, and moves to the current instruction of the same policy with the highest token similarity. That instruction must reach similarity 0.5 and lead every other by 0.1; the instruction at the old position breaks a tie. Otherwise the selector is refused with its candidates, and nothing is written. --check reports stale selectors without writing. Exit 1 when a selector is stale under --check or refused.

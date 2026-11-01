@@ -5,7 +5,10 @@ import test from 'node:test'
 
 import { renderPolicyCursorRule } from '../../src/lib/cursor-content.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
-import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionLoad,
+} from '../../src/lib/policy-instructions.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -99,18 +102,30 @@ test('the generated rule reproduces the policy text and references its procedure
   assert.match(content, /alwaysApply:\s*true/u)
   assert.ok(content.includes(policy.summary))
 
-  const expectedInstructions = policy.instructions
-    .filter((instruction) =>
-      policyInstructionAppliesToCard(instruction, 'agent'),
-    )
-    .map((instruction) => instruction.text)
+  const applicable = policy.instructions.filter((instruction) =>
+    policyInstructionAppliesToCard(instruction, 'agent'),
+  )
 
-  for (const instruction of expectedInstructions) {
-    assert.ok(
-      content.includes(instruction),
-      `generated rule MUST include: ${instruction}`,
+  // BROWSER-001 loads on the browser tool class: the always-apply rule carries
+  // the summary and an index line, and the clause text arrives on demand.
+  // A one-sentence clause also appears as its own index summary, so the body
+  // check reads only the text before the index.
+  const body = content.split('## Deferred policy index')[0]
+
+  for (const instruction of applicable) {
+    assert.equal(
+      body.includes(instruction.text),
+      policyInstructionLoad(instruction) === 'invocation',
+      `generated rule MUST ${policyInstructionLoad(instruction) === 'invocation' ? 'include' : 'omit'}: ${instruction.text}`,
     )
   }
+
+  assert.ok(content.includes('## Deferred policy index'))
+  assert.ok(
+    content.includes(
+      '`{{PANCREATOR_PAN_COMMAND}} governance clause --policy BROWSER-001 --trigger tool:browser`',
+    ),
+  )
 
   // The rule applies outside a card, so it uses the same progressive disclosure
   // form: the isolation rules are inline and the procedure stays a reference.

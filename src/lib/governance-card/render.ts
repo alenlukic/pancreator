@@ -288,6 +288,8 @@ export function renderGovernanceCardMarkdown(options: {
   /** Present only on the supervisor card, which binds to one run. */
   run?: GovernanceCardRunBinding | null
   proceduralExceptions?: NonNullable<Invocation['procedural_exception_context']>
+  /** Command the card prints for a deferred-clause pull. */
+  panCommand?: string
 }): string {
   const { mode, policies, requirements, requestPath } = options
   const run = options.run ?? null
@@ -312,6 +314,7 @@ export function renderGovernanceCardMarkdown(options: {
     ),
     new Map(),
     mode.kind === 'supervisor' ? { shell: true, delegation: true } : undefined,
+    options.panCommand,
   )
 
   return `${[

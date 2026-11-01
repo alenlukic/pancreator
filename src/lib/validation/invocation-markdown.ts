@@ -1,7 +1,14 @@
 /** Structural validation of rendered invocation and delegation Markdown. */
 
 import { sha256 } from '../io.js'
-import { filterPolicyInstructionsForCard } from '../policy-instructions.js'
+import {
+  deferredClauseGroups,
+  renderDeferredIndexLine,
+} from '../policy-deferred.js'
+import {
+  filterPolicyInstructionsForCard,
+  policyInstructionLoad,
+} from '../policy-instructions.js'
 import { invocationPolicyPointers } from '../render/invocation-markdown.js'
 import {
   guidanceInlineHeading,
@@ -259,8 +266,33 @@ export function validateInvocationMarkdown(
           ? !pointer.instruction_sha256.includes(sha256(instruction.text))
           : instruction.excerpt === true),
     )
+    const eagerInstructions = renderedInstructions.filter(
+      (instruction) => policyInstructionLoad(instruction) === 'invocation',
+    )
 
-    for (const [index, instruction] of renderedInstructions.entries()) {
+    // A deferred clause is not rendered as a policy bullet, so the card carries
+    // one index line per trigger group. The clause text itself MAY still appear
+    // elsewhere on a card, such as an evidence worker brief that is required to
+    // carry it, so only the index line is checked.
+    for (const group of deferredClauseGroups(
+      policy,
+      'agent',
+      invocation.capabilities,
+      (text) =>
+        !renderedInstructions.some((instruction) => instruction.text === text),
+    )) {
+      const line = renderDeferredIndexLine(group)
+
+      checks.push({
+        id: `policy.${policy.id}.deferred.${group.trigger}`,
+        passed: normalized.includes(line),
+        message: normalized.includes(line)
+          ? `Policy ${policy.id} ${group.trigger} deferred index line is present`
+          : `Markdown MUST include the ${policy.id} ${group.trigger} deferred index line`,
+      })
+    }
+
+    for (const [index, instruction] of eagerInstructions.entries()) {
       const text = instruction.text
       checks.push({
         id: `policy.${policy.id}.instruction.${index + 1}`,
@@ -402,6 +434,8 @@ export function validateInvocationMarkdown(
         const rendered = filterPolicyInstructionsForCard(
           policy.instructions,
           'supervisor',
+        ).filter(
+          (instruction) => policyInstructionLoad(instruction) === 'invocation',
         )
 
         for (const [index, instruction] of rendered.entries()) {

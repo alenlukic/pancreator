@@ -101,6 +101,7 @@ import {
   submittedInvocationId,
 } from './submit-helpers.js'
 import {
+  assertDeferredClausesDelivered,
   incompleteEvidenceReports,
   observeSubmissionDelegation,
   assertWorkerNotStillActive,
@@ -261,6 +262,7 @@ export function submitOutput(
     const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
 
     assertWorkerNotStillActive(root, invocation, personaExecutor, stage)
+    assertDeferredClausesDelivered(root, invocation)
 
     const delegationObservation = observeSubmissionDelegation(
       root,

@@ -333,6 +333,62 @@ function guidanceSelectedRange(guidance) {
   return 'the complete file'
 }
 
+// Kept in sync with deferredClauseGroups in src/lib/policy-deferred.ts. A
+// policy-level `load` is the default for every clause that names none.
+function deferredInstructionLoad(policy, instruction) {
+  const own = typeof instruction === 'string' ? undefined : instruction?.load
+  return own ?? policy.load ?? 'invocation'
+}
+
+function deferredSummary(text) {
+  const flat = text.replaceAll(/\s+/gu, ' ').trim()
+  const match = /^.*?[.!?](?=\s|$)/u.exec(flat)
+  const sentence = match ? match[0] : flat
+
+  return sentence.length > 140
+    ? `${sentence.slice(0, 139).trimEnd()}…`
+    : sentence
+}
+
+function deferredIndexBlock(policy, appliesToAgent, instructionText) {
+  const byTrigger = new Map()
+
+  for (const instruction of policy.instructions ?? []) {
+    const trigger = deferredInstructionLoad(policy, instruction)
+    const text = instructionText(instruction)
+
+    if (trigger === 'invocation' || !appliesToAgent(instruction)) continue
+
+    const texts = byTrigger.get(trigger) ?? []
+
+    if (!texts.includes(text)) texts.push(text)
+
+    byTrigger.set(trigger, texts)
+  }
+
+  if (byTrigger.size === 0) return null
+
+  const token = '{{PANCREATOR_PAN_COMMAND}}'
+
+  return [
+    '## Deferred policy index',
+    '',
+    'These clauses bind you when their trigger fires and are not repeated ' +
+      'here. Read each one before the triggering action: `tool:<class>` ' +
+      'before your first use of that tool class, `event:<id>` when that ' +
+      'event occurs, `path:<glob>` before you first touch a matching ' +
+      'file. A hook may deliver the clause for you; otherwise run the ' +
+      'command on the line. The harness owns each digest.',
+    '',
+    ...[...byTrigger.entries()].map(
+      ([trigger, texts]) =>
+        `- \`${policy.id}\` · \`${trigger}\` · ${deferredSummary(texts[0])} · ` +
+        `digest \`sha256:${createHash('sha256').update(texts.join('\n')).digest('hex')}\` · ` +
+        `\`${token} governance clause --policy ${policy.id} --trigger ${trigger}\``,
+    ),
+  ].join('\n')
+}
+
 // Kept in sync with renderPolicyCursorRule in src/lib/cursor-content.ts. This
 // script runs before the harness is built, so it cannot import that module.
 function renderPolicyCursorRule(policy) {
@@ -347,8 +403,17 @@ function renderPolicyCursorRule(policy) {
     if (audiences.includes('operator')) return false
     return audiences.includes('agent')
   }
+  const deferredBlock = deferredIndexBlock(
+    policy,
+    appliesToAgent,
+    instructionText,
+  )
   const instructions = (policy.instructions ?? [])
     .filter(appliesToAgent)
+    .filter(
+      (instruction) =>
+        deferredInstructionLoad(policy, instruction) === 'invocation',
+    )
     .map((instruction) => {
       const predicates = Object.entries(instruction.capabilities ?? {})
       const text = instructionText(instruction)
@@ -379,6 +444,7 @@ function renderPolicyCursorRule(policy) {
         ]
       : []),
     ...instructions.map((instruction) => `- ${instruction}`),
+    ...(deferredBlock ? ['', deferredBlock] : []),
     ...(policy.guidance_sources ?? []).flatMap((guidance) => [
       '',
       `## Guidance reference · \`${guidance.path}\``,

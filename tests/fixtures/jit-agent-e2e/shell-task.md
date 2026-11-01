@@ -1,0 +1,1 @@
+Mock task. Count the `.json` files that sit directly inside `governance/policies/` in this repository. Write the count as a single number into `runtime/jit-e2e/count.txt`, creating the folder first. Use the terminal for the counting and for writing the file. Reply with only the number.

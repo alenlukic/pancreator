@@ -16,6 +16,11 @@
         "type": "command",
         "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter preToolUse pan-hook-agent-index preToolUse",
         "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "bash": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-adapter preToolUse pan-hook-deferred-clause",
+        "timeoutSec": 10
       }
     ],
     "postToolUse": [

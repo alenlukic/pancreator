@@ -135,7 +135,10 @@ export function invocationPolicyPointers(
  * and technical appendix, plus the retry, involvement, and verification-level
  * sections when they apply. Pure; it reads and writes no files.
  */
-export function renderInvocationMarkdown(invocation: Invocation): string {
+export function renderInvocationMarkdown(
+  invocation: Invocation,
+  command: string = './bin/pan',
+): string {
   const { stage } = invocation
   const requiredData = Object.entries(invocation.output.required_data)
   const referenceLines = (
@@ -171,6 +174,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     new Set(),
     invocationPolicyPointers(invocation),
     invocation.capabilities,
+    command,
   )
   if (invocation.procedural_exception_context) {
     const context = invocation.procedural_exception_context

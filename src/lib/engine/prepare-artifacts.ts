@@ -16,7 +16,11 @@ import { resolveRunLayout } from '../run-layout.js'
 import { supervisorAttestCommand } from '../governance/supervisor-card.js'
 import { redlineRecordPath } from '../watch.js'
 import type { WorkflowOperatorArtifactProfile } from '../operator-artifact-profiles.js'
-import { panCommand } from '../project-config.js'
+import {
+  isDetachedInstallation,
+  isSelfDevelopmentInstallation,
+  panCommand,
+} from '../project-config.js'
 import { resolvePolicies } from '../policies.js'
 import { cursorAgentTarget } from '../projection.js'
 import {
@@ -44,6 +48,14 @@ import {
 
 import { recordGovernanceArtifactIssues } from './core.js'
 import { prepareVerificationExecution } from './verification-execution.js'
+
+/** The installation mode an invocation card and its delivery plan record. */
+export function installationModeOf(
+  root: string,
+): 'self_development' | 'detached' | 'embedded' {
+  if (isSelfDevelopmentInstallation(root)) return 'self_development'
+  return isDetachedInstallation(root) ? 'detached' : 'embedded'
+}
 
 /** The `prepareInvocation` locals its delegation contract reads. */
 interface InvocationDelegationInput {
@@ -240,7 +252,10 @@ export function writeInvocationArtifacts(
     )
   }
 
-  const renderedMarkdown = renderInvocationMarkdown(invocation)
+  const renderedMarkdown = renderInvocationMarkdown(
+    invocation,
+    panCommand(root),
+  )
   // The supervisor procedure lives beside the card so the worker-visible
   // contract never carries a lifecycle command. It must exist before
   // invocation validation, which verifies both documents together.

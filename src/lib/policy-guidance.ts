@@ -9,7 +9,13 @@ import type {
 } from './types.js'
 import type { PolicyCardAudience } from './policy-instructions.js'
 import {
+  type DeferredClauseGroup,
+  deferredClauseGroups,
+  renderDeferredIndex,
+} from './policy-deferred.js'
+import {
   policyInstructionAppliesToCard,
+  policyInstructionLoad,
   policyInstructionText,
 } from './policy-instructions.js'
 
@@ -231,14 +237,40 @@ export function renderPolicyBlocks(
   instrumentIds: ReadonlySet<string> = new Set(),
   pointers: ReadonlyMap<string, PolicyRulePointer> = new Map(),
   capabilities?: PolicyCapabilities,
+  panCommand?: string,
 ): string[] {
   if (policies.length === 0) {
     return ['- Only global boundaries apply.']
   }
 
-  return policiesInCardOrder(policies).flatMap((policy) => {
+  const deferredGroups: DeferredClauseGroup[] = []
+  const blocks = policiesInCardOrder(policies).flatMap((policy) => {
     const pointer = pointers.get(policy.id)
     const seen = new Set<string>()
+    const coveredByPointer = (
+      instruction: Policy['instructions'][number] | string,
+    ): boolean =>
+      pointer !== undefined &&
+      (pointer.instruction_sha256
+        ? pointer.instruction_sha256.includes(
+            sha256(policyInstructionText(instruction)),
+          )
+        : typeof instruction === 'string' || instruction.excerpt !== true)
+
+    deferredGroups.push(
+      ...deferredClauseGroups(policy, audience, capabilities, (text) =>
+        pointer?.instruction_sha256
+          ? pointer.instruction_sha256.includes(sha256(text))
+          : pointer !== undefined &&
+            !policy.instructions.some(
+              (instruction) =>
+                typeof instruction !== 'string' &&
+                instruction.text === text &&
+                instruction.excerpt === true,
+            ),
+      ),
+    )
+
     const instructions = policy.instructions.filter((instruction) => {
       if (
         !policyInstructionAppliesToCard(instruction, audience, capabilities)
@@ -248,14 +280,12 @@ export function renderPolicyBlocks(
 
       // A pointer stands for the whole section, so only the clauses the
       // policy marks as excerpts stay on the card.
-      if (
-        pointer &&
-        (pointer.instruction_sha256
-          ? pointer.instruction_sha256.includes(
-              sha256(policyInstructionText(instruction)),
-            )
-          : typeof instruction === 'string' || instruction.excerpt !== true)
-      ) {
+      if (coveredByPointer(instruction)) {
+        return false
+      }
+
+      // A deferred clause waits for its trigger; the index below names it.
+      if (policyInstructionLoad(instruction) !== 'invocation') {
         return false
       }
 
@@ -310,6 +340,11 @@ export function renderPolicyBlocks(
 
     return [lines.join('\n'), '']
   })
+
+  return [
+    ...blocks,
+    ...renderDeferredIndex(deferredGroups, guidanceLevel, panCommand),
+  ]
 }
 
 /** Where a pointer-delivered policy's full text reaches the worker. */

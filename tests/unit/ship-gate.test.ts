@@ -303,8 +303,9 @@ test('worktree-less release coordination does not manufacture a bypassed validat
   assert.equal(evaluated.advisories.length, 1)
   assert.match(evaluated.advisories[0] ?? '', /Custody fallback/u)
   assert.equal(
-    evaluated.results.find((item) => item.id === 'scope.no_unattributed_changes')
-      ?.passed,
+    evaluated.results.find(
+      (item) => item.id === 'scope.no_unattributed_changes',
+    )?.passed,
     true,
   )
 })

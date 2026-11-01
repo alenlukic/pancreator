@@ -600,6 +600,10 @@
     {
       "version": "10.3.0",
       "commit": "54b3b5b415b8805492a7efbd6dd077a30d0ec6c9"
+    },
+    {
+      "version": "10.4.0",
+      "commit": "1dd7d1def727480e00746e256311c4c0a19d0caa"
     }
   ]
 }

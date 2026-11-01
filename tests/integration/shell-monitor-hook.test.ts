@@ -196,9 +196,12 @@ test('AC-18: shell-monitor hook allow and deny cases', async (t) => {
     assert.equal(permission('rtk npm test'), 'deny')
   })
 
-  await t.test('denies rtk with an option before an allowlisted command', () => {
-    assert.equal(permission('rtk --foo git status'), 'deny')
-  })
+  await t.test(
+    'denies rtk with an option before an allowlisted command',
+    () => {
+      assert.equal(permission('rtk --foo git status'), 'deny')
+    },
+  )
 
   // ---- denied: unwrapped commands ----
 

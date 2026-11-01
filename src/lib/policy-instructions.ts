@@ -3,9 +3,109 @@ import type {
   PolicyAudience,
   PolicyInstruction,
   PolicyCapabilities,
+  PolicyLoad,
 } from './types.js'
 
 export type PolicyCardAudience = 'agent' | 'supervisor' | 'operator'
+
+/** Tool classes a `tool:<class>` load trigger can name. */
+export const POLICY_LOAD_TOOL_CLASSES = [
+  'shell',
+  'delegation',
+  'browser',
+  'edit',
+  'git-remote',
+  'question',
+] as const
+
+/** Harness and host events an `event:<id>` load trigger can name. */
+export const POLICY_LOAD_EVENTS = [
+  'tool_failure',
+  'gate_failure',
+  'validator_failure',
+  'stall',
+  'pause',
+  'resume',
+  'retry',
+  'submit',
+  'operator_override',
+] as const
+
+/**
+ * Policies whose instructions stay on the card at invocation. They carry
+ * invariants, first-response conduct, or irreversible-action prohibitions, so
+ * deferring a clause would let a session act before it read the rule.
+ */
+export const EAGER_ONLY_POLICY_IDS: readonly string[] = [
+  'PRINCIPLES-001',
+  'OPERATOR-001',
+  'ACTION-001',
+  'COMMS-001',
+  'MOMENTUM-001',
+]
+
+/**
+ * Context a caller supplies when normalizing: the owning policy id, for the
+ * eager-only check, and a policy-level default `load` that applies to every
+ * object-form instruction that does not set its own.
+ */
+export interface PolicyInstructionOptions {
+  policyId?: string
+  defaultLoad?: unknown
+}
+
+const MCP_TOOL_CLASS = /^mcp:[A-Za-z0-9][A-Za-z0-9_.-]*$/u
+
+/**
+ * Report whether a string is a valid load trigger: `invocation`,
+ * `tool:<class>` (a known class or `mcp:<name>`), `event:<id>` (a known
+ * event), or `path:<glob>` (a safe, non-empty, workspace-relative glob).
+ */
+export function isPolicyLoad(value: unknown): value is PolicyLoad {
+  if (typeof value !== 'string') {
+    return false
+  }
+
+  if (value === 'invocation') {
+    return true
+  }
+
+  if (value.startsWith('tool:')) {
+    const toolClass = value.slice('tool:'.length)
+
+    return (
+      (POLICY_LOAD_TOOL_CLASSES as readonly string[]).includes(toolClass) ||
+      MCP_TOOL_CLASS.test(toolClass)
+    )
+  }
+
+  if (value.startsWith('event:')) {
+    return (POLICY_LOAD_EVENTS as readonly string[]).includes(
+      value.slice('event:'.length),
+    )
+  }
+
+  if (value.startsWith('path:')) {
+    const glob = value.slice('path:'.length)
+
+    return (
+      glob.length > 0 &&
+      !glob.startsWith('/') &&
+      !glob.split(/[\\/]/u).includes('..')
+    )
+  }
+
+  return false
+}
+
+/** Return the effective trigger for an instruction; absent means `invocation`. */
+export function policyInstructionLoad(
+  instruction: PolicyInstruction | string,
+): PolicyLoad {
+  return typeof instruction === 'string'
+    ? 'invocation'
+    : (instruction.load ?? 'invocation')
+}
 
 const POLICY_AUDIENCES: readonly PolicyAudience[] = [
   'agent',
@@ -37,6 +137,7 @@ export function policyInstructionText(
 export function normalizePolicyInstruction(
   value: unknown,
   source: string,
+  options: PolicyInstructionOptions = {},
 ): PolicyInstruction {
   if (typeof value === 'string') {
     invariant(
@@ -45,7 +146,13 @@ export function normalizePolicyInstruction(
       { code: 'INVALID_POLICY' },
     )
 
-    return { text: value, audience: ['agent'] }
+    // A policy-level `load` default applies to the string form too, so the
+    // string is read as the equivalent object and takes the same path.
+    if (options.defaultLoad === undefined) {
+      return { text: value, audience: ['agent'] }
+    }
+
+    value = { text: value, audience: ['agent'] }
   }
 
   invariant(isRecord(value), `${source} MUST be an object.`, {
@@ -116,9 +223,31 @@ export function normalizePolicyInstruction(
     )
   }
 
+  const load = value.load ?? options.defaultLoad
+  if (load !== undefined) {
+    invariant(
+      isPolicyLoad(load),
+      `${source}.load MUST be invocation, tool:<class>, event:<id>, or path:<glob> ` +
+        `with a known class or event.`,
+      { code: 'INVALID_POLICY' },
+    )
+    invariant(
+      load === 'invocation' ||
+        options.policyId === undefined ||
+        !EAGER_ONLY_POLICY_IDS.includes(options.policyId),
+      `${source}.load MUST stay invocation on ${options.policyId}, ` +
+        'whose clauses carry invariants or first-response conduct.',
+      { code: 'INVALID_POLICY' },
+    )
+  }
+
   return {
     text: value.text,
     audience: audiences,
+    // `invocation` is the default, so it is omitted to keep snapshots stable.
+    ...(typeof load === 'string' && load !== 'invocation'
+      ? { load: load as PolicyLoad }
+      : {}),
     ...(value.excerpt === true ? { excerpt: true } : {}),
     ...(isRecord(value.capabilities)
       ? { capabilities: value.capabilities }
@@ -134,13 +263,14 @@ export function normalizePolicyInstruction(
 export function normalizePolicyInstructions(
   value: unknown,
   source: string,
+  options: PolicyInstructionOptions = {},
 ): PolicyInstruction[] {
   invariant(Array.isArray(value), `${source} MUST be an array.`, {
     code: 'INVALID_POLICY',
   })
 
   return value.map((item, index) =>
-    normalizePolicyInstruction(item, `${source}[${index}]`),
+    normalizePolicyInstruction(item, `${source}[${index}]`, options),
   )
 }
 

@@ -203,6 +203,26 @@ native host recurring delivery, live model reads and tokenizer counts are
 unmeasured. These numbers are fixture accounting, not a live total-context
 savings claim; native and installed-path evidence remains a gate/host obligation.
 
+## Blind agent E2E for deferred loading
+
+`tests/fixtures/jit-agent-e2e/` holds two mock task briefs and an
+`expectations.json` the subagent never sees. `jit-agent-e2e-fixture.test.ts`
+fails when a brief names the mechanism under test. To run it, launch one
+background subagent per brief with the brief text as the whole prompt, then
+compare the receipts under `runtime/policy-clauses/` with the expectations.
+
+| Task        | Expected receipts                  | Observed on 2026-11-01                                                         |
+| ----------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| Shell count | `BROWSER-001` `tool:shell`, `hook` | One hook receipt after the first shell call; no browser, delegation, edit rows |
+| Read-only   | none                               | No receipt file; the answer came from read and search tools only               |
+
+Context measurements report eager and deferred bytes separately. Eager bytes
+are policy instruction text delivered with the invocation card. Deferred bytes
+are clause text held behind a `load` trigger and delivered through the hook,
+pull, or inline route. `src/lib/policy-context-measure.ts` computes the split
+per policy and in total. Deferred bytes count only when a trigger fires, so a
+total that adds them to eager bytes overstates the typical card.
+
 Context measurements must count cards, initial and recurring reminders, and
 triggered reads together. Saved fixture measurements disclose role, executor,
 host, capabilities, route, and turn count; they are not evidence of a live

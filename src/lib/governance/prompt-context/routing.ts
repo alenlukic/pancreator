@@ -23,6 +23,12 @@ import {
   type TurnReminderRole,
 } from './registry.js'
 import { liveRuns } from './cards.js'
+import {
+  deliverDeferredClauses,
+  firedContext,
+  preToolDecision,
+  type PreToolDecision,
+} from './deferred.js'
 import { principlesReminder, renderTurnReminder } from './reminders.js'
 import {
   initialPolicyReminder,
@@ -44,6 +50,8 @@ interface PromptPayload {
   conversation_id: string | null
   hook_event_name: string | null
   prompt: string
+  tool_name: string | null
+  tool_input: unknown
 }
 
 interface RoleResolution {
@@ -112,6 +120,13 @@ function parsePayload(value: unknown): PromptPayload {
           ? value.hookEventName
           : null,
     prompt: typeof value.prompt === 'string' ? value.prompt : '',
+    tool_name:
+      typeof value.tool_name === 'string'
+        ? value.tool_name
+        : typeof value.toolName === 'string'
+          ? value.toolName
+          : null,
+    tool_input: value.tool_input ?? value.toolInput ?? null,
   }
 }
 
@@ -402,6 +417,77 @@ export function resolvePromptContext(
   root: string,
   payloadText: string,
   now = new Date(),
+): PromptContextResponse {
+  const base = resolveBaseContext(root, payloadText, now)
+
+  try {
+    const payload = parsePayload(JSON.parse(payloadText))
+
+    if (
+      payload.hook_event_name !== null &&
+      !HOOK_EVENTS.has(payload.hook_event_name)
+    ) {
+      return base
+    }
+
+    const deferred = deliverDeferredClauses(
+      root,
+      payload.conversation_id,
+      firedContext(root, {
+        hookEvent: payload.hook_event_name,
+        toolName: payload.tool_name,
+        toolInput: payload.tool_input,
+        prompt: payload.prompt,
+      }),
+      now,
+    )
+
+    return deferred === null
+      ? base
+      : {
+          continue: true,
+          additional_context:
+            `${base.additional_context ?? ''}\n\n${deferred}`.trim(),
+        }
+  } catch {
+    // Delivery is best effort: the card index and `pan governance clause`
+    // still reach every deferred clause when a hook fails here.
+    return base
+  }
+}
+
+/**
+ * `preToolUse` hook response: hold a first call of a clause-bearing class
+ * once, so the agent reads the deferred clauses before it acts.
+ */
+export function resolvePreToolDecision(
+  root: string,
+  payloadText: string,
+  now = new Date(),
+): PreToolDecision {
+  try {
+    const payload = parsePayload(JSON.parse(payloadText))
+
+    return preToolDecision(
+      root,
+      payload.conversation_id,
+      firedContext(root, {
+        hookEvent: payload.hook_event_name,
+        toolName: payload.tool_name,
+        toolInput: payload.tool_input,
+        prompt: '',
+      }),
+      now,
+    )
+  } catch {
+    return { permission: 'allow' }
+  }
+}
+
+function resolveBaseContext(
+  root: string,
+  payloadText: string,
+  now: Date,
 ): PromptContextResponse {
   try {
     const registry = loadTurnReminderRegistry(root)

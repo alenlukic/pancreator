@@ -102,10 +102,26 @@ export interface PolicyCapabilities {
   delegation: boolean
 }
 
+/**
+ * When a policy instruction MUST be read. `invocation` renders the clause on
+ * the card at persona or mode start. The others defer the body until the
+ * trigger fires: `tool:<class>` before first use of a tool class,
+ * `event:<id>` on a named harness or host event, and `path:<glob>` when the
+ * agent first touches a matching file. A policy that sets no `load` behaves
+ * as `invocation`.
+ */
+export type PolicyLoad =
+  | 'invocation'
+  | `tool:${string}`
+  | `event:${string}`
+  | `path:${string}`
+
 export interface PolicyInstruction {
   text: string
   audience: PolicyAudience[]
   capabilities?: Partial<PolicyCapabilities>
+  /** Absent means `invocation`. See `PolicyLoad`. */
+  load?: PolicyLoad
   /**
    * Keep this instruction on a card that delivers its policy as a pointer to
    * a projected always-apply rule. Marks a clause a worker has to meet on

@@ -21,6 +21,12 @@
         "matcher": ".*",
         "timeout": 5,
         "failClosed": false
+      },
+      {
+        "command": "{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-deferred-clause",
+        "matcher": ".*",
+        "timeout": 5,
+        "failClosed": false
       }
     ],
     "postToolUse": [

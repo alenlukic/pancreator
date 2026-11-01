@@ -37,12 +37,20 @@ import {
   renderRefreshDigestsReport,
 } from '../lib/governance/refresh-digests.js'
 import { buildGovernanceCard } from '../lib/governance-card/build.js'
+import {
+  parseClauseCapabilities,
+  recordClauseReceipt,
+  resolveDeferredClause,
+} from '../lib/policy-clause.js'
 import { availableReviewDimensions } from '../lib/review-dimensions.js'
 import {
   attestSupervisorCard,
   buildSupervisorCard,
 } from '../lib/governance/supervisor-card.js'
-import { resolvePromptContext } from '../lib/governance/prompt-context/routing.js'
+import {
+  resolvePreToolDecision,
+  resolvePromptContext,
+} from '../lib/governance/prompt-context/routing.js'
 import { conflictsByTier, resolveReviewScope } from '../lib/review-scope.js'
 import {
   buildBriefSystem,
@@ -377,6 +385,39 @@ export function governanceCommand({ root, pan, args }: CliContext): void {
 
   if (sub === 'prompt-context') {
     print(resolvePromptContext(root, readFileSync(0, 'utf8')))
+    return
+  }
+
+  if (sub === 'pre-tool-clause') {
+    print(resolvePreToolDecision(root, readFileSync(0, 'utf8')))
+    return
+  }
+
+  if (sub === 'clause') {
+    const resolved = resolveDeferredClause(root, {
+      policyId: requiredArgument(option(args, '--policy'), '--policy'),
+      trigger: requiredArgument(option(args, '--trigger'), '--trigger'),
+      audience:
+        option(args, '--audience') === 'supervisor' ? 'supervisor' : 'agent',
+      capabilities: parseClauseCapabilities(
+        option(args, '--capabilities') ?? undefined,
+      ),
+    })
+    const receipt = recordClauseReceipt(
+      root,
+      option(args, '--invocation') ?? undefined,
+      resolved.group,
+      'pull',
+    )
+
+    if (hasFlag(args, '--json')) {
+      print({ ...receipt, text: resolved.text }, true)
+    } else {
+      process.stdout.write(
+        `${resolved.text}\n\nReceipt: ${receipt.policy_id} ${receipt.trigger} ` +
+          `sha256:${receipt.sha256} (${receipt.scope})\n`,
+      )
+    }
     return
   }
 

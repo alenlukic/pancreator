@@ -31,6 +31,7 @@ import {
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
 } from '../render.js'
+import { panCommand } from '../project-config.js'
 import { operationMutexPath, loadState, now } from '../state.js'
 import type {
   DelegatedWorkerRecord,
@@ -86,7 +87,10 @@ function rerenderInvocationArtifacts(
     invocation.invocation_id,
     '.md',
   ).relative
-  const renderedMarkdown = renderInvocationMarkdown(invocation)
+  const renderedMarkdown = renderInvocationMarkdown(
+    invocation,
+    panCommand(root),
+  )
 
   writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
 

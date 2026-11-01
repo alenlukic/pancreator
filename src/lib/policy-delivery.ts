@@ -1,5 +1,6 @@
 import { isRecord, sha256 } from './io.js'
 import { filterPolicyInstructionsForCard } from './policy-instructions.js'
+import { inlineClauseGroups, renderInlinedClauses } from './policy-deferred.js'
 import type { Invocation, Policy, PolicyDeliveryCoverage } from './types.js'
 
 export function isInvocationContext(value: unknown): value is Invocation {
@@ -52,10 +53,19 @@ export function isInvocationContext(value: unknown): value is Invocation {
 export function initialPolicyReminder(
   invocation: Invocation,
   source: string,
+  options: { inlineDeferred?: boolean } = {},
 ): {
   reminder: NonNullable<Invocation['initial_policy_reminder']>
   coverage: Record<string, PolicyDeliveryCoverage>
+  inlined: ReturnType<typeof inlineClauseGroups>
 } {
+  // An executor with no hook route receives its tool and path clauses at
+  // launch. Policies that declare no `load` add nothing, so launch bytes stay
+  // identical for them.
+  const inlined = options.inlineDeferred
+    ? inlineClauseGroups(invocation.policies, invocation.capabilities)
+    : []
+  const inlinedText = renderInlinedClauses(inlined)
   const policy = invocation.policies.find(
     (entry) => entry.id === 'DELEGATE-001',
   )
@@ -70,9 +80,12 @@ export function initialPolicyReminder(
     '# Initial worker reminder',
     '',
     ...instructions.map((entry) => `- ${entry.text}`),
-  ].join('\n')
+  ]
+    .concat(inlinedText ? ['', inlinedText] : [])
+    .join('\n')
   const digest = sha256(content)
   return {
+    inlined,
     reminder: { source, content, sha256: digest },
     coverage:
       policy && instructions.length

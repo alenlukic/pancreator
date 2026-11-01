@@ -15,7 +15,10 @@ import {
   STANDALONE_MODES,
   buildGovernanceCard,
 } from '../../src/lib/governance-card.js'
-import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionLoad,
+} from '../../src/lib/policy-instructions.js'
 import {
   HARNESS_SQUAD_SKILL_PATH,
   REVIEW_DIMENSIONS,
@@ -130,7 +133,18 @@ test('every standalone mode renders a card with its policies inlined', () => {
       for (const instruction of policy.instructions) {
         const bullet = `- ${instruction.text}`
 
-        if (policyInstructionAppliesToCard(instruction, 'agent')) {
+        if (
+          policyInstructionAppliesToCard(instruction, 'agent') &&
+          policyInstructionLoad(instruction) !== 'invocation'
+        ) {
+          // A deferred clause stays off the card; its trigger group is indexed.
+          assert.ok(
+            written.includes(
+              `- \`${policy.id}\` · \`${policyInstructionLoad(instruction)}\` · `,
+            ),
+            `${name} card omits the deferred index line of ${policy.id}`,
+          )
+        } else if (policyInstructionAppliesToCard(instruction, 'agent')) {
           assert.ok(
             written.includes(bullet),
             `${name} card omits an instruction of ${policy.id}`,

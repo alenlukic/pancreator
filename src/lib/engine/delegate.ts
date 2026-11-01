@@ -155,10 +155,17 @@ export function delegateInvocation(
           invocationValidationPath(runId, invocationId, root),
         ),
       )
+      const failedChecks =
+        isRecord(validationArtifact) && Array.isArray(validationArtifact.checks)
+          ? validationArtifact.checks
+              .filter((check) => isRecord(check) && check.passed === false)
+              .map((check) => String((check as { message?: unknown }).message))
+          : []
       invariant(
         isRecord(validationArtifact) && validationArtifact.status === 'pass',
-        `Invocation validation for ${invocationId} did not pass; the card ` +
-          'MUST NOT be delegated.',
+        `Invocation validation for ${invocationId} did not pass` +
+          (failedChecks.length > 0 ? ` (${failedChecks.join('; ')})` : '') +
+          '; the card MUST NOT be delegated.',
         { code: 'INVOCATION_VALIDATION_FAILED' },
       )
 

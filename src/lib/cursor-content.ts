@@ -1,6 +1,10 @@
 import { invariant } from './errors.js'
 import { renderGuidanceBlock } from './policy-guidance.js'
-import { policyInstructionAppliesToCard } from './policy-instructions.js'
+import { deferredClauseGroups, renderDeferredIndex } from './policy-deferred.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionLoad,
+} from './policy-instructions.js'
 import type { PolicyGuidance, PolicyInstruction } from './types.js'
 
 export type CursorInstallationMode =
@@ -28,9 +32,14 @@ interface PolicyRuleSource {
  * cannot import this module during an embedded install.
  */
 export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
+  // A deferred clause stays out of the always-apply rule. One index line per
+  // trigger points at the command and hook that deliver it.
+  const deferred = deferredClauseGroups(policy, 'agent')
   const instructions = policy.instructions
-    .filter((instruction) =>
-      policyInstructionAppliesToCard(instruction, 'agent'),
+    .filter(
+      (instruction) =>
+        policyInstructionLoad(instruction) === 'invocation' &&
+        policyInstructionAppliesToCard(instruction, 'agent'),
     )
     .map((instruction) => {
       const predicates = Object.entries(instruction.capabilities ?? {})
@@ -60,6 +69,16 @@ export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
         ]
       : []),
     ...instructions.map((instruction) => `- ${instruction}`),
+    ...(deferred.length > 0
+      ? [
+          '',
+          ...renderDeferredIndex(
+            deferred,
+            2,
+            CURSOR_PROJECTION_TOKENS.panCommand,
+          ).slice(0, 1),
+        ]
+      : []),
     ...(policy.guidance ?? []).flatMap((guidance) =>
       renderGuidanceBlock(2, guidance),
     ),

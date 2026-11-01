@@ -56,6 +56,7 @@ export type {
   PolicyDelivery,
   PolicyDeliveryCoverage,
   PolicyCapabilities,
+  PolicyLoad,
   PolicyGuidance,
   PolicyGuidanceReference,
   PolicyInstruction,

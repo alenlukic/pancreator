@@ -316,6 +316,7 @@ function parsePolicy(
   const instructions = normalizePolicyInstructions(
     value.instructions,
     `${source}: policy instructions`,
+    { policyId: value.id, defaultLoad: value.load },
   )
   invariant(
     value.extension_id === undefined ||

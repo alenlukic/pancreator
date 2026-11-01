@@ -341,7 +341,9 @@ test('an inferred waiver names the synthesized scope criterion', () => {
     note: 'The operator inspected the stray file and accepts the workspace exactly as it stands.',
   })
 
-  assert.deepEqual(waived.waiver.criterion_ids, ['scope.no_unattributed_changes'])
+  assert.deepEqual(waived.waiver.criterion_ids, [
+    'scope.no_unattributed_changes',
+  ])
   assert.notEqual(waived.waiver.whole_stage_bypass, true)
 })
 

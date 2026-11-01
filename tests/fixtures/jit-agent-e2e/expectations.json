@@ -1,0 +1,21 @@
+{
+  "shell": {
+    "brief": "shell-task.md",
+    "expectedReceipts": [
+      { "policyId": "BROWSER-001", "trigger": "tool:shell", "route": "hook" }
+    ],
+    "forbiddenTriggers": ["tool:browser", "tool:delegation", "tool:edit"],
+    "expectedAnswer": "number"
+  },
+  "readonly": {
+    "brief": "readonly-task.md",
+    "expectedReceipts": [],
+    "forbiddenTriggers": [
+      "tool:shell",
+      "tool:browser",
+      "tool:delegation",
+      "tool:edit"
+    ],
+    "expectedAnswer": "src/lib/governance/prompt-context/deferred.ts"
+  }
+}

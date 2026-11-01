@@ -6,6 +6,7 @@
 import path from 'node:path'
 import { proceduralExceptionContext } from '../procedural-exceptions.js'
 import { initialPolicyReminder } from '../policy-delivery.js'
+import { recordClauseReceipt } from '../policy-clause.js'
 import { writeTextAtomic, resolveInside } from '../io.js'
 import { prepareVerificationExecution } from './verification-execution.js'
 import { scaffoldStageOutput } from '../requirements/scaffold.js'
@@ -44,7 +45,6 @@ import {
 } from '../operator-artifacts.js'
 import {
   harnessPathPrefix,
-  isDetachedInstallation,
   isSelfDevelopmentInstallation,
   isTargetInstallation,
   panCommand,
@@ -110,6 +110,7 @@ import {
 } from './prepare-helpers.js'
 import {
   buildInvocationDelegation,
+  installationModeOf,
   writeInvocationArtifacts,
 } from './prepare-artifacts.js'
 
@@ -637,11 +638,7 @@ export function prepareInvocation(
       attempt,
       created_at: now(),
       workspace_root: state.workspace_root || '.',
-      installation_mode: isSelfDevelopmentInstallation(root)
-        ? 'self_development'
-        : isDetachedInstallation(root)
-          ? 'detached'
-          : 'embedded',
+      installation_mode: installationModeOf(root),
       ...(state.managed_worktree
         ? { managed_worktree: state.managed_worktree }
         : {}),
@@ -702,11 +699,7 @@ export function prepareInvocation(
         invocationId,
         executor: externalExecutor ?? 'cursor',
         host: workerCardHost(root),
-        mode: isSelfDevelopmentInstallation(root)
-          ? 'self_development'
-          : isDetachedInstallation(root)
-            ? 'detached'
-            : 'embedded',
+        mode: installationModeOf(root),
       }),
       requirements,
       rubric: stage.criteria,
@@ -818,10 +811,16 @@ export function prepareInvocation(
     }
 
     if (stage.persona !== 'orchestrator') {
-      const { reminder, coverage } = initialPolicyReminder(
+      const { reminder, coverage, inlined } = initialPolicyReminder(
         invocation,
         jsonPath.replace(/\.json$/u, '.initial-reminder.md'),
+        { inlineDeferred: Boolean(externalExecutor) },
       )
+
+      for (const { group } of inlined) {
+        recordClauseReceipt(root, invocationId, group, 'inline')
+      }
+
       const host = workerCardHost(root)
       for (const receipt of Object.values(coverage)) receipt.host = host
       invocation.initial_policy_reminder = reminder
@@ -831,11 +830,7 @@ export function prepareInvocation(
         executor: externalExecutor ?? 'cursor',
         host,
         coverage,
-        mode: isSelfDevelopmentInstallation(root)
-          ? 'self_development'
-          : isDetachedInstallation(root)
-            ? 'detached'
-            : 'embedded',
+        mode: installationModeOf(root),
       })
     }
 

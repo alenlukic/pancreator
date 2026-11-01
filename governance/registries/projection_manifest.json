@@ -71,7 +71,7 @@
       "target": ".cursor/rules/pan-browser-isolation.mdc",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule"]
+      "transforms": ["policy-rule", "installation-paths"]
     },
     {
       "id": "cursor-comms-policy-rule",
@@ -181,7 +181,7 @@
       "target": ".github/instructions/pan-browser-isolation.instructions.md",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule", "vscode-instructions"]
+      "transforms": ["policy-rule", "installation-paths", "vscode-instructions"]
     },
     {
       "id": "vscode-comms-policy-instructions",
