@@ -1,5 +1,11 @@
 # Changelog
 
+## [10.2.1] - 2026-11-01
+
+### Changed
+
+- Ignore host `cd` and leading `rtk` prefixes when matching the shell-monitor allowlist ([DELEGATE-001](governance/policies/DELEGATE-001.json)).
+
 ## [10.2.0] - 2026-11-01
 
 ### Changed

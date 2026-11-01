@@ -127,7 +127,7 @@ The release steward owns the version decision and synchronized metadata inside a
 
 `COMMS-001` governs every report you write to the operator in chat. It binds your first response, before you resolve any card. Hidden reasoning, a Thinking block, and raw tool output do not satisfy it. Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
 
-Run every agent shell command inside `bin/pan-run`. Allowlisted read-only commands (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`) may run unwrapped but must not chain or pipe into a non-allowlisted command.
+Run every agent shell command inside `bin/pan-run`. Allowlisted read-only commands (`git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`) may run unwrapped but must not chain or pipe into a non-allowlisted command. Run those commands raw. Do not wrap or watch them. A host `cd <dir> &&` prefix or a leading `rtk` prefix does not take a command off the allowlist.
 
 Before a long or multiline shell call, use a file tool to write a JSON request under `runtime/commands/`. Include `label` and exactly one of `argv` (a string array) or `script` (a shell body). Optional `cwd` selects the working directory. Submit only `bin/pan-run --request <file.json>` to the shell tool. Never embed the payload in that shell call. Keep submitted commands within 400 UTF-8 bytes and one line. Requests default to concise output with a full log reference. Use `output: "stream"` for interactive commands, watch streams, or requested raw output. Use `--summary` for short lifecycle calls. A hook cannot shorten a command the chat UI already received.
 

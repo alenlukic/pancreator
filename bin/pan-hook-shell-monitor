@@ -249,7 +249,54 @@ def refuses_ps_environment(arg):
     return "e" in arg or "E" in arg
 
 
+def strip_host_cd_prefix(tokens):
+    """Drop a host `cd <dir> &&` or `cd <dir>;` prefix Cursor adds for cwd.
+
+    The path MUST be a single word that does not start with `-`. A `cd` option
+    or a missing path leaves the tokens unchanged so the command stays denied.
+    """
+    if (
+        len(tokens) >= 4
+        and tokens[0][0] == "word"
+        and tokens[0][1] == "cd"
+        and tokens[1][0] == "word"
+        and tokens[1][1]
+        and not tokens[1][1].startswith("-")
+        and tokens[2][0] == "op"
+        and tokens[2][1] in ("&&", ";")
+    ):
+        return tokens[3:]
+    return tokens
+
+
+def strip_rtk_prefix(tokens):
+    """Drop a leading `rtk` word a user preToolUse hook prepends.
+
+    The next token MUST be a word that does not start with `-`. An `rtk` option
+    or a missing operand leaves the tokens unchanged so the command stays denied.
+    """
+    if (
+        len(tokens) >= 2
+        and tokens[0][0] == "word"
+        and tokens[0][1] == "rtk"
+        and tokens[1][0] == "word"
+        and tokens[1][1]
+        and not tokens[1][1].startswith("-")
+    ):
+        return tokens[1:]
+    return tokens
+
+
+def strip_transparent_prefixes(tokens):
+    while True:
+        nxt = strip_rtk_prefix(strip_host_cd_prefix(tokens))
+        if nxt == tokens:
+            return tokens
+        tokens = nxt
+
+
 def is_allowlisted(tokens):
+    tokens = strip_transparent_prefixes(tokens)
     segments, current = [], []
     index = 0
     while index < len(tokens):
@@ -275,7 +322,7 @@ def verdict(command):
     if not command:
         return "No command provided."
     try:
-        tokens = lex(command)
+        tokens = strip_transparent_prefixes(lex(command))
     except Substitution:
         return "Command contains a command or process substitution ($(...), backticks, <(...), or >(...))."
     except UnsupportedExpansion:

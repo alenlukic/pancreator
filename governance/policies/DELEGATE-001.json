@@ -298,7 +298,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist.",
+      "text": "Every agent shell command MUST run inside `bin/pan-run`, except commands on the read-only allowlist. The allowlist contains: `git status`, `git log`, `git diff`, `git show`, `git rev-parse`, `ls`, `rg`, `cat`, `pwd`, `ps`. An allowlisted command MUST NOT chain, pipe, or redirect into a command outside the allowlist. Agents MUST run allowlisted commands raw and MUST NOT wrap them or observe them with `pan watch`. A host `cd <dir> &&` prefix or a leading `rtk` prefix does not take a command off the allowlist.",
       "audience": ["agent"],
       "excerpt": true,
       "capabilities": {
@@ -460,7 +460,7 @@
       }
     },
     {
-      "text": "Shell-capable workers MUST run shell commands inside `bin/pan-run`, except unchained read-only git status/log/diff/show/rev-parse, ls, rg, cat, pwd, and ps. Long or multiline commands MUST use a JSON request under `runtime/commands/` with label and exactly one of argv or script. Submit only the wrapper request command, within 400 UTF-8 bytes on one line.",
+      "text": "Shell-capable workers MUST run shell commands inside `bin/pan-run`, except unchained read-only git status/log/diff/show/rev-parse, ls, rg, cat, pwd, and ps. Workers MUST run those allowlisted commands raw and MUST NOT wrap them or observe them with `pan watch`. A host `cd <dir> &&` prefix or a leading `rtk` prefix does not take a command off the allowlist. Long or multiline commands MUST use a JSON request under `runtime/commands/` with label and exactly one of argv or script. Submit only the wrapper request command, within 400 UTF-8 bytes on one line.",
       "audience": ["agent"],
       "capabilities": {
         "shell": true,

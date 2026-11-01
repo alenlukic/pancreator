@@ -149,6 +149,57 @@ test('AC-18: shell-monitor hook allow and deny cases', async (t) => {
     assert.equal(permission('git status 2>/dev/null'), 'allow')
   })
 
+  await t.test('allows host cd prefix before git status', () => {
+    assert.equal(
+      permission('cd /Users/alen/Dev/pancreator && git status'),
+      'allow',
+    )
+  })
+
+  await t.test('allows host cd prefix before ls', () => {
+    assert.equal(permission('cd /tmp && ls'), 'allow')
+  })
+
+  await t.test('allows host cd prefix with semicolon', () => {
+    assert.equal(permission('cd /tmp; git status'), 'allow')
+  })
+
+  await t.test('denies host cd prefix before a non-allowlisted command', () => {
+    assert.equal(permission('cd /tmp && npm test'), 'deny')
+  })
+
+  await t.test('denies cd with an option before an allowlisted command', () => {
+    assert.equal(permission('cd -P /tmp && git status'), 'deny')
+  })
+
+  await t.test('allows rtk prefix before git status', () => {
+    assert.equal(permission('rtk git status'), 'allow')
+  })
+
+  await t.test('allows rtk prefix before ls', () => {
+    assert.equal(permission('rtk ls'), 'allow')
+  })
+
+  await t.test('allows rtk prefix after a host cd prefix', () => {
+    assert.equal(permission('cd /tmp && rtk git status'), 'allow')
+  })
+
+  await t.test('allows rtk prefix before a host cd prefix', () => {
+    assert.equal(permission('rtk cd /tmp && git status'), 'allow')
+  })
+
+  await t.test('allows rtk prefix before a wrapped command', () => {
+    assert.equal(permission('rtk ./bin/pan-run -- npm test'), 'allow')
+  })
+
+  await t.test('denies rtk prefix before a non-allowlisted command', () => {
+    assert.equal(permission('rtk npm test'), 'deny')
+  })
+
+  await t.test('denies rtk with an option before an allowlisted command', () => {
+    assert.equal(permission('rtk --foo git status'), 'deny')
+  })
+
   // ---- denied: unwrapped commands ----
 
   await t.test('denies unwrapped npm test', () => {
