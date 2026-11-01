@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "one-shot",
+  "title": "One-shot implement and ship",
+  "description": "One spotfixer handles informal planning, implementation, tests, and repository-check validation, then release preparation. There is no plan stage and no operator gate before ship. Cycle-bound failure or a breach of the S hard max escalates to the standard route with the implement evidence.",
+  "start_stage": "implement",
+  "limits": {
+    "max_total_transitions": 6,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["implement", "ship"]
+}

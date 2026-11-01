@@ -162,6 +162,45 @@ test('start resolves the route against installed workflows and the operator', ()
   assert.throws(() => record(100, 'missing'), { code: 'UNKNOWN_WORKFLOW' })
 })
 
+test('an installed one-shot route starts, then escalates to standard', () => {
+  const root = fixture(['one-shot', 'standard'])
+  const base = { root, request: REQUEST, rationale: 'One CLI command.' }
+
+  assert.deepEqual(
+    recordIntakeClassification({ ...base, estimate: estimate(25) }).current
+      .start,
+    { kind: 'workflow', workflow: 'one-shot', source: 'route', reason: null },
+  )
+
+  const record = recordIntakeClassification({
+    ...base,
+    estimate: estimate(400),
+    reason: 'Implement exceeded the S SLOC hard max.',
+  })
+
+  assert.equal(record.history[0]?.start.kind, 'workflow')
+  assert.equal(
+    record.history[0]?.start.kind === 'workflow'
+      ? record.history[0].start.workflow
+      : null,
+    'one-shot',
+  )
+  assert.deepEqual(record.current.start, {
+    kind: 'workflow',
+    workflow: 'standard',
+    source: 'route',
+    reason: null,
+  })
+  assert.equal(
+    record.current.reclassification_reason,
+    'Implement exceeded the S SLOC hard max.',
+  )
+  assert.deepEqual(
+    record.history.map((entry) => entry.size_class),
+    ['XS', 'M'],
+  )
+})
+
 test('sizing handbook states the thresholds the classifier applies', () => {
   const handbook = readFileSync(
     path.join(process.cwd(), 'governance', 'handbooks', 'eng', 'sizing.md'),

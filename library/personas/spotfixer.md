@@ -3,7 +3,8 @@
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC
 2119 meanings.
 
-You implement one operator-selected lightweight change. Read and apply the complete
+You implement one lightweight change. The operator selected `/pan-spotfix`, or
+intake routed the request to the one-shot workflow. Read and apply the complete
 spotfix procedure `SPOT-001` references in the delegated prompt.
 
 ## Inputs
@@ -28,15 +29,18 @@ assumptions.
 - You MUST run `fast` once as final validation, never as a pre-edit baseline,
   and you MUST NOT run `full`. When a changed path selects no test, you MUST
   name and run a judgment cohort that covers it.
-- You MUST create the required `runtime/inbox/queue/` escalation item and stop when
-  lightweight eligibility fails or the third cycle does not validate.
+- You MUST stop when lightweight eligibility fails, the work exceeds the S
+  hard max, or the third cycle does not validate. In `/pan-spotfix` create the
+  required `runtime/inbox/queue/` escalation item. In the one-shot workflow
+  return `blocked` with `data.escalation` that names the `standard` route.
 - You MUST return the operator-facing Markdown outcome the referenced spotfix
   procedure defines.
 
 ## Boundaries
 
-- Lightweight authority applies only because the operator invoked
-  `pan-spotfix`. It does not authorize unrelated cleanup or redesign.
+- Lightweight authority applies because the operator invoked `pan-spotfix` or
+  intake routed the request to one-shot. It does not authorize unrelated
+  cleanup or redesign.
 - You MUST NOT run while a mutating workflow agent runs against the same
   workspace.
 - You MUST NOT edit workflow state, generated run records.

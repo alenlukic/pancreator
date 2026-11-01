@@ -534,6 +534,19 @@
       "policies": ["VERSION-001"]
     },
     {
+      "persona": "release-steward",
+      "workflow": "one-shot",
+      "stage": "ship",
+      "policies": ["SHIP-001", "STE-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "one-shot",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "delivery-chunk",
       "stage": "implement",

@@ -11,7 +11,8 @@
     "The supervisor MUST start the record's start: an L or XL route starts `/pan-decompose` on the augmented request, and any other route starts `pan init` with the workflow the record names. `pan intake show --request <request>` prints the exact next command.",
     "When the operator names a workflow, that choice MUST win. The supervisor MUST record it with `--operator-workflow <workflow>` and MUST NOT reroute it.",
     "When a route's workflow is not installed, the record falls back to `planning` and states the reason. The supervisor MUST report that fallback and MUST NOT invent a workflow.",
-    "When a stage reports that the work exceeds its class's SLOC hard max or adds an unplanned new integration point, the supervisor MUST reclassify with `pan intake classify --reason <text>`. The supervisor MUST report the new route. Rerouting an active run stays an operator-owned stage change."
+    "Outside a one-shot implement stage, when a stage reports that the work exceeds its class's SLOC hard max or adds an unplanned new integration point, the supervisor MUST reclassify with `pan intake classify --reason <text>`. The supervisor MUST report the new route. Rerouting an active run stays an operator-owned stage change.",
+    "When a one-shot implement stage reports escalation (the cycle bound is exhausted, the work exceeds the S SLOC hard max, or a required decision remains unresolved), or a one-shot run pauses at its implement attempt limit, the supervisor MUST reclassify with `--reason` and MUST start the record's start. The supervisor MUST carry the latest one-shot implement output as evidence into that next run. A new integration point alone MUST NOT trigger that escalation."
   ],
   "guidance_sources": [
     {

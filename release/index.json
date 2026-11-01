@@ -588,6 +588,10 @@
     {
       "version": "10.1.0",
       "commit": "62c167ed0b731e7faf641936d1c2f303526b9dd4"
+    },
+    {
+      "version": "10.2.0",
+      "commit": "94c66277c0c0e2c4d9ad9f6000945a6e691c5c78"
     }
   ]
 }

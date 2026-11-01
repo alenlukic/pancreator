@@ -1,0 +1,39 @@
+{
+  "slug": "ship",
+  "title": "Release preparation",
+  "persona": "release-steward",
+  "prompt_path": "library/workflows/delivery/prompts/ship.md",
+  "workspace_policy": "release_metadata_only",
+  "gate": "operator",
+  "gate_relaxable": false,
+  "context": {
+    "request": "required",
+    "required_stage_outputs": [
+      {
+        "stage": "implement",
+        "selection": "latest_success"
+      }
+    ],
+    "conditional_stage_outputs": [],
+    "prior_attempts": 1,
+    "operator_feedback": 1,
+    "include_workspace_ratifications": false,
+    "suite_profile": false,
+    "gate_evidence": false
+  },
+  "required_data": {
+    "release": "object",
+    "release.summary": "string"
+  },
+  "blocked_required_data": {
+    "blocked": "object",
+    "blocked.missing_precondition": "string",
+    "blocked.supplying_command": "string"
+  },
+  "criteria": [],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "paused",
+    "blocked": "paused"
+  }
+}

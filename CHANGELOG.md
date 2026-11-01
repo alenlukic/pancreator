@@ -1,5 +1,16 @@
 # Changelog
 
+## [10.2.0] - 2026-11-01
+
+### Changed
+
+- Bound spotfix cycles and escalate work that leaves lightweight scope ([SPOT-001](governance/policies/SPOT-001.json)).
+- Carry acceptance results through ship when a workflow has no verify stage ([SHIP-001](governance/policies/SHIP-001.json)).
+
+### Added
+
+- Add the one-shot lightweight workflow with implement and ship stages ([one-shot](library/workflows/one-shot/workflow.json)).
+
 ## [10.1.0] - 2026-10-30
 
 ### Changed

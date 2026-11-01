@@ -6,8 +6,10 @@ landing from the already verified incoming data.
 ## Procedure
 
 1. Read the card and supplied release inputs. Carry forward the
-   `data.verify.evidence_packet` reference and the supplied waivers, warnings,
-   deferred criteria, and risks without inspecting or checking evidence artifacts.
+   `data.verify.evidence_packet` reference, or the implement
+   `data.acceptance_results` when the workflow has no verify stage, and the
+   supplied waivers, warnings, deferred criteria, and risks without inspecting
+   or checking evidence artifacts.
 2. In self-development, use the declared release delta to choose the bump and
    prepare one Unreleased changelog entry. Checkpoint eligible changes in the
    managed worktree. Preserve the allocation authority and landing mutex.
@@ -27,7 +29,8 @@ landing from the already verified incoming data.
    the packet for operator approval before any remote action.
 
 Ship MUST NOT run tests, inspect, collect, or check evidence, review artifact
-diagnostics, validate release artifacts, or gate on validation. The verifier and
-harness own evidence correctness, runtime evidence repairs, and the final fast
-profile check. Ship follows their supplied outcome and does not collect another
+diagnostics, validate release artifacts, or gate on validation. The verifier, or
+the implement gates when the workflow has no verify stage, and the harness own
+evidence correctness, runtime evidence repairs, and the final fast profile
+check. Ship follows their supplied outcome and does not collect another
 evidence bundle.

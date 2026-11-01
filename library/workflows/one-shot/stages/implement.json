@@ -1,0 +1,78 @@
+{
+  "slug": "implement",
+  "title": "One-shot implementation",
+  "persona": "spotfixer",
+  "prompt_path": "library/workflows/one-shot/prompts/implement.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "context": {
+    "request": "required",
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "informal_plan": "string",
+    "test_scenarios": "array",
+    "cycles_used": "number",
+    "implementation": "object",
+    "implementation.changed_files": "array",
+    "implementation.tests_added": "array",
+    "implementation.notes": "array",
+    "acceptance_results": "array"
+  },
+  "blocked_required_data": {
+    "blocked": "object",
+    "blocked.missing_precondition": "string",
+    "blocked.supplying_command": "string",
+    "blocked.evidence": "array",
+    "escalation": "object",
+    "escalation.reason": "string",
+    "escalation.route": "string",
+    "escalation.evidence": "array"
+  },
+  "criteria": [
+    {
+      "id": "implement.acceptance_claimed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The output maps evidence to every acceptance criterion and does not claim unsupported completion."
+    },
+    {
+      "id": "implement.lint",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "implement.unit_tests",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository fast checks pass.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 1200000
+    },
+    {
+      "id": "configuration.valid",
+      "type": "shell",
+      "hard": true,
+      "statement": "Repository configuration and governance validate.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "implement.impacted_integration",
+      "type": "shell",
+      "hard": true,
+      "statement": "The integration tests the change reaches pass, so no lane the ship gate can fail on first surfaces at release landing.",
+      "command": "pan repository-check impacted-integration",
+      "timeout_ms": 900000
+    }
+  ],
+  "transitions": {
+    "success": "ship",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

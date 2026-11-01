@@ -193,6 +193,20 @@
       "disposition": "retain",
       "rationale": "The release coordinator and standalone version steward receive separate cards. Each must receive the boundary that assigns validation to the verifier.",
       "evidence": ["tests/regression/release-coordination-only.test.ts"]
+    },
+    {
+      "id": "one-shot-escalation-carve-out",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/ROUTE-001.json",
+        "governance/policies/SPOT-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "The spotfixer and the supervisor receive separate cards. The spotfixer must not treat a new integration point as a one-shot stop, and the supervisor must not reclassify on that signal alone. The lookup table resolves SPOT-001 for the implementer and ROUTE-001 for the supervisor, so each card needs the carve-out.",
+      "evidence": [
+        "tests/unit/one-shot-workflow.test.ts",
+        "tests/unit/intake-classification.test.ts"
+      ]
     }
   ]
 }
