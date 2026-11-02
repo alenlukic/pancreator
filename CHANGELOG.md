@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Show the constructed card in operator chat before a subagent launch, and show a top level agent's own card once when that card is constructed ([COMMS-001](governance/policies/COMMS-001.json)).
+
 ## [10.4.1] - 2026-11-02
 
 ### Fixed

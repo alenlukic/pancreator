@@ -42,6 +42,8 @@
     "An agent MUST report a failure with its cause and one named next action.",
     "An operator-facing agent MUST rewrite the summary of a subagent that COMMS-001 does not bind. The rewrite MUST happen before that summary reaches the operator.",
     "The operator-facing agent owns the shape of the rewritten summary. That agent MUST NOT pass raw subagent prose through to the operator.",
+    "When an agent invokes a subagent, that agent MUST surface the constructed card it will use to invoke the subagent in the operator-facing chat as a fenced Markdown code block before the invocation. The block MUST contain the card text. A path MUST NOT replace the block.",
+    "A top level agent MUST surface its own constructed card in the operator-facing chat as a fenced Markdown code block once, in the turn that constructs the card. A later turn MUST NOT repeat that card.",
     "Chat-report issue and outcome shapes MUST remain judgment-only. The deterministic check does not test these shapes.",
     "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording.",
     {
