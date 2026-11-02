@@ -1,5 +1,11 @@
 # Changelog
 
+## [10.4.1] - 2026-11-02
+
+### Fixed
+
+- Refuse a merge onto `pan-dev` or `main`, and a release land, when `config_overrides.json` `active_config` differs from `config.json` ([check-landing](bin/check-landing)).
+
 ## [10.4.0] - 2026-11-01
 
 ### Added

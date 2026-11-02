@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 
 import { invariant, errorMessage } from '../errors.js'
@@ -132,6 +133,20 @@ export function landRelease(
     invariant(head, 'The finalized release has no HEAD.', {
       code: 'LANDING_NO_HEAD',
     })
+    const activeConfig = spawnSync(
+      path.join(root, 'bin', 'check-landing'),
+      ['active-config', workspace],
+      { encoding: 'utf8' },
+    )
+    invariant(
+      activeConfig.status === 0,
+      (
+        activeConfig.stderr ||
+        activeConfig.stdout ||
+        'config_overrides.json active_config does not match config.json.'
+      ).trim(),
+      { code: 'OVERRIDE_ACTIVE_CONFIG_MISMATCH' },
+    )
     fastForwardPanDev(repository, head, tip)
     record('fast_forward', { tip_before: tip, tip_after: head, version })
     return finish({

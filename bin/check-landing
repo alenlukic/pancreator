@@ -21,9 +21,16 @@
 # Modes:
 #   check-landing pre-commit        refuse a direct commit on a protected branch
 #   check-landing pre-merge-commit  refuse a merge whose source has no release
+#                                   or whose override active_config differs
 #   check-landing branch <ref> [<base-ref>]
 #                                   report whether <ref> is landable onto <base-ref>
 #                                   (defaults to HEAD when <base-ref> is omitted)
+#   check-landing active-config [dir]
+#                                   refuse when config_overrides.json sets
+#                                   active_config to a different value than
+#                                   config.json in dir (defaults to the
+#                                   current directory). A missing override, or
+#                                   one that omits the key, is allowed.
 #   check-landing daily-range <base> <head>
 #                                   exit 0 only when every commit in base..head
 #                                   that touches installable inputs is a non-merge
@@ -160,6 +167,7 @@ case "$mode" in
     #   1. Validate that MERGE_HEAD carries a new indexed release.
     #   2. Refuse when the staged installable inputs differ from MERGE_HEAD.
     if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+      "$0" active-config "$(git rev-parse --show-toplevel)" || exit 1
       merge_source="$(git rev-parse MERGE_HEAD)"
 
       # Run the branch check for MERGE_HEAD against the pre-merge HEAD.
@@ -184,6 +192,7 @@ case "$mode" in
     branch="$(current_branch)"
     [[ "$branch" =~ $protected_re ]] || exit 0
 
+    "$0" active-config "$(git rev-parse --show-toplevel)" || exit 1
     source_ref="$(git rev-parse -q --verify MERGE_HEAD 2>/dev/null || true)"
     [[ -n "$source_ref" ]] || exit 0
     exec "$0" branch "$source_ref"
@@ -295,8 +304,40 @@ case "$mode" in
     exit 0
     ;;
 
+  active-config)
+    config_root="${2:-.}"
+    node -e '
+      const fs = require("node:fs")
+      const path = require("node:path")
+      const root = process.argv[1]
+      const overridePath = path.join(root, "config_overrides.json")
+
+      if (!fs.existsSync(overridePath)) {
+        process.exit(0)
+      }
+
+      const config = JSON.parse(fs.readFileSync(path.join(root, "config.json"), "utf8"))
+      const override = JSON.parse(fs.readFileSync(overridePath, "utf8"))
+
+      if (!Object.prototype.hasOwnProperty.call(override, "active_config")) {
+        process.exit(0)
+      }
+
+      if (override.active_config !== config.active_config) {
+        console.error(
+          "check-landing: config_overrides.json active_config is \x27" +
+            override.active_config +
+            "\x27 but config.json active_config is \x27" +
+            config.active_config +
+            "\x27. The override must use the same active_config before merging to pan-dev or main.",
+        )
+        process.exit(1)
+      }
+    ' "$config_root"
+    ;;
+
   *)
-    echo "usage: check-landing pre-commit | pre-merge-commit | branch <ref> [<base-ref>] | daily-range <base> <head>" >&2
+    echo "usage: check-landing pre-commit | pre-merge-commit | active-config [dir] | branch <ref> [<base-ref>] | daily-range <base> <head>" >&2
     exit 2
     ;;
 esac

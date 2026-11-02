@@ -514,3 +514,37 @@ test('branch check: accepts a marked daily commit that changes only AGENTS.md', 
 
   assert.equal(result.status, 0, `Expected exit 0; stderr: ${result.stderr}`)
 })
+
+test('active-config: the override must use the same active_config as config.json', () => {
+  const root = createTestTempDirectory('check-landing-active-config-')
+
+  writeFileSync(path.join(root, 'config.json'), '{"active_config":"default"}\n')
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    '{"active_config":"balanced"}\n',
+  )
+
+  const mismatch = runCheckLandingResult(['active-config', root], root)
+
+  assert.equal(mismatch.status, 1)
+  assert.match(mismatch.stderr, /active_config is 'balanced'/u)
+  assert.match(mismatch.stderr, /pan-dev or main/u)
+
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    '{"active_config":"default"}\n',
+  )
+
+  const match = runCheckLandingResult(['active-config', root], root)
+
+  assert.equal(match.status, 0, `Expected exit 0; stderr: ${match.stderr}`)
+
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    '{"model_config":{}}\n',
+  )
+
+  const omitted = runCheckLandingResult(['active-config', root], root)
+
+  assert.equal(omitted.status, 0, `Expected exit 0; stderr: ${omitted.stderr}`)
+})
