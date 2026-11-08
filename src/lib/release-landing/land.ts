@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant, errorMessage } from '../errors.js'
@@ -133,20 +133,7 @@ export function landRelease(
     invariant(head, 'The finalized release has no HEAD.', {
       code: 'LANDING_NO_HEAD',
     })
-    const activeConfig = spawnSync(
-      path.join(root, 'bin', 'check-landing'),
-      ['active-config', workspace],
-      { encoding: 'utf8' },
-    )
-    invariant(
-      activeConfig.status === 0,
-      (
-        activeConfig.stderr ||
-        activeConfig.stdout ||
-        'config_overrides.json active_config does not match config.json.'
-      ).trim(),
-      { code: 'OVERRIDE_ACTIVE_CONFIG_MISMATCH' },
-    )
+    assertOverrideActiveConfig(workspace)
     fastForwardPanDev(repository, head, tip)
     record('fast_forward', { tip_before: tip, tip_after: head, version })
     return finish({
@@ -165,4 +152,33 @@ export function landRelease(
   } finally {
     mutex.release()
   }
+}
+
+/**
+ * Refuse a landing whose `config_overrides.json` selects a different
+ * `active_config` than `config.json`. A missing override, or one that omits
+ * the key, passes. This mirrors `bin/check-landing active-config` in process,
+ * so a target that replaces that script cannot skip or break the check.
+ */
+function assertOverrideActiveConfig(workspace: string): void {
+  const overridePath = path.join(workspace, 'config_overrides.json')
+
+  if (!existsSync(overridePath)) return
+
+  const override = JSON.parse(readFileSync(overridePath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  if (!Object.hasOwn(override, 'active_config')) return
+
+  const config = JSON.parse(
+    readFileSync(path.join(workspace, 'config.json'), 'utf8'),
+  ) as Record<string, unknown>
+
+  invariant(
+    override.active_config === config.active_config,
+    `config_overrides.json active_config is '${String(override.active_config)}' but config.json active_config is '${String(config.active_config)}'. The override must use the same active_config before merging to pan-dev or main.`,
+    { code: 'OVERRIDE_ACTIVE_CONFIG_MISMATCH' },
+  )
 }

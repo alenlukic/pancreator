@@ -84,6 +84,34 @@ test('a standalone release lands without workflow evidence, test execution, or a
   )
 })
 
+test('a release refuses to land when the override active_config differs from config.json', () => {
+  const root = landingFixture()
+  const name = 'override-active-config-mismatch'
+  const workspace = makeCandidate(
+    root,
+    name,
+    'Add the guarded capability.\n\n### Added\n\n- Ship the guarded capability.',
+  )
+  const overridePath = path.join(workspace, 'config_overrides.json')
+  const override = JSON.parse(readFileSync(overridePath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  override.active_config = 'not-the-config-json-value'
+  writeFileSync(overridePath, `${JSON.stringify(override, null, 2)}\n`)
+  git(workspace, ['add', '-f', 'config_overrides.json'])
+  git(workspace, ['commit', '-qm', 'test: diverge override active_config'])
+  const tip = git(root, ['rev-parse', 'pan-dev'])
+
+  assert.throws(
+    () => landRelease(root, { worktree: name, bump: 'minor' }),
+    (error: unknown) =>
+      (error as { code?: string }).code === 'OVERRIDE_ACTIVE_CONFIG_MISMATCH',
+  )
+  assert.equal(git(root, ['rev-parse', 'pan-dev']), tip)
+})
+
 test('release reconciles a newer integration tip under the allocation and landing mutex without requesting verification', () => {
   const root = landingFixture()
   const name = 'coordination-new-tip'
