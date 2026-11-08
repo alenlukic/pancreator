@@ -103,6 +103,7 @@ test('a release refuses to land when the override active_config differs from con
   git(workspace, ['add', '-f', 'config_overrides.json'])
   git(workspace, ['commit', '-qm', 'test: diverge override active_config'])
   const tip = git(root, ['rev-parse', 'pan-dev'])
+  const before = git(workspace, ['rev-parse', 'HEAD'])
 
   assert.throws(
     () => landRelease(root, { worktree: name, bump: 'minor' }),
@@ -110,6 +111,11 @@ test('a release refuses to land when the override active_config differs from con
       (error as { code?: string }).code === 'OVERRIDE_ACTIVE_CONFIG_MISMATCH',
   )
   assert.equal(git(root, ['rev-parse', 'pan-dev']), tip)
+  assert.equal(git(workspace, ['rev-parse', 'HEAD']), before)
+  assert.equal(
+    readLandingLog(root).some((event) => event.step === 'allocate'),
+    false,
+  )
 })
 
 test('release reconciles a newer integration tip under the allocation and landing mutex without requesting verification', () => {

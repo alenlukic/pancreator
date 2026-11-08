@@ -378,9 +378,10 @@ function promptOpens(prompt: string, command: string): boolean {
 }
 
 /**
- * Build the fired context from a tool-hook payload. `away` is a state event:
- * it fires on every hook call while a live run snapshots away mode as
- * enabled, so the first call after such a run starts delivers its clauses.
+ * Build the fired context from a tool-hook payload. `away` and `pause` are
+ * also state events: `away` fires on every hook call while a live run
+ * snapshots away mode as enabled, and `pause` while a run is paused, because
+ * operators pause from the CLI and the resuming session sees only `resume`.
  */
 export function firedContext(
   root: string,
@@ -400,12 +401,18 @@ export function firedContext(
 
   if (failed) events.push('tool_failure')
   if (promptOpens(input.prompt, 'resume')) events.push('resume')
-  if (promptOpens(input.prompt, 'pause')) events.push('pause')
+  const watched = listRunStatesWhere(
+    root,
+    (run) => run.away_mode?.enabled === true || run.status === 'paused',
+  ).filter(runIsLive)
+
   if (
-    listRunStatesWhere(root, (run) => run.away_mode?.enabled === true).some(
-      runIsLive,
-    )
+    promptOpens(input.prompt, 'pause') ||
+    watched.some((run) => run.status === 'paused')
   ) {
+    events.push('pause')
+  }
+  if (watched.some((run) => run.away_mode?.enabled === true)) {
     events.push('away')
   }
 

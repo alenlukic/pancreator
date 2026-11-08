@@ -123,6 +123,7 @@ test('normalizePolicyInstruction accepts every defined load trigger', () => {
     'event:gate_failure',
     'event:validator_failure',
     'event:stall',
+    'event:away',
     'event:pause',
     'event:resume',
     'event:retry',

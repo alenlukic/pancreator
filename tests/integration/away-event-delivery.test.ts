@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { pauseRun } from '../../src/lib/engine.js'
 import {
   deliverDeferredClauses,
   firedContext,
@@ -37,4 +38,28 @@ test('a run without away mode fires no away event', () => {
 
   assert.notEqual(state.away_mode?.enabled, true)
   assert.ok(!firedContext(root, shellCall).events.includes('away'))
+})
+
+test('a /pan-resume prompt against a paused run delivers the PAUSE-001 body', () => {
+  const { root, runId } = checkpoint('delivery@created')
+  const resumePrompt = {
+    hookEvent: 'beforeSubmitPrompt',
+    toolName: null,
+    toolInput: {},
+    prompt: `/pan-resume ${runId}`,
+  }
+
+  assert.ok(!firedContext(root, resumePrompt).events.includes('pause'))
+
+  pauseRun(root, runId, 'operator edits the workspace')
+
+  const fired = firedContext(root, resumePrompt)
+
+  assert.ok(fired.events.includes('pause'))
+
+  const delivered = deliverDeferredClauses(root, 'resume-conv', fired)
+
+  assert.ok(delivered)
+  assert.match(delivered, /PAUSE-001/u)
+  assert.match(delivered, /MUST NOT auto-ratify workspace divergence/u)
 })

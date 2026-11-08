@@ -103,6 +103,7 @@ export function landRelease(
       })
     }
 
+    assertOverrideActiveConfig(workspace)
     const bump = resolveBump(root, workspace, options.bump)
     const allocation = allocateLandingVersion(
       root,
@@ -133,7 +134,6 @@ export function landRelease(
     invariant(head, 'The finalized release has no HEAD.', {
       code: 'LANDING_NO_HEAD',
     })
-    assertOverrideActiveConfig(workspace)
     fastForwardPanDev(repository, head, tip)
     record('fast_forward', { tip_before: tip, tip_after: head, version })
     return finish({
