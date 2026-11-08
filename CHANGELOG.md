@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Deliver policy PAUSE-001 when a live run stays paused or the pause prompt opens ([PAUSE-001](governance/policies/PAUSE-001.json)).
+- Deliver policy AWAY-001 when away mode is on ([AWAY-001](governance/policies/AWAY-001.json)).
+
+### Fixed
+
+- Compare override `active_config` with `config.json` before landing allocates a version ([land](src/lib/release-landing/land.ts)).
+
 ## [10.4.2] - 2026-11-02
 
 ### Added
