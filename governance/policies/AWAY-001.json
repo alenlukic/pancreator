@@ -2,12 +2,21 @@
   "id": "AWAY-001",
   "title": "Bounded away mode",
   "severity": "hard",
+  "load": "event:away",
   "summary": "Away mode MUST continue enabled runs within operator guardrails and keep an immutable decision ledger.",
   "instructions": [
     "The supervisor is the authority for every away-mode decision, and the hypervisor checks agent liveness only. Every agent and harness path MUST preserve that division.",
-    "Away mode MUST act only when the run snapshot enables it.",
+    {
+      "text": "Away mode MUST act only when the run snapshot enables it.",
+      "audience": ["agent"],
+      "load": "invocation"
+    },
     "The top-level supervisor MUST consume safe pending actions until the run becomes terminal or reaches a blocker it cannot clear.",
-    "Disabled runs MUST keep every operator stop.",
+    {
+      "text": "Disabled runs MUST keep every operator stop.",
+      "audience": ["agent"],
+      "load": "invocation"
+    },
     "The supervisor MUST decide each away-mode action itself and MUST record it with `pan away decide`, naming the action and the reason. Any other agent MUST NOT rank, select, or apply an away-mode option.",
     {
       "text": "The harness MUST refuse a decision when away mode is disabled, an unanswered operator question stands, the run has no permitted blocker, the action is outside the snapshotted `allowed_actions`, or a required argument is missing. A refusal MUST leave the run state and the ledger unchanged. Coverage: `tests/unit/away-mode.test.ts::pan away decide refuses every action on an operator-only pause`.",

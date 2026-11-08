@@ -67,13 +67,25 @@ test('PAUSE-001 defers its body to pause and keeps the agent ownership clause ea
   assert.equal(policyInstructionLoad(pause.instructions[0]), 'event:pause')
 })
 
-test('AWAY-001 and ORCH-001 stay eager because /pan-start fires no resume event', () => {
-  const catalog = loadPolicyCatalog(REPO_ROOT)
+test('AWAY-001 defers to the away state and keeps its disabled-run guards eager', () => {
+  const away = loadPolicyCatalog(REPO_ROOT).get('AWAY-001')
 
-  for (const id of ['AWAY-001', 'ORCH-001']) {
-    const policy = catalog.get(id)
+  assert.ok(away)
 
-    assert.ok(policy)
-    assert.deepEqual(deferredClauseGroups(policy, 'agent'), [], id)
-  }
+  const eager = away.instructions
+    .filter((entry) => policyInstructionLoad(entry) === 'invocation')
+    .map((entry) => (typeof entry === 'string' ? entry : entry.text))
+
+  assert.deepEqual(measurePolicyContext(away).deferredTriggers, ['event:away'])
+  assert.deepEqual(eager, [
+    'Away mode MUST act only when the run snapshot enables it.',
+    'Disabled runs MUST keep every operator stop.',
+  ])
+})
+
+test('ORCH-001 stays eager because every supervisor session needs it', () => {
+  const orch = loadPolicyCatalog(REPO_ROOT).get('ORCH-001')
+
+  assert.ok(orch)
+  assert.deepEqual(deferredClauseGroups(orch, 'agent'), [])
 })

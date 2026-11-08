@@ -24,6 +24,7 @@ export const POLICY_LOAD_EVENTS = [
   'gate_failure',
   'validator_failure',
   'stall',
+  'away',
   'pause',
   'resume',
   'retry',

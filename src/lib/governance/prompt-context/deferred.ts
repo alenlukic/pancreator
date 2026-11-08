@@ -23,6 +23,7 @@ import {
 } from '../../policy-deferred.js'
 import { loadPolicyCatalog } from '../../policies.js'
 import { isInvocationContext } from '../../policy-delivery.js'
+import { listRunStatesWhere, runIsLive } from '../../state.js'
 import type {
   Invocation,
   Policy,
@@ -376,7 +377,11 @@ function promptOpens(prompt: string, command: string): boolean {
   ).test(prompt)
 }
 
-/** Build the fired context from a tool-hook payload. */
+/**
+ * Build the fired context from a tool-hook payload. `away` is a state event:
+ * it fires on every hook call while a live run snapshots away mode as
+ * enabled, so the first call after such a run starts delivers its clauses.
+ */
 export function firedContext(
   root: string,
   input: {
@@ -396,6 +401,13 @@ export function firedContext(
   if (failed) events.push('tool_failure')
   if (promptOpens(input.prompt, 'resume')) events.push('resume')
   if (promptOpens(input.prompt, 'pause')) events.push('pause')
+  if (
+    listRunStatesWhere(root, (run) => run.away_mode?.enabled === true).some(
+      runIsLive,
+    )
+  ) {
+    events.push('away')
+  }
 
   return {
     classes,
