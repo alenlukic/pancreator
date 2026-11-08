@@ -6,6 +6,7 @@ import { createTestTempDirectory } from '../temp.js'
 
 import {
   deliverDeferredClauses,
+  firedContext,
   globMatcher,
   preToolDecision,
   toolClasses,
@@ -227,6 +228,23 @@ test('the pre-tool hook holds an edit by path and allows classes it does not hol
       { permission: 'allow' },
     )
   })
+})
+
+test('a resume or pause prompt fires that event from the first token', () => {
+  const events = (prompt: string) =>
+    firedContext('/tmp', {
+      hookEvent: 'beforeSubmitPrompt',
+      toolName: null,
+      toolInput: {},
+      prompt,
+    }).events
+
+  assert.deepEqual(events('/pan-resume run-1'), ['resume'])
+  assert.deepEqual(events('./bin/pan resume run-1'), ['resume'])
+  assert.deepEqual(events('/pan-pause run-1'), ['pause'])
+  assert.deepEqual(events('pan pause run-1'), ['pause'])
+  assert.deepEqual(events('please pause the run'), [])
+  assert.deepEqual(events('/pan-paused'), [])
 })
 
 test('two scopes keep separate receipts', () => {

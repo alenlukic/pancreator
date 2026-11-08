@@ -365,6 +365,17 @@ export function deliverDeferredClauses(
   return renderDeferredDelivery(pending)
 }
 
+/**
+ * True when the operator prompt opens with the slash command or the `pan`
+ * command. A mention later in the prompt does not fire the event.
+ */
+function promptOpens(prompt: string, command: string): boolean {
+  return new RegExp(
+    `^\\s*(?:\\/pan-${command}\\b|(?:\\.\\/bin\\/)?pan\\s+${command}\\b)`,
+    'u',
+  ).test(prompt)
+}
+
 /** Build the fired context from a tool-hook payload. */
 export function firedContext(
   root: string,
@@ -383,11 +394,8 @@ export function firedContext(
     input.hookEvent === 'PostToolUseFailure'
 
   if (failed) events.push('tool_failure')
-  if (
-    /^\s*(?:\/pan-resume\b|(?:\.\/bin\/)?pan\s+resume\b)/u.test(input.prompt)
-  ) {
-    events.push('resume')
-  }
+  if (promptOpens(input.prompt, 'resume')) events.push('resume')
+  if (promptOpens(input.prompt, 'pause')) events.push('pause')
 
   return {
     classes,
