@@ -1,5 +1,13 @@
 # Changelog
 
+## [10.6.0] - 2026-11-10
+
+### Added
+
+- Add an optional local relay that reduces repeated VS Code reminders and preserves a full reminder in each request ([relay](src/lib/governance/prompt-context/relay.ts)).
+- Add a VS Code extension that starts and stops the relay for trusted workspaces ([setup](docs/invocation-context.md)).
+- Add guarded request assembly and recovery for missing reminder content ([request](src/lib/governance/prompt-context/request.ts)).
+
 ## [10.5.1] - 2026-11-10
 
 ### Fixed
