@@ -191,6 +191,14 @@ export const HELP_BODY = `Usage:
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate (<run-id> | --run <run-id>) --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
+  pan governance reminder --host vscode --provider openai --session <id> --role <role> [--card <path> | --invocation <path>] [--expect <identity>]
+      Read the canonical reminder and its scoped identity. --expect rejects stale identities; invocation workers require --role worker.
+  pan governance reminder-relay [--port <0-65535>] [--full] [--owner-pid <pid>]
+      Serve the loopback OpenAI relay in the foreground. Guarded mode retains a complete current reminder in each request scope and message role; --full preserves full copies for comparison. Port 0 selects an available port. An owner process makes the relay exit when all owners leave.
+  pan governance reminder-relay start [--port <0-65535>] [--full] [--owner-pid <pid>]
+      Start a background relay, or reuse the running workspace relay. Repeated starts are idempotent.
+  pan governance reminder-relay stop [--owner-pid <pid>]
+      Stop the workspace relay, or do nothing when it is down. With an owner, release only that owner's share; other VS Code windows keep their relay.
   pan governance prompt-context
   pan governance clause --policy <policy-id> --trigger <tool:class|event:id|path:glob> [--invocation <invocation-id>] [--audience <agent|supervisor>] [--capabilities <shell,delegation>] [--json]
       Print the deferred clauses of one policy for one trigger, in the text a card renders, and record a receipt under runtime/policy-clauses/<invocation-id or session>.jsonl. The Deferred policy index on each card names the trigger, the digest, and this command. The receipt proves the clauses reached the agent; pan submit reads it.

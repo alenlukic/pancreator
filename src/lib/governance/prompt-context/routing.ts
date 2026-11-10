@@ -30,6 +30,7 @@ import {
   type PreToolDecision,
 } from './deferred.js'
 import { principlesReminder, renderTurnReminder } from './reminders.js'
+import type { CanonicalReminderOptions } from './canonical.js'
 import {
   initialPolicyReminder,
   isInvocationContext,
@@ -417,8 +418,9 @@ export function resolvePromptContext(
   root: string,
   payloadText: string,
   now = new Date(),
+  onReminderScope?: (scope: CanonicalReminderOptions) => void,
 ): PromptContextResponse {
-  const base = resolveBaseContext(root, payloadText, now)
+  const base = resolveBaseContext(root, payloadText, now, onReminderScope)
 
   try {
     const payload = parsePayload(JSON.parse(payloadText))
@@ -488,6 +490,7 @@ function resolveBaseContext(
   root: string,
   payloadText: string,
   now: Date,
+  onReminderScope?: (scope: CanonicalReminderOptions) => void,
 ): PromptContextResponse {
   try {
     const registry = loadTurnReminderRegistry(root)
@@ -527,6 +530,13 @@ function resolveBaseContext(
               snapshot.context_contract_version === 1
             ) {
               const reminder = initialPolicyReminder(snapshot, active.json_path)
+              onReminderScope?.({
+                host: 'vscode',
+                provider: 'openai',
+                session: payload.conversation_id,
+                role: 'worker',
+                invocation: active.json_path,
+              })
               return {
                 continue: true,
                 additional_context: `${reminder.reminder.content}\n\n${principles}`,
@@ -567,6 +577,15 @@ function resolveBaseContext(
         liveRuns: runs,
       },
     )
+
+    if (payload.conversation_id) {
+      onReminderScope?.({
+        host: 'vscode',
+        provider: 'openai',
+        session: payload.conversation_id,
+        role: resolution.role === 'none' ? 'unbound' : resolution.role,
+      })
+    }
 
     return {
       continue: true,

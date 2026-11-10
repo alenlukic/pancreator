@@ -277,10 +277,20 @@ test('validation names a selector whose canonical instruction changed', () => {
   const policy = readJson(policyPath) as {
     instructions: Array<string | { text: string; audience?: string[] }>
   }
-  const selected = policy.instructions[1]
+  const selector = loadTurnReminderRegistry(
+    root,
+  ).profiles.common?.selectors.find((entry) => entry.id === 'comms-outcome')
+  assert.ok(selector?.type === 'policy')
+  const selectedIndex = policy.instructions.findIndex(
+    (entry) =>
+      sha256(typeof entry === 'string' ? entry : entry.text) ===
+      selector.instruction_sha256,
+  )
+  assert.ok(selectedIndex >= 0)
+  const selected = policy.instructions[selectedIndex]
 
   assert.equal(typeof selected, 'string')
-  policy.instructions[1] = `${selected} Changed in the fixture.`
+  policy.instructions[selectedIndex] = `${selected} Changed in the fixture.`
   writeJson(policyPath, policy)
 
   const errors = validateTurnReminderProfiles(root)

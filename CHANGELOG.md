@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Add an optional local relay that reduces repeated VS Code reminders and preserves a full reminder in each request ([relay](src/lib/governance/prompt-context/relay.ts)).
+- Add a VS Code extension that starts and stops the relay for trusted workspaces ([setup](docs/invocation-context.md)).
+- Add guarded request assembly and recovery for missing reminder content ([request](src/lib/governance/prompt-context/request.ts)).
+
 ## [10.5.0] - 2026-11-08
 
 ### Changed
@@ -25,15 +33,15 @@
 
 ## [10.4.0] - 2026-11-01
 
-### Added
-
-- Add just-in-time policy loading: an eager card core, a deferred index, a clause pull with a receipt, and a submit check when a triggered clause has no receipt ([policy-deferred](src/lib/policy-deferred.ts)).
-- Measure eager and deferred policy bytes separately ([policy-deferred](src/lib/policy-deferred.ts)).
-
 ### Changed
 
 - Deliver BROWSER-001 from the deferred index, and fill in the installation pull command ([BROWSER-001](governance/policies/BROWSER-001.json)).
 - Hold the first browser, delegation, edit, git-remote, or question call until its clause receipt exists ([deferred](src/lib/governance/prompt-context/deferred.ts)).
+
+### Added
+
+- Add just-in-time policy loading: an eager card core, a deferred index, a clause pull with a receipt, and a submit check when a triggered clause has no receipt ([policy-deferred](src/lib/policy-deferred.ts)).
+- Measure eager and deferred policy bytes separately ([policy-deferred](src/lib/policy-deferred.ts)).
 
 ## [10.3.0] - 2026-11-01
 

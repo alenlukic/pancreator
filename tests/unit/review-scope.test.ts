@@ -333,7 +333,7 @@ test('the governance machinery owns the CLI entry points and shared help', () =>
   assert.ok(dispatch.includes('governanceCommand('))
   assert.ok(!dispatch.includes("case 'best-of-n':"))
   assert.ok(handler)
-  assert.ok(handler.includes('export function governanceCommand('))
+  assert.match(handler, /export (?:async )?function governanceCommand\(/u)
   assert.ok(handler.includes("sub === 'review-scope'"))
   assert.ok(!handler.includes('function modelsCommand('))
   assert.ok(parser)

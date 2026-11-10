@@ -1,0 +1,54 @@
+{
+  "name": "pancreator-reminder-relay",
+  "displayName": "Pancreator Reminder Relay",
+  "description": "Start the workspace reminder relay with VS Code and stop it when its last window closes.",
+  "publisher": "pancreator",
+  "version": "0.0.0",
+  "type": "module",
+  "engines": { "vscode": "^1.105.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.cjs",
+  "extensionKind": ["workspace"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": false },
+    "virtualWorkspaces": { "supported": false }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "pancreator.reminderRelay.start",
+        "title": "Pancreator: Start Reminder Relay"
+      },
+      {
+        "command": "pancreator.reminderRelay.stop",
+        "title": "Pancreator: Stop Reminder Relay"
+      }
+    ],
+    "configuration": {
+      "title": "Pancreator Reminder Relay",
+      "properties": {
+        "pancreator.reminderRelay.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Automatically start the reminder relay in trusted Pancreator workspaces."
+        },
+        "pancreator.reminderRelay.port": {
+          "type": "integer",
+          "default": 4040,
+          "minimum": 0,
+          "maximum": 65535,
+          "scope": "resource",
+          "description": "Stable relay port for this workspace. Choose distinct ports for different workspaces; 0 selects an available port."
+        },
+        "pancreator.reminderRelay.harnessPath": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Absolute or workspace-relative harness path for a detached install. Empty detects a source checkout or .pancreator."
+        }
+      }
+    }
+  }
+}

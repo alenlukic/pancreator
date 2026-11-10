@@ -47,10 +47,13 @@ import {
   attestSupervisorCard,
   buildSupervisorCard,
 } from '../lib/governance/supervisor-card.js'
+import { resolvePreToolDecision } from '../lib/governance/prompt-context/routing.js'
+import { canonicalReminder } from '../lib/governance/prompt-context/canonical.js'
+import { reminderRelayLifecycle } from '../lib/governance/prompt-context/relay-lifecycle.js'
 import {
-  resolvePreToolDecision,
-  resolvePromptContext,
-} from '../lib/governance/prompt-context/routing.js'
+  resolveRelayPromptContext,
+  startReminderRelay,
+} from '../lib/governance/prompt-context/relay.js'
 import { conflictsByTier, resolveReviewScope } from '../lib/review-scope.js'
 import {
   buildBriefSystem,
@@ -380,11 +383,70 @@ export function authorCommand({ root, args }: CliContext): void {
 }
 
 /** `pan governance`. */
-export function governanceCommand({ root, pan, args }: CliContext): void {
+export async function governanceCommand({
+  root,
+  pan,
+  args,
+}: CliContext): Promise<void> {
   const sub = args[0]
 
+  if (sub === 'reminder-relay') {
+    const ownerPid = option(args, '--owner-pid')
+    const relayOptions = {
+      port: Number(option(args, '--port') ?? '0'),
+      full: hasFlag(args, '--full'),
+      ...(ownerPid === null ? {} : { ownerPid: Number(ownerPid) }),
+    }
+
+    if (args[1] === 'start' || args[1] === 'stop') {
+      print(await reminderRelayLifecycle(root, args[1], relayOptions), true)
+      return
+    }
+
+    const relay = await startReminderRelay(root, {
+      ...relayOptions,
+      mode: relayOptions.full ? 'full' : 'guarded',
+    })
+    const stop = () => {
+      void relay.close()
+    }
+    process.once('SIGINT', stop)
+    process.once('SIGTERM', stop)
+    print(
+      {
+        url: `${relay.url}/v1`,
+        mode: hasFlag(args, '--full') ? 'full' : 'guarded',
+      },
+      true,
+    )
+
+    try {
+      await relay.closed
+    } finally {
+      process.removeListener('SIGINT', stop)
+      process.removeListener('SIGTERM', stop)
+    }
+    return
+  }
+
+  if (sub === 'reminder') {
+    print(
+      canonicalReminder(root, {
+        host: requiredArgument(option(args, '--host'), '--host'),
+        provider: requiredArgument(option(args, '--provider'), '--provider'),
+        session: requiredArgument(option(args, '--session'), '--session'),
+        role: requiredArgument(option(args, '--role'), '--role'),
+        card: option(args, '--card') ?? undefined,
+        invocation: option(args, '--invocation') ?? undefined,
+        expectedIdentity: option(args, '--expect') ?? undefined,
+      }),
+      true,
+    )
+    return
+  }
+
   if (sub === 'prompt-context') {
-    print(resolvePromptContext(root, readFileSync(0, 'utf8')))
+    print(await resolveRelayPromptContext(root, readFileSync(0, 'utf8')))
     return
   }
 
