@@ -204,9 +204,52 @@ export function gitStagePaths(root: string, paths: string[]): void {
   runGit(root, ['add', '--', ...paths])
 }
 
-/** Create one local commit and return its immutable hash. */
+const AUTHORSHIP_ATTRIBUTION =
+  /^\s*(?:co-authored-by|authored-by|author|signed-off-by|written-by|generated-by|assisted-by):/imu
+
+/** Build Git's author and committer environment from the operator's configuration. */
+export function operatorCommitEnvironment(
+  root: string,
+  message = '',
+): NodeJS.ProcessEnv {
+  if (AUTHORSHIP_ATTRIBUTION.test(message)) {
+    throw new PanError(
+      'Commit messages must not contain authorship attribution.',
+      {
+        code: 'GIT_COMMIT_ATTRIBUTION_FORBIDDEN',
+      },
+    )
+  }
+
+  const name = runGit(root, ['config', '--get', 'user.name'], {
+    allowFailure: true,
+  }).stdout.trim()
+  const email = runGit(root, ['config', '--get', 'user.email'], {
+    allowFailure: true,
+  }).stdout.trim()
+  if (!name || !email) {
+    throw new PanError(
+      'Configure the operator Git user.name and user.email before committing.',
+      {
+        code: 'GIT_OPERATOR_IDENTITY_MISSING',
+      },
+    )
+  }
+
+  return {
+    ...process.env,
+    GIT_AUTHOR_NAME: name,
+    GIT_AUTHOR_EMAIL: email,
+    GIT_COMMITTER_NAME: name,
+    GIT_COMMITTER_EMAIL: email,
+  }
+}
+
+/** Create one local commit using the configured operator identity. */
 export function gitCommit(root: string, message: string): string {
-  runGit(root, ['commit', '-m', message])
+  runGit(root, ['commit', '-m', message], {
+    env: operatorCommitEnvironment(root, message),
+  })
 
   const head = gitHead(root)
 
@@ -216,7 +259,48 @@ export function gitCommit(root: string, message: string): string {
     })
   }
 
+  if (!gitCommitUsesOperator(root, head)) {
+    throw new PanError(
+      `Commit ${head} has unexpected identity or attribution; inspect it before continuing.`,
+      {
+        code: 'GIT_COMMIT_IDENTITY_INVALID',
+      },
+    )
+  }
+
   return head
+}
+
+/** Check a commit's author, committer, and attribution against the operator. */
+export function gitCommitUsesOperator(root: string, commit: string): boolean {
+  const env = operatorCommitEnvironment(root, '')
+  const value = runGit(root, [
+    'show',
+    '-s',
+    '--format=%an%x00%ae%x00%cn%x00%ce%x00%B',
+    commit,
+  ]).stdout
+  const [author, authorEmail, committer, committerEmail, message = ''] =
+    value.split('\0')
+  return (
+    author === env.GIT_AUTHOR_NAME &&
+    authorEmail === env.GIT_AUTHOR_EMAIL &&
+    committer === env.GIT_COMMITTER_NAME &&
+    committerEmail === env.GIT_COMMITTER_EMAIL &&
+    !AUTHORSHIP_ATTRIBUTION.test(message)
+  )
+}
+
+/** Create a commit from an existing tree without moving a branch. */
+export function gitCommitTree(
+  root: string,
+  tree: string,
+  parent: string,
+  message: string,
+): string {
+  return runGit(root, ['commit-tree', tree, '-p', parent, '-m', message], {
+    env: operatorCommitEnvironment(root, message),
+  }).stdout.trim()
 }
 
 /** Configured remote names, sorted. */

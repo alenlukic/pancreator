@@ -531,6 +531,16 @@ test('daily quality rebases onto a moved pan-dev tip and lands on top of it', ()
   const restore = installStubAgent(root)
 
   moveTipDuringFastProfile(root, 'MOVED.md', 'moved\n')
+  const names = [
+    'GIT_AUTHOR_NAME',
+    'GIT_AUTHOR_EMAIL',
+    'GIT_COMMITTER_NAME',
+    'GIT_COMMITTER_EMAIL',
+  ] as const
+  const previous = names.map((name) => process.env[name])
+  names.forEach((name) => {
+    process.env[name] = 'Unexpected'
+  })
 
   try {
     const result = runDailyQuality(root)
@@ -540,6 +550,10 @@ test('daily quality rebases onto a moved pan-dev tip and lands on top of it', ()
     assert.equal(result.status, 'repaired', String(result.reason))
     assert.notEqual(movedTip, panDevTip)
     assert.equal(git(root, ['rev-parse', `${movedTip}^`]), panDevTip)
+    assert.equal(
+      git(root, ['show', '-s', '--format=%an <%ae>|%cn <%ce>', landed]),
+      'Fixture <fixture@example.com>|Fixture <fixture@example.com>',
+    )
     assert.equal(
       git(root, [
         'log',
@@ -554,6 +568,11 @@ test('daily quality rebases onto a moved pan-dev tip and lands on top of it', ()
       ['repair:static', 'repair:fast', 'rebase:static', 'rebase:fast'],
     )
   } finally {
+    names.forEach((name, index) => {
+      const value = previous[index]
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    })
     restore()
   }
 })

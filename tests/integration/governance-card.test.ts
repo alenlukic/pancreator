@@ -33,6 +33,13 @@ import { createWorktree } from '../../src/lib/worktrees.js'
 import { createFixture, sharedFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
+test('release card instructs agents to land a squashed release and index', () => {
+  const boundaries = STANDALONE_MODES.release?.boundaries.join('\n') ?? ''
+
+  assert.match(boundaries, /use `pan release land` to squash the candidate/u)
+  assert.doesNotMatch(boundaries, /MUST use `pan release finalize`/u)
+})
+
 test('cleanup card resolves librarian runtime governance', () => {
   const root = createFixture()
   const card = buildGovernanceCard(root, {

@@ -74,7 +74,8 @@ reconciliation, and local landing. Standalone PR writing remains a separate mode
 Use the declared release delta to choose the bump and author the notes.
 Checkpoint eligible changes. In workflow mode, carry forward the incoming packet
 reference and supplied disclosures. Standalone release needs no workflow packet.
-Run `pan release land` for integration, reconciliation, allocation, metadata,
-release and index commits, and local landing under the shared mutex. Do not
-allocate early or finalize a separate candidate. Report the returned local results
-and return control before any remote action.
+Require exactly two new commits on `pan-dev`: one squashed release payload with
+metadata, then one index commit that names its hash. All commits use the
+operator's Git identity, and commit messages contain only change content. Run
+`pan release land` under the shared mutex. Do not allocate early or finalize separately.
+Report the returned local results and return control before any remote action.

@@ -3,7 +3,10 @@
 `index.json` maps a published harness version to the immutable Git commit that
 contains its exact installable payload.
 
-Publication uses two commits because a Git commit cannot contain its own hash:
+Each release adds exactly two commits to `pan-dev`. The release command squashes
+the candidate changes and metadata into the release commit.
+
+The release pair uses two commits because a commit cannot contain its own hash:
 
 1. create the release commit, including synchronized `VERSION`, npm package metadata, `CHANGELOG.md`, and installable files;
 2. add the resulting `version -> commit` entry to `index.json` in a later metadata commit.

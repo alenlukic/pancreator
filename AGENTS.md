@@ -36,8 +36,9 @@ These constraints hold as written and are never traded for speed or convenience.
 
 - You MUST NOT trade correctness, security, or an explicit operator constraint for convenience or short-term speed.
 - You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Approvals, stage changes, pauses, and irreversible decisions are also operator-owned.
+- All commits MUST use the operator's Git identity as author and committer. Commit messages MUST describe only the changes and MUST NOT contain authorship attribution.
 - Commit and merge on your own judgment, on a branch that lands on `pan-dev`. An installable harness change reaches `pan-dev` only inside a release, and only through `pan release land`. Never use `git merge`, `git update-ref`, or `pan worktree reconcile --into-branch pan-dev` instead. The operator promotes `pan-dev` to `main`.
-- You MUST NOT change release metadata outside a self-development ship stage or `/pan-release`, or edit `release/index.json` before the release commit exists.
+- You MUST NOT change release metadata outside a self-development ship stage or `/pan-release`, or edit `release/index.json` before the release commit exists. A release MUST land as two commits: one squashed release payload and one index commit.
 - You MUST NOT run concurrent mutating workflows against one workspace. Release preparation serializes the version sequence, `pan-dev`, and `release/index.json` through the allocation authority.
 - You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every lifecycle action.
 - You MUST NOT change compiled output, caches, virtual environments, dependency trees, or third-party code. You MAY inspect them when the task needs it or a debugging hypothesis points there, and SHOULD otherwise avoid them.

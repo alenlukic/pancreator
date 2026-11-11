@@ -23,6 +23,7 @@ import {
   headIsReleasePair,
   integrateCandidate,
   regenerateMetadata,
+  squashFinalizedRelease,
   resolveBump,
   tipVersion,
   type LandReleaseOptions,
@@ -126,9 +127,26 @@ export function landRelease(
       record('metadata_regenerated', { version })
     }
     const finalized = finalizeLocalRelease(root, name, tip, runId ?? undefined)
+    const squashed = squashFinalizedRelease(
+      workspace,
+      tip,
+      version,
+      finalized.release_commit,
+      finalized.index_commit,
+      (oldHead, releaseCommit, indexCommit) => {
+        appendLandingEvent(root, {
+          event: 'squash_prepared',
+          token: mutex.token,
+          worktree: name,
+          old_head: oldHead,
+          release_commit: releaseCommit,
+          index_commit: indexCommit,
+        })
+      },
+    )
     record('finalize', {
-      release_commit: finalized.release_commit,
-      index_commit: finalized.index_commit,
+      release_commit: squashed.releaseCommit,
+      index_commit: squashed.indexCommit,
     })
     const head = gitHead(workspace)
     invariant(head, 'The finalized release has no HEAD.', {
@@ -141,8 +159,8 @@ export function landRelease(
       tip_before: tip,
       tip_after: head,
       version,
-      release_commit: finalized.release_commit,
-      index_commit: finalized.index_commit,
+      release_commit: squashed.releaseCommit,
+      index_commit: squashed.indexCommit,
       verified_profiles: [],
       verification_basis: 'not_applicable',
     })

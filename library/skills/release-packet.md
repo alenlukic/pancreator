@@ -15,8 +15,7 @@ the irreversible action. It makes the decision easy and safe.
 - Residual risks: every unresolved non-blocking risk, stated plainly.
 - Rollback: a credible way to undo the change.
 - For Pancreator self-development, the completed version bump, fetched-main
-  hash, immutable release commit, separate release-index commit, and clean
-  worktree result.
+  hash, squashed release commit, index commit, and clean worktree result.
 
 ## Checks before proposing
 

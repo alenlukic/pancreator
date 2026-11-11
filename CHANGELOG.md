@@ -1,5 +1,12 @@
 # Changelog
 
+## [10.7.0] - 2026-11-11
+
+### Changed
+
+- Squash each release into one payload commit and one index commit ([landing](src/lib/release-landing/steps.ts)).
+- Use the operator's Git identity for commits and omit authorship text from commit messages ([commits](src/lib/git/branches.ts)).
+
 ## [10.6.0] - 2026-11-10
 
 ### Added

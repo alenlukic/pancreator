@@ -17,11 +17,13 @@ landing from the already verified incoming data.
    guidance, and observation follow-ups. Each observation retains its supplied
    criterion, signal, source, window, and check. Do not run the observation query
    or invent proof.
-4. Run `pan release land --worktree <name> --run <run-id>
---bump <major|minor|patch> --json` for integration, reconciliation, allocation,
-   metadata construction, release and index commits, and local landing on
-   `pan-dev`. Do not allocate or finalize a separate candidate beforehand.
-5. Populate the packet and versioning fields from the returned local results.
+4. Require exactly two new commits on `pan-dev`: one squashed release payload
+   with metadata, then one index commit naming its hash. Use the operator's Git
+   identity and messages that describe only the changes. Preserve indexed
+   updates.
+5. Run `pan release land --worktree <name> --run <run-id>
+--bump <major|minor|patch> --json`. Do not allocate or finalize separately.
+   Populate the packet and versioning fields from the returned local results.
    Attribute every changed metadata path in `workspace_changes`. Preserve a
    completed release and index pair on retry. Surface an operational refusal
    with its supplying command.

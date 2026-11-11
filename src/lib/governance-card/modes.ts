@@ -284,7 +284,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
     boundaries: [
       'You MUST stop without mutation unless the installation mode is `self_development`.',
       'You MUST stop when a mutating workflow is active against this workspace.',
-      'You MUST edit release metadata only after synchronization and MUST use `pan release finalize` to edit `release/index.json` and create final commits.',
+      'You MUST use `pan release land` to squash the candidate and land exactly a release commit and an index commit.',
       PROTECTED_PATH_RULE,
       'You MUST NOT push, open or merge a pull request, publish, deploy, rewrite history, or invent commit hashes.',
     ],

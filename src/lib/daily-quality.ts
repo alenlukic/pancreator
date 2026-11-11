@@ -14,12 +14,17 @@ import { checkpointConformArtifacts, scanConformArtifacts } from './conform.js'
 import { checkpointStyleArtifacts, scanStyleArtifacts } from './code-style.js'
 import { PanError, errorMessage, invariant } from './errors.js'
 import {
+  gitCommit,
   gitHead,
   gitIsAncestor,
   gitStagePaths,
   gitStatusPaths,
   INTEGRATION_BRANCH,
 } from './git.js'
+import {
+  gitCommitUsesOperator,
+  operatorCommitEnvironment,
+} from './git/branches.js'
 import { isRecord, readJson, resolveInside, writeJsonAtomic } from './io.js'
 import { acquireLandingMutex } from './landing-mutex.js'
 import { loadPipelineConfig, resolvePersonaModel } from './pipeline-config.js'
@@ -179,10 +184,11 @@ function writeResult(root: string, record: DailyQualityResult): void {
 function gitRun(
   cwd: string,
   args: string[],
-  options: { check?: boolean } = {},
+  options: { check?: boolean; env?: NodeJS.ProcessEnv } = {},
 ): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync('git', args, {
     cwd,
+    env: options.env,
     encoding: 'utf8',
     timeout: GIT_TIMEOUT_MS,
     maxBuffer: GIT_MAX_BUFFER,
@@ -676,16 +682,12 @@ export function runDailyQuality(root: string): DailyQualityResult {
     const commitMessage = `style: daily conform and style pass ${today}\n\n${DAILY_QUALITY_TRAILER_KEY}: ${occurrenceId}\n`
 
     gitStagePaths(worktreeAbs, changedPaths)
-    const commitResult = gitRun(worktreeAbs, ['commit', '-m', commitMessage])
-
-    if (commitResult.status !== 0) {
-      return fail(
-        `Commit failed: ${commitResult.stderr || commitResult.stdout}`,
-      )
-    }
-
     commitBase = panDevTip
-    record.commit = gitHead(worktreeAbs) ?? undefined
+    try {
+      record.commit = gitCommit(worktreeAbs, commitMessage)
+    } catch (error) {
+      return fail(`Commit failed: ${errorMessage(error)}`)
+    }
 
     // Step 7: land under the mutex.
     const mutexStartMs = Date.now()
@@ -705,12 +707,11 @@ export function runDailyQuality(root: string): DailyQualityResult {
     ).stdout
 
     if (currentTip !== panDevTip) {
-      const rebase = gitRun(worktreeAbs, [
-        'rebase',
-        '--onto',
-        currentTip,
-        panDevTip,
-      ])
+      const rebase = gitRun(
+        worktreeAbs,
+        ['rebase', '--onto', currentTip, panDevTip],
+        { env: operatorCommitEnvironment(worktreeAbs) },
+      )
 
       if (rebase.status !== 0) {
         return fail(
@@ -737,6 +738,9 @@ export function runDailyQuality(root: string): DailyQualityResult {
 
     if (!finalHead) {
       return fail('Could not read HEAD after landing preparation.')
+    }
+    if (!gitCommitUsesOperator(worktreeAbs, finalHead)) {
+      return fail('The prepared commit has unexpected identity or attribution.')
     }
 
     record.commit = finalHead

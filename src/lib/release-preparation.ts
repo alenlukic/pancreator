@@ -727,11 +727,7 @@ function completeReleasePairAtHead(
 
   if (
     releasePaths.length === 0 ||
-    !releasePaths.every(
-      (relativePath) =>
-        relativePath !== 'release/index.json' &&
-        isReleaseMetadataPath(relativePath),
-    )
+    releasePaths.includes('release/index.json')
   ) {
     return null
   }

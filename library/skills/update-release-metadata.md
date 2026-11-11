@@ -16,13 +16,15 @@ committed and working release delta, including existing Unreleased notes, to
 construct metadata. Stop without edits when there is no releasable change.
 Checkpoint eligible changes. Use the declared local phases for integration and
 reconciliation. Product verification belongs to the verifier and harness.
+All commits use the operator's Git identity as author and committer. Commit
+messages describe only the changes and contain no authorship attribution.
 
 ## Choose the bump
 
 Choose `major` for incompatible contracts or migrations, `minor` for compatible
 capabilities, and `patch` for compatible fixes, documentation, or maintenance.
 Record the decision without allocating a number. Regenerate an existing draft
-in place. Preserve a completed release pair on a retry.
+in place. Preserve a completed release and index pair on a retry.
 
 ## Author release notes
 
@@ -42,13 +44,15 @@ invent a run, a stage proof, or a packet to satisfy release coordination.
 
 ## Final local operation
 
+Require exactly two new commits on `pan-dev`. The first squashes all changes
+and release metadata into the release payload. The second changes only
+`release/index.json` and maps the version to the first commit. Preserve indexed
+installation and updates from existing releases.
+
 Run `pan release land --worktree <name> --bump <major|minor|patch> --json`.
-In a workflow, also pass its supplied `--run <run-id>`. Standalone release does
-not require that argument. Under the landing mutex and allocation authority, the
-command coordinates integration, reconciliation, allocation, metadata construction,
-the release and index commits, and local landing on `pan-dev`. Preserve candidate
-dependency and documentation changes. Create the release commit before the index
-commit.
+In a workflow, also pass its supplied `--run <run-id>`. The landing mutex and
+allocation authority serialize the operation. Preserve candidate dependency and
+documentation changes.
 
 Record the returned version, release commit, index commit, and tip. Populate
 `release.versioning` from these results when the workflow declares that field:

@@ -5,7 +5,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant, PanError } from '../errors.js'
@@ -14,16 +14,24 @@ import {
   gitConflictedPaths,
   gitStagePaths,
   gitCommit,
+  gitCommitTree,
+  gitCommitUsesOperator,
+  gitCommitParent,
   gitCommitSubject,
   INTEGRATION_BRANCH,
 } from '../git/branches.js'
-import { gitShowFile, gitHead } from '../git/core.js'
+import { gitShowFile, gitHead, runGit } from '../git/core.js'
 import {
   gitMergeAbort,
   gitWorktreeForBranch,
   gitWorktreeIsDirty,
 } from '../git/worktree-merge.js'
-import { appendJsonLine, resolveInside, isRecord } from '../io.js'
+import {
+  appendJsonLine,
+  resolveInside,
+  isRecord,
+  writeTextAtomic,
+} from '../io.js'
 import { readReleaseAllocations } from '../release-allocation.js'
 import {
   RELEASE_LANDING_METADATA_PATHS,
@@ -45,10 +53,7 @@ export const METADATA_PATHS = RELEASE_LANDING_METADATA_PATHS
 const RELEASE_HEADING_PATTERN = /^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}/mu
 
 export type LandingStatus =
-  | 'landed'
-  | 'conflict'
-  | 'verification_failed'
-  | 'landing_refused'
+  'landed' | 'conflict' | 'verification_failed' | 'landing_refused'
 
 export type LandingStepName =
   | 'tip_read'
@@ -605,6 +610,128 @@ export function regenerateMetadata(
   }
 
   writeFileSync(path.join(worktreePath, 'CHANGELOG.md'), newChangelog)
+}
+
+/** Recreate a finalized pair directly on the integration tip, retaining its payload. */
+export function squashFinalizedRelease(
+  workspace: string,
+  tip: string,
+  version: string,
+  releaseCommit: string,
+  indexCommit: string,
+  recordPrepared: (oldHead: string, release: string, index: string) => void,
+): { releaseCommit: string; indexCommit: string } {
+  invariant(
+    gitHead(workspace) === indexCommit &&
+      gitCommitParent(workspace, indexCommit) === releaseCommit &&
+      !gitWorktreeIsDirty(workspace),
+    'The finalized release must be clean and at the candidate HEAD before squashing.',
+    { code: 'LANDING_SQUASH_STATE_INVALID' },
+  )
+
+  const indexPath = path.join(workspace, 'release', 'index.json')
+  const originalIndex = readFileSync(indexPath, 'utf8')
+  const index: unknown = JSON.parse(originalIndex)
+  invariant(
+    isRecord(index) && Array.isArray(index.releases),
+    'The finalized release index is invalid.',
+    { code: 'LANDING_SQUASH_INDEX_INVALID' },
+  )
+  const entry = index.releases.find(
+    (item: unknown) => isRecord(item) && item.version === version,
+  )
+  invariant(
+    isRecord(entry) && entry.commit === releaseCommit,
+    'The finalized index must identify the release commit.',
+    { code: 'LANDING_SQUASH_INDEX_INVALID' },
+  )
+
+  if (
+    gitCommitParent(workspace, releaseCommit) === tip &&
+    gitCommitUsesOperator(workspace, releaseCommit) &&
+    gitCommitUsesOperator(workspace, indexCommit)
+  ) {
+    return { releaseCommit, indexCommit }
+  }
+
+  const tree = runGit(workspace, [
+    'rev-parse',
+    `${releaseCommit}^{tree}`,
+  ]).stdout.trim()
+  const squashedRelease = gitCommitTree(
+    workspace,
+    tree,
+    tip,
+    `release: prepare v${version}`,
+  )
+  entry.commit = squashedRelease
+  const rewrittenIndex = `${JSON.stringify(index, null, 2)}\n`
+  const expectedStaged =
+    rewrittenIndex === originalIndex ? '' : 'release/index.json'
+
+  try {
+    writeTextAtomic(indexPath, rewrittenIndex)
+    gitStagePaths(workspace, ['release/index.json'])
+    const staged = runGit(workspace, [
+      'diff',
+      '--cached',
+      '--name-only',
+    ]).stdout.trim()
+    invariant(
+      staged === expectedStaged,
+      'Only the release index may be staged for squashing.',
+      {
+        code: 'LANDING_SQUASH_STATE_INVALID',
+      },
+    )
+    const indexTree = runGit(workspace, ['write-tree']).stdout.trim()
+    const squashedIndex = gitCommitTree(
+      workspace,
+      indexTree,
+      squashedRelease,
+      `chore: index release v${version}`,
+    )
+    recordPrepared(indexCommit, squashedRelease, squashedIndex)
+    invariant(
+      gitHead(workspace) === indexCommit &&
+        runGit(workspace, ['diff', '--name-only']).stdout.trim() === '' &&
+        runGit(workspace, ['diff', '--cached', '--name-only']).stdout.trim() ===
+          expectedStaged,
+      'The candidate changed while the release was being squashed.',
+      { code: 'LANDING_SQUASH_STATE_INVALID' },
+    )
+    runGit(workspace, [
+      'update-ref',
+      '-m',
+      'prepare squashed release',
+      'HEAD',
+      squashedIndex,
+      indexCommit,
+    ])
+    invariant(
+      !gitWorktreeIsDirty(workspace),
+      'Squashing must leave the candidate clean.',
+      {
+        code: 'LANDING_SQUASH_STATE_INVALID',
+      },
+    )
+    return { releaseCommit: squashedRelease, indexCommit: squashedIndex }
+  } catch (error) {
+    const stagedIndex = runGit(workspace, ['show', ':release/index.json'], {
+      allowFailure: true,
+    }).stdout
+    if (
+      gitHead(workspace) === indexCommit &&
+      existsSync(indexPath) &&
+      readFileSync(indexPath, 'utf8') === rewrittenIndex &&
+      (stagedIndex === rewrittenIndex || stagedIndex === originalIndex)
+    ) {
+      writeTextAtomic(indexPath, originalIndex)
+      if (stagedIndex === rewrittenIndex)
+        gitStagePaths(workspace, ['release/index.json'])
+    }
+    throw error
+  }
 }
 
 /**
