@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "base_version": "1.139.1",
+  "verified_against": {
+    "vscode": "1.144.0",
+    "commit": "2c33b50b16c472efe58357d1d2a8a5414bc23fbf"
+  },
+  "summary": "Verified against the installed 1.144.0 app. Inherit common governance and tool-collapse patches; adapt the native picker, model selection, and configuration schema anchors.",
+  "notes": [
+    "Preserve native routing, upsell labels, selection callbacks, unavailable update rows, and the Other Models toggle while lifting Anthropic and OpenAI sections.",
+    "VSC-PICKER-HOST-1 asserts native BYOK synchronization, context reset, model selection tracking, and configuration refresh without changing them.",
+    "Append the model ID as the fourth schema argument so the native auto-tier and context-tier parameters retain their meaning."
+  ],
+  "omit": [
+    "VSC-PICKER-WORKBENCH-6",
+    "VSC-PICKER-WORKBENCH-7",
+    "VSC-PICKER-WORKBENCH-8",
+    "VSC-PICKER-SESSIONS-6",
+    "VSC-PICKER-SESSIONS-7",
+    "VSC-PICKER-SESSIONS-8"
+  ],
+  "patch_overrides": [
+    {
+      "id": "VSC-PICKER-WORKBENCH-1",
+      "find": "let a=(l,u,p=[])=>{if(!(!u.length&&!p.length))",
+      "replace": "let __mpOther=t.other,a=(l,u,p=[])=>{p=p.filter(h=>this._getUnavailableReason(h,i)!==\"upgrade\");if(!(!u.length&&!p.length))"
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-2",
+      "find": "a(void 0,t.suggested,t.unavailable),t.other.length){",
+      "replace": "a(void 0,t.suggested,t.unavailable),__mpOther=(()=>{let rest=t.other,__mpVendor=m=>{let d=m.metadata;if(d.byokModelIdentifier){let b=this._languageModelsService.lookupLanguageModel(d.byokModelIdentifier);return b?.vendor??d.modelGroup?.id}return d.isBYOK?d.vendor:void 0};for(let v of [\"anthropic\",\"openai\"]){let ms=rest.filter(m=>__mpVendor(m)===v);if(!ms.length)continue;rest=rest.filter(m=>__mpVendor(m)!==v);ms.sort((x,y)=>x.metadata.name.localeCompare(y.metadata.name));a(this._languageModelsService.getVendors().find(x=>x.vendor===v)?.displayName??v,ms)}return rest})(),__mpOther.length){"
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-3",
+      "find": "let l=_Ro(t),u=",
+      "replace": "let l=_Ro({...t,other:__mpOther}),u="
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-4",
+      "find": "let p=d(18693,null),h=t.other.length;",
+      "replace": "let p=d(18693,null),h=__mpOther.length;"
+    },
+    {
+      "id": "VSC-PICKER-WORKBENCH-5",
+      "find": "for(let p of t.other)r.push(this._createModelItem(p,i,u))",
+      "replace": "for(let p of __mpOther)r.push(this._createModelItem(p,i,u))"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-1",
+      "find": "let a=(l,u,p=[])=>{if(!(!u.length&&!p.length))",
+      "replace": "let __mpOther=t.other,a=(l,u,p=[])=>{p=p.filter(h=>this._getUnavailableReason(h,i)!==\"upgrade\");if(!(!u.length&&!p.length))"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-2",
+      "find": "a(void 0,t.suggested,t.unavailable),t.other.length){",
+      "replace": "a(void 0,t.suggested,t.unavailable),__mpOther=(()=>{let rest=t.other,__mpVendor=m=>{let d=m.metadata;if(d.byokModelIdentifier){let b=this._languageModelsService.lookupLanguageModel(d.byokModelIdentifier);return b?.vendor??d.modelGroup?.id}return d.isBYOK?d.vendor:void 0};for(let v of [\"anthropic\",\"openai\"]){let ms=rest.filter(m=>__mpVendor(m)===v);if(!ms.length)continue;rest=rest.filter(m=>__mpVendor(m)!==v);ms.sort((x,y)=>x.metadata.name.localeCompare(y.metadata.name));a(this._languageModelsService.getVendors().find(x=>x.vendor===v)?.displayName??v,ms)}return rest})(),__mpOther.length){"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-3",
+      "find": "let l=tzo(t),u=",
+      "replace": "let l=tzo({...t,other:__mpOther}),u="
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-4",
+      "find": "let p=d(18693,null),h=t.other.length;",
+      "replace": "let p=d(18693,null),h=__mpOther.length;"
+    },
+    {
+      "id": "VSC-PICKER-SESSIONS-5",
+      "find": "for(let p of t.other)r.push(this._createModelItem(p,i,u))",
+      "replace": "for(let p of __mpOther)r.push(this._createModelItem(p,i,u))"
+    },
+    {
+      "id": "VSC-PICKER-HOST-1",
+      "find": "async setModel(e,t,n,r,s){try{await this.syncByokModels()}catch(a){this._logService.warn(`[Copilot:${this.sessionId}] Failed to register BYOK models before changing model`,a)}this._logService.info(`[Copilot:${this.sessionId}] Changing model to: ${e}`);try{if(wo(e)&&n===\"default\"&&!(await this._awaitControlPlaneRpc(\"session.options.update\",this._wrapper.session.rpc.options.update({contextTier:n}))).success)throw new Error(\"The runtime did not reset the context tier.\");await this._awaitControlPlaneRpc(\"session.setModel\",this._wrapper.session.setModel(e,{reasoningEffort:t,contextTier:n,...r!==void 0?{autoTier:r}:{}})),this._requestedModel=s??{id:e},this._appliedModelSelection=this._requestedModel}finally{this.refreshModelConfiguration()}this._lastSeenModelId=e,this._reportLocalModelSelection(e)}",
+      "replace": "async setModel(e,t,n,r,s){try{await this.syncByokModels()}catch(a){this._logService.warn(`[Copilot:${this.sessionId}] Failed to register BYOK models before changing model`,a)}this._logService.info(`[Copilot:${this.sessionId}] Changing model to: ${e}`);try{if(wo(e)&&n===\"default\"&&!(await this._awaitControlPlaneRpc(\"session.options.update\",this._wrapper.session.rpc.options.update({contextTier:n}))).success)throw new Error(\"The runtime did not reset the context tier.\");await this._awaitControlPlaneRpc(\"session.setModel\",this._wrapper.session.setModel(e,{reasoningEffort:t,contextTier:n,...r!==void 0?{autoTier:r}:{}})),this._requestedModel=s??{id:e},this._appliedModelSelection=this._requestedModel}finally{this.refreshModelConfiguration()}this._lastSeenModelId=e,this._reportLocalModelSelection(e)}"
+    },
+    {
+      "id": "VSC-DEFAULT-MODEL",
+      "find": "function Fye(s,o){let e=s?.trim().toLowerCase();if(!e)return;if(e===IYn)return o.find(n=>n.metadata.id?.trim().toLowerCase()===IYn);let t=o.find(n=>n.metadata.id?.trim().toLowerCase()===e);if(t)return t;let i=o.filter(n=>n.metadata.family?.trim().toLowerCase()===e);return i.length>0?i.reduce((n,r)=>lxs(r.metadata.version,n.metadata.version)>0?r:n):void 0}",
+      "replace": "function Fye(s,o){let e=s?.trim().toLowerCase();if(!e)return;if(e===IYn)return o.find(n=>n.metadata.id?.trim().toLowerCase()===IYn);let t=o.find(n=>n.metadata.id?.trim().toLowerCase()===e);if(t)return t;let i=o.filter(n=>n.metadata.family?.trim().toLowerCase()===e);if(i.length>0)return i.reduce((n,r)=>lxs(r.metadata.version,n.metadata.version)>0?r:n);let n=o.filter(r=>r.metadata.id?.trim().toLowerCase().split(\"/\").at(-1)===e);return n.length===1?n[0]:void 0}"
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-1",
+      "find": "configurationSchema:this._toLanguageModelConfigurationSchema(r.configSchema,g?l0i(r):void 0,u)",
+      "replace": "configurationSchema:this._toLanguageModelConfigurationSchema(r.configSchema,g?l0i(r):void 0,u,r.id)"
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-2",
+      "find": "_toLanguageModelConfigurationSchema(e,t,i){if(!e)return;let n={};",
+      "replace": "_toLanguageModelConfigurationSchema(e,t,i,o){if(!e)return;let n={};"
+    },
+    {
+      "id": "VSC-LUNA-EFFORT-3",
+      "find": "n[r]={type:a.type,title:a.title,description:a.description,default:a.default,enum:a.enum,enumItemLabels:l??a.enumLabels??c?.labels",
+      "replace": "n[r]={type:a.type,title:a.title,description:a.description,default:o===\"openai/OpenAI/gpt-6-luna\"&&s._reasoningEffortKeys.has(r)&&a.readOnly!==!0&&a.enum?.includes(\"high\")?\"high\":a.default,enum:a.enum,enumItemLabels:l??a.enumLabels??c?.labels"
+    },
+    {
+      "id": "VSC-TOOL-COLLAPSE-ARRIVE",
+      "find": "this.subPart=S.add(this.createToolInvocationSubPart())",
+      "replace": "this.subPart=S.add((globalThis.__panTC?.arrive(this.context?.element?.sessionResource,this.toolInvocation),this.createToolInvocationSubPart()))"
+    }
+  ]
+}

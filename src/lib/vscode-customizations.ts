@@ -235,12 +235,46 @@ export function loadCustomizationBundle(
     overrides.set(id, { find: text(entry.find), replace: text(entry.replace) })
   }
 
+  const additions: Patch[] = []
+
+  if (variant.additional_patches !== undefined) {
+    if (!Array.isArray(variant.additional_patches)) {
+      throw new Error('Invalid version-specific additional patches')
+    }
+
+    for (const item of variant.additional_patches) {
+      const entry = object(item)
+      const id = text(entry.id)
+
+      if (
+        ids.has(id) ||
+        !Array.isArray(entry.targets) ||
+        !entry.targets.length ||
+        entry.occurrences !== 1
+      ) {
+        throw new Error(`Invalid or duplicate version-specific patch: ${id}`)
+      }
+
+      ids.add(id)
+      additions.push({
+        id,
+        targets: entry.targets.map((value: unknown) => text(value)),
+        find: text(entry.find),
+        replace: text(entry.replace),
+        occurrences: 1,
+      })
+    }
+  }
+
   return {
     version,
     commit: text(target.commit),
-    patches: patches
-      .filter((patch) => !omitted.has(patch.id))
-      .map((patch) => ({ ...patch, ...overrides.get(patch.id) })),
+    patches: [
+      ...patches
+        .filter((patch) => !omitted.has(patch.id))
+        .map((patch) => ({ ...patch, ...overrides.get(patch.id) })),
+      ...additions,
+    ],
     settings,
   }
 }

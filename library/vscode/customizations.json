@@ -7,7 +7,9 @@
   },
   "includes": ["instruction-patches.json"],
   "versions": {
-    "1.142.0": "customizations-1.142.0.json"
+    "1.142.0": "customizations-1.142.0.json",
+    "1.144.0": "customizations-1.144.0.json",
+    "1.145.2": "customizations-1.145.2.json"
   },
   "features": [
     "Anthropic and OpenAI sections above Other Models in both model pickers, with upgrade rows hidden and update rows preserved",

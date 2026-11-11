@@ -62,7 +62,9 @@ test('the packaged command reports pending without writes, rejects invalid argum
   const args = ['--app', app, '--skip-settings', '--state-dir', state]
   const check = command([...args, '--check'])
   assert.equal(check.status, 1, check.stderr)
-  assert.match(check.stdout, /pending/)
+  assert.match(check.stdout, /pending on disk/)
+  assert.match(check.stdout, /Running windows are not verified/)
+  assert.match(check.stdout, /editor updates replace app patches/)
   const result = command([...args, '--apply'])
   assert.equal(result.status, 2, result.stderr)
   assert.match(result.stderr, /syntax check failed/)

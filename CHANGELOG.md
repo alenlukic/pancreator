@@ -1,5 +1,15 @@
 # Changelog
 
+## [10.9.0] - 2026-11-11
+
+### Added
+
+- Support VS Code 1.144.0 and 1.145.2 customization recipes ([recipes](library/vscode/customizations.json)).
+
+### Fixed
+
+- Show all model providers in the VS Code 1.145.2 picker and preserve selection actions ([recipe](library/vscode/customizations-1.145.2.json)).
+
 ## [10.8.0] - 2026-11-11
 
 ### Changed

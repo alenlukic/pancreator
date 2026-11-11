@@ -178,142 +178,151 @@ test('the 1.139.1 recipe data stays equivalent to its captured baseline', () => 
   assert.deepEqual(loadCustomizationBundle(directory, '1.139.1'), bundle)
 })
 
-test('1.142.0 inherits common edits, pins its commit, and applies and restores using the shared engine', () => {
-  const work = fixture(true, '1.142.0')
-  assert.equal(work.bundle.version, '1.142.0')
-  assert.equal(work.bundle.commit, '6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1')
-  assert.deepEqual(work.bundle.settings, bundle.settings)
+for (const [version, commit] of [
+  ['1.142.0', '6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1'],
+  ['1.144.0', '2c33b50b16c472efe58357d1d2a8a5414bc23fbf'],
+  ['1.145.2', 'c4453f8ea430795f941c1b2ff6c9321135a74a02'],
+] as const) {
+  test(`${version} inherits common edits, pins its commit, and applies and restores using the shared engine`, () => {
+    const work = fixture(true, version)
+    assert.equal(work.bundle.version, version)
+    assert.equal(work.bundle.commit, commit)
+    assert.deepEqual(work.bundle.settings, bundle.settings)
 
-  for (const original of bundle.patches.filter(
-    (patch) =>
-      patch.id.startsWith('VSP-') ||
-      ['VSC-LUNA-EFFORT-2', 'VSC-LUNA-EFFORT-3'].includes(patch.id),
-  )) {
-    assert.deepEqual(
-      work.bundle.patches.find((patch) => patch.id === original.id),
-      original,
-    )
-  }
-
-  assert.equal(
-    planCustomizations(work.bundle, work.options).rows.find(
-      (row) => row.id === 'VSC-PICKER-HOST-1',
-    )?.state,
-    'applied',
-  )
-  assert.equal(
-    applyCustomizations(work.bundle, work.options, noSyntaxCheck).state,
-    'applied',
-  )
-  assert.equal(
-    applyCustomizations(work.bundle, work.options, noSyntaxCheck).state,
-    'applied',
-  )
-  revertCustomizations(work.bundle, work.options)
-
-  for (const [file, source] of work.original) {
-    assert.equal(readFileSync(file, 'utf8'), source)
-  }
-
-  writeFileSync(
-    path.join(work.options.appRoot, 'product.json'),
-    JSON.stringify({ commit: 'unknown', checksums: {} }),
-  )
-  assert.throws(
-    () => planCustomizations(work.bundle, work.options),
-    /Unsupported VS Code build/,
-  )
-  assert.throws(
-    () =>
-      loadCustomizationBundle(
-        path.join(process.cwd(), 'library/vscode'),
-        '../../other',
-      ),
-    /Unsupported VS Code build/,
-  )
-})
-
-test('the 1.142.0 picker branch lifts provider rows through native callbacks and filters only upgrade rows', () => {
-  const selected = loadCustomizationBundle(
-    path.join(process.cwd(), 'library/vscode'),
-    '1.142.0',
-  )
-
-  for (const surface of ['WORKBENCH', 'SESSIONS']) {
-    const prefix = `VSC-PICKER-${surface}-`
-    const filter = selected.patches.find((patch) => patch.id === `${prefix}1`)!
-    const lift = selected.patches.find((patch) => patch.id === `${prefix}2`)!
-    const remaining = selected.patches.find(
-      (patch) => patch.id === `${prefix}5`,
-    )!
-    const implementation = runInNewContext(
-      `({build(t,i){let r=[];${filter.replace}{if(l)r.push({label:l});for(let h of u)r.push(this._createModelItem(h,i));for(let h of p)r.push({unavailable:this._getUnavailableReason(h,i)})}};a("Pinned",t.pinned);if(${lift.replace}let u;${remaining.replace}}return r}})`,
-    ) as {
-      build: (
-        this: unknown,
-        data: unknown,
-        context: unknown,
-      ) => { label?: string; model?: unknown; unavailable?: string }[]
+    for (const original of bundle.patches.filter(
+      (patch) =>
+        patch.id.startsWith('VSP-') ||
+        (version === '1.142.0' &&
+          ['VSC-LUNA-EFFORT-2', 'VSC-LUNA-EFFORT-3'].includes(patch.id)),
+    )) {
+      assert.deepEqual(
+        work.bundle.patches.find((patch) => patch.id === original.id),
+        original,
+      )
     }
-    const claude = Object.freeze({
-      identifier: 'claude',
-      metadata: {
-        name: 'Claude',
-        byokModelIdentifier: 'anthropic/claude',
-        modelGroup: { id: 'anthropic' },
-      },
-    })
-    const gpt = Object.freeze({
-      identifier: 'gpt',
-      metadata: { name: 'GPT', isBYOK: true, vendor: 'openai' },
-    })
-    const hosted = Object.freeze({
-      identifier: 'hosted',
-      metadata: { name: 'Hosted', vendor: 'copilotcli' },
-    })
-    const context = {
-      _languageModelsService: {
-        lookupLanguageModel: () => undefined,
-        getVendors: () => [
-          { vendor: 'anthropic', displayName: 'Anthropic' },
-          { vendor: 'openai', displayName: 'OpenAI' },
+
+    assert.equal(
+      planCustomizations(work.bundle, work.options).rows.find(
+        (row) => row.id === 'VSC-PICKER-HOST-1',
+      )?.state,
+      'applied',
+    )
+    assert.equal(
+      applyCustomizations(work.bundle, work.options, noSyntaxCheck).state,
+      'applied',
+    )
+    assert.equal(
+      applyCustomizations(work.bundle, work.options, noSyntaxCheck).state,
+      'applied',
+    )
+    revertCustomizations(work.bundle, work.options)
+
+    for (const [file, source] of work.original) {
+      assert.equal(readFileSync(file, 'utf8'), source)
+    }
+
+    writeFileSync(
+      path.join(work.options.appRoot, 'product.json'),
+      JSON.stringify({ commit: 'unknown', checksums: {} }),
+    )
+    assert.throws(
+      () => planCustomizations(work.bundle, work.options),
+      /Unsupported VS Code build/,
+    )
+    assert.throws(
+      () =>
+        loadCustomizationBundle(
+          path.join(process.cwd(), 'library/vscode'),
+          '../../other',
+        ),
+      /Unsupported VS Code build/,
+    )
+  })
+
+  test(`the ${version} picker branch lifts provider rows through native callbacks and filters only upgrade rows`, () => {
+    const selected = loadCustomizationBundle(
+      path.join(process.cwd(), 'library/vscode'),
+      version!,
+    )
+
+    for (const surface of ['WORKBENCH', 'SESSIONS']) {
+      const prefix = `VSC-PICKER-${surface}-`
+      const filter = selected.patches.find(
+        (patch) => patch.id === `${prefix}1`,
+      )!
+      const lift = selected.patches.find((patch) => patch.id === `${prefix}2`)!
+      const remaining = selected.patches.find(
+        (patch) => patch.id === `${prefix}5`,
+      )!
+      const implementation = runInNewContext(
+        `({build(t,i){let r=[];${filter.replace}{if(l)r.push({label:l});for(let h of u)r.push(this._createModelItem(h,i));for(let h of p)r.push({unavailable:this._getUnavailableReason(h,i)})}};a("Pinned",t.pinned);if(${lift.replace}let u;${remaining.replace}}return r}})`,
+      ) as {
+        build: (
+          this: unknown,
+          data: unknown,
+          context: unknown,
+        ) => { label?: string; model?: unknown; unavailable?: string }[]
+      }
+      const claude = Object.freeze({
+        identifier: 'claude',
+        metadata: {
+          name: 'Claude',
+          byokModelIdentifier: 'anthropic/claude',
+          modelGroup: { id: 'anthropic' },
+        },
+      })
+      const gpt = Object.freeze({
+        identifier: 'gpt',
+        metadata: { name: 'GPT', isBYOK: true, vendor: 'openai' },
+      })
+      const hosted = Object.freeze({
+        identifier: 'hosted',
+        metadata: { name: 'Hosted', vendor: 'copilotcli' },
+      })
+      const context = {
+        _languageModelsService: {
+          lookupLanguageModel: () => undefined,
+          getVendors: () => [
+            { vendor: 'anthropic', displayName: 'Anthropic' },
+            { vendor: 'openai', displayName: 'OpenAI' },
+          ],
+        },
+        _getUnavailableReason: (entry: {
+          reason: string
+          needsUpdate?: boolean
+        }) => (entry.needsUpdate ? 'update' : entry.reason),
+        _createModelItem: (model: unknown) => ({ model }),
+      }
+      const data = Object.freeze({
+        pinned: [],
+        suggested: [],
+        other: Object.freeze([gpt, hosted, claude]),
+        unavailable: [
+          { reason: 'upgrade' },
+          { reason: 'upgrade', needsUpdate: true },
         ],
-      },
-      _getUnavailableReason: (entry: {
-        reason: string
-        needsUpdate?: boolean
-      }) => (entry.needsUpdate ? 'update' : entry.reason),
-      _createModelItem: (model: unknown) => ({ model }),
+      })
+      const rows = implementation.build.call(context, data, {})
+      assert.deepEqual(
+        Array.from(rows.filter((row) => row.label).map((row) => row.label)),
+        ['Anthropic', 'OpenAI'],
+      )
+      assert.equal(
+        rows.some((row) => row.unavailable === 'upgrade'),
+        false,
+      )
+      assert.equal(
+        rows.some((row) => row.unavailable === 'update'),
+        true,
+      )
+      const models = rows.filter((row) => row.model).map((row) => row.model)
+      assert.equal(models[0], claude)
+      assert.equal(models[1], gpt)
+      assert.equal(models[2], hosted)
+      assert.equal(data.other.length, 3)
     }
-    const data = Object.freeze({
-      pinned: [],
-      suggested: [],
-      other: Object.freeze([gpt, hosted, claude]),
-      unavailable: [
-        { reason: 'upgrade' },
-        { reason: 'upgrade', needsUpdate: true },
-      ],
-    })
-    const rows = implementation.build.call(context, data, {})
-    assert.deepEqual(
-      Array.from(rows.filter((row) => row.label).map((row) => row.label)),
-      ['Anthropic', 'OpenAI'],
-    )
-    assert.equal(
-      rows.some((row) => row.unavailable === 'upgrade'),
-      false,
-    )
-    assert.equal(
-      rows.some((row) => row.unavailable === 'update'),
-      true,
-    )
-    const models = rows.filter((row) => row.model).map((row) => row.model)
-    assert.equal(models[0], claude)
-    assert.equal(models[1], gpt)
-    assert.equal(models[2], hosted)
-    assert.equal(data.other.length, 3)
-  }
-})
+  })
+}
 
 test('the 1.142.0 native model switch synchronizes registration before selecting a provider model', async () => {
   const selected = loadCustomizationBundle(
@@ -348,6 +357,176 @@ test('the 1.142.0 native model switch synchronizes registration before selecting
   }
   await native.setModel.call(session, 'openai/OpenAI/gpt-6-luna', 'high')
   assert.deepEqual(calls, ['registration', 'selection'])
+})
+
+test('1.144.0 model switching preserves native context reset, tracking, and refresh on failure', async () => {
+  const selected = loadCustomizationBundle(
+    path.join(process.cwd(), 'library/vscode'),
+    '1.144.0',
+  )
+  const patch = selected.patches.find(
+    (entry) => entry.id === 'VSC-PICKER-HOST-1',
+  )!
+  assert.equal(patch.find, patch.replace)
+  const native = runInNewContext(`({${patch.replace}})`, {
+    wo: () => true,
+  }) as {
+    setModel: (this: unknown, ...args: unknown[]) => Promise<void>
+  }
+
+  for (const failure of [undefined, 'registration', 'reset', 'selection']) {
+    const calls: string[] = []
+    const requested = { id: 'openai/OpenAI/gpt-6-luna' }
+    const session = {
+      sessionId: 'fixture',
+      syncByokModels: async () => {
+        calls.push('registration')
+        if (failure === 'registration') throw new Error('registration')
+      },
+      _logService: { info: () => {}, warn: () => calls.push('warning') },
+      _wrapper: {
+        session: {
+          rpc: {
+            options: {
+              update: async (options: { contextTier: string }) => {
+                calls.push('reset')
+                assert.equal(options.contextTier, 'default')
+                return { success: failure !== 'reset' }
+              },
+            },
+          },
+          setModel: async (
+            id: string,
+            options: { reasoningEffort: string; autoTier: string },
+          ) => {
+            calls.push('selection')
+            assert.equal(id, requested.id)
+            assert.equal(options.reasoningEffort, 'high')
+            assert.equal(options.autoTier, 'tier')
+            if (failure === 'selection') throw new Error('selection')
+          },
+        },
+      },
+      _awaitControlPlaneRpc: async (_name: string, promise: Promise<unknown>) =>
+        promise,
+      refreshModelConfiguration: () => calls.push('refresh'),
+      _reportLocalModelSelection: () => calls.push('report'),
+      _appliedModelSelection: undefined as unknown,
+    }
+    const result = native.setModel.call(
+      session,
+      requested.id,
+      'high',
+      'default',
+      'tier',
+      requested,
+    )
+    if (failure === 'reset' || failure === 'selection') {
+      await assert.rejects(result)
+      assert.equal(calls.at(-1), 'refresh')
+      assert.equal(session._appliedModelSelection, undefined)
+    } else {
+      await result
+      assert.equal(session._appliedModelSelection, requested)
+      assert.deepEqual(
+        calls,
+        failure === 'registration'
+          ? [
+              'registration',
+              'warning',
+              'reset',
+              'selection',
+              'refresh',
+              'report',
+            ]
+          : ['registration', 'reset', 'selection', 'refresh', 'report'],
+      )
+    }
+  }
+})
+
+test('1.144.0 effort schema appends the model ID without displacing native tier arguments', () => {
+  const selected = loadCustomizationBundle(
+    path.join(process.cwd(), 'library/vscode'),
+    '1.144.0',
+  )
+  const patches = selected.patches.filter((entry) =>
+    entry.id.startsWith('VSC-LUNA-EFFORT-'),
+  )
+  const [call, signature, defaults] = patches
+  const observed: unknown[][] = []
+  const invoke = runInNewContext(
+    `(function(r,g,u){return {${call!.replace}}})`,
+    { l0i: () => 'auto-tiers' },
+  ) as (
+    this: unknown,
+    model: unknown,
+    auto: boolean,
+    context: unknown,
+  ) => unknown
+  invoke.call(
+    {
+      _toLanguageModelConfigurationSchema: (...args: unknown[]) =>
+        observed.push(args),
+    },
+    { configSchema: 'schema', id: 'model' },
+    true,
+    'context-tiers',
+  )
+  assert.deepEqual(observed[0], [
+    'schema',
+    'auto-tiers',
+    'context-tiers',
+    'model',
+  ])
+  const convert = runInNewContext(
+    `({${signature!.replace}for(let[r,a]of Object.entries(e.properties)){let l=i,c;${defaults!.replace}}}return n}})`,
+    {
+      s: {
+        _reasoningEffortKeys: new Set(['reasoningEffort', 'thinkingLevel']),
+      },
+    },
+  ) as {
+    _toLanguageModelConfigurationSchema: (
+      schema: unknown,
+      tiers: unknown,
+      labels: unknown,
+      id: string,
+    ) => Record<string, { default: string; enumItemLabels: unknown }>
+  }
+  for (const id of ['openai/OpenAI/gpt-6-luna', 'other/gpt-6-luna']) {
+    for (const readOnly of [false, true]) {
+      for (const key of ['reasoningEffort', 'thinkingLevel', 'contextTier']) {
+        const schema = {
+          properties: {
+            [key]: {
+              type: 'string',
+              default: 'medium',
+              enum: ['medium', 'high'],
+              readOnly,
+            },
+          },
+        }
+        const labels = ['Native labels']
+        const result = convert._toLanguageModelConfigurationSchema(
+          schema,
+          'native tiers',
+          labels,
+          id,
+        )[key]!
+        assert.equal(
+          result.default,
+          id === 'openai/OpenAI/gpt-6-luna' &&
+            !readOnly &&
+            key !== 'contextTier'
+            ? 'high'
+            : 'medium',
+        )
+        assert.equal(result.enumItemLabels, labels)
+        assert.equal(schema.properties[key]!.default, 'medium')
+      }
+    }
+  }
 })
 
 test('version overrides reject unknown, duplicate, mismatched, and escaping recipes', () => {
@@ -657,7 +836,7 @@ test('path escapes and symlink targets are refused and settings can be skipped',
 })
 
 test('short model IDs are unambiguous and preserve exact ID and family precedence in both versions', () => {
-  for (const version of ['1.139.1', '1.142.0']) {
+  for (const version of ['1.139.1', '1.142.0', '1.144.0', '1.145.2']) {
     const selected = loadCustomizationBundle(
       path.join(process.cwd(), 'library/vscode'),
       version,
@@ -669,8 +848,12 @@ test('short model IDs are unambiguous and preserve exact ID and family precedenc
     const resolve = runInNewContext(`(${patch.replace})`, {
       dcn: 'auto',
       NLn: 'auto',
+      IYn: 'auto',
+      Qor: 'auto',
       Dyr: compare,
       H8r: compare,
+      lxs: compare,
+      XOs: compare,
     }) as (value: string, models: unknown[]) => unknown
     const luna = { metadata: { id: 'openai/OpenAI/gpt-6-luna' } }
     const other = { metadata: { id: 'other/gpt-6-luna' } }

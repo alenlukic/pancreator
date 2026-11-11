@@ -125,7 +125,10 @@ function main(): void {
   }
 
   console.log(
-    `VS Code ${plan.version}: ${plan.state}; ${bundle.settings.size} governance settings per selected profile.`,
+    `VS Code ${plan.version}: ${plan.state} on disk; ${bundle.settings.size} governance settings per selected profile.`,
+  )
+  console.log(
+    'Running windows are not verified. Fully quit and reopen VS Code after applying patches; editor updates replace app patches.',
   )
 
   if (operation === 'check') {
