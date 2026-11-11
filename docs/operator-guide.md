@@ -1478,7 +1478,7 @@ Do not read `context` here as the Cursor `context` option, which sizes a model's
 
 Requirements and behavior:
 
-- `OPENAI_API_KEY` must be readable from the process environment or a `.env` file Pancreator inspects. `./bin/pan doctor` reports readiness when the active mapping uses `openai`, and never prints the key itself. No credential value is written to run state, evidence, or a captured stream; a redaction marker takes its place.
+- `OPENAI_API_KEY` must be readable from the process environment or a `.env` file Pancreator inspects. On macOS, set `PANCREATOR_OPENAI_KEY_SOURCE=vscode` in the environment or an inspected `.env` to opt into stable VS Code's stored OpenAI key as a fallback. An environment or `.env` API key always wins; any other source selector disables this fallback. Unsupported storage or denied Keychain access reports unavailable credentials without exposing secret material. `./bin/pan doctor` reports readiness when the active mapping uses `openai`, and never prints the key itself. No credential value is written to run state, evidence, or a captured stream; a redaction marker takes its place.
 - The API is called with retention disabled, so no conversation is stored server-side. Continuation for a `revise` decision is local: the harness replays the prior conversation from a transcript under the run's evidence directory. A transcript that outgrows its cap drops its oldest turns and says so; one that is missing or unreadable falls back to a fresh full-card delegation.
 - The author gets no MCP tool, which means no isolated browser inspection. Route a stage that owes a browser verdict to a Cursor persona, which `BROWSER-001` requires. The delegation record states the offered capability set on every run.
 - A delegation that exhausts its round limit, session timeout, or tool-result cap fails with that reason named in the record rather than returning a partial result.
@@ -1498,7 +1498,7 @@ Supported bracket options:
 
 Requirements and behavior:
 
-- The `github` provider uses the CLI's own sign-in. `openai` and `anthropic` read `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` from the environment or `.env`, and every record redacts the key.
+- The `github` provider uses the CLI's own sign-in. `openai` and `anthropic` read `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` from the environment or `.env`, and every record redacts the key. The `openai` provider also supports the explicit macOS VS Code fallback described above; GitHub and Anthropic never consult that storage.
 - The adapter passes the projected `.github/agents/pan-<persona>.agent.md` with `--agent` when it exists, sends the canonical card on stdin, and compares the model the CLI reports with the mapping.
 - Read-only stages get no shell tool. A worktree run adds the harness root and the projected agent directory with `--add-dir`.
 - The execution record stands in for the Cursor agent-index stop, so `pan watch` completes on agent state. `pan submit` refuses with `WORKER_STILL_ACTIVE` while the delegate process is open.

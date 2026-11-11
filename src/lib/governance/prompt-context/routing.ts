@@ -264,8 +264,11 @@ function readConversationStore(
   now: Date,
 ): ConversationStore {
   const statePath = path.join(root, TURN_REMINDER_STATE_PATH)
+  const readPath = fileExists(statePath)
+    ? statePath
+    : path.join(root, '.cursor/hooks/state/conversations.json')
 
-  if (!fileExists(statePath)) {
+  if (!fileExists(readPath)) {
     return { schema_version: 1, conversations: {} }
   }
 
@@ -277,7 +280,7 @@ function readConversationStore(
   let value: unknown
 
   try {
-    value = readJson(statePath)
+    value = readJson(readPath)
   } catch {
     return { schema_version: 1, conversations: {} }
   }

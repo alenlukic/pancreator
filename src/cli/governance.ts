@@ -395,6 +395,7 @@ export async function governanceCommand({
     const relayOptions = {
       port: Number(option(args, '--port') ?? '0'),
       full: hasFlag(args, '--full'),
+      cache: !hasFlag(args, '--no-prompt-cache'),
       ...(ownerPid === null ? {} : { ownerPid: Number(ownerPid) }),
     }
 

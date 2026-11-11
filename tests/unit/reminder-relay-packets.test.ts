@@ -59,6 +59,36 @@ test('happy_path: only registered exact copies in one request lane become cues',
   assert.equal(packets.transform(messages(body, body)).stats.cues, 0)
 })
 
+test('probable_edge_case: truncated frames preserve live text and adjacent session packets', () => {
+  const { root, packets, body, full } = fixture()
+  const childOptions = { ...OPTIONS, session: 'relay-child' }
+  const child = packets.issue(
+    childOptions,
+    canonicalReminder(root, childOptions).content,
+  )
+  const headerEnd = full.indexOf('\n')
+
+  const partial = full.slice(0, headerEnd + 32)
+  const live = '\nLIVE SCOPE EVIDENCE\n'
+  const original = messages(`before\n${partial}${live}${child}\nafter`)
+  const result = packets.transform(original)
+  assert.ok(Array.isArray(result.request.messages))
+  const output = result.request.messages[0]?.content
+
+  assert.equal(result.stats.full, 2)
+  assert.equal(result.stats.recovered, 1)
+  assert.equal(typeof output, 'string')
+  assert.ok(output.includes(body))
+  assert.ok(output.includes(`${partial.slice(headerEnd)}${live}`))
+  assert.ok(output.includes(child))
+  assert.ok(output.startsWith('before\n'))
+  assert.ok(output.endsWith('\nafter'))
+  assert.deepEqual(
+    original,
+    messages(`before\n${partial}${live}${child}\nafter`),
+  )
+})
+
 test('critical_unhappy_path: missing, summarized, stale, or truncated presence restores text or fails visibly', () => {
   const { root, packets, full, body } = fixture()
   const reduced = packets.transform(messages(full, full))
@@ -78,13 +108,21 @@ test('critical_unhappy_path: missing, summarized, stale, or truncated presence r
     messages(full.replace(body, 'Compacted summary.')),
   )
   assert.equal(damaged.stats.recovered, 1)
-  assert.throws(() => packets.transform(messages(full.slice(0, -20))), {
-    code: 'REMINDER_RECOVERY_REQUIRED',
-  })
-  assert.throws(
-    () => new ReminderRelayPackets(root).transform(messages(cue.content)),
-    { code: 'REMINDER_RECOVERY_REQUIRED' },
-  )
+  for (const cut of [
+    full.indexOf('\n') + 1,
+    Math.floor(full.length / 2),
+    full.length - 20,
+  ]) {
+    const truncated = packets.transform(messages(full.slice(0, cut)))
+    assert.equal(truncated.stats.recovered, 1)
+    assert.deepEqual(truncated.request.messages, messages(full).messages)
+  }
+  for (const unknown of [cue.content, cue.content.slice(0, -20)]) {
+    assert.throws(
+      () => new ReminderRelayPackets(root).transform(messages(unknown)),
+      { code: 'REMINDER_RECOVERY_REQUIRED' },
+    )
+  }
   assert.throws(
     () => packets.transform({ ...messages(full), truncation: 'auto' }),
     { code: 'INVALID_REMINDER_REQUEST' },

@@ -193,9 +193,9 @@ export const HELP_BODY = `Usage:
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance reminder --host vscode --provider openai --session <id> --role <role> [--card <path> | --invocation <path>] [--expect <identity>]
       Read the canonical reminder and its scoped identity. --expect rejects stale identities; invocation workers require --role worker.
-  pan governance reminder-relay [--port <0-65535>] [--full] [--owner-pid <pid>]
-      Serve the loopback OpenAI relay in the foreground. Guarded mode retains a complete current reminder in each request scope and message role; --full preserves full copies for comparison. Port 0 selects an available port. An owner process makes the relay exit when all owners leave.
-  pan governance reminder-relay start [--port <0-65535>] [--full] [--owner-pid <pid>]
+  pan governance reminder-relay [--port <0-65535>] [--full] [--no-prompt-cache] [--owner-pid <pid>]
+      Serve the loopback OpenAI relay in the foreground. Guarded mode retains a complete current reminder in each request scope and message role; --full preserves full copies for comparison. Supported Responses models use a 12h developer prefix and 30m history; --no-prompt-cache preserves caller cache options. Port 0 selects an available port. An owner process makes the relay exit when all owners leave.
+  pan governance reminder-relay start [--port <0-65535>] [--full] [--no-prompt-cache] [--owner-pid <pid>]
       Start a background relay, or reuse the running workspace relay. Repeated starts are idempotent.
   pan governance reminder-relay stop [--owner-pid <pid>]
       Stop the workspace relay, or do nothing when it is down. With an owner, release only that owner's share; other VS Code windows keep their relay.

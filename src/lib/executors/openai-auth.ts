@@ -3,11 +3,18 @@ import path from 'node:path'
 import { parseEnv } from 'node:util'
 
 import { fileExists, readText } from '../io.js'
+import {
+  resolveVsCodeOpenAiKey,
+  type VsCodeSecretStorageAccess,
+} from './vscode-openai-auth.js'
 
 const GIT_TIMEOUT_MS = 5_000
 const OPENAI_API_KEY = 'OPENAI_API_KEY'
 
-export type OpenAiApiKeySource = 'process_environment' | 'dotenv'
+export type OpenAiApiKeySource =
+  | 'process_environment'
+  | 'dotenv'
+  | 'vscode_secret_storage'
 
 /** Presence-only report that never carries the credential value or length. */
 export interface OpenAiDotEnvInspection {
@@ -155,9 +162,32 @@ function withoutSecret(candidate: DotEnvCandidate): OpenAiDotEnvInspection {
   }
 }
 
-/** Resolve the process key first, then the first repository-local `.env`. */
-export function resolveOpenAiApiKey(cwd: string): ResolvedOpenAiApiKey {
-  return resolveEnvironmentKey(cwd, OPENAI_API_KEY)
+function vsCodeKeySourceSelected(cwd: string): boolean {
+  return (
+    resolveEnvironmentKey(cwd, 'PANCREATOR_OPENAI_KEY_SOURCE').key === 'vscode'
+  )
+}
+
+/** Resolve environment keys first, then explicitly opted-in VS Code storage. */
+export function resolveOpenAiApiKey(
+  cwd: string,
+  vsCodeAccess?: VsCodeSecretStorageAccess,
+): ResolvedOpenAiApiKey {
+  const resolved = resolveEnvironmentKey(cwd, OPENAI_API_KEY)
+
+  if (resolved.key !== null || !vsCodeKeySourceSelected(cwd)) {
+    return resolved
+  }
+
+  const stored = resolveVsCodeOpenAiKey(vsCodeAccess)
+
+  return stored
+    ? {
+        key: stored.key,
+        source: 'vscode_secret_storage',
+        sourcePath: stored.sourcePath,
+      }
+    : resolved
 }
 
 /**
@@ -198,17 +228,11 @@ export function resolveEnvironmentKey(
 /** Report authentication readiness without exposing the API key. */
 export function openAiAuthenticationReadiness(
   cwd: string,
+  vsCodeAccess?: VsCodeSecretStorageAccess,
 ): OpenAiAuthenticationReadiness {
   const candidates = candidatesFor(cwd)
-  const processKey = process.env[OPENAI_API_KEY]
-  const fromProcess = typeof processKey === 'string' && processKey.length > 0
-  const supplying = candidates.find((candidate) => candidate.key !== null)
-
-  const source = fromProcess
-    ? 'process_environment'
-    : supplying
-      ? 'dotenv'
-      : null
+  const resolved = resolveOpenAiApiKey(cwd, vsCodeAccess)
+  const source = resolved.source
   const advisories: string[] = []
 
   if (source === null) {
@@ -230,6 +254,12 @@ export function openAiAuthenticationReadiness(
       )
     }
 
+    if (vsCodeKeySourceSelected(cwd)) {
+      advisories.push(
+        'VS Code OpenAI secret storage is unavailable or unsupported.',
+      )
+    }
+
     advisories.push(
       `No ${OPENAI_API_KEY} is available. Export it, or add ${OPENAI_API_KEY}=<key> to one of the inspected .env files.`,
     )
@@ -238,7 +268,7 @@ export function openAiAuthenticationReadiness(
   return {
     key_available: source !== null,
     source,
-    source_path: fromProcess ? null : (supplying?.path ?? null),
+    source_path: resolved.sourcePath,
     dotenv_files: candidates.map(withoutSecret),
     advisories,
   }

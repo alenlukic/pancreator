@@ -53,7 +53,10 @@ export const METADATA_PATHS = RELEASE_LANDING_METADATA_PATHS
 const RELEASE_HEADING_PATTERN = /^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}/mu
 
 export type LandingStatus =
-  'landed' | 'conflict' | 'verification_failed' | 'landing_refused'
+  | 'landed'
+  | 'conflict'
+  | 'verification_failed'
+  | 'landing_refused'
 
 export type LandingStepName =
   | 'tip_read'

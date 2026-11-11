@@ -33,8 +33,9 @@ interface Occurrence {
   current: CanonicalReminder
 }
 
-const FRAME =
-  /<pancreator-reminder id="([a-f0-9-]{36})" kind="(full|cue)">\n([\s\S]*?)\n<\/pancreator-reminder>/gu
+const FRAME_HEADER =
+  /<pancreator-reminder id="([a-f0-9-]{36})" kind="(full|cue)">/gu
+const FRAME_END = '\n</pancreator-reminder>'
 const CUE =
   'Apply the complete current Pancreator reminder retained in this request.'
 
@@ -43,7 +44,7 @@ function frame(
   kind: 'full' | 'cue',
   body = packet.body,
 ): string {
-  return `<pancreator-reminder id="${packet.id}" kind="${kind}">\n${kind === 'full' ? body : CUE}\n</pancreator-reminder>`
+  return `<pancreator-reminder id="${packet.id}" kind="${kind}">\n${kind === 'full' ? body : CUE}${FRAME_END}`
 }
 
 /** Recover the source hook bytes for validation; cues are never accepted here. */
@@ -176,26 +177,14 @@ export class ReminderRelayPackets {
     const currentReminders = new Map<string, CanonicalReminder>()
 
     for (const slot of slots) {
-      const matches = [...slot.text.matchAll(FRAME)]
-      const stripped = slot.text.replace(FRAME, '')
+      const headers = [...slot.text.matchAll(FRAME_HEADER)]
 
-      for (const header of stripped.matchAll(
-        /<pancreator-reminder id="([a-f0-9-]{36})" kind="(full|cue)">/gu,
-      )) {
-        if (this.packets.has(header[1] ?? '') || header[2] === 'cue') {
-          throw new PanError(
-            'A reminder packet was truncated; restore full hook context.',
-            { code: 'REMINDER_RECOVERY_REQUIRED' },
-          )
-        }
-      }
-
-      for (const match of matches) {
-        const id = match[1] ?? ''
+      for (const [index, header] of headers.entries()) {
+        const id = header[1] ?? ''
         const packet = this.packets.get(id)
 
         if (!packet) {
-          if (match[2] === 'cue') {
+          if (header[2] === 'cue') {
             throw new PanError(
               'A cue has no recoverable full reminder; restore full hook context.',
               { code: 'REMINDER_RECOVERY_REQUIRED' },
@@ -203,6 +192,20 @@ export class ReminderRelayPackets {
           }
           continue
         }
+
+        const bodyStart = header.index + header[0].length
+        const limit = headers[index + 1]?.index ?? slot.text.length
+        const tail = slot.text.slice(bodyStart, limit)
+
+        const close = tail.indexOf(FRAME_END)
+        const complete = tail.startsWith('\n') && close >= 0
+        const issued = `\n${header[2] === 'full' ? packet.body : CUE}`
+        // Only consume proven packet bytes; preserve any unmatched live suffix.
+        const prefix = `${issued}${FRAME_END}`.startsWith(tail)
+          ? tail.length
+          : tail.startsWith(issued)
+            ? issued.length
+            : 0
 
         const current =
           currentReminders.get(id) ??
@@ -213,10 +216,12 @@ export class ReminderRelayPackets {
         const group = groups.get(key) ?? []
         group.push({
           slot,
-          start: match.index,
-          end: match.index + match[0].length,
-          kind: match[2] ?? '',
-          body: match[3] ?? '',
+          start: header.index,
+          end: complete
+            ? bodyStart + close + FRAME_END.length
+            : bodyStart + prefix,
+          kind: complete ? (header[2] ?? '') : 'truncated',
+          body: complete ? tail.slice(1, close) : tail,
           packet,
           current,
         })
@@ -240,6 +245,7 @@ export class ReminderRelayPackets {
       Array<{ start: number; end: number; text: string }>
     >()
     const identityTransitions: Array<{ previous: string; current: string }> = []
+    const foundations: string[] = []
     const stats = {
       full: 0,
       cues: 0,
@@ -278,6 +284,11 @@ export class ReminderRelayPackets {
       for (const entry of group) {
         const full = mode === 'full' || entry === survivor
         const text = frame(entry.packet, full ? 'full' : 'cue', body)
+
+        if (full) {
+          foundations.push(text)
+        }
+
         const edits = replacements.get(entry.slot) ?? []
         edits.push({ start: entry.start, end: entry.end, text })
         replacements.set(entry.slot, edits)
@@ -309,6 +320,7 @@ export class ReminderRelayPackets {
 
     return {
       request,
+      foundations,
       stats: { ...stats, identity_transitions: identityTransitions },
     }
   }

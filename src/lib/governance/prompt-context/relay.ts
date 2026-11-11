@@ -24,6 +24,12 @@ import {
   writeJsonAtomic,
 } from '../../io.js'
 import type { CanonicalReminderOptions } from './canonical.js'
+import { applyReminderCache } from './cache.js'
+import { PromptCacheUsageObserver } from './cache-usage.js'
+import {
+  PromptCacheComparisons,
+  type CacheComparison,
+} from './cache-diagnostics.js'
 import { ReminderRelayPackets, unwrapRelayHookText } from './relay-packets.js'
 import { resolvePromptContext } from './routing.js'
 
@@ -117,6 +123,7 @@ export async function startReminderRelay(
   options: {
     port?: number
     mode?: 'guarded' | 'full'
+    cache?: boolean
     upstream?: string
     ownerPid?: number
   } = {},
@@ -202,6 +209,17 @@ export async function startReminderRelay(
     options.ownerPid === undefined ? [] : [options.ownerPid],
   )
   const packets = new ReminderRelayPackets(root)
+  const comparisons = new PromptCacheComparisons()
+  const cacheValidation = {
+    comparisons: 0,
+    matched: 0,
+    misses: 0,
+    unavailable: 0,
+    usage_responses: 0,
+    unavailable_usage_responses: 0,
+    input_tokens: 0,
+    cached_tokens: 0,
+  }
   const auditPath = path.join(
     root,
     'runtime/logs/reminders',
@@ -227,6 +245,14 @@ export async function startReminderRelay(
         relay_id: relayId,
         managed: options.ownerPid !== undefined,
         mode: options.mode ?? 'guarded',
+        prompt_cache: options.cache !== false,
+        cache_validation: {
+          ...cacheValidation,
+          cached_input_share:
+            cacheValidation.input_tokens > 0
+              ? cacheValidation.cached_tokens / cacheValidation.input_tokens
+              : null,
+        },
       })
       return
     }
@@ -315,17 +341,39 @@ export async function startReminderRelay(
     }
 
     let body: string | undefined
+    let comparison: CacheComparison | undefined
+    const requestId = randomUUID()
+    const started = performance.now()
 
     if (isGeneration) {
       const transformed = packets.transform(
         await readBody(request),
         options.mode,
       )
-      body = JSON.stringify(transformed.request)
+      const cached = applyReminderCache(
+        transformed.request,
+        route.pathname,
+        options.cache !== false,
+        transformed.foundations,
+      )
+      if (cached.evidence.request_mode === 'implicit') {
+        comparison = comparisons.prepare(
+          cached.request,
+          sha256({
+            authorization: request.headers.authorization,
+            organization: request.headers['openai-organization'],
+            project: request.headers['openai-project'],
+          }),
+        )
+      }
+      body = JSON.stringify(cached.request)
       appendJsonLine(auditPath, {
         event: 'request',
         at: new Date().toISOString(),
+        request_id: requestId,
         ...transformed.stats,
+        prompt_cache: cached.evidence,
+        comparison_response_id: comparison?.comparison_response_id,
       })
     }
 
@@ -370,6 +418,80 @@ export async function startReminderRelay(
         }
 
         response.writeHead(incoming.statusCode ?? 502, responseHeaders)
+
+        if (route.pathname === '/v1/responses') {
+          const observer = new PromptCacheUsageObserver(
+            String(incoming.headers['content-type']).includes(
+              'text/event-stream',
+            ),
+            (usage, diagnostics, completedResponseId) => {
+              try {
+                if (comparison && incoming.statusCode === 200) {
+                  comparisons.complete(comparison, completedResponseId)
+                }
+                if (comparison?.comparison_response_id) {
+                  cacheValidation.comparisons++
+
+                  if (diagnostics?.type === 'cache_miss') {
+                    cacheValidation.misses++
+                  } else if (diagnostics?.type === 'cache_hit') {
+                    cacheValidation.matched++
+                  } else {
+                    cacheValidation.unavailable++
+                  }
+                }
+
+                if (
+                  usage?.input_tokens !== undefined &&
+                  usage.cached_tokens !== undefined
+                ) {
+                  cacheValidation.usage_responses++
+                  cacheValidation.input_tokens += usage.input_tokens
+                  cacheValidation.cached_tokens += usage.cached_tokens
+                } else {
+                  cacheValidation.unavailable_usage_responses++
+                }
+                appendJsonLine(auditPath, {
+                  event: 'cache_usage',
+                  at: new Date().toISOString(),
+                  request_id: requestId,
+                  http_status: incoming.statusCode ?? 502,
+                  latency_ms: Math.round(performance.now() - started),
+                  status: usage ? 'observed' : 'unavailable',
+                  cache_hit:
+                    usage?.cached_tokens === undefined
+                      ? 'unverified'
+                      : usage.cached_tokens > 0,
+                  ...usage,
+                  comparison_response_id: comparison?.comparison_response_id,
+                  prompt_cache_diagnostics:
+                    diagnostics ??
+                    (comparison?.comparison_response_id
+                      ? { type: 'unavailable' }
+                      : undefined),
+                  cache_validation:
+                    diagnostics?.type === 'cache_miss'
+                      ? 'miss'
+                      : diagnostics?.type === 'cache_hit'
+                        ? 'matched'
+                        : comparison?.comparison_response_id
+                          ? 'unavailable'
+                          : 'no_baseline',
+                })
+              } catch {
+                incoming.destroy(new Error('REMINDER_AUDIT_WRITE_FAILED'))
+                response.destroy()
+              }
+            },
+          )
+          incoming.on('data', (chunk: Buffer) => {
+            observer.write(chunk)
+          })
+          incoming.once('close', () => {
+            observer.finish()
+          })
+        }
+
         incoming.on('error', () => {
           response.destroy()
         })

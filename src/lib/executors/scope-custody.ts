@@ -71,9 +71,18 @@ export function withinWriteRoots(target: string, roots: string[]): boolean {
   })
 }
 
+function isPlainShellRead(command: unknown): boolean {
+  return (
+    typeof command === 'string' &&
+    /^(?:(?:\/usr)?\/bin\/)?(?:ls|cat|pwd|ps)(?:[ \t]+(?:[-A-Za-z0-9_./*?,:=@%+\[\]]+|'[-A-Za-z0-9_./*?,:=@%+\[\] ]*'|"[-A-Za-z0-9_./*?,:=@%+\[\] ]*"))*[ \t]*$/u.test(
+      command.trim(),
+    )
+  )
+}
+
 /**
  * Tool events are positive evidence only: an absent event never proves no
- * write occurred. A shell denial with no parsed path still owes adjudication.
+ * write occurred. Unknown or compound shell denials still owe adjudication.
  */
 export function observeToolWrite(
   text: string,
@@ -89,7 +98,10 @@ export function observeToolWrite(
   const id = typeof data.toolCallId === 'string' ? data.toolCallId : ''
   if (event.type === 'tool.execution_start' && isRecord(data.arguments)) {
     const name = data.toolName
-    if (['edit', 'create', 'apply_patch', 'bash'].includes(String(name))) {
+    if (
+      ['edit', 'create', 'apply_patch', 'bash'].includes(String(name)) &&
+      !(name === 'bash' && isPlainShellRead(data.arguments.command))
+    ) {
       pending.set(id, [])
       const target = data.arguments.path ?? data.arguments.file_path
       if (typeof target === 'string') {

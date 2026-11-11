@@ -3,7 +3,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { isRecord } from '../io.js'
-import { resolveEnvironmentKey } from './openai-auth.js'
+import {
+  resolveEnvironmentKey,
+  resolveOpenAiApiKey,
+  type OpenAiApiKeySource,
+} from './openai-auth.js'
+import type { VsCodeSecretStorageAccess } from './vscode-openai-auth.js'
 import type {
   DelegationLiveIdentity,
   DelegationWriteBoundary,
@@ -198,10 +203,7 @@ export function copilotCliPreflight(): CopilotCliPreflightResult {
   return { ok: true, binary, version }
 }
 
-export type CopilotCredentialSource =
-  | 'github_login'
-  | 'process_environment'
-  | 'dotenv'
+export type CopilotCredentialSource = 'github_login' | OpenAiApiKeySource
 
 /** Credential report that never carries the key value or its length. */
 export interface CopilotCredentialReport {
@@ -240,6 +242,7 @@ export function copilotProviderOf(
 export function resolveCopilotCredential(
   cwd: string,
   provider: CopilotProvider,
+  vsCodeAccess?: VsCodeSecretStorageAccess,
 ):
   | { ok: true; credential: CopilotCredential }
   | {
@@ -261,7 +264,10 @@ export function resolveCopilotCredential(
   }
 
   const byok = BYOK_PROVIDERS[provider]
-  const resolved = resolveEnvironmentKey(cwd, byok.key_variable)
+  const resolved =
+    provider === 'openai'
+      ? resolveOpenAiApiKey(cwd, vsCodeAccess)
+      : resolveEnvironmentKey(cwd, byok.key_variable)
 
   if (resolved.key === null || resolved.source === null) {
     return {

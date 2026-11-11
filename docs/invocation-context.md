@@ -40,6 +40,16 @@ savings require the later host integration to prove that the authoritative body
 survives in the effective request before substituting a cue. Until then the
 existing hook delivery and its fallback remain in force.
 
+## Hook state
+
+Lifecycle hooks keep their conversation-role cache in
+`runtime/reminders/conversations.json`, inside the harness runtime write grant.
+This allows full reminder delivery when an external executor has read-only
+access to the harness source. Existing
+`.cursor/hooks/state/conversations.json` data is read only when the runtime
+cache is absent; subsequent writes use the runtime path and preserve the legacy
+file. An existing runtime cache remains authoritative.
+
 ## Guarded request assembly
 
 Phase 4 provides an opt-in local OpenAI relay in
@@ -117,8 +127,9 @@ accepts an explicit Responses path and API type. The relay forwards only to
 `https://api.openai.com`, using the authorization supplied by that request. It
 rejects browser-origin and unexpected Host requests, bounds request bodies, and
 preserves SSE response bytes, status, tool definitions, message order, and roles.
-It does not change the model, tool permissions, cache settings, or credential
-storage. The relay's OpenAI-compatible route is opt-in; its loopback smoke uses
+It preserves the model, tool permissions, and credential storage. On supported
+Responses models it adds the cache boundaries described below. The relay's
+OpenAI-compatible route is opt-in; its loopback smoke uses
 synthetic requests and an unpaid local upstream.
 
 ### Presence, recovery, and fallback
@@ -135,7 +146,10 @@ proves that a full body survived.
 
 A missing or edited full body is rebuilt before forwarding. Changed canonical
 identities restore the current reminder and conditional deferred clauses in the
-same message role. A truncated packet or an unknown cue fails visibly with
+same message role. A truncated frame with a recognizable registered header
+recovers its complete authoritative body in the current request. Received live
+text remains intact, and adjacent frames retain their own scope. An unknown cue
+fails visibly with
 `REMINDER_RECOVERY_REQUIRED` instead of sending an instruction-free request.
 Server-side automatic truncation is rejected for optimized packets because the
 relay cannot inspect its result. Unknown complete full packets from a restarted
@@ -155,6 +169,147 @@ The relay logs full hook issuance, full/cue counts, recovery and identity change
 and bytes saved under `runtime/logs/reminders/`. Logs contain metadata, not
 prompts, provider payloads, or credentials. A failed audit write prevents
 forwarding. These records establish transport decisions, not model compliance.
+
+### Responses cache lifetimes
+
+The relay is the controlled integration point after the editor or Agents window
+bridge constructs its outbound request. Inspection on 2026-11-11 identified VS
+Code `1.145.2`, bundled Copilot Chat `0.73.0`, and a mode-only
+`prompt_cache_options` builder without TTL. The inspected provider bundle SHA-256
+was `666992c43cdfc2e7e5c559bbffdff1b99cc2b6d77ff782d1b9641dfed84f8735`.
+This inspection pins installed source behavior; it does not establish the active
+session's selected provider, model, or final request. Configure and verify the
+custom endpoint independently for editor chat and the Agents window.
+
+For `/v1/responses` with GPT-5.6 and later, the relay sets:
+
+- `prompt_cache_options: { "mode": "implicit", "ttl": "30m" }`. Implicit
+  caching remains enabled for the latest user message and consecutive tool
+  results, alongside the explicit foundation and history markers. Explicit-only
+  mode would repeatedly bill the growing tool-loop history as uncached input.
+- A `12h` breakpoint on the last text block in the initial consecutive system
+  and developer messages. Tools and preceding instructions belong to that
+  prefix. When an initial block contains a registered full reminder, its end
+  becomes the stable boundary and trailing live hook text stays after it.
+- A `30m` breakpoint on the last eligible text block after that foundation and
+  before the latest user question, when such history exists. Tool continuations
+  retain the early boundary; implicit boundaries cover the growing conversation,
+  including the current user message and the latest tool-result group.
+
+Roles, text order, tools, `store`, and response lineage remain intact. Selected
+string messages become equivalent `input_text` arrays so they can hold markers.
+Top-level `instructions` alone cannot hold a marker: without an initial developer
+or system text block, the relay reports `missing_developer_prefix` and still
+selects implicit `30m` caching. It never promotes user or tool content to developer
+instructions. Provider timestamps or other changing material before the selected
+boundary still invalidate that prefix; the relay does not reorder them.
+
+Earlier or unknown models and Chat Completions retain their existing cache
+shape, with `unsupported_model` or `unsupported_transport` in the request audit.
+Invalid request or block TTLs fail locally with `INVALID_PROMPT_CACHE_OPTIONS`
+before an upstream call. Use `30m` or `12h`; explicit block markers require
+`mode: "explicit"`. Existing caller markers are preserved except at the selected
+boundaries. A registered block split keeps its live suffix outside that marker.
+
+Request audit records include the selected model, lifetimes, and a SHA-256 of the
+local foundation prefix. This fingerprint is diagnostic; it is not an API token
+count or proof of a cache write. A short prefix may miss OpenAI's 1,024-token
+minimum. Requests always report cache hits as unverified until response usage
+supplies evidence.
+
+#### Cache efficiency regression and repair
+
+The initial explicit-only configuration disabled automatic caching after the
+selected foundation and earlier-user boundaries. During a long tool loop, most
+history follows the latest user message, so it was repeatedly billed as ordinary
+input. Passing the native smoke and observing some cache reads did not validate
+acceptable reuse or spend. The relay now retains implicit caching alongside the
+explicit `12h` foundation.
+
+A bounded six-request comparison on 2026-11-11 reproduced this failure with
+synthetic growing tool history on GPT-6.1 Sol. Across two warm turns, both modes
+processed 11,343 input tokens. Explicit-only reused 2,606 tokens (22.97%) and
+billed 8,737 ordinary tokens; the repaired relay reused 11,127 (98.10%) and billed
+150 ordinary tokens. Using the documented input multipliers, normalized warm
+input cost fell from 8,867.30 to 788.85 ordinary-token price units (91.10%).
+These are experimental input costs, not a claim about the operator's account
+bill or future workload. Evidence: [paired measurements](../runtime/logs/cache-mode-ab.json).
+
+Three further real requests validated the diagnostics integration: the automatic
+streaming comparison returned `cache_hit` and 1,300 billed reads; a deliberate
+tool-name change against the pinned baseline returned `cache_miss`,
+`tools_changed`, and 1,806 estimated missed tokens. Evidence:
+[provider diagnostics](../runtime/logs/cache-diagnostics-live.json).
+All experimental relays were closed after measurement.
+
+#### Ongoing cache diagnostics
+
+Following [OpenAI's diagnostics guide](https://developers.openai.com/api/docs/guides/prompt-caching/diagnostics),
+the relay automatically requests `prompt_cache_options.comparison_response_id`
+on subsequent supported requests. A caller-supplied comparison remains intact,
+so a validation run can pin one baseline while changing individual settings.
+The previous completed response supplies the automatic baseline; failed and
+incomplete responses do not replace it. No extra generation requests are made.
+
+Baselines are scoped by the credential, organization, and project, then by the
+conversation ID, cache key, or normalized first user message. Only hashes and
+bounded response IDs remain in memory. At most 128 baselines survive, each for
+ten minutes; restarting the relay starts without baselines. A changed key or
+first user message can start a new automatic comparison group. Pin the baseline
+explicitly to diagnose such a change, ambiguous identical starting tasks, or
+context compaction.
+
+JSON responses and streaming terminal events supply sanitized
+`prompt_cache_diagnostics`: type, known reason, `comparison_reusable_tokens`,
+and `cache_missed_tokens`. Audit entries pair these with actual billing usage
+and `cache_validation`: `matched`, `miss`, `unavailable`, or `no_baseline`.
+Unknown, absent, expired, or unsupported diagnostics never become a successful
+validation. Diagnostic estimates are distinct from billed cache reads.
+
+Inspect `/pan/health` for cumulative `cache_validation` comparison outcomes,
+usage coverage, and `cached_input_share`. Read the correlated `cache_usage`
+audit records for the reason behind each miss. These counters reset when the
+relay restarts; persisted audit records remain available. They cover only
+requests forwarded through this relay. A diagnosis does not alter request
+content or automatically retry a billed request.
+
+The relay observes JSON and SSE responses without changing their bytes. Records
+with `event: "cache_usage"` correlate by `request_id` and contain latency, HTTP
+status, a provider response ID when valid, and these numeric usage fields:
+
+- `input_tokens`, `cached_tokens`, and `cache_write_tokens`.
+- `ttl_30m_tokens` and `ttl_12h_tokens` from the write-lifetime details.
+- `ordinary_input_tokens = input_tokens - cached_tokens - cache_write_tokens`
+  when all counters exist and the result is nonnegative.
+
+Missing, malformed, oversized, or interrupted evidence stays unavailable; missing
+counters never become zeros. Prompts, generated text, and credentials are excluded.
+The observer bounds each JSON response or SSE event to 1 MiB. Request audit writes
+must succeed before forwarding. A response ID or `comparison_response_id` can
+support diagnostics, but neither retrieves omitted context. Caller diagnostic
+fields pass through unchanged.
+
+At current published rates, 30-minute writes cost 1.25 times ordinary input and
+12-hour writes cost 2.5 times ordinary input. These are total write rates, not
+additional surcharges. Billed reads use the model's cached-input rate. Compute
+cost from ordinary input, reads, and each lifetime's writes separately; adding
+`cache_write_tokens` again would double charge writes. A valid read does not
+restart the 12-hour clock. Cache hits still occupy context and incur input cost.
+See the [OpenAI cache guide](https://developers.openai.com/api/docs/guides/prompt-caching)
+for current model support, pricing, and retention semantics.
+
+For comparison or rollback, stop the relay and restart it with cache changes
+and reminder suppression disabled:
+
+```bash
+bin/pan-run -- ./bin/pan governance reminder-relay stop
+bin/pan-run -- ./bin/pan governance reminder-relay start --port 4040 --full --no-prompt-cache
+```
+
+`--no-prompt-cache` leaves the caller's cache fields intact. Startup options take
+effect only on a new relay; inspect `/pan/health` for `prompt_cache`. Disable the
+extension's automatic startup before a manual comparison. Restoring the original
+provider URL also bypasses the relay. Native full reminders remain the fallback.
 
 ### Controlled provider assembly
 
@@ -245,7 +400,93 @@ Copilot `0.73.0`. The earlier assumption that an editable provider checkout was
 required is resolved by the loopback transport. Installed application bundles
 remain untouched. Actual paid OpenAI requests, installed-host model selection,
 cache reuse, and comparative model compliance were not exercised by the smoke.
-The relay makes no TTL or provider-cache claim.
+The cache regression in
+[`reminder-cache-wire.test.ts`](../tests/regression/reminder-cache-wire.test.ts)
+separately captures the final synthetic Responses body and verifies the `12h`
+foundation, `30m` history, tool continuation, local TTL rejection, and unchanged
+Chat Completions and unsupported models. Synthetic usage proves counter
+preservation and excludes prompt text and credentials from audit records. Unit
+checks cover prefix changes, split live tails, missing prefixes, incomplete SSE,
+and bounded parsing. Existing reminder tests cover full delivery, cues, context
+loss, role and child isolation, identity changes, and failed recovery.
+
+```bash
+bin/pan-run -- ./bin/run-built -- ./bin/run-tests -- node --test dist/tests/unit/reminder-cache.test.js dist/tests/unit/reminder-cache-usage.test.js dist/tests/regression/reminder-cache-wire.test.js dist/tests/unit/reminder-relay-packets.test.js dist/tests/unit/reminder-request.test.js dist/tests/unit/canonical-reminder.test.js dist/tests/regression/turn-reminder-cycles.test.js
+```
+
+Configured TTLs and synthetic billing records alone are not observed OpenAI
+cache writes or reads. The separate native measurement below supplies live
+Responses evidence. Before release, complete release verification and inspect the
+editor-chat and Agents-window bridge paths independently. Observe reuse after a
+gap greater than 30 minutes and less than 12 hours. Compare full reminders and
+cues on the same governance tasks; restore full mode if behavior regresses.
+Those delayed, bridge, and comparative checks remain outstanding. Direct executor
+support remains separate; its local replay and `store: false` remain as before.
+
+### Native development observation
+
+On 2026-11-11, delivery run `63237_Nov-11-0839_native-cache` executed a synthetic
+two-file task through Copilot CLI `1.0.107`, the OpenAI Responses provider, and
+the workspace relay. The initial phase used the main checkout executor containing
+the separately verified VS Code authentication repair. Subsequent phases use the
+repaired `rem-cache-work` executor and relay, with model overrides and run state
+in the same worktree. The selected model was `gpt-6.1-sol`; the harness compared
+the CLI's reported model with that mapping. Its existing VS Code credential
+source supplied authentication without exposing the key. The relay retained
+counter and prefix metadata, excluding prompts, response bodies, and credentials.
+
+The first request and its continuation returned these actual counters:
+
+| Response        | Input tokens | Billed cache reads | 30m writes | 12h writes |
+| --------------- | -----------: | -----------------: | ---------: | ---------: |
+| Initial request |       21,021 |                  0 |        114 |      6,347 |
+| Next request    |       23,315 |              6,461 |          0 |          0 |
+
+Across the initial phase's two worker attempts, 25 responses supplied complete usage: **1,053,890
+input tokens**, **148,614 billed cache-read tokens**, **228 tokens written for
+30m**, and **12,695 tokens written for 12h**. There were 23 requests with billed
+reads and two foundation identities across the fresh CLI processes. One
+interrupted response had unavailable usage and is excluded from these totals.
+This observation established cache activity, not acceptable cache efficiency.
+Its explicit-only mode was subsequently found to leave growing tool-loop
+history uncached. The correction and validation are documented below.
+
+The measured cached share was **14.1% of input tokens**; an early cache boundary
+does not imply that the whole growing conversation is cached.
+
+The [measurement record](../runtime/logs/workflows/63237_Nov-11-0839_native-cache/agent/evidence/native-cache-observation.json)
+aggregates the three explicitly owned relay logs while retaining each phase's
+source digest, counters, coverage, request/response correlation, and foundation
+identities. The 14.1% figure belongs only to the initial phase. The record derives
+verification acceptance from the run's actual stage history rather than process
+exit codes, and retains historical failures and observation gaps.
+
+The first worker exceeded its 180-second allowance after the dummy test passed;
+its retry completed in 212,244 ms. The resulting retry/watch/audit mismatch is
+repaired with guarded retry rollover and protected sequential controller lineage.
+Thirty-seven focused tests cover the observer repair. Subsequent native
+implementation and remediation submissions were accepted.
+
+Native recurring reminders also exposed a routing-cache write outside the
+executor's writable runtime boundary. Moving that cache into runtime changed a
+real sandbox probe from failed delivery (145 bytes) to full delivery (8,164 bytes);
+17 focused tests cover persistence, migration, and recurrence. Actual native
+review, QA, and verifier processes then completed through the relay after a
+registered-frame truncation repair covered by 12 focused transport tests. The
+relay records repeated full hook deliveries and request reminder counts without
+retaining reminder content. Unknown cue identities still fail closed.
+
+Independent QA collected the exact `CACHE_SMOKE_OK` result and complete tracked
+diff from authorized harness operations. Historical byte preservation for
+inherited untracked inputs remains unavailable and is retained as a nonblocking
+risk. Final verification acceptance and its actual invocation are recorded in
+the measurement record; a worker's pass alone does not establish acceptance.
+
+This establishes live 12h writes, subsequent billed reads, and recurring native
+hook delivery through the development executor. It does not establish elapsed
+12h retention, cache reuse after an idle 30-minute gap, editor/Agents bridge
+behavior, or reminder-compliance equivalence. Cached tokens still occupy context
+and incur charges; a cache key cannot retrieve omitted prompt text.
 
 ## Delivery audit
 

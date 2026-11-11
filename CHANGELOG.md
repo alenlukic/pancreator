@@ -1,5 +1,21 @@
 # Changelog
 
+## [10.8.0] - 2026-11-11
+
+### Changed
+
+- Store reminder hook state in the runtime directory for external executors ([reminders](docs/invocation-context.md)).
+
+### Added
+
+- Add prompt cache lifetimes and diagnostics to the OpenAI reminder relay ([cache](docs/invocation-context.md)).
+- Add an explicit VS Code credential fallback for the OpenAI executor ([authentication](docs/operator-guide.md)).
+
+### Fixed
+
+- Recover truncated reminder frames without losing adjacent content ([relay](docs/invocation-context.md)).
+- Observe declared worker retries and classify denied read commands correctly ([watch](docs/process-backed-watch.md)).
+
 ## [10.7.0] - 2026-11-11
 
 ### Changed

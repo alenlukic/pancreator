@@ -12,7 +12,7 @@ export const TURN_REMINDER_REGISTRY_PATH =
   'governance/registries/turn_reminder_profiles.json'
 export const TURN_REMINDER_SCHEMA_PATH =
   'library/schemas/turn-reminder-profiles.schema.json'
-export const TURN_REMINDER_STATE_PATH = '.cursor/hooks/state/conversations.json'
+export const TURN_REMINDER_STATE_PATH = 'runtime/reminders/conversations.json'
 
 export const TURN_REMINDER_ROLES = [
   'regular-supervisor',

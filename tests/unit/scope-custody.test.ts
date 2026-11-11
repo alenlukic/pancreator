@@ -16,6 +16,70 @@ import {
 import { isDelegationWriteBoundary } from '../../src/lib/executors/scope-custody.js'
 import { createTestTempDirectory } from '../temp.js'
 
+function deniedShellObservations(command: string) {
+  const pending = new Map<string, string[]>()
+  const observations: Omit<DelegationWriteObservation, 'evidence'>[] = []
+  const events = [
+    {
+      type: 'tool.execution_start',
+      data: { toolCallId: 'shell', toolName: 'bash', arguments: { command } },
+    },
+    {
+      type: 'tool.execution_complete',
+      data: {
+        toolCallId: 'shell',
+        success: false,
+        error: {
+          code: 'denied',
+          message:
+            'Permission denied because no interactive user response was available.',
+        },
+      },
+    },
+  ]
+  for (const event of events) {
+    observeToolWrite(JSON.stringify(event), pending, '/workspace', (item) =>
+      observations.push(item),
+    )
+  }
+  assert.equal(pending.size, 0)
+  return observations
+}
+
+test('probable_edge_case: denied plain shell reads do not become write attempts', () => {
+  for (const command of [
+    'ls -d /private/logs/*native-smoke* /private/logs/*Scaffoldnative*',
+    '/bin/ls -la /private/logs',
+    'cat "/private/file with spaces"',
+    "cat '/private/file with spaces'",
+    'pwd',
+    'ps -p 123 -o pid,comm',
+  ]) {
+    assert.deepEqual(deniedShellObservations(command), [], command)
+  }
+})
+
+test('critical_unhappy_path: denied compound or unknown shells retain write custody', () => {
+  for (const command of [
+    'ls > /private/new.txt',
+    'ls && touch /private/new.txt',
+    'ls; touch /private/new.txt',
+    'ls | tee /private/new.txt',
+    'ls $(printf denied)',
+    'ls `printf denied`',
+    'ls "$(printf denied)"',
+    'cat <(printf data)',
+    'ls\ntouch /private/new.txt',
+    'unknown-command /private/file',
+  ]) {
+    assert.deepEqual(
+      deniedShellObservations(command),
+      [{ path: '<unresolved denied write>', outcome: 'denied' }],
+      command,
+    )
+  }
+})
+
 test('write authorization resolves missing leaves and rejects lexical and symlink escapes', () => {
   const root = createTestTempDirectory('scope-roots-')
   const allowed = path.join(root, 'allowed')

@@ -36,3 +36,46 @@ establish a successful watch or stage result.
 
 The watch still wakes every 60 seconds. Attach recovery, ledger fields, output
 requirements, and terminal evidence rules retain their existing contracts.
+
+## Recorded retries
+
+A declared stage-worker retry can replace an earlier executor pin only after
+both the prior child and relay have ended and the previous watch is terminal.
+Both host handles must belong to ordered worker records for that invocation.
+An unknown handle, an active predecessor, or an unfinished watch cannot reset
+the pin. The same worker still keeps its original launch clock when rearmed.
+
+Before adopting the retry, the harness retains the prior launch record, watch
+ledger, blocking receipts, background marker, and foreground-return attestation
+under `<invocation>-worker-attempt-<previous-attempt>/` in the evidence directory.
+The active launch is replaced atomically and uses the retry's recorded clock;
+old observations never count as supervision of the new worker. The observer then
+selects the retry's unambiguous live identity and validates its matching final
+audit through the ordinary completion checks. Submission uses the same recovery,
+including for an existing declared retry recorded before this repair.
+
+Automatic verification regrading can start sequential executor sessions inside
+one controller wrapper. The original pin anchors that wrapper. The observer
+follows its protected custody records to the latest child, rejects overlapping
+or simultaneous children, and requires the public mirror to match the protected
+record. A missing or changed mirror cannot make an older audit complete a newer
+child. A different controller still needs the declared retry procedure above.
+
+Protected predecessor records establish termination when available. A public
+claim that a predecessor ended cannot override protected evidence that it runs.
+
+The regression in
+[`copilot-retry-observation.test.ts`](../tests/regression/copilot-retry-observation.test.ts)
+proves retained history, retry completion, idempotent rearming, recovery at
+submission, controller lineage, mirror integrity, and rejection of undeclared
+or still-active replacements.
+
+## Denied reads
+
+A denied plain `ls`, `cat`, `pwd`, or `ps` command is a read failure, rather than
+a write attempt. This recognition accepts only literal arguments and ordinary
+quoted paths. Shell substitutions, redirections, compound commands, and unknown
+executables retain the existing unresolved denial record. The process sandbox
+and write authorization checks remain authoritative. The regressions in
+[`scope-custody.test.ts`](../tests/unit/scope-custody.test.ts) cover the observed
+listing failure and preserve denial records for commands that could write.

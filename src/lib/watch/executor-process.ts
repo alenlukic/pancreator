@@ -6,6 +6,8 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
+import { stableStringify } from '../io.js'
+
 import type { AgentActivity } from '../agent-index/activity.js'
 import {
   readShellRecord,
@@ -16,6 +18,7 @@ import {
 } from '../agent-index/shell-records.js'
 import {
   delegationLivePaths,
+  delegationCustodyDirectory,
   liveChildEndedAt,
   loadDelegationLiveRecord,
   type DelegationLiveRecord,
@@ -23,6 +26,7 @@ import {
 import { resolveRunLayout } from '../run-layout.js'
 import type { Invocation } from '../types.js'
 import { readLaunchRecord, recordInvocationLaunch } from './launch.js'
+import { recoverRecordedProcessRetry } from './retry.js'
 import {
   delegationExecutionPath,
   loadDelegationExecutionRecord,
@@ -49,21 +53,52 @@ function latestLiveRecord(
   record: DelegationLiveRecord | null
   latestLaunchMs: number | null
 } {
+  const prefix = `${invocation.invocation_id}.copilot.stage.attempt-${invocation.attempt}.`
+  const readRecords = (
+    directory: string,
+    authority = false,
+  ): DelegationLiveRecord[] => {
+    let names: string[]
+
+    try {
+      names = readdirSync(directory)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return []
+      }
+      throw error
+    }
+
+    return names
+      .filter((name) => name.startsWith(prefix) && name.endsWith('.live.json'))
+      .map((name) =>
+        loadDelegationLiveRecord(
+          root,
+          {
+            run_id: invocation.run_id,
+            invocation_id: invocation.invocation_id,
+            role: 'stage',
+            attempt: invocation.attempt,
+            launch_id: name.slice(prefix.length, -'.live.json'.length),
+          },
+          authority,
+        ),
+      )
+      .filter(
+        (record): record is DelegationLiveRecord =>
+          record !== null &&
+          Date.parse(record.launched_at) >= Date.parse(invocation.created_at),
+      )
+      .sort(
+        (left, right) =>
+          Date.parse(right.launched_at) - Date.parse(left.launched_at),
+      )
+  }
+
   const directory = resolveRunLayout(root, invocation.run_id).evidence(
     '',
   ).absolute
-  let names: string[]
-
-  try {
-    names = readdirSync(directory)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { record: null, latestLaunchMs: null }
-    }
-    throw error
-  }
-
-  const prefix = `${invocation.invocation_id}.copilot.stage.attempt-${invocation.attempt}.`
+  let records = readRecords(directory)
   const launch = readLaunchRecord(
     root,
     invocation.run_id,
@@ -74,36 +109,62 @@ function latestLiveRecord(
     (launch?.worker_handle?.startsWith('copilot:')
       ? launch.worker_handle.slice('copilot:'.length)
       : undefined)
-  const records = names
-    .filter((name) => name.startsWith(prefix) && name.endsWith('.live.json'))
-    .map((name) =>
-      loadDelegationLiveRecord(root, {
+
+  if (pinned) {
+    const authority = readRecords(
+      delegationCustodyDirectory(root, {
         run_id: invocation.run_id,
         invocation_id: invocation.invocation_id,
-        role: 'stage',
-        attempt: invocation.attempt,
-        launch_id: name.slice(prefix.length, -'.live.json'.length),
       }),
+      true,
     )
-    .filter(
-      (record): record is DelegationLiveRecord =>
-        record !== null &&
-        (!pinned || pinned === record.launch_id) &&
-        Date.parse(record.launched_at) >= Date.parse(invocation.created_at),
-    )
-    .sort((a, b) => Date.parse(b.launched_at) - Date.parse(a.launched_at))
+    const anchor = authority.find((record) => record.launch_id === pinned)
+    const wrapper = validatedParentRecord(anchor?.wrapper_record_path)
+
+    if (anchor && wrapper) {
+      // Automatic regrading may start sequential children inside one controller.
+      // Only protected, mirrored records in that same wrapper can extend its pin.
+      const lineage = authority.filter(
+        (record) =>
+          record.wrapper_record_path === wrapper &&
+          Date.parse(record.launched_at) >= Date.parse(anchor.launched_at),
+      )
+      const latest = lineage[0]
+      const latestLaunchMs = latest ? Date.parse(latest.launched_at) : null
+
+      const ambiguous =
+        lineage[1] !== undefined &&
+        Date.parse(lineage[1].launched_at) === latestLaunchMs
+      const overlap = lineage
+        .slice(1)
+        .some(
+          (record) =>
+            record.ended_at === undefined ||
+            liveChildEndedAt(record) === undefined ||
+            Date.parse(record.ended_at) > (latestLaunchMs ?? -Infinity),
+        )
+      const mirror = latest
+        ? records.find(
+            (record) =>
+              record.launch_id === latest.launch_id &&
+              stableStringify(record) === stableStringify(latest),
+          )
+        : undefined
+
+      return {
+        record: !ambiguous && !overlap ? (mirror ?? null) : null,
+        latestLaunchMs,
+      }
+    }
+    records = records.filter((record) => record.launch_id === pinned)
+  }
 
   const latest = records[0]
   const latestLaunchMs = latest ? Date.parse(latest.launched_at) : null
-  // Ambiguity prevents activity selection, but must not erase audit freshness.
   const ambiguous =
     records[1] !== undefined &&
     Date.parse(records[1].launched_at) === latestLaunchMs
-
-  return {
-    record: latest && !ambiguous ? latest : null,
-    latestLaunchMs,
-  }
+  return { record: latest && !ambiguous ? latest : null, latestLaunchMs }
 }
 
 function descendsFrom(
@@ -257,6 +318,7 @@ export function executorProcessActivity(
     return null
   }
 
+  recoverRecordedProcessRetry(root, invocation.run_id, invocation.invocation_id)
   const record = loadDelegationExecutionRecord(
     root,
     invocation.run_id,

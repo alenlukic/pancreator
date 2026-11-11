@@ -19,6 +19,7 @@ import {
 } from './types.js'
 import { backgroundMarkerPath, watchRecordPath } from './paths.js'
 import { PLATFORM_ACTION_CATEGORY } from './redline.js'
+import { recoverRecordedProcessRetry } from './retry.js'
 
 /**
  * When the worker behind one invocation was launched, and how well the
@@ -207,6 +208,7 @@ export function recordInvocationLaunch(
   invocationId: string,
   options: LaunchRecordOptions,
 ): LaunchRecord {
+  recoverRecordedProcessRetry(root, runId, invocationId, options.workerHandle)
   const existing = readLaunchRecord(root, runId, invocationId)
   invariant(
     !existing?.worker_handle ||

@@ -48,7 +48,12 @@ async function runningRelay(root: string): Promise<RelayReceipt | undefined> {
 export async function reminderRelayLifecycle(
   root: string,
   action: 'start' | 'stop',
-  options: { ownerPid?: number; port?: number; full?: boolean } = {},
+  options: {
+    ownerPid?: number
+    port?: number
+    full?: boolean
+    cache?: boolean
+  } = {},
 ): Promise<{ status: 'running' | 'stopped'; url?: string }> {
   if (
     options.ownerPid !== undefined &&
@@ -91,6 +96,10 @@ export async function reminderRelayLifecycle(
 
     if (options.full) {
       args.push('--full')
+    }
+
+    if (options.cache === false) {
+      args.push('--no-prompt-cache')
     }
 
     const child = spawn(process.execPath, args, {
