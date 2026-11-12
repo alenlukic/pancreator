@@ -29,6 +29,17 @@
       ]
     },
     {
+      "id": "commit-authorship-invariant",
+      "category": "duplicate",
+      "sources": ["AGENTS.md", "governance/policies/ACTION-001.json"],
+      "disposition": "retain",
+      "rationale": "The operating card must state the commit authorship invariant before governance resolution. ACTION-001 repeats it for scoped cards that carry source-control authority. Both surfaces must preserve the same operator-owned identity rule.",
+      "evidence": [
+        "tests/integration/release-landing-integrate.test.ts: a commit hook cannot silently add authorship attribution",
+        "src/lib/git/branches.ts: commit message authorship attribution validation"
+      ]
+    },
+    {
       "id": "planner-and-standalone-chunking",
       "category": "duplicate",
       "sources": [

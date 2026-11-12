@@ -32,6 +32,20 @@
       "applicability": {
         "invocation_kind": "spotfix"
       }
+    },
+    {
+      "id": "implementation-claims-validate",
+      "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "workflow": "one-shot",
+        "stage": "implement"
+      }
     }
   ],
   "guidance_sources": [

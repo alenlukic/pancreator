@@ -109,7 +109,7 @@ test('G02 refuses malformed overrides, aliases, mappings and selection conflicts
       field: 'model_config.oai.balanced',
     },
     {
-      bytes: JSON.stringify({ ...compatible, active_config: 'advanced' }),
+      bytes: JSON.stringify({ ...compatible, active_config: 'missing' }),
       field: 'active_config',
     },
     {
@@ -146,6 +146,64 @@ test('G02 refuses malformed overrides, aliases, mappings and selection conflicts
       )
       assertPreserved(f, prior)
     }
+  }
+})
+
+test('G02 publishes an override active_config that differs from the tracked selection', () => {
+  const f = fixture(false)
+  const bytes = `${JSON.stringify({ ...compatible, active_config: 'advanced' }, null, 2)}\n`
+
+  fs.writeFileSync(path.join(f.root, 'config_overrides.json'), bytes)
+  handoffSelfDevelopmentLocalConfig(f.root, f.receiver)
+  assert.equal(fs.readFileSync(f.destination, 'utf8'), bytes)
+  assert.equal(loadPipelineConfig(f.receiver).name, 'advanced')
+})
+
+test('G02 refuses to replace an existing explicit local selection', () => {
+  for (const incoming of [
+    compatible,
+    { ...compatible, active_config: 'balanced' },
+  ]) {
+    const f = fixture()
+    const previous = JSON.stringify({
+      ...compatible,
+      active_config: 'advanced',
+    })
+
+    fs.writeFileSync(f.destination, previous)
+    fs.writeFileSync(
+      path.join(f.root, 'config_overrides.json'),
+      JSON.stringify(incoming),
+    )
+    assert.throws(
+      () => handoffSelfDevelopmentLocalConfig(f.root, f.receiver),
+      (error: unknown) => {
+        assert.ok(error instanceof PanError)
+        assert.match(error.message, /active_config/u)
+        return true
+      },
+    )
+    assert.equal(fs.readFileSync(f.destination, 'utf8'), previous)
+    assert.equal(loadPipelineConfig(f.receiver).name, 'advanced')
+  }
+})
+
+test('G02 refuses to overwrite an invalid receiving override', () => {
+  for (const previous of ['[]', 'null', '"operator-local-value"', '{']) {
+    const f = fixture()
+    fs.writeFileSync(f.destination, previous)
+
+    assert.throws(
+      () => handoffSelfDevelopmentLocalConfig(f.root, f.receiver),
+      (error: unknown) => {
+        assert.ok(error instanceof PanError)
+        assert.equal(error.code, 'WORKTREE_OVERRIDE_COPY_FAILED')
+        assert.match(error.message, /receiver override/u)
+        assert.equal(error.message.includes('operator-local-value'), false)
+        return true
+      },
+    )
+    assert.equal(fs.readFileSync(f.destination, 'utf8'), previous)
   }
 })
 

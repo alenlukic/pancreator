@@ -35,6 +35,7 @@ import { isSelfDevelopmentInstallation } from '../project-config.js'
 import { validateCommandGovernance } from '../governance/command-coverage.js'
 import { validateTargetAuthoring } from '../target-authoring.js'
 import { targetRepoPrimerFreshness } from '../validators/target-repo-primer.js'
+import { workflowStageFieldContractErrors } from './stage-field-contract.js'
 import {
   listWorkflowSlugs,
   loadWorkflow,
@@ -324,6 +325,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   const workflowPersonas = new Set<string>()
+
+  errors.push(...workflowStageFieldContractErrors(root))
 
   for (const slug of listWorkflowSlugs(root)) {
     try {

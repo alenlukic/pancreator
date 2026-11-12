@@ -464,6 +464,19 @@ export function requiredData(
         },
       }
     }
+    case 'handoff':
+      return {
+        design_package: {
+          summary: 'Fixture design package',
+          design_spec_path: 'runtime/artifacts/design-spec.md',
+          mocks_index: ['runtime/artifacts/mocks/primary.html'],
+          acceptance_criteria: [
+            { id: 'DAC-01', criterion: 'The primary screen is visible.' },
+          ],
+          dev_request_instructions:
+            'Start a separate delivery run with design composition and reference these package paths.',
+        },
+      }
     default:
       throw new Error(`Unknown stage ${stage}`)
   }

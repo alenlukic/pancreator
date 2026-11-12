@@ -64,6 +64,10 @@ const RUN_CONSTRUCTION_ALLOWLIST = new Set([
   'tests/integration/submit-advisories.test.ts',
   'tests/integration/supervisor-handoff.test.ts',
   'tests/integration/workspace-target.test.ts',
+  // Catalog smoke tests must create fresh runs to detect start and lifecycle
+  // regressions across every installed workflow, including new variants.
+  'tests/integration/workflow-path-smoke.test.ts',
+  'tests/integration/workflow-start-prepare.test.ts',
   'tests/integration/worktree-cli-runs.test.ts',
   'tests/regression/delivery-old-graph.test.ts',
   'tests/regression/event-recovery.test.ts',

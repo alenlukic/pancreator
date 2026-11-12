@@ -1,5 +1,21 @@
 # Changelog
 
+## [10.10.0] - 2026-11-12
+
+### Changed
+
+- Permit `config_overrides.json` to select a different `active_config` than `config.json` during landing ([check-landing](bin/check-landing), [94ac93ed](https://github.com/alenlukic/pancreator/commit/94ac93ed)).
+- Keep an explicit local `active_config` on a worktree that already has an override ([worktree](src/lib/worktree/store.ts), [ce873074](https://github.com/alenlukic/pancreator/commit/ce873074)).
+
+### Added
+
+- Add integration smoke tests for every workflow success path and failure path ([smoke](tests/integration/workflow-path-smoke.test.ts), [94ac93ed](https://github.com/alenlukic/pancreator/commit/94ac93ed)).
+- Bind `IMPLEMENTATION-CLAIMS-VALIDATE-001` to one-shot implement under SPOT-001 ([SPOT-001](governance/policies/SPOT-001.json), [94ac93ed](https://github.com/alenlukic/pancreator/commit/94ac93ed)).
+
+### Fixed
+
+- Move stage field contracts out of the engine so repository validation can load them ([contract](src/lib/validation/stage-field-contract.ts), [12ed4f5d](https://github.com/alenlukic/pancreator/commit/12ed4f5d)).
+
 ## [10.9.0] - 2026-11-11
 
 ### Added

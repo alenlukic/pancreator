@@ -9,9 +9,14 @@ PATH="$ROOT/node_modules/.bin:$PATH"
 # mtime, and size, so any edit, addition, deletion, or rename invalidates it.
 STAMP="dist/.build-stamp"
 
-stat_line() {
-  stat -f '%N %m %z' "$@" 2>/dev/null || stat -c '%n %Y %s' "$@" 2>/dev/null || true
-}
+# GNU stat -f prints filesystem statistics before reporting a bad format
+# operand. Probe the dialect once so those changing statistics never enter
+# the source fingerprint on Linux.
+if stat -c '%n %Y %s' tsconfig.json >/dev/null 2>&1; then
+  stat_args=(-c '%n %Y %s')
+else
+  stat_args=(-f '%N %m %z')
+fi
 
 fingerprint() {
   local dirs=()
@@ -29,10 +34,10 @@ fingerprint() {
   fi
 
   {
-    stat_line tsconfig.json package.json package-lock.json
+    stat "${stat_args[@]}" tsconfig.json package.json package-lock.json 2>/dev/null || true
     if [[ ${#dirs[@]} -gt 0 ]]; then
       { find "${dirs[@]}" -name '*.ts' -type f -print0 2>/dev/null || true; } \
-        | { xargs -0 bash -c 'stat -f "%N %m %z" "$@" 2>/dev/null || stat -c "%n %Y %s" "$@" 2>/dev/null || true' _ 2>/dev/null || true; } \
+        | { xargs -0 stat "${stat_args[@]}" 2>/dev/null || true; } \
         | sort
     fi
   } | cksum

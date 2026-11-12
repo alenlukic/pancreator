@@ -84,6 +84,7 @@ import {
   workspaceSnapshotForRun,
 } from './core.js'
 import { writeFunctionIndex } from '../function-index.js'
+import { stageFieldContract } from '../validation/stage-field-contract.js'
 import {
   ensureWorkflowRepositoryCheckBaselines,
   ensureWorkspaceProvisioned,
@@ -105,7 +106,6 @@ import {
   refreshReturningVerifyProfiles,
   resolveStageForAttempt,
   scheduleEvidenceWorkers,
-  stageFieldContract,
   writeLabeledDelegationArtifact,
 } from './prepare-helpers.js'
 import {

@@ -283,9 +283,11 @@ export function newWorktreeRoot(root: string): string {
 }
 
 /**
- * Validate the receiving merge, preserve its active selection, and atomically
- * publish the recognized local override before setup. Refuse changed inputs
- * before publication. Target installations retain installation-root ownership.
+ * Validate the merged override and atomically publish it before setup. An
+ * override may select a different active_config than the tracked file, but
+ * must preserve a receiving checkout's explicit local selection. Refuse
+ * changed inputs before publication. Target installations retain
+ * installation-root ownership.
  *
  * Exported so a test can drive the copy failure directly; a worktree creation
  * that reaches this point has already added a Git worktree, which is too much
@@ -324,27 +326,36 @@ export function handoffSelfDevelopmentLocalConfig(
     const receiverName = localConfigName(worktreePath)
     const receiverBytes =
       before[watchedPaths.indexOf(path.join(worktreePath, receiverName))]?.bytes
-    const previous = receiverBytes
-      ? mergeConfigValues(
-          tracked,
-          JSON.parse(receiverBytes.toString('utf8')) as unknown,
-        )
-      : tracked
     const bytes = readFileSync(sourcePath)
     phase = 'validation'
     fields = ['override']
     const override = JSON.parse(bytes.toString('utf8')) as unknown
     invariant(isRecord(override), 'Override MUST contain an object.')
     const candidate = mergeConfigValues(tracked, override)
-    fields = ['active_config']
-    invariant(
-      isRecord(previous) &&
-        isRecord(candidate) &&
-        candidate.active_config === previous.active_config,
-      'The receiving active_config MUST be preserved.',
-    )
     fields = ['configuration']
     parsePipelineConfig(candidate, 'candidate')
+
+    // A fresh receiver inherits the source override. An existing local
+    // selection is operator-owned and must not be silently replaced or lost.
+    if (receiverBytes !== undefined) {
+      fields = ['receiver override']
+      const previousOverride: unknown = JSON.parse(
+        receiverBytes.toString('utf8'),
+      )
+      invariant(
+        isRecord(previousOverride),
+        'Receiver override MUST contain an object.',
+      )
+
+      if (Object.hasOwn(previousOverride, 'active_config')) {
+        fields = ['active_config']
+        invariant(
+          isRecord(candidate) &&
+            candidate.active_config === previousOverride.active_config,
+          'The receiving local active_config MUST be preserved.',
+        )
+      }
+    }
 
     // A legacy source must never be hidden by a current-name destination.
     fields = ['override']
@@ -392,9 +403,9 @@ export function handoffSelfDevelopmentLocalConfig(
     throw new PanError(
       `Configuration handoff from '${sourcePath}' to '${targetPath}' failed ` +
         `during ${phase} at ${fields.join(', ')}. Correct these fields in ` +
-        `'${sourcePath}' for the receiver's tracked configuration, preserve ` +
-        'its active_config, then run ./bin/pan worktree create <unused-name> ' +
-        '--from <compatible-ref>. Keep the failed worktree for inspection.',
+        `'${sourcePath}' for the receiver's tracked configuration, then run ` +
+        './bin/pan worktree create <unused-name> --from <compatible-ref>. ' +
+        'Keep the failed worktree for inspection.',
       {
         code: 'WORKTREE_OVERRIDE_COPY_FAILED',
         details: {

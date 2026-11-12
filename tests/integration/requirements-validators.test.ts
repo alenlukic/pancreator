@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,6 +8,8 @@ import {
   isPassingResult,
 } from '../../src/lib/requirements/run.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
+import { workflowStageFieldContractErrors } from '../../src/lib/validation/stage-field-contract.js'
+import { validateRepository } from '../../src/lib/validation.js'
 import { requirementShapeKey } from '../../src/cli.js'
 import { resolveSubmitValidators } from '../../src/lib/engine.js'
 import { createFixture } from '../fixture-template.js'
@@ -60,6 +62,84 @@ test('artifact validators resolve only when workflow artifacts are requested', (
       (requirement) => requirement.registry_id === 'STAGE-OUTPUT-VALIDATE-002',
     ),
   )
+})
+
+test('repository validation detects a stage validator missing only when artifacts are suppressed', () => {
+  const root = createFixture()
+  const file = path.join(root, 'governance/policies/SPOT-001.json')
+  const policy = JSON.parse(readFileSync(file, 'utf8')) as {
+    requirements: Array<{
+      registry_id: string
+      applicability: Record<string, string>
+    }>
+  }
+  const claims = policy.requirements.find(
+    (requirement) =>
+      requirement.registry_id === 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.ok(claims)
+  claims.applicability.operator_artifacts = 'requested'
+  writeFileSync(file, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const diagnostic =
+    'one-shot/implement/spotfixer (suppressed artifacts): ' +
+    'Stage implement does not resolve IMPLEMENTATION-CLAIMS-VALIDATE-001.'
+
+  assert.deepEqual(workflowStageFieldContractErrors(root), [diagnostic])
+  assert.ok(validateRepository(root).errors.includes(diagnostic))
+})
+
+test('field contracts reject validators that submission cannot execute on the stage output', () => {
+  const id = 'IMPLEMENTATION-CLAIMS-VALIDATE-001'
+  const mutations = [
+    { phase: 'before_operation' },
+    { executor: 'agent' },
+    { target: 'repository' },
+  ]
+
+  for (const mutation of mutations) {
+    const root = createFixture()
+    const file = path.join(root, 'governance/policies/SPOT-001.json')
+    const policy = JSON.parse(readFileSync(file, 'utf8')) as {
+      requirements: Array<{ registry_id: string }>
+    }
+    const claims = policy.requirements.find(
+      (requirement) => requirement.registry_id === id,
+    )
+
+    assert.ok(claims)
+    Object.assign(claims, mutation)
+    writeFileSync(file, JSON.stringify(policy))
+
+    const errors = workflowStageFieldContractErrors(root)
+    assert.ok(
+      errors.some((error) =>
+        error.includes(
+          `Stage implement does not resolve ${id} as a harness submission validator for its stage output.`,
+        ),
+      ),
+      JSON.stringify(mutation),
+    )
+  }
+})
+
+test('repository validation checks field contracts under run-wide contracts', () => {
+  const root = createFixture()
+  const file = path.join(root, 'governance/registries/policy_lookup_table.json')
+  const lookup = JSON.parse(readFileSync(file, 'utf8')) as {
+    rows: Array<{ policies: string[]; long_horizon?: boolean }>
+  }
+  const row = lookup.rows.find((item) => item.policies.includes('SPOT-001'))
+
+  assert.ok(row)
+  row.long_horizon = false
+  writeFileSync(file, JSON.stringify(lookup))
+
+  const diagnostic =
+    'one-shot/implement/spotfixer (requested artifacts; contracts: long_horizon): ' +
+    'Stage implement does not resolve IMPLEMENTATION-CLAIMS-VALIDATE-001.'
+  assert.ok(validateRepository(root).errors.includes(diagnostic))
 })
 
 test('every prototype stage resolves the blocking output validator', () => {

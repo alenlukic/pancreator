@@ -515,7 +515,7 @@ test('branch check: accepts a marked daily commit that changes only AGENTS.md', 
   assert.equal(result.status, 0, `Expected exit 0; stderr: ${result.stderr}`)
 })
 
-test('active-config: the override must use the same active_config as config.json', () => {
+test('active-config: an override may select a different active_config', () => {
   const root = createTestTempDirectory('check-landing-active-config-')
 
   writeFileSync(path.join(root, 'config.json'), '{"active_config":"default"}\n')
@@ -526,9 +526,11 @@ test('active-config: the override must use the same active_config as config.json
 
   const mismatch = runCheckLandingResult(['active-config', root], root)
 
-  assert.equal(mismatch.status, 1)
-  assert.match(mismatch.stderr, /active_config is 'balanced'/u)
-  assert.match(mismatch.stderr, /pan-dev or main/u)
+  assert.equal(
+    mismatch.status,
+    0,
+    `Expected exit 0; stderr: ${mismatch.stderr}`,
+  )
 
   writeFileSync(
     path.join(root, 'config_overrides.json'),

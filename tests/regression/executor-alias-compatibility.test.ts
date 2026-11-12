@@ -68,6 +68,10 @@ test('moving a persona to cursor-cli prunes its projected cursor subagent', () =
 
   for (const named of Object.values(config.configs ?? {})) {
     delete named.planner
+
+    if (typeof named.personas === 'object' && named.personas !== null) {
+      delete (named.personas as Record<string, unknown>).planner
+    }
   }
 
   overrides.defaults = {

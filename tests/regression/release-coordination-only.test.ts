@@ -84,9 +84,9 @@ test('a standalone release lands without workflow evidence, test execution, or a
   )
 })
 
-test('a release refuses to land when the override active_config differs from config.json', () => {
+test('a release lands when the override active_config differs from config.json', () => {
   const root = landingFixture()
-  const name = 'override-active-config-mismatch'
+  const name = 'override-active-config-differs'
   const workspace = makeCandidate(
     root,
     name,
@@ -97,24 +97,28 @@ test('a release refuses to land when the override active_config differs from con
     string,
     unknown
   >
+  const tracked = (
+    JSON.parse(readFileSync(path.join(workspace, 'config.json'), 'utf8')) as {
+      active_config: string
+    }
+  ).active_config
 
-  override.active_config = 'not-the-config-json-value'
+  override.active_config = tracked === 'balanced' ? 'default' : 'balanced'
+  assert.notEqual(override.active_config, tracked)
   writeFileSync(overridePath, `${JSON.stringify(override, null, 2)}\n`)
   git(workspace, ['add', '-f', 'config_overrides.json'])
   git(workspace, ['commit', '-qm', 'test: diverge override active_config'])
-  const tip = git(root, ['rev-parse', 'pan-dev'])
-  const before = git(workspace, ['rev-parse', 'HEAD'])
 
-  assert.throws(
-    () => landRelease(root, { worktree: name, bump: 'minor' }),
-    (error: unknown) =>
-      (error as { code?: string }).code === 'OVERRIDE_ACTIVE_CONFIG_MISMATCH',
-  )
-  assert.equal(git(root, ['rev-parse', 'pan-dev']), tip)
-  assert.equal(git(workspace, ['rev-parse', 'HEAD']), before)
+  const result = landRelease(root, { worktree: name, bump: 'minor' })
+
+  assert.equal(result.status, 'landed')
   assert.equal(
-    readLandingLog(root).some((event) => event.step === 'allocate'),
-    false,
+    (
+      JSON.parse(git(root, ['show', 'pan-dev:config.json'])) as {
+        active_config: string
+      }
+    ).active_config,
+    tracked,
   )
 })
 
