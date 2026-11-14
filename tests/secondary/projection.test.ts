@@ -51,14 +51,28 @@ test('installer and compiled projection renderers stay byte-identical', () => {
       'utf8',
     )
 
-    assert.equal(installerRendered, renderPolicyCursorRule(policy))
+    assert.equal(
+      installerRendered,
+      projectCursorContent(
+        renderPolicyCursorRule(policy),
+        '.cursor/rules/pan-browser-isolation.mdc',
+        'embedded',
+      ),
+    )
 
     const installerChatRule = readFileSync(
       path.join(targetRoot, '.cursor', 'rules', 'pan-chat-output.mdc'),
       'utf8',
     )
 
-    assert.equal(installerChatRule, renderPolicyCursorRule(commsPolicy))
+    assert.equal(
+      installerChatRule,
+      projectCursorContent(
+        renderPolicyCursorRule(commsPolicy),
+        '.cursor/rules/pan-chat-output.mdc',
+        'embedded',
+      ),
+    )
 
     const commandSource = readFileSync(
       path.join(root, 'library', 'cursor', 'commands', 'pan-status.md'),

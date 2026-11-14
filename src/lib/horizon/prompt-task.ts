@@ -234,7 +234,9 @@ export function executePromptTask(
   // the operating system, a write outside the grant cannot happen and no
   // observation is needed. When it does not, the fallback observes the whole
   // root and fails closed on anything it finds.
-  const sandbox = resolveWriteSandbox(grantedRoots)
+  const sandbox = resolveWriteSandbox(grantedRoots, {
+    containmentRoots: [root],
+  })
   const enforced = sandbox.mode !== 'none'
   const beforeHarness = enforced
     ? new Map<string, string>()

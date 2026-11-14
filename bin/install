@@ -187,12 +187,15 @@ run_smoke() {
 
   smoke_step() {
     local step="$1"
+    local log
     shift
 
     echo "smoke: $step"
+    log="$(mktemp "${smoke_root}/step.XXXXXX")"
 
-    if ! "$@"; then
+    if ! "$@" >"$log" 2>&1; then
       echo "smoke: FAILED $step" >&2
+      cat "$log" >&2
       failures=$((failures + 1))
     fi
   }
@@ -1226,6 +1229,24 @@ install_payload() {
   node "$PANCREATOR_ROOT/bin/install-support" migrate-policy-extensions \
     --staging-root "$staging"
 
+  # Merge dest config and overrides before projection so hosts, migrated
+  # models, and operator overrides reach Cursor and GitHub files. A fresh
+  # dest has no config.json yet; projecting first would default hosts to
+  # cursor-only and omit vscode files doctor later expects.
+  project_args=(
+    write-project
+    --source "$PANCREATOR_ROOT/config.json"
+    --destination "$CONFIG_JSON"
+    --workspace-id "$(workspace_id)"
+  )
+
+  if [[ "$DETACHED" -eq 1 ]]; then
+    project_args+=(--detached-workspace "$TARGET_DIR")
+  fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" "${project_args[@]}"
+
+  # Report collisions for the same effective hosts that projection will use.
   report_existing_harness "$previous_marker" "$harness_preexisting"
 
   backup_root="$PANCREATOR_DIR/backups/cursor/${installed_at//:/-}"
@@ -1238,11 +1259,8 @@ install_payload() {
     --manifest-out "$cursor_manifest"
     --backup-root "$backup_root"
     --previous-marker "$previous_marker"
+    --persona-config "$CONFIG_JSON"
   )
-
-  if [[ -f "$CONFIG_JSON" ]]; then
-    cursor_args+=(--persona-config "$CONFIG_JSON")
-  fi
 
   # Projected Cursor artifacts address the harness by path. An embedded harness
   # is reachable at `.pancreator`; a detached one only by absolute path.
@@ -1259,19 +1277,6 @@ install_payload() {
       cp -Rp "$staging/$entry" "$PANCREATOR_DIR/$entry"
     fi
   done
-
-  project_args=(
-    write-project
-    --source "$PANCREATOR_ROOT/config.json"
-    --destination "$CONFIG_JSON"
-    --workspace-id "$(workspace_id)"
-  )
-
-  if [[ "$DETACHED" -eq 1 ]]; then
-    project_args+=(--detached-workspace "$TARGET_DIR")
-  fi
-
-  node "$PANCREATOR_ROOT/bin/install-support" "${project_args[@]}"
 
   # The runtime reaches the Cursor surface as `<installation>/.cursor`. An
   # embedded harness links to its parent; a detached one MUST link absolutely.

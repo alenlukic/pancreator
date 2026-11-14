@@ -13,6 +13,7 @@ import test from 'node:test'
 
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
+import { projectionOwnedName } from '../../src/lib/projection/manifest.js'
 import { loadCustomizationBundle } from '../../src/lib/vscode-customizations.js'
 import { createTestTempDirectory } from '../temp.js'
 import {
@@ -660,7 +661,13 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     'browser-isolation.mdc',
   )
 
+  const vscodeCollision = '.github/instructions/pan-chat-output.instructions.md'
+
   try {
+    mkdirSync(path.dirname(path.join(project, vscodeCollision)), {
+      recursive: true,
+    })
+    writeFileSync(path.join(project, vscodeCollision), 'custom instructions\n')
     mkdirSync(path.join(project, '.cursor', 'agents'), { recursive: true })
     mkdirSync(path.join(project, '.cursor', 'rules'), { recursive: true })
     writeFileSync(
@@ -681,6 +688,10 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     const result = runInstaller(project)
 
     assert.equal(result.status, 0, result.stderr)
+    assert.ok(
+      result.stdout.includes(`replaced  ${vscodeCollision}`),
+      result.stdout,
+    )
     assert.equal(
       readFileSync(
         path.join(project, '.cursor', 'rules', 'custom.mdc'),
@@ -725,6 +736,13 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     assert.equal(backupRuns.length, 1)
     assert.equal(
       readFileSync(
+        path.join(backupBase, backupRuns[0], vscodeCollision),
+        'utf8',
+      ),
+      'custom instructions\n',
+    )
+    assert.equal(
+      readFileSync(
         path.join(
           backupBase,
           backupRuns[0],
@@ -743,7 +761,7 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
 
     for (const entry of marker.cursor_files) {
       assert.ok(
-        /^pan(-|creator\.)/u.test(path.basename(entry.path)) ||
+        /^pan(-|creator\.)/u.test(projectionOwnedName(entry.path)) ||
           entry.path === '.cursor/hooks.json',
         entry.path,
       )

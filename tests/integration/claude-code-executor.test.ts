@@ -33,6 +33,7 @@ import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import {
   CLAUDE_CODE_SPEC,
   checkpoint,
+  claudeStubPath,
   installClaudeCodeFixture,
   routePersonas,
   submitStageOutput,
@@ -128,6 +129,14 @@ test('read-only Claude tools reject shell and source writes even when bypass is 
 test('Claude QA and review dispatch remove shell capability under bypass mode', () => {
   const { root, runId, workflow } = checkpoint('delivery@implement-prepared', {
     key: 'claude-readonly-capability',
+    createRun: (root) =>
+      withStub(claudeStubPath(root), null, () =>
+        createRun(root, {
+          workflowSlug: 'delivery',
+          requestPath: 'request.md',
+          title: 'Checkpoint fixture run',
+        }),
+      ),
     fixture: (root) => {
       installClaudeCodeFixture(root, ['qa-tester', 'reviewer'])
       routePersonas(

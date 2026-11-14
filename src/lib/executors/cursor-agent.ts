@@ -12,6 +12,7 @@ import type {
 } from '../types.js'
 import { probeEnvironment } from './cursor-auth.js'
 import { custodyAuthorityRoot } from './scope-custody.js'
+import { spawnSyncWithStdinFile } from './spawn-prompt-stdin.js'
 import {
   resolveWriteSandbox,
   type PreparedLaunch,
@@ -39,10 +40,9 @@ function stderrSummary(stderr: string): string {
 /** Bound for a probe or an arbiter call, which answers one question. */
 const DEFAULT_TIMEOUT_MS = 120_000
 /**
- * Bound for a stage-worker session. A coder implementing an intake works for
- * hours, and the first real headless worker was killed at the probe bound
- * while it was still reading the repository. A persona's `timeout-ms` option
- * overrides this.
+ * Bound for a stage-worker session. The probe bound kills a worker that is
+ * still reading the repository. A persona's `timeout-ms` option overrides
+ * this.
  */
 const DEFAULT_SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -359,7 +359,7 @@ function spawnUnderSandbox(
   options: SpawnSyncOptionsWithStringEncoding,
 ): SpawnSyncReturns<string> {
   try {
-    return spawnSync(launch.binary, launch.argv, options)
+    return spawnSyncWithStdinFile(launch.binary, launch.argv, options)
   } finally {
     launch.cleanup()
   }
@@ -382,9 +382,14 @@ function runCursorAgent(
   // The agent's own binary and argv stay the recorded launch. The sandbox
   // wrapper is transport, and its profile is too large to belong in an
   // evidence record that a reader scans for the agent's arguments.
-  const sandbox = resolveWriteSandbox(request.writeRoots ?? [], [
-    custodyAuthorityRoot(request.installationRoot),
-  ])
+  const sandbox = resolveWriteSandbox(request.writeRoots ?? [], {
+    protectedRoots: [custodyAuthorityRoot(request.installationRoot)],
+    containmentRoots: [
+      request.installationRoot,
+      request.cwd,
+      ...(request.workspaceRoot ? [request.workspaceRoot] : []),
+    ],
+  })
   const launch = sandbox.wrap(binary, argv)
   const enforcement = request.writeRoots
     ? {
@@ -424,12 +429,12 @@ function runCursorAgent(
   })
 
   const durationMs = Date.now() - startedAt
-  const timedOut =
-    (spawned.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT'
+  const spawnError = spawned.error as NodeJS.ErrnoException | undefined
+  const timedOut = spawnError?.code === 'ETIMEDOUT'
   const stdout = spawned.stdout ?? ''
   const stderr = spawned.stderr ?? ''
 
-  if (spawned.error && !timedOut) {
+  if (spawnError && !timedOut) {
     return {
       ok: false,
       binary,
@@ -440,7 +445,7 @@ function runCursorAgent(
       stdout,
       stderr,
       ...enforcement,
-      error: `Failed to spawn '${binary}': ${spawned.error.message}`,
+      error: `Failed to spawn '${binary}': ${spawnError.message}`,
     }
   }
 

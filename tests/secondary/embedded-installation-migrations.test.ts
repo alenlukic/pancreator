@@ -9,13 +9,12 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  parsePipelineConfig,
-  resolveConfigPersonas,
-} from '../../src/lib/pipeline-config.js'
+import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
+import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import {
   cloneInstalledProject,
   createReleaseFixture,
+  namedConfigPersona,
   readJson,
   run,
   runInstaller,
@@ -57,7 +56,22 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
 
     assert.equal(migrated.active_config, 'balanced')
     assert.equal(migrated.installation_mode, 'embedded')
-    assert.equal(migrated.configs.balanced.coder, customCoderModel)
+    assert.notEqual(
+      namedConfigPersona(
+        migrated.configs.balanced as Record<string, unknown>,
+        'coder',
+      ),
+      customCoderModel,
+    )
+
+    const destOverrides = readJson<{
+      configs?: Record<string, Record<string, unknown>>
+    }>(path.join(pancreatorDir, 'config_overrides.json'))
+
+    assert.equal(
+      namedConfigPersona(destOverrides.configs?.balanced, 'coder'),
+      customCoderModel,
+    )
 
     // The projected agent carries the migrated mapping, which proves the
     // migration runs before persona projection.
@@ -95,35 +109,20 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     'runtime',
     'repository-checks.json',
   )
-  const sourceConfigPath = path.join(source, 'config.json')
-
   const activeConfigName = 'ultra'
   const restoredPersona = 'planner'
   const inheritedPersona = 'meta-orchestrator'
 
-  const fixtureDefaultModel = 'fixture-default-model[fast=false]'
-  const restoredModel = 'fixture-restored-planner[fast=false]'
-
   try {
+    // Give the shipped planner a distinct alias, so compaction against the
+    // default cannot make the restoration assertion vacuous.
+    const sourceConfigPath = path.join(source, 'config.json')
     const sourceConfig = readJson<{
-      defaults: Record<string, string>
       configs: Record<string, Record<string, unknown>>
     }>(sourceConfigPath)
-
-    for (const persona of Object.keys(sourceConfig.defaults)) {
-      sourceConfig.defaults[persona] = fixtureDefaultModel
-    }
-
-    const sourceActive = sourceConfig.configs[activeConfigName] as Record<
-      string,
-      unknown
-    >
-    sourceActive[restoredPersona] = restoredModel
-    writeFileSync(
-      sourceConfigPath,
-      `${JSON.stringify(sourceConfig, null, 2)}\n`,
-    )
-    rmSync(path.join(source, 'config_overrides.json'), { force: true })
+    sourceConfig.configs[activeConfigName][restoredPersona] =
+      'anthropic:advanced'
+    writeFileSync(sourceConfigPath, JSON.stringify(sourceConfig))
     rmSync(path.join(pancreatorDir, 'config_overrides.json'), { force: true })
 
     writeFileSync(
@@ -160,8 +159,8 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     )
 
     // The active configuration restates one inherited default to compact,
-    // deletes one release-owned model to restore, and carries one operator
-    // model to preserve.
+    // deletes one shipped alias to restore, and carries one operator model
+    // to preserve.
     const config = readJson<{
       active_config: string
       defaults: Record<string, string>
@@ -181,9 +180,8 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     config.active_config = activeConfigName
     activeConfig.reviewer = customReviewerModel
     activeConfig[inheritedPersona] = inheritedMapping
-    // The release ships `restoredModel` for this persona, so deleting it here
-    // is what the installation has to restore. Assigning the same value first
-    // read as setup and proved nothing the delete did not erase.
+    // The release ships the tracked alias for this persona, so deleting it
+    // here is what the installation has to restore.
     delete activeConfig[restoredPersona]
     config.configs[activeConfigName] = {
       ...(typeof activeConfig.summary === 'string'
@@ -261,20 +259,55 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     }>(configJsonPath)
     const active = refreshed.configs[activeConfigName]
 
+    const destOverrides = readJson<{
+      defaults?: Record<string, string>
+      configs?: Record<string, Record<string, unknown>>
+    }>(path.join(pancreatorDir, 'config_overrides.json'))
+
     assert.equal(refreshed.active_config, activeConfigName)
     assert.equal(active.personas, undefined)
-    assert.equal(active.reviewer, customReviewerModel)
-    assert.equal(active[inheritedPersona], undefined)
-    assert.equal(active[restoredPersona], restoredModel)
-
-    const parsedRefreshed = parsePipelineConfig(
-      refreshed,
-      'refreshed embedded config.json',
+    assert.notEqual(active.reviewer, customReviewerModel)
+    assert.equal(
+      namedConfigPersona(destOverrides.configs?.[activeConfigName], 'reviewer'),
+      customReviewerModel,
     )
-    const inheritedModel = resolveConfigPersonas(
-      parsedRefreshed,
-      activeConfigName,
-    )[inheritedPersona]
+    assert.equal(active[inheritedPersona], undefined)
+    assert.equal(
+      namedConfigPersona(
+        destOverrides.configs?.[activeConfigName],
+        restoredPersona,
+      ),
+      undefined,
+    )
+    assert.equal(destOverrides.defaults, undefined)
+    assert.ok(
+      readFileSync(
+        path.join(project, '.cursor', 'agents', 'pan-reviewer.md'),
+        'utf8',
+      ).includes(`model: ${customReviewerModel}`),
+    )
+
+    const resolved = loadPipelineConfig(pancreatorDir).config.personas
+    const shippedConfig = readJson<{
+      defaults: Record<string, string>
+      configs: Record<string, Record<string, unknown>>
+    }>(path.join(source, 'config.json'))
+    const shippedPlanner = namedConfigPersona(
+      shippedConfig.configs[activeConfigName],
+      restoredPersona,
+    )
+    assert.ok(shippedPlanner, 'fixture must ship an explicit planner mapping')
+    assert.equal(namedConfigPersona(active, restoredPersona), shippedPlanner)
+    assert.equal(
+      resolved[restoredPersona],
+      loadPipelineConfig(source, activeConfigName).file.model_config.anthropic
+        ?.advanced,
+    )
+
+    const inheritedModel = parsePersonaMapping(
+      resolved[inheritedPersona],
+      inheritedPersona,
+    ).model_spec
 
     assert.ok(
       readFileSync(

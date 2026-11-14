@@ -4,6 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  custodyProtectionAvailable,
   resolveWriteSandbox,
   WRITE_SANDBOX_ENV,
   writeSandboxProfile,
@@ -82,6 +83,27 @@ test('Copilot state is an agent exception, never a strict collector grant', () =
 // macOS resolves a fixture path through more than one prefix, and the
 // sandbox matches the resolved one. A profile that named only the declared
 // path would deny a write the caller granted.
+test('containment denies a harness path even when it sits under an agent-state root', () => {
+  const root = createTestTempDirectory('pancreator-write-sandbox-containment-')
+  const granted = path.join(root, 'granted')
+
+  mkdirSync(granted, { recursive: true })
+
+  const profile = writeSandboxProfile([granted], [], true, {
+    containmentRoots: [root],
+  })
+
+  assert.match(profile, /^\(deny file-write\*\)$/mu)
+  assert.ok(profile.includes(`(deny file-write* (subpath "${root}"))`), profile)
+  const grantAllow = `(allow file-write* (subpath "${granted}"))`
+  const lastGrant = profile.lastIndexOf(grantAllow)
+  const containmentDeny = profile.lastIndexOf(
+    `(deny file-write* (subpath "${root}"))`,
+  )
+
+  assert.ok(lastGrant > containmentDeny, profile)
+})
+
 test('the profile names the resolved path of a granted root', () => {
   const root = createTestTempDirectory('pancreator-write-sandbox-')
   const granted = path.join(root, 'granted')
@@ -101,12 +123,20 @@ test('enforcement reports why it is unavailable', () => {
   const disabled = withEnv('0', () => resolveWriteSandbox([root]))
 
   assert.equal(disabled.mode, 'none')
-  assert.match(disabled.reason, /PANCREATOR_WRITE_SANDBOX=0/u)
+  assert.match(
+    disabled.reason,
+    custodyProtectionAvailable()
+      ? /PANCREATOR_WRITE_SANDBOX=0/u
+      : /sandbox-exec/u,
+  )
 
   const ungranted = withEnv(undefined, () => resolveWriteSandbox([]))
 
   assert.equal(ungranted.mode, 'none')
-  assert.match(ungranted.reason, /no write roots/u)
+  assert.match(
+    ungranted.reason,
+    custodyProtectionAvailable() ? /no write roots/u : /sandbox-exec/u,
+  )
 })
 
 test('an unenforced launch runs the original command unchanged', () => {
@@ -138,13 +168,38 @@ test(
 
     assert.equal(launch.binary, '/usr/bin/sandbox-exec')
     assert.equal(launch.argv[0], '-f')
-    assert.equal(launch.argv[2], '/bin/echo')
-    assert.deepEqual(launch.argv.slice(3), ['hello'])
+    assert.equal(launch.argv[2], '--')
+    assert.equal(launch.argv[3], '/bin/echo')
+    assert.deepEqual(launch.argv.slice(4), ['hello'])
     // The profile travels in a file, so no argument carries its bytes.
     assert.ok(
       launch.argv.every((argument) => argument.length < 1000),
       'no argument may approach the exec size that endpoint security kills',
     )
+    launch.cleanup()
+  },
+)
+
+test(
+  'the wrapper stops option parsing before a child vector that starts with -p',
+  {
+    skip:
+      process.platform === 'darwin'
+        ? false
+        : 'Write enforcement uses macOS sandbox-exec.',
+  },
+  () => {
+    const root = createTestTempDirectory('pancreator-write-sandbox-')
+    const sandbox = withEnv(undefined, () => resolveWriteSandbox([root]))
+    const launch = sandbox.wrap('/bin/echo', ['-p', '--output-format', 'json'])
+
+    assert.equal(launch.argv[2], '--')
+    assert.deepEqual(launch.argv.slice(3), [
+      '/bin/echo',
+      '-p',
+      '--output-format',
+      'json',
+    ])
     launch.cleanup()
   },
 )

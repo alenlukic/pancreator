@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process'
 
+import { spawnSyncWithStdinFile } from './spawn-prompt-stdin.js'
+
 /**
  * Process-level mechanics for the `claude-code` persona executor: preflight,
  * non-interactive invocation, and result parsing. Run-state orchestration
@@ -246,7 +248,7 @@ export function runClaudeCode(
   }
 
   const startedAt = Date.now()
-  const spawned = spawnSync(binary, argv, {
+  const spawned = spawnSyncWithStdinFile(binary, argv, {
     cwd: request.cwd,
     encoding: 'utf8',
     input: request.prompt,

@@ -1,11 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  chmodSync,
-  existsSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -180,12 +174,12 @@ test('configureShellAlias leaves exactly one pan block after two repo installs',
   }
 })
 
-test('configureShellAlias tolerates unreadable rc files without throwing', () => {
+test('configureShellAlias tolerates unreadable rc paths without throwing', () => {
   const home = makeHome()
   const blocked = path.join(home, '.bashrc')
 
-  writeFileSync(blocked, 'export FOO=1\n', 'utf8')
-  chmodSync(blocked, 0o000)
+  // Reading a directory as a file fails even for a privileged test runner.
+  mkdirSync(blocked)
 
   try {
     const result = configureShellAlias({ homeDir: home })
@@ -195,7 +189,6 @@ test('configureShellAlias tolerates unreadable rc files without throwing', () =>
     assert.match(result.messages.join('\n'), /Skipped/u)
     assert.ok(existsSync(path.join(home, '.zshrc')))
   } finally {
-    chmodSync(blocked, 0o644)
     rmSync(home, { recursive: true, force: true })
   }
 })

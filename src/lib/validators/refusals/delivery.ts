@@ -274,6 +274,28 @@ export const PLAN_REFUSALS: readonly StageRefusal[] = [
   { code: 'plan.execution_shape', paths: ['data.test_plan[]'] },
   { code: 'plan.execution_required', paths: ['data.test_plan[]'] },
   { code: 'plan.execution_operation', paths: ['data.test_plan[]'] },
+  {
+    code: 'plan.scenario_shape',
+    paths: [
+      'data.test_scenarios[]',
+      'data.test_scenarios[].id',
+      'data.test_scenarios[].scenario',
+    ],
+  },
+  {
+    code: 'plan.scenario_duplicate',
+    paths: [],
+    unowned_reason:
+      'Uniqueness is a relation between items rather than a requirement on one item.',
+  },
+  {
+    code: 'plan.scenario_category',
+    paths: ['data.test_scenarios[].category'],
+  },
+  {
+    code: 'plan.scenario_criterion',
+    paths: ['data.test_scenarios[].criterion'],
+  },
   { code: 'plan.case_invalid_pan_invocation', paths: ['data.test_plan[]'] },
   {
     code: 'plan.criterion_unproducible',

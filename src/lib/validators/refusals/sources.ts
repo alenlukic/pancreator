@@ -123,6 +123,7 @@ export function stageValidatorRefusals(
           file: PLAN_TRACE_MODULE,
           functions: [
             'validatePlanTrace',
+            'testScenarioIssues',
             'criterionProducerIssues',
             'openQuestionDispositionIssues',
             'verificationRecommendationIssues',

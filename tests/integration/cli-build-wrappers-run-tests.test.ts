@@ -16,6 +16,7 @@ import { testScratchRoot } from '../../src/lib/test-scratch.js'
 
 import {
   createBuildScriptFixture,
+  FAKE_TSC_OUT_DIR,
   discardedRuns,
   ownerToken,
   removalMarkers,
@@ -114,7 +115,8 @@ test('run-tests records only the complete configured fast lane', () => {
         path.join(fixture.root, 'bin', 'run-tests'),
         '--',
         '/usr/bin/true',
-        ...testFiles,
+        'dist/tests/unit/*.test.js',
+        'dist/tests/regression/*.test.js',
       ],
       { cwd: fixture.root, encoding: 'utf8', env },
     )
@@ -151,6 +153,67 @@ function writeRecordingNode(root: string, observed: string): string {
 
   return fake
 }
+
+test('run-built discovers compiled lane files only after building', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+  const fake = writeRecordingNode(fixture.root, observed)
+  const compiler = path.join(fixture.root, 'tools', 'tsc')
+  const unit = 'dist/tests/unit/new file.test.js'
+  const regression = 'dist/tests/regression/new.test.js'
+  try {
+    // Simulate a cold checkout and a build that creates a fresh test set.
+    rmSync(path.join(fixture.root, 'dist'), { recursive: true, force: true })
+    writeFileSync(path.join(fixture.root, 'tsconfig.json'), '{}')
+    writeFileSync(
+      compiler,
+      [
+        '#!/bin/bash',
+        'set -euo pipefail',
+        FAKE_TSC_OUT_DIR,
+        'mkdir -p "$out/tests/unit" "$out/tests/regression"',
+        'touch "$out/tests/unit/new file.test.js" "$out/tests/regression/new.test.js"',
+        '',
+      ].join('\n'),
+    )
+    const result = spawnSync(
+      fixture.runBuilt,
+      [
+        '--',
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        fake,
+        '--test',
+        'dist/tests/unit/*.test.js',
+        'dist/tests/regression/*.test.js',
+      ],
+      {
+        cwd: fixture.root,
+        env: fixture.env,
+        encoding: 'utf8',
+        timeout: 30_000,
+      },
+    )
+    assert.equal(result.status, 0, result.stderr)
+    const arguments_ = readFileSync(`${observed}.args`, 'utf8')
+      .trim()
+      .split('\n')
+    assert.deepEqual(
+      arguments_.filter((argument) => argument.endsWith('.test.js')),
+      [unit, regression],
+    )
+
+    const missing = runTests(fixture, [
+      fake,
+      '--test',
+      'dist/tests/integration/*.test.js',
+    ])
+    assert.equal(missing.status, 1, missing.stderr)
+    assert.match(missing.stderr, /no compiled test files match/u)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
 
 test('run-tests bounds a node test run to half the cores unless told otherwise', () => {
   const fixture = createBuildScriptFixture()

@@ -243,23 +243,35 @@ test(
   'operator revision automatically resumes Copilot and falls back to a fresh full card after failure',
   { timeout: 90_000 },
   async (context) => {
-    const run = checkpoint('planning@created', {
-      key: 'copilot-automatic-revision',
-      fixture: (root) => {
-        pinFixturePersonaModel(
-          root,
-          'planner',
-          'copilot:gpt-5.6-sol[provider=openai]',
-        )
-        execFileSync('git', ['add', 'config.json'], { cwd: root })
-        execFileSync('git', ['commit', '-qm', 'Configure Copilot planner'], {
-          cwd: root,
-        })
-      },
-    })
+    // Run creation preflights every external executor in the workflow. Use
+    // a stub before creating the checkpoint, not just for the later dispatch.
+    const run = withEnv(
+      { PANCREATOR_COPILOT_BIN: fakeCopilot(), OPENAI_API_KEY: FAKE_KEY },
+      () =>
+        checkpoint('planning@created', {
+          key: 'copilot-automatic-revision',
+          fixture: (root) => {
+            pinFixturePersonaModel(
+              root,
+              'planner',
+              'copilot:gpt-5.6-sol[provider=openai]',
+            )
+            execFileSync('git', ['add', 'config.json'], { cwd: root })
+            execFileSync(
+              'git',
+              ['commit', '-qm', 'Configure Copilot planner'],
+              {
+                cwd: root,
+              },
+            )
+          },
+        }),
+    )
     const { root, runId } = run
     const binary = fakeCopilot({ revision: true, root })
     const server = createServer()
+    const sockets: Socket[] = []
+    server.on('connection', (socket) => sockets.push(socket))
     server.listen(0, '127.0.0.1')
     await once(server, 'listening')
     const address = server.address()
@@ -279,6 +291,11 @@ test(
           assert.ok(record)
           return record
         })
+    // The production executor can run for an hour; a local handshake stub
+    // must instead fail promptly if it cannot launch or make progress.
+    const workerTimeoutMs = 30_000
+    const handshakeSignal = () =>
+      AbortSignal.any([context.signal, AbortSignal.timeout(40_000)])
     const dispatch = () => {
       const child = spawn(
         process.execPath,
@@ -287,7 +304,7 @@ test(
           '--eval',
           `
       import {delegateInvocation} from ${JSON.stringify(new URL('../../src/lib/engine.js', import.meta.url).href)}
-      process.stdout.write(JSON.stringify(delegateInvocation(${JSON.stringify(root)},${JSON.stringify(runId)}).execution))
+      process.stdout.write(JSON.stringify(delegateInvocation(${JSON.stringify(root)},${JSON.stringify(runId)}, {timeoutMs: ${workerTimeoutMs}}).execution))
     `,
         ],
         {
@@ -308,10 +325,30 @@ test(
       child.stderr.on('data', (chunk) => {
         progress += String(chunk)
       })
+      const stop = () => child.kill('SIGTERM')
+      context.signal.addEventListener('abort', stop, { once: true })
       const result = once(child, 'close').then(([code]) => {
+        context.signal.removeEventListener('abort', stop)
         assert.equal(code, 0, progress)
         return JSON.parse(stdout) as ExternalDelegationRecord
       })
+      const beforeExit = async <T>(pending: Promise<T>, phase: string) => {
+        try {
+          return await Promise.race([
+            pending,
+            result.then((execution) =>
+              assert.fail(
+                `dispatcher returned before ${phase}: ${JSON.stringify(execution)}`,
+              ),
+            ),
+          ])
+        } catch (error) {
+          throw new Error(
+            `Copilot revision ${phase}: ${String(error)}\n${progress}`,
+            { cause: error },
+          )
+        }
+      }
       const observe = async (label: string) => {
         const { session } = JSON.parse(
           readFileSync(
@@ -319,13 +356,12 @@ test(
             'utf8',
           ),
         ) as { session: string }
+        const signal = handshakeSignal()
         while (!progress.includes(`"sessionId":"${session}","exitCode"`)) {
-          await Promise.race([
-            once(child.stderr, 'data', { signal: context.signal }),
-            result.then(() =>
-              assert.fail('dispatcher returned before observation'),
-            ),
-          ])
+          await beforeExit(
+            once(child.stderr, 'data', { signal }),
+            `${label} result observation`,
+          )
         }
         const record = records().find(
           (item) => item.session_id === session && !item.ended_at,
@@ -380,25 +416,17 @@ test(
         )
         return record
       }
-      return { child, result, observe, progress: () => progress }
+      return { child, result, beforeExit, observe, progress: () => progress }
     }
     let running: ReturnType<typeof dispatch> | undefined
-    const sockets: Socket[] = []
+    const connection = () =>
+      once(server, 'connection', { signal: handshakeSignal() })
     try {
       const first = prepareInvocation(root, runId)
       assert.ok(first.invocation)
-      let connection = once(server, 'connection', { signal: context.signal })
+      let pending = connection()
       running = dispatch()
-      const connected = async (pending: typeof connection) => {
-        assert.ok(running)
-        return Promise.race([
-          pending,
-          running.result.then(() =>
-            assert.fail('dispatcher returned before the required handshake'),
-          ),
-        ])
-      }
-      sockets.push((await connected(connection))[0] as Socket)
+      await running.beforeExit(pending, 'initial session connection')
       const initialLive = await running.observe('session-first')
       sockets.at(-1)?.write('release')
       const initial = await running.result
@@ -423,9 +451,9 @@ test(
       attestRunCard(root, runId)
       const revision = prepareInvocation(root, runId).invocation
       assert.ok(revision)
-      connection = once(server, 'connection', { signal: context.signal })
+      pending = connection()
       running = dispatch()
-      sockets.push((await connected(connection))[0] as Socket)
+      await running.beforeExit(pending, 'resume session connection')
       const resumed = await running.observe('session-resume')
       assert.equal(resumed.resumed_from_session_id, initial.session_id)
       assert.equal(resumed.session_id, initial.session_id)
@@ -453,9 +481,9 @@ test(
         input('session-resume').prompt,
         /# Operator revision directive/u,
       )
-      connection = once(server, 'connection', { signal: context.signal })
+      pending = connection()
       sockets.at(-1)?.write('release')
-      sockets.push((await connected(connection))[0] as Socket)
+      await running.beforeExit(pending, 'fresh fallback connection')
       const fresh = await running.observe('session-fallback')
       for (const record of [resumed, fresh]) {
         assert.equal(record.invocation_id, revision.invocation_id)

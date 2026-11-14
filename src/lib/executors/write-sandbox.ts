@@ -48,6 +48,20 @@ export interface WriteSandbox {
   wrap: (binary: string, argv: string[]) => PreparedLaunch
 }
 
+/** Optional profile flags for `writeSandboxProfile` and `resolveWriteSandbox`. */
+export interface WriteSandboxOptions {
+  strict?: boolean
+  denySubprocesses?: boolean
+  /** Custody trees that stay denied after every grant. */
+  protectedRoots?: string[]
+  /**
+   * Trees that remain denied even when they sit under an agent-state root
+   * such as `/tmp`. Granted write roots punch through; custody roots still
+   * win after that.
+   */
+  containmentRoots?: string[]
+}
+
 function quoted(value: string): string {
   return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 }
@@ -112,7 +126,7 @@ export function writeSandboxProfile(
   writeRoots: string[],
   protectedRootsOrStrict: string[] | boolean = [],
   enforceWritesOrDenySubprocesses?: boolean,
-  options: { strict?: boolean; denySubprocesses?: boolean } = {},
+  options: WriteSandboxOptions = {},
 ): string {
   const protectedRoots = Array.isArray(protectedRootsOrStrict)
     ? protectedRootsOrStrict
@@ -129,10 +143,12 @@ export function writeSandboxProfile(
     typeof protectedRootsOrStrict === 'boolean'
       ? (enforceWritesOrDenySubprocesses ?? false)
       : (options.denySubprocesses ?? false)
+  const granted = subpaths(writeRoots)
   const allowed = [
-    ...subpaths(writeRoots),
+    ...granted,
     ...(strict ? ['/dev/null'] : subpaths(agentStateRoots())),
   ]
+  const containmentPaths = subpaths(options.containmentRoots ?? [])
   const protectedPaths = subpaths(protectedRoots)
   const ancestors = new Set<string>()
   for (const protectedPath of protectedPaths) {
@@ -142,6 +158,9 @@ export function writeSandboxProfile(
       ancestor = path.dirname(ancestor)
     }
   }
+  const allowGranted = `(allow file-write* ${granted
+    .map((directory) => `(subpath ${quoted(directory)})`)
+    .join(' ')})`
 
   return [
     '(version 1)',
@@ -153,6 +172,12 @@ export function writeSandboxProfile(
           `(allow file-write* ${allowed
             .map((directory) => `(subpath ${quoted(directory)})`)
             .join(' ')})`,
+          ...containmentPaths.map(
+            (directory) => `(deny file-write* (subpath ${quoted(directory)}))`,
+          ),
+          ...(containmentPaths.length > 0 && granted.length > 0
+            ? [allowGranted]
+            : []),
         ]
       : []),
     ...protectedPaths.map(
@@ -195,14 +220,12 @@ function unavailable(reason: string, writeRoots: string[]): WriteSandbox {
  */
 export function resolveWriteSandbox(
   writeRoots: string[],
-  protectedRootsOrOptions:
-    | string[]
-    | { strict?: boolean; denySubprocesses?: boolean } = [],
+  protectedRootsOrOptions: string[] | WriteSandboxOptions = [],
 ): WriteSandbox {
   const protectedRoots = Array.isArray(protectedRootsOrOptions)
     ? protectedRootsOrOptions
-    : []
-  const options = Array.isArray(protectedRootsOrOptions)
+    : (protectedRootsOrOptions.protectedRoots ?? [])
+  const options: WriteSandboxOptions = Array.isArray(protectedRootsOrOptions)
     ? {}
     : protectedRootsOrOptions
   if (!custodyProtectionAvailable()) {
@@ -243,7 +266,11 @@ export function resolveWriteSandbox(
 
       return {
         binary: SANDBOX_BINARY,
-        argv: ['-f', profilePath, binary, ...argv],
+        // macOS getopt permutes unless POSIXLY_CORRECT is set. cursor-agent's
+        // first argument is `-p` (prompt on stdin), which is also sandbox-exec's
+        // profile-string flag. `--` keeps the child's vector from being parsed
+        // as sandbox-exec options, so the file profile is the one that applies.
+        argv: ['-f', profilePath, '--', binary, ...argv],
         cleanup: () => {
           rmSync(directory, { recursive: true, force: true })
         },

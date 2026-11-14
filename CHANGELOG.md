@@ -1,5 +1,23 @@
 # Changelog
 
+## [10.10.1] - 2026-11-14
+
+### Changed
+
+- Quote npm test lane globs so `bin/run-tests` expands them after compilation ([run-tests](bin/run-tests), [2182769e](https://github.com/alenlukic/pancreator/commit/2182769e)).
+- Merge dest config before host projection during install ([install](bin/install), [b3b71f92](https://github.com/alenlukic/pancreator/commit/b3b71f92)).
+- Hide installer smoke output unless the step fails ([install](bin/install), [b3b71f92](https://github.com/alenlukic/pancreator/commit/b3b71f92)).
+
+### Added
+
+- Feed executor prompts through a stdin file instead of the `spawnSync` input pipe ([spawn-prompt-stdin](src/lib/executors/spawn-prompt-stdin.ts), [b3b71f92](https://github.com/alenlukic/pancreator/commit/b3b71f92)).
+
+### Fixed
+
+- Stop `spawnSync` stdin deadlocks on large governance cards ([spawn-prompt-stdin](src/lib/executors/spawn-prompt-stdin.ts), [b3b71f92](https://github.com/alenlukic/pancreator/commit/b3b71f92)).
+- Disable inherited V8 coverage in sandboxed verification children ([verification-execution-process](src/lib/engine/verification-execution-process.ts), [2182769e](https://github.com/alenlukic/pancreator/commit/2182769e)).
+- Keep `sandbox-exec` from parsing Cursor `-p` as a profile string ([write-sandbox](src/lib/executors/write-sandbox.ts), [b3b71f92](https://github.com/alenlukic/pancreator/commit/b3b71f92)).
+
 ## [10.10.0] - 2026-11-12
 
 ### Changed

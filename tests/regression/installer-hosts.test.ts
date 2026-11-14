@@ -234,3 +234,154 @@ test('an update keeps the operator host selection', () => {
   write()
   assert.deepEqual(readJson(destination).hosts, ['cursor', 'vscode'])
 })
+
+test('write-project treats dest active_config as dest-local', () => {
+  const work = createTestTempDirectory('pancreator-installer-active-config-')
+  const sourceDir = path.join(work, 'source')
+  const destDir = path.join(work, 'dest')
+  const source = path.join(sourceDir, 'config.json')
+  const destination = path.join(destDir, 'config.json')
+  mkdirSync(sourceDir, { recursive: true })
+  mkdirSync(destDir, { recursive: true })
+  const shipped = {
+    schema_version: 1,
+    installation_mode: 'self_development',
+    active_config: 'default',
+    defaults: { coder: 'claude-sonnet-5' },
+    configs: {
+      default: {},
+      balanced: { coder: 'claude-sonnet-5' },
+      auto: {},
+    },
+  }
+  const write = () =>
+    installSupport([
+      'write-project',
+      '--source',
+      source,
+      '--destination',
+      destination,
+      '--workspace-id',
+      'target-one',
+    ])
+
+  writeFileSync(source, JSON.stringify(shipped))
+  writeFileSync(
+    path.join(sourceDir, 'config_overrides.json'),
+    JSON.stringify({ active_config: 'auto' }),
+  )
+
+  write()
+  assert.equal(readJson(destination).active_config, 'default')
+  assert.equal(
+    readJson(path.join(destDir, 'config_overrides.json')).active_config,
+    undefined,
+  )
+
+  writeFileSync(
+    destination,
+    JSON.stringify({ ...readJson(destination), active_config: 'balanced' }),
+  )
+  write()
+  assert.equal(readJson(destination).active_config, 'balanced')
+  assert.equal(
+    readJson(path.join(destDir, 'config_overrides.json')).active_config,
+    undefined,
+  )
+
+  writeFileSync(
+    path.join(destDir, 'config_overrides.json'),
+    JSON.stringify({ active_config: 'balanced' }),
+  )
+  write()
+  assert.equal(
+    readJson(path.join(destDir, 'config_overrides.json')).active_config,
+    'balanced',
+  )
+
+  // A legacy destination without a usable selection must not inherit the
+  // source operator's active config on refresh.
+  writeFileSync(path.join(destDir, 'config_overrides.json'), '{}')
+  const legacy = readJson(destination)
+  delete legacy.active_config
+  writeFileSync(destination, JSON.stringify(legacy))
+  write()
+  assert.equal(readJson(destination).active_config, 'default')
+
+  // A previously selected name can disappear from the incoming release.
+  writeFileSync(
+    destination,
+    JSON.stringify({
+      ...readJson(destination),
+      active_config: 'retired',
+      configs: { ...shipped.configs, retired: {} },
+    }),
+  )
+  write()
+  assert.equal(readJson(destination).active_config, 'default')
+})
+
+test('write-project treats dest executor mappings as dest-local', () => {
+  const work = createTestTempDirectory('pancreator-installer-executor-local-')
+  const sourceDir = path.join(work, 'source')
+  const destDir = path.join(work, 'dest')
+  const source = path.join(sourceDir, 'config.json')
+  const destination = path.join(destDir, 'config.json')
+  mkdirSync(sourceDir, { recursive: true })
+  mkdirSync(destDir, { recursive: true })
+  const shipped = {
+    schema_version: 1,
+    installation_mode: 'self_development',
+    active_config: 'default',
+    defaults: { coder: 'anthropic:advanced', reviewer: 'anthropic:advanced' },
+    configs: { default: {} },
+  }
+  const write = () =>
+    installSupport([
+      'write-project',
+      '--source',
+      source,
+      '--destination',
+      destination,
+      '--workspace-id',
+      'target-one',
+    ])
+
+  writeFileSync(source, JSON.stringify(shipped))
+  writeFileSync(
+    path.join(sourceDir, 'config_overrides.json'),
+    JSON.stringify({
+      defaults: { reviewer: 'openai:gpt-6.1-sol[effort=high]' },
+      configs: { default: { coder: 'deepseek-v41-flash-1017' } },
+    }),
+  )
+
+  write()
+  const destOverrides = readJson(path.join(destDir, 'config_overrides.json'))
+  assert.equal(destOverrides.defaults, undefined)
+  assert.equal(destOverrides.configs, undefined)
+  const destDefaults = readJson(destination).defaults
+  assert.equal(
+    typeof destDefaults === 'object' && destDefaults !== null
+      ? (destDefaults as Record<string, string>).reviewer
+      : undefined,
+    'anthropic:advanced',
+  )
+
+  writeFileSync(
+    path.join(destDir, 'config_overrides.json'),
+    JSON.stringify({
+      defaults: { reviewer: 'openai:gpt-6.1-sol[effort=high]' },
+    }),
+  )
+  write()
+  const retainedDefaults = readJson(
+    path.join(destDir, 'config_overrides.json'),
+  ).defaults
+  assert.equal(
+    typeof retainedDefaults === 'object' && retainedDefaults !== null
+      ? (retainedDefaults as Record<string, string>).reviewer
+      : undefined,
+    'openai:gpt-6.1-sol[effort=high]',
+  )
+})

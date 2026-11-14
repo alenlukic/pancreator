@@ -1159,7 +1159,7 @@ function personaModelsFromConfig(configPath) {
 
 function personaModelsForProjection(personaConfigPath, sourceRoot) {
   const sourceConfigPath = path.join(sourceRoot, 'config.json')
-  const sourceConfig = readConfigWithOverrides(sourceConfigPath)
+  const sourceConfig = readJson(sourceConfigPath)
   const sourceDefaults =
     typeof sourceConfig.defaults === 'object' && sourceConfig.defaults !== null
       ? sourceConfig.defaults
@@ -1183,12 +1183,15 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
       : {}
   const targetActive = targetConfig.configs?.[activeConfigName]
 
-  if (!sourceActive || typeof sourceActive !== 'object') {
+  if (
+    (!targetActive || typeof targetActive !== 'object') &&
+    (!sourceActive || typeof sourceActive !== 'object')
+  ) {
     fail('config.json active config does not define a named config')
   }
 
   const mergedAliases = mergeConfigObjects(
-    aliasCatalogFromConfig(sourceConfig),
+    aliasCatalogFromConfig(readConfigWithOverrides(sourceConfigPath)),
     aliasCatalogFromConfig(targetConfig),
   )
   const mergedSource = {
@@ -2279,12 +2282,23 @@ function writeProject() {
   const workspaceId = requiredOption('--workspace-id')
   const sourceConfig = readJson(source)
   const sourceOverrides = normalizeConfigOverrides(readConfigOverrides(source))
+  // The source checkout's named-config selection and persona executor
+  // mappings are source-local. Copying them onto dest would change dest
+  // `active_config` without a dest operator direction, and would project the
+  // source operator's executors instead of dest's shipped aliases. Non-Cursor
+  // mappings omit Cursor subagents, so a leaked source override fails a
+  // fresh dest that must still receive the shipped Cursor agents.
+  delete sourceOverrides.active_config
+  delete sourceOverrides.defaults
+  delete sourceOverrides.configs
   const sourceModelConfig = modelConfigFromLegacy(sourceConfig)
   sourceOverrides.model_config = mergeConfigObjects(
     sourceModelConfig,
     sourceOverrides.model_config ?? {},
   )
-  let config = readConfigWithOverrides(source)
+  let config = stripInheritedPlaceholders(
+    mergeConfigObjects(sourceConfig, sourceOverrides),
+  )
   const existing = existsSync(destination) ? readJson(destination) : null
   const existingOverrides = normalizeConfigOverrides(
     readConfigOverrides(destination),
@@ -2341,6 +2355,15 @@ function writeProject() {
     typeof sourceConfig.defaults === 'object' && sourceConfig.defaults !== null
       ? sourceConfig.defaults
       : {}
+  // Only a named configuration that will exist in the destination can be
+  // retained. Do not fall back to the source operator's local selection.
+  const existingActive = existing?.active_config
+  config.active_config =
+    typeof existingActive === 'string' &&
+    (Object.hasOwn(sourceConfig.configs ?? {}, existingActive) ||
+      Object.hasOwn(outputOverrides.configs ?? {}, existingActive))
+      ? existingActive
+      : sourceConfig.active_config
   config.configs = Object.fromEntries(
     Object.entries(sourceConfig.configs ?? {}).map(([name, namedConfig]) => [
       name,

@@ -1896,8 +1896,7 @@ A test is selected when:
 - `--include <glob>` names it.
 
 A change to `package.json`, `package-lock.json`, `tsconfig.json`, or the test
-reporter selects the whole lane. `tests/secondary` and `tests/migrations` are
-never selected.
+reporter selects the whole lane. `tests/secondary` is never selected.
 
 ```sh
 ./bin/pan tests impacted                       # dirty working tree vs HEAD

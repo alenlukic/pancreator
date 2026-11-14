@@ -68,7 +68,7 @@ registry-shape correction does not require rereading every child.
    behavior, not implementation internals. A `test`, `review`, or `observe`
    criterion needs no case: gate evidence, the review, or a post-ship signal
    proves it.
-   Then list the test scenarios under `SCENARIO-001` in `data.test_scenarios`.
+   Then list the test scenarios in `data.test_scenarios`.
    Give each one exactly one category: `happy_path`, `critical_unhappy_path`,
    `probable_edge_case`, or `hidden_edge_case`. Omit low-probability
    low-impact, vanishingly improbable, and provably unreachable cases, and do

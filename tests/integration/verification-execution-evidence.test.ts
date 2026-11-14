@@ -368,7 +368,7 @@ test('raw observations and a scaffold exist before read-only delegation and cach
   const fixture = prepared([
     operation(
       'raw',
-      `require('node:fs').writeFileSync('${file}','observed');console.log('raw stdout');console.error('raw stderr')`,
+      `if (process.env.NODE_V8_COVERAGE) process.exit(9);require('node:fs').writeFileSync('${file}','observed');console.log('raw stdout');console.error('raw stderr')`,
       { evidence_paths: [file] },
     ),
   ])

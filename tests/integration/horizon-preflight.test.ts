@@ -11,6 +11,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { getRunState } from '../../src/lib/engine.js'
+import { custodyProtectionAvailable } from '../../src/lib/executors/write-sandbox.js'
 import {
   checkpointHorizonSession,
   horizonStatus,
@@ -220,6 +221,10 @@ function scopeSession(
     binary,
     [
       '#!/bin/sh',
+      'if [ "$1" = "--help" ]; then',
+      '  printf "%s\\n" "--trust --force --output-format --model --workspace --add-dir"',
+      '  exit 0',
+      'fi',
       // The in-grant write is the positive control: an enforced boundary that
       // also blocked this would prove nothing about the roots it denies.
       `printf 'inside\n' > '${path.join(workspace, 'granted.md')}'`,
@@ -310,7 +315,9 @@ test('the observation fallback records every out-of-grant write', () => {
   assert.equal(artifact.scope_check.enforcement, 'none')
   assert.match(
     artifact.scope_check.enforcement_reason,
-    /PANCREATOR_WRITE_SANDBOX=0/u,
+    custodyProtectionAvailable()
+      ? /PANCREATOR_WRITE_SANDBOX=0/u
+      : /sandbox-exec/u,
   )
   assert.equal(artifact.scope_check.observation, 'filesystem')
   assert.deepEqual(artifact.scope_check.unapproved_changes, [...taken].sort())

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -21,7 +22,11 @@ import {
   delegationLivePaths,
   type DelegationLiveRecord,
 } from '../../src/lib/executors/delegation-live.js'
-import { resolveWriteSandbox } from '../../src/lib/executors/write-sandbox.js'
+import {
+  custodyProtectionAvailable,
+  resolveWriteSandbox,
+  WRITE_SANDBOX_ENV,
+} from '../../src/lib/executors/write-sandbox.js'
 import { custodyAuthorityRoot } from '../../src/lib/executors/scope-custody.js'
 import { runCopilotCli } from '../../src/lib/executors/copilot-cli.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
@@ -256,7 +261,7 @@ test('public launch observations cannot turn missing authority into a clean lega
 
 for (const slug of ['verify', 'ship']) {
   for (const committed of [false, true]) {
-    test(`${slug} retains foreign controller ${committed ? 'commits' : 'dirty edits'} as observations with proven custody`, () => {
+    test(`${slug} retains foreign controller ${committed ? 'commits' : 'dirty edits'} as observations only with proven custody`, () => {
       const fixture = setup(slug)
       writeFileSync(path.join(fixture.root, 'src/base.ts'), 'foreign actor\n')
       writeFileSync(path.join(fixture.root, 'foreign.txt'), 'untracked actor\n')
@@ -268,8 +273,14 @@ for (const slug of ['verify', 'ship']) {
         })
       }
       const result = fixture.evaluate()
-      assert.equal(result.passed, true, result.explanation)
-      assert.match(result.explanation, /External controller observations/u)
+      if (custodyProtectionAvailable()) {
+        assert.equal(result.passed, true, result.explanation)
+        assert.match(result.explanation, /External controller observations/u)
+      } else {
+        assert.equal(result.passed, false, result.explanation)
+        assert.match(result.explanation, /Unverified attribution/u)
+        assert.match(result.explanation, /custody protection is unavailable/u)
+      }
       assert.match(result.explanation, /src\/base\.ts/u)
       assert.match(result.explanation, /foreign\.txt/u)
     })
@@ -508,11 +519,22 @@ test('symlink escape in an own write cannot pass scope', () => {
 
 test('foreign evidence leaves isolated workspace mutation detection intact', () => {
   const fixture = setup()
-  writeFileSync(path.join(fixture.root, 'src/base.ts'), 'foreign actor\n')
+  const controllerPath = path.join(fixture.root, 'src/base.ts')
+  const original = readFileSync(controllerPath)
+  writeFileSync(controllerPath, 'foreign actor\n')
   writeFileSync(path.join(fixture.workspace, 'src/base.ts'), 'own actor\n')
   const result = fixture.evaluate()
   assert.equal(result.passed, false)
-  assert.match(result.explanation, /Workspace contamination/u)
+  if (custodyProtectionAvailable()) {
+    assert.match(result.explanation, /Workspace contamination/u)
+  } else {
+    // Without protected custody the controller change must fail closed first.
+    assert.match(result.explanation, /Unverified attribution/u)
+    writeFileSync(controllerPath, original)
+    const isolated = fixture.evaluate(false)
+    assert.equal(isolated.passed, false)
+    assert.match(isolated.explanation, /Workspace contamination/u)
+  }
 })
 
 test('release metadata in the isolated workspace remains permitted while source edits fail', () => {
@@ -700,7 +722,7 @@ console.log(JSON.stringify(outcomes))
           code?: string
         }>
         assert.equal(outcomes.length, 6)
-        if (process.platform === 'darwin') {
+        if (custodyProtectionAvailable()) {
           assert.ok(
             outcomes.every(({ denied }) => denied),
             child.stdout,
@@ -790,9 +812,14 @@ emit({type:'result',sessionId:session,exitCode:0})
         result.write_boundary.write_roots,
         stageWriteRoots(fixture.root, fixture.workspace, fixture.stage),
       )
-      if (disabled) {
+      if (!custodyProtectionAvailable()) {
+        assert.equal(result.write_boundary.mode, 'none')
+        assert.match(result.write_boundary.reason, /sandbox-exec/u)
+      } else if (disabled) {
         assert.equal(result.write_boundary.mode, 'none')
         assert.match(result.write_boundary.reason, /Disabled/u)
+      } else {
+        assert.equal(result.write_boundary.mode, 'sandbox-exec')
       }
       const evaluated = fixture.evaluate()
       assert.equal(evaluated.passed, false)
@@ -885,3 +912,56 @@ assert.throws(() => fs.unlinkSync(${JSON.stringify(protectedRecord)}), error => 
     }
   }
 })
+
+test(
+  'sandbox containment blocks ungranted workspace writes under the temp exception',
+  {
+    skip: custodyProtectionAvailable() ? false : 'Requires macOS sandbox-exec.',
+  },
+  () => {
+    const root = createTestTempDirectory('pan-sandbox-containment-')
+    const workspace = path.join(root, 'workspace')
+    const granted = path.join(workspace, 'granted')
+    const protectedRoot = path.join(granted, 'custody')
+    mkdirSync(protectedRoot, { recursive: true })
+    const previousTmpdir = process.env.TMPDIR
+    const previousSandbox = process.env[WRITE_SANDBOX_ENV]
+    process.env.TMPDIR = root
+    delete process.env[WRITE_SANDBOX_ENV]
+    try {
+      const sandbox = resolveWriteSandbox([granted], {
+        containmentRoots: [workspace],
+        protectedRoots: [protectedRoot],
+      })
+      assert.equal(sandbox.mode, 'sandbox-exec')
+      const allowed = path.join(granted, 'allowed')
+      const outside = path.join(workspace, 'outside')
+      const protectedFile = path.join(protectedRoot, 'denied')
+      const launch = sandbox.wrap('/bin/sh', [
+        '-c',
+        'touch "$1" && ! touch "$2" && ! touch "$3"',
+        'sh',
+        allowed,
+        outside,
+        protectedFile,
+      ])
+      try {
+        const result = spawnSync(launch.binary, launch.argv, {
+          encoding: 'utf8',
+          timeout: 5000,
+        })
+        assert.equal(result.status, 0, result.stderr)
+        assert.equal(existsSync(allowed), true)
+        assert.equal(existsSync(outside), false)
+        assert.equal(existsSync(protectedFile), false)
+      } finally {
+        launch.cleanup()
+      }
+    } finally {
+      if (previousTmpdir === undefined) delete process.env.TMPDIR
+      else process.env.TMPDIR = previousTmpdir
+      if (previousSandbox === undefined) delete process.env[WRITE_SANDBOX_ENV]
+      else process.env[WRITE_SANDBOX_ENV] = previousSandbox
+    }
+  },
+)

@@ -34,16 +34,24 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
 
   try {
     const overrides = readJson<{
-      active_config: string
-      defaults: Record<string, string>
-      configs: Record<string, Record<string, unknown>>
+      active_config?: string
+      defaults?: Record<string, string>
+      configs?: Record<string, Record<string, unknown>>
     }>(overridesPath)
 
     overrides.active_config = 'balanced'
-    const balanced = overrides.configs.balanced as Record<string, unknown>
-    balanced.coder = customCoderModel
-    overrides.defaults[retiredPersona] = retiredModel
-    balanced[retiredPersona] = retiredModel
+    overrides.configs = {
+      ...(overrides.configs ?? {}),
+      balanced: {
+        ...(overrides.configs?.balanced ?? {}),
+        coder: customCoderModel,
+        [retiredPersona]: retiredModel,
+      },
+    }
+    overrides.defaults = {
+      ...(overrides.defaults ?? {}),
+      [retiredPersona]: retiredModel,
+    }
     writeFileSync(overridesPath, `${JSON.stringify(overrides, null, 2)}\n`)
 
     // Reproduce an install made before agents were namespaced, where the
@@ -229,7 +237,7 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
 
     const refreshedOverrides = readJson<{
       active_config: string
-      defaults: Record<string, string>
+      defaults?: Record<string, string>
       configs: Record<string, Record<string, unknown>>
     }>(overridesPath)
     const refreshed = readJson<{
@@ -247,7 +255,7 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     )
 
     assert.equal(refreshed.defaults[retiredPersona], undefined)
-    assert.equal(refreshedOverrides.defaults[retiredPersona], undefined)
+    assert.equal(refreshedOverrides.defaults?.[retiredPersona], undefined)
     assert.equal(
       refreshedOverrides.configs.balanced[retiredPersona],
       undefined,

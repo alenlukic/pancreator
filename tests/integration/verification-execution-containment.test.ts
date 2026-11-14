@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
@@ -18,6 +19,7 @@ import {
 import { writeSandboxProfile } from '../../src/lib/executors/write-sandbox.js'
 import { isRecord, readJson, writeJsonAtomic } from '../../src/lib/io.js'
 import { sharedFixture } from '../fixture-template.js'
+import { createTestTempDirectory } from '../temp.js'
 import { prepared, enforced } from './verification-execution-fixtures.js'
 import { operation } from './verification-execution-helpers.js'
 
@@ -119,6 +121,47 @@ test('the process supervisor bounds overflow and reports actual spawn failures a
   )
   assert.match(missing.error ?? '', /ENOENT/u)
   assert.notEqual(missing.status, 0)
+})
+
+test('the supervisor isolates inherited coverage and preserves command output', () => {
+  const root = sharedFixture()
+  const inheritedCoverage = createTestTempDirectory('pan-coverage-inherited-')
+  const requestedCoverage = createTestTempDirectory('pan-coverage-requested-')
+  const originalCoverage = process.env.NODE_V8_COVERAGE
+  const diagnostic =
+    'EPERM: Failed to write file /tmp/node-coverage-fixture/coverage-1-2-3.json'
+  // Reproduce Node's special environment propagation even without --experimental-test-coverage.
+  // The caller's allowlist omits coverage; an explicit override must also lose.
+  process.env.NODE_V8_COVERAGE = inheritedCoverage
+  try {
+    for (const env of [
+      { PATH: process.env.PATH },
+      { ...process.env, NODE_V8_COVERAGE: requestedCoverage },
+    ]) {
+      const result = runVerificationExecutionProcess(
+        {
+          binary: process.execPath,
+          argv: [
+            '-e',
+            `if (process.env.NODE_V8_COVERAGE) process.exit(9); console.log(${JSON.stringify(diagnostic)}); console.error(${JSON.stringify(diagnostic)})`,
+          ],
+          timeout_ms: 3000,
+          max_bytes: 1024,
+        },
+        root,
+        env,
+      )
+      assert.equal(result.status, 0, JSON.stringify(result))
+      assert.equal(result.stdout, `${diagnostic}\n`)
+      assert.equal(result.stderr, `${diagnostic}\n`)
+      assert.equal(process.env.NODE_V8_COVERAGE, inheritedCoverage)
+    }
+    assert.deepEqual(readdirSync(inheritedCoverage), [])
+    assert.deepEqual(readdirSync(requestedCoverage), [])
+  } finally {
+    if (originalCoverage === undefined) delete process.env.NODE_V8_COVERAGE
+    else process.env.NODE_V8_COVERAGE = originalCoverage
+  }
 })
 
 test('unsafe write grants and symlink escapes are gaps without launching a process', () => {

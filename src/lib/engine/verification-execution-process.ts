@@ -20,6 +20,17 @@ interface ProcessRequest {
   max_bytes: number
 }
 
+/**
+ * V8 coverage dump paths live outside collector write roots. A sandboxed
+ * Node child that inherits NODE_V8_COVERAGE can print EPERM on stderr.
+ * Node child_process automatically propagates this variable if the supplied
+ * environment omits it, even with an allowlist. An explicit empty value
+ * disables coverage in the supervisor and its descendants.
+ */
+function withoutCoverageEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...env, NODE_V8_COVERAGE: '' }
+}
+
 function isObservation(value: unknown): value is ProcessObservation {
   return (
     isRecord(value) &&
@@ -41,12 +52,13 @@ export function runVerificationExecutionProcess(
   cwd: string,
   env: NodeJS.ProcessEnv,
 ): ProcessObservation {
+  const isolated = withoutCoverageEnv(env)
   const result = spawnSync(
     process.execPath,
     [fileURLToPath(import.meta.url), '--collect'],
     {
       cwd,
-      env,
+      env: isolated,
       input: JSON.stringify(request),
       encoding: 'utf8',
       shell: false,

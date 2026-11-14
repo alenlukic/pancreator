@@ -476,6 +476,39 @@ sweep_dead_runs
 sweep_discarded_runs
 sweep_ordering_scratch
 
+# npm's shell runs before run-built creates (or refreshes) dist. Expand
+# lane selectors here, after compilation, rather than in the outer shell.
+# Only these explicit selectors are expanded; ordinary arguments are literal.
+expand_test_file_arguments() {
+  local argument candidate
+  local -a expanded=()
+  for argument in "$@"; do
+    case "$argument" in
+      'dist/tests/unit/*.test.js' | 'dist/tests/regression/*.test.js' | \
+        'dist/tests/integration/*.test.js' | \
+        'dist/tests/secondary/*.test.js' | 'dist/tests/**/*.test.js')
+        local matched=0
+        # The supported patterns contain no whitespace; pathname expansion
+        # preserves spaces in individual matched filenames.
+        for candidate in $argument; do
+          [[ -f "$candidate" ]] || continue
+          expanded+=("$candidate")
+          matched=1
+        done
+        if [[ "$matched" -eq 0 ]]; then
+          echo "[run-tests] no compiled test files match $argument" >&2
+          return 1
+        fi
+        ;;
+      *) expanded+=("$argument") ;;
+    esac
+  done
+  EXPANDED_ARGUMENTS=("${expanded[@]}")
+}
+
+expand_test_file_arguments "$@"
+set -- "${EXPANDED_ARGUMENTS[@]}"
+
 order_test_file_arguments "$@"
 
 set -- "${ORDERED_ARGUMENTS[@]}"

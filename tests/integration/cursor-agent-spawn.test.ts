@@ -6,6 +6,7 @@ import test from 'node:test'
 import {
   resetCursorAgentCapabilities,
   runCursorAgentJson,
+  runCursorAgentSession,
 } from '../../src/lib/executors/cursor-agent.js'
 import { createTestTempDirectory } from '../fixture-template.js'
 
@@ -100,7 +101,7 @@ test('the prompt reaches cursor-agent over stdin and never as an argument', () =
   const root = makeRoot()
   const binary = path.join(root, 'fake-cursor-agent')
   const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
-  const prompt = `rank ${'x'.repeat(4_000)}`
+  const prompt = `rank ${'é'.repeat(80_000)}`
 
   writeFileSync(
     binary,
@@ -128,7 +129,7 @@ test('the prompt reaches cursor-agent over stdin and never as an argument', () =
       assert.equal(result.ok, true, result.error ?? 'spawn failed')
       assert.deepEqual(result.value, {
         longest_arg: '--output-format'.length,
-        stdin_bytes: prompt.length,
+        stdin_bytes: Buffer.byteLength(prompt),
       })
       assert.ok(!result.argv.includes(prompt), 'argv excludes the prompt body')
     })
@@ -168,6 +169,49 @@ test('a failed cursor-agent spawn names the cause from its stderr', () => {
         result.error,
         'Cursor agent exited with status 1. Error: Authentication required. Run agent login.',
       )
+    })
+  } finally {
+    if (previousBinary === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
+    }
+    resetCursorAgentCapabilities()
+  }
+})
+
+test('a child that exits before consuming stdin is still a completed spawn', () => {
+  // A governance card is larger than the pipe buffer. spawnSync's `input`
+  // pipe deadlocks when the child never reads it, and a trusted session waits
+  // until its timeout. Stdin is a file, so this must return immediately.
+  const root = makeRoot()
+  const binary = path.join(root, 'fake-cursor-agent')
+  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+  const prompt = `rank ${'x'.repeat(80_000)}`
+
+  writeFileSync(
+    binary,
+    '#!/bin/sh\n' +
+      'printf \'{"type":"result","result":"{\\\\"ok\\\\":true}"}\\n\'\n',
+  )
+  chmodSync(binary, 0o755)
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+  resetCursorAgentCapabilities()
+
+  try {
+    withCursorApiKey('key', () => {
+      const result = runCursorAgentSession({
+        cwd: root,
+        installationRoot: root,
+        prompt,
+        requireTrust: true,
+        timeoutMs: 8_000,
+      })
+
+      assert.equal(result.ok, true, result.error ?? 'spawn failed')
+      assert.equal(result.exit_code, 0)
+      assert.ok(result.duration_ms < 8_000, `hung for ${result.duration_ms}ms`)
+      assert.deepEqual(result.value, { ok: true })
     })
   } finally {
     if (previousBinary === undefined) {

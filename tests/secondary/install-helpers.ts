@@ -141,6 +141,27 @@ export function readJson<T>(filePath: string): T {
   return JSON.parse(readFileSync(filePath, 'utf8')) as T
 }
 
+/** Read a persona mapping from a named config, whether flat or nested. */
+export function namedConfigPersona(
+  namedConfig: Record<string, unknown> | undefined,
+  persona: string,
+): string | undefined {
+  if (namedConfig === undefined) {
+    return undefined
+  }
+
+  const direct = namedConfig[persona]
+  const nested = (
+    namedConfig.personas as Record<string, unknown> | undefined
+  )?.[persona]
+
+  return typeof nested === 'string'
+    ? nested
+    : typeof direct === 'string'
+      ? direct
+      : undefined
+}
+
 export function git(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
 }

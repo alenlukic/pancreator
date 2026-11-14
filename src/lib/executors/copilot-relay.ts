@@ -285,10 +285,15 @@ export async function runCopilotRelay(
   const sessionId = request.resumeSessionId || randomUUID()
   const argv = copilotArgv(request, sessionId)
   const started = Date.now()
-  const sandbox = resolveWriteSandbox(
-    request.writeRoots ?? [],
-    request.live ? [custodyAuthorityRoot(request.live.root)] : [],
-  )
+  const sandbox = resolveWriteSandbox(request.writeRoots ?? [], {
+    protectedRoots: request.live
+      ? [custodyAuthorityRoot(request.live.root)]
+      : [],
+    containmentRoots: [
+      request.cwd,
+      ...(request.live ? [request.live.root] : []),
+    ],
+  })
 
   const secrets = copilotRedactionSecrets(env, request.prompt)
   const sanitize = (text: string): string =>
