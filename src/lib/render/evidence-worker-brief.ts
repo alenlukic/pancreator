@@ -86,6 +86,49 @@ export function renderEvidenceWorkerBrief(
       ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
     ])
   const harnessRoot = invocation.harness_root
+  if (
+    invocation.workflow.slug === 'standard' &&
+    invocation.stage.slug === 'implement' &&
+    invocation.stage.workspace_policy === 'source_allowed' &&
+    ['implement', 'test-author'].includes(worker.role)
+  ) {
+    return [
+      `# Parallel source worker: ${worker.role}`,
+      '',
+      `Workspace: \`${invocation.workspace_root}\`. Harness: \`${harnessRoot ?? invocation.workspace_root}\`.`,
+      'Read the ratified plan and target instructions before editing. Your scope is source-allowed only for your assigned files.',
+      worker.scope,
+      ...(invocation.rubric.some(
+        (criterion) => criterion.id === 'standard.contract_alignment',
+      )
+        ? [
+            'Read data.interface_contract in the ratified plan; it is the shared authority for test-facing surfaces. Report any concrete incompatibility with the contract or acceptance criteria, not a unilateral amendment. The join runs checks first and only reconciles demonstrated mismatches.',
+          ]
+        : []),
+      'Use editing tools only. Neither worker runs builds, tests, or shell commands; the join runs checks after both workers finish. Do not read the other worker’s work in progress or edit their files.',
+      'Do not launch agents, commit, change workflow state, or write the stage output.',
+      'If concrete evidence reveals an M hard-max breach (1000 implementation SLOC) or an unplanned new integration point, stop expanding scope and flag the evidence and recommended reroute in your report. The join owns the blocked stage outcome.',
+      '',
+      '## Inputs',
+      ...references,
+      '',
+      `Write a Markdown report to \`${worker.evidence_path}\` with changed paths, scenario/criterion coverage, and any blockers.`,
+      ...(worker.role === 'test-author'
+        ? [
+            'For every test or fixture file you changed, include an exact repository-relative path on its own line: `<!-- marshal-test: tests/example.test.ts -->`. The harness snapshots these files before the join. If no tests or fixtures changed, write `<!-- marshal-tests: none -->` instead; never use both forms.',
+          ]
+        : []),
+      ...(invocation.rubric.some(
+        (criterion) => criterion.id === 'standard.contract_alignment',
+      )
+        ? [
+            'If a material contract amendment, M hard-max breach, or unplanned new integration point prevents your work, stop, describe the evidence and proposed decision explicitly under `## Blocking contract or scope discovery`, and finish the report with the pass/completion markers. This passes evidence delivery only, not implementation acceptance: the join must read the finding and return blocked. Do not claim the incomplete work is implemented.',
+          ]
+        : []),
+      `On completed evidence delivery (including a blocking contract or scope discovery on a new standard run), end with \`${evidenceVerdictLine('pass')}\` and \`${EVIDENCE_REPORT_COMPLETE_MARKER}\`. For other failures cite the concrete defect with \`${evidenceDefectLine('<file:line or blocker>')}\`, then use \`${evidenceVerdictLine('fail')}\` and the completion marker.`,
+      '',
+    ].join('\n')
+  }
   const lines = [
     `# Evidence brief: ${worker.role} for stage \`${invocation.stage.slug}\``,
     '',

@@ -159,6 +159,7 @@ export function registryStageSlugs(registryId: string): readonly string[] {
     'COHORT-PLAN-VALIDATE-001': ['plan'],
     'CHILD-SPEC-VALIDATE-001': ['plan'],
     'IMPLEMENTATION-CLAIMS-VALIDATE-001': ['implement', 'remediate'],
+    'MARSHAL-VALIDATE-001': ['implement'],
     'REVIEW-VALIDATE-001': ['review'],
     'QA-VALIDATE-001': ['test'],
     'RELEASE-VALIDATE-001': ['ship'],

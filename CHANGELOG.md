@@ -1,5 +1,17 @@
 # Changelog
 
+## [10.12.0] - 2026-11-15
+
+### Changed
+
+- Tighten the standard marshal join and the plan-trace contract ([standard-marshal](src/lib/standard-marshal.ts), [08de1633](https://github.com/alenlukic/pancreator/commit/08de1633)).
+
+### Added
+
+- Add the `standard` workflow with a plan gate, a parallel implementer and test author, and a marshaling join ([standard](library/workflows/standard/workflow.json), [38d8f091](https://github.com/alenlukic/pancreator/commit/38d8f091)).
+- Add the `test-author` persona ([test-author](library/personas/test-author.md), [38d8f091](https://github.com/alenlukic/pancreator/commit/38d8f091)).
+- Fail marshaling that loosens a test assertion ([marshal](src/lib/validators/stage/marshal.ts), [38d8f091](https://github.com/alenlukic/pancreator/commit/38d8f091)).
+
 ## [10.11.0] - 2026-11-15
 
 ### Changed

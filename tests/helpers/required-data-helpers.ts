@@ -244,6 +244,31 @@ export function requiredData(
             expected: 'The run reaches ship',
           },
         ],
+        ...(workflowSlug === 'standard'
+          ? {
+              interface_contract: {
+                interfaces: [
+                  {
+                    id: 'IF-01',
+                    kind: 'existing',
+                    reference: 'src/base.ts',
+                    surface: 'Run the workflow fixture',
+                    effects: ['Workflow reaches ship'],
+                    test_seams: ['Workflow fixture'],
+                    scenario_ids: ['TS-01'],
+                  },
+                ],
+              },
+              test_scenarios: [
+                {
+                  id: 'TS-01',
+                  criterion: 'AC-01',
+                  category: 'happy_path',
+                  scenario: 'Workflow reaches ship.',
+                },
+              ],
+            }
+          : {}),
         open_question_dispositions: [],
       }
     case 'verify':

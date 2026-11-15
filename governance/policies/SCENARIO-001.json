@@ -10,9 +10,26 @@
     "Agents MUST NOT plan or write a test for a low-probability, low-impact case, a vanishingly improbable case, or a provably unreachable case.",
     "Agents MUST NOT pursue a coverage percentage for its own sake, and MUST NOT try to cover every edge case exhaustively.",
     "The reviewer MUST report a planned scenario or added test that fits no category as excess. The reviewer MUST report a missing happy-path or mission-critical unhappy-path scenario as a defect.",
-    "A test author working beside the implementer MUST NOT read the implementer's work in progress. It works from the plan, the acceptance criteria, the scenarios, and the interface schema when one exists.",
+    "A test author working beside the implementer MUST NOT read the implementer’s work in progress. It works from the plan, acceptance criteria, scenarios, and the shared interface contract or approved schema. Both workers MUST honor the ratified contract. The test author derives behavioral assertions independently from the operator request and acceptance criteria.",
+    "When a standard plan declares a shared interface contract, it MUST specify the minimum observable test-facing interfaces, referencing existing or approved contracts where possible. The source-allowed join MUST run configured checks before any reconciliation. Test reconciliation is permitted only for a concrete interface mismatch evidenced by a failed check. A material contract amendment requires a new ratified plan. A behavioral failure is a defect for remediation.",
     "Marshaling test code to the actual interfaces MAY change call sites, imports, names, and fixture shapes. It MUST NOT delete a scenario, loosen an assertion, or change an expected outcome. A behavioral mismatch is a defect for remediation.",
     "Marshaling MUST run in a source-allowed step before the read-only verdict. It MUST NOT move into the verify stage."
+  ],
+  "requirements": [
+    {
+      "id": "marshal-validate",
+      "registry_id": "MARSHAL-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "workflow": "standard",
+        "stage": "implement"
+      }
+    }
   ],
   "guidance_sources": [
     {

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { captureMarshalBaseline } from '../../src/lib/standard-marshal.js'
 import { delegationExecutionPath } from '../../src/lib/validation.js'
 import { writeRedlineRecord } from '../../src/lib/watch/redline.js'
 import {
@@ -234,14 +235,30 @@ export function writeEvidenceReports(
   root: string,
   invocation: Invocation,
 ): void {
+  const standard =
+    invocation.workflow.slug === 'standard' &&
+    invocation.stage.slug === 'implement'
   for (const worker of invocation.evidence_workers ?? []) {
     const absolute = path.join(root, worker.evidence_path)
 
     mkdirSync(path.dirname(absolute), { recursive: true })
+    const testPath = 'tests/unit/example.test.ts'
+    if (standard && worker.role === 'test-author') {
+      const target = path.resolve(root, invocation.workspace_root, testPath)
+      mkdirSync(path.dirname(target), { recursive: true })
+      writeFileSync(target, 'assert.equal(actual, 42)\n')
+    }
     writeFileSync(
       absolute,
-      `# ${worker.role} evidence\n\nFixture ${worker.role} report.\n`,
+      `# ${worker.role} evidence\n\nFixture ${worker.role} report.\n` +
+        (standard
+          ? (worker.role === 'test-author'
+              ? `<!-- marshal-test: ${testPath} -->\n`
+              : '') +
+            '<!-- evidence-verdict: pass -->\n<!-- evidence-report: complete -->\n'
+          : ''),
       'utf8',
     )
   }
+  if (standard) captureMarshalBaseline(root, invocation)
 }

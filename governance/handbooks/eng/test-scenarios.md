@@ -42,11 +42,11 @@ Agents MUST NOT pursue a coverage percentage for its own sake, and MUST NOT try 
 These rules bind when a workflow runs a test author beside the implementer.
 
 - The test author works from the plan, the acceptance criteria, the scenarios, and the interface schema when one exists. It MUST NOT read the implementer's work in progress.
-- When the interfaces and output shapes are known, for example from an approved interface schema, the test author MAY assume the implementer honors them. Otherwise it MUST assume reasonable interfaces and shapes and focus on covering every scenario correctly.
+- For standard plans with a shared interface contract, both workers MUST use the same minimum test-facing interfaces, including any approved interface schema. The test author independently derives assertions from the operator request and acceptance criteria. A contradiction or inadequate interface must be reported, not guessed. Legacy plans without a contract retain reasonable interface assumptions.
 
 ## Marshaling
 
-Marshaling aligns test code with the actual interfaces and output shapes after implementation.
+Marshaling is an exception, not a mandatory phase, for standard runs with a shared interface contract. The source-allowed join runs configured checks first. A passing check requires no test reconciliation. A demonstrated interface mismatch permits only the smallest correction against the ratified contract. Production code that violates the contract must be corrected in production code; a materially inadequate contract requires replanning and approval.
 
 - Marshaling MAY change call sites, imports, names, and fixture shapes.
 - Marshaling MUST NOT delete a scenario, loosen an assertion, or change an expected outcome.

@@ -14,6 +14,7 @@
  * delegation evidence.
  */
 import { randomUUID } from 'node:crypto'
+import { captureMarshalBaseline } from './standard-marshal.js'
 import { reconcileProceduralExceptions } from './procedural-exceptions.js'
 import { readFileSync, statSync } from 'node:fs'
 
@@ -372,6 +373,7 @@ export async function watchEvidenceCompletion(
 
   const complete = (roles: EvidenceRoleObservation[]): EvidenceWatchResult => {
     const allPass = roles.every((role) => role.passes)
+    if (allPass) captureMarshalBaseline(root, invocation)
     const record: EvidenceReadyRecord = {
       schema_version: 1,
       run_id: runId,

@@ -84,6 +84,12 @@
       "policies": ["REPO-001"]
     },
     {
+      "persona": "test-author",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
@@ -163,7 +169,21 @@
       "technology": "typescript"
     },
     {
+      "persona": "test-author",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["TS-001"],
+      "technology": "typescript"
+    },
+    {
       "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "test-author",
       "workflow": "*",
       "stage": "*",
       "technology": "python",
@@ -220,6 +240,12 @@
       "policies": ["ENG-001", "SCENARIO-001"]
     },
     {
+      "persona": "test-author",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "SCENARIO-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
@@ -228,6 +254,13 @@
     },
     {
       "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "test-author",
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
@@ -545,6 +578,86 @@
     {
       "persona": "release-steward",
       "workflow": "one-shot",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "planner",
+      "workflow": "standard",
+      "stage": "plan",
+      "policies": ["PLAN-002"]
+    },
+    {
+      "persona": "planner",
+      "workflow": "standard",
+      "stage": "plan",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standard",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "test-author",
+      "workflow": "standard",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "standard",
+      "stage": "verify",
+      "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "standard",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "standard",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "design-reviewer",
+      "workflow": "standard",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "design-qa",
+      "workflow": "standard",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "standard",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "standard",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "standard",
+      "stage": "ship",
+      "policies": ["SHIP-001", "STE-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "standard",
       "stage": "ship",
       "installation_scope": "self_development",
       "policies": ["VERSION-001"]

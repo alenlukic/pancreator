@@ -35,6 +35,8 @@ const SUCCESS_PATHS: Record<string, string[]> = {
   'one-shot': ['implement', 'ship'],
   prototype: ['intake', 'approach', 'build', 'evaluate'],
   'prototype-trace': ['trace'],
+  standard: ['plan', 'implement', 'verify', 'ship'],
+  'standard with design': ['design', 'plan', 'implement', 'verify', 'ship'],
 }
 
 function failureText(error: unknown): string {

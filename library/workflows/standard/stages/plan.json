@@ -1,0 +1,83 @@
+{
+  "slug": "plan",
+  "title": "Proportionate plan",
+  "persona": "planner",
+  "prompt_path": "library/workflows/standard/prompts/plan.md",
+  "workspace_policy": "runtime_only",
+  "gate": "operator",
+  "checkpoint": "technical_plan",
+  "context": {
+    "request": "required",
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "product_spec": "object",
+    "product_spec.summary": "string",
+    "product_spec.user_stories": "array",
+    "product_spec.constraints": "array",
+    "product_spec.out_of_scope": "array",
+    "product_spec.open_questions": "array",
+    "engineering_plan": "object",
+    "engineering_plan.approach": "string",
+    "engineering_plan.components": "array",
+    "engineering_plan.files": "array",
+    "engineering_plan.risks": "array",
+    "engineering_plan.validation": "array",
+    "acceptance_criteria": "array",
+    "test_plan": "array",
+    "test_scenarios": "array",
+    "open_question_dispositions": "array",
+    "interface_contract": "object",
+    "interface_contract.interfaces": "array"
+  },
+  "criteria": [
+    {
+      "id": "intake.request_covered",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The product spec faithfully covers the operator request without inventing material scope."
+    },
+    {
+      "id": "plan.complete_mapping",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every user story and feature requirement maps to at least one testable acceptance criterion."
+    },
+    {
+      "id": "plan.implementation_ready",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The plan is specific enough for implementation without additional architectural decisions."
+    },
+    {
+      "id": "plan.proportionate",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The plan is sized for a single M task, omits a cohort plan, and does not re-derive the intake classification."
+    },
+    {
+      "id": "standard.interface_contract",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The plan identifies the minimum test-facing contract for every planned scenario, references existing or approved interfaces where possible, and specifies observable effects and test seams without prescribing implementation internals."
+    },
+    {
+      "id": "plan.test_plan_covers",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every acceptance criterion carries one proof type (test, review, live, or observe) that fits how it is proven, and the test plan gives every live criterion at least one executable verification case that a later stage can run without editing source. Every test scenario carries exactly one SCENARIO-001 category, every criterion with a happy path or a mission-critical unhappy path has that scenario, and no scenario covers a low-probability low-impact, vanishingly improbable, or provably unreachable case."
+    }
+  ],
+  "transitions": {
+    "success": "implement",
+    "failure": "plan",
+    "blocked": "paused"
+  },
+  "blocked_required_data": {
+    "blocked": "object",
+    "blocked.missing_precondition": "string",
+    "blocked.supplying_command": "string",
+    "blocked.evidence": "array"
+  }
+}

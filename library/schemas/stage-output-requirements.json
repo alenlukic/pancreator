@@ -40,7 +40,16 @@
             "data.open_question_dispositions[].evidence",
             "data.verification_recommendation",
             "data.verification_recommendation.level",
-            "data.verification_recommendation.reason"
+            "data.verification_recommendation.reason",
+            "data.interface_contract.interfaces",
+            "data.interface_contract.interfaces[]",
+            "data.interface_contract.interfaces[].id",
+            "data.interface_contract.interfaces[].kind",
+            "data.interface_contract.interfaces[].reference",
+            "data.interface_contract.interfaces[].surface",
+            "data.interface_contract.interfaces[].effects",
+            "data.interface_contract.interfaces[].test_seams",
+            "data.interface_contract.interfaces[].scenario_ids"
           ]
         }
       ],
@@ -197,6 +206,62 @@
         {
           "path": "data.verification_recommendation.reason",
           "type": "string"
+        },
+        {
+          "path": "data.interface_contract",
+          "type": "object",
+          "format": "Required for new standard plans; minimum observable interfaces shared by coder and tester."
+        },
+        {
+          "path": "data.interface_contract.interfaces",
+          "type": "array",
+          "format": "Every planned test scenario maps to at least one interface."
+        },
+        {
+          "path": "data.interface_contract.interfaces[]",
+          "type": "object",
+          "required": [
+            "id",
+            "kind",
+            "reference",
+            "surface",
+            "effects",
+            "test_seams",
+            "scenario_ids"
+          ],
+          "format": "Existing reference or planned test-facing boundary, not implementation internals."
+        },
+        {
+          "path": "data.interface_contract.interfaces[].id",
+          "type": "string"
+        },
+        {
+          "path": "data.interface_contract.interfaces[].kind",
+          "type": "string",
+          "enum": ["existing", "new", "changed"]
+        },
+        {
+          "path": "data.interface_contract.interfaces[].reference",
+          "type": "string"
+        },
+        {
+          "path": "data.interface_contract.interfaces[].surface",
+          "type": "string"
+        },
+        {
+          "path": "data.interface_contract.interfaces[].effects",
+          "type": "array",
+          "format": "Non-empty array of non-empty strings."
+        },
+        {
+          "path": "data.interface_contract.interfaces[].test_seams",
+          "type": "array",
+          "format": "Non-empty array of non-empty strings."
+        },
+        {
+          "path": "data.interface_contract.interfaces[].scenario_ids",
+          "type": "array",
+          "format": "Non-empty array of non-empty strings."
         }
       ]
     },
@@ -372,6 +437,236 @@
           "path": "data.implementation.handoff.untested[]",
           "type": "string",
           "format": "one behavior this attempt did not prove"
+        }
+      ]
+    },
+    "standard:implement": {
+      "validators": [
+        {
+          "registry_id": "MARSHAL-VALIDATE-001",
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.marshaling.edits",
+            "data.marshaling.edits[]",
+            "data.marshaling.edits[].kind",
+            "data.marshaling.edits[].path",
+            "data.marshaling.edits[].note",
+            "data.marshaling.check_profile",
+            "data.marshaling.mismatch"
+          ]
+        },
+        {
+          "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.acceptance_results[].evidence[]",
+            "data.implementation.changed_files[]",
+            "data.implementation.tests_added[]",
+            "data.implementation.tests_added[].path",
+            "data.implementation.tests_added[].contract",
+            "data.implementation.remediation[]",
+            "data.implementation.remediation[].cause",
+            "data.implementation.remediation[].action",
+            "data.implementation.remediation[].evidence[]",
+            "data.acceptance_results[]",
+            "data.acceptance_results[].id",
+            "data.acceptance_results[].result",
+            "data.implementation",
+            "data.blocked",
+            "data.blocked.missing_precondition",
+            "data.blocked.supplying_command",
+            "data.blocked.evidence[]",
+            "data.implementation.handoff",
+            "data.implementation.handoff.symbols_changed[]",
+            "data.implementation.handoff.symbols_changed[].path",
+            "data.implementation.handoff.symbols_changed[].symbol",
+            "data.implementation.handoff.start_here[]",
+            "data.implementation.handoff.start_here[].path",
+            "data.implementation.handoff.decisions[]",
+            "data.implementation.handoff.untested[]"
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.acceptance_results[]",
+          "type": "object",
+          "required": ["id", "result", "evidence"],
+          "format": "one result per ratified acceptance criterion; id names the criterion, result uses the shared criterion-result vocabulary, and evidence is non-empty"
+        },
+        {
+          "path": "data.acceptance_results[].id",
+          "type": "string",
+          "format": "acceptance criterion id the ratified plan declares"
+        },
+        {
+          "path": "data.acceptance_results[].result",
+          "type": "string",
+          "format": "non-empty; the criterion outcome this stage observed"
+        },
+        {
+          "path": "data.acceptance_results[].evidence[]",
+          "type": "string",
+          "format": "path reference, prose observation, or pytest node id",
+          "accepted_shapes": [
+            "path_reference",
+            "prose_observation",
+            "pytest_node_id"
+          ]
+        },
+        {
+          "path": "data.implementation",
+          "type": "object",
+          "format": "required unless the top-level result is blocked; the stage's required data names the complete child set"
+        },
+        {
+          "path": "data.verification_execution_operations[]",
+          "type": "object",
+          "format": "optional source-authorized reproduction definitions, each a version-1 VerificationExecutionOperation under library/schemas/verification-execution.schema.json; read-only outputs and requests cannot authorize commands"
+        },
+        {
+          "path": "data.marshaling",
+          "type": "object",
+          "format": "optional; only for demonstrated interface reconciliation on new standard runs; records the marshaling edits that mapped tests onto actual interfaces"
+        },
+        {
+          "path": "data.marshaling.edits",
+          "type": "array",
+          "format": "optional; only for demonstrated interface reconciliation on new standard runs; marshaling edits that mapped tests onto actual interfaces"
+        },
+        {
+          "path": "data.marshaling.edits[]",
+          "type": "object",
+          "required": ["kind", "path"],
+          "format": "optional; only for demonstrated interface reconciliation on new standard runs; kind is one of call_site, import, name, or fixture_shape"
+        },
+        {
+          "path": "data.marshaling.edits[].kind",
+          "type": "string",
+          "format": "one of call_site, import, name, or fixture_shape"
+        },
+        {
+          "path": "data.marshaling.edits[].path",
+          "type": "string",
+          "format": "workspace-relative path of the test file the edit touches"
+        },
+        {
+          "path": "data.marshaling.edits[].note",
+          "type": "string",
+          "format": "one sentence describing the shape change"
+        },
+        {
+          "path": "data.implementation.changed_files[]",
+          "type": "string",
+          "format": "workspace-relative path of a file the stage changed; every entry MUST be a string, MUST exist, and MUST appear in the workspace diff"
+        },
+        {
+          "path": "data.implementation.tests_added[]",
+          "type": "object",
+          "required": ["path", "contract"],
+          "format": "{ path, contract }: path is '<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve) and the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'; contract is one non-empty sentence naming the behavior the test proves. Every new test file and every changed test file with a net-positive test(/it( count MUST have an entry with a contract. A bare string still parses as { path } and fails only when that delta requires a contract. A change that adds no tests needs no entry."
+        },
+        {
+          "path": "data.implementation.tests_added[].path",
+          "type": "string",
+          "format": "'<test file path>' optionally followed by '::<test case>'; the file portion MUST exist"
+        },
+        {
+          "path": "data.implementation.tests_added[].contract",
+          "type": "string",
+          "format": "one non-empty sentence naming the behavior the test proves"
+        },
+        {
+          "path": "data.implementation.remediation[]",
+          "type": "object",
+          "required": ["cause", "action", "evidence"],
+          "format": "required on attempt 2+; cause and action are non-empty strings, evidence is a non-empty string array"
+        },
+        {
+          "path": "data.implementation.remediation[].cause",
+          "type": "string",
+          "format": "non-empty; the cause of the prior failure or loop"
+        },
+        {
+          "path": "data.implementation.remediation[].action",
+          "type": "string",
+          "format": "non-empty; the action taken against that cause"
+        },
+        {
+          "path": "data.implementation.remediation[].evidence[]",
+          "type": "string",
+          "format": "non-empty string array of paths, commands, or observations proving the remediation"
+        },
+        {
+          "path": "data.blocked",
+          "type": "object",
+          "required": ["missing_precondition", "supplying_command", "evidence"],
+          "format": "required when the top-level result is blocked, and forbidden otherwise"
+        },
+        {
+          "path": "data.blocked.missing_precondition",
+          "type": "string",
+          "format": "required when top-level result is blocked; states the precondition implementation could not obtain"
+        },
+        {
+          "path": "data.blocked.supplying_command",
+          "type": "string",
+          "format": "required when top-level result is blocked; the command or action that would supply the precondition"
+        },
+        {
+          "path": "data.blocked.evidence[]",
+          "type": "string",
+          "format": "required when top-level result is blocked; non-empty string array of paths, commands, or observations proving the gap. Edits made before blocking are disclosed in top-level workspace_changes.paths, which the claims validator reconciles against the Git delta because data.implementation is forbidden on a blocked result."
+        },
+        {
+          "path": "data.implementation.handoff",
+          "type": "object",
+          "format": "optional notes for the next worker on this change: start_here, symbols_changed, decisions, untested"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[]",
+          "type": "object",
+          "required": ["path", "symbol"],
+          "format": "{ path, symbol, lines, note }: a symbol this attempt changed; path MUST be a changed_files entry"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.symbols_changed[].symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[]",
+          "type": "object",
+          "required": ["path"],
+          "format": "{ path, symbol_or_lines, why }: where a follow-up worker should begin"
+        },
+        {
+          "path": "data.implementation.handoff.start_here[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.implementation.handoff.decisions[]",
+          "type": "string",
+          "format": "one decision and its reason"
+        },
+        {
+          "path": "data.implementation.handoff.untested[]",
+          "type": "string",
+          "format": "one behavior this attempt did not prove"
+        },
+        {
+          "path": "data.marshaling.check_profile",
+          "type": "string",
+          "enum": ["impacted", "static"],
+          "format": "Required for test reconciliation on new standard runs; failed configured check at the pre-join workspace fingerprint."
+        },
+        {
+          "path": "data.marshaling.mismatch",
+          "type": "string",
+          "format": "Required for test reconciliation on new standard runs; concrete failed check, affected contract interface id, and mismatch."
         }
       ]
     },

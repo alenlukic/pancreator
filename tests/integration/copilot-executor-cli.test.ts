@@ -12,7 +12,6 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
-import { createServer, type Socket } from 'node:net'
 
 import { createCopilotAdapter } from '../../src/lib/engine/executors.js'
 import {
@@ -104,7 +103,6 @@ function fakeCopilot(
       path.join(dir, 'revision.mjs'),
       `
 import fs from 'node:fs'
-import net from 'node:net'
 const argv = process.argv.slice(2)
 const resumed = argv.some(arg => arg.startsWith('--resume='))
 const countPath = new URL('fresh-count', import.meta.url)
@@ -114,13 +112,21 @@ const label = resumed ? 'session-resume' : count === 1 ? 'session-first' : 'sess
 const session = argv.find(arg => arg.startsWith('--resume=') || arg.startsWith('--session-id='))?.split('=')[1]
 let prompt = ''
 for await (const chunk of process.stdin) prompt += chunk
-fs.writeFileSync(new URL(label + '.json', import.meta.url), JSON.stringify({argv,prompt,session}))
+const metadata = new URL(label + '.json', import.meta.url)
+const temporary = new URL(label + '.tmp', import.meta.url)
+fs.writeFileSync(temporary, JSON.stringify({argv,prompt,session}))
+fs.renameSync(temporary, metadata)
 const emit = value => process.stdout.write(JSON.stringify(value) + '\\n')
+// Register before publishing readiness. The test releases this exact live PID.
+const release = new Promise(resolve => process.once('SIGUSR2', resolve))
+const keepAlive = setInterval(() => {}, 1000)
 emit({type:'session.start',data:{sessionId:session}})
 emit({type:'assistant.message',data:{model:'gpt-5.6-sol',content:'done ' + process.env.COPILOT_PROVIDER_API_KEY}})
 emit({type:'result',sessionId:session,exitCode:resumed ? 1 : 0})
-const socket = net.connect(Number(process.env.COPILOT_REVISION_PORT), '127.0.0.1')
-socket.on('data', () => { socket.destroy(); process.exit(resumed ? 1 : 0) })
+await release
+clearInterval(keepAlive)
+fs.writeFileSync(new URL(label + '.released', import.meta.url), session)
+process.exitCode = resumed ? 1 : 0
 `,
     )
   }
@@ -241,7 +247,7 @@ test('resume failure and fresh fallback keep distinct live identities and explic
 
 test(
   'operator revision automatically resumes Copilot and falls back to a fresh full card after failure',
-  { timeout: 90_000 },
+  { timeout: 180_000 },
   async (context) => {
     // Run creation preflights every external executor in the workflow. Use
     // a stub before creating the checkpoint, not just for the later dispatch.
@@ -269,13 +275,6 @@ test(
     )
     const { root, runId } = run
     const binary = fakeCopilot({ revision: true, root })
-    const server = createServer()
-    const sockets: Socket[] = []
-    server.on('connection', (socket) => sockets.push(socket))
-    server.listen(0, '127.0.0.1')
-    await once(server, 'listening')
-    const address = server.address()
-    assert.ok(address && typeof address !== 'string')
     const directory = resolveRunLayout(root, runId).evidence('').absolute
     const records = (): DelegationLiveRecord[] =>
       readdirSync(directory)
@@ -291,11 +290,11 @@ test(
           assert.ok(record)
           return record
         })
-    // The production executor can run for an hour; a local handshake stub
-    // must instead fail promptly if it cannot launch or make progress.
-    const workerTimeoutMs = 30_000
+    // Keep each stub launch bounded independently, with headroom for the
+    // coverage suite's low-priority, concurrent fixture and process work.
+    const workerTimeoutMs = 60_000
     const handshakeSignal = () =>
-      AbortSignal.any([context.signal, AbortSignal.timeout(40_000)])
+      AbortSignal.any([context.signal, AbortSignal.timeout(75_000)])
     const dispatch = () => {
       const child = spawn(
         process.execPath,
@@ -312,7 +311,6 @@ test(
             ...process.env,
             PANCREATOR_COPILOT_BIN: binary,
             OPENAI_API_KEY: FAKE_KEY,
-            COPILOT_REVISION_PORT: String(address.port),
           },
           stdio: ['ignore', 'pipe', 'pipe'],
         },
@@ -343,20 +341,36 @@ test(
             ),
           ])
         } catch (error) {
+          const acknowledged = [
+            'session-first',
+            'session-resume',
+            'session-fallback',
+          ]
+            .filter((label) =>
+              existsSync(path.join(path.dirname(binary), label + '.released')),
+            )
+            .join(', ')
           throw new Error(
-            `Copilot revision ${phase}: ${String(error)}\n${progress}`,
+            `Copilot revision ${phase}: ${String(error)}\n` +
+              `Worker release acknowledgments: ${acknowledged || 'none'}\n${progress}`,
             { cause: error },
           )
         }
       }
       const observe = async (label: string) => {
-        const { session } = JSON.parse(
-          readFileSync(
-            path.join(path.dirname(binary), label + '.json'),
-            'utf8',
-          ),
-        ) as { session: string }
+        const file = path.join(path.dirname(binary), label + '.json')
         const signal = handshakeSignal()
+        // The stub publishes its metadata before emitting session/result JSONL.
+        // No socket connection or ordering of connection events is needed.
+        while (!existsSync(file)) {
+          await beforeExit(
+            once(child.stderr, 'data', { signal }),
+            `${label} readiness`,
+          )
+        }
+        const { session } = JSON.parse(readFileSync(file, 'utf8')) as {
+          session: string
+        }
         while (!progress.includes(`"sessionId":"${session}","exitCode"`)) {
           await beforeExit(
             once(child.stderr, 'data', { signal }),
@@ -382,10 +396,10 @@ test(
         )
         const invocationId = getRunState(root, runId).current_invocation?.id
         assert.ok(invocationId)
-        const file = resolveRunLayout(root, runId).evidence(
+        const exceptionFile = resolveRunLayout(root, runId).evidence(
           `${invocationId}-worker-exception.json`,
         )
-        writeJson(file.absolute, {
+        writeJson(exceptionFile.absolute, {
           schema_version: 1,
           client_id: 'live-worker',
           affected: 'worker-ledger',
@@ -403,10 +417,14 @@ test(
           ],
           required_follow_up: 'Retain live delegation regression.',
         })
-        const receipt = recordProceduralException(root, runId, file.relative)
+        const receipt = recordProceduralException(
+          root,
+          runId,
+          exceptionFile.relative,
+        )
         assert.equal(receipt.actor.invocation_id, invocationId)
         assert.equal(
-          recordProceduralException(root, runId, file.relative).id,
+          recordProceduralException(root, runId, exceptionFile.relative).id,
           receipt.id,
         )
         assert.ok(
@@ -419,17 +437,27 @@ test(
       return { child, result, beforeExit, observe, progress: () => progress }
     }
     let running: ReturnType<typeof dispatch> | undefined
-    const connection = () =>
-      once(server, 'connection', { signal: handshakeSignal() })
+    const release = (record: DelegationLiveRecord) => {
+      assert.ok(record.child_pid && processIsAlive(record.child_pid))
+      process.kill(record.child_pid, 'SIGUSR2')
+    }
+    const assertReleased = (label: string, record: DelegationLiveRecord) => {
+      assert.equal(
+        readFileSync(
+          path.join(path.dirname(binary), label + '.released'),
+          'utf8',
+        ),
+        record.session_id,
+      )
+    }
     try {
       const first = prepareInvocation(root, runId)
       assert.ok(first.invocation)
-      let pending = connection()
       running = dispatch()
-      await running.beforeExit(pending, 'initial session connection')
       const initialLive = await running.observe('session-first')
-      sockets.at(-1)?.write('release')
+      release(initialLive)
       const initial = await running.result
+      assertReleased('session-first', initialLive)
       assert.equal(initial.delegation_kind, 'fresh')
       assert.equal(initial.session_id, initialLive.requested_session_id)
       assert.match(initial.session_id ?? '', /^[0-9a-f-]{36}$/u)
@@ -451,9 +479,7 @@ test(
       attestRunCard(root, runId)
       const revision = prepareInvocation(root, runId).invocation
       assert.ok(revision)
-      pending = connection()
       running = dispatch()
-      await running.beforeExit(pending, 'resume session connection')
       const resumed = await running.observe('session-resume')
       assert.equal(resumed.resumed_from_session_id, initial.session_id)
       assert.equal(resumed.session_id, initial.session_id)
@@ -481,10 +507,9 @@ test(
         input('session-resume').prompt,
         /# Operator revision directive/u,
       )
-      pending = connection()
-      sockets.at(-1)?.write('release')
-      await running.beforeExit(pending, 'fresh fallback connection')
+      release(resumed)
       const fresh = await running.observe('session-fallback')
+      assertReleased('session-resume', resumed)
       for (const record of [resumed, fresh]) {
         assert.equal(record.invocation_id, revision.invocation_id)
         assert.equal(record.attempt, revision.attempt)
@@ -520,8 +545,9 @@ test(
           ),
         ),
       )
-      sockets.at(-1)?.write('release')
+      release(fresh)
       const final = await running.result
+      assertReleased('session-fallback', fresh)
       assert.equal(final.delegation_kind, 'resume_fallback')
       assert.equal(final.is_error, false)
       assert.equal(final.resumed_from_session_id, initial.session_id)
@@ -575,14 +601,8 @@ test(
       )
       assert.ok(!running.progress().includes(FAKE_KEY))
     } finally {
-      for (const socket of sockets) {
-        socket.destroy()
-      }
-
       running?.child.kill('SIGTERM')
       await running?.result.catch(() => {})
-      server.close()
-      await once(server, 'close')
     }
   },
 )

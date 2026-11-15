@@ -806,3 +806,58 @@ test('plan trace validates SCENARIO-001 test scenarios when supplied', () => {
   )
   assert.deepEqual(codes({}), ['plan.scenario_shape'])
 })
+
+test('standard plan requires a minimal shared contract covering every scenario', () => {
+  const root = validatorFixtureRoot('pan-plan-contract-')
+  const target = 'output.json'
+  const criterion = {
+    id: 'AC-01',
+    maps_to: ['US-1'],
+    verification: { method: 'unit test', expected: 'passes' },
+    proof: 'test',
+  }
+  const scenarios = [
+    {
+      id: 'TS-01',
+      criterion: 'AC-01',
+      category: 'happy_path',
+      scenario: 'The call returns the requested result.',
+    },
+  ]
+  const boundary = {
+    id: 'IF-01',
+    kind: 'existing',
+    reference: 'src/service.ts#run',
+    surface: 'run(input): Result',
+    effects: ['Returns the requested result'],
+    test_seams: ['Return value'],
+    scenario_ids: ['TS-01'],
+  }
+  const codes = (contract?: unknown): string[] => {
+    writePlanWithQuestions(root, target, [], [], [criterion], [], scenarios)
+    const output = JSON.parse(readFileSync(path.join(root, target), 'utf8'))
+    if (contract !== undefined) output.data.interface_contract = contract
+    writeJson(path.join(root, target), output)
+    return validatePlanTrace({
+      root,
+      targetPath: target,
+      requirement: planTraceRequirement,
+      invocation: {
+        output: { required_data: { interface_contract: 'object' } },
+      },
+    }).issues.map((item) => item.code)
+  }
+  assert.deepEqual(codes(), ['plan.interface_contract_shape'])
+  assert.deepEqual(codes({ interfaces: [boundary] }), [])
+  assert.deepEqual(codes({ interfaces: [] }), [
+    'plan.interface_contract_mapping',
+  ])
+  assert.deepEqual(codes({ interfaces: [{ ...boundary, surface: '' }] }), [
+    'plan.interface_contract_shape',
+    'plan.interface_contract_mapping',
+  ])
+  assert.deepEqual(
+    codes({ interfaces: [{ ...boundary, scenario_ids: ['TS-99'] }] }),
+    ['plan.interface_contract_mapping', 'plan.interface_contract_mapping'],
+  )
+})

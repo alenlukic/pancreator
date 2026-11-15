@@ -491,6 +491,7 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   }
 
   issues.push(...testScenarioIssues(input.root, data, criterionIds))
+  issues.push(...interfaceContractIssues(data, input))
   issues.push(...criterionProducerIssues(criteria))
   issues.push(
     ...openQuestionDispositionIssues(input, data, criteria, productSpec),
@@ -875,5 +876,90 @@ function openQuestionDispositionIssues(
     }
   }
 
+  return issues
+}
+
+/** A standard plan pins only the observable boundaries exercised by its scenarios. */
+function interfaceContractIssues(
+  data: Record<string, unknown>,
+  input: HandlerInput,
+): HandlerResult['issues'] {
+  const contract = data.interface_contract
+  const output = input.invocation?.output
+  const required =
+    isRecord(output) &&
+    isRecord(output.required_data) &&
+    Object.hasOwn(output.required_data, 'interface_contract')
+  if (contract === undefined && !required) return []
+  if (!isRecord(contract) || !Array.isArray(contract.interfaces)) {
+    return [
+      issue(
+        'plan.interface_contract_shape',
+        'data.interface_contract.interfaces MUST be an array.',
+      ),
+    ]
+  }
+  const nonempty = (value: unknown): value is string =>
+    typeof value === 'string' && value.trim().length > 0
+  const strings = (value: unknown): value is string[] =>
+    Array.isArray(value) && value.length > 0 && value.every(nonempty)
+  const scenarios = new Set(
+    (Array.isArray(data.test_scenarios) ? data.test_scenarios : []).flatMap(
+      (scenario) =>
+        isRecord(scenario) && nonempty(scenario.id) ? [scenario.id] : [],
+    ),
+  )
+  const seen = new Set<string>()
+  const covered = new Set<string>()
+  const issues: HandlerResult['issues'] = []
+  for (const entry of contract.interfaces) {
+    if (
+      !isRecord(entry) ||
+      !nonempty(entry.id) ||
+      !nonempty(entry.reference) ||
+      !nonempty(entry.surface) ||
+      typeof entry.kind !== 'string' ||
+      !['existing', 'new', 'changed'].includes(entry.kind) ||
+      !strings(entry.effects) ||
+      !strings(entry.test_seams) ||
+      !strings(entry.scenario_ids)
+    ) {
+      issues.push(
+        issue(
+          'plan.interface_contract_shape',
+          'Each interface MUST name id, kind, reference, surface, effects, test_seams, and scenario_ids.',
+        ),
+      )
+      continue
+    }
+    if (seen.has(entry.id)) {
+      issues.push(
+        issue(
+          'plan.interface_contract_mapping',
+          `Duplicate interface id '${entry.id}'.`,
+        ),
+      )
+    }
+    seen.add(entry.id)
+    for (const id of entry.scenario_ids) {
+      if (!scenarios.has(id))
+        issues.push(
+          issue(
+            'plan.interface_contract_mapping',
+            `Interface '${entry.id}' names unknown scenario '${id}'.`,
+          ),
+        )
+      else covered.add(id)
+    }
+  }
+  for (const id of scenarios) {
+    if (!covered.has(id))
+      issues.push(
+        issue(
+          'plan.interface_contract_mapping',
+          `Scenario '${id}' has no shared interface.`,
+        ),
+      )
+  }
   return issues
 }

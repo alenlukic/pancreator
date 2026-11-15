@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "slug": "standard",
+  "title": "Standard plan, parallel implement, and ship",
+  "description": "One proportionate plan with an operator gate, then the implementer and test author in parallel, a check-first join with exception-only interface reconciliation, joint read-only verification, verdict-routed remediation, and operator-approved release preparation. With --with-design, a design stage runs before planning and design evidence workers join verification.",
+  "start_stage": "plan",
+  "limits": {
+    "max_total_transitions": 16,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["plan", "implement", "verify", "remediate", "ship"],
+  "design_composition": {
+    "stages": ["design"],
+    "start_stage": "design",
+    "limits": {
+      "max_total_transitions": 20
+    },
+    "stage_overrides": {
+      "plan": {
+        "required_stage_outputs": [
+          {
+            "stage": "design",
+            "selection": "latest_success"
+          }
+        ],
+        "required_data": {
+          "design_plan": "object",
+          "design_plan.planning_stage": "string",
+          "design_plan.verification_stage": "string",
+          "design_plan.evidence_roles": "array"
+        }
+      },
+      "verify": {
+        "evidence_workers": [
+          {
+            "persona": "design-reviewer",
+            "role": "design-review",
+            "scope": "Independently review the implemented UI against the authoritative design specification, HTML mocks, tokens, states, and design acceptance criteria. Record concrete findings for the verifier and do not review unrelated architecture."
+          },
+          {
+            "persona": "design-qa",
+            "role": "design-qa",
+            "scope": "Verify the implemented UI behavior against the authoritative design specification, HTML mocks, and design acceptance criteria. Record reproducible design QA evidence for the verifier and route defects through the existing verdict."
+          }
+        ]
+      }
+    }
+  }
+}

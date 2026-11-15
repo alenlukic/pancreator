@@ -64,6 +64,29 @@ test('artifact validators resolve only when workflow artifacts are requested', (
   )
 })
 
+test('marshaling validation is confined to standard implementation', () => {
+  const root = createFixture()
+  for (const [workflow, persona, expected] of [
+    ['standard', 'coder', true],
+    ['delivery', 'coder', false],
+    ['delivery-chunk', 'coder', false],
+    ['one-shot', 'spotfixer', false],
+  ] as const) {
+    const requirements = resolveRequirements(root, {
+      workflow,
+      persona,
+      stage: 'implement',
+    })
+    assert.equal(
+      requirements.validation_requirements.some(
+        (requirement) => requirement.registry_id === 'MARSHAL-VALIDATE-001',
+      ),
+      expected,
+      workflow,
+    )
+  }
+})
+
 test('repository validation detects a stage validator missing only when artifacts are suppressed', () => {
   const root = createFixture()
   const file = path.join(root, 'governance/policies/SPOT-001.json')

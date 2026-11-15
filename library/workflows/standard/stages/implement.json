@@ -1,0 +1,95 @@
+{
+  "slug": "implement",
+  "title": "Parallel implement and check",
+  "persona": "coder",
+  "prompt_path": "library/workflows/standard/prompts/implement.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "evidence_workers": [
+    {
+      "persona": "coder",
+      "role": "implement",
+      "scope": "Implement production code against the ratified shared interface contract. Do not read the test author’s work in progress or write their tests. Preserve freedom over internals. Report any concrete contract mismatch or necessary amendment rather than silently changing the contract. Do not re-derive the intake classification. Map evidence to every acceptance criterion. Do not build, compile, or run tests; the join owns checks."
+    },
+    {
+      "persona": "test-author",
+      "role": "test-author",
+      "scope": "Write tests against the ratified shared interface contract; independently derive assertions from the operator request, acceptance criteria, and test scenarios. Do not read the implementer’s work in progress or change production source. Report contradictions or inadequate interfaces instead of guessing. Cover every planned scenario without adding excluded cases. Do not build, compile, or run tests; the join owns checks."
+    }
+  ],
+  "context": {
+    "request": "required",
+    "required_stage_outputs": [
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "implementation": "object",
+    "implementation.changed_files": "array",
+    "implementation.tests_added": "array",
+    "implementation.notes": "array",
+    "acceptance_results": "array"
+  },
+  "blocked_required_data": {
+    "blocked": "object",
+    "blocked.missing_precondition": "string",
+    "blocked.supplying_command": "string",
+    "blocked.evidence": "array"
+  },
+  "criteria": [
+    {
+      "id": "implement.acceptance_claimed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The output maps evidence to every acceptance criterion and does not claim unsupported completion."
+    },
+    {
+      "id": "standard.contract_alignment",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Both workers honor the ratified interface contract. The join runs configured checks before reconciliation. Test edits occur only for a demonstrated interface mismatch, never to delete a scenario, weaken an assertion, or change expected behavior. A necessary contract amendment is explicit and returns to planning for approval."
+    },
+    {
+      "id": "implement.lint",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "implement.unit_tests",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository fast checks pass.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 1200000
+    },
+    {
+      "id": "configuration.valid",
+      "type": "shell",
+      "hard": true,
+      "statement": "Repository configuration and governance validate.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "implement.impacted_integration",
+      "type": "shell",
+      "hard": true,
+      "statement": "The integration tests the change reaches pass, so verify sees every lane the ship gate can fail on.",
+      "command": "pan repository-check impacted-integration",
+      "timeout_ms": 900000
+    }
+  ],
+  "transitions": {
+    "success": "verify",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

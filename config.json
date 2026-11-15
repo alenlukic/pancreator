@@ -39,6 +39,7 @@
     "meta-orchestrator": "anthropic:ultra",
     "planner": "anthropic:ultra",
     "coder": "anthropic:advanced",
+    "test-author": "anthropic:advanced",
     "metacritic": "anthropic:ultra",
     "reviewer": "anthropic:advanced",
     "verifier": "anthropic:advanced",

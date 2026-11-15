@@ -3,6 +3,7 @@
  */
 
 import path from 'node:path'
+import { captureMarshalBaseline } from '../standard-marshal.js'
 import { withInitialPolicyReminder } from '../policy-delivery.js'
 import { prepareVerificationExecution } from './verification-execution.js'
 import { scaffoldStageOutput } from '../requirements/scaffold.js'
@@ -113,6 +114,7 @@ export function delegateInvocation(
         state.current_invocation.json_path,
       )
       const invocationId = invocation.invocation_id
+      captureMarshalBaseline(root, invocation)
       if (prepareVerificationExecution(root, state, invocation)) {
         scaffoldStageOutput(root, invocation, invocation.output.path)
       }

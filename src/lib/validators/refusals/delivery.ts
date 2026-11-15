@@ -160,6 +160,32 @@ export const CLAIMS_REFUSALS: readonly StageRefusal[] = [
 ]
 
 /**
+ * Refusals `validateMarshalOutput` can raise on a standard implement join.
+ */
+export const MARSHAL_REFUSALS: readonly StageRefusal[] = [
+  {
+    code: 'marshal.edits_shape',
+    paths: ['data.marshaling.edits'],
+  },
+  {
+    code: 'marshal.assertion_loosened',
+    paths: ['data.marshaling.edits[].kind', 'data.marshaling.edits[].note'],
+  },
+  {
+    code: 'marshal.reconciliation_evidence',
+    paths: [
+      'data.marshaling.check_profile',
+      'data.marshaling.mismatch',
+      'data.marshaling.edits',
+    ],
+  },
+  {
+    code: 'marshal.edit_kind',
+    paths: ['data.marshaling.edits[].kind'],
+  },
+]
+
+/**
  * Refusals `validatePlanTrace` can raise, including the composed
  * verification-recommendation code the shared helper builds. That helper also
  * serves the intake handler, so the same expression raises
@@ -274,6 +300,27 @@ export const PLAN_REFUSALS: readonly StageRefusal[] = [
   { code: 'plan.execution_shape', paths: ['data.test_plan[]'] },
   { code: 'plan.execution_required', paths: ['data.test_plan[]'] },
   { code: 'plan.execution_operation', paths: ['data.test_plan[]'] },
+  {
+    code: 'plan.interface_contract_shape',
+    paths: [
+      'data.interface_contract.interfaces',
+      'data.interface_contract.interfaces[]',
+      'data.interface_contract.interfaces[].id',
+      'data.interface_contract.interfaces[].kind',
+      'data.interface_contract.interfaces[].reference',
+      'data.interface_contract.interfaces[].surface',
+      'data.interface_contract.interfaces[].effects',
+      'data.interface_contract.interfaces[].test_seams',
+      'data.interface_contract.interfaces[].scenario_ids',
+    ],
+  },
+  {
+    code: 'plan.interface_contract_mapping',
+    paths: [
+      'data.interface_contract.interfaces[].id',
+      'data.interface_contract.interfaces[].scenario_ids',
+    ],
+  },
   {
     code: 'plan.scenario_shape',
     paths: [

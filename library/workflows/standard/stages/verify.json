@@ -1,0 +1,108 @@
+{
+  "slug": "verify",
+  "title": "Joint verification",
+  "persona": "verifier",
+  "evidence_workers": [
+    {
+      "persona": "reviewer",
+      "role": "review",
+      "scope": "Independently review the implementation diff and resulting workspace against the ratified plan: acceptance-criteria coverage, test quality and honesty (weakened, deleted, gamed, or narrowed tests), scope control, maintainability, and security. Judge each tests_added contract: does an existing assertion already prove it, and is this the cheapest form that proves it. Under SCENARIO-001, report a test that fits no scenario category, or that an exclusion covers, as excess, and report a missing happy-path or mission-critical unhappy-path scenario as a defect. Prove each `review` criterion by reading the code. Read code; do not execute the test plan \u2014 the QA worker owns execution when it runs, and gate evidence proves `test` criteria.",
+      "return_scope": "Return visit after remediation: review the remediation diff and the prior findings, not the whole change again. The remediation diff is the blast-radius paths your brief lists, read against the remediation output. The prior findings are in the routing evidence your brief names. Confirm each prior finding is fixed or still open, and record each open one again under its id. Judge the changed code for correctness, test honesty (weakened, deleted, gamed, or narrowed tests), scope control, and security. A new finding in code the remediation did not change blocks only at `blocker` severity: record a lower one at severity high, medium, or low, and the `pass_with_warnings` route sends it to the operator inbox. Read code. Do not execute the test plan."
+    },
+    {
+      "persona": "qa-tester",
+      "role": "qa",
+      "run_when": "live_criteria",
+      "scope": "Execute the ratified test plan against the resulting workspace: every case of a `live` criterion, or every case when the criteria carry no proof type. When the change touches a user-facing surface, also exercise that surface as the change renders it. Run each case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Record any profile execution your card allows in your evidence report, not as a QA case. For a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review architecture \u2014 the parallel review worker owns that. Do not review code style \u2014 no worker in the run owns it, and the operator-invoked `/pan-style` batch pass repairs it after delivery."
+    }
+  ],
+  "scoped_return": {
+    "max_paths": 3,
+    "max_findings": 2,
+    "excluded_path_globs": ["governance/**"],
+    "dimensions": ["review", "qa"]
+  },
+  "prompt_path": "library/workflows/delivery/prompts/verify.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "checkpoint": "independent_review",
+  "context": {
+    "request": "required",
+    "required_stage_outputs": [
+      {
+        "stage": "implement",
+        "selection": "latest"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "remediate",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1,
+    "gate_evidence": true,
+    "suite_profile": true
+  },
+  "required_data": {
+    "verify": "object",
+    "verify.verdict": "string",
+    "verify.findings": "array",
+    "verify.acceptance_results": "array",
+    "verify.gate_evidence_citations": "array",
+    "verify.evidence_packet": "object"
+  },
+  "blocked_required_data": {
+    "verify": "object"
+  },
+  "criteria": [
+    {
+      "id": "verify.acceptance_met",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every acceptance criterion is independently verified against the resulting workspace."
+    },
+    {
+      "id": "verify.tests_correct",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Tests are meaningful, correctly scoped, resistant to false positives, and were not weakened to pass."
+    },
+    {
+      "id": "verify.cases_executed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "When QA runs, its cases from the ratified test plan cover each `live` criterion, or each criterion when the criteria carry no proof type, or explicitly justify why a case is not applicable. Gate evidence proves each `test` criterion, the review proves each `review` criterion, and each `observe` criterion records `observe`."
+    },
+    {
+      "id": "verify.configuration",
+      "type": "shell",
+      "hard": true,
+      "statement": "The repository configuration and repaired evidence structure remain valid without changing the underlying signal.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "verify.final_fast",
+      "type": "shell",
+      "hard": true,
+      "statement": "The final fast check confirms the verifier evidence packet after all other required verification checks pass.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 1200000
+    },
+    {
+      "id": "verify.fast_wall_ceiling",
+      "type": "shell",
+      "hard": false,
+      "statement": "Report the qualified fast-lane wall average as an advisory without changing the verdict.",
+      "command": "pan tests wall",
+      "timeout_ms": 30000
+    }
+  ],
+  "transitions": {
+    "success": "ship",
+    "failure": "remediate",
+    "blocked": "paused"
+  }
+}

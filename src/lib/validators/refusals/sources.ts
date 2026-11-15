@@ -12,6 +12,7 @@ import type {
 } from './shapes.js'
 import {
   CLAIMS_REFUSALS,
+  MARSHAL_REFUSALS,
   PLAN_REFUSALS,
   PR_DESCRIPTION_REFUSALS,
   RELEASE_REFUSALS,
@@ -31,6 +32,7 @@ const FIELD_CONTRACT_MODULE = `${STAGE_MODULE_DIRECTORY}/field-contract.ts`
 const EVIDENCE_MODULE = `${STAGE_MODULE_DIRECTORY}/evidence.ts`
 const TARGET_INSTRUCTIONS_MODULE = `${STAGE_MODULE_DIRECTORY}/target-instructions.ts`
 const CLAIMS_MODULE = `${STAGE_MODULE_DIRECTORY}/claims.ts`
+const MARSHAL_MODULE = `${STAGE_MODULE_DIRECTORY}/marshal.ts`
 const INTAKE_MODULE = `${STAGE_MODULE_DIRECTORY}/intake.ts`
 const PLAN_TRACE_MODULE = `${STAGE_MODULE_DIRECTORY}/plan-trace.ts`
 const VERIFY_MODULE = `${STAGE_MODULE_DIRECTORY}/verify.ts`
@@ -126,6 +128,7 @@ export function stageValidatorRefusals(
           functions: [
             'validatePlanTrace',
             'testScenarioIssues',
+            'interfaceContractIssues',
             'criterionProducerIssues',
             'openQuestionDispositionIssues',
             'verificationRecommendationIssues',
@@ -133,6 +136,17 @@ export function stageValidatorRefusals(
         },
       ],
       refusals: PLAN_REFUSALS,
+    },
+    {
+      registry_id: 'MARSHAL-VALIDATE-001',
+      stage: 'standard:implement',
+      sources: [
+        {
+          file: MARSHAL_MODULE,
+          functions: ['validateMarshalOutput'],
+        },
+      ],
+      refusals: MARSHAL_REFUSALS,
     },
     {
       registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
