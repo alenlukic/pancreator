@@ -351,22 +351,69 @@ function deferredSummary(text) {
 }
 
 function deferredIndexBlock(policy, appliesToAgent, instructionText) {
-  const byTrigger = new Map()
-
-  for (const instruction of policy.instructions ?? []) {
-    const trigger = deferredInstructionLoad(policy, instruction)
-    const text = instructionText(instruction)
-
-    if (trigger === 'invocation' || !appliesToAgent(instruction)) continue
-
-    const texts = byTrigger.get(trigger) ?? []
-
-    if (!texts.includes(text)) texts.push(text)
-
-    byTrigger.set(trigger, texts)
+  const variants = [
+    { shell: true, delegation: true },
+    { shell: true, delegation: false },
+    { shell: false, delegation: true },
+    { shell: false, delegation: false },
+  ]
+  const groups = variants.map((capabilities) => {
+    const byTrigger = new Map()
+    for (const instruction of policy.instructions ?? []) {
+      const trigger = deferredInstructionLoad(policy, instruction)
+      const text = instructionText(instruction)
+      if (
+        trigger === 'invocation' ||
+        !appliesToAgent(instruction) ||
+        Object.entries(instruction.capabilities ?? {}).some(
+          ([key, value]) => capabilities[key] !== value,
+        )
+      )
+        continue
+      const texts = byTrigger.get(trigger) ?? []
+      if (!texts.includes(text)) texts.push(text)
+      byTrigger.set(trigger, texts)
+    }
+    return [...byTrigger].map(([trigger, texts]) => ({
+      trigger,
+      texts,
+      digest: createHash('sha256').update(texts.join('\n')).digest('hex'),
+    }))
+  })
+  const projected = []
+  for (const [index, entries] of groups.entries()) {
+    for (const group of entries) {
+      if (
+        projected.some(
+          (entry) =>
+            entry.trigger === group.trigger && entry.digest === group.digest,
+        )
+      )
+        continue
+      const matching = variants.filter((_, variant) =>
+        groups[variant].some(
+          (entry) =>
+            entry.trigger === group.trigger && entry.digest === group.digest,
+        ),
+      )
+      const condition =
+        matching.length === variants.length
+          ? ''
+          : matching
+              .map(
+                ({ shell, delegation }) =>
+                  `shell ${shell ? 'authorized' : 'absent'}, delegation ${delegation ? 'authorized' : 'absent'}`,
+              )
+              .join(' or ')
+      const caps = variants[index]
+      const pullArgs =
+        index === 0
+          ? ''
+          : ` --capabilities '${['shell', 'delegation'].filter((key) => caps[key]).join(',')}'`
+      projected.push({ ...group, condition, pullArgs })
+    }
   }
-
-  if (byTrigger.size === 0) return null
+  if (projected.length === 0) return null
 
   const token = '{{PANCREATOR_PAN_COMMAND}}'
 
@@ -380,11 +427,12 @@ function deferredIndexBlock(policy, appliesToAgent, instructionText) {
       'file. A hook may deliver the clause for you; otherwise run the ' +
       'command on the line. The harness owns each digest.',
     '',
-    ...[...byTrigger.entries()].map(
-      ([trigger, texts]) =>
+    ...projected.map(
+      ({ trigger, texts, digest, condition, pullArgs }) =>
         `- \`${policy.id}\` · \`${trigger}\` · ${deferredSummary(texts[0])} · ` +
-        `digest \`sha256:${createHash('sha256').update(texts.join('\n')).digest('hex')}\` · ` +
-        `\`${token} governance clause --policy ${policy.id} --trigger ${trigger}\``,
+        `digest \`sha256:${digest}\` · ` +
+        `\`${token} governance clause --policy ${policy.id} --trigger ${trigger}${pullArgs}\`` +
+        (condition ? ` · When ${condition}.` : ''),
     ),
   ].join('\n')
 }

@@ -238,6 +238,7 @@ export function renderPolicyBlocks(
   pointers: ReadonlyMap<string, PolicyRulePointer> = new Map(),
   capabilities?: PolicyCapabilities,
   panCommand?: string,
+  invocationId?: string,
 ): string[] {
   if (policies.length === 0) {
     return ['- Only global boundaries apply.']
@@ -258,16 +259,10 @@ export function renderPolicyBlocks(
         : typeof instruction === 'string' || instruction.excerpt !== true)
 
     deferredGroups.push(
-      ...deferredClauseGroups(policy, audience, capabilities, (text) =>
-        pointer?.instruction_sha256
-          ? pointer.instruction_sha256.includes(sha256(text))
-          : pointer !== undefined &&
-            !policy.instructions.some(
-              (instruction) =>
-                typeof instruction !== 'string' &&
-                instruction.text === text &&
-                instruction.excerpt === true,
-            ),
+      ...deferredClauseGroups(
+        policy,
+        audience,
+        capabilities ?? { shell: true, delegation: true },
       ),
     )
 
@@ -343,7 +338,12 @@ export function renderPolicyBlocks(
 
   return [
     ...blocks,
-    ...renderDeferredIndex(deferredGroups, guidanceLevel, panCommand),
+    ...renderDeferredIndex(
+      deferredGroups,
+      guidanceLevel,
+      panCommand,
+      invocationId,
+    ),
   ]
 }
 

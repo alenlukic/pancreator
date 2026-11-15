@@ -53,6 +53,7 @@ interface PromptPayload {
   prompt: string
   tool_name: string | null
   tool_input: unknown
+  tool_output: unknown
 }
 
 interface RoleResolution {
@@ -128,6 +129,8 @@ function parsePayload(value: unknown): PromptPayload {
           ? value.toolName
           : null,
     tool_input: value.tool_input ?? value.toolInput ?? null,
+    tool_output:
+      value.tool_output ?? value.tool_response ?? value.toolResult ?? null,
   }
 }
 
@@ -442,6 +445,7 @@ export function resolvePromptContext(
         hookEvent: payload.hook_event_name,
         toolName: payload.tool_name,
         toolInput: payload.tool_input,
+        toolOutput: payload.tool_output,
         prompt: payload.prompt,
       }),
       now,

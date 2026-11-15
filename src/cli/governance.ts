@@ -460,6 +460,7 @@ export async function governanceCommand({
     const resolved = resolveDeferredClause(root, {
       policyId: requiredArgument(option(args, '--policy'), '--policy'),
       trigger: requiredArgument(option(args, '--trigger'), '--trigger'),
+      invocationId: option(args, '--invocation') ?? undefined,
       audience:
         option(args, '--audience') === 'supervisor' ? 'supervisor' : 'agent',
       capabilities: parseClauseCapabilities(

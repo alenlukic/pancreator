@@ -194,6 +194,23 @@ test('installer and compiled VS Code renderers stay byte-identical', () => {
       translations,
     ),
   )
+  const delegate = loadPolicyCatalog(source).get('DELEGATE-001')!
+  const delegatePath =
+    '.github/instructions/pan-subagent-supervision.instructions.md'
+  assert.equal(
+    read(target, delegatePath),
+    translateHostToolNames(
+      renderVscodeInstructions(
+        projectCursorContent(
+          renderPolicyCursorRule(delegate),
+          delegatePath,
+          'embedded',
+        ),
+      ),
+      translations,
+    ),
+  )
+  assert.doesNotMatch(read(target, delegatePath), /\{\{PANCREATOR_/u)
   assert.match(
     read(target, '.github/hooks/pan-hooks.json'),
     /"bash": "\.pancreator\/bin\/pan-hook-adapter --fail-closed preToolUse/u,

@@ -292,6 +292,7 @@ export function writeInvocationArtifacts(
     invocation,
     renderedMarkdown,
     supervisorProcedureMarkdown ?? undefined,
+    panCommand(root),
   )
   const invocationValidationArtifactPath = invocationValidationPath(
     runId,

@@ -13,7 +13,10 @@ import {
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 import { validateInvocationMarkdown } from '../../src/lib/validation.js'
 import { sharedFixture } from '../fixture-template.js'
-import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionLoad,
+} from '../../src/lib/policy-instructions.js'
 import type {
   Invocation,
   InvocationEvidenceWorker,
@@ -415,7 +418,8 @@ test('a Cursor worker card points at projected always-apply policies and keeps t
 
       assert.equal(
         markdown.includes(`- ${instruction.text}`),
-        instruction.excerpt === true,
+        instruction.excerpt === true &&
+          policyInstructionLoad(instruction) === 'invocation',
         `${policyId}: ${instruction.text.slice(0, 60)}`,
       )
     }
@@ -438,8 +442,11 @@ test('a Cursor worker card points at projected always-apply policies and keeps t
     ),
     'a worker card must not carry the supervisor-only stall procedure',
   )
+  // Pointer savings used to include the full DELEGATE-001 body. Deferred
+  // watch and shell clauses now leave both cards, so the remaining gap is
+  // PRINCIPLES-001 and COMMS-001.
   assert.ok(
-    Buffer.byteLength(markdown) + 15_000 < Buffer.byteLength(inline),
+    Buffer.byteLength(markdown) + 10_000 < Buffer.byteLength(inline),
     `pointer card ${Buffer.byteLength(markdown)} B, inline ${Buffer.byteLength(inline)} B`,
   )
 

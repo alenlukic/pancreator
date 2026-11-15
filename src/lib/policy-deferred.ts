@@ -34,6 +34,10 @@ export interface DeferredClauseGroup {
   texts: string[]
   /** Digest of `texts` as `deferredClauseDigest` computes it. */
   sha256: string
+  /** Non-default pull arguments needed to reproduce these exact clauses. */
+  pullArgs?: string
+  /** A projection may contain different groups for different capabilities. */
+  condition?: string
 }
 
 /** Digest a group's clause texts. A receipt and an index line name this value. */
@@ -95,24 +99,98 @@ export function deferredClauseGroups(
     byTrigger.set(trigger, texts)
   }
 
-  return [...byTrigger.entries()].map(([trigger, texts]) => ({
-    policy_id: policy.id,
-    trigger,
-    summary: firstSentence(texts[0]),
-    texts,
-    sha256: deferredClauseDigest(texts),
-  }))
+  return [...byTrigger.entries()].map(([trigger, texts]) => {
+    const defaultTexts = [
+      ...new Set(
+        policy.instructions
+          .filter(
+            (instruction) =>
+              policyInstructionLoad(instruction) === trigger &&
+              policyInstructionAppliesToCard(instruction, 'agent', {
+                shell: true,
+                delegation: true,
+              }),
+          )
+          .map(policyInstructionText),
+      ),
+    ]
+    const pullArgs =
+      deferredClauseDigest(defaultTexts) === deferredClauseDigest(texts)
+        ? ''
+        : [
+            audience === 'supervisor' ? '--audience supervisor' : '',
+            capabilities && (!capabilities.shell || !capabilities.delegation)
+              ? `--capabilities '${(['shell', 'delegation'] as const).filter((key) => capabilities[key]).join(',')}'`
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
+    return {
+      policy_id: policy.id,
+      trigger,
+      summary: firstSentence(texts[0]),
+      texts,
+      sha256: deferredClauseDigest(texts),
+      ...(pullArgs ? { pullArgs } : {}),
+    }
+  })
+}
+
+/** A role-neutral rule indexes each distinct capability-specific agent group. */
+export function projectedDeferredClauseGroups(
+  policy: Pick<Policy, 'id' | 'instructions'>,
+): DeferredClauseGroup[] {
+  const variants = [
+    { shell: true, delegation: true },
+    { shell: true, delegation: false },
+    { shell: false, delegation: true },
+    { shell: false, delegation: false },
+  ]
+  const groups = variants.map((capabilities) =>
+    deferredClauseGroups(policy, 'agent', capabilities),
+  )
+  const result: DeferredClauseGroup[] = []
+  for (const entries of groups) {
+    for (const group of entries) {
+      if (
+        result.some(
+          (entry) =>
+            entry.trigger === group.trigger && entry.sha256 === group.sha256,
+        )
+      )
+        continue
+      const matching = variants.filter((_, variant) =>
+        groups[variant].some(
+          (entry) =>
+            entry.trigger === group.trigger && entry.sha256 === group.sha256,
+        ),
+      )
+      const condition =
+        matching.length === variants.length
+          ? undefined
+          : matching
+              .map(
+                ({ shell, delegation }) =>
+                  `shell ${shell ? 'authorized' : 'absent'}, delegation ${delegation ? 'authorized' : 'absent'}`,
+              )
+              .join(' or ')
+      result.push({ ...group, ...(condition ? { condition } : {}) })
+    }
+  }
+  return result
 }
 
 /** One index line, in the guidance-reference line shape. */
 export function renderDeferredIndexLine(
   group: DeferredClauseGroup,
   panCommand: string = DEFAULT_PAN_COMMAND,
+  invocationId?: string,
 ): string {
   return (
     `- \`${group.policy_id}\` · \`${group.trigger}\` · ${group.summary} · ` +
     `digest \`sha256:${group.sha256}\` · ` +
-    `\`${deferredClauseCommand(group.policy_id, group.trigger, panCommand)}\``
+    `\`${deferredClauseCommand(group.policy_id, group.trigger, panCommand)}${group.pullArgs ? ` ${group.pullArgs}` : ''}${invocationId ? ` --invocation ${invocationId}` : ''}\`` +
+    (group.condition ? ` · When ${group.condition}.` : '')
   )
 }
 
@@ -166,6 +244,7 @@ export function renderDeferredIndex(
   groups: readonly DeferredClauseGroup[],
   level: 2 | 3,
   panCommand: string = DEFAULT_PAN_COMMAND,
+  invocationId?: string,
 ): string[] {
   if (groups.length === 0) {
     return []
@@ -182,7 +261,9 @@ export function renderDeferredIndex(
         'file. A hook may deliver the clause for you; otherwise run the ' +
         'command on the line. The harness owns each digest.',
       '',
-      ...groups.map((group) => renderDeferredIndexLine(group, panCommand)),
+      ...groups.map((group) =>
+        renderDeferredIndexLine(group, panCommand, invocationId),
+      ),
     ].join('\n'),
     '',
   ]

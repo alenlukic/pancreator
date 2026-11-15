@@ -16,7 +16,10 @@ import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 import { validateInvocationMarkdown } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { sharedFixture } from '../fixture-template.js'
-import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionLoad,
+} from '../../src/lib/policy-instructions.js'
 import type { Invocation, Policy } from '../../src/lib/types.js'
 import { baseInvocation, delegatedInvocation } from './render-helpers.js'
 
@@ -253,30 +256,33 @@ test('an invocation card inlines policy text and references guidance', () => {
       )
 
       const cardAudience = 'agent'
-      const renderedInstructions = policy.instructions
-        .filter((instruction) =>
-          policyInstructionAppliesToCard(instruction, cardAudience),
-        )
-        .map((instruction) => instruction.text)
-      const hiddenInstructions = policy.instructions
-        .filter(
-          (instruction) =>
-            !policyInstructionAppliesToCard(instruction, cardAudience),
-        )
-        .map((instruction) => instruction.text)
 
-      for (const instruction of renderedInstructions) {
-        assert.match(
-          markdown,
-          new RegExp(`- ${instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
-        )
-      }
+      for (const instruction of policy.instructions) {
+        const escaped = instruction.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const load = policyInstructionLoad(instruction)
 
-      for (const instruction of hiddenInstructions) {
+        if (!policyInstructionAppliesToCard(instruction, cardAudience)) {
+          assert.doesNotMatch(
+            markdown,
+            new RegExp(`- ${escaped}`),
+            `${policy.id} MUST NOT render hidden instruction for ${cardAudience}`,
+          )
+          continue
+        }
+
+        if (load === 'invocation') {
+          assert.match(markdown, new RegExp(`- ${escaped}`))
+          continue
+        }
+
+        assert.ok(
+          markdown.includes(`- \`${policy.id}\` · \`${load}\` · `),
+          `${policy.id} MUST index deferred ${load}`,
+        )
         assert.doesNotMatch(
           markdown,
-          new RegExp(`- ${instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
-          `${policy.id} MUST NOT render hidden instruction for ${cardAudience}`,
+          new RegExp(`- ${escaped}`),
+          `${policy.id} MUST NOT inline deferred ${load}`,
         )
       }
 

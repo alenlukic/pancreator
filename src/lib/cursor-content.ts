@@ -1,6 +1,9 @@
 import { invariant } from './errors.js'
 import { renderGuidanceBlock } from './policy-guidance.js'
-import { deferredClauseGroups, renderDeferredIndex } from './policy-deferred.js'
+import {
+  projectedDeferredClauseGroups,
+  renderDeferredIndex,
+} from './policy-deferred.js'
 import {
   policyInstructionAppliesToCard,
   policyInstructionLoad,
@@ -34,7 +37,7 @@ interface PolicyRuleSource {
 export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
   // A deferred clause stays out of the always-apply rule. One index line per
   // trigger points at the command and hook that deliver it.
-  const deferred = deferredClauseGroups(policy, 'agent')
+  const deferred = projectedDeferredClauseGroups(policy)
   const instructions = policy.instructions
     .filter(
       (instruction) =>

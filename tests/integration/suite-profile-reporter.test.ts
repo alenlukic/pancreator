@@ -241,16 +241,25 @@ test('a profiled run leaves nothing transient in a run evidence directory', asyn
   mkdirSync(scratch, { recursive: true })
 
   const file = path.join(laneDir, 'slow.test.js')
+  const ready = path.join(scratch, 'worker-ready')
+  const release = path.join(scratch, 'worker-release')
 
-  // The run has to outlast the observer, or an empty directory proves only
-  // that the suite finished first.
+  // Keep the worker active until the observer has inspected the evidence.
+  // A fixed sleep cannot guarantee this under concurrent suite load.
   writeFileSync(
     file,
     [
       "const test = require('node:test');",
-      'const { Atomics } = globalThis;',
-      'const signal = new Int32Array(new SharedArrayBuffer(4));',
-      "test('slow', () => { Atomics.wait(signal, 0, 0, 1500); });",
+      "const { existsSync, writeFileSync } = require('node:fs');",
+      "const { setTimeout: delay } = require('node:timers/promises');",
+      "test('slow', async () => {",
+      `  writeFileSync(${JSON.stringify(ready)}, '');`,
+      '  const deadline = Date.now() + 30000;',
+      `  while (!existsSync(${JSON.stringify(release)})) {`,
+      "    if (Date.now() >= deadline) throw new Error('observer did not release worker');",
+      '    await delay(25);',
+      '  }',
+      '});',
       '',
     ].join('\n'),
   )
@@ -279,27 +288,40 @@ test('a profiled run leaves nothing transient in a run evidence directory', asyn
   const finished = new Promise<number | null>((resolve) => {
     child.on('close', (code) => resolve(code))
   })
-  const observations: string[][] = []
+  let observedActiveWorker = false
+  const deadline = Date.now() + 30000
 
-  // The merged profile lands before the child exits, so the in-flight window
-  // ends at that write rather than at exit.
-  while (
-    child.exitCode === null &&
-    child.signalCode === null &&
-    !existsSync(target)
-  ) {
-    observations.push(readdirSync(evidence))
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
+  try {
+    while (child.exitCode === null && child.signalCode === null) {
+      assert.ok(Date.now() < deadline, 'profiled child did not finish')
 
-  assert.equal(await finished, 0)
-  assert.ok(
-    observations.length > 5,
-    `only ${observations.length} in-flight observations were taken`,
-  )
+      if (!observedActiveWorker && existsSync(ready)) {
+        // The worker cannot finish before release, so the final profile must
+        // not exist yet. This is a synchronized in-flight observation.
+        assert.deepEqual(readdirSync(evidence), [])
+        observedActiveWorker = true
+        writeFileSync(release, '')
+      }
 
-  for (const listing of observations) {
-    assert.deepEqual(listing, [], 'a transient file reached the run evidence')
+      // Publication can race with any directory read after release. The
+      // durable profile is allowed; no other entry is ever allowed.
+      assert.deepEqual(
+        readdirSync(evidence).filter(
+          (entry) => entry !== path.basename(target),
+        ),
+        [],
+        'a transient file reached the run evidence',
+      )
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+
+    assert.equal(await finished, 0)
+    assert.ok(observedActiveWorker, 'no synchronized in-flight observation')
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill()
+      await finished
+    }
   }
 
   // Only the merged profile is durable, and it lands where the gate asked.

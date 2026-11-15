@@ -36,6 +36,7 @@ import { liveRuns } from './cards.js'
 export const PRE_TOOL_DENY_CLASSES: readonly string[] = [
   'browser',
   'delegation',
+  'shell',
   'edit',
   'git-remote',
   'question',
@@ -50,7 +51,7 @@ const EDIT_TOOLS = new Set([
   'Edit',
   'MultiEdit',
 ])
-const DELEGATION_TOOLS = new Set(['Task', 'Subagent'])
+const DELEGATION_TOOLS = new Set(['Task', 'Subagent', 'task', 'runSubagent'])
 const BROWSER_TOOL =
   /(?:^|[:_/-])(?:browser_[a-z_]+|new_page|navigate_page|take_snapshot|take_screenshot|list_pages|select_page|close_page|chrome-devtools|playwright)(?:$|[:_/-])/iu
 const GIT_REMOTE =
@@ -98,8 +99,14 @@ export function toolClasses(
   const classes: string[] = []
   const command = typeof toolInput.command === 'string' ? toolInput.command : ''
 
-  if (toolName === 'Shell' || toolName === 'Bash' || toolName === 'bash') {
+  if (
+    toolName === 'Shell' ||
+    toolName === 'Bash' ||
+    toolName === 'bash' ||
+    toolName === 'run_in_terminal'
+  ) {
     classes.push('shell')
+    if (/(?:^|[\s/])pan\s+delegate\b/u.test(command)) classes.push('delegation')
     if (GIT_REMOTE.test(command)) classes.push('git-remote')
   } else if (DELEGATION_TOOLS.has(toolName)) {
     classes.push('delegation')
@@ -299,22 +306,26 @@ export function pendingDeferredGroups(
     { group: DeferredClauseGroup; title: string }
   >()
 
+  const audience = delivery.audiences.includes('supervisor')
+    ? 'supervisor'
+    : 'agent'
   for (const policy of delivery.policies) {
-    for (const audience of delivery.audiences) {
-      for (const group of deferredClauseGroups(
-        policy,
-        audience,
-        delivery.capabilities,
-      )) {
-        const key = `${group.policy_id}\u0000${group.trigger}`
-
-        if (
-          !pending.has(key) &&
-          triggerFires(group.trigger, fired) &&
-          !hasClauseReceipt(receipts, group.policy_id, group.trigger)
-        ) {
-          pending.set(key, { group, title: policy.title })
-        }
+    for (const group of deferredClauseGroups(
+      policy,
+      audience,
+      delivery.capabilities,
+    )) {
+      const key = `${group.policy_id}\u0000${group.trigger}`
+      if (
+        triggerFires(group.trigger, fired) &&
+        !hasClauseReceipt(
+          receipts,
+          group.policy_id,
+          group.trigger,
+          group.sha256,
+        )
+      ) {
+        pending.set(key, { group, title: policy.title })
       }
     }
   }
@@ -360,6 +371,7 @@ export function deliverDeferredClauses(
   if (pending.length === 0) return null
 
   for (const { group } of pending) {
+    recordClauseFired(root, delivery.scope, group, now)
     recordClauseReceipt(root, delivery.scope, group, 'hook', now)
   }
 
@@ -377,6 +389,54 @@ function promptOpens(prompt: string, command: string): boolean {
   ).test(prompt)
 }
 
+/** Watch recovery includes non-stall verdicts; they never imply a stall. */
+function watchRecoveryResult(output: unknown): boolean {
+  if (typeof output === 'string') {
+    if (
+      /^\s*(?:(?:agent |evidence )?watch (?:stalled|unregistered|unverified|timed_out|interrupted)\b|watch changed:[^\n]*; needs inspection:|(?:stalled|unregistered|unverified|timed_out|interrupted|attach_wake|attach_timed_out|orphaned) ·|Watch: (?:stalled|unverified|timed_out|interrupted|unregistered)\b)/mu.test(
+        output,
+      )
+    )
+      return true
+    try {
+      return watchRecoveryResult(JSON.parse(output))
+    } catch {
+      return false
+    }
+  }
+  if (Array.isArray(output)) return output.some(watchRecoveryResult)
+  if (!isRecord(output)) return false
+  if (Array.isArray(output.stalled) && output.stalled.length > 0) return true
+  if (
+    typeof output.state === 'string' &&
+    [
+      'stalled',
+      'unregistered',
+      'unverified',
+      'timed_out',
+      'interrupted',
+      'attach_wake',
+      'attach_timed_out',
+      'orphaned',
+    ].includes(output.state)
+  )
+    return true
+  if (
+    typeof output.session_terminal_state === 'string' &&
+    [
+      'stalled',
+      'unverified',
+      'timed_out',
+      'interrupted',
+      'unregistered',
+    ].includes(output.session_terminal_state)
+  )
+    return true
+  return ['stdout', 'output', 'text', 'content', 'result', 'ledgers'].some(
+    (key) => watchRecoveryResult(output[key]),
+  )
+}
+
 /**
  * Build the fired context from a tool-hook payload. `away` and `pause` are
  * also state events: `away` fires on every hook call while a live run
@@ -389,6 +449,7 @@ export function firedContext(
     hookEvent: string | null
     toolName: string | null
     toolInput: unknown
+    toolOutput?: unknown
     prompt: string
   },
 ): FiredContext {
@@ -400,6 +461,16 @@ export function firedContext(
     input.hookEvent === 'PostToolUseFailure'
 
   if (failed) events.push('tool_failure')
+  if (
+    (failed ||
+      input.hookEvent === 'postToolUse' ||
+      input.hookEvent === 'PostToolUse') &&
+    classes.includes('shell') &&
+    typeof toolInput.command === 'string' &&
+    /(?:^|[\s/])pan\s+watch\b/u.test(toolInput.command) &&
+    watchRecoveryResult(input.toolOutput)
+  )
+    events.push('stall')
   if (promptOpens(input.prompt, 'resume')) events.push('resume')
   const watched = listRunStatesWhere(
     root,

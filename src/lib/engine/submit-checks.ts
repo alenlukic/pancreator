@@ -132,7 +132,10 @@ export function assertDeferredClausesDelivered(
         .map(
           (entry) =>
             `${pan} governance clause --policy ${entry.policy_id} ` +
-            `--trigger '${entry.trigger}' --invocation ${invocation.invocation_id}`,
+            `--trigger '${entry.trigger}' --invocation ${invocation.invocation_id}` +
+            (invocation.capabilities
+              ? ` --capabilities '${(['shell', 'delegation'] as const).filter((key) => invocation.capabilities?.[key]).join(',')}'`
+              : ''),
         )
         .join(' ; ') +
       `, apply it, then submit again.`,

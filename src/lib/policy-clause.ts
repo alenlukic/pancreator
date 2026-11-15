@@ -8,14 +8,16 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError } from './errors.js'
-import { appendJsonLine, isRecord } from './io.js'
+import { appendJsonLine, isRecord, readJson, resolveInside } from './io.js'
 import {
   DEFAULT_PAN_COMMAND,
   deferredClauseGroups,
   type DeferredClauseGroup,
 } from './policy-deferred.js'
+import { isInvocationContext } from './policy-delivery.js'
 import { isPolicyLoad } from './policy-instructions.js'
 import { loadPolicyCatalog } from './policies.js'
+import { listRunStatesWhere } from './state.js'
 import type { PolicyCapabilities, PolicyLoad } from './types.js'
 
 /** Receipt scope used when no invocation names one (operator and standalone sessions). */
@@ -100,6 +102,7 @@ export function resolveDeferredClause(
     trigger: string
     audience?: 'agent' | 'supervisor'
     capabilities?: PolicyCapabilities
+    invocationId?: string
   },
 ): ResolvedClause {
   if (!isPolicyLoad(request.trigger) || request.trigger === 'invocation') {
@@ -109,7 +112,32 @@ export function resolveDeferredClause(
     )
   }
 
-  const policy = loadPolicyCatalog(root).get(request.policyId)
+  // A worker's hook and card use its prepared snapshot, not a policy edited
+  // after launch. Resolve a scoped pull from the same bytes.
+  const active = request.invocationId
+    ? listRunStatesWhere(
+        root,
+        (run) => run.current_invocation?.id === request.invocationId,
+      ).find((run) => run.current_invocation?.id === request.invocationId)
+        ?.current_invocation
+    : undefined
+  const snapshot = active
+    ? readJson(resolveInside(root, active.json_path))
+    : undefined
+
+  if (
+    active &&
+    (!isInvocationContext(snapshot) || snapshot.invocation_id !== active.id)
+  ) {
+    throw new PanError(`Invalid invocation snapshot: ${active.id}`, {
+      code: 'INVALID_ARGUMENT',
+    })
+  }
+
+  const invocation = isInvocationContext(snapshot) ? snapshot : undefined
+  const policy = invocation
+    ? invocation.policies.find((entry) => entry.id === request.policyId)
+    : loadPolicyCatalog(root).get(request.policyId)
 
   if (!policy) {
     throw new PanError(`Unknown policy: ${request.policyId}`, {
@@ -120,7 +148,7 @@ export function resolveDeferredClause(
   const groups = deferredClauseGroups(
     policy,
     request.audience ?? 'agent',
-    request.capabilities ?? ALL_CAPABILITIES,
+    invocation?.capabilities ?? request.capabilities ?? ALL_CAPABILITIES,
   )
   const group = groups.find((entry) => entry.trigger === request.trigger)
 
@@ -203,9 +231,13 @@ export function hasClauseReceipt(
   receipts: readonly ClauseReceipt[],
   policyId: string,
   trigger: PolicyLoad,
+  sha256?: string,
 ): boolean {
   return receipts.some(
-    (receipt) => receipt.policy_id === policyId && receipt.trigger === trigger,
+    (receipt) =>
+      receipt.policy_id === policyId &&
+      receipt.trigger === trigger &&
+      (sha256 === undefined || receipt.sha256 === sha256),
   )
 }
 
@@ -228,13 +260,15 @@ export interface ClauseFired {
   policy_id: string
   trigger: PolicyLoad
   fired_at: string
+  sha256?: string
 }
 
 /** Record that a trigger fired, once per policy and trigger. */
 export function recordClauseFired(
   root: string,
   scope: string | undefined,
-  group: Pick<DeferredClauseGroup, 'policy_id' | 'trigger'>,
+  group: Pick<DeferredClauseGroup, 'policy_id' | 'trigger'> &
+    Partial<Pick<DeferredClauseGroup, 'sha256'>>,
   now: Date = new Date(),
 ): ClauseFired | null {
   const existing = readClauseFired(root, scope)
@@ -242,7 +276,9 @@ export function recordClauseFired(
   if (
     existing.some(
       (entry) =>
-        entry.policy_id === group.policy_id && entry.trigger === group.trigger,
+        entry.policy_id === group.policy_id &&
+        entry.trigger === group.trigger &&
+        entry.sha256 === group.sha256,
     )
   ) {
     return null
@@ -253,6 +289,7 @@ export function recordClauseFired(
     policy_id: group.policy_id,
     trigger: group.trigger,
     fired_at: now.toISOString(),
+    ...(group.sha256 ? { sha256: group.sha256 } : {}),
   }
 
   appendJsonLine(clauseFiredPath(root, scope), entry)
@@ -297,7 +334,8 @@ export function undeliveredClauses(
   const receipts = readClauseReceipts(root, scope)
 
   return readClauseFired(root, scope).filter(
-    (entry) => !hasClauseReceipt(receipts, entry.policy_id, entry.trigger),
+    (entry) =>
+      !hasClauseReceipt(receipts, entry.policy_id, entry.trigger, entry.sha256),
   )
 }
 

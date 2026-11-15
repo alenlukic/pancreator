@@ -6,7 +6,10 @@ import test from 'node:test'
 
 import { renderPolicyCursorRule } from '../../src/lib/cursor-content.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
-import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionLoad,
+} from '../../src/lib/policy-instructions.js'
 import { renderSupervisorProcedureMarkdown } from '../../src/lib/render.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { CLI } from './watch-repair-helpers.js'
@@ -177,18 +180,39 @@ test('AC-017: projected lifetime', () => {
   assert.ok(policy)
 
   const projection = renderPolicyCursorRule(policy)
+  const body = projection.split('## Deferred policy index')[0]
 
   for (const instruction of policy.instructions) {
-    if (policyInstructionAppliesToCard(instruction, 'agent')) {
-      const text =
-        typeof instruction === 'string' ? instruction : instruction.text
+    if (!policyInstructionAppliesToCard(instruction, 'agent')) continue
 
-      assert.ok(
-        projection.includes(text),
-        `the projection MUST carry: ${text.slice(0, 60)}...`,
-      )
-    }
+    const text =
+      typeof instruction === 'string' ? instruction : instruction.text
+    const load = policyInstructionLoad(instruction)
+    const inBody = body.includes(text)
+
+    assert.equal(
+      inBody,
+      load === 'invocation',
+      `projection MUST ${load === 'invocation' ? 'include' : 'omit'} (${load}): ${text.slice(0, 60)}...`,
+    )
   }
+
+  assert.ok(projection.includes('## Deferred policy index'))
+  assert.ok(
+    projection.includes(
+      '`{{PANCREATOR_PAN_COMMAND}} governance clause --policy DELEGATE-001 --trigger tool:delegation`',
+    ),
+  )
+  assert.ok(
+    projection.includes(
+      '`{{PANCREATOR_PAN_COMMAND}} governance clause --policy DELEGATE-001 --trigger tool:shell`',
+    ),
+  )
+  assert.ok(
+    projection.includes(
+      '`{{PANCREATOR_PAN_COMMAND}} governance clause --policy DELEGATE-001 --trigger event:stall`',
+    ),
+  )
 })
 
 test('AC-021: cohort guidance', () => {
@@ -273,12 +297,11 @@ test('AC-024: universal timer guidance', () => {
   // The opaque fallback is documented.
   assert.match(agentText, /timer form watches an opaque platform handle/u)
 
-  // The projection carries the same text.
+  // The projection keeps the 60-second rule eager and indexes the timer.
   const projection = renderPolicyCursorRule(policy)
+  const body = projection.split('## Deferred policy index')[0] ?? projection
 
-  assert.match(
-    projection,
-    /MUST set every observation timer through `pan watch`/u,
-  )
+  assert.match(body, /The 60-second rule/u)
+  assert.ok(projection.includes('`tool:delegation`'))
   assert.doesNotMatch(projection, /background shell sleep/u)
 })

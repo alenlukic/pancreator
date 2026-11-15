@@ -1,5 +1,8 @@
 import { isRecord, sha256 } from './io.js'
-import { filterPolicyInstructionsForCard } from './policy-instructions.js'
+import {
+  filterPolicyInstructionsForCard,
+  policyInstructionLoad,
+} from './policy-instructions.js'
 import { inlineClauseGroups, renderInlinedClauses } from './policy-deferred.js'
 import type { Invocation, Policy, PolicyDeliveryCoverage } from './types.js'
 
@@ -74,6 +77,8 @@ export function initialPolicyReminder(
         policy.instructions,
         'agent',
         invocation.capabilities,
+      ).filter(
+        (instruction) => policyInstructionLoad(instruction) === 'invocation',
       )
     : []
   const content = [

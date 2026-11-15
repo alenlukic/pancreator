@@ -83,6 +83,40 @@ test('AWAY-001 defers to the away state and keeps its disabled-run guards eager'
   ])
 })
 
+test('DELEGATE-001 keeps the 60-second rule eager and defers watch mechanics', () => {
+  const policy = loadPolicyCatalog(REPO_ROOT).get('DELEGATE-001')
+
+  assert.ok(policy)
+
+  const measured = measurePolicyContext(policy)
+  const eager = policy.instructions.filter(
+    (entry) => policyInstructionLoad(entry) === 'invocation',
+  )
+  const sixty = policy.instructions.find((entry) =>
+    (typeof entry === 'string' ? entry : entry.text).startsWith(
+      'The 60-second rule:',
+    ),
+  )
+  const ownership = policy.instructions.find((entry) =>
+    (typeof entry === 'string' ? entry : entry.text).startsWith(
+      'The starting agent owns the subagent outcome',
+    ),
+  )
+
+  assert.ok(sixty)
+  assert.equal(policyInstructionLoad(sixty), 'invocation')
+  assert.ok(ownership)
+  assert.equal(policyInstructionLoad(ownership), 'invocation')
+  assert.ok(eager.length > 0)
+  assert.ok(measured.eagerBytes > 0)
+  assert.ok(measured.deferredBytes > 0)
+  assert.deepEqual([...measured.deferredTriggers].sort(), [
+    'event:stall',
+    'tool:delegation',
+    'tool:shell',
+  ])
+})
+
 test('ORCH-001 stays eager because every supervisor session needs it', () => {
   const orch = loadPolicyCatalog(REPO_ROOT).get('ORCH-001')
 

@@ -51,7 +51,7 @@
       "target": ".cursor/rules/pan-operating-principles.mdc",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule"]
+      "transforms": ["policy-rule", "installation-paths"]
     },
     {
       "id": "cursor-delegation-policy-rule",
@@ -61,7 +61,7 @@
       "target": ".cursor/rules/pan-subagent-supervision.mdc",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule"]
+      "transforms": ["policy-rule", "installation-paths"]
     },
     {
       "id": "cursor-browser-policy-rule",
@@ -81,7 +81,7 @@
       "target": ".cursor/rules/pan-chat-output.mdc",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule"]
+      "transforms": ["policy-rule", "installation-paths"]
     },
     {
       "id": "cursor-mcp",
@@ -161,7 +161,7 @@
       "target": ".github/instructions/pan-operating-principles.instructions.md",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule", "vscode-instructions"]
+      "transforms": ["policy-rule", "installation-paths", "vscode-instructions"]
     },
     {
       "id": "vscode-delegation-policy-instructions",
@@ -171,7 +171,7 @@
       "target": ".github/instructions/pan-subagent-supervision.instructions.md",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule", "vscode-instructions"]
+      "transforms": ["policy-rule", "installation-paths", "vscode-instructions"]
     },
     {
       "id": "vscode-browser-policy-instructions",
@@ -191,7 +191,7 @@
       "target": ".github/instructions/pan-chat-output.instructions.md",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": ["policy-rule", "vscode-instructions"]
+      "transforms": ["policy-rule", "installation-paths", "vscode-instructions"]
     },
     {
       "id": "vscode-hooks",

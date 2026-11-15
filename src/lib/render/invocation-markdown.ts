@@ -175,6 +175,7 @@ export function renderInvocationMarkdown(
     invocationPolicyPointers(invocation),
     invocation.capabilities,
     command,
+    invocation.invocation_id,
   )
   if (invocation.procedural_exception_context) {
     const context = invocation.procedural_exception_context

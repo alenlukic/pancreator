@@ -118,18 +118,13 @@ test('a pull receipt clears the refusal', () => {
   })
 })
 
-test('the pre-tool hook records a fired trigger and the hook delivery clears it', () => {
+test('a fired trigger without delivery fails until the hook delivers it', () => {
   withTempRoot((root) => {
-    // shell is not a held class: the call is allowed but the trigger is recorded.
-    const decision = preToolDecision(
-      root,
-      INVOCATION,
-      fired({ classes: ['shell'] }),
-      new Date(),
-      DELIVERY,
-    )
-
-    assert.equal(decision.permission, 'allow')
+    // Simulate a fired shell trigger whose delivery was interrupted.
+    recordClauseFired(root, INVOCATION, {
+      policy_id: 'BROWSER-001',
+      trigger: 'tool:shell',
+    })
     assert.deepEqual(
       undeliveredClauses(root, INVOCATION).map((entry) => entry.trigger),
       ['tool:shell'],
@@ -175,5 +170,28 @@ test('firing the same trigger twice records one entry', () => {
 
     assert.ok(recordClauseFired(root, INVOCATION, group))
     assert.equal(recordClauseFired(root, INVOCATION, group), null)
+  })
+})
+
+test('a receipt for different clause bytes cannot clear a fired trigger', () => {
+  withTempRoot((root) => {
+    const group = {
+      policy_id: 'BROWSER-001',
+      trigger: 'tool:shell' as const,
+      sha256: 'a'.repeat(64),
+    }
+    recordClauseFired(root, INVOCATION, group)
+    recordClauseReceipt(
+      root,
+      INVOCATION,
+      { ...group, sha256: 'b'.repeat(64) },
+      'pull',
+    )
+    assert.equal(
+      refusal(() => assertDeferredClausesDelivered(root, invocation)).code,
+      DEFERRED_CLAUSE_UNDELIVERED,
+    )
+    recordClauseReceipt(root, INVOCATION, group, 'pull')
+    assert.doesNotThrow(() => assertDeferredClausesDelivered(root, invocation))
   })
 })

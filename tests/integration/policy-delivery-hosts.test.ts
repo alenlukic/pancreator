@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { resolveDeferredClause } from '../../src/lib/policy-clause.js'
 import {
   policyDeliveryPlan,
   projectionTargetPath,
@@ -11,6 +12,8 @@ import {
 import { renderInvocationMarkdown } from '../../src/lib/render.js'
 import { validateInvocationMarkdown } from '../../src/lib/validation.js'
 import { createFixture } from '../fixture-template.js'
+import { writeJson } from '../helpers.js'
+import { checkpoint } from './delivery-helpers.js'
 import { baseInvocation } from '../unit/render-helpers.js'
 
 const COMMS_VSCODE = '.github/instructions/pan-chat-output.instructions.md'
@@ -80,4 +83,42 @@ test('the worker card host follows PAN_HOST, a Cursor id, then one enabled host'
     'cursor',
   )
   assert.equal(workerCardHost(root, {}), 'cursor')
+})
+
+test('an invocation pull uses the prepared policy bytes and capabilities', () => {
+  const { root, invocation, state } = checkpoint('delivery@implement-prepared')
+  const active = state.current_invocation
+  assert.ok(invocation && active)
+  invocation.capabilities = { shell: true, delegation: false }
+  invocation.policies = [
+    {
+      id: 'BROWSER-001',
+      title: 'Pinned browser policy',
+      severity: 'hard',
+      summary: 'Pinned policy.',
+      instructions: [
+        {
+          text: 'Agents MUST read the pinned instruction.',
+          audience: ['agent'],
+          load: 'tool:browser',
+        },
+      ],
+    },
+  ]
+  writeJson(path.join(root, active.json_path), invocation)
+  const resolved = resolveDeferredClause(root, {
+    policyId: 'BROWSER-001',
+    trigger: 'tool:browser',
+    invocationId: invocation.invocation_id,
+  })
+  assert.deepEqual(resolved.group.texts, [
+    'Agents MUST read the pinned instruction.',
+  ])
+  assert.notEqual(
+    resolved.group.sha256,
+    resolveDeferredClause(root, {
+      policyId: 'BROWSER-001',
+      trigger: 'tool:browser',
+    }).group.sha256,
+  )
 })

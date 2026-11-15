@@ -100,18 +100,23 @@ test('pan init renders the supervisor card and records its digest in run state',
     assert.ok(written.includes(`**${id} · `), `card omits ${id}`)
   }
 
-  // DELEGATE-001's stall decision procedure is supervisor-audience, so it
-  // must reach the card the supervisor attests, not only the always-apply
-  // rule every worker card gets a pointer to.
+  // Stall recovery is supervisor-audience and deferred to event:stall, so
+  // the attested card indexes it rather than inlining the full procedure.
   assert.ok(
-    written.includes(
-      'Only a watch verdict `stalled` (exit 2) is a stall signal.',
-    ),
-    'the supervisor card carries the DELEGATE-001 stall procedure',
+    written.includes('`event:stall`'),
+    'the supervisor card indexes the DELEGATE-001 stall procedure',
   )
   assert.ok(
-    written.includes('MUST NOT interrupt the worker or the command'),
-    'the supervisor card carries the no-interrupt rule for a live wrapped command',
+    written.includes(
+      'governance clause --policy DELEGATE-001 --trigger event:stall',
+    ),
+    'the supervisor card names the stall pull command in the deferred index',
+  )
+  assert.ok(
+    !written.includes(
+      'A supervisor MUST NOT interrupt a worker or a wrapped command except',
+    ),
+    'the supervisor card MUST NOT inline the stall interrupt procedure',
   )
 })
 

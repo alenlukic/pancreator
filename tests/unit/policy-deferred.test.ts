@@ -6,7 +6,11 @@ import {
   deferredClauseDigest,
   deferredClauseGroups,
   renderDeferredIndex,
+  renderDeferredIndexLine,
+  projectedDeferredClauseGroups,
 } from '../../src/lib/policy-deferred.js'
+import { resolveDeferredClause } from '../../src/lib/policy-clause.js'
+import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import { renderPolicyBlocks } from '../../src/lib/policy-guidance.js'
 import type { Policy } from '../../src/lib/types.js'
 
@@ -157,4 +161,49 @@ test('the index digest and command are stable and per trigger', () => {
     '.pancreator/bin/pan governance clause --policy BROWSER-001 --trigger tool:browser',
   )
   assert.deepEqual(renderDeferredIndex([], 3), [])
+})
+
+test('DELEGATE-001 index commands reproduce exact role and capability digests', () => {
+  const root = process.cwd()
+  const delegate = loadPolicyCatalog(root).get('DELEGATE-001')!
+  const caps = { shell: true, delegation: false }
+  const worker = deferredClauseGroups(delegate, 'agent', caps).find(
+    (group) => group.trigger === 'tool:shell',
+  )!
+  assert.match(
+    renderDeferredIndexLine(worker, undefined, 'inv-1'),
+    /--capabilities 'shell' --invocation inv-1/u,
+  )
+  assert.equal(
+    resolveDeferredClause(root, {
+      policyId: delegate.id,
+      trigger: worker.trigger,
+      capabilities: caps,
+    }).group.sha256,
+    worker.sha256,
+  )
+  const supervisor = deferredClauseGroups(delegate, 'supervisor', {
+    shell: true,
+    delegation: true,
+  }).find((group) => group.trigger === 'event:stall')!
+  assert.match(renderDeferredIndexLine(supervisor), /--audience supervisor/u)
+  assert.equal(
+    resolveDeferredClause(root, {
+      policyId: delegate.id,
+      trigger: supervisor.trigger,
+      audience: 'supervisor',
+    }).group.sha256,
+    supervisor.sha256,
+  )
+  const projected = projectedDeferredClauseGroups(delegate).filter(
+    (group) => group.trigger === 'tool:shell',
+  )
+  assert.equal(projected.length, 2)
+  assert.ok(
+    projected.some(
+      (group) =>
+        group.sha256 === worker.sha256 &&
+        group.pullArgs === "--capabilities 'shell'",
+    ),
+  )
 })

@@ -1,5 +1,29 @@
 # Changelog
 
+## [10.14.0] - 2026-11-15
+
+### Changed
+
+- Split DELEGATE-001 so the 60-second rule stays eager and watch clauses load on demand ([DELEGATE-001](governance/policies/DELEGATE-001.json), [f3dc9bb9](https://github.com/alenlukic/pancreator/commit/f3dc9bb9)).
+- Keep always-applied Cursor rules to an eager core plus a deferred policy index ([policy-delivery](src/lib/policy-delivery.ts), [f3dc9bb9](https://github.com/alenlukic/pancreator/commit/f3dc9bb9)).
+- Project deferred DELEGATE-001 index lines by shell and delegation capability ([install-support](bin/install-support), [01b280c5](https://github.com/alenlukic/pancreator/commit/01b280c5)).
+
+### Added
+
+- Add per-clause `load` on DELEGATE-001 for `tool:delegation`, `event:stall`, and `tool:shell` ([DELEGATE-001](governance/policies/DELEGATE-001.json), [f3dc9bb9](https://github.com/alenlukic/pancreator/commit/f3dc9bb9)).
+- Add capability-matched deferred receipts in hook routing and submit checks ([policy-deferred](src/lib/policy-deferred.ts), [01b280c5](https://github.com/alenlukic/pancreator/commit/01b280c5)).
+
+
+### Changed
+
+- Tighten the standard marshal join and the plan-trace contract ([standard-marshal](src/lib/standard-marshal.ts), [08de1633](https://github.com/alenlukic/pancreator/commit/08de1633)).
+
+### Added
+
+- Add the `standard` workflow with a plan gate, a parallel implementer and test author, and a marshaling join ([standard](library/workflows/standard/workflow.json), [38d8f091](https://github.com/alenlukic/pancreator/commit/38d8f091)).
+- Add the `test-author` persona ([test-author](library/personas/test-author.md), [38d8f091](https://github.com/alenlukic/pancreator/commit/38d8f091)).
+- Fail marshaling that loosens a test assertion ([marshal](src/lib/validators/stage/marshal.ts), [38d8f091](https://github.com/alenlukic/pancreator/commit/38d8f091)).
+
 ## [10.13.0] - 2026-11-15
 
 ### Changed

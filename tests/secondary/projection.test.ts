@@ -19,9 +19,11 @@ test('installer and compiled projection renderers stay byte-identical', () => {
   const catalog = loadPolicyCatalog(root)
   const policy = catalog.get('BROWSER-001')
   const commsPolicy = catalog.get('COMMS-001')
+  const delegatePolicy = catalog.get('DELEGATE-001')
 
   assert.ok(policy)
   assert.ok(commsPolicy)
+  assert.ok(delegatePolicy)
 
   try {
     const result = spawnSync(
@@ -71,6 +73,30 @@ test('installer and compiled projection renderers stay byte-identical', () => {
         renderPolicyCursorRule(commsPolicy),
         '.cursor/rules/pan-chat-output.mdc',
         'embedded',
+      ),
+    )
+
+    const delegatePath = '.cursor/rules/pan-subagent-supervision.mdc'
+    const delegateRule = readFileSync(
+      path.join(targetRoot, delegatePath),
+      'utf8',
+    )
+    assert.equal(
+      delegateRule,
+      projectCursorContent(
+        renderPolicyCursorRule(delegatePolicy),
+        delegatePath,
+        'embedded',
+      ),
+    )
+    assert.match(delegateRule, /--capabilities 'shell'/u)
+    assert.ok(
+      !delegateRule.includes(
+        delegatePolicy.instructions.find((entry) =>
+          entry.text.startsWith(
+            'Shell-capable workers MUST run shell commands inside',
+          ),
+        )!.text,
       ),
     )
 

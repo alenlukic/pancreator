@@ -14,7 +14,12 @@ import {
   type DeliveryScope,
   type FiredContext,
 } from '../../src/lib/governance/prompt-context/deferred.js'
-import { readClauseReceipts } from '../../src/lib/policy-clause.js'
+import {
+  readClauseReceipts,
+  recordClauseReceipt,
+} from '../../src/lib/policy-clause.js'
+import { deferredClauseGroups } from '../../src/lib/policy-deferred.js'
+import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import type { Policy } from '../../src/lib/types.js'
 
 const BROWSER = 'Agents MUST open each browser page in an isolated context.'
@@ -256,5 +261,131 @@ test('two scopes keep separate receipts', () => {
       deliverDeferredClauses(root, 'conv-1', call, new Date(), DELIVERY),
     )
     assert.ok(deliverDeferredClauses(root, 'conv-2', call, new Date(), other))
+  })
+})
+
+test('DELEGATE-001 delivers supervisor-only recovery clauses and rejects an agent-only receipt', () => {
+  withTempRoot((root) => {
+    const policy = loadPolicyCatalog(process.cwd()).get('DELEGATE-001')!
+    const delivery = {
+      ...DELIVERY,
+      policies: [policy],
+      audiences: ['agent', 'supervisor'] as const,
+    }
+    const scope: DeliveryScope = {
+      ...delivery,
+      audiences: [...delivery.audiences],
+    }
+    const agent = deferredClauseGroups(
+      policy,
+      'agent',
+      scope.capabilities,
+    ).find((group) => group.trigger === 'event:stall')!
+    const supervisor = deferredClauseGroups(
+      policy,
+      'supervisor',
+      scope.capabilities,
+    ).find((group) => group.trigger === 'event:stall')!
+    recordClauseReceipt(root, scope.scope, agent, 'pull')
+    const text = deliverDeferredClauses(
+      root,
+      scope.scope,
+      fired({ events: ['stall'] }),
+      new Date(),
+      scope,
+    )
+    assert.ok(
+      text?.includes(
+        'A supervisor MUST NOT interrupt a worker or a wrapped command except',
+      ),
+    )
+    assert.equal(
+      readClauseReceipts(root, scope.scope).at(-1)?.sha256,
+      supervisor.sha256,
+    )
+    assert.equal(
+      deliverDeferredClauses(
+        root,
+        scope.scope,
+        fired({ events: ['stall'] }),
+        new Date(),
+        scope,
+      ),
+      null,
+    )
+  })
+})
+
+test('native shell and delegation tools deliver before first use, including headless delegation', () => {
+  assert.deepEqual(toolClasses('run_in_terminal', { command: 'ls' }), ['shell'])
+  assert.deepEqual(toolClasses('task', {}), ['delegation'])
+  assert.deepEqual(toolClasses('runSubagent', {}), ['delegation'])
+  assert.deepEqual(
+    toolClasses('Shell', {
+      command: 'bin/pan-run -- ./bin/pan delegate run-1 --headless',
+    }),
+    ['shell', 'delegation'],
+  )
+  withTempRoot((root) => {
+    const policy = loadPolicyCatalog(process.cwd()).get('DELEGATE-001')!
+    const scope: DeliveryScope = {
+      ...DELIVERY,
+      policies: [policy],
+      capabilities: { shell: true, delegation: false },
+    }
+    const call = fired({ classes: ['shell'] })
+    const first = preToolDecision(root, scope.scope, call, new Date(), scope)
+    assert.equal(first.permission, 'deny')
+    assert.match(
+      first.agent_message ?? '',
+      /Shell-capable workers MUST run shell commands inside/,
+    )
+    assert.doesNotMatch(
+      first.agent_message ?? '',
+      /Every agent shell command MUST/,
+    )
+    assert.equal(
+      preToolDecision(root, scope.scope, call, new Date(), scope).permission,
+      'allow',
+    )
+  })
+})
+
+test('watch recovery verdicts fire the recovery event without treating unrelated failures as stalls', () => {
+  withTempRoot((root) => {
+    const payload = {
+      hookEvent: 'postToolUse',
+      toolName: 'Shell',
+      toolInput: { command: './bin/pan watch run-1' },
+      prompt: '',
+    }
+    for (const output of [
+      'watch stalled: invocation inv-1',
+      'watch unverified: invocation inv-1',
+      'watch changed: 1 of 2 targets moved; needs inspection: run-2:inv-2',
+      { state: 'changed', stalled: [{ run_id: 'run-2' }] },
+      'agent watch unregistered: the index never registered',
+      '── Result ──\n  attach_wake · 300.0s',
+      { stdout: JSON.stringify({ state: 'timed_out' }) },
+    ]) {
+      assert.ok(
+        firedContext(root, { ...payload, toolOutput: output }).events.includes(
+          'stall',
+        ),
+      )
+    }
+    assert.ok(
+      !firedContext(root, {
+        ...payload,
+        toolOutput: 'watch completed: invocation inv-1',
+      }).events.includes('stall'),
+    )
+    assert.ok(
+      !firedContext(root, {
+        ...payload,
+        toolInput: { command: 'npm test' },
+        toolOutput: 'watch stalled: invocation inv-1',
+      }).events.includes('stall'),
+    )
   })
 })

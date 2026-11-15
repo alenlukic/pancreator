@@ -7,7 +7,10 @@ import {
   initialPolicyReminder,
   withInitialPolicyReminder,
 } from '../../src/lib/policy-delivery.js'
-import { filterPolicyInstructionsForCard } from '../../src/lib/policy-instructions.js'
+import {
+  filterPolicyInstructionsForCard,
+  policyInstructionLoad,
+} from '../../src/lib/policy-instructions.js'
 import {
   invocationPolicyPointers,
   renderInvocationMarkdown,
@@ -226,9 +229,16 @@ test('worker reminders and cards follow actual capabilities and are snapshotted 
   assert.ok(!reminder.content.includes('heartbeat.json'))
   invocation.capabilities.shell = true
   assert.ok(
-    initialPolicyReminder(invocation, 'initial.md').reminder.content.includes(
+    !initialPolicyReminder(invocation, 'initial.md').reminder.content.includes(
       'heartbeat.json',
     ),
+    'a hook-route reminder keeps heartbeat.json deferred to tool:shell',
+  )
+  assert.ok(
+    initialPolicyReminder(invocation, 'initial.md', {
+      inlineDeferred: true,
+    }).reminder.content.includes('heartbeat.json'),
+    'an external launch inlines the tool:shell heartbeat clause',
   )
   assert.ok(
     filterPolicyInstructionsForCard(policy.instructions, 'agent', {
@@ -387,11 +397,41 @@ test('supervisor cards retain delegated observation and exclude worker-only clau
   for (const instruction of delegate.instructions.filter(
     (entry) => entry.capabilities?.delegation === true,
   )) {
-    assert.ok(markdown.includes(instruction.text))
+    const load = policyInstructionLoad(instruction)
+
+    if (load === 'invocation') {
+      assert.ok(markdown.includes(instruction.text), instruction.text)
+      continue
+    }
+
+    assert.ok(
+      markdown.includes(`- \`DELEGATE-001\` · \`${load}\` · `),
+      `supervisor card MUST index deferred ${load}`,
+    )
+    assert.ok(
+      !markdown.includes(`- ${instruction.text}`),
+      `supervisor card MUST NOT inline deferred ${load}`,
+    )
   }
   for (const instruction of delegate.instructions.filter(
     (entry) => entry.capabilities?.delegation === false,
   )) {
     assert.ok(!markdown.includes(instruction.text))
   }
+})
+
+test('worker deferred index validates the installation-specific command and invocation scope', () => {
+  const invocation = baseInvocation(sharedFixture(), 'delivery', 'implement')
+  invocation.capabilities = { shell: true, delegation: false }
+  const command = './.pancreator/bin/pan'
+  const card = renderInvocationMarkdown(invocation, command)
+  assert.ok(
+    card.includes(
+      `${command} governance clause --policy DELEGATE-001 --trigger tool:shell --capabilities 'shell' --invocation ${invocation.invocation_id}`,
+    ),
+  )
+  assert.equal(
+    validateInvocationMarkdown(invocation, card, undefined, command).passed,
+    true,
+  )
 })

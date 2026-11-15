@@ -187,6 +187,7 @@ export function validateInvocationMarkdown(
   invocation: Invocation,
   markdown: string,
   supervisorProcedureMarkdown?: string,
+  command?: string,
 ): { passed: boolean; checks: ValidationCheck[] } {
   const checks: ValidationCheck[] = []
   const normalized = normalizeMarkdownContent(markdown)
@@ -277,11 +278,13 @@ export function validateInvocationMarkdown(
     for (const group of deferredClauseGroups(
       policy,
       'agent',
-      invocation.capabilities,
-      (text) =>
-        !renderedInstructions.some((instruction) => instruction.text === text),
+      invocation.capabilities ?? { shell: true, delegation: true },
     )) {
-      const line = renderDeferredIndexLine(group)
+      const line = renderDeferredIndexLine(
+        group,
+        command,
+        invocation.invocation_id,
+      )
 
       checks.push({
         id: `policy.${policy.id}.deferred.${group.trigger}`,

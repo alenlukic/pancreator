@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
+import { panCommand } from '../project-config.js'
 import {
   expectedDelegationContent,
   expectedDelegationSource,
@@ -158,6 +159,7 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
     input.invocation as never,
     markdown,
     procedure,
+    panCommand(input.root),
   )
 
   return {
