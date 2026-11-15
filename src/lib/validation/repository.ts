@@ -161,8 +161,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/SPOT-001.json',
     'governance/policies/PAIR-001.json',
     'governance/policies/PROTO-001.json',
+    'governance/policies/TRACE-001.json',
     'governance/policies/DIRECTOR-001.json',
     'library/workflows/prototype/workflow.json',
+    'library/workflows/prototype-trace/workflow.json',
     'src/cli.ts',
     'target-extensions/.gitkeep',
   ]

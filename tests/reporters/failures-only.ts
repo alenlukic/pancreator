@@ -424,6 +424,35 @@ function noteHeartbeatCounts(
   }
 }
 
+/**
+ * Node dispatches file tests before it releases their ordered reports. A later
+ * file may already have exited while an earlier file blocks reporting, so
+ * these entries describe outstanding reports, not necessarily live workers.
+ */
+function noteOutstandingFile(
+  event: TestEvent,
+  outstanding: Map<string, number>,
+): void {
+  if (event.type === 'test:dequeue') {
+    const { file, name, nesting } = event.data
+
+    if (file && name === file && nesting === 0) {
+      outstanding.set(relativeFile(file), Date.now())
+    }
+  } else if (event.type === 'test:summary') {
+    if (event.data.file) {
+      outstanding.delete(relativeFile(event.data.file))
+    }
+  } else if (event.type === 'test:fail' || event.type === 'test:pass') {
+    const { file, name, nesting } = event.data
+
+    // A file-level timeout can fail without a per-file summary.
+    if (file && name === file && nesting === 0) {
+      outstanding.delete(relativeFile(file))
+    }
+  }
+}
+
 function* formatEvent(event: TestEvent): Generator<string> {
   switch (event.type) {
     case 'test:fail': {
@@ -466,6 +495,8 @@ export default async function* failuresOnly(
   const intervalSeconds = readHeartbeatIntervalSeconds()
   const started = Date.now()
   const counts = { passed: 0, failed: 0, filesDone: 0 }
+  const outstanding = new Map<string, number>()
+  let previousBeat: string | undefined
   const iterator = source[Symbol.asyncIterator]()
   let pending: Promise<IteratorResult<TestEvent>> = iterator.next()
   let nextBeatMs = started + intervalSeconds * 1000
@@ -493,6 +524,16 @@ export default async function* failuresOnly(
         counts.failed,
         counts.filesDone,
       )
+      const progress = `${counts.passed}:${counts.failed}:${counts.filesDone}`
+      const oldest = outstanding.entries().next().value
+
+      if (progress === previousBeat && oldest) {
+        const [file, dispatched] = oldest
+        const age = Math.floor((Date.now() - dispatched) / 1000)
+        yield `${TEST_HEARTBEAT_PREFIX}${elapsed}s: awaiting file report: ${file} (dispatched ${age}s ago)\n`
+      }
+
+      previousBeat = progress
       nextBeatMs += intervalSeconds * 1000
       continue
     }
@@ -505,6 +546,7 @@ export default async function* failuresOnly(
 
     pending = iterator.next()
     noteHeartbeatCounts(value.value, counts)
+    noteOutstandingFile(value.value, outstanding)
     collector.record(value.value)
     yield* formatEvent(value.value)
   }

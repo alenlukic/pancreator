@@ -162,6 +162,25 @@ test('start resolves the route against installed workflows and the operator', ()
   assert.throws(() => record(100, 'missing'), { code: 'UNKNOWN_WORKFLOW' })
 })
 
+test('an installed prototype-trace route starts for M with new integration points', () => {
+  const root = fixture(['prototype-trace', 'standard'])
+
+  assert.deepEqual(
+    recordIntakeClassification({
+      root,
+      request: REQUEST,
+      estimate: estimate(400, ['cli-engine', 'library'], true),
+      rationale: 'New adapter boundary.',
+    }).current.start,
+    {
+      kind: 'workflow',
+      workflow: 'prototype-trace',
+      source: 'route',
+      reason: null,
+    },
+  )
+})
+
 test('an installed one-shot route starts, then escalates to standard', () => {
   const root = fixture(['one-shot', 'standard'])
   const base = { root, request: REQUEST, rationale: 'One CLI command.' }

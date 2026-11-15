@@ -1,5 +1,22 @@
 # Changelog
 
+## [10.11.0] - 2026-11-15
+
+### Changed
+
+- Queue hypervisor registry writes so independent runs wait for the lock ([hypervisor](src/lib/hypervisor.ts), [cd13f289](https://github.com/alenlukic/pancreator/commit/cd13f289)).
+- Limit each coverage test file to five minutes ([package.json](package.json), [cd13f289](https://github.com/alenlukic/pancreator/commit/cd13f289)).
+
+### Added
+
+- Add the `prototype-trace` workflow with an operator gate after the interface schema ([workflow](library/workflows/prototype-trace/workflow.json), [4d70dcf4](https://github.com/alenlukic/pancreator/commit/4d70dcf4)).
+- Add TRACE-001 and the interface-schema validator so skeletons and tests stay aligned with the declared schema ([TRACE-001](governance/policies/TRACE-001.json), [4d70dcf4](https://github.com/alenlukic/pancreator/commit/4d70dcf4)).
+- Name the oldest outstanding test file in the failures-only heartbeat ([reporter](tests/reporters/failures-only.ts), [cd13f289](https://github.com/alenlukic/pancreator/commit/cd13f289)).
+
+### Fixed
+
+- Ignore heartbeat lines that name an outstanding file report in repository-check diagnostics ([diagnostics](src/lib/repository-checks/diagnostics.ts), [cd13f289](https://github.com/alenlukic/pancreator/commit/cd13f289)).
+
 ## [10.10.1] - 2026-11-14
 
 ### Changed

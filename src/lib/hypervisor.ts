@@ -39,6 +39,9 @@ const REGISTRY_FILE = 'registry.json'
 const EVENTS_FILE = 'events.jsonl'
 const PID_FILE = 'hypervisor.pid'
 const LEDGER_LOCK_FILE = 'registry.lock'
+// Independent runs share this registry. Queue short bookkeeping writes instead
+// of refusing a sibling's already-persisted prepare or submit on contention.
+const REGISTRY_MUTEX_OPTIONS = { waitForHolderMs: 10_000 }
 const TRANSCRIPT_PREFIX_BYTES = 256 * 1024
 
 export interface AgentRegistry {
@@ -201,6 +204,7 @@ export function registerPreparedInvocation(
 
       return agent
     },
+    REGISTRY_MUTEX_OPTIONS,
   )
 }
 
@@ -250,6 +254,7 @@ export function completeInvocationAgent(
 
       return completed
     },
+    REGISTRY_MUTEX_OPTIONS,
   )
 }
 
@@ -666,46 +671,50 @@ export function tickHypervisor(
     .filter((agent) => priorHealth.get(agent.agent_id) !== agent.health)
     .map((agent) => agent.agent_id)
 
-  withOperationMutex(hypervisorPath(root, LEDGER_LOCK_FILE), () => {
-    const latest = readAgentRegistry(root)
-    const currentIds = new Set(agents.map((agent) => agent.agent_id))
-    const registeredDuringTick = latest.agents.filter(
-      (agent) => !currentIds.has(agent.agent_id),
-    )
+  withOperationMutex(
+    hypervisorPath(root, LEDGER_LOCK_FILE),
+    () => {
+      const latest = readAgentRegistry(root)
+      const currentIds = new Set(agents.map((agent) => agent.agent_id))
+      const registeredDuringTick = latest.agents.filter(
+        (agent) => !currentIds.has(agent.agent_id),
+      )
 
-    agents = [...agents, ...registeredDuringTick].sort((left, right) =>
-      left.agent_id.localeCompare(right.agent_id),
-    )
-    writeJsonAtomic(agentRegistryPath(root), {
-      schema_version: 1,
-      updated_at: scannedAt,
-      agents,
-    } satisfies AgentRegistry)
-
-    for (const agentId of changedAgentIds) {
-      const agent = agents.find((candidate) => candidate.agent_id === agentId)
-
-      appendJsonLine(hypervisorEventsPath(root), {
+      agents = [...agents, ...registeredDuringTick].sort((left, right) =>
+        left.agent_id.localeCompare(right.agent_id),
+      )
+      writeJsonAtomic(agentRegistryPath(root), {
         schema_version: 1,
-        type: 'health_changed',
-        timestamp: scannedAt,
-        agent_id: agentId,
-        health: agent?.health,
-        evidence: agent?.health_evidence ?? [],
-      })
-    }
+        updated_at: scannedAt,
+        agents,
+      } satisfies AgentRegistry)
 
-    for (const event of quarantineEvents) {
-      appendJsonLine(hypervisorEventsPath(root), {
-        schema_version: 1,
-        type: 'quarantine',
-        timestamp: scannedAt,
-        agent_id: event.agent_id,
-        health: event.health,
-        evidence: event.evidence,
-      })
-    }
-  })
+      for (const agentId of changedAgentIds) {
+        const agent = agents.find((candidate) => candidate.agent_id === agentId)
+
+        appendJsonLine(hypervisorEventsPath(root), {
+          schema_version: 1,
+          type: 'health_changed',
+          timestamp: scannedAt,
+          agent_id: agentId,
+          health: agent?.health,
+          evidence: agent?.health_evidence ?? [],
+        })
+      }
+
+      for (const event of quarantineEvents) {
+        appendJsonLine(hypervisorEventsPath(root), {
+          schema_version: 1,
+          type: 'quarantine',
+          timestamp: scannedAt,
+          agent_id: event.agent_id,
+          health: event.health,
+          evidence: event.evidence,
+        })
+      }
+    },
+    REGISTRY_MUTEX_OPTIONS,
+  )
 
   return {
     scanned_at: scannedAt,

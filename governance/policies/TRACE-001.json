@@ -1,0 +1,30 @@
+{
+  "id": "TRACE-001",
+  "title": "Prototype-trace interface contract",
+  "severity": "hard",
+  "summary": "A prototype-trace run MUST produce skeletons, trace tests including one end-to-end path, and a machine-readable interface schema at a declared path. That schema is the reference contract. The operator MUST approve it before later standard or decomposition work starts from it.",
+  "instructions": [
+    "A prototype-trace run exists to freeze new interfaces before later implementation. The trace stage MUST produce skeleton definitions for every new function and endpoint: signatures, expected input and output shapes, and docstrings or usage specs. Stub bodies MUST return shape-valid data or fail explicitly as not implemented.",
+    "The trace stage MUST produce trace tests at each new boundary, using test data. The trace tests MUST include at least one end-to-end or integration path through every layer the task touches.",
+    "The trace stage MUST write an interface schema: a machine-readable contract in the target stack's idiom, plus short usage notes. The schema MUST live in the target repository at the path declared in data.interface_schema.path, and it MUST be versioned with the code.",
+    "The interface schema is the reference contract for every later implementation. A later change to an interface in the schema MUST update the schema in the same change. Verification MUST report drift between claimed signatures and the schema.",
+    "The operator MUST approve the interface schema at the trace stage gate before any standard or decomposition work starts from it.",
+    "The prototype spike workflow MUST stay unchanged. TRACE-001 binds only prototype-trace. The JSON manifest MUST map named signatures to actual source declarations and a native contract path; later verification MUST check the current manifest and source.",
+    "Before submission, prototype-trace stage outputs MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "interface-schema-validate",
+      "registry_id": "INTERFACE-SCHEMA-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "workflow": "prototype-trace"
+      }
+    }
+  ]
+}

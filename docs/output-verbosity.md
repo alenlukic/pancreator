@@ -37,6 +37,13 @@ Test scripts run `node --test` with the failures-only reporter at
 `tests/reporters/failures-only.ts`. The reporter prints one block per failed
 test, with its name, location, and error, and then the run summary. It prints
 nothing for a passing test, so a failing run replays only the failures.
+Long runs emit progress heartbeats. When consecutive heartbeats show no
+reported progress, the reporter names the oldest dispatched file whose report
+is outstanding. Node can buffer completed files behind an earlier file, so
+that entry is not a claim that the process is still running.
+`npm run test:coverage` bounds each test file to five minutes with Node's
+`--test-timeout`; an unfinished file fails rather than blocking the remaining
+reports indefinitely. Existing shorter per-test timeouts remain in force.
 `./bin/pan tests impacted` (`npm run test:impacted`) runs the same reporter over
 only the lane tests the changed files reach; `--list` prints the selection
 without a run.

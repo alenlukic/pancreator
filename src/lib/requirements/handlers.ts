@@ -50,6 +50,7 @@ import {
   validateAwayDecisionLedger,
   validateHypervisorState,
 } from '../validators/autonomy-state.js'
+import { validateInterfaceSchema } from '../validators/interface-schema.js'
 import { validatePrototypeOutput } from '../validators/prototype-output.js'
 import { validateTuneRecord } from '../validators/tune-record.js'
 import { validateTargetAuthoring } from '../target-authoring.js'
@@ -273,6 +274,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'delegation-validate': delegationValidateHandler,
   'invocation-attest-validate': invocationAttestValidateHandler,
   'prototype-output-validate': validatePrototypeOutput,
+  'interface-schema-validate': validateInterfaceSchema,
   'tune-record-validate': validateTuneRecord,
   'target-authoring-validate': targetAuthoringValidateHandler,
   'await-shell-ban-validate': awaitShellBanValidateHandler,

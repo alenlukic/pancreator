@@ -17,6 +17,7 @@ import {
   RELEASE_REFUSALS,
   TARGET_INSTRUCTION_REFUSALS,
 } from './delivery.js'
+import { TRACE_SCHEMA_REFUSALS } from './interface-schema.js'
 import {
   APPROACH_REFUSALS,
   BUILD_REFUSALS,
@@ -40,6 +41,7 @@ const HARNESS_REPAIR_MODULE = `${STAGE_MODULE_DIRECTORY}/harness-repair.ts`
 const INVESTIGATION_MODULE = `${STAGE_MODULE_DIRECTORY}/investigation.ts`
 const SPOTFIX_MODULE = `${STAGE_MODULE_DIRECTORY}/spotfix.ts`
 const PROTOTYPE_MODULE = 'src/lib/validators/prototype-output.ts'
+const INTERFACE_SCHEMA_MODULE = 'src/lib/validators/interface-schema.ts'
 const PR_DESCRIPTION_MODULE = 'src/lib/validators/pr-description.ts'
 
 /** Where the shared `gitUnavailableIssue` helper raises its refusal. */
@@ -236,6 +238,17 @@ export function stageValidatorRefusals(
         },
       ],
       refusals: EVALUATE_REFUSALS,
+    },
+    {
+      registry_id: 'INTERFACE-SCHEMA-VALIDATE-001',
+      stage: 'trace',
+      sources: [
+        {
+          file: INTERFACE_SCHEMA_MODULE,
+          functions: ['validateInterfaceSchema'],
+        },
+      ],
+      refusals: TRACE_SCHEMA_REFUSALS,
     },
     {
       registry_id: 'TARGET-INSTRUCTION-COVERAGE-VALIDATE-001',

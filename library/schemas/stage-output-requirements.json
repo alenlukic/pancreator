@@ -1021,6 +1021,87 @@
           "format": "required; non-empty array of declared technical question ids the blocker prevented a decision on"
         }
       ]
+    },
+    "trace": {
+      "validators": [
+        {
+          "registry_id": "INTERFACE-SCHEMA-VALIDATE-001",
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.skeletons[]",
+            "data.skeletons[].name",
+            "data.skeletons[].signature",
+            "data.trace_tests[]",
+            "data.trace_tests[].id",
+            "data.trace_tests[].path",
+            "data.trace_tests[].kind",
+            "data.interface_schema",
+            "data.interface_schema.path",
+            "data.interface_schema.idiom",
+            "data.interface_schema.notes"
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.skeletons[]",
+          "type": "object",
+          "required": ["name", "signature", "path", "expected_input", "expected_output", "stub"],
+          "format": "one skeleton per new function or endpoint"
+        },
+        {
+          "path": "data.skeletons[].name",
+          "type": "string",
+          "format": "non-empty unique interface name"
+        },
+        {
+          "path": "data.skeletons[].signature",
+          "type": "string",
+          "format": "non-empty signature string identical to the schema file"
+        },
+        {
+          "path": "data.trace_tests[]",
+          "type": "object",
+          "required": ["id", "path", "kind"],
+          "format": "one entry per trace test; at least one kind is e2e or integration"
+        },
+        {
+          "path": "data.trace_tests[].id",
+          "type": "string",
+          "format": "non-empty test id"
+        },
+        {
+          "path": "data.trace_tests[].path",
+          "type": "string",
+          "format": "repository path of the trace test"
+        },
+        {
+          "path": "data.trace_tests[].kind",
+          "type": "string",
+          "format": "e2e, integration, or another declared boundary kind"
+        },
+        {
+          "path": "data.interface_schema",
+          "type": "object",
+          "required": ["path", "idiom", "notes"],
+          "format": "declared schema location and usage notes"
+        },
+        {
+          "path": "data.interface_schema.path",
+          "type": "string",
+          "format": "repository-relative path of the schema file"
+        },
+        {
+          "path": "data.interface_schema.idiom",
+          "type": "string",
+          "format": "target-stack idiom such as json-schema, openapi, or exported-types"
+        },
+        {
+          "path": "data.interface_schema.notes",
+          "type": "string",
+          "format": "short usage notes for later implementers"
+        }
+      ]
     }
   }
 }

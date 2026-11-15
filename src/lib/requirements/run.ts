@@ -167,6 +167,7 @@ export function registryStageSlugs(registryId: string): readonly string[] {
     'HARNESS-REPAIR-VALIDATE-001': ['repair'],
     'INVESTIGATION-VALIDATE-001': ['investigate'],
     'SPOTFIX-VALIDATE-001': ['spotfix'],
+    'INTERFACE-SCHEMA-VALIDATE-001': ['trace'],
   }
 
   return mapping[registryId] ?? []

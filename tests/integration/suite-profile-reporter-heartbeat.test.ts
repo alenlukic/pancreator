@@ -106,3 +106,56 @@ test('a run shorter than the default heartbeat interval exits at once and prints
     `only summary lines print: ${result.stdout}`,
   )
 })
+
+test('a file with a retained handle is named in stalled heartbeats and fails at the file timeout', () => {
+  const root = createTestTempDirectory('reporter-stalled-file-')
+  const stalled = path.join(root, 'a-stalled.test.js')
+  const later = path.join(root, 'b-later.test.js')
+
+  writeFileSync(
+    stalled,
+    [
+      "import test from 'node:test'",
+      "test('leaks an active handle', () => { setInterval(() => {}, 1000) })",
+      '',
+    ].join('\n'),
+  )
+  writeFileSync(
+    later,
+    [
+      "import test from 'node:test'",
+      "test('later succeeds', () => {})",
+      '',
+    ].join('\n'),
+  )
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--test',
+      '--test-concurrency=2',
+      '--test-timeout=3500',
+      '--experimental-test-coverage',
+      `--test-reporter=${REPORTER}`,
+      '--test-reporter-destination=stdout',
+      stalled,
+      later,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: childEnv({ PAN_TEST_HEARTBEAT_SECONDS: '0.5' }),
+      timeout: 30_000,
+    },
+  )
+
+  assert.equal(result.error, undefined, 'the file timeout ends the run')
+  assert.equal(result.status, 1, result.stderr)
+  assert.match(
+    result.stdout,
+    /# heartbeat \d+s: awaiting file report: .*a-stalled\.test\.js \(dispatched \d+s ago\)/u,
+  )
+  assert.match(result.stdout, /not ok - .*a-stalled\.test\.js/u)
+  assert.match(result.stdout, /test timed out after 3500ms/u)
+  assert.match(result.stdout, /^# pass 2$/mu)
+})

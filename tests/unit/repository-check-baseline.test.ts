@@ -868,6 +868,7 @@ test('actual impacted wrapper metadata does not change failure identities', () =
   const output = (seconds: number, count: number): string =>
     `[tests impacted] running ${count} of 196 lane test file(s) for 6 changed file(s) (log: runtime/logs/checks/tests-impacted-${seconds}.log)\n` +
     `[tests impacted] # heartbeat ${seconds}s: ${count} passed, 1 failed, ${count} files done\n` +
+    `[tests impacted] # heartbeat ${seconds}s: awaiting file report: dist/tests/unit/example.test.js (dispatched ${seconds}s ago)\n` +
     record +
     `[tests impacted] FAILED: ${count} of 196 lane test file(s) (exit 1) in ${seconds}s\n` +
     '# failing tests:\n' +

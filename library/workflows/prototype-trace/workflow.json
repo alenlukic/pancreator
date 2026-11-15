@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "prototype-trace",
+  "title": "Prototype-trace interface contract",
+  "description": "One coder writes skeletons, trace tests including one end-to-end path, and a machine-readable interface schema. The operator approves that schema before any later standard or decomposition work uses it. There is no ship stage.",
+  "start_stage": "trace",
+  "limits": {
+    "max_total_transitions": 4,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["trace"]
+}

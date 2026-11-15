@@ -29,6 +29,17 @@ test('validation result schema includes every supported status', () => {
   assert.deepEqual(schema.properties.status.enum, supported)
 })
 
+test('interface schema registry applies to the trace stage', () => {
+  assert.equal(
+    registryAppliesToStage('INTERFACE-SCHEMA-VALIDATE-001', 'trace'),
+    true,
+  )
+  assert.equal(
+    registryAppliesToStage('INTERFACE-SCHEMA-VALIDATE-001', 'verify'),
+    false,
+  )
+})
+
 test('implementation claims registry applies to implement and remediate stages', () => {
   assert.equal(
     registryAppliesToStage('IMPLEMENTATION-CLAIMS-VALIDATE-001', 'implement'),

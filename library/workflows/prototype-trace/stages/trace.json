@@ -1,0 +1,68 @@
+{
+  "slug": "trace",
+  "title": "Skeletons, trace tests, and interface schema",
+  "persona": "coder",
+  "prompt_path": "library/workflows/prototype-trace/prompts/trace.md",
+  "workspace_policy": "source_allowed",
+  "gate": "operator",
+  "context": {
+    "request": "required",
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "skeletons": "array",
+    "trace_tests": "array",
+    "interface_schema": "object",
+    "interface_schema.path": "string",
+    "interface_schema.idiom": "string",
+    "interface_schema.notes": "string"
+  },
+  "criteria": [
+    {
+      "id": "trace.skeletons",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every new function and endpoint has a skeleton with a signature, expected input and output shapes, and a docstring or usage spec. Stub bodies return shape-valid data or fail explicitly as not implemented."
+    },
+    {
+      "id": "trace.tests_e2e",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Trace tests cover each new boundary with test data, and at least one test is an end-to-end or integration path through every layer the task touches."
+    },
+    {
+      "id": "trace.schema_declared",
+      "type": "judgment",
+      "hard": true,
+      "statement": "A machine-readable interface schema exists at the declared repository path in the target stack's idiom, with short usage notes, and is versioned with the code."
+    },
+    {
+      "id": "trace.schema_matches",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Claimed skeleton names and signatures match the schema file. A later interface change MUST update the schema in the same change."
+    },
+    {
+      "id": "trace.static",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "configuration.valid",
+      "type": "shell",
+      "hard": true,
+      "statement": "Repository configuration and governance validate.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "trace",
+    "blocked": "paused"
+  }
+}

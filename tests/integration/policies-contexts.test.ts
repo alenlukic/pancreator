@@ -77,6 +77,7 @@ test('representative contexts exclude policies outside their remit', () => {
     ],
     ['decomposer', 'standalone', 'decompose', ['DECOMP-001']],
     ['orchestrator', 'prototype', 'intake', ['PROTO-001']],
+    ['coder', 'prototype-trace', 'trace', ['TRACE-001']],
     ['harness-technician', 'standalone', 'repair', ['REPAIR-001']],
     ['spotfixer', 'standalone', 'spotfix', ['SPOT-001', 'WORK-001']],
     [

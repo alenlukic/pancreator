@@ -189,6 +189,9 @@ function isNonFailureOutputLine(line: string): boolean {
     /^(?:\[tests impacted\] )?# heartbeat \d+(?:\.\d+)?s: \d+ passed, \d+ failed, \d+ files done$/u.test(
       line,
     ) ||
+    /^(?:\[tests impacted\] )?# heartbeat \d+s: awaiting file report: .+ \(dispatched \d+s ago\)$/u.test(
+      line,
+    ) ||
     /^\[tests impacted\] (?:FAILED: \d+ of \d+ lane test file\(s\) \(exit -?\d+\)|passed: \d+ of \d+ lane test file\(s\)(?:, \d+ tests)?) in \d+(?:\.\d+)?s(?: \(log: [^)]+\))?$/u.test(
       line,
     ) ||

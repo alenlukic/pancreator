@@ -48,6 +48,16 @@ test('every installed workflow prepares its start stage', () => {
             'one-shot implement must resolve its claims validator',
           )
         }
+
+        if (slug === 'prototype-trace' && invocation.stage.slug === 'trace') {
+          assert.ok(
+            invocation.output.field_contract?.validators.some(
+              (validator) =>
+                validator.registry_id === 'INTERFACE-SCHEMA-VALIDATE-001',
+            ),
+            'prototype-trace must resolve its schema validator',
+          )
+        }
       } catch (error) {
         failures.push(`${variant.label}: ${failureText(error)}`)
       }

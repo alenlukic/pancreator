@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test, { type TestContext } from 'node:test'
 
@@ -18,6 +18,10 @@ import {
 import { initCohortSession, startCohort } from '../../src/lib/cohorts.js'
 import { ensureWorkflowRepositoryCheckBaselines } from '../../src/lib/engine/baselines.js'
 import { PanError } from '../../src/lib/errors.js'
+import {
+  agentRegistryPath,
+  readAgentRegistry,
+} from '../../src/lib/hypervisor.js'
 import { repositoryChecksConfigDigest } from '../../src/lib/gate-cache.js'
 import { loadState, operationMutexPath } from '../../src/lib/state.js'
 import { isRecord, withOperationMutex } from '../../src/lib/io.js'
@@ -37,6 +41,8 @@ const STATE_URL = new URL('../../src/lib/cohorts/state.js', import.meta.url)
 const PREPARE_URL = new URL('../../src/lib/engine/prepare.js', import.meta.url)
   .href
 const IO_URL = new URL('../../src/lib/io.js', import.meta.url).href
+const HYPERVISOR_URL = new URL('../../src/lib/hypervisor.js', import.meta.url)
+  .href
 
 interface WorkerResult {
   code: number | string | null
@@ -50,6 +56,7 @@ function launch(t: TestContext, root: string, body: string) {
     import { withCohortSession, cohortMutexPath } from ${JSON.stringify(STATE_URL)}
     import { prepareInvocation } from ${JSON.stringify(PREPARE_URL)}
     import { withOperationMutex } from ${JSON.stringify(IO_URL)}
+    import { registerPreparedInvocation } from ${JSON.stringify(HYPERVISOR_URL)}
     const root = ${JSON.stringify(root)}
     const wait = (file) => {
       const deadline = Date.now() + 30_000
@@ -130,6 +137,72 @@ function session(root: string): void {
     satisfaction: [],
   })
 }
+
+test('registry registration waits for a live sibling bookkeeping transaction', async (t) => {
+  const root = createFixture()
+  const registryDirectory = path.dirname(agentRegistryPath(root))
+  const mutex = path.join(registryDirectory, 'registry.lock')
+  const ready = path.join(root, 'registry-held')
+  const release = path.join(root, 'registry-release')
+  const holder = launch(
+    t,
+    root,
+    `
+    withOperationMutex(${JSON.stringify(mutex)}, () => {
+      writeFileSync(${JSON.stringify(ready)}, '')
+      wait(${JSON.stringify(release)})
+    })
+  `,
+  )
+  await waitFor(ready, [holder])
+
+  const contender = launch(
+    t,
+    root,
+    `
+    registerPreparedInvocation(root, {
+      run_id: 'sibling', invocation_id: 'prepared', persona: 'coder',
+      executor: 'cursor', model: null,
+    })
+  `,
+  )
+
+  try {
+    // A candidate exists only during acquisition; observe the contender while
+    // the holder still owns the mutex, rather than relying on launch timing.
+    const deadline = Date.now() + 30_000
+    while (
+      !readdirSync(registryDirectory).some(
+        (name) =>
+          name.startsWith('registry.lock.') && name.endsWith('.candidate'),
+      )
+    ) {
+      if (contender.result) {
+        assert.fail(
+          `Registry contender exited before release: ${contender.result.output}`,
+        )
+      }
+      assert.ok(
+        Date.now() < deadline,
+        'Registry contender did not reach the mutex',
+      )
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    assert.equal(readAgentRegistry(root).agents.length, 0)
+  } finally {
+    writeFileSync(release, '')
+  }
+
+  for (const worker of [holder, contender]) {
+    const result = await worker.done
+    assert.equal(result.code, 0, result.output)
+  }
+  assert.deepEqual(
+    readAgentRegistry(root).agents.map((agent) => agent.agent_id),
+    ['sibling:prepared'],
+  )
+  assert.equal(existsSync(mutex), false)
+})
 
 test('three concurrent sibling prepares join one complete baseline collection', async (t) => {
   const root = createFixture()
@@ -246,10 +319,20 @@ test('three concurrent sibling prepares join one complete baseline collection', 
   assert.equal(recorded.repository_check_baseline_capture, undefined)
   assert.deepEqual(Object.keys(pointers).sort(), profiles)
 
+  const registry = readAgentRegistry(root)
+
   for (const chunk of started.chunks) {
     const run = loadState(root, chunk.run_id)
 
     assert.ok(run.current_invocation)
+    assert.equal(
+      registry.agents.filter(
+        (agent) =>
+          agent.run_id === chunk.run_id &&
+          agent.invocation_id === run.current_invocation?.id,
+      ).length,
+      1,
+    )
     assert.ok(existsSync(path.join(root, `prepared-${chunk.run_id}`)))
 
     for (const profile of profiles) {

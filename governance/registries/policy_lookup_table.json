@@ -674,6 +674,12 @@
     },
     {
       "persona": "*",
+      "workflow": "prototype-trace",
+      "stage": "*",
+      "policies": ["TRACE-001"]
+    },
+    {
+      "persona": "*",
       "workflow": "delivery-candidate",
       "stage": "*",
       "policies": ["BESTOFN-001"]

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import type { Invocation, RunState } from '../../src/lib/types.js'
@@ -20,6 +20,56 @@ export function requiredData(
     return {
       ...requiredData(stage, root, invocation, runState, 'delivery'),
       cohort_plan: writePlanningFixtureSpecs(root, invocation?.run_id),
+    }
+  }
+
+  if (workflowSlug === 'prototype-trace') {
+    const schemaPath = 'docs/interface-schema.json'
+    const interfaces = [
+      {
+        name: 'createAdapter',
+        signature: '(provider: string) => Adapter',
+      },
+    ]
+
+    if (root) {
+      mkdirSync(path.join(root, 'docs'), { recursive: true })
+      writeFileSync(
+        path.join(root, schemaPath),
+        `${JSON.stringify(
+          {
+            interfaces,
+            notes: 'Fixture adapter contract.',
+          },
+          null,
+          2,
+        )}\n`,
+      )
+    }
+
+    return {
+      skeletons: [
+        {
+          name: 'createAdapter',
+          signature: '(provider: string) => Adapter',
+          path: 'src/adapter.ts',
+          expected_input: 'provider id',
+          expected_output: 'Adapter',
+          stub: 'not implemented',
+        },
+      ],
+      trace_tests: [
+        {
+          id: 'TT-e2e',
+          path: 'tests/integration/adapter-trace.test.ts',
+          kind: 'e2e',
+        },
+      ],
+      interface_schema: {
+        path: schemaPath,
+        idiom: 'exported-types',
+        notes: 'Fixture adapter contract.',
+      },
     }
   }
 
