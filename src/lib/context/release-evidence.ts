@@ -44,6 +44,35 @@ export function selectReleaseEvidence(
     missingRequired.push(binding.integration_record)
   }
 
+  const sessionPath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'cohorts',
+    binding.cohort_id,
+    'state.json',
+  )
+  const session = fileExists(sessionPath) ? readJson(sessionPath) : null
+  if (isRecord(session) && Array.isArray(session.satisfaction)) {
+    for (const proof of session.satisfaction) {
+      if (
+        !isRecord(proof) ||
+        typeof proof.evidence_path !== 'string' ||
+        proof.evidence_path === binding.integration_record
+      )
+        continue
+      if (fileExists(resolveInside(root, proof.evidence_path))) {
+        addReference(references, {
+          path: proof.evidence_path,
+          description: 'Cohort chunk integration proof',
+          retrieval: 'required',
+        })
+      } else {
+        missingRequired.push(proof.evidence_path)
+      }
+    }
+  }
+
   for (const chunk of cohortChunks(root, binding.cohort_id)) {
     // The child specification holds the acceptance criteria and validation
     // cases of the chunk. The release run has no plan output of its own, so
@@ -64,21 +93,27 @@ export function selectReleaseEvidence(
       continue
     }
 
-    const verify = [...chunk.state.stage_history]
+    // One-shot chunks finish after their validated implement stage; standard
+    // and legacy delivery chunks finish after independent verification.
+    const completionStage =
+      chunk.state.workflow_slug === 'one-shot' ? 'implement' : 'verify'
+    const completion = [...chunk.state.stage_history]
       .reverse()
-      .find((item) => item.stage === 'verify')
+      .find(
+        (item) => item.stage === completionStage && item.outcome === 'success',
+      )
 
-    if (!verify) {
+    if (!completion) {
       missingRequired.push(
-        `verify output of chunk '${chunk.id}' run ${chunk.state.run_id}`,
+        `${completionStage} output of chunk '${chunk.id}' run ${chunk.state.run_id}`,
       )
       continue
     }
 
     addStageHistoryReference(
       references,
-      verify,
-      `Chunk '${chunk.id}' verify stage output (${verify.outcome}), run ${chunk.state.run_id}`,
+      completion,
+      `Chunk '${chunk.id}' ${completionStage} stage output (${completion.outcome}), run ${chunk.state.run_id}`,
       'required',
     )
   }

@@ -52,7 +52,10 @@ function nonEmptyString(value: unknown): value is string {
  * Raises `schema.*` codes.
  */
 export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
-  if (workflowSlug(input) !== 'prototype-trace' || stageSlug(input) !== 'trace') {
+  if (
+    workflowSlug(input) !== 'prototype-trace' ||
+    stageSlug(input) !== 'trace'
+  ) {
     return { status: 'passed', issues: [] }
   }
 
@@ -104,10 +107,7 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
 
   if (!tests || tests.length === 0) {
     issues.push(
-      issue(
-        'schema.trace_tests',
-        'data.trace_tests MUST be a non-empty array',
-      ),
+      issue('schema.trace_tests', 'data.trace_tests MUST be a non-empty array'),
     )
   } else {
     let endToEnd = false
@@ -162,10 +162,7 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
 
   if (!schemaMeta) {
     issues.push(
-      issue(
-        'schema.meta_missing',
-        'data.interface_schema is required',
-      ),
+      issue('schema.meta_missing', 'data.interface_schema is required'),
     )
 
     return { status: 'failed', issues }

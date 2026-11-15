@@ -15,6 +15,7 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from '../io.js'
+import { isCohortChunkSize } from '../intake/classification.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 type Issues = HandlerResult['issues']
@@ -54,6 +55,7 @@ interface PlanChunk {
   cohort_index: number
   child_spec_path: string
   depends_on: string[]
+  size_class?: unknown
   /** Whether the entry declared `depends_on` at all, as the plan contract requires. */
   declares_depends_on: boolean
 }
@@ -96,6 +98,7 @@ function readPlan(value: unknown): ReadPlan | null {
           cohort_index: Number(chunk.cohort_index),
           child_spec_path: chunk.child_spec_path,
           depends_on: stringArray(chunk.depends_on),
+          size_class: chunk.size_class,
           declares_depends_on: Array.isArray(chunk.depends_on),
         },
       ]
@@ -259,7 +262,17 @@ export function validateCohortPlan(input: HandlerInput): HandlerResult {
     )
   }
 
+  const classified = plan.chunks.some((chunk) => chunk.size_class !== undefined)
   for (const chunk of plan.chunks) {
+    if (classified && !isCohortChunkSize(chunk.size_class)) {
+      issues.push(
+        issue(
+          'cohort.chunk_size',
+          `Chunk '${chunk.id}' MUST declare size_class XS, S, or M in a classified decomposition.`,
+        ),
+      )
+    }
+
     if (!fileExists(path.join(input.root, chunk.child_spec_path))) {
       issues.push(
         issue(

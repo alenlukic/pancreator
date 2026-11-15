@@ -2,10 +2,10 @@
   "id": "COHORT-001",
   "title": "Cohort plan hierarchy and fan-out execution",
   "severity": "hard",
-  "summary": "A ratified cohort plan MUST hold one parent specification and one child specification per unit of work. It MUST execute as ordered groups of parallel delivery runs, each in its own worktree. Each group merges before the next one starts, and every ordering decision rests on durable records rather than agent judgment.",
+  "summary": "A ratified cohort plan MUST hold one parent specification and one child specification per unit of work. It MUST execute as a DAG of delivery runs, each in its own worktree. A unit starts once its own predecessors have merged, and every ordering decision rests on durable records rather than agent judgment.",
   "instructions": [
     {
-      "text": "For an active unratified planning invocation, validation and submission MUST finalize declared draft child references after full-output or merge-patch materialization, using the canonical trimmed parent digest. Drafts use `harness-pending`; strict validators MUST still reject pending and stale final references. Finalization MUST preflight run-local paths and reference blocks, preserve worker claims, record changed references, and fail explicitly on unsafe paths or concurrent edits. Approved and foreign plans MUST NOT be rewritten (`tests/unit/planning-specifications.test.ts::planning finalization refreshes three file-only children without changing claims`; `tests/unit/planning-specifications.test.ts::planning finalization rejects unsafe inputs before any child write`; `tests/integration/planning-bookkeeping.test.ts::planning validation and submission share finalized full and revised outputs`).",
+      "text": "For an active unratified planning invocation, validation and submission MUST finalize declared draft child references after full-output or merge-patch materialization. Use the canonical trimmed parent digest. Drafts use `harness-pending`. Strict validators MUST still reject pending and stale final references. Finalization MUST preflight run-local paths and reference blocks, preserve worker claims, record changed references, and fail explicitly on unsafe paths or concurrent edits. Approved and foreign plans MUST NOT be rewritten (`tests/unit/planning-specifications.test.ts::planning finalization refreshes three file-only children without changing claims`, `tests/unit/planning-specifications.test.ts::planning finalization rejects unsafe inputs before any child write`, `tests/integration/planning-bookkeeping.test.ts::planning validation and submission share finalized full and revised outputs`).",
       "audience": ["harness"]
     },
     {
@@ -42,19 +42,20 @@
     },
     "Each unit of work MUST run in its own Git worktree on its own branch. Two concurrent runs never mutate one workspace.",
     {
-      "text": "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof. That record MUST be one durable record under `runtime/logs/cohorts/` (`tests/integration/cohort-fanout-start.test.ts::starting a cohort fans out one worktree and one run per chunk`).",
+      "text": "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each unit’s completion proof (or a historical group proof). That record MUST be one durable record under `runtime/logs/cohorts/` (`tests/integration/cohort-fanout-start.test.ts::starting a cohort fans out one worktree and one run per chunk`).",
       "audience": ["harness"]
     },
-    "Treat a group as complete only when every one of its runs reports success in that run's own state. The durable record MUST also hold the merge proof for that group.",
+    "Agents and the harness MUST treat a unit as merged only when both conditions hold: its own run state reports success, and the durable record holds its merge proof. A historical group-level proof with no `chunk` covers every unit of that group.",
     {
-      "text": "The harness MUST refuse to start a group while an earlier group is incomplete. The refusal MUST name the session, the refused group, and the earlier group that blocks it (`tests/integration/cohorts-gating.test.ts::starting a later cohort is refused while an earlier one is unsatisfied`).",
+      "text": "The harness MUST refuse to start or advance a unit while any of its own predecessor units is unmerged. The refusal MUST name the session and the unmerged predecessors. An unrelated unit of the same group MUST NOT block it (`tests/integration/cohorts-gating.test.ts::starting a later cohort is refused while an earlier one is unsatisfied`, `tests/unit/cohort-dag-ready.test.ts::a dependent is ready once its own predecessors have merged`).",
       "audience": ["harness"]
     },
     "A direct advance of one bound run MUST meet the same refusal. The ordering blocker thus holds outside the group command.",
-    "The merge of a completed group into its base branch is harness-owned. The harness MUST do the merge as soon as every unit run of the group is resolved. The harness MUST write the merge proof only after the merge lands cleanly. `pan cohort integrate` stays available as the retry of a failed automatic advance.",
-    "An unsuccessful unit run, an integration checkout holding uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked. Uncommitted work means every tracked modification plus every untracked path that no `read-only-input` attribution record covers. An untracked path the operator recorded as a read-only input is clean state by construction: it MUST NOT block the merge, and no harness commit MUST stage it. Every clean-tree gate MUST reach that verdict through the one shared helper rather than through a private definition of dirty.",
+    "The merge of a succeeded unit into its base branch is harness-owned. The harness MUST do the merge as soon as that unit run reports success. It MUST NOT wait for unrelated siblings of the same group. The harness MUST write the merge proof only after the merge lands cleanly. `pan cohort integrate` stays available as the retry of a failed automatic advance.",
+    "An unsuccessful unit run, an integration checkout holding uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. Only dependents of the unmerged unit stay blocked. Proofs of already-landed siblings MUST remain durable.",
+    "Uncommitted work means every tracked modification plus every untracked path that no `read-only-input` attribution record covers. An untracked path the operator recorded as a read-only input is clean state by construction: it MUST NOT block the merge, and no harness commit MUST stage it. Every clean-tree gate MUST reach that verdict through the one shared helper rather than through a private definition of dirty.",
     {
-      "text": "When every unit run of the active group is resolved and that group holds no merge proof, the harness MUST integrate the group. The harness MUST then continue the plan with no operator command (`tests/integration/cohort-auto-advance.test.ts::a finished group integrates and advances with no operator command`).",
+      "text": "When a unit run reports success without a merge proof, the harness MUST merge that unit. It MUST also merge every succeeded-unmerged sibling of its group. The harness MUST then start ready dependents with no operator command (`tests/integration/cohort-auto-advance.test.ts::a finished group integrates and advances with no operator command`).",
       "audience": ["harness"]
     },
     {
@@ -62,11 +63,11 @@
       "audience": ["harness"]
     },
     {
-      "text": "The automatic advance MUST act only on the submitting run's own group. Concurrent submissions of sibling unit runs MUST produce exactly one merge proof for that group. A sibling that loses the race MUST report no advance rather than a failure against a later group (`tests/integration/cohort-auto-advance.test.ts::concurrent sibling submissions integrate the group exactly once`).",
+      "text": "The automatic advance MUST act only on the submitting run's own group. Concurrent submissions of sibling unit runs MUST produce exactly one merge proof per unit. A sibling that loses the race MUST report no advance rather than a failure against a later group (`tests/integration/cohort-auto-advance.test.ts::concurrent sibling submissions integrate the group exactly once`).",
       "audience": ["harness"]
     },
     {
-      "text": "An automatic advance that fails MUST leave the merge proof unwritten and MUST report the concrete error with the manual integrate command. That command MUST stay available and idempotent as the retry (`tests/integration/cohort-auto-advance.test.ts::a failed automatic advance reports the manual command and the retry completes it`).",
+      "text": "An automatic advance that fails MUST leave the failed unit’s merge proof unwritten. It MUST retain proofs for units already merged and start their ready dependents. It MUST report the concrete error with the manual integrate command. That command MUST stay available and idempotent as the retry (`tests/integration/cohort-auto-advance.test.ts::a failed automatic advance reports the manual command and the retry completes it`).",
       "audience": ["harness"]
     },
     {
@@ -92,19 +93,19 @@
       "text": "An automatic start that fails MUST report the concrete error together with the manual commands that do the same work (`tests/integration/cohorts-routing.test.ts::a routing failure reports the error and the manual commands`).",
       "audience": ["harness"]
     },
-    "Each unit of a group of two or more MUST run the `delivery-chunk` workflow. It MUST end at a verified implementation on its own branch. Release preparation for such a plan MUST happen once, on the integrated result, in the release run. It MUST NOT happen per unit. A single-unit plan's `delivery` run carries its own `ship` stage.",
+    "Each classified unit of a multi-unit plan MUST run `one-shot` for XS/S or `standard` for M, without a per-unit ship stage. Legacy unclassified units MUST continue to run `delivery-chunk`. Every chunk MUST end at a validated implementation on its own branch. Release preparation for such a plan MUST happen once, on the integrated result, in the release run. It MUST NOT happen per unit. A single-unit plan's `delivery` run carries its own `ship` stage.",
     {
-      "text": "When the merge proof of the final group lands, the harness MUST start the release run. The release run is one `delivery` run that begins at `verify`. It runs on a `release-<digest>` branch created from the integration head. When `--into-branch` recorded a worktree for the integration branch, it runs on the integration branch in that worktree. The release run MUST run in its own managed worktree (`tests/integration/cohort-integration-conflicts.test.ts::the last integration starts the release run at verify in its own worktree, and every retry completes or adopts it`).",
+      "text": "When all units have merge proofs or recorded abandonment, the harness MUST start the release run. The release run is one `delivery` run that begins at `verify`. It runs on a `release-<digest>` branch created from the integration head. When `--into-branch` recorded a worktree for the integration branch, it runs on the integration branch in that worktree. The release run MUST run in its own managed worktree (`tests/integration/cohort-integration-conflicts.test.ts::the last integration starts the release run at verify in its own worktree, and every retry completes or adopts it`).",
       "audience": ["harness"]
     },
     "The release run MUST read the operator request the planning run stored. It MUST reach the parent specification by reference. The harness MUST record it on the session as `release_run_id`.",
     {
-      "text": "When the merge proof of a non-final group lands, the harness MUST start the next group. A continuation that fails MUST leave the merge proof in place. It MUST report the concrete error with the manual commands that do the same work (`tests/integration/cohort-integration.test.ts::integration merges a finished cohort and unblocks the next one`).",
+      "text": "When the merge proof of a unit lands, the harness MUST start every ready unstarted dependent, up to the session's free slots. A continuation that finds nothing ready or no free slot MUST leave the merge proof in place and MUST NOT report a failure. Any other continuation failure MUST report the concrete error with the manual commands that do the same work (`tests/integration/cohort-integration.test.ts::integration merges a finished cohort and unblocks the next one`).",
       "audience": ["harness"]
     },
-    "The number of concurrent unit runs MUST NOT exceed the parallelism limit recorded on the session (`pan cohort init --max-parallel`, default 4). `pan cohort start` MUST create runs only for the free slots and MUST name the deferred units. Run it again to start the deferred units once a unit run reaches a terminal state.",
+    "The number of concurrent unit runs MUST NOT exceed the parallelism limit recorded on the session (`pan cohort init --max-parallel`, default 3). The limit is session-wide. `pan cohort start` MUST create runs only for the free slots and MUST name the deferred units. Run it again to start the deferred units once a unit run reaches a terminal state.",
     {
-      "text": "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message, so the launches run in parallel. Each `Task` call MUST set `run_in_background: true`. It MUST observe each launched run with its own `pan watch <run-id>`. It MUST do each run's pending action independently, so one gated or stalled run never blocks its siblings.",
+      "text": "One operator session MAY supervise every live unit run of the session at once. It MUST launch the ready worker of each distinct run in the same message, so the launches run in parallel. Each `Task` call MUST set `run_in_background: true`. It MUST observe each launched run with its own `pan watch <run-id>`. It MUST do each run's pending action independently, so one gated or stalled run never blocks its siblings.",
       "audience": ["supervisor"]
     },
     {

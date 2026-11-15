@@ -20,6 +20,7 @@ import {
   startCohort,
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
+import { loadRunWorkflow } from '../../src/lib/engine/core.js'
 import { prepareInvocation } from '../../src/lib/engine.js'
 import { repositoryChecksConfigDigest } from '../../src/lib/gate-cache.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
@@ -107,18 +108,18 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
     ['running', 'running'],
   )
 
-  // Cohort 2 stays refused at the lifecycle boundary a stage worker uses.
+  // Gamma waits on its unmerged predecessor; a second start defers it.
   const blocked = loadCohortState(root, session.cohort_id)
 
   assert.equal(
     blocked.chunks.find((chunk) => chunk.id === 'gamma')?.run_id,
     undefined,
   )
-  assert.throws(
-    () => startCohort(root, session.cohort_id),
-    (error: unknown) =>
-      error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
-  )
+
+  const deferred = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(deferred.chunks, [])
+  assert.deepEqual(deferred.deferred_chunks, ['gamma'])
 })
 
 test('one cohort status read carries the bootstrap command set of every live chunk run', () => {
@@ -632,11 +633,62 @@ test('a chunk abandoned before it started receives no worktree and no run', () =
   assert.equal(beta?.run_id, undefined)
   assert.equal(beta?.worktree, undefined)
 
-  // Nothing is left to start in cohort 1, and the status view agrees.
+  // Gamma waits on alpha; a second start defers it rather than refusing.
   assert.equal(cohortStatus(root, session.cohort_id).start_command, null)
+
+  const deferred = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(deferred.chunks, [])
+  assert.deepEqual(deferred.deferred_chunks, ['gamma'])
+})
+
+test('classified chunks use their size-selected workflow without per-chunk ship', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1, size_class: 'XS' },
+    { id: 'beta', cohort_index: 1, size_class: 'S' },
+    { id: 'gamma', cohort_index: 1, size_class: 'M' },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+  assert.equal(started.max_parallel, 3)
+  assert.equal(started.chunks.length, 3)
+  for (const chunk of started.chunks) {
+    const run = loadState(root, chunk.run_id)
+    const expected = chunk.chunk === 'gamma' ? 'standard' : 'one-shot'
+    assert.equal(run.workflow_slug, expected)
+    const workflow = loadRunWorkflow(root, run)
+    assert.equal(
+      workflow.start_stage,
+      expected === 'standard' ? 'plan' : 'implement',
+    )
+    assert.ok(!workflow.stages.some((stage) => stage.slug === 'ship'))
+    const terminal = workflow.stages.find(
+      (stage) =>
+        stage.slug === (expected === 'standard' ? 'verify' : 'implement'),
+    )
+    assert.equal(terminal?.transitions.success, 'succeeded')
+  }
+})
+
+test('abandoning a live chunk does not free its parallelism slot', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId, maxParallel: 1 })
+  const started = startCohort(root, session.cohort_id)
+  abandonChunk(root, session.cohort_id, 'alpha', 'Stop this work')
+  assert.equal(cohortStatus(root, session.cohort_id).live_chunk_runs, 1)
   assert.throws(
     () => startCohort(root, session.cohort_id),
     (error: unknown) =>
-      error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
+      error instanceof PanError && error.code === 'COHORT_PARALLELISM_LIMIT',
+  )
+  markSucceeded(root, started.chunks[0].run_id)
+  assert.deepEqual(
+    startCohort(root, session.cohort_id).chunks.map((chunk) => chunk.chunk),
+    ['beta'],
   )
 })

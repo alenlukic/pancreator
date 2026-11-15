@@ -1,5 +1,18 @@
 # Changelog
 
+## [10.13.0] - 2026-11-15
+
+### Changed
+
+- Start a ready cohort unit when its own predecessors merge, even while a sibling in the same group still runs ([COHORT-001](governance/policies/COHORT-001.json), [bf1a3fc4](https://github.com/alenlukic/pancreator/commit/bf1a3fc4)).
+- Lower the default cohort parallelism limit from 4 to 3 ([grammar](src/lib/pan-command-grammar.ts), [bf1a3fc4](https://github.com/alenlukic/pancreator/commit/bf1a3fc4)).
+- Record a merge proof per unit so concurrent group merges keep distinct evidence paths ([integration](src/lib/cohorts/integration.ts), [fbd38ff4](https://github.com/alenlukic/pancreator/commit/fbd38ff4)).
+- Drop the ship stage from size-routed one-shot and standard cohort units so ship stays on the integrated result ([create-run](src/lib/engine/create-run.ts), [fbd38ff4](https://github.com/alenlukic/pancreator/commit/fbd38ff4)).
+
+### Added
+
+- Require `size_class` `XS`, `S`, or `M` on every chunk in a classified cohort plan ([cohort-plan](src/lib/validators/cohort-plan.ts), [fbd38ff4](https://github.com/alenlukic/pancreator/commit/fbd38ff4)).
+
 ## [10.12.0] - 2026-11-15
 
 ### Changed

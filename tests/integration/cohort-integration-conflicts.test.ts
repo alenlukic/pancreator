@@ -114,7 +114,7 @@ test('a multi-chunk conflict records which chunks already landed', () => {
   git(root, ['commit', '-m', 'chore: base side'])
 
   const baseBefore = git(root, ['rev-parse', 'HEAD']).trim()
-  const recordPath = `runtime/logs/cohorts/${session.cohort_id}/integration-1-incomplete.json`
+  const recordPath = `runtime/logs/cohorts/${session.cohort_id}/integration-1-alpha-beta-incomplete.json`
 
   // Alpha merges first and lands; beta conflicts. The error and the durable
   // record both say so, because the merge that landed cannot be undone by the
@@ -145,9 +145,19 @@ test('a multi-chunk conflict records which chunks already landed', () => {
   assert.notEqual(record.base_commit_after_conflict, baseBefore)
 
   // The base checkout is the operator's own working tree, so the conflicted
-  // merge itself is aborted, and no satisfaction entry is written.
+  // merge itself is aborted; only the landed alpha has a satisfaction entry.
   assert.equal(git(root, ['status', '--porcelain']).trim(), '')
-  assert.deepEqual(loadCohortState(root, session.cohort_id).satisfaction, [])
+  const proofs = loadCohortState(root, session.cohort_id).satisfaction
+  assert.deepEqual(
+    proofs.map((proof) => proof.chunk),
+    ['alpha'],
+  )
+  assert.ok(existsSync(path.join(root, proofs[0].evidence_path)))
+  assert.equal(
+    readFileSync(path.join(root, 'alpha.txt'), 'utf8'),
+    'alpha landed\n',
+  )
+  assert.deepEqual(releaseRuns(root), [])
 })
 
 // One pre-integration session carries three scenarios in sequence: a release
@@ -320,7 +330,7 @@ test('the last integration starts the release run at verify in its own worktree,
   })
   assert.equal(
     completed.evidence_path,
-    `runtime/logs/cohorts/${cohortId}/integration-1.json`,
+    `runtime/logs/cohorts/${cohortId}/integration-1-alpha-beta.json`,
   )
   assert.match(
     renderStatus(state),

@@ -4,6 +4,13 @@ export const SIZE_CLASSES = ['XS', 'S', 'M', 'L', 'XL'] as const
 
 export type SizeClass = (typeof SIZE_CLASSES)[number]
 
+/** A decomposition unit never exceeds the M hard maximum. */
+export type CohortChunkSize = Extract<SizeClass, 'XS' | 'S' | 'M'>
+
+export function isCohortChunkSize(value: unknown): value is CohortChunkSize {
+  return value === 'XS' || value === 'S' || value === 'M'
+}
+
 export interface SizeThreshold {
   sizeClass: Exclude<SizeClass, 'XL'>
   slocTarget: number

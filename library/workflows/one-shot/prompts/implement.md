@@ -50,4 +50,6 @@ contract.
 
 The request is implemented within the S hard max, the cycles stay at three
 or fewer, the static and fast checks pass, and every acceptance criterion
-has an honest evidence-backed result. The next stage is ship.
+has an honest evidence-backed result. A standalone run advances to ship.
+A cohort chunk ends here on success; the harness integrates its branch and
+prepares release only after the full cohort session is integrated.

@@ -34,7 +34,7 @@ export interface EvalCohortOptions {
    * planning default; `false` stops the run at the ratified plan.
    */
   autostart: boolean
-  /** Parallelism limit the autostarted session records; default 4. */
+  /** Parallelism limit the autostarted session records; default 3. */
   max_parallel?: number
 }
 

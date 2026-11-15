@@ -25,7 +25,7 @@ import type {
 /** Workflow whose ratified artifact a cohort fan-out reads. */
 export const COHORT_PLAN_WORKFLOW_SLUG = 'planning'
 /**
- * Workflow each chunk run executes. It ends at a verified implementation on the
+ * Workflow legacy unclassified chunk runs execute. It ends at a verified implementation on the
  * chunk branch; release preparation belongs to the integrated result, not to
  * every chunk, so the chunk workflow carries no ship stage.
  */
@@ -43,7 +43,7 @@ export const DELIVERY_WORKFLOW_SLUG = 'delivery'
  */
 export const RELEASE_RUN_START_STAGE = 'verify'
 /** Concurrent chunk runs one cohort session allows unless the operator sets another limit. */
-export const DEFAULT_COHORT_MAX_PARALLEL = 4
+export const DEFAULT_COHORT_MAX_PARALLEL = 3
 /** Occasion a cohort supervisor declares in each run's redline record. */
 export const COHORT_REDLINE_OCCASION = 'pan-cohort'
 export const COHORT_ID_PATTERN =
@@ -92,7 +92,7 @@ export interface CohortStatusView {
   start_command: string | null
   /** Concurrent chunk runs the session allows. */
   max_parallel: number
-  /** Chunk runs of the active cohort that are started and not terminal. */
+  /** Chunk runs of the session that are started and not terminal. */
   live_chunk_runs: number
   /** Operator command that supervises every live chunk run at once, or null when none is live. */
   supervise_command: string | null
@@ -114,7 +114,7 @@ export interface CohortStatusView {
 export interface CohortStartResult {
   cohort_id: string
   cohort_index: number
-  /** Chunks of the cohort left unstarted because the parallelism limit was reached. */
+  /** Unstarted chunks deferred by predecessors or the session parallelism limit. */
   deferred_chunks: string[]
   max_parallel: number
   /** Operator command that supervises every live chunk run of the cohort at once. */
@@ -193,6 +193,7 @@ export type CohortAdvanceResult =
       cohort_index: number
       error: string
       manual_commands: string[]
+      autostart?: CohortContinuationResult
     }
 
 /** What integrating one cohort started next. */

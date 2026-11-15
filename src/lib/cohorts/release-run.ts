@@ -21,7 +21,6 @@ import {
   type CohortStartResult,
 } from './state.js'
 import {
-  chunksOfCohort,
   cohortIndexes,
   cohortMaxParallel,
   cohortRepositoryRoot,
@@ -164,17 +163,15 @@ function existingReleaseRun(
 }
 
 /**
- * The chunk runs of the first cohort when at least one already exists, or null
- * when the cohort has not been started at all.
+ * The started chunk runs across the session, or null before the first start.
+ * The DAG scheduler can start independent units from more than one group.
  */
-export function startedChunksOfFirstCohort(
+export function startedChunksOfSession(
   root: string,
   state: CohortSessionState,
 ): CohortStartResult | null {
   const [firstIndex] = cohortIndexes(state)
-  const chunks = chunksOfCohort(state, firstIndex).filter(
-    (chunk) => chunk.run_id,
-  )
+  const chunks = state.chunks.filter((chunk) => chunk.run_id)
 
   // The autostart fires the first batch only. A cohort wider than the
   // parallelism limit legitimately keeps unstarted chunks, which the operator
@@ -189,9 +186,7 @@ export function startedChunksOfFirstCohort(
   return {
     cohort_id: state.cohort_id,
     cohort_index: firstIndex,
-    deferred_chunks: unstartedChunksOfCohort(state, firstIndex).map(
-      (chunk) => chunk.id,
-    ),
+    deferred_chunks: unstartedChunksOfCohort(state).map((chunk) => chunk.id),
     max_parallel: cohortMaxParallel(state),
     supervise_command: `/pan-cohort ${state.cohort_id}`,
     chunks: chunks.map((chunk) => ({

@@ -1,3 +1,4 @@
+import type { CohortChunkSize } from '../intake/classification.js'
 import type { StageOutcome } from './executors.js'
 import type { CriterionType, StageCheckpoint } from './workflow.js'
 import type { RunActionActor, WorkspaceSnapshot } from './workspace.js'
@@ -484,6 +485,8 @@ export interface CohortChunkRecord {
   cohort_index: number
   child_spec_path: string
   depends_on: string[]
+  /** Classified decomposition route; absent on legacy planning records. */
+  size_class?: CohortChunkSize
   worktree?: string
   branch?: string
   run_id?: string
@@ -505,11 +508,16 @@ export interface CohortGroupRecord {
 }
 
 /**
- * Proof that one cohort finished and merged. `integrateCohort` is the only
- * writer, so a later cohort cannot start on an unmerged predecessor.
+ * Proof that one unit, or every unit of one cohort group, merged.
+ * `integrateCohort` is the only writer. A later unit starts once each of its
+ * own predecessor units has a merge proof, not once the whole earlier group
+ * has merged. An entry without `chunk` is a group-level proof that covers
+ * every unit of `cohort_index` (legacy full-group merges).
  */
 export interface CohortSatisfactionRecord {
   cohort_index: number
+  /** Unit this merge landed. Absent on a group-level proof. */
+  chunk?: string
   recorded_at: string
   base_branch: string
   /** Branch the cohort merged into when it differs from `base_branch`. */
@@ -542,7 +550,7 @@ export interface CohortSessionState {
   /**
    * Concurrent chunk runs the session allows. `pan cohort start` fills only
    * the slots that terminal runs freed. Records older than the field default
-   * to four.
+   * to three.
    */
   max_parallel?: number
   /**

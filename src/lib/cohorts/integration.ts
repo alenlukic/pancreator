@@ -3,7 +3,7 @@
  * integration records they write.
  */
 
-import { invariant, errorMessage } from '../errors.js'
+import { invariant, errorMessage, PanError } from '../errors.js'
 import {
   gitWorktreeIsDirty,
   gitStatusPaths,
@@ -47,13 +47,15 @@ import {
   type CohortIntegrationResult,
 } from './state.js'
 import {
-  assertPredecessorsSatisfied,
+  chunkIdSlug,
+  chunkIsMerged,
+  assertChunkPredecessorsMerged,
   chunkRunState,
   chunksOfCohort,
   cohortRepositoryRoot,
-  cohortRunsSucceeded,
   firstUnsatisfiedIndex,
   integrationBranch,
+  succeededUnmergedChunks,
 } from './chunks.js'
 import { continueAfterIntegration } from './delivery.js'
 
@@ -121,7 +123,13 @@ export function integrateCohort(
   cohortId: string,
   options: { intoBranch?: string | null } = {},
 ): CohortIntegrationResult {
-  const integrated = integrateActiveCohort(root, cohortId, options)
+  let integrated: IntegratedCohort | null
+  try {
+    integrated = integrateActiveCohort(root, cohortId, options)
+  } catch (error) {
+    continuePartialMerge(root, cohortId, error)
+    throw error
+  }
 
   invariant(
     integrated,
@@ -136,20 +144,14 @@ export function integrateCohort(
 }
 
 /**
- * Integrate the group a finished chunk run belongs to, and continue the plan.
+ * Integrate the submitting unit (and any sibling of its group that also
+ * succeeded), then continue the plan.
  *
- * A cohort session used to stop here: every unit of a group reported success,
- * and the harness still waited for a human to commit the unit worktrees and
- * run `cohort integrate`. Both steps are decided by records the harness
- * already holds, so this hook takes them. It is the sibling of
- * `maybeStartDelivery` and keeps that shape: it fires from the lifecycle
- * commands after the run state is durable, outside the run mutex, and a
- * failure is reported with the manual command rather than undoing anything.
- *
- * The hook never integrates a group other than the submitting run's own. Two
- * siblings of one group can both reach this before either takes the session
- * mutex, so the integration rechecks the active group under that mutex and the
- * loser reports no advance instead of a failure against the next group.
+ * A unit that reports success is ready to merge even while an unrelated
+ * sibling of the same group is still running. Two siblings can both reach
+ * this before either takes the session mutex, so the integration rechecks
+ * succeeded-unmerged units of the submitting group under that mutex and the
+ * loser reports no advance instead of a failure against a later group.
  */
 export function maybeAdvanceCohort(
   root: string,
@@ -166,15 +168,21 @@ export function maybeAdvanceCohort(
     return null
   }
 
-  const { cohort_id: cohortId, cohort_index: cohortIndex } = binding
-  const session = loadCohortState(root, cohortId)
+  if (!('chunk' in binding)) {
+    return null
+  }
 
-  // Read before the mutex: the ordinary submission, whose group still has a
-  // unit running, then costs nothing beyond these two record reads.
-  if (
-    session.satisfaction.some((entry) => entry.cohort_index === cohortIndex) ||
-    !cohortRunsSucceeded(root, session, cohortIndex)
-  ) {
+  const {
+    cohort_id: cohortId,
+    cohort_index: cohortIndex,
+    chunk: chunkId,
+  } = binding
+  const session = loadCohortState(root, cohortId)
+  const chunk = session.chunks.find((entry) => entry.id === chunkId)
+
+  // Read before the mutex: a unit that already merged, or that never ran,
+  // costs nothing beyond these record reads.
+  if (!chunk || chunkIsMerged(session, chunk)) {
     return null
   }
 
@@ -193,16 +201,36 @@ export function maybeAdvanceCohort(
       autostart: continueAfterIntegration(root, cohortId),
     }
   } catch (error) {
-    // The merge proof is unwritten, so the next group stays blocked and the
-    // retry is the same command an operator would have run.
+    const autostart = continuePartialMerge(root, cohortId, error)
+    // Only the conflicted unit lacks proof. Preserve the error and report
+    // any continuation that the successfully merged units unlocked.
     return {
       status: 'failed',
       cohort_id: cohortId,
       cohort_index: cohortIndex,
       error: errorMessage(error),
       manual_commands: [`${panCommand(root)} cohort integrate ${cohortId}`],
+      ...(autostart ? { autostart } : {}),
     }
   }
+}
+
+function continuePartialMerge(
+  root: string,
+  cohortId: string,
+  error: unknown,
+): CohortContinuationResult | undefined {
+  if (
+    error instanceof PanError &&
+    error.code === 'COHORT_INTEGRATION_INCOMPLETE' &&
+    Array.isArray(
+      (error.details as { merged_chunks?: unknown } | undefined)?.merged_chunks,
+    ) &&
+    (error.details as { merged_chunks: unknown[] }).merged_chunks.length > 0
+  ) {
+    return continueAfterIntegration(root, cohortId)
+  }
+  return undefined
 }
 
 type IntegratedCohort = Omit<CohortIntegrationResult, 'autostart'>
@@ -210,14 +238,14 @@ type IntegratedCohort = Omit<CohortIntegrationResult, 'autostart'>
 interface IntegrateCohortOptions {
   intoBranch?: string | null
   /**
-   * The one group this call may integrate. The automatic advance sets it to
-   * the submitting run's own group, so a sibling submission that loses the
-   * race reports no advance instead of integrating a group it never ran.
+   * The one group this call may merge. The automatic advance sets it to the
+   * submitting run's own group, so a sibling submission that loses the race
+   * reports no advance instead of merging a group it never ran.
    */
   onlyCohortIndex?: number
 }
 
-/** Null only when `onlyCohortIndex` no longer names the active group. */
+/** Null only when the named group has nothing left to merge. */
 function integrateActiveCohort(
   root: string,
   cohortId: string,
@@ -227,13 +255,29 @@ function integrateActiveCohort(
     const loaded = options.intoBranch
       ? retargetIntegration(root, initial, options.intoBranch)
       : initial
-    const cohortIndex = firstUnsatisfiedIndex(root, loaded)
 
-    if (cohortIndex === null) {
-      if (options.onlyCohortIndex !== undefined) {
+    if (options.onlyCohortIndex !== undefined) {
+      const toMerge = succeededUnmergedChunks(
+        root,
+        loaded,
+        options.onlyCohortIndex,
+      )
+
+      if (toMerge.length === 0) {
         return null
       }
 
+      return mergeSucceededChunks(
+        root,
+        loaded,
+        options.onlyCohortIndex,
+        toMerge,
+      )
+    }
+
+    const cohortIndex = firstUnsatisfiedIndex(root, loaded)
+
+    if (cohortIndex === null) {
       invariant(
         !loaded.release_run_id,
         `Every cohort of session ${cohortId} is already integrated.`,
@@ -246,102 +290,141 @@ function integrateActiveCohort(
       return lastIntegratedCohort(loaded)
     }
 
-    // Two sibling submissions can both see their own group unsatisfied before
-    // either takes this mutex. The loser finds the winner's satisfaction entry
-    // recorded and the active group moved on, and reports no advance.
-    if (
-      options.onlyCohortIndex !== undefined &&
-      options.onlyCohortIndex !== cohortIndex
-    ) {
-      return null
-    }
-
-    assertPredecessorsSatisfied(root, loaded, cohortIndex)
-
-    const chunks = chunksOfCohort(loaded, cohortIndex).filter(
+    const remaining = chunksOfCohort(loaded, cohortIndex).filter(
       (chunk) => !chunk.abandoned,
     )
 
-    if (chunks.length === 0) {
+    if (remaining.length === 0) {
       return recordAbandonedCohort(root, loaded, cohortIndex)
     }
 
-    const index = readWorktreeIndex(root)
-    const unitCommits = new Map<string, string>()
+    const ready = integrableChunks(root, loaded)
+    const next =
+      ready.find((chunk) => chunk.cohort_index === cohortIndex) ?? ready[0]
+    const toMerge = next
+      ? succeededUnmergedChunks(root, loaded, next.cohort_index)
+      : []
 
-    for (const chunk of chunks) {
-      const run = chunkRunState(root, chunk.run_id)
+    if (toMerge.length === 0) {
+      const blocked =
+        remaining.find((chunk) => !chunkIsMerged(loaded, chunk)) ?? remaining[0]
+      const run = chunkRunState(root, blocked.run_id)
 
       invariant(
-        run?.status === 'succeeded',
-        `Chunk '${chunk.id}' run '${chunk.run_id ?? '(not started)'}' reports ` +
-          `'${run?.status ?? 'not_started'}', not 'succeeded', so cohort ` +
-          `${cohortIndex} cannot be integrated.`,
+        false,
+        `Chunk '${blocked.id}' run '${blocked.run_id ?? '(not started)'}' ` +
+          `reports '${run?.status ?? 'not_started'}', not 'succeeded', so ` +
+          `cohort ${cohortIndex} cannot be integrated.`,
         {
           code: 'COHORT_INTEGRATION_INCOMPLETE',
-          details: { chunk: chunk.id, status: run?.status ?? 'not_started' },
+          details: {
+            chunk: blocked.id,
+            status: run?.status ?? 'not_started',
+          },
         },
       )
-
-      const record = index.worktrees.find(
-        (entry) => entry.name === chunk.worktree,
-      )
-
-      invariant(
-        record,
-        `Chunk '${chunk.id}' has no recorded worktree, so there is nothing to ` +
-          'merge.',
-        { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
-      )
-
-      const unitCommit = commitUnitWorktree(
-        root,
-        resolveInside(root, record.path),
-        loaded,
-        cohortIndex,
-        chunk,
-      )
-
-      if (unitCommit) {
-        unitCommits.set(chunk.id, unitCommit)
-      }
     }
 
-    const merged =
-      chunks.length >= 2
-        ? mergeThroughReconcile(root, loaded, cohortIndex, chunks, unitCommits)
-        : mergeSingleChunkBranch(
-            root,
-            loaded,
-            cohortIndex,
-            chunks[0],
-            unitCommits,
-          )
+    return mergeSucceededChunks(root, loaded, toMerge[0].cohort_index, toMerge)
+  })
+}
 
-    persistCohortState(root, {
-      ...loaded,
-      satisfaction: [
-        ...loaded.satisfaction,
-        {
-          cohort_index: cohortIndex,
-          recorded_at: now(),
-          base_branch: loaded.base_branch,
-          integration_branch: integrationBranch(loaded),
-          merge_commit: merged.merge_commit,
-          evidence_path: merged.evidence_path,
-        },
-      ],
-    })
+/**
+ * Succeeded-unmerged units of any group, so an operator retry can merge a
+ * later dependent while an unrelated earlier sibling is still running.
+ */
+function integrableChunks(
+  root: string,
+  state: CohortSessionState,
+): CohortChunkRecord[] {
+  return state.chunks.filter(
+    (chunk) =>
+      !chunk.abandoned &&
+      !chunkIsMerged(state, chunk) &&
+      chunkRunState(root, chunk.run_id)?.status === 'succeeded',
+  )
+}
 
-    return {
-      cohort_id: cohortId,
-      cohort_index: cohortIndex,
-      base_branch: loaded.base_branch,
-      integration_branch: integrationBranch(loaded),
-      merge_commit: merged.merge_commit,
-      merged_chunks: chunks.map((chunk) => chunk.id),
-      evidence_path: merged.evidence_path,
+function mergeSucceededChunks(
+  root: string,
+  loaded: CohortSessionState,
+  cohortIndex: number,
+  chunks: CohortChunkRecord[],
+): IntegratedCohort {
+  const index = readWorktreeIndex(root)
+  const unitCommits = new Map<string, string>()
+
+  for (const chunk of chunks) {
+    assertChunkPredecessorsMerged(root, loaded, chunk)
+    const record = index.worktrees.find(
+      (entry) => entry.name === chunk.worktree,
+    )
+
+    invariant(
+      record,
+      `Chunk '${chunk.id}' has no recorded worktree, so there is nothing to ` +
+        'merge.',
+      { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
+    )
+
+    const unitCommit = commitUnitWorktree(
+      root,
+      resolveInside(root, record.path),
+      loaded,
+      chunk.cohort_index,
+      chunk,
+    )
+
+    if (unitCommit) {
+      unitCommits.set(chunk.id, unitCommit)
     }
+  }
+
+  const merged =
+    chunks.length >= 2
+      ? mergeThroughReconcile(root, loaded, cohortIndex, chunks, unitCommits)
+      : mergeSingleChunkBranch(
+          root,
+          loaded,
+          cohortIndex,
+          chunks[0],
+          unitCommits,
+        )
+
+  recordMergedChunks(root, loaded, chunks, merged)
+
+  return {
+    cohort_id: loaded.cohort_id,
+    cohort_index: cohortIndex,
+    base_branch: loaded.base_branch,
+    integration_branch: integrationBranch(loaded),
+    merge_commit: merged.merge_commit,
+    merged_chunks: chunks.map((chunk) => chunk.id),
+    evidence_path: merged.evidence_path,
+  }
+}
+
+/** The caller holds the session mutex and has verified these branches landed. */
+function recordMergedChunks(
+  root: string,
+  state: CohortSessionState,
+  chunks: CohortChunkRecord[],
+  merged: MergeOutcome,
+): void {
+  persistCohortState(root, {
+    ...state,
+    satisfaction: [
+      ...state.satisfaction,
+      ...chunks.map((chunk) => ({
+        cohort_index: chunk.cohort_index,
+        chunk: chunk.id,
+        recorded_at: now(),
+        base_branch: state.base_branch,
+        integration_branch: integrationBranch(state),
+        merge_commit: merged.merge_commit,
+        evidence_path: merged.evidence_path,
+      })),
+    ],
   })
 }
 
@@ -427,9 +510,7 @@ function commitUnitWorktree(
 export function lastIntegratedCohort(
   state: CohortSessionState,
 ): IntegratedCohort {
-  const last = [...state.satisfaction].sort(
-    (left, right) => right.cohort_index - left.cohort_index,
-  )[0]
+  const last = state.satisfaction.at(-1)
 
   invariant(last, `Session ${state.cohort_id} records no integrated cohort.`, {
     code: 'INVALID_COHORT_STATE',
@@ -441,9 +522,18 @@ export function lastIntegratedCohort(
     base_branch: last.base_branch,
     integration_branch: last.integration_branch ?? integrationBranch(state),
     merge_commit: last.merge_commit,
-    merged_chunks: chunksOfCohort(state, last.cohort_index)
-      .filter((chunk) => !chunk.abandoned)
-      .map((chunk) => chunk.id),
+    merged_chunks:
+      last.chunk === undefined
+        ? chunksOfCohort(state, last.cohort_index)
+            .filter((chunk) => !chunk.abandoned)
+            .map((chunk) => chunk.id)
+        : state.satisfaction
+            .filter(
+              (entry) =>
+                entry.evidence_path === last.evidence_path &&
+                entry.chunk !== undefined,
+            )
+            .map((entry) => entry.chunk as string),
     evidence_path: last.evidence_path,
   }
 }
@@ -453,8 +543,17 @@ interface MergeOutcome {
   evidence_path: string
 }
 
-function integrationRecordPath(cohortId: string, cohortIndex: number): string {
-  return `runtime/logs/cohorts/${cohortId}/integration-${cohortIndex}.json`
+function integrationRecordPath(
+  cohortId: string,
+  cohortIndex: number,
+  chunks: readonly CohortChunkRecord[],
+): string {
+  const suffix =
+    chunks.length === 0
+      ? ''
+      : `-${chunks.map((chunk) => chunkIdSlug(chunk.id)).join('-')}`
+
+  return `runtime/logs/cohorts/${cohortId}/integration-${cohortIndex}${suffix}.json`
 }
 
 /**
@@ -481,7 +580,11 @@ function writeIntegrationRecord(
   },
 ): string {
   const repositoryRoot = cohortRepositoryRoot(root, state)
-  const evidencePath = integrationRecordPath(state.cohort_id, cohortIndex)
+  const evidencePath = integrationRecordPath(
+    state.cohort_id,
+    cohortIndex,
+    record.merged,
+  )
 
   writeJsonAtomic(resolveInside(root, evidencePath), {
     schema_version: 1,
@@ -649,7 +752,11 @@ function mergeThroughReconcile(
   if (result.status === 'conflict') {
     const landed = result.merged_sources.map(chunkOfWorktree)
     const conflicted = chunkOfWorktree(result.conflicted_source ?? '')
-    const recordPath = incompleteIntegrationPath(state.cohort_id, cohortIndex)
+    const recordPath = incompleteIntegrationPath(
+      state.cohort_id,
+      cohortIndex,
+      chunks,
+    )
 
     writeJsonAtomic(resolveInside(root, recordPath), {
       schema_version: 1,
@@ -666,6 +773,25 @@ function mergeThroughReconcile(
       merge_aborted: result.merge_aborted,
       recorded_at: now(),
     })
+
+    // Reconcile is sequential: a later conflict cannot undo earlier merges.
+    // Record proofs for the branches that actually landed, so their own
+    // successors are not held behind an unrelated conflicted sibling.
+    const landedChunks = chunks.filter((chunk) => landed.includes(chunk.id))
+    if (landedChunks.length > 0) {
+      const mergeCommit = gitRevParse(repositoryRoot, target)
+      const evidencePath = writeIntegrationRecord(root, state, cohortIndex, {
+        merged: landedChunks,
+        unit_commits: unitCommits,
+        base_commit_before_merge: baseBefore,
+        merge_commit: mergeCommit,
+        reconcile_evidence_path: result.evidence_path,
+      })
+      recordMergedChunks(root, state, landedChunks, {
+        merge_commit: mergeCommit,
+        evidence_path: evidencePath,
+      })
+    }
 
     invariant(
       false,
@@ -710,8 +836,14 @@ function mergeThroughReconcile(
 function incompleteIntegrationPath(
   cohortId: string,
   cohortIndex: number,
+  chunks: readonly CohortChunkRecord[],
 ): string {
-  return `runtime/logs/cohorts/${cohortId}/integration-${cohortIndex}-incomplete.json`
+  const suffix =
+    chunks.length === 0
+      ? ''
+      : `-${chunks.map((chunk) => chunkIdSlug(chunk.id)).join('-')}`
+
+  return `runtime/logs/cohorts/${cohortId}/integration-${cohortIndex}${suffix}-incomplete.json`
 }
 
 /**

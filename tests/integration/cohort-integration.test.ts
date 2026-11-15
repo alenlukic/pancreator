@@ -80,17 +80,22 @@ test('integration merges a finished cohort and unblocks the next one', () => {
 
   const satisfaction = loadCohortState(root, session.cohort_id).satisfaction
 
-  assert.equal(satisfaction.length, 1)
+  assert.equal(satisfaction.length, 2)
+  assert.deepEqual(satisfaction.map((entry) => entry.chunk).sort(), [
+    'alpha',
+    'beta',
+  ])
   assert.equal(satisfaction[0].cohort_index, 1)
   assert.ok(satisfaction[0].merge_commit.length > 0)
+  assert.equal(satisfaction[0].merge_commit, satisfaction[1].merge_commit)
 
-  // A multi-chunk cohort merges through the reconcile ledger, but the durable
-  // merge proof COHORT-001 requires is the per-cohort record, the same one a
-  // single-chunk cohort writes. The shared ledger is referenced from it.
-  const recordPath = `runtime/logs/cohorts/${session.cohort_id}/integration-1.json`
+  // A multi-chunk merge writes one evidence record named for the units it
+  // landed, and each unit's satisfaction entry points at that record.
+  const recordPath = `runtime/logs/cohorts/${session.cohort_id}/integration-1-alpha-beta.json`
 
   assert.equal(integration.evidence_path, recordPath)
   assert.equal(satisfaction[0].evidence_path, recordPath)
+  assert.equal(satisfaction[1].evidence_path, recordPath)
 
   const record = JSON.parse(
     readFileSync(path.join(root, recordPath), 'utf8'),
@@ -210,7 +215,7 @@ test('a single-chunk cohort integrates through a direct merge', () => {
   )
   assert.equal(
     integration.evidence_path,
-    `runtime/logs/cohorts/${session.cohort_id}/integration-1.json`,
+    `runtime/logs/cohorts/${session.cohort_id}/integration-1-alpha.json`,
   )
   assert.ok(existsSync(path.join(root, integration.evidence_path)))
 

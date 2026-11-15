@@ -37,6 +37,9 @@ export type { CohortBaselineClaim } from './cohorts/baselines.js'
 export {
   cohortMaxParallel,
   cohortIsSatisfied,
+  chunkIsMerged,
+  readyUnstartedChunks,
+  predecessorIds,
   assertCohortRunUnblocked,
 } from './cohorts/chunks.js'
 export { parseCohortPlan, readRatifiedCohortPlan } from './cohorts/plan.js'

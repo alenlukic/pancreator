@@ -150,6 +150,10 @@ unevaluated criteria are placeholders, and its presence does not show completion
 `data.cohort_plan` states `parent_spec_path`, `chunks`, `edges`, and
 `cohorts`, plus `serial_justification` for a single-chunk plan. Each chunk
 states `id`, `cohort_index`, `child_spec_path`, `depends_on`, and `title`.
+For a size-driven decomposition, also record `size_class` (`XS`, `S`, or `M`)
+on every chunk, matching the chunk's classification. An XS or S chunk runs
+one-shot; an M chunk runs standard. Ship belongs to the integrated result,
+not individual chunks. Legacy unclassified plans retain delivery-chunk.
 Each edge states `from` and `to`, naming chunk ids. Each cohort states
 `index` and `chunks`, naming the chunk ids of that cohort. `shared_items`
 lists the identifiers of the originating items several chunks carry, and it is

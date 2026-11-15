@@ -81,6 +81,7 @@ import {
   loadWorkflow,
   stageBySlug,
   stagePersonaCandidates,
+  validateWorkflow,
 } from '../workflow.js'
 import { resolveRoots } from '../workspace/roots.js'
 
@@ -320,6 +321,34 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       },
     )
     workflow = composeDesignWorkflow(root, workflow)
+  }
+
+  // A size-routed cohort unit runs the normal route, but release preparation
+  // belongs to the integrated result, never an individual chunk. Snapshot
+  // the shortened graph so standalone runs and in-flight runs stay unchanged.
+  if (
+    options.cohort &&
+    options.cohort.role !== 'release' &&
+    (workflowSlug === 'one-shot' || workflowSlug === 'standard')
+  ) {
+    workflow = validateWorkflow(
+      root,
+      {
+        ...workflow,
+        stages: workflow.stages
+          .filter((stage) => stage.slug !== 'ship')
+          .map((stage) => ({
+            ...stage,
+            transitions: {
+              ...stage.transitions,
+              ...(stage.transitions.success === 'ship'
+                ? { success: 'succeeded' }
+                : {}),
+            },
+          })),
+      },
+      `cohort chunk ${workflowSlug}`,
+    )
   }
 
   // A start-stage override must name a stage of this workflow, checked before

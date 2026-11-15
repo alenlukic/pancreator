@@ -17,6 +17,7 @@ export interface ChunkSpec {
   id: string
   cohort_index: number
   depends_on?: string[]
+  size_class?: 'XS' | 'S' | 'M'
 }
 
 /**
@@ -71,6 +72,7 @@ export function ratifiedPlanRun(
           cohort_index: chunk.cohort_index,
           child_spec_path: `runtime/specs/${chunk.id}.md`,
           depends_on: chunk.depends_on ?? [],
+          ...(chunk.size_class ? { size_class: chunk.size_class } : {}),
         })),
         edges: chunks.flatMap((chunk) =>
           (chunk.depends_on ?? []).map((from) => ({ from, to: chunk.id })),

@@ -153,19 +153,19 @@
           "id": "cohort-integration",
           "type": "policy",
           "policy_id": "COHORT-001",
-          "instruction_sha256": "84d63ce2b99e2d910314332042d52ae1e7b2b55f1f42bdeb0d99f795697973bb"
+          "instruction_sha256": "16199f6ffef71fb3671e76411aec61318aab27539b1d6d82ec3056214d691d91"
         },
         {
           "id": "cohort-limit",
           "type": "policy",
           "policy_id": "COHORT-001",
-          "instruction_sha256": "f1c30bcbbfa65a3758bd4b30786b3b2580a5fd0053ada01998ce4e1e39b74ec7"
+          "instruction_sha256": "500a6f189d720f34e119d4eda7cbe9e7e103fbb73c64201a3ffd1cef0166d99b"
         },
         {
           "id": "cohort-parallel",
           "type": "policy",
           "policy_id": "COHORT-001",
-          "instruction_sha256": "1af7fd3d9398f94564bf189bdffe9a53d2b81aec2cd4547cffb68f86e8e2b4fc"
+          "instruction_sha256": "e497aa329b41170835f6345a6d6cb01afd5a105ad575206e34463e45b64d0d3f"
         },
         {
           "id": "cohort-one-worker",

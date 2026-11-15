@@ -92,7 +92,7 @@ test('an attributed read-only design source in both checkouts no longer refuses 
   assert.deepEqual(integration.merged_chunks, ['foundation-registry'])
   assert.equal(
     integration.evidence_path,
-    `runtime/logs/cohorts/${session.cohort_id}/integration-1.json`,
+    `runtime/logs/cohorts/${session.cohort_id}/integration-1-foundation-registry.json`,
   )
   assert.ok(existsSync(path.join(root, integration.evidence_path)))
 

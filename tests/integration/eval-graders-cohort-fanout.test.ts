@@ -103,8 +103,10 @@ interface SessionOptions {
     cohortIndex: number
     runId?: string
     abandoned?: boolean
+    sizeClass?: string
   }[]
   integratedCohorts?: number[]
+  integratedChunks?: { cohortIndex: number; chunk: string }[]
 }
 
 /** Write the cohort session record and its integration evidence files. */
@@ -114,8 +116,15 @@ function writeCohortSession(root: string, options: SessionOptions): void {
   mkdirSync(directory, { recursive: true })
 
   const indexes = [...new Set(options.chunks.map((chunk) => chunk.cohortIndex))]
-  const satisfaction = (options.integratedCohorts ?? []).map((index) => {
-    const evidencePath = `runtime/logs/cohorts/${COHORT_ID}/integration-${index}.json`
+  const proofs = [
+    ...(options.integratedCohorts ?? []).map((cohortIndex) => ({
+      cohortIndex,
+      chunk: undefined,
+    })),
+    ...(options.integratedChunks ?? []),
+  ]
+  const satisfaction = proofs.map(({ cohortIndex: index, chunk }) => {
+    const evidencePath = `runtime/logs/cohorts/${COHORT_ID}/integration-${index}${chunk ? `-${chunk}` : ''}.json`
 
     writeFileSync(
       path.join(root, evidencePath),
@@ -124,6 +133,7 @@ function writeCohortSession(root: string, options: SessionOptions): void {
 
     return {
       cohort_index: index,
+      ...(chunk ? { chunk } : {}),
       recorded_at: '2026-08-29T01:00:00.000Z',
       base_branch: 'main',
       merge_commit: 'abc',
@@ -147,6 +157,7 @@ function writeCohortSession(root: string, options: SessionOptions): void {
         title: chunk.id,
         cohort_index: chunk.cohortIndex,
         child_spec_path: `${chunk.id}.md`,
+        ...(chunk.sizeClass ? { size_class: chunk.sizeClass } : {}),
         depends_on: [],
         ...(chunk.runId
           ? {
@@ -351,6 +362,49 @@ test('cohort-fanout reports serial execution, a breached limit, a wrong workflow
     )
     assert.ok(
       failures.some((item) => /cohort 2 was never integrated/u.test(item)),
+    )
+  } finally {
+    run.dispose()
+  }
+})
+
+test('cohort-fanout detects partial group proofs and cross-group limit breaches', () => {
+  const run = planRun()
+  try {
+    writeCohortSession(run.root, {
+      maxParallel: 2,
+      chunks: [
+        { id: 'a', cohortIndex: 1, runId: 'run-a', sizeClass: 'XS' },
+        { id: 'b', cohortIndex: 1, runId: 'run-b', sizeClass: 'M' },
+        { id: 'c', cohortIndex: 2, runId: 'run-c', sizeClass: 'S' },
+      ],
+      integratedChunks: [
+        { cohortIndex: 1, chunk: 'a' },
+        { cohortIndex: 2, chunk: 'c' },
+      ],
+    })
+    for (const [chunk, cohortIndex, workflow] of [
+      ['a', 1, 'one-shot'],
+      ['b', 1, 'standard'],
+      ['c', 2, 'one-shot'],
+    ] as const) {
+      writeChunkRun(run.root, {
+        runId: `run-${chunk}`,
+        chunk,
+        cohortIndex,
+        workflow,
+        attempts: [['2026-08-29T00:00:00Z', '2026-08-29T00:10:00Z']],
+      })
+    }
+    const verdict = grade(run, { id: 'cohort-fanout' })
+    assert.equal(verdict.passed, false)
+    const failures = verdict.details.failures as string[]
+    assert.deepEqual(
+      failures.sort(),
+      [
+        'cohort 1 was never integrated',
+        'session peaked at 3 concurrent attempt(s), above the limit 2',
+      ].sort(),
     )
   } finally {
     run.dispose()

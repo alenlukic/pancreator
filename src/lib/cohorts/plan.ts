@@ -1,6 +1,7 @@
 /** Cohort plan parsing and the ratified planning artifact it reads. */
 
 import { invariant } from '../errors.js'
+import { isCohortChunkSize } from '../intake/classification.js'
 import { isRecord, readJson, readText, resolveInside, sha256 } from '../io.js'
 import { loadState } from '../state.js'
 import type {
@@ -51,6 +52,9 @@ export function parseCohortPlan(
     { code: 'INVALID_COHORT_PLAN' },
   )
 
+  const classified = value.chunks.some(
+    (chunk) => isRecord(chunk) && chunk.size_class !== undefined,
+  )
   const chunks = value.chunks.map((chunk, index) => {
     const chunkSource = `${source}.chunks[${index}]`
 
@@ -63,6 +67,13 @@ export function parseCohortPlan(
     invariant(
       Number.isInteger(cohortIndex) && Number(cohortIndex) >= 1,
       `${chunkSource}.cohort_index MUST be an integer of at least 1.`,
+      { code: 'INVALID_COHORT_PLAN' },
+    )
+
+    const sizeClass = chunk.size_class
+    invariant(
+      (!classified && sizeClass === undefined) || isCohortChunkSize(sizeClass),
+      `${chunkSource}.size_class MUST be XS, S, or M for every classified chunk.`,
       { code: 'INVALID_COHORT_PLAN' },
     )
 
@@ -87,6 +98,7 @@ export function parseCohortPlan(
         `${chunkSource}.child_spec_path`,
       ),
       depends_on: dependsOn as string[],
+      ...(isCohortChunkSize(sizeClass) ? { size_class: sizeClass } : {}),
     }
   })
 

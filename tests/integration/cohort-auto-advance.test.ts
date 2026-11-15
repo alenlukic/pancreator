@@ -99,8 +99,13 @@ test('a finished group integrates and advances with no operator command', () => 
     (entry) => entry.cohort_index === 1,
   )
 
-  assert.equal(satisfaction.length, 1)
+  assert.equal(satisfaction.length, 2)
+  assert.deepEqual(satisfaction.map((entry) => entry.chunk).sort(), [
+    'alpha',
+    'beta',
+  ])
   assert.ok(satisfaction[0].merge_commit.length > 0)
+  assert.equal(satisfaction[0].merge_commit, satisfaction[1].merge_commit)
   assert.equal(
     satisfaction[0].merge_commit,
     git(root, ['rev-parse', 'HEAD']).trim(),
@@ -247,7 +252,7 @@ test('each harness unit commit carries only its own worktree and names the unit 
   }
 })
 
-test('an unsucceeded unit leaves the group unintegrated and the next one blocked', () => {
+test('a succeeded unit merges and starts its dependent while a same-group sibling still runs', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [
     { id: 'alpha', cohort_index: 1 },
@@ -256,27 +261,50 @@ test('an unsucceeded unit leaves the group unintegrated and the next one blocked
   ])
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
+  const alpha = started.chunks.find((chunk) => chunk.chunk === 'alpha')
+  const beta = started.chunks.find((chunk) => chunk.chunk === 'beta')
 
-  for (const chunk of started.chunks) {
-    writeInChunk(root, chunk.run_id, `${chunk.chunk}.txt`)
-  }
-
-  markSucceeded(root, started.chunks[0].run_id)
+  assert.ok(alpha && beta)
+  writeInChunk(root, alpha.run_id, 'alpha.txt')
+  writeInChunk(root, beta.run_id, 'beta.txt')
+  markSucceeded(root, alpha.run_id)
   git(root, ['add', '-A'])
   git(root, ['commit', '-m', 'chore: cohort fixture baseline'])
 
-  // The sibling is still running, so the hook must not advance at all.
-  assert.equal(advance(root, started.chunks[0].run_id), null)
+  const advanced = advance(root, alpha.run_id)
 
-  const status = cohortStatus(root, session.cohort_id)
+  assert.equal(advanced?.status, 'integrated')
 
-  assert.deepEqual(status.satisfied_cohort_indexes, [])
-  assert.equal(status.blocked_cohort_index, 2)
+  const state = loadCohortState(root, session.cohort_id)
+
+  assert.deepEqual(
+    state.satisfaction.map((entry) => entry.chunk),
+    ['alpha'],
+  )
   assert.ok(
-    !loadCohortState(root, session.cohort_id).chunks.find(
-      (chunk) => chunk.id === 'gamma',
-    )?.run_id,
-    'the blocked group started anyway',
+    state.chunks.find((chunk) => chunk.id === 'gamma')?.run_id,
+    'gamma stayed unstarted after alpha merged',
+  )
+  assert.equal(
+    state.chunks.find((chunk) => chunk.id === 'beta')?.run_id,
+    beta.run_id,
+  )
+  const gamma = loadState(root, runIdOf(root, session.cohort_id, 'gamma'))
+  const gammaRoot = path.join(root, gamma.workspace_root)
+  assert.equal(
+    readFileSync(path.join(gammaRoot, 'alpha.txt'), 'utf8'),
+    'alpha.txt landed\n',
+  )
+  git(gammaRoot, [
+    'merge-base',
+    '--is-ancestor',
+    state.satisfaction[0].merge_commit,
+    'HEAD',
+  ])
+  assert.equal(cohortStatus(root, session.cohort_id).live_chunk_runs, 2)
+  assert.deepEqual(
+    cohortStatus(root, session.cohort_id).satisfied_cohort_indexes,
+    [],
   )
 })
 
@@ -319,7 +347,7 @@ test('a failed automatic advance reports the manual command and the retry comple
     loadCohortState(root, cohortId).satisfaction.filter(
       (entry) => entry.cohort_index === 1,
     ).length,
-    1,
+    2,
   )
   assert.equal(retried.autostart.status, 'started')
   assert.equal(retried.autostart.kind, 'cohort')
@@ -331,6 +359,7 @@ test('a merge conflict between two units fails the advance and leaves the group 
     { id: 'alpha', cohort_index: 1 },
     { id: 'beta', cohort_index: 1 },
     { id: 'gamma', cohort_index: 2, depends_on: ['alpha'] },
+    { id: 'delta', cohort_index: 2, depends_on: ['beta'] },
   ])
   const session = initCohortSession(root, { planRunId })
   const started = startCohort(root, session.cohort_id)
@@ -370,6 +399,17 @@ test('a merge conflict between two units fails the advance and leaves the group 
     [],
   )
   assert.equal(cohortStatus(root, session.cohort_id).blocked_cohort_index, 2)
+  const after = loadCohortState(root, session.cohort_id)
+  assert.deepEqual(
+    after.satisfaction.map((proof) => proof.chunk),
+    ['alpha'],
+  )
+  assert.ok(after.chunks.find((chunk) => chunk.id === 'gamma')?.run_id)
+  assert.equal(
+    after.chunks.find((chunk) => chunk.id === 'delta')?.run_id,
+    undefined,
+  )
+  assert.equal(failed.autostart?.status, 'started')
 })
 
 test('concurrent sibling submissions integrate the group exactly once', async () => {
@@ -396,7 +436,7 @@ test('concurrent sibling submissions integrate the group exactly once', async ()
     loadCohortState(root, cohortId).satisfaction.filter(
       (entry) => entry.cohort_index === 1,
     ).length,
-    1,
+    2,
   )
 })
 

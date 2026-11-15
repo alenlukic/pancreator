@@ -1341,7 +1341,14 @@
         {
           "path": "data.skeletons[]",
           "type": "object",
-          "required": ["name", "signature", "path", "expected_input", "expected_output", "stub"],
+          "required": [
+            "name",
+            "signature",
+            "path",
+            "expected_input",
+            "expected_output",
+            "stub"
+          ],
           "format": "one skeleton per new function or endpoint"
         },
         {

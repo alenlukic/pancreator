@@ -41,13 +41,15 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - That same turn MUST include the concise operator-facing update `COMMS-001` requires. A Thinking block and the watch ledger MUST NOT replace it.
 - Use `--mark-background --launched-at <iso-8601> --handle <platform-handle>` to arm the watch after a background launch.
 - Run `pan watch` as a foreground blocking shell call. It loops on its cadence up to the one hour (3600 seconds) default bound and returns only at a terminal state or the bound.
-- When the platform detaches the blocking call early, run `./bin/pan watch --attach <ledger>` at once, naming the watch session record the watch wrote, and rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never arm a second watch over the same invocation. Never call `AwaitShell` or any platform await tool.
+- When the platform detaches the blocking call early, run `./bin/pan watch --attach <ledger>` at once. Name the watch session record the watch wrote. Rerun the same attach command on each `attach_wake` return (exit 7 at the 300-second backstop). Give every blocking `pan watch` call a 330-second block bound (330000 ms). Never arm a second watch over the same invocation. Never call `AwaitShell` or any platform await tool.
 - When the watch exits `unverified`, inspect the launched agent. Rerun the watch with `--agent-state running` or `--agent-state completed`.
 - Supply the recorded inspection through `--agent-state-evidence` for a `completed` report. Without that record, the watch spends one confirming wake.
 - Ask `./bin/pan worker state <run-id>` for a launched worker's last known state. A transcript's size and modification time are not liveness signals and MUST NOT be read as one.
 - A stall has one signal: the watch verdict `stalled` (exit `2`). `unverified` and `timed_out` are not stalls, and a file's age is not one. Before you act on any verdict, read the tail. The verdict line names the worker's open shell call, its linked `bin/pan-run` record, the heartbeat age, and the last output line.
 - Open that record's `heartbeat.json` and read `recent_lines`. A heartbeat younger than two cadences means the worker is inside a live command, however quiet. Rearm with `--agent-state running` and do not interrupt. Interrupt only under the `DELEGATE-001` interruption conditions, and put the record path, heartbeat age, and tail you read in your report.
-- For a stage with evidence workers, block on `./bin/pan watch <run-id> --invocation <invocation-id> --until-evidence-complete` in the turn that launches them. Never poll the reports with a timer or a script. When it exits `0`, every report passed: launch the stage worker in that same turn and arm its ordinary watch. Exit `5` means a report stated a verdict other than `pass`: never launch the stage worker then, because the harness already recorded the stage failure from the reports and moved the run to its failure route, so continue with `./bin/pan prepare <run-id>`. Exit `2` or `3` means an evidence worker stopped: inspect it and relaunch it with `./bin/pan worker record <run-id> --role <role> --new-attempt`.
+- For a stage with evidence workers, block on `./bin/pan watch <run-id> --invocation <invocation-id> --until-evidence-complete` in the turn that launches them. Never poll the reports with a timer or a script. When it exits `0`, every report passed: launch the stage worker in that same turn and arm its ordinary watch.
+
+  Exit `5` means a report stated a verdict other than `pass`. Never launch the stage worker then. The harness already recorded the stage failure from the reports and moved the run to its failure route. Continue with `./bin/pan prepare <run-id>`. Exit `2` or `3` means an evidence worker stopped: inspect it and relaunch it with `./bin/pan worker record <run-id> --role <role> --new-attempt`.
 
 ## Cohort supervision
 
@@ -63,7 +65,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - A stall in one run does not stop sibling runs.
 - Each return closes the other sessions with a recorded sibling handoff. The next arming records the gap.
 - Never claim continuous sibling observation across a handoff. Reattach to an existing watch because a second watch is refused.
-- The harness integrates a finished cohort itself. The lifecycle command that closed the last chunk run carries an `advance` object: `status: "integrated"` names the merge commit and nests the continuation under `autostart`, and `status: "failed"` names the error and the idempotent `cohort integrate` retry to run.
+- The harness integrates each succeeded chunk itself, without waiting for unrelated siblings. The lifecycle command that closed a chunk run carries an `advance` object: `status: "integrated"` names the merge commit and nests the continuation under `autostart`, and `status: "failed"` names the error and the idempotent `cohort integrate` retry to run. A failed batch may also carry `autostart` for dependents of chunks that already merged. Supervise them while the conflict is resolved.
 - When that continuation reports `kind: release`, supervise the release run with `/pan-resume`.
 
 ## Long-horizon supervision

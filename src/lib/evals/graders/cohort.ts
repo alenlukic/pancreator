@@ -4,6 +4,7 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson } from '../../io.js'
+import { DEFAULT_COHORT_MAX_PARALLEL } from '../../cohorts/state.js'
 import { loadRunRecords, type RunRecords } from '../run-records.js'
 import { config, type Grader } from './context.js'
 
@@ -104,9 +105,14 @@ interface CohortSessionRecord {
     branch?: string
     run_id?: string
     abandoned?: unknown
+    size_class?: string
   }[]
   cohorts: { index: number; chunks: string[] }[]
-  satisfaction: { cohort_index: number; evidence_path: string }[]
+  satisfaction: {
+    cohort_index: number
+    chunk?: string
+    evidence_path: string
+  }[]
 }
 
 function findCohortSession(
@@ -170,7 +176,7 @@ export const cohortFanout: Grader = (context) => {
   )
 
   const requireIntegrated = config(context, 'require_integrated', true)
-  const chunkWorkflow = config(context, 'chunk_workflow', 'delivery-chunk')
+  const chunkWorkflow = config<string | null>(context, 'chunk_workflow', null)
 
   const failures: string[] = []
   const evidence: string[] = []
@@ -194,7 +200,7 @@ export const cohortFanout: Grader = (context) => {
   const maxParallel =
     Number.isInteger(state.max_parallel) && Number(state.max_parallel) >= 1
       ? Number(state.max_parallel)
-      : 4
+      : DEFAULT_COHORT_MAX_PARALLEL
   const activeChunks = state.chunks.filter((chunk) => !chunk.abandoned)
 
   if (activeChunks.length < minChunks) {
@@ -253,9 +259,16 @@ export const cohortFanout: Grader = (context) => {
     summary.status = chunkRecords.state.status
     summary.workflow = chunkRecords.state.workflow_slug
 
-    if (chunkRecords.state.workflow_slug !== chunkWorkflow) {
+    const expectedWorkflow =
+      chunkWorkflow ??
+      (chunk.size_class === 'M'
+        ? 'standard'
+        : chunk.size_class === 'XS' || chunk.size_class === 'S'
+          ? 'one-shot'
+          : 'delivery-chunk')
+    if (chunkRecords.state.workflow_slug !== expectedWorkflow) {
       failures.push(
-        `chunk ${chunk.id} ran workflow '${chunkRecords.state.workflow_slug}', expected '${chunkWorkflow}'`,
+        `chunk ${chunk.id} ran workflow '${chunkRecords.state.workflow_slug}', expected '${expectedWorkflow}'`,
       )
     }
 
@@ -274,6 +287,16 @@ export const cohortFanout: Grader = (context) => {
     }
   }
 
+  // Groups can overlap under DAG-ready scheduling. Measure the session as
+  // well as individual groups, otherwise cross-group oversubscription is invisible.
+  const sessionPeak = peakConcurrency(
+    [...chunkRuns.values()].flatMap(attemptWindows),
+  )
+  if (sessionPeak > maxParallel) {
+    failures.push(
+      `session peaked at ${sessionPeak} concurrent attempt(s), above the limit ${maxParallel}`,
+    )
+  }
   const cohortConcurrency: Record<string, unknown>[] = []
 
   for (const group of [...state.cohorts].sort((a, b) => a.index - b.index)) {
@@ -288,19 +311,23 @@ export const cohortFanout: Grader = (context) => {
     const peak = peakConcurrency(windows)
     const wanted =
       minConcurrentConfig ?? Math.min(members.length, maxParallel, 2)
-    const integrated = state.satisfaction.some(
+    const proofs = state.satisfaction.filter(
       (entry) => entry.cohort_index === group.index,
     )
-    const satisfaction = state.satisfaction.find(
-      (entry) => entry.cohort_index === group.index,
+    const integrated = members.every((chunk) =>
+      proofs.some(
+        (entry) => entry.chunk === undefined || entry.chunk === chunk.id,
+      ),
     )
 
-    if (satisfaction?.evidence_path) {
-      if (fileExists(path.join(records.root, satisfaction.evidence_path))) {
-        evidence.push(satisfaction.evidence_path)
+    for (const evidencePath of new Set(
+      proofs.map((proof) => proof.evidence_path),
+    )) {
+      if (fileExists(path.join(records.root, evidencePath))) {
+        evidence.push(evidencePath)
       } else {
         failures.push(
-          `cohort ${group.index} integration evidence ${satisfaction.evidence_path} is missing`,
+          `cohort ${group.index} integration evidence ${evidencePath} is missing`,
         )
       }
     }
@@ -335,12 +362,13 @@ export const cohortFanout: Grader = (context) => {
     passed: failures.length === 0,
     summary:
       failures.length === 0
-        ? `${activeChunks.length} chunk(s) across ${state.cohorts.length} cohort(s) ran the ${chunkWorkflow} workflow in parallel within the limit ${maxParallel} and every cohort integrated.`
+        ? `${activeChunks.length} chunk(s) across ${state.cohorts.length} cohort(s) ran their expected workflows in parallel within the limit ${maxParallel} and every cohort integrated.`
         : failures.join('; '),
     evidence,
     details: {
       cohort_id: state.cohort_id,
       max_parallel: maxParallel,
+      peak_concurrent_attempts: sessionPeak,
       chunks: chunkSummaries,
       cohorts: cohortConcurrency,
       failures,

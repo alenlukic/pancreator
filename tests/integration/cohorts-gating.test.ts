@@ -154,7 +154,7 @@ test('a cohort-bound run cannot be advanced past an unsatisfied predecessor', ()
       error instanceof PanError &&
       error.code === 'COHORT_PREDECESSOR_UNSATISFIED' &&
       error.message.includes(COHORT_ID) &&
-      error.message.includes('cohort 1'),
+      error.message.includes('c1'),
   )
 
   // Cohort 1 has no predecessor, so it is never blocked.
@@ -200,24 +200,17 @@ test('starting a later cohort is refused while an earlier one is unsatisfied', (
   })
   writeChunkRun(root, 'chunk-c1', 'succeeded')
 
-  // Cohort 1's runs succeeded but nothing merged, so cohort 1 is still the
-  // active cohort and its only chunk already has a run.
-  assert.throws(
-    () => startCohort(root, COHORT_ID),
-    (error: unknown) =>
-      error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
-  )
+  // c1 succeeded but nothing merged, so c2 stays deferred rather than started
+  // and rather than refused as already started.
+  const unnamed = startCohort(root, COHORT_ID)
 
-  // Naming cohort 2 explicitly is the one way to ask for a later cohort, and
-  // the unmerged predecessor refuses it.
-  assert.throws(
-    () => startCohort(root, COHORT_ID, { cohortIndex: 2 }),
-    (error: unknown) =>
-      error instanceof PanError &&
-      error.code === 'COHORT_PREDECESSOR_UNSATISFIED' &&
-      error.message.includes('cohort 1 is unsatisfied') &&
-      error.message.includes(`cohort integrate ${COHORT_ID}`),
-  )
+  assert.deepEqual(unnamed.chunks, [])
+  assert.deepEqual(unnamed.deferred_chunks, ['c2'])
+
+  const named = startCohort(root, COHORT_ID, { cohortIndex: 2 })
+
+  assert.deepEqual(named.chunks, [])
+  assert.deepEqual(named.deferred_chunks, ['c2'])
   assert.throws(
     () => startCohort(root, COHORT_ID, { cohortIndex: 7 }),
     (error: unknown) =>
@@ -226,15 +219,16 @@ test('starting a later cohort is refused while an earlier one is unsatisfied', (
       error.message.includes('declares no cohort 7'),
   )
 
-  // The refusal names the pan entrypoint of the installation, which for an
-  // embedded harness is the nested path, never './bin/pan'.
+  // Preparing c2 still names the unmerged predecessor and the pan entrypoint
+  // of the installation, which for an embedded harness is the nested path.
   setInstallationMode(root, 'embedded')
 
   assert.throws(
-    () => startCohort(root, COHORT_ID, { cohortIndex: 2 }),
+    () => assertCohortRunUnblocked(root, boundRun(2, 'c2')),
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'COHORT_PREDECESSOR_UNSATISFIED' &&
+      error.message.includes('c1') &&
       error.message.includes(
         `'${EMBEDDED_PAN} cohort integrate ${COHORT_ID}'`,
       ) &&

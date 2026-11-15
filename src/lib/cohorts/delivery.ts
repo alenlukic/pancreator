@@ -45,7 +45,12 @@ import {
   type DeliveryAutostartResult,
   type DeliveryRouteOptions,
 } from './state.js'
-import { chunkIdSlug, firstUnsatisfiedIndex } from './chunks.js'
+import {
+  chunkIdSlug,
+  cohortMaxParallel,
+  firstUnsatisfiedIndex,
+  unstartedChunksOfCohort,
+} from './chunks.js'
 import {
   readRatifiedCohortPlan,
   ratifiedPlanReference,
@@ -53,7 +58,7 @@ import {
 } from './plan.js'
 import { initCohortSession, startCohort } from './start.js'
 import { cohortSessionIds } from './abandon.js'
-import { startReleaseRun, startedChunksOfFirstCohort } from './release-run.js'
+import { startReleaseRun, startedChunksOfSession } from './release-run.js'
 
 /** Cohort session a planning run already opened, when one exists. */
 export function cohortSessionForPlanRun(
@@ -259,7 +264,7 @@ function routeDelivery(
         recorded_at: now(),
       })
 
-      const started = startedChunksOfFirstCohort(root, existing)
+      const started = startedChunksOfSession(root, existing)
 
       if (started) {
         return { status: 'already_started', kind, ...started }
@@ -629,6 +634,32 @@ export function continueAfterIntegration(
         ...startCohort(root, cohortId),
       }
     } catch (error) {
+      // Ready dependents may still be waiting on a slot, or every remaining
+      // unit may already be running. Neither is a merge failure.
+      if (
+        error instanceof PanError &&
+        (error.code === 'COHORT_ALREADY_STARTED' ||
+          error.code === 'COHORT_PARALLELISM_LIMIT')
+      ) {
+        const latest = loadCohortState(root, cohortId)
+
+        return {
+          status: 'started',
+          kind: 'cohort',
+          cohort_id: cohortId,
+          cohort_index:
+            firstUnsatisfiedIndex(root, latest) ??
+            latest.chunks[0]?.cohort_index ??
+            1,
+          deferred_chunks: unstartedChunksOfCohort(latest).map(
+            (chunk) => chunk.id,
+          ),
+          max_parallel: cohortMaxParallel(latest),
+          supervise_command: `/pan-cohort ${cohortId}`,
+          chunks: [],
+        }
+      }
+
       return {
         status: 'failed',
         kind: 'cohort',

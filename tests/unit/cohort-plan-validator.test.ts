@@ -52,6 +52,7 @@ interface PlanChunkFixture {
   cohort_index: number
   child_spec_path: string
   depends_on?: string[]
+  size_class?: string
 }
 
 function handlerInput(root: string, targetPath: string): HandlerInput {
@@ -937,4 +938,58 @@ test('child-spec-validate requires each criterion line to carry the plan proof t
   )
   assert.match(issues[0].message, /AC-001/u)
   assert.match(issues[1].message, /\[proof: review\].*proof test/u)
+})
+
+test('classified cohort plans require every chunk to be XS, S, or M', () => {
+  const root = validatorRoot()
+  writeParent(root)
+  const chunks = [
+    {
+      id: 'c1',
+      cohort_index: 1,
+      child_spec_path: 'runtime/specs/c1.md',
+      size_class: 'XS',
+    },
+    {
+      id: 'c2',
+      cohort_index: 1,
+      child_spec_path: 'runtime/specs/c2.md',
+      size_class: 'M',
+    },
+  ]
+  for (const chunk of chunks)
+    writeFileSync(
+      path.join(root, chunk.child_spec_path),
+      childSpec({ inScope: '- One outcome' }),
+    )
+  const target = writePlanOutput(root, chunks)
+  assert.ok(
+    !issueCodes(validateCohortPlan(handlerInput(root, target))).has(
+      'cohort.chunk_size',
+    ),
+  )
+  const plan = {
+    parent_spec_path: PARENT_PATH,
+    chunks,
+    edges: [],
+    cohorts: [{ index: 1, chunks: ['c1', 'c2'] }],
+  }
+  assert.deepEqual(
+    parseCohortPlan(plan, 'fixture').chunks.map((chunk) => chunk.size_class),
+    ['XS', 'M'],
+  )
+  for (const size of ['L', 'XL', undefined]) {
+    const invalid = [chunks[0], { ...chunks[1], size_class: size }]
+    const target = writePlanOutput(root, invalid)
+    assert.ok(
+      issueCodes(validateCohortPlan(handlerInput(root, target))).has(
+        'cohort.chunk_size',
+      ),
+    )
+    assert.throws(
+      () => parseCohortPlan({ ...plan, chunks: invalid }, 'fixture'),
+      (error: unknown) =>
+        error instanceof PanError && error.code === 'INVALID_COHORT_PLAN',
+    )
+  }
 })
