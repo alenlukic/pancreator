@@ -2,6 +2,7 @@
   "id": "PYSTYLE-001",
   "title": "Python style conformance",
   "severity": "hard",
+  "load": "path:**/*.py",
   "summary": "The code style batch pass MUST apply the Python style guidance this policy references to durable repository Python.",
   "instructions": [
     "Agents repairing Python style MUST read the complete Python style guidance this policy references, and MUST apply it before completion.",

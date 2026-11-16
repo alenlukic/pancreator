@@ -23,6 +23,7 @@ import {
 } from '../../policy-deferred.js'
 import { loadPolicyCatalog } from '../../policies.js'
 import { isInvocationContext } from '../../policy-delivery.js'
+import { readInstallationIdentity } from '../../project-config.js'
 import { listRunStatesWhere, runIsLive } from '../../state.js'
 import type {
   Invocation,
@@ -51,6 +52,23 @@ const EDIT_TOOLS = new Set([
   'ApplyPatch',
   'Edit',
   'MultiEdit',
+  'NotebookEdit',
+  'edit_file',
+  'write_file',
+  'search_replace',
+  'delete_file',
+])
+const READ_TOOLS = new Set([
+  'Read',
+  'Grep',
+  'Glob',
+  'LS',
+  'read_file',
+  'list_dir',
+  'list_directory',
+  'search_text',
+  'glob_files',
+  'grep_search',
 ])
 const DELEGATION_TOOLS = new Set(['Task', 'Subagent', 'task', 'runSubagent'])
 const BROWSER_TOOL =
@@ -151,19 +169,31 @@ export function toolClasses(
   return classes
 }
 
-/** Workspace-relative paths an edit call touches. */
+/** Workspace-relative paths a structured read, search, or edit touches. */
 export function touchedPaths(
   root: string,
   toolInput: Record<string, unknown>,
 ): string[] {
-  const keys = ['path', 'file_path', 'target_file', 'notebook_path']
+  const keys = [
+    'path',
+    'file_path',
+    'filePath',
+    'target_file',
+    'notebook_path',
+    'target_notebook',
+    'directory',
+    'dirPath',
+  ]
   const found = keys.flatMap((key) => {
     const value = toolInput[key]
 
     return typeof value === 'string' && value.length > 0 ? [value] : []
   })
 
-  return [...new Set(found.map((entry) => relativePath(root, entry)))]
+  return [...new Set(found.map((entry) => relativePath(root, entry)))].filter(
+    (entry) =>
+      entry !== '..' && !entry.startsWith('../') && !path.isAbsolute(entry),
+  )
 }
 
 /** Convert a `path:` glob to a matcher: `**`, `*`, `?`, and `{a,b}`. */
@@ -220,7 +250,11 @@ export function triggerFires(
   if (trigger.startsWith('path:')) {
     const matcher = globMatcher(trigger.slice('path:'.length))
 
-    return fired.paths.some((entry) => matcher.test(entry))
+    return fired.paths.some(
+      (entry) =>
+        matcher.test(entry) ||
+        (trigger.endsWith('/**') && matcher.test(`${entry}/`)),
+    )
   }
 
   return false
@@ -231,6 +265,8 @@ export interface DeliveryScope {
   policies: Policy[]
   capabilities: PolicyCapabilities
   audiences: ('agent' | 'supervisor')[]
+  /** Pinned workspace for a registered invocation, independent of host cwd. */
+  workspaceRoot?: string
 }
 
 const FULL_CAPABILITIES: PolicyCapabilities = { shell: true, delegation: true }
@@ -284,6 +320,14 @@ export function deliveryScope(
               policies: invocation.policies,
               capabilities: invocation.capabilities ?? FULL_CAPABILITIES,
               audiences: ['agent'],
+              ...(typeof invocation.workspace_root === 'string'
+                ? {
+                    workspaceRoot: path.resolve(
+                      root,
+                      invocation.workspace_root,
+                    ),
+                  }
+                : {}),
             }
           }
         }
@@ -478,6 +522,8 @@ export function firedContext(
     toolName: string | null
     toolInput: unknown
     toolOutput?: unknown
+    workspaceRoots?: string[]
+    workspaceRoot?: string
     prompt: string
   },
 ): FiredContext {
@@ -518,10 +564,37 @@ export function firedContext(
     events.push('gate_failure')
   }
 
+  const pathTool =
+    classes.includes('edit') || READ_TOOLS.has(input.toolName ?? '')
+  // The hook's root is the harness, not necessarily the active workspace.
+  // Host roots also identify worktrees whose absolute paths lie outside it.
+  const workspaceRoots =
+    input.workspaceRoots?.filter((entry) => path.isAbsolute(entry)) ?? []
+  const workspaces = !pathTool
+    ? []
+    : input.workspaceRoot
+      ? [input.workspaceRoot]
+      : workspaceRoots.length > 0
+        ? workspaceRoots
+        : [
+            path.resolve(
+              root,
+              readInstallationIdentity(root)?.workspace_root ?? '.',
+            ),
+          ]
+
   return {
     classes,
     events,
-    paths: classes.includes('edit') ? touchedPaths(root, toolInput) : [],
+    paths: pathTool
+      ? [
+          ...new Set(
+            workspaces.flatMap((workspace) =>
+              touchedPaths(workspace, toolInput),
+            ),
+          ),
+        ]
+      : [],
   }
 }
 

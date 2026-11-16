@@ -189,6 +189,11 @@ test('a split language bundle survives the staged refresh intact', () => {
       ).guidance_sources,
       [{ path: HANDBOOK }],
     )
+    assert.equal(
+      readJson<{ load: string }>(path.join(policies, 'LANGSTYLE-001.json'))
+        .load,
+      'path:**/*.{ts,tsx}',
+    )
     assert.deepEqual(generatedPersonas(stagingRoot), [
       ...CODE_PERSONAS,
       'librarian',

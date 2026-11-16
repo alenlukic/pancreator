@@ -3,7 +3,10 @@ import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
 import { isTargetInstallation } from '../project-config.js'
-import { detectWorkspaceTechnologies } from '../technologies.js'
+import {
+  detectWorkspaceTechnologies,
+  targetLanguageStyleLoad,
+} from '../technologies.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 const GENERATED_BY = 'pancreator-target-language-handbooks'
@@ -83,6 +86,7 @@ function validateGeneratedPolicy(
   policyId: string,
   expectedPaths: string[],
   issues: HandlerResult['issues'],
+  expectedLoad?: string,
 ): void {
   const policyPath = path.join(
     root,
@@ -108,6 +112,26 @@ function validateGeneratedPolicy(
       issue(
         'language.policy_unmarked',
         `${policyId} policy must be marked as generated target language guidance.`,
+      ),
+    )
+  }
+
+  if (
+    expectedLoad !== undefined &&
+    (!isRecord(policy) ||
+      policy.load !== expectedLoad ||
+      (Array.isArray(policy.instructions) &&
+        policy.instructions.some(
+          (instruction) =>
+            isRecord(instruction) &&
+            instruction.load !== undefined &&
+            instruction.load !== expectedLoad,
+        )))
+  ) {
+    issues.push(
+      issue(
+        'language.policy_load',
+        `${policyId} must defer all instructions to ${expectedLoad}.`,
       ),
     )
   }
@@ -243,7 +267,13 @@ export function validateTargetLanguageHandbooks(
   }
 
   validateGeneratedPolicy(input.root, LANGUAGE_POLICY_FILE, [], issues)
-  validateGeneratedPolicy(input.root, STYLE_POLICY_FILE, expectedPaths, issues)
+  validateGeneratedPolicy(
+    input.root,
+    STYLE_POLICY_FILE,
+    expectedPaths,
+    issues,
+    targetLanguageStyleLoad(languages),
+  )
 
   const lookup = readJson(
     path.join(

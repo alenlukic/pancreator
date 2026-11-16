@@ -1,5 +1,18 @@
 # Changelog
 
+## [10.16.0] - 2026-11-16
+
+### Changed
+
+- Load INDEX-001, LANGSTYLE-001, PY-001, PYSTYLE-001, TS-001, and TSTYLE-001 from path globs ([TS-001](governance/policies/TS-001.json), [c54363a2](https://github.com/alenlukic/pancreator/commit/c54363a2)).
+- Keep LANGSTYLE-001 on a path glob that is the union of the detected language extensions ([librarian](library/personas/librarian.md), [73a2f0b2](https://github.com/alenlukic/pancreator/commit/73a2f0b2)).
+
+### Added
+
+- Route a path glob load when a touched file matches the glob ([deferred](src/lib/governance/prompt-context/deferred.ts), [73a2f0b2](https://github.com/alenlukic/pancreator/commit/73a2f0b2)).
+- Quote a path glob in the clause command so the shell does not expand it ([policy-deferred](src/lib/policy-deferred.ts), [73a2f0b2](https://github.com/alenlukic/pancreator/commit/73a2f0b2)).
+- Build a path glob for LANGSTYLE-001 from detected language extensions ([technologies](src/lib/technologies.ts), [73a2f0b2](https://github.com/alenlukic/pancreator/commit/73a2f0b2)).
+
 ## [10.15.0] - 2026-11-16
 
 ### Changed

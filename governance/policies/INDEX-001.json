@@ -2,6 +2,7 @@
   "id": "INDEX-001",
   "title": "Function index for harness source",
   "severity": "hard",
+  "load": "path:src/**",
   "summary": "Agents working on Pancreator's own source SHOULD find functions through the generated function index before they search or read `src/`, and SHOULD open source only for the lines they change or verify.",
   "instructions": [
     "An agent MAY rely on `docs/function-index/README.md`, which maps every `src/` module to its purpose and export count, and on `docs/function-index/SYMBOLS.md`, which maps every exported symbol to its module page. Each module page states each export's signature, its behavior, and its `file:line`.",

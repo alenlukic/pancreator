@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
-import { rmSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import test from 'node:test'
+import path from 'node:path'
 
 import { createTestTempDirectory } from '../temp.js'
 
@@ -16,6 +17,7 @@ import {
 } from '../../src/lib/governance/prompt-context/deferred.js'
 import {
   readClauseReceipts,
+  readClauseFired,
   recordClauseReceipt,
 } from '../../src/lib/policy-clause.js'
 import { deferredClauseGroups } from '../../src/lib/policy-deferred.js'
@@ -390,6 +392,160 @@ test('watch recovery verdicts fire the recovery event without treating unrelated
         toolInput: { command: 'npm test' },
         toolOutput: 'watch stalled: invocation inv-1',
       }).events.includes('stall'),
+    )
+  })
+})
+
+test('path triggers hold structured reads and edits once in the active workspace', () => {
+  withTempRoot((root) => {
+    const workspace = path.join(root, 'target')
+    const harness = path.join(workspace, '.pancreator')
+    mkdirSync(harness, { recursive: true })
+    writeFileSync(
+      path.join(harness, 'config.json'),
+      JSON.stringify({ workspace_root: '..', installation_mode: 'embedded' }),
+    )
+    const index: Policy = {
+      id: 'INDEX-001',
+      title: 'Index',
+      severity: 'hard',
+      summary: 'Use the index.',
+      instructions: [
+        {
+          text: 'Read the index first.',
+          audience: ['agent'],
+          load: 'path:src/**',
+        },
+      ],
+    }
+    const delivery = { ...DELIVERY, policies: [...POLICIES, index] }
+    const fire = (
+      toolName: string,
+      toolInput: unknown,
+      workspaceRoots?: string[],
+    ) =>
+      firedContext(harness, {
+        hookEvent: 'preToolUse',
+        toolName,
+        toolInput,
+        workspaceRoots,
+        prompt: '',
+      })
+    const read = fire('Read', { path: path.join(workspace, 'src', 'a.ts') })
+    assert.deepEqual(read.paths, ['src/a.ts'])
+    const denied = preToolDecision(
+      harness,
+      'conv-1',
+      read,
+      new Date(),
+      delivery,
+    )
+    assert.equal(denied.permission, 'deny')
+    assert.ok(denied.agent_message?.includes(TS))
+    assert.ok(denied.agent_message?.includes('Read the index first.'))
+    assert.deepEqual(
+      readClauseFired(harness, 'conv-1')
+        .map((entry) => entry.policy_id)
+        .sort(),
+      ['INDEX-001', 'TS-001'],
+    )
+    assert.equal(
+      preToolDecision(harness, 'conv-1', read, new Date(), delivery).permission,
+      'allow',
+    )
+    assert.deepEqual(fire('Grep', { path: 'src' }).paths, ['src'])
+    assert.equal(
+      triggerFires('path:src/**', fire('Grep', { path: 'src' })),
+      true,
+    )
+    assert.deepEqual(
+      fire('read_file', { filePath: '/worktree/src/b.tsx' }, ['/worktree'])
+        .paths,
+      ['src/b.tsx'],
+    )
+    assert.deepEqual(
+      fire('edit_file', { filePath: '/worktree/src/b.tsx' }, ['/worktree'])
+        .paths,
+      ['src/b.tsx'],
+    )
+    assert.deepEqual(fire('Read', { path: '/elsewhere/a.ts' }).paths, [])
+    assert.deepEqual(fire('Read', { path: 'README.md' }).paths, ['README.md'])
+    assert.deepEqual(fire('Shell', { command: 'cat src/a.ts' }).paths, [])
+  })
+})
+
+test('all six migrated policies deliver for matching paths and stay quiet otherwise', () => {
+  const catalog = loadPolicyCatalog(process.cwd())
+  const ids = [
+    'TS-001',
+    'TSTYLE-001',
+    'PY-001',
+    'PYSTYLE-001',
+    'LANGSTYLE-001',
+    'INDEX-001',
+  ]
+  const delivery = {
+    ...DELIVERY,
+    policies: ids.map((id) => {
+      const policy = catalog.get(id)
+      assert.ok(policy, id)
+      return policy
+    }),
+  }
+  withTempRoot((root) => {
+    const call = (file: string) =>
+      firedContext(root, {
+        hookEvent: 'preToolUse',
+        toolName: 'Read',
+        toolInput: { path: file },
+        workspaceRoots: [root],
+        prompt: '',
+      })
+    for (const [file, expected] of [
+      ['README.md', []],
+      ['example.tsx', ['LANGSTYLE-001', 'TS-001', 'TSTYLE-001']],
+      ['src/example.py', ['INDEX-001', 'PY-001', 'PYSTYLE-001']],
+      ['src/other.ts', []],
+      ['test/other.py', []],
+    ] as const) {
+      const before = readClauseReceipts(root, 'conv-1').length
+      const result = preToolDecision(
+        root,
+        'conv-1',
+        call(file),
+        new Date(),
+        delivery,
+      )
+      assert.equal(
+        result.permission,
+        expected.length > 0 ? 'deny' : 'allow',
+        file,
+      )
+      assert.deepEqual(
+        readClauseReceipts(root, 'conv-1')
+          .slice(before)
+          .map((receipt) => receipt.policy_id)
+          .sort(),
+        [...expected].sort(),
+        file,
+      )
+      assert.equal(
+        preToolDecision(root, 'conv-1', call(file), new Date(), delivery)
+          .permission,
+        'allow',
+      )
+    }
+    assert.equal(readClauseFired(root, 'conv-1').length, ids.length)
+    assert.deepEqual(
+      firedContext(root, {
+        hookEvent: 'preToolUse',
+        toolName: 'Read',
+        toolInput: { path: '/operator/worktree/src/foo.ts' },
+        workspaceRoots: ['/operator'],
+        workspaceRoot: '/operator/worktree',
+        prompt: '',
+      }).paths,
+      ['src/foo.ts'],
     )
   })
 })

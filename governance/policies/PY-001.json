@@ -2,6 +2,7 @@
   "id": "PY-001",
   "title": "Python conformance",
   "severity": "hard",
+  "load": "path:**/*.py",
   "summary": "Agents writing, reviewing, or testing durable repository Python MUST apply the target repository's configured Python toolchain and verification commands.",
   "instructions": [
     "Agents MUST preserve the target repository's declared Python version, formatter, linter, type checker, test runner, packaging conventions, and more specific compatible instructions.",

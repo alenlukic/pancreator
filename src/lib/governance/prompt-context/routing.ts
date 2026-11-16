@@ -25,6 +25,7 @@ import {
 import { liveRuns } from './cards.js'
 import {
   deliverDeferredClauses,
+  deliveryScope,
   firedContext,
   preToolDecision,
   type PreToolDecision,
@@ -54,6 +55,7 @@ interface PromptPayload {
   tool_name: string | null
   tool_input: unknown
   tool_output: unknown
+  workspace_roots: string[]
 }
 
 interface RoleResolution {
@@ -131,6 +133,11 @@ function parsePayload(value: unknown): PromptPayload {
     tool_input: value.tool_input ?? value.toolInput ?? null,
     tool_output:
       value.tool_output ?? value.tool_response ?? value.toolResult ?? null,
+    workspace_roots: Array.isArray(value.workspace_roots)
+      ? value.workspace_roots.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : [],
   }
 }
 
@@ -438,6 +445,7 @@ export function resolvePromptContext(
       return base
     }
 
+    const delivery = deliveryScope(root, payload.conversation_id)
     const deferred = deliverDeferredClauses(
       root,
       payload.conversation_id,
@@ -446,9 +454,12 @@ export function resolvePromptContext(
         toolName: payload.tool_name,
         toolInput: payload.tool_input,
         toolOutput: payload.tool_output,
+        workspaceRoots: payload.workspace_roots,
+        workspaceRoot: delivery.workspaceRoot,
         prompt: payload.prompt,
       }),
       now,
+      delivery,
     )
 
     return deferred === null
@@ -477,6 +488,8 @@ export function resolvePreToolDecision(
   try {
     const payload = parsePayload(JSON.parse(payloadText))
 
+    const delivery = deliveryScope(root, payload.conversation_id)
+
     return preToolDecision(
       root,
       payload.conversation_id,
@@ -484,9 +497,12 @@ export function resolvePreToolDecision(
         hookEvent: payload.hook_event_name,
         toolName: payload.tool_name,
         toolInput: payload.tool_input,
+        workspaceRoots: payload.workspace_roots,
+        workspaceRoot: delivery.workspaceRoot,
         prompt: '',
       }),
       now,
+      delivery,
     )
   } catch {
     return { permission: 'allow' }

@@ -163,3 +163,28 @@ test('ORCH-001 stays eager because every supervisor session needs it', () => {
   assert.ok(orch)
   assert.deepEqual(deferredClauseGroups(orch, 'agent'), [])
 })
+
+test('path-wave policies defer to the declared path glob', () => {
+  const catalog = loadPolicyCatalog(REPO_ROOT)
+  const expected: ReadonlyArray<readonly [string, string]> = [
+    ['TS-001', 'path:**/*.{ts,tsx}'],
+    ['TSTYLE-001', 'path:**/*.{ts,tsx}'],
+    ['PY-001', 'path:**/*.py'],
+    ['PYSTYLE-001', 'path:**/*.py'],
+    ['LANGSTYLE-001', 'path:**/*.{cjs,js,mjs,ts,tsx}'],
+    ['INDEX-001', 'path:src/**'],
+  ]
+
+  for (const [id, trigger] of expected) {
+    const policy = catalog.get(id)
+
+    assert.ok(policy, id)
+    assert.equal(measurePolicyContext(policy).eagerBytes, 0, id)
+    assert.deepEqual(
+      measurePolicyContext(policy).deferredTriggers,
+      [trigger],
+      id,
+    )
+    assert.equal(policyInstructionLoad(policy.instructions[0]), trigger, id)
+  }
+})

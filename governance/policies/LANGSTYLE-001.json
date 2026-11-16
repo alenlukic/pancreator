@@ -2,6 +2,7 @@
   "id": "LANGSTYLE-001",
   "title": "Target language style conformance",
   "severity": "hard",
+  "load": "path:**/*.{cjs,js,mjs,ts,tsx}",
   "summary": "The code style batch pass MUST apply the target-derived language guidance this policy references to durable target-repository source.",
   "instructions": [
     "Agents writing, reviewing, or testing code in a detected target language MUST read the complete target guidance this policy references for that language. Those agents MUST apply that guidance before completion.",

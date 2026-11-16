@@ -2,6 +2,7 @@
   "id": "TS-001",
   "title": "TypeScript conformance",
   "severity": "hard",
+  "load": "path:**/*.{ts,tsx}",
   "summary": "Agents writing, reviewing, or testing durable repository TypeScript and TSX MUST apply the Node.js guidance this policy references together with the configured formatter.",
   "instructions": [
     "Agents writing, reviewing, or testing TypeScript MUST read the complete Node.js guidance this policy references, and MUST apply it before completion.",

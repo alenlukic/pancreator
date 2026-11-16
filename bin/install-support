@@ -1609,6 +1609,29 @@ function validLanguageBundle(existingRoot) {
   return rows.length === codeRows.length + styleRows.length
 }
 
+// Mirror the detector's supported extensions (src/lib/technologies.ts).
+// A refresh retains target-specific content, but upgrades the generated load
+// trigger from the preserved handbook set rather than the source checkout.
+function preservedLanguageStyleLoad(handbooks) {
+  const extensionsByLanguage = {
+    javascript: ['cjs', 'js', 'mjs'],
+    python: ['py', 'pyi'],
+    typescript: ['ts', 'tsx'],
+  }
+  const extensions = [
+    ...new Set(
+      handbooks.flatMap((handbook) => {
+        const language = handbook.split('/')[3]
+        return extensionsByLanguage[language] ?? []
+      }),
+    ),
+  ].sort()
+
+  return extensions.length === 0
+    ? null
+    : `path:**/*.${extensions.length === 1 ? extensions[0] : `{${extensions.join(',')}}`}`
+}
+
 function preserveLanguageGovernance() {
   const existingRoot = path.resolve(requiredOption('--existing-root'))
   const stagingRoot = path.resolve(requiredOption('--staging-root'))
@@ -1635,9 +1658,8 @@ function preserveLanguageGovernance() {
     languagePolicyPath(stagingRoot, LANGUAGE_POLICY_ID),
   )
 
-  // The staged bundle must equal the existing bundle exactly, so the style
-  // policy follows the existing shape: copied for a split bundle, and absent
-  // for a pre-split bundle even when the source payload ships one.
+  // Preserve the existing bundle shape: upgrade the load trigger on a split
+  // bundle and leave a pre-split bundle without a style policy.
   const existingStylePolicy = languagePolicyPath(
     existingRoot,
     LANGUAGE_STYLE_POLICY_ID,
@@ -1648,7 +1670,25 @@ function preserveLanguageGovernance() {
   )
 
   if (existsSync(existingStylePolicy)) {
-    copyFileSync(existingStylePolicy, stagedStylePolicy)
+    const stylePolicy = readJson(existingStylePolicy)
+    const load = preservedLanguageStyleLoad(
+      markedLanguageHandbooks(existingRoot),
+    )
+
+    if (load === null) {
+      copyFileSync(existingStylePolicy, stagedStylePolicy)
+    } else {
+      const instructions = Array.isArray(stylePolicy.instructions)
+        ? stylePolicy.instructions.map((instruction) =>
+            instruction &&
+            typeof instruction === 'object' &&
+            'load' in instruction
+              ? { ...instruction, load }
+              : instruction,
+          )
+        : stylePolicy.instructions
+      writeJson(stagedStylePolicy, { ...stylePolicy, load, instructions })
+    }
   } else {
     rmSync(stagedStylePolicy, { force: true })
   }

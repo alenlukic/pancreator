@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -9,6 +10,7 @@ import {
   projectionTargetPath,
   workerCardHost,
 } from '../../src/lib/projection.js'
+import { deferredClauseCommand } from '../../src/lib/policy-deferred.js'
 import { renderInvocationMarkdown } from '../../src/lib/render.js'
 import { validateInvocationMarkdown } from '../../src/lib/validation.js'
 import { createFixture } from '../fixture-template.js'
@@ -121,4 +123,25 @@ test('an invocation pull uses the prepared policy bytes and capabilities', () =>
       trigger: 'tool:browser',
     }).group.sha256,
   )
+})
+
+test('path pull commands preserve the literal glob in a POSIX shell', () => {
+  for (const trigger of [
+    'path:**/*.{ts,tsx}',
+    'path:**/*.py',
+    'path:src/**',
+    "path:a'b/*.ts",
+  ] as const) {
+    const command = deferredClauseCommand('TS-001', trigger, 'printf "%s\\n"')
+    const result = spawnSync('bash', ['-c', command], { encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    assert.deepEqual(result.stdout.trimEnd().split('\n'), [
+      'governance',
+      'clause',
+      '--policy',
+      'TS-001',
+      '--trigger',
+      trigger,
+    ])
+  }
 })

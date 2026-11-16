@@ -51,7 +51,12 @@ export function deferredClauseCommand(
   trigger: PolicyLoad,
   panCommand: string = DEFAULT_PAN_COMMAND,
 ): string {
-  return `${panCommand} governance clause --policy ${policyId} --trigger ${trigger}`
+  // A path glob is a literal CLI argument, not a shell expansion.
+  const argument = trigger.startsWith('path:')
+    ? `'${trigger.replaceAll("'", "'\"'\"'")}'`
+    : trigger
+
+  return `${panCommand} governance clause --policy ${policyId} --trigger ${argument}`
 }
 
 function firstSentence(text: string): string {

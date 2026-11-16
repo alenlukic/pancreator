@@ -2,6 +2,7 @@
   "id": "TSTYLE-001",
   "title": "TypeScript style conformance",
   "severity": "hard",
+  "load": "path:**/*.{ts,tsx}",
   "summary": "The code style batch pass MUST apply the TypeScript style guidance this policy references to durable repository TypeScript and TSX.",
   "instructions": [
     "Agents repairing TypeScript style MUST read the complete TypeScript style guidance this policy references, and MUST apply it before completion.",

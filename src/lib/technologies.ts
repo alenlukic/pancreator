@@ -236,6 +236,25 @@ export function detectWorkspaceTechnologies(
   }
 }
 
+/** Canonical path trigger for the generated style policy's detected languages. */
+export function targetLanguageStyleLoad(
+  languages: readonly string[],
+): `path:${string}` | undefined {
+  const extensions = [
+    ...new Set(
+      TECHNOLOGIES.filter((technology) =>
+        languages.includes(technology.id),
+      ).flatMap((technology) =>
+        technology.extensions.map((extension) => extension.slice(1)),
+      ),
+    ),
+  ].sort()
+
+  if (extensions.length === 0) return undefined
+
+  return `path:**/*.${extensions.length === 1 ? extensions[0] : `{${extensions.join(',')}}`}`
+}
+
 /** Ids of every technology the harness supports. */
 export function supportedTechnologyIds(): Set<string> {
   return new Set(TECHNOLOGIES.map((technology) => technology.id))

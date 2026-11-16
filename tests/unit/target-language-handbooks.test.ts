@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { targetLanguageStyleLoad } from '../../src/lib/technologies.js'
 import { validateTargetLanguageHandbooks } from '../../src/lib/validators/target-language-handbooks.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -63,6 +64,7 @@ function writeLanguageBundle(
   })
   writeJson(path.join(root, 'governance', 'policies', 'LANGSTYLE-001.json'), {
     id: 'LANGSTYLE-001',
+    load: targetLanguageStyleLoad([language]),
     title: 'Target language style guidance',
     severity: 'hard',
     summary: 'Agents MUST apply target-derived language style guidance.',
@@ -257,6 +259,47 @@ test('rejects stale marked target language handbooks', () => {
     assert.ok(
       result.issues.some((item) => item.code === 'language.handbook_coverage'),
     )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('generated style load covers the sorted union of detected extensions', () => {
+  assert.equal(
+    targetLanguageStyleLoad(['typescript', 'python', 'javascript']),
+    'path:**/*.{cjs,js,mjs,py,pyi,ts,tsx}',
+  )
+  assert.equal(targetLanguageStyleLoad(['python']), 'path:**/*.{py,pyi}')
+  assert.equal(targetLanguageStyleLoad([]), undefined)
+})
+
+test('rejects a generated style policy with missing, incorrect or overridden load', () => {
+  const root = createLanguageFixture()
+  try {
+    writeFileSync(path.join(root, 'target', 'tsconfig.json'), '{}\n')
+    writeLanguageBundle(root)
+    const policyPath = path.join(
+      root,
+      'governance',
+      'policies',
+      'LANGSTYLE-001.json',
+    )
+    const valid = JSON.parse(readFileSync(policyPath, 'utf8'))
+    for (const policy of [
+      { ...valid, load: undefined },
+      { ...valid, load: 'path:**/*.py' },
+      {
+        ...valid,
+        instructions: [{ text: 'Apply guidance.', load: 'invocation' }],
+      },
+    ]) {
+      writeJson(policyPath, policy)
+      const result = validateTargetLanguageHandbooks(fixtureInput(root))
+      assert.equal(result.status, 'failed')
+      assert.ok(
+        result.issues.some((item) => item.code === 'language.policy_load'),
+      )
+    }
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
