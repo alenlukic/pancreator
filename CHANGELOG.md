@@ -1,5 +1,17 @@
 # Changelog
 
+## [10.15.0] - 2026-11-16
+
+### Changed
+
+- Defer the SINGLERUN-001 pause body until `event:gate_failure` and keep the exclusion clause eager ([SINGLERUN-001](governance/policies/SINGLERUN-001.json), [ec8c270e](https://github.com/alenlukic/pancreator/commit/ec8c270e)).
+- Defer the ASK-001 fallback body until `tool:question` and keep the summary eager ([ASK-001](governance/policies/ASK-001.json), [ec8c270e](https://github.com/alenlukic/pancreator/commit/ec8c270e)).
+
+### Added
+
+- Fire `gate_failure` when a live paused run names the same-reason consecutive failure ([deferred](src/lib/governance/prompt-context/deferred.ts), [ec8c270e](https://github.com/alenlukic/pancreator/commit/ec8c270e)).
+- Map host question tools to the `question` class by compact leaf name ([deferred](src/lib/governance/prompt-context/deferred.ts), [95363a62](https://github.com/alenlukic/pancreator/commit/95363a62)).
+
 ## [10.14.0] - 2026-11-15
 
 ### Changed

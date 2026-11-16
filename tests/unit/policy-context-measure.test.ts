@@ -117,6 +117,46 @@ test('DELEGATE-001 keeps the 60-second rule eager and defers watch mechanics', (
   ])
 })
 
+test('SINGLERUN-001 defers the pause body to gate_failure and keeps exclusion eager', () => {
+  const policy = loadPolicyCatalog(REPO_ROOT).get('SINGLERUN-001')
+
+  assert.ok(policy)
+
+  const exclusion = policy.instructions.at(-1)
+  const measured = measurePolicyContext(policy)
+
+  assert.ok(exclusion)
+  assert.deepEqual(measured.deferredTriggers, ['event:gate_failure'])
+  assert.equal(policyInstructionLoad(exclusion), 'invocation')
+  assert.ok(measured.eagerBytes > 0)
+  assert.equal(
+    policyInstructionLoad(policy.instructions[0]),
+    'event:gate_failure',
+  )
+})
+
+test('ASK-001 defers the unavailable fallback to the question tool', () => {
+  const policy = loadPolicyCatalog(REPO_ROOT).get('ASK-001')
+
+  assert.ok(policy)
+
+  const eager = policy.instructions
+    .filter((entry) => policyInstructionLoad(entry) === 'invocation')
+    .map((entry) => (typeof entry === 'string' ? entry : entry.text))
+
+  assert.deepEqual(measurePolicyContext(policy).deferredTriggers, [
+    'tool:question',
+  ])
+  assert.equal(eager.length, 3)
+  assert.match(eager[0] ?? '', /MUST use the host question tool/u)
+  assert.match(eager[1] ?? '', /operator_question/u)
+  assert.match(eager[2] ?? '', /MUST NOT proceed on an assumed answer/u)
+  assert.equal(
+    policyInstructionLoad(policy.instructions[1]),
+    'tool:question',
+  )
+})
+
 test('ORCH-001 stays eager because every supervisor session needs it', () => {
   const orch = loadPolicyCatalog(REPO_ROOT).get('ORCH-001')
 

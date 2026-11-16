@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { initialPolicyReminder } from '../../src/lib/policy-delivery.js'
+import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import type { Invocation, Policy } from '../../src/lib/types.js'
 
 const DELEGATE = 'Agents MUST observe every async process.'
@@ -82,4 +83,30 @@ test('without load declarations the launch bytes are identical either way', () =
 
   assert.equal(plain.reminder.content, external.reminder.content)
   assert.equal(plain.reminder.sha256, external.reminder.sha256)
+})
+
+test('the real ASK-001 fallback is inlined for an executor without a host or shell', () => {
+  const catalog = loadPolicyCatalog(process.cwd())
+  const ask = catalog.get('ASK-001')
+  const singleRun = catalog.get('SINGLERUN-001')
+  assert.ok(ask)
+  assert.ok(singleRun)
+
+  const { reminder, inlined } = initialPolicyReminder(
+    {
+      ...invocation(true),
+      policies: [ask, singleRun],
+      capabilities: { shell: false, delegation: false },
+    },
+    'src',
+    { inlineDeferred: true },
+  )
+
+  assert.match(reminder.content, /MUST NOT call a host question tool/u)
+  assert.match(reminder.content, /normal response channel/u)
+  assert.doesNotMatch(reminder.content, /MUST pause ordinary runs/u)
+  assert.deepEqual(
+    inlined.map(({ group }) => [group.policy_id, group.trigger]),
+    [['ASK-001', 'tool:question']],
+  )
 })

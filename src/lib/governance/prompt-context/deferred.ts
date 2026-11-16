@@ -29,6 +29,7 @@ import type {
   Policy,
   PolicyCapabilities,
   PolicyLoad,
+  RunState,
 } from '../../types.js'
 import { liveRuns } from './cards.js'
 
@@ -56,6 +57,31 @@ const BROWSER_TOOL =
   /(?:^|[:_/-])(?:browser_[a-z_]+|new_page|navigate_page|take_snapshot|take_screenshot|list_pages|select_page|close_page|chrome-devtools|playwright)(?:$|[:_/-])/iu
 const GIT_REMOTE =
   /\b(?:git\s+(?:push|pull|fetch|remote|clone)|gh\s+(?:pr|release|repo|api))\b/u
+const SAME_REASON_PAUSE =
+  /^Stage '[^']+' failed twice consecutively for the same deterministic reason \(.*\)\.$/u
+
+function questionToolClass(toolName: string): boolean {
+  const leaf = toolName.split(/[:/]/u).pop() ?? toolName
+  const compact = leaf.toLowerCase().replaceAll(/[_-]/g, '')
+
+  return (
+    compact === 'askquestion' ||
+    compact === 'askquestions' ||
+    compact === 'askuser'
+  )
+}
+
+function isSameReasonPause(run: RunState): boolean {
+  // Trackers survive ordinary pauses and resumes and are created after the
+  // first failure. Only the circuit breaker's pause reason identifies this
+  // event; an operator/supervisor pause is not a gate failure.
+  return (
+    run.status === 'paused' &&
+    run.operator_pause == null &&
+    typeof run.pause_reason === 'string' &&
+    SAME_REASON_PAUSE.test(run.pause_reason)
+  )
+}
 
 /** What a hook call fires. Triggers derive from it; nothing else reads the payload. */
 export interface FiredContext {
@@ -112,7 +138,7 @@ export function toolClasses(
     classes.push('delegation')
   } else if (EDIT_TOOLS.has(toolName)) {
     classes.push('edit')
-  } else if (toolName === 'AskQuestion') {
+  } else if (questionToolClass(toolName)) {
     classes.push('question')
   } else if (BROWSER_TOOL.test(toolName)) {
     classes.push('browser')
@@ -438,10 +464,12 @@ function watchRecoveryResult(output: unknown): boolean {
 }
 
 /**
- * Build the fired context from a tool-hook payload. `away` and `pause` are
- * also state events: `away` fires on every hook call while a live run
- * snapshots away mode as enabled, and `pause` while a run is paused, because
- * operators pause from the CLI and the resuming session sees only `resume`.
+ * Build the fired context from a tool-hook payload. `away`, `pause`, and
+ * `gate_failure` are also state events: `away` fires on every hook call while
+ * a live run snapshots away mode as enabled, `pause` while a run is paused,
+ * and `gate_failure` while a live run is paused for a repeated hard-failure
+ * signature, because operators resume from the CLI and the session sees only
+ * `resume`.
  */
 export function firedContext(
   root: string,
@@ -485,6 +513,9 @@ export function firedContext(
   }
   if (watched.some((run) => run.away_mode?.enabled === true)) {
     events.push('away')
+  }
+  if (watched.some(isSameReasonPause)) {
+    events.push('gate_failure')
   }
 
   return {
