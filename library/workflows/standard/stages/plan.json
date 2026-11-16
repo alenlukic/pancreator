@@ -5,6 +5,7 @@
   "prompt_path": "library/workflows/standard/prompts/plan.md",
   "workspace_policy": "runtime_only",
   "gate": "operator",
+  "gate_relaxable": false,
   "checkpoint": "technical_plan",
   "context": {
     "request": "required",

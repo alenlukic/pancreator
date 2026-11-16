@@ -240,6 +240,12 @@ export interface StageHistoryItem {
    * output-volume creep; never a gate.
    */
   output_bytes?: number
+  /** Content identity of the interface contract validated by prototype-trace. */
+  trace_contract?: {
+    data_sha256: string
+    schema_path: string
+    schema_sha256: string
+  }
   validation_errors: string[]
   governance_artifact_warnings?: string[]
   deterministic: DeterministicResult[]

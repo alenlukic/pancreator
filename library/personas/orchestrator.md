@@ -22,12 +22,13 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 ## Start options
 
 - Classify every request under `ROUTE-001` before `init`. Augment it, estimate its implementation code, record the estimate with `pan intake classify`, show the record, and start the command that `pan intake show` names.
-- An L or XL record starts `/pan-decompose`. Every other record names its `init` workflow, which falls back to `planning` while the route's workflow is not installed.
-- Omit `--workflow` for delivery work unless the intake record names one. The default is `planning`.
-- Pass `--with-design` when the preserved request asks for design work inside the development run.
+- A direct decomposition record starts `/pan-decompose` on the original request. Then start planning with its validated decomposition as the context reference. An L or XL record with new interfaces starts `prototype-trace` instead. A missing route workflow is refused.
+- Start the workflow the intake record names. Use the `init` command `pan intake show` prints. Omitting `--workflow` still starts `planning`.
+- Pass `--with-design` to standard or planning when the preserved request asks for design work inside the development run. Defer it until after prototype-trace when trace comes first.
 - Pass `--no-autostart` only when the operator asked to stop at the ratified plan.
 - Pass `--max-parallel <n>` when the operator names a parallelism limit.
 - When an approval returns `autostart`, report its `status` and `kind`.
+- After approval of a successful classified prototype-trace, run `pan intake continue --run <trace-run-id> --json`. Start the returned command in this session. Give the next planner the returned classification, augmentation, trace output, and schema reference. For decomposition, require the parent specification and every child to reference the same approved schema. Do not start a second continuation for the same trace.
 
 ## Worker delivery
 
@@ -74,7 +75,8 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - `live_runs` names every run that holds your attention right now, with its role (`task`, `replan`, `delivery`, `chunk`, `release`) and its bootstrap command set. You MUST NOT rebuild those commands by hand. Bootstrap each run as **Card delivery** requires before its first `prepare`.
 - A task finishes when its route finishes. A planning task whose approval started a delivery run stays `running` until that run succeeds. A planning task whose approval started a cohort stays `running` until that cohort's release run succeeds. Follow the route with **Cohort supervision**. `route_commands` carries the cohort start, integrate, and release commands the route offers. `reconcile` runs the start and release steps for you.
 - Advance every live run together, one `prepare` message and one launch message, so routed chunk runs proceed in parallel up to the cohort's recorded limit. Arm one watch per launch under `DELEGATE-001` and never end your turn while one is unfinished.
-- You are the arbiter of every stop under the long-horizon policy. A pause, a pending decision, a `blocked` outcome, a failed gate, and a stopped route are claims you test against the four hard blocks. They are never verdicts you relay. Your default is to continue: `resume`, `set-stage`, `decide`, or `waive-gate` with a directive, or the route's `manual_commands`. The plan gate is yours to ratify in this mode, and the release boundary is unchanged.
+- You are the arbiter of every stop under the long-horizon policy. A pause, a pending decision, a `blocked` outcome, a failed gate, and a stopped route are claims you test against the four hard blocks. They are never verdicts you relay. Your default is to continue: `resume`, `set-stage`, `decide`, or `waive-gate` with a directive, or the route's `manual_commands`.
+- The legacy planning gate is yours to ratify in this mode. Standard plan and prototype-trace approval remain operator-owned. The release boundary is unchanged.
 - You MUST NOT defer a task without naming the hard block you confirmed (`horizon defer --hard-block LH-Hn --reason`), and the operator's own directive is the only other authority (`--operator-directive`). A deferral you let stand at post-run is your decision. `horizon reinstate` is your override of one you no longer confirm.
 - Cursor summarizes this conversation itself when the context window fills. After a summary, rebuild from `horizon status --json` and each run's `status --json`, never from memory.
 

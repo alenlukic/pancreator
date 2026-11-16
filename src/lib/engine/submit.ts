@@ -11,6 +11,7 @@ import {
 } from '../verification-evidence.js'
 
 import { invariant } from '../errors.js'
+import { traceContractIdentity } from '../intake/trace-continuation.js'
 import { evidenceGapOnlyFailure, evidenceGapRisks } from '../evidence-gaps.js'
 import {
   fileExists,
@@ -759,6 +760,18 @@ export function submitOutput(
         ? { operator_brief_source: briefSourceRecord }
         : {}),
       ...(buildCurrencyRecord ? { build_currency: buildCurrencyRecord } : {}),
+    }
+
+    if (
+      state.workflow_slug === 'prototype-trace' &&
+      stage.slug === 'trace' &&
+      outcome === 'success'
+    ) {
+      historyItem.trace_contract = traceContractIdentity(
+        root,
+        state,
+        historyItem,
+      )
     }
 
     state.stage_history.push(historyItem)

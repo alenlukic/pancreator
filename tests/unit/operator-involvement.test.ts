@@ -173,3 +173,39 @@ test('profiles parse long-horizon contracts and validated away-mode guardrails',
     /allowed_actions MUST contain only/u,
   )
 })
+
+test('workflow-qualified overrides preserve legacy planning and mandatory redesign approvals', () => {
+  const profiles: Record<string, OperatorInvolvementProfile> = {
+    legacy: {
+      summary: 'Legacy plan only.',
+      gates: { 'planning/plan': 'supervisor' },
+    },
+  }
+  assert.equal(
+    stageBySlug(applyTo('planning', profiles).workflow, 'plan').gate,
+    'supervisor',
+  )
+  assert.equal(
+    stageBySlug(applyTo('standard', profiles).workflow, 'plan').gate,
+    'operator',
+  )
+  assert.equal(
+    stageBySlug(applyTo('prototype-trace', profiles).workflow, 'trace').gate,
+    'operator',
+  )
+  for (const [workflow, stage] of [
+    ['standard', 'plan'],
+    ['prototype-trace', 'trace'],
+  ]) {
+    assert.throws(
+      () =>
+        applyTo(workflow, {
+          relaxed: {
+            summary: 'Try to skip approval.',
+            gates: { [stage]: 'supervisor' },
+          },
+        }),
+      { code: 'INVALID_OPERATOR_INVOLVEMENT' },
+    )
+  }
+})

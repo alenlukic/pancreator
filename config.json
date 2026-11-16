@@ -60,13 +60,14 @@
   },
   "$operator": {
     "summary": "Environment-independent provider:tier aliases with local executor choices for supported hosts.",
-    "note": "Keep executor-specific model strings in the untracked config_overrides.json under model_config or a local persona override. After changing either file, run ./bin/pan models --sync. New runs snapshot the resolved mapping; existing runs keep their snapshot. VS Code workers may use Copilot while the supervisor stays in the operator session. Use cursor: or cursor-cli: mappings when those executors are needed."
+    "note": "Keep executor-specific model strings in the untracked config_overrides.json under model_config or a local persona override. After changing either file, run ./bin/pan models --sync. New runs snapshot the resolved mapping; existing runs keep their snapshot. Size-routed stages use these aliases: one-shot implement is spotfixer, standard plan is planner, standard implement is coder with test-author at the same alias as coder, and prototype-trace uses one coder. Ratify executor strings in config_overrides.json.model_config. Do not change active_config for that mapping. VS Code workers may use Copilot while the supervisor stays in the operator session. Use cursor: or cursor-cli: mappings when those executors are needed."
   },
   "configs": {
     "default": {},
     "balanced": {
       "summary": "Focused coding, strong review, and frontier planning.",
       "coder": "anthropic:balanced",
+      "test-author": "anthropic:balanced",
       "remediator": "anthropic:balanced",
       "reviewer": "anthropic:advanced",
       "verifier": "oai:advanced",
@@ -75,6 +76,7 @@
     "advanced": {
       "summary": "Stronger coding and QA for complex work.",
       "coder": "anthropic:advanced",
+      "test-author": "anthropic:advanced",
       "remediator": "anthropic:advanced",
       "reviewer": "oai:advanced",
       "verifier": "oai:advanced",
@@ -84,6 +86,7 @@
       "summary": "Maximum reasoning for demanding work.",
       "planner": "anthropic:ultra",
       "coder": "oai:ultra",
+      "test-author": "oai:ultra",
       "remediator": "anthropic:ultra",
       "remediator-severe": "anthropic:ultra",
       "reviewer": "anthropic:ultra",
@@ -103,7 +106,7 @@
   "operator_involvement": {
     "$operator": {
       "summary": "Named profiles controlling how heavily the operator gates each workflow stage. Select one per run with ./bin/pan init --involvement <profile>; omitting the flag uses active.",
-      "note": "gates maps a stage slug (or * for every stage) to the gate that stage uses for the run. contracts names run-wide contracts the run abides by. Runs snapshot the resolved profile, so later edits here do not change an in-flight run. Inspect available profiles with ./bin/pan involvement."
+      "note": "gates maps a stage slug, workflow/stage, or * for every stage to the gate that stage uses for the run. contracts names run-wide contracts the run abides by. Runs snapshot the resolved profile, so later edits here do not change an in-flight run. Inspect available profiles with ./bin/pan involvement."
     },
     "active": "standard",
     "profiles": {
@@ -111,9 +114,9 @@
         "summary": "Workflow-declared gates, unchanged. The operator ratifies the plan and approves release preparation."
       },
       "hands-off": {
-        "summary": "Minimum interruption. The supervisor ratifies the plan instead of the operator; release preparation still stops for explicit operator approval.",
+        "summary": "Minimum interruption. The supervisor ratifies legacy planning instead of the operator; release preparation still stops for explicit operator approval.",
         "gates": {
-          "plan": "supervisor"
+          "planning/plan": "supervisor"
         }
       },
       "technical-director": {
@@ -130,7 +133,7 @@
       "long-horizon": {
         "summary": "Runs independently between preflight and post-run with bounded away-mode decisions; release preparation and every correctness boundary remain unchanged. waive-gate is allowed so a cost- or wall-time-backed criterion never stops a task; the supervisor decides and records every away-mode action.",
         "gates": {
-          "plan": "supervisor"
+          "planning/plan": "supervisor"
         },
         "contracts": ["long_horizon"],
         "away_mode": {

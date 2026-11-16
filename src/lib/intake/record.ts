@@ -22,14 +22,11 @@ import {
 
 export const INTAKE_RECORD_SCHEMA_VERSION = 1
 
-/** Workflow a route step starts while its own workflow is not installed. */
-export const BOOTSTRAP_FALLBACK_WORKFLOW = 'planning'
-
 export type IntakeStart =
   | {
       kind: 'workflow'
       workflow: string
-      source: 'route' | 'fallback' | 'operator'
+      source: 'route' | 'operator'
       reason: string | null
     }
   | { kind: 'decompose'; command: '/pan-decompose' }
@@ -99,8 +96,8 @@ export function readIntakeRecord(
 }
 
 /**
- * First step the supervisor takes. An operator workflow wins; a route step
- * whose workflow is absent falls back to the bootstrap workflow.
+ * First step the supervisor takes. An operator workflow wins; a route
+ * workflow that is not installed is refused.
  */
 export function resolveIntakeStart(
   route: readonly RouteStep[],
@@ -126,20 +123,21 @@ export function resolveIntakeStart(
 
   invariant(first, 'An intake route needs at least one step.')
 
+  for (const step of route) {
+    const workflow = step === 'decompose' ? 'planning' : step
+
+    invariant(
+      isInstalled(workflow),
+      `Route workflow ${workflow} is not installed.`,
+      { code: 'UNKNOWN_WORKFLOW' },
+    )
+  }
+
   if (first === 'decompose') {
     return { kind: 'decompose', command: '/pan-decompose' }
   }
 
-  if (isInstalled(first)) {
-    return { kind: 'workflow', workflow: first, source: 'route', reason: null }
-  }
-
-  return {
-    kind: 'workflow',
-    workflow: BOOTSTRAP_FALLBACK_WORKFLOW,
-    source: 'fallback',
-    reason: `The ${first} workflow is not installed yet.`,
-  }
+  return { kind: 'workflow', workflow: first, source: 'route', reason: null }
 }
 
 /**

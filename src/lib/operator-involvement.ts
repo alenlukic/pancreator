@@ -76,8 +76,8 @@ function parseGateMap(
 
   for (const [stage, gate] of Object.entries(value)) {
     invariant(
-      stage === '*' || /^[a-z0-9-]+$/u.test(stage),
-      `${source}.${stage} MUST key '*' or a stage slug.`,
+      stage === '*' || /^[a-z0-9-]+(?:\/[a-z0-9-]+)?$/u.test(stage),
+      `${source}.${stage} MUST key '*', a stage slug, or workflow/stage.`,
       { code: 'INVALID_OPERATOR_INVOLVEMENT' },
     )
     invariant(
@@ -328,7 +328,8 @@ export function applyOperatorInvolvement(
       source = `technical_director contract at ${stage.checkpoint} checkpoint`
     }
 
-    const explicit = gates[stage.slug]
+    const explicit =
+      gates[`${workflow.slug}/${stage.slug}`] ?? gates[stage.slug]
 
     if (explicit !== undefined) {
       runGate = explicit

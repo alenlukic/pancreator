@@ -1242,7 +1242,7 @@ objections, or from discussing the plan with you.
 
 ## Include design in development or run it separately
 
-For development work that needs one design specification across planning and delivery, pass `--with-design` when starting the default planning workflow. The planning run gains a design stage before `plan`; routed `delivery` and `delivery-chunk` runs gain design review and design QA evidence workers on `verify`.
+For development work that needs one design specification across planning and delivery, pass `--with-design` when starting standard or planning. When prototype-trace precedes the plan, apply the option to the continuation. The planning run gains a design stage before `plan`; routed `delivery` and `delivery-chunk` runs gain design review and design QA evidence workers on `verify`.
 
 ```sh
 ./bin/pan init --with-design --request runtime/inbox/queue/<request>.md
@@ -1411,6 +1411,48 @@ The best-of-N configs file accepts no tier alias and requires explicit model spe
 
 Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/agent/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Cursor personas use the model declared in `.cursor/agents/pan-<persona>.md`; external executors such as Copilot and Cursor CLI do not use a projected Cursor agent. Preparing an older Cursor run after switching configurations is blocked until the projected models match its snapshot.
 
+### Proposed model mapping for size-routed delivery
+
+Use the following mapping as an operator-ratified starting point, not as a new active configuration. The current named profiles remain available. The proposal assigns inexpensive models to bounded implementation and test authoring, and stronger models to the plan, interface contract, and independent review.
+
+| Route or stage                   | Persona                           | Proposed alias                             |
+| -------------------------------- | --------------------------------- | ------------------------------------------ |
+| One-shot implement               | `spotfixer`                       | `anthropic:balanced`                       |
+| Standard plan                    | `planner`                         | `oai:advanced`                             |
+| Standard implement               | `coder`                           | `anthropic:advanced`                       |
+| Standard independent test author | `test-author`                     | `anthropic:balanced`                       |
+| Prototype-trace                  | `coder`                           | `anthropic:advanced`                       |
+| Decomposition                    | `decomposer`                      | `oai:advanced`                             |
+| Verify                           | `reviewer`, `verifier`            | `oai:advanced`                             |
+| Verify QA                        | `qa-tester`                       | `oai:balanced`                             |
+| Remediate                        | `remediator`, `remediator-severe` | `anthropic:balanced`, `anthropic:advanced` |
+| Ship                             | `release-steward`                 | `cursor:advanced`                          |
+
+The configuration resolves persona mappings, not independent stage overrides. The shared coder therefore uses one alias for standard and prototype-trace. Merge a named proposal into `config_overrides.json` only after ratification:
+
+```json
+{
+  "configs": {
+    "workflow-redesign-proposal": {
+      "summary": "Size-routed delivery proposal.",
+      "spotfixer": "anthropic:balanced",
+      "planner": "oai:advanced",
+      "coder": "anthropic:advanced",
+      "test-author": "anthropic:balanced",
+      "decomposer": "oai:advanced",
+      "reviewer": "oai:advanced",
+      "verifier": "oai:advanced",
+      "qa-tester": "oai:balanced",
+      "remediator": "anthropic:balanced",
+      "remediator-severe": "anthropic:advanced",
+      "release-steward": "cursor:advanced"
+    }
+  }
+}
+```
+
+Resolve each alias in the existing `model_config` with a supported executor and model for that installation. Use the mapping format above; do not select a model from its configuration name. The operator ratifies the executor strings. Leave `active_config` unchanged until the operator explicitly chooses the proposal. No cost or performance savings are implied without measurement.
+
 ## Route a persona to an external executor
 
 A persona mapping in `config_overrides.json` may name its executor with a prefix — `cursor` (the default), `cursor-cli`, `claude-code`, `openai`, or `copilot`:
@@ -1569,7 +1611,7 @@ Configure defaults in `config.json` when the built-in ones do not suit the repos
 
 ## Plan once, then deliver
 
-The `planning` workflow is the entry point for delivery work and the default of `pan init`. It runs one `plan` stage behind one operator gate, and approving that gate is the routing point: the harness reads the ratified cohort plan and starts the delivery itself. You never choose between a single run and a fan-out; the plan does.
+The `planning` workflow remains the low-level default of `pan init` and the executable cohort-planning path. Classified delivery starts with the workflow named by `pan intake show`. An approved classified `prototype-trace` uses `pan intake continue --run <trace-run-id>` to resolve the next standard or decomposition-planning run. The command carries the original request and trace output into the same workspace and refuses a changed contract. It runs one `plan` stage behind one operator gate, and approving that gate is the routing point: the harness reads the ratified cohort plan and starts the delivery itself. You never choose between a single run and a fan-out; the plan does.
 
 ```sh
 ./bin/pan init --request runtime/inbox/queue/request.md

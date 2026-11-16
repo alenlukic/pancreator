@@ -152,3 +152,21 @@ test('validateInterfaceSchema skips other workflows', () => {
   assert.equal(result.status, 'passed')
   assert.deepEqual(result.issues, [])
 })
+
+test('trace schema resolves in the run workspace, not the harness root', () => {
+  const root = scratchRoot()
+  const workspace = scratchRoot()
+  const targetPath = 'runtime/logs/workflows/run-1/agent/trace.json'
+  writeJson(root, targetPath, { schema_version: 1, data: matchingData() })
+  writeMatchingSchema(workspace)
+  // The harness root has a different contract at the same path.
+  writeJson(root, SCHEMA_PATH, {
+    interfaces: [{ name: 'other', signature: '() => void' }],
+  })
+  const result = validateInterfaceSchema({
+    ...input(root, targetPath),
+    runState: { workspace_root: workspace },
+  })
+  assert.equal(result.status, 'passed')
+  assert.deepEqual(result.issues, [])
+})

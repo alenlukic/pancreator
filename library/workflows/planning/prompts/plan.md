@@ -150,6 +150,8 @@ unevaluated criteria are placeholders, and its presence does not show completion
 `data.cohort_plan` states `parent_spec_path`, `chunks`, `edges`, and
 `cohorts`, plus `serial_justification` for a single-chunk plan. Each chunk
 states `id`, `cohort_index`, `child_spec_path`, `depends_on`, and `title`.
+For a size-driven decomposition, use the recorded intake classification and any validated decomposition reference. If the request comes from an approved prototype-trace, use the referenced trace output and schema as the parent contract. Carry the same schema path and content digest into the parent and every child specification. Do not invent or replace that contract.
+
 For a size-driven decomposition, also record `size_class` (`XS`, `S`, or `M`)
 on every chunk, matching the chunk's classification. An XS or S chunk runs
 one-shot; an M chunk runs standard. Ship belongs to the integrated result,

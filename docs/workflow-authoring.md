@@ -260,7 +260,7 @@ heavily the operator gates each stage:
 }
 ```
 
-- `gates` maps a stage slug, or `*` for every stage, to the gate that stage uses
+- `gates` maps a stage slug, `workflow/stage`, or `*` for every stage, to the gate that stage uses
   for the run.
 - `contracts` names run-wide contracts. `technical_director` loads
   `DIRECTOR-001` and escalates the `technical_plan` and `independent_review`

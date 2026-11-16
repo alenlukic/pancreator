@@ -43,7 +43,7 @@ A task meets a class target when its SLOC is at or under the SLOC target, or whe
 | L, XL | yes                   | `prototype-trace` for the whole task, then `decompose` on its schema |
 
 - A decomposition MUST produce chunks of size M or smaller. Each chunk carries its own classification, and an XS or S chunk routes to `one-shot`.
-- A route step whose workflow is not installed yet starts the `planning` workflow instead. The classification record names that fallback and its reason.
+- A route step whose workflow is not installed is refused. The record names the missing workflow.
 - An explicit operator workflow selection overrides the route. The record keeps the derived route beside the operator's choice.
 
 ## Reclassification

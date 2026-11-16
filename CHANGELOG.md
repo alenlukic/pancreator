@@ -1,5 +1,17 @@
 # Changelog
 
+## [10.17.0] - 2026-11-16
+
+### Changed
+
+- Refuse a classified route whose workflow is not installed ([intake](src/lib/intake/record.ts), [ROUTE-001](governance/policies/ROUTE-001.json)).
+- Document `one-shot`, `standard`, and `prototype-trace` on `pan init`, `/pan-start`, the orchestrator, the primer, and the installed AGENTS templates ([grammar](src/lib/pan-command-grammar.ts), [pan-start](library/cursor/commands/pan-start.md), [primer](docs/target-repo-primer.md)).
+
+### Added
+
+- Map `test-author` beside `coder` in the named pipeline configs ([config](config.json)).
+- Print `pan intake continue --run` after an approved prototype-trace, and refuse a later start when that contract moved ([continue](src/lib/intake/trace-continuation.ts)).
+
 ## [10.16.0] - 2026-11-16
 
 ### Changed

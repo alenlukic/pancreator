@@ -3,6 +3,7 @@
  */
 
 import { invariant } from '../errors.js'
+import { assertTraceContractCurrent } from '../intake/trace-continuation.js'
 import {
   readJson,
   resolveInside,
@@ -257,6 +258,35 @@ function decideRunWithActor(
       'A revise decision MUST carry the operator directive in --note.',
       { code: 'REVISION_NOTE_REQUIRED' },
     )
+
+    if (
+      decision === 'approve' &&
+      stage.gate_relaxable === false &&
+      ((state.workflow_slug === 'standard' && stage.slug === 'plan') ||
+        (state.workflow_slug === 'prototype-trace' && stage.slug === 'trace'))
+    ) {
+      invariant(
+        actor === 'operator',
+        'This workflow requires explicit operator approval.',
+        {
+          code: 'AWAY_ACTION_FORBIDDEN',
+        },
+      )
+    }
+
+    if (
+      decision === 'approve' &&
+      approvedOutcome === 'success' &&
+      state.workflow_slug === 'prototype-trace' &&
+      stage.slug === 'trace'
+    ) {
+      // Historical pending traces did not record the content identity at submit.
+      // Keep their snapshotted lifecycle unchanged; they cannot use the new handoff.
+      const history = state.stage_history.at(-1)
+      if (history?.trace_contract) {
+        assertTraceContractCurrent(root, state, history)
+      }
+    }
 
     state.status = 'running'
 

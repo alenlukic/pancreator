@@ -627,7 +627,11 @@ function validateOperatorInvolvementProfiles(
       }
 
       const owners = workflows.filter((workflow) =>
-        workflow.stages.some((stage) => stage.slug === stageKey),
+        workflow.stages.some(
+          (stage) =>
+            stage.slug === stageKey ||
+            `${workflow.slug}/${stage.slug}` === stageKey,
+        ),
       )
 
       if (owners.length === 0) {
@@ -646,7 +650,11 @@ function validateOperatorInvolvementProfiles(
         // this workflow; a shared profile is allowed to be inert elsewhere.
         const targetsWorkflow = Object.keys(profile.gates ?? {}).some(
           (key) =>
-            key === '*' || workflow.stages.some((stage) => stage.slug === key),
+            key === '*' ||
+            workflow.stages.some(
+              (stage) =>
+                stage.slug === key || `${workflow.slug}/${stage.slug}` === key,
+            ),
         )
 
         if (targetsWorkflow || (profile.contracts ?? []).length > 0) {

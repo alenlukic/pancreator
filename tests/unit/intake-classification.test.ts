@@ -16,6 +16,7 @@ import {
   recordIntakeClassification,
 } from '../../src/lib/intake/record.js'
 import { createTestTempDirectory } from '../temp.js'
+import { intakeNextCommand } from '../../src/cli/intake.js'
 
 const REQUEST = 'runtime/inbox/queue/1_request.md'
 
@@ -98,7 +99,7 @@ test('classification refuses estimates the rubric cannot place', () => {
 })
 
 test('reclassification needs a reason and keeps every earlier entry', () => {
-  const root = fixture()
+  const root = fixture(['one-shot', 'standard'])
   const base = { root, request: REQUEST, rationale: 'One CLI command.' }
 
   recordIntakeClassification({ ...base, estimate: estimate(120) })
@@ -126,7 +127,7 @@ test('reclassification needs a reason and keeps every earlier entry', () => {
 })
 
 test('start resolves the route against installed workflows and the operator', () => {
-  const root = fixture(['standard', 'delivery'])
+  const root = fixture(['standard', 'delivery', 'planning'])
   const record = (sloc: number, operatorWorkflow?: string) =>
     recordIntakeClassification({
       root,
@@ -143,12 +144,7 @@ test('start resolves the route against installed workflows and the operator', ()
     source: 'route',
     reason: null,
   })
-  assert.deepEqual(record(100), {
-    kind: 'workflow',
-    workflow: 'planning',
-    source: 'fallback',
-    reason: 'The one-shot workflow is not installed yet.',
-  })
+  assert.throws(() => record(100), { code: 'UNKNOWN_WORKFLOW' })
   assert.deepEqual(record(1500), {
     kind: 'decompose',
     command: '/pan-decompose',
@@ -240,4 +236,96 @@ test('sizing handbook states the thresholds the classifier applies', () => {
     }))
 
   assert.deepEqual(rows, SIZE_RUBRIC)
+})
+
+test('classified routes start without a planning fallback', () => {
+  const grammar = readFileSync(
+    path.join(process.cwd(), 'src', 'lib', 'pan-command-grammar.ts'),
+    'utf8',
+  )
+  assert.match(
+    grammar,
+    /--workflow one-shot\|standard\|prototype-trace\|planning/,
+  )
+  assert.match(grammar, /Size-routed work starts from pan intake classify/)
+
+  const route = JSON.parse(
+    readFileSync(
+      path.join(process.cwd(), 'governance', 'policies', 'ROUTE-001.json'),
+      'utf8',
+    ),
+  ) as { instructions: string[] }
+  const missing = route.instructions.find((line) =>
+    line.includes('not installed'),
+  )
+  assert.match(missing ?? '', /UNKNOWN_WORKFLOW/)
+  assert.equal(missing?.includes('falls back'), false)
+
+  const start = readFileSync(
+    path.join(process.cwd(), 'library', 'cursor', 'commands', 'pan-start.md'),
+    'utf8',
+  )
+  assert.match(start, /including its `--workflow`/)
+  assert.equal(start.includes('Do not pass `--workflow`'), false)
+
+  const orchestrator = readFileSync(
+    path.join(process.cwd(), 'library', 'personas', 'orchestrator.md'),
+    'utf8',
+  )
+  assert.match(orchestrator, /A missing route workflow is refused/)
+  assert.equal(orchestrator.includes('falls back to `planning`'), false)
+})
+
+test('named pipeline configs map test-author beside coder', () => {
+  const config = JSON.parse(
+    readFileSync(path.join(process.cwd(), 'config.json'), 'utf8'),
+  ) as {
+    active_config: string
+    defaults: Record<string, string>
+    configs: Record<string, Record<string, string>>
+  }
+  assert.equal(config.active_config, 'default')
+  assert.equal(config.defaults['test-author'], config.defaults.coder)
+  for (const name of ['balanced', 'advanced', 'ultra'] as const) {
+    assert.equal(
+      config.configs[name]?.['test-author'],
+      config.configs[name]?.coder,
+    )
+  }
+})
+
+test('a trace route refuses a missing continuation workflow before recording intake', () => {
+  const root = fixture(['prototype-trace'])
+  for (const sloc of [400, 1500]) {
+    assert.throws(
+      () =>
+        recordIntakeClassification({
+          root,
+          request: REQUEST,
+          estimate: estimate(sloc, ['cli-engine', 'library'], true),
+          rationale: 'New interface.',
+        }),
+      { code: 'UNKNOWN_WORKFLOW' },
+    )
+    assert.equal(readIntakeRecord(root, REQUEST), null)
+  }
+})
+
+test('decomposition starts with the original classified request, not augmented.md', () => {
+  const root = fixture(['planning'])
+  const augmented = 'runtime/intake/1_request/augmented.md'
+  mkdirSync(path.dirname(path.join(root, augmented)), { recursive: true })
+  writeFileSync(path.join(root, augmented), 'Augmented requirements.')
+  const record = recordIntakeClassification({
+    root,
+    request: REQUEST,
+    augmented,
+    estimate: estimate(1500),
+    rationale: 'Wide change.',
+  })
+  assert.equal(
+    intakeNextCommand(record, './bin/pan'),
+    `/pan-decompose ${REQUEST}`,
+  )
+  assert.equal(readIntakeRecord(root, augmented), null)
 })

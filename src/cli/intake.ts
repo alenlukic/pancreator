@@ -1,6 +1,8 @@
 /** `pan intake`: request size, integration, and route classification. */
 
 import { PanError } from '../lib/errors.js'
+import { traceContinuation } from '../lib/intake/trace-continuation.js'
+import { shellSingleQuote } from '../lib/watch/completion.js'
 import {
   readIntakeRecord,
   recordIntakeClassification,
@@ -19,6 +21,24 @@ import {
 
 export function intakeCommand({ root, pan, args, json }: CliContext): void {
   const subcommand = args[0]
+  if (subcommand === 'continue') {
+    const continuation = traceContinuation(
+      root,
+      requiredArgument(option(args, '--run'), '--run'),
+    )
+    const nextCommand = [
+      `${pan} init --request ${shellSingleQuote(continuation.request)}`,
+      `--workflow ${continuation.workflow}`,
+      `--context-reference ${shellSingleQuote(continuation.trace_output)}`,
+      continuation.worktree
+        ? `--worktree ${shellSingleQuote(continuation.worktree)}`
+        : `--workspace ${shellSingleQuote(continuation.workspace)}`,
+    ].join(' ')
+
+    print({ ...continuation, next_command: nextCommand }, json)
+    return
+  }
+
   const request = requiredArgument(option(args, '--request'), '--request')
 
   if (subcommand === 'classify') {
@@ -55,9 +75,12 @@ export function intakeCommand({ root, pan, args, json }: CliContext): void {
     return
   }
 
-  throw new PanError('Usage: pan intake classify|show --request <file>.', {
-    code: 'INVALID_ARGUMENT',
-  })
+  throw new PanError(
+    'Usage: pan intake classify|show --request <file> | continue --run <trace-run-id>.',
+    {
+      code: 'INVALID_ARGUMENT',
+    },
+  )
 }
 
 function requiredInteger(args: string[], name: string): number {
@@ -107,14 +130,18 @@ export function intakeNextCommand(record: IntakeRecord, pan: string): string {
   const { start } = record.current
 
   if (start.kind === 'decompose') {
-    return `${start.command} ${record.augmented_request?.path ?? record.request}`
+    return `${start.command} ${record.request}`
   }
 
   return [
-    `${pan} init --request ${record.request}`,
-    ...(start.workflow === 'planning' ? [] : [`--workflow ${start.workflow}`]),
+    `${pan} init --request ${commandWord(record.request)}`,
+    `--workflow ${commandWord(start.workflow)}`,
     ...(record.augmented_request
-      ? [`--context-reference ${record.augmented_request.path}`]
+      ? [`--context-reference ${commandWord(record.augmented_request.path)}`]
       : []),
   ].join(' ')
+}
+
+function commandWord(value: string): string {
+  return /^[a-zA-Z0-9_./-]+$/u.test(value) ? value : shellSingleQuote(value)
 }

@@ -76,7 +76,10 @@ test('config_overrides.json overrides project preferences without touching confi
   const involvement = loadOperatorInvolvementFile(root)
 
   assert.equal(involvement.active, 'hands-off')
-  assert.equal(involvement.profiles['hands-off']?.gates?.plan, 'supervisor')
+  assert.equal(
+    involvement.profiles['hands-off']?.gates?.['planning/plan'],
+    'supervisor',
+  )
 
   const checkedInAfter = JSON.parse(
     readFileSync(path.join(root, 'config.json'), 'utf8'),

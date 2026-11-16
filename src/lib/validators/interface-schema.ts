@@ -8,6 +8,7 @@ import {
 } from '../interface-schema.js'
 import { fileExists, isRecord, readJson, resolveInside } from '../io.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
+import { workspaceRootFromInput } from './stage/evidence.js'
 
 const END_TO_END_KINDS = new Set(['e2e', 'end-to-end', 'integration'])
 
@@ -205,7 +206,7 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
   let schemaPath: string
 
   try {
-    schemaPath = resolveInside(input.root, relative)
+    schemaPath = resolveInside(workspaceRootFromInput(input), relative)
   } catch (error) {
     issues.push(
       issue(

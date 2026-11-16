@@ -5,6 +5,7 @@
   "prompt_path": "library/workflows/prototype-trace/prompts/trace.md",
   "workspace_policy": "source_allowed",
   "gate": "operator",
+  "gate_relaxable": false,
   "context": {
     "request": "required",
     "prior_attempts": 1,

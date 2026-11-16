@@ -43,6 +43,8 @@ const RUN_CONSTRUCTION_ALLOWLIST = new Set([
   'tests/integration/evidence-path-attempts.test.ts',
   'tests/integration/gate-cache.test.ts',
   'tests/integration/hypervisor-cli.test.ts',
+  // Fresh classified trace and continuation runs have no shared checkpoint.
+  'tests/integration/intake-trace-continuation.test.ts',
   'tests/integration/non-git-workflow.test.ts',
   'tests/integration/openai-executor-guards.test.ts',
   'tests/integration/openai-executor.test.ts',

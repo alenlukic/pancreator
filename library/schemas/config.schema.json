@@ -321,9 +321,9 @@
               },
               "gates": {
                 "type": "object",
-                "description": "Stage slug to gate assignment. The '*' key applies to every stage; an explicit slug overrides it. A stage declaring gate_relaxable: false rejects any assignment that lowers operator involvement.",
+                "description": "Stage slug or workflow/stage to gate assignment. The '*' key applies to every stage; an explicit slug overrides it, and workflow/stage is most specific. A stage declaring gate_relaxable: false rejects any assignment that lowers operator involvement.",
                 "propertyNames": {
-                  "pattern": "^(\\*|[a-z0-9-]+)$"
+                  "pattern": "^(\\*|[a-z0-9-]+(/[a-z0-9-]+)?)$"
                 },
                 "additionalProperties": {
                   "enum": [
