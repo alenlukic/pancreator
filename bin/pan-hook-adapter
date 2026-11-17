@@ -136,6 +136,7 @@ def normalize(payload, dialect):
         "tool_name": first(payload, "toolName", "tool_name"),
         "tool_input": tool_input_of(first(payload, "toolArgs", "tool_input")),
         "tool_use_id": first(payload, "toolCallId", "tool_use_id"),
+        "parent_tool_call_id": first(payload, "parentToolCallId", "parent_tool_call_id"),
         "tool_output": first(payload, "toolResult", "tool_response"),
         "subagent_id": first(payload, "agentId", "agent_id"),
         "subagent_type": first(payload, "agentName", "agent_type"),
@@ -162,9 +163,9 @@ def subagent_fields(payload, dialect, cursor):
     parent = cursor.get("conversation_id")
     if dialect == "copilot-cli":
         cursor.pop("transcript_path", None)
-        task = first(payload, "prompt", "agentPrompt", "task")
-        if isinstance(task, str):
-            cursor["task"] = task
+    task = first(payload, "task", "task_text", "agentPrompt", "prompt", "initialPrompt")
+    if isinstance(task, str):
+        cursor["task"] = task
     if cursor.get("subagent_id") is None:
         # Without a child key the parent's own id would register as the child.
         cursor.pop("conversation_id", None)

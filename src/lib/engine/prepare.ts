@@ -430,9 +430,9 @@ export function prepareInvocation(
       scheduledWorkers && !scopedReturn
         ? remediationReturn(root, state, stage)
         : undefined
-    // Parallel evidence workers run as top-level named agents so their
-    // persona-model mappings hold. Resolving them at prepare time makes a
-    // missing mapping fail here rather than silently downgrade at launch.
+    const contracts = state.operator_involvement?.contracts ?? []
+    // Resolve named workers at prepare time so a missing persona-model
+    // mapping fails here rather than silently downgrading at launch.
     const evidenceWorkers =
       scheduledWorkers &&
       scheduledWorkers.length > 0 &&
@@ -459,6 +459,15 @@ export function prepareInvocation(
             return {
               persona: worker.persona,
               role: worker.role,
+              policies: resolvePolicies(root, {
+                persona: worker.persona,
+                workflow: workflow.slug,
+                stage: stage.slug,
+                contracts,
+                operator_artifacts: artifactsRequested
+                  ? 'requested'
+                  : 'suppressed',
+              }),
               // An empty blast radius bounds nothing, so the brief says to
               // execute the scope in full and the first-visit scope stays.
               scope:
@@ -478,7 +487,6 @@ export function prepareInvocation(
           })
         : undefined
 
-    const contracts = state.operator_involvement?.contracts ?? []
     const policies = resolvePolicies(root, {
       persona: stage.persona,
       workflow: workflow.slug,

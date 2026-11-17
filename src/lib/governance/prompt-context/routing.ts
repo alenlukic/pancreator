@@ -25,6 +25,8 @@ import {
 import { liveRuns } from './cards.js'
 import {
   deliverDeferredClauses,
+  boundedReminder,
+  hookByteBudget,
   deliveryScope,
   firedContext,
   preToolDecision,
@@ -50,6 +52,7 @@ interface ConversationStore {
 
 interface PromptPayload {
   conversation_id: string | null
+  parent_tool_call_id: string | null
   hook_event_name: string | null
   prompt: string
   tool_name: string | null
@@ -116,6 +119,10 @@ function parsePayload(value: unknown): PromptPayload {
       typeof value.conversation_id === 'string' &&
       value.conversation_id.length > 0
         ? value.conversation_id
+        : null,
+    parent_tool_call_id:
+      typeof value.parent_tool_call_id === 'string'
+        ? value.parent_tool_call_id
         : null,
     hook_event_name:
       typeof value.hook_event_name === 'string'
@@ -433,7 +440,18 @@ export function resolvePromptContext(
   now = new Date(),
   onReminderScope?: (scope: CanonicalReminderOptions) => void,
 ): PromptContextResponse {
-  const base = resolveBaseContext(root, payloadText, now, onReminderScope)
+  const budget = hookByteBudget(root)
+  const original = resolveBaseContext(root, payloadText, now, onReminderScope)
+  const base =
+    original.additional_context === undefined
+      ? original
+      : {
+          ...original,
+          additional_context: boundedReminder(
+            original.additional_context,
+            budget,
+          ),
+        }
 
   try {
     const payload = parsePayload(JSON.parse(payloadText))
@@ -445,7 +463,11 @@ export function resolvePromptContext(
       return base
     }
 
-    const delivery = deliveryScope(root, payload.conversation_id)
+    const delivery = deliveryScope(
+      root,
+      payload.conversation_id,
+      payload.parent_tool_call_id,
+    )
     const deferred = deliverDeferredClauses(
       root,
       payload.conversation_id,
@@ -460,14 +482,14 @@ export function resolvePromptContext(
       }),
       now,
       delivery,
+      { base: base.additional_context, budget, includeOutstanding: true },
     )
 
     return deferred === null
       ? base
       : {
           continue: true,
-          additional_context:
-            `${base.additional_context ?? ''}\n\n${deferred}`.trim(),
+          additional_context: deferred,
         }
   } catch {
     // Delivery is best effort: the card index and `pan governance clause`
@@ -488,7 +510,11 @@ export function resolvePreToolDecision(
   try {
     const payload = parsePayload(JSON.parse(payloadText))
 
-    const delivery = deliveryScope(root, payload.conversation_id)
+    const delivery = deliveryScope(
+      root,
+      payload.conversation_id,
+      payload.parent_tool_call_id,
+    )
 
     return preToolDecision(
       root,
@@ -503,6 +529,7 @@ export function resolvePreToolDecision(
       }),
       now,
       delivery,
+      payload.tool_input,
     )
   } catch {
     return { permission: 'allow' }

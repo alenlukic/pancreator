@@ -15,6 +15,11 @@ import {
   type DeferredClauseGroup,
 } from './policy-deferred.js'
 import { isInvocationContext } from './policy-delivery.js'
+import {
+  findInvocationWorker,
+  invocationWorkers,
+  workerDelivery,
+} from './policy-worker-scope.js'
 import { isPolicyLoad } from './policy-instructions.js'
 import { loadPolicyCatalog } from './policies.js'
 import { listRunStatesWhere } from './state.js'
@@ -39,6 +44,7 @@ export interface ResolvedClause {
   group: DeferredClauseGroup
   /** The text a card would render for these clauses. */
   text: string
+  scope?: string
 }
 
 const ALL_CAPABILITIES: PolicyCapabilities = { shell: true, delegation: true }
@@ -103,6 +109,7 @@ export function resolveDeferredClause(
     audience?: 'agent' | 'supervisor'
     capabilities?: PolicyCapabilities
     invocationId?: string
+    workerId?: string
   },
 ): ResolvedClause {
   if (!isPolicyLoad(request.trigger) || request.trigger === 'invocation') {
@@ -114,11 +121,24 @@ export function resolveDeferredClause(
 
   // A worker's hook and card use its prepared snapshot, not a policy edited
   // after launch. Resolve a scoped pull from the same bytes.
-  const active = request.invocationId
+  const worker = request.workerId
+    ? findInvocationWorker(root, request.workerId)
+    : undefined
+  if (request.workerId && !worker)
+    throw new PanError(`Unknown invocation worker: ${request.workerId}`, {
+      code: 'INVALID_ARGUMENT',
+    })
+  const invocationId =
+    request.invocationId ?? worker?.invocation_id ?? undefined
+  if (worker && worker.invocation_id !== invocationId)
+    throw new PanError('Worker belongs to another invocation.', {
+      code: 'INVALID_ARGUMENT',
+    })
+  const active = invocationId
     ? listRunStatesWhere(
         root,
-        (run) => run.current_invocation?.id === request.invocationId,
-      ).find((run) => run.current_invocation?.id === request.invocationId)
+        (run) => run.current_invocation?.id === invocationId,
+      ).find((run) => run.current_invocation?.id === invocationId)
         ?.current_invocation
     : undefined
   const snapshot = active
@@ -135,8 +155,32 @@ export function resolveDeferredClause(
   }
 
   const invocation = isInvocationContext(snapshot) ? snapshot : undefined
+  if (worker && (!invocation || invocation.run_id !== worker.run_id))
+    throw new PanError('Worker has no matching active invocation.', {
+      code: 'INVALID_ARGUMENT',
+    })
+  // A legacy firing with no applicable registered worker still needs a
+  // recoverable invocation-wide pull. It can never satisfy a worker scope.
+  if (
+    invocation &&
+    !worker &&
+    invocationWorkers(root, invocation).length > 0 &&
+    !undeliveredClauses(root, invocation.invocation_id).some(
+      (entry) =>
+        entry.policy_id === request.policyId &&
+        entry.trigger === request.trigger,
+    )
+  )
+    throw new PanError(
+      'Name the receiving worker with --worker <agent-id>; an invocation-wide receipt cannot satisfy an individual worker.',
+      { code: 'INVALID_ARGUMENT' },
+    )
+  const delivery =
+    invocation && worker ? workerDelivery(root, invocation, worker) : undefined
   const policy = invocation
-    ? invocation.policies.find((entry) => entry.id === request.policyId)
+    ? (delivery?.policies ?? invocation.policies).find(
+        (entry) => entry.id === request.policyId,
+      )
     : loadPolicyCatalog(root).get(request.policyId)
 
   if (!policy) {
@@ -147,8 +191,11 @@ export function resolveDeferredClause(
 
   const groups = deferredClauseGroups(
     policy,
-    request.audience ?? 'agent',
-    invocation?.capabilities ?? request.capabilities ?? ALL_CAPABILITIES,
+    delivery ? 'agent' : (request.audience ?? 'agent'),
+    delivery?.capabilities ??
+      invocation?.capabilities ??
+      request.capabilities ??
+      ALL_CAPABILITIES,
   )
   const group = groups.find((entry) => entry.trigger === request.trigger)
 
@@ -166,6 +213,7 @@ export function resolveDeferredClause(
 
   return {
     group,
+    scope: delivery?.scope ?? invocationId,
     text: [
       `**${policy.id} · ${policy.title}** · \`${group.trigger}\``,
       '',
@@ -213,6 +261,7 @@ export function readClauseReceipts(
         const value: unknown = JSON.parse(line)
 
         return isRecord(value) &&
+          value.scope === receiptScope(scope) &&
           typeof value.policy_id === 'string' &&
           typeof value.trigger === 'string' &&
           isPolicyLoad(value.trigger) &&
@@ -314,6 +363,7 @@ export function readClauseFired(
         const value: unknown = JSON.parse(line)
 
         return isRecord(value) &&
+          value.scope === receiptScope(scope) &&
           typeof value.policy_id === 'string' &&
           typeof value.trigger === 'string' &&
           isPolicyLoad(value.trigger) &&

@@ -21,6 +21,11 @@
       "probes": [],
       "commands": []
     },
+    "trace": {
+      "description": "Prototype-trace runner: execute the single file named by PANCREATOR_TRACE_TEST_FILE, returning nonzero for a failure or no collected tests. Configure from the target's documented test runner; the trace gate refuses an absent profile.",
+      "probes": [],
+      "commands": []
+    },
     "secondary": {
       "description": "An optional documented complementary suite for slow, integration, model-backed, end-to-end, or otherwise non-default checks.",
       "probes": [],

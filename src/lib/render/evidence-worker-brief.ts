@@ -1,5 +1,10 @@
 /** Evidence-worker skips and the evidence-worker brief. */
 
+import {
+  deferredClauseGroups,
+  renderDeferredIndex,
+} from '../policy-deferred.js'
+import { panCommand } from '../project-config.js'
 import type { Invocation, InvocationEvidenceWorker } from '../types.js'
 import {
   EVIDENCE_REPORT_CASE_PREFIX,
@@ -86,6 +91,20 @@ export function renderEvidenceWorkerBrief(
       ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
     ])
   const harnessRoot = invocation.harness_root
+  const deferred = (worker.policies ?? []).flatMap((policy) =>
+    deferredClauseGroups(policy, 'agent', { shell: false, delegation: false }),
+  )
+  const policyIndex = deferred.length
+    ? [
+        'The hooks deliver these clauses to your own worker identity. You have no shell authority: if a required clause is not delivered, ask the supervisor to retrieve it with your registered worker id and relay the complete text before proceeding.',
+        ...renderDeferredIndex(
+          deferred,
+          2,
+          harnessRoot ? panCommand(harnessRoot) : undefined,
+          invocation.invocation_id,
+        ),
+      ]
+    : []
   if (
     invocation.workflow.slug === 'standard' &&
     invocation.stage.slug === 'implement' &&
@@ -94,6 +113,7 @@ export function renderEvidenceWorkerBrief(
   ) {
     return [
       `# Parallel source worker: ${worker.role}`,
+      `**Worker role** \`${worker.role}\` · Invocation brief: \`${worker.brief_path}\``,
       '',
       `Workspace: \`${invocation.workspace_root}\`. Harness: \`${harnessRoot ?? invocation.workspace_root}\`.`,
       'Read the ratified plan and target instructions before editing. Your scope is source-allowed only for your assigned files.',
@@ -109,6 +129,7 @@ export function renderEvidenceWorkerBrief(
       'Do not launch agents, commit, change workflow state, or write the stage output.',
       'If concrete evidence reveals an M hard-max breach (1000 implementation SLOC) or an unplanned new integration point, stop expanding scope and flag the evidence and recommended reroute in your report. The join owns the blocked stage outcome.',
       '',
+      ...policyIndex,
       '## Inputs',
       ...references,
       '',
@@ -131,6 +152,7 @@ export function renderEvidenceWorkerBrief(
   }
   const lines = [
     `# Evidence brief: ${worker.role} for stage \`${invocation.stage.slug}\``,
+    `**Worker role** \`${worker.role}\` · Invocation brief: \`${worker.brief_path}\``,
     '',
     `**Run** \`${invocation.run_id}\` · **Invocation** ` +
       `\`${invocation.invocation_id}\` · **Persona** \`${worker.persona}\``,
@@ -183,6 +205,7 @@ export function renderEvidenceWorkerBrief(
     '',
     worker.scope,
     '',
+    ...policyIndex,
     '## Inputs',
     '',
     ...(references.length > 0 ? references : ['- No artifact inputs.']),

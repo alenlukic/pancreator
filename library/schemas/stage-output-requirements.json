@@ -1326,6 +1326,7 @@
             "data.skeletons[]",
             "data.skeletons[].name",
             "data.skeletons[].signature",
+            "data.skeletons[].path",
             "data.trace_tests[]",
             "data.trace_tests[].id",
             "data.trace_tests[].path",
@@ -1360,6 +1361,11 @@
           "path": "data.skeletons[].signature",
           "type": "string",
           "format": "non-empty signature string identical to the schema file"
+        },
+        {
+          "path": "data.skeletons[].path",
+          "type": "string",
+          "format": "repository-relative path of an existing nonempty skeleton file"
         },
         {
           "path": "data.trace_tests[]",

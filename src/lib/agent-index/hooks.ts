@@ -4,6 +4,7 @@
  */
 
 import path from 'node:path'
+import { policyToolEvidence } from '../policy-tool-evidence.js'
 
 import {
   MAX_TRANSCRIPT_PATH_CHARS,
@@ -97,10 +98,17 @@ function appendToolEvent(
 ): void {
   const index = readIndex(root)
   const fileId = resolveEventFileId(index, rawId, parentToolCallId)
+  const agent = findAgent(
+    index,
+    canonicalAgentId(index, rawId, parentToolCallId),
+  )
 
   appendEvent(root, fileId, {
     ...event,
     agent_id: canonicalAgentId(index, rawId, parentToolCallId),
+    ...(agent?.run_id && agent.invocation_id
+      ? { run_id: agent.run_id, invocation_id: agent.invocation_id }
+      : {}),
   })
 }
 
@@ -123,6 +131,15 @@ export function handlePreToolUse(
   const toolName = nonEmptyString(payload.tool_name) ?? 'unknown'
   const toolUseId = nonEmptyString(payload.tool_use_id) ?? ''
   const summary = summarizeToolInput(toolName, payload.tool_input, secrets)
+  const policyContext = policyToolEvidence(
+    toolName,
+    payload.tool_input,
+    undefined,
+    false,
+  )
+  policyContext.paths = policyContext.paths
+    .map((value) => redact(value, secrets))
+    .filter((value) => Buffer.byteLength(value) <= 512)
 
   ensureAgentsDir(root)
   const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
@@ -135,6 +152,7 @@ export function handlePreToolUse(
     tool_name: toolName,
     tool_use_id: toolUseId,
     ...(summary !== undefined ? { summary } : {}),
+    policy_context: policyContext,
   })
 
   withLock(lockPath(root), () => {
@@ -208,6 +226,15 @@ export function handlePostToolUse(
   const toolName = nonEmptyString(payload.tool_name) ?? 'unknown'
   const toolUseId = nonEmptyString(payload.tool_use_id) ?? ''
   const failureType = failed ? nonEmptyString(payload.failure_type) : null
+  const policyContext = policyToolEvidence(
+    toolName,
+    payload.tool_input,
+    payload.tool_output,
+    failed,
+  )
+  policyContext.paths = policyContext.paths
+    .map((value) => redact(value, collectSecrets(root)))
+    .filter((value) => Buffer.byteLength(value) <= 512)
 
   ensureAgentsDir(root)
   const parentToolCallId = nonEmptyString(payload.parent_tool_call_id)
@@ -220,6 +247,7 @@ export function handlePostToolUse(
     tool_name: toolName,
     tool_use_id: toolUseId,
     ...(failureType ? { failure_type: failureType.slice(0, 64) } : {}),
+    policy_context: policyContext,
   })
 
   const handle =
@@ -381,6 +409,11 @@ export function handleSubagentStart(
     if (parsed) {
       child.run_id = parsed.run_id
       child.invocation_id = parsed.invocation_id
+      const role =
+        /\*\*Worker role\*\* `([A-Za-z0-9_-]+)`/u.exec(taskText)?.[1] ??
+        /\.([A-Za-z0-9_-]+)-brief(?:\.attempt-\d+)?\.md\b/u.exec(taskText)?.[1]
+      if (role) child.worker_role = role
+      else delete child.worker_role
     }
 
     if (parentTranscriptPath !== null) {

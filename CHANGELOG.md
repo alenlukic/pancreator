@@ -1,5 +1,33 @@
 # Changelog
 
+## [10.18.0] - 2026-11-17
+
+### Changed
+
+- Scope deferred clause receipts to each worker identity ([deferred](src/lib/governance/prompt-context/deferred.ts), [0b84bad2](https://github.com/alenlukic/pancreator/commit/0b84bad2)).
+- Keep the hook byte budget on whole clause groups ([deferred](src/lib/governance/prompt-context/deferred.ts), [a850a22f](https://github.com/alenlukic/pancreator/commit/a850a22f)).
+- Print a scoped pull when a clause group does not fit ([deferred](src/lib/governance/prompt-context/deferred.ts), [a850a22f](https://github.com/alenlukic/pancreator/commit/a850a22f)).
+- Tighten the marshal join and the plan-trace contract ([standard-marshal](src/lib/standard-marshal.ts), [0b84bad2](https://github.com/alenlukic/pancreator/commit/0b84bad2)).
+- Print a bounded recent log from `pan-run` and keep the full record ([pan-run](bin/pan-run), [bd4a4e52](https://github.com/alenlukic/pancreator/commit/bd4a4e52)).
+
+### Added
+
+- Run declared prototype-trace tests through a `trace` profile and bind successful artifacts to content digests ([trace-check](src/lib/validation/trace-check.ts), [0b84bad2](https://github.com/alenlukic/pancreator/commit/0b84bad2)).
+- Record deferred delivery evidence for each worker and pin evidence-worker briefs to applicable policies ([deferred-delivery](src/lib/engine/deferred-delivery-evidence.ts), [0b84bad2](https://github.com/alenlukic/pancreator/commit/0b84bad2)).
+- Check attributable tool events against pinned policy groups at submit ([policy-tool-evidence](src/lib/policy-tool-evidence.ts), [0b84bad2](https://github.com/alenlukic/pancreator/commit/0b84bad2)).
+- Document the prototype-trace profile and deferred receipts for each worker ([workflow-authoring](docs/workflow-authoring.md), [0b84bad2](https://github.com/alenlukic/pancreator/commit/0b84bad2)).
+
+
+### Changed
+
+- Refuse a classified route whose workflow is not installed ([intake](src/lib/intake/record.ts), [ROUTE-001](governance/policies/ROUTE-001.json)).
+- Document `one-shot`, `standard`, and `prototype-trace` on `pan init`, `/pan-start`, the orchestrator, the primer, and the installed AGENTS templates ([grammar](src/lib/pan-command-grammar.ts), [pan-start](library/cursor/commands/pan-start.md), [primer](docs/target-repo-primer.md)).
+
+### Added
+
+- Map `test-author` beside `coder` in the named pipeline configs ([config](config.json)).
+- Print `pan intake continue --run` after an approved prototype-trace, and refuse a later start when that contract moved ([continue](src/lib/intake/trace-continuation.ts)).
+
 ## [10.17.0] - 2026-11-16
 
 ### Changed

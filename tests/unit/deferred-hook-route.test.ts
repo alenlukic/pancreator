@@ -549,3 +549,79 @@ test('all six migrated policies deliver for matching paths and stay quiet otherw
     )
   })
 })
+
+test('budget fitting delivers only whole groups, reserves the base and re-offers an unresolved one-off event', () => {
+  withTempRoot((root) => {
+    const huge = '界🙂'.repeat(2000)
+    const delivery: DeliveryScope = {
+      ...DELIVERY,
+      policies: [
+        POLICIES[0],
+        {
+          ...POLICIES[2],
+          instructions: [
+            { text: huge, audience: ['agent'], load: 'event:tool_failure' },
+          ],
+        },
+      ],
+    }
+    const base = 'Complete eager reminder.'
+    const budget = 800
+    const response = deliverDeferredClauses(
+      root,
+      'conv-1',
+      fired({ classes: ['browser'], events: ['tool_failure'] }),
+      new Date(),
+      delivery,
+      { base, budget },
+    )
+    assert.ok(response)
+    assert.ok(response.startsWith(base))
+    assert.ok(Buffer.byteLength(response) <= budget)
+    assert.ok(response.includes(BROWSER))
+    assert.match(
+      response,
+      /governance clause --policy RECOVER-001 --trigger event:tool_failure/u,
+    )
+    assert.ok(!response.includes(huge))
+    assert.deepEqual(
+      readClauseReceipts(root, delivery.scope).map((entry) => entry.policy_id),
+      ['BROWSER-001'],
+    )
+    assert.equal(readClauseFired(root, delivery.scope).length, 2)
+    const repeat = deliverDeferredClauses(
+      root,
+      'conv-1',
+      fired({}),
+      new Date(),
+      delivery,
+      { base, budget, includeOutstanding: true },
+    )
+    assert.ok(repeat)
+    assert.ok(repeat.includes('governance clause --policy RECOVER-001'))
+    assert.ok(!repeat.includes(BROWSER))
+    assert.equal(readClauseReceipts(root, delivery.scope).length, 1)
+  })
+})
+
+test('a full reminder that leaves no room for the pull is replaced by an explicit retrieval notice, never sliced', () => {
+  withTempRoot((root) => {
+    const base = '界'.repeat(315)
+    const delivery: DeliveryScope = { ...DELIVERY, policies: [POLICIES[0]] }
+    const budget = 960
+    const response = deliverDeferredClauses(
+      root,
+      'conv-1',
+      fired({ classes: ['browser'] }),
+      new Date(),
+      delivery,
+      { base, budget },
+    )
+    assert.ok(response)
+    assert.ok(Buffer.byteLength(response) <= budget)
+    assert.match(response, /Read the complete active governance card/u)
+    assert.match(response, /governance clause --policy BROWSER-001/u)
+    assert.ok(!response.includes('界'))
+    assert.deepEqual(readClauseReceipts(root, delivery.scope), [])
+  })
+})

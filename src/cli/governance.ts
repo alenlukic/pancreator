@@ -42,6 +42,7 @@ import {
   recordClauseReceipt,
   resolveDeferredClause,
 } from '../lib/policy-clause.js'
+import { findInvocationWorker } from '../lib/policy-worker-scope.js'
 import { availableReviewDimensions } from '../lib/review-dimensions.js'
 import {
   attestSupervisorCard,
@@ -457,10 +458,29 @@ export async function governanceCommand({
   }
 
   if (sub === 'clause') {
+    const session =
+      process.env.CURSOR_CONVERSATION_ID || process.env.PAN_HOST_SESSION_ID
+    const sessionWorker = session
+      ? findInvocationWorker(root, session)
+      : undefined
+    const explicitWorker = option(args, '--worker')
+    if (
+      sessionWorker &&
+      explicitWorker &&
+      findInvocationWorker(root, explicitWorker)?.agent_id !==
+        sessionWorker.agent_id
+    ) {
+      throw new PanError(
+        'A worker cannot retrieve a sibling’s policy receipt.',
+        { code: 'INVALID_ARGUMENT' },
+      )
+    }
+    const worker = explicitWorker ?? (sessionWorker ? session : undefined)
     const resolved = resolveDeferredClause(root, {
       policyId: requiredArgument(option(args, '--policy'), '--policy'),
       trigger: requiredArgument(option(args, '--trigger'), '--trigger'),
       invocationId: option(args, '--invocation') ?? undefined,
+      workerId: worker,
       audience:
         option(args, '--audience') === 'supervisor' ? 'supervisor' : 'agent',
       capabilities: parseClauseCapabilities(
@@ -469,7 +489,7 @@ export async function governanceCommand({
     })
     const receipt = recordClauseReceipt(
       root,
-      option(args, '--invocation') ?? undefined,
+      resolved.scope,
       resolved.group,
       'pull',
     )

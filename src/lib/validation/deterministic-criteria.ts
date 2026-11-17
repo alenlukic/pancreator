@@ -27,6 +27,7 @@ import type {
 } from '../types.js'
 import { releaseSourceFingerprint } from '../release-source.js'
 import { runShellCheck } from './shell-check.js'
+import { runTraceCheck, TRACE_CHECK_ID } from './trace-check.js'
 import { classifyControllerChanges } from './scope-custody.js'
 import {
   absorbedPathOwners,
@@ -252,6 +253,22 @@ export function evaluateDeterministicCriteria(
           command: criterion.command,
           workspace_fingerprint: afterSnapshot.fingerprint,
         })
+      } else if (
+        criterion.id === TRACE_CHECK_ID &&
+        state.workflow_slug === 'prototype-trace' &&
+        stage.slug === 'trace'
+      ) {
+        results.push(
+          runTraceCheck(
+            root,
+            runDirectory,
+            criterion,
+            afterSnapshot,
+            workspaceDir,
+            artifactId,
+            stageOutput,
+          ),
+        )
       } else if (entryGateResults[criterion.id]) {
         // The harness ran this gate when the run entered the stage, before the
         // worker started. The recorded result decides the submission: running

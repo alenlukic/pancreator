@@ -547,6 +547,30 @@ interface StepDefinition {
 }
 
 const FAMILIES: Record<string, Family> = {
+  'prototype-trace': {
+    createRun: (root, run) =>
+      createRun(root, {
+        workflowSlug: 'prototype-trace',
+        requestPath: 'request.md',
+        ...run,
+      }),
+  },
+  'one-shot': {
+    createRun: (root, run) =>
+      createRun(root, {
+        workflowSlug: 'one-shot',
+        requestPath: 'request.md',
+        ...run,
+      }),
+  },
+  standard: {
+    createRun: (root, run) =>
+      createRun(root, {
+        workflowSlug: 'standard',
+        requestPath: 'request.md',
+        ...run,
+      }),
+  },
   delivery: {
     createRun: (root, run) =>
       createRun(root, {
@@ -662,6 +686,22 @@ function submitAwaitingOperator(root: string, runId: string): void {
 // Keyed by the exported union so a step defined here without an export, or an
 // export without a step, is a type error rather than an unclonable checkpoint.
 const STEPS: Record<Checkpoint, StepDefinition> = {
+  'prototype-trace@created': { parent: null, drive: () => {} },
+  'prototype-trace@trace-prepared': {
+    parent: 'prototype-trace@created',
+    drive: prepare,
+  },
+  'one-shot@created': { parent: null, drive: () => {} },
+  'one-shot@implement-prepared': { parent: 'one-shot@created', drive: prepare },
+  'standard@created': { parent: null, drive: () => {} },
+  'standard@implement-prepared': {
+    parent: 'standard@created',
+    drive: (root, runId) => {
+      submitAwaitingOperator(root, runId)
+      decideRun(root, runId, 'approve', 'Checkpoint operator approval')
+      prepare(root, runId)
+    },
+  },
   'delivery@created': { parent: null, drive: () => {} },
   'delivery@implement-prepared': {
     parent: 'delivery@created',
@@ -781,6 +821,12 @@ const STEPS: Record<Checkpoint, StepDefinition> = {
 }
 
 export type Checkpoint =
+  | 'prototype-trace@created'
+  | 'prototype-trace@trace-prepared'
+  | 'one-shot@created'
+  | 'one-shot@implement-prepared'
+  | 'standard@created'
+  | 'standard@implement-prepared'
   | 'delivery@created'
   | 'delivery@implement-prepared'
   | 'delivery@implement-failed-once'

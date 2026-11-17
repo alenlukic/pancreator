@@ -82,6 +82,7 @@ QUIET=0
 SUMMARY=0
 OUTPUT_EXPLICIT=0
 LIVE_WATCH=0
+RAW_OUTPUT=0
 REQUEST_PATH=""
 CWD=""
 HB_ARG=""
@@ -149,7 +150,13 @@ select_command_output() {
     watch)
       # A watch is itself the live observer. Capturing it hides worker activity.
       LIVE_WATCH=1; QUIET=0; SUMMARY=0 ;;
-    init|status|prepare|submit|pause|resume|decide|governance|worktree|waive-gate|set-stage|attribute|release)
+    governance)
+      if [[ "${COMMAND_ARGV[$((index + 1))]:-}" == clause ]]; then
+        # A policy pull is a delivery route. The agent needs the complete
+        # redacted clause, not a summary or a per-line truncated preview.
+        RAW_OUTPUT=1; QUIET=0; SUMMARY=0
+      elif [[ "$OUTPUT_EXPLICIT" -eq 0 ]]; then QUIET=1; SUMMARY=1; fi ;;
+    init|status|prepare|submit|pause|resume|decide|worktree|waive-gate|set-stage|attribute|release)
       if [[ "$OUTPUT_EXPLICIT" -eq 0 ]]; then QUIET=1; SUMMARY=1; fi ;;
   esac
 }
@@ -435,6 +442,13 @@ function scriptMetadata() {
 // Follow redaction's priority and non-overlapping matches. Considering every
 // overlapping match can otherwise move a cut back through an entire stream.
 function safeCut(text, cut, secrets) {
+  // StringDecoder protects UTF-8 input boundaries, but the holdback below
+  // counts UTF-16 code units. Never encode half of a supplementary character.
+  if (cut > 0 && cut < text.length &&
+      text.charCodeAt(cut - 1) >= 0xd800 && text.charCodeAt(cut - 1) <= 0xdbff &&
+      text.charCodeAt(cut) >= 0xdc00 && text.charCodeAt(cut) <= 0xdfff) {
+    cut -= 1;
+  }
   if (cut <= 0 || secrets.length === 0) return cut;
   const occupied = new Uint8Array(text.length);
   const matches = [];
@@ -621,6 +635,31 @@ function compactShellLogs(shellDir, nowMs) {
   });
 }
 
+// A successful writeSync may consume only part of its input (notably on
+// pipes). Count bytes, not UTF-16 code units, and retry transient errors
+// without re-encoding a partially written UTF-8 character. Keep synchronous
+// backpressure: the filter must not queue unbounded output behind a slow reader.
+const writeRetryWait = new Int32Array(new SharedArrayBuffer(4));
+function writeAll(fd, text) {
+  const bytes = Buffer.from(text, "utf8");
+  let offset = 0;
+  while (offset < bytes.length) {
+    let written;
+    try {
+      written = fs.writeSync(fd, bytes, offset, bytes.length - offset, null);
+    } catch (error) {
+      if (error.code === "EINTR") continue;
+      if (error.code === "EAGAIN" || error.code === "EWOULDBLOCK") {
+        Atomics.wait(writeRetryWait, 0, 0, 10);
+        continue;
+      }
+      throw error;
+    }
+    if (written <= 0) throw new Error("pan-run: output write made no progress");
+    offset += written;
+  }
+}
+
 function filter(logPath) {
   const secrets = collectSecrets();
   const hold = Math.max(0, (secrets.length > 0 ? secrets[0].value.length : 0) - 1);
@@ -631,16 +670,16 @@ function filter(logPath) {
   let passThrough = true;
   let lastDisplay = Date.now();
 
-  const captureRaw = env.PAN_RUN_SUMMARY === "1" || env.PAN_RUN_LIVE_WATCH === "1";
+  const captureRaw = env.PAN_RUN_SUMMARY === "1" || env.PAN_RUN_LIVE_WATCH === "1" || env.PAN_RUN_RAW_OUTPUT === "1";
   const forwardHeartbeat = !captureRaw && env.PAN_RUN_FORWARD_HEARTBEAT === "1";
   const progressFd = forwardHeartbeat ? Number(env.PAN_RUN_PROGRESS_FD || 0) : 0;
   const display = lineRenderer((line, heartbeat) => {
     lastDisplay = Date.now();
     if (heartbeat && progressFd > 0) {
-      try { fs.writeSync(progressFd, `${line}\n`); } catch {}
+      try { writeAll(progressFd, `${line}\n`); } catch {}
     }
     if (passThrough) {
-      try { fs.writeSync(1, `${line}\n`); } catch { passThrough = false; }
+      try { writeAll(1, `${line}\n`); } catch { passThrough = false; }
     }
   });
 
@@ -651,8 +690,8 @@ function filter(logPath) {
     const out = redact(chunk, secrets);
     pending = pending.slice(cut);
     lastEmit = Date.now();
-    fs.writeSync(log, out);
-    if (captureRaw) fs.writeSync(1, out);
+    writeAll(log, out);
+    if (captureRaw) writeAll(1, out);
     else display.write(out);
   };
 
@@ -674,8 +713,8 @@ function filter(logPath) {
     pending += decoder.end();
     const out = redact(pending, secrets);
     pending = "";
-    fs.writeSync(log, out);
-    if (captureRaw) fs.writeSync(1, out);
+    writeAll(log, out);
+    if (captureRaw) writeAll(1, out);
     else display.write(out);
     display.flush();
     fs.closeSync(log);
@@ -1013,9 +1052,9 @@ if [[ "$QUIET" -eq 1 ]]; then
   cat "$FIFO_ERR" | env "${FILTER_ENV[@]}" node "$HELPER" filter "$LOG_PATH" >"$STDERR_LOG" &
   ERR_FILTER_PID=$!
 else
-  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 PAN_RUN_LIVE_WATCH="$LIVE_WATCH" node "$HELPER" filter "$LOG_PATH" &
+  cat "$FIFO_OUT" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 PAN_RUN_LIVE_WATCH="$LIVE_WATCH" PAN_RUN_RAW_OUTPUT="$RAW_OUTPUT" node "$HELPER" filter "$LOG_PATH" &
   OUT_FILTER_PID=$!
-  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 PAN_RUN_LIVE_WATCH="$LIVE_WATCH" node "$HELPER" filter "$LOG_PATH" >&2 &
+  cat "$FIFO_ERR" | PAN_RUN_ENV_FILES="$ENV_FILES" PAN_RUN_SUMMARY=0 PAN_RUN_LIVE_WATCH="$LIVE_WATCH" PAN_RUN_RAW_OUTPUT="$RAW_OUTPUT" node "$HELPER" filter "$LOG_PATH" >&2 &
   ERR_FILTER_PID=$!
 fi
 

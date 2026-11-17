@@ -53,6 +53,14 @@
       "timeout_ms": 240000
     },
     {
+      "id": "trace.tests_run",
+      "type": "shell",
+      "hard": true,
+      "statement": "Every declared trace test file passes through the configured trace runner in the submitted workspace.",
+      "command": "pan repository-check trace",
+      "timeout_ms": 300000
+    },
+    {
       "id": "configuration.valid",
       "type": "shell",
       "hard": true,

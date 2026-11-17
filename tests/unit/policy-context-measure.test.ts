@@ -151,10 +151,7 @@ test('ASK-001 defers the unavailable fallback to the question tool', () => {
   assert.match(eager[0] ?? '', /MUST use the host question tool/u)
   assert.match(eager[1] ?? '', /operator_question/u)
   assert.match(eager[2] ?? '', /MUST NOT proceed on an assumed answer/u)
-  assert.equal(
-    policyInstructionLoad(policy.instructions[1]),
-    'tool:question',
-  )
+  assert.equal(policyInstructionLoad(policy.instructions[1]), 'tool:question')
 })
 
 test('ORCH-001 stays eager because every supervisor session needs it', () => {

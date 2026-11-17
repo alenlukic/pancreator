@@ -72,6 +72,16 @@ function matchingData(): Record<string, unknown> {
 }
 
 function writeMatchingSchema(root: string): void {
+  mkdirSync(path.join(root, 'src'), { recursive: true })
+  mkdirSync(path.join(root, 'tests/integration'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'src/adapter.ts'),
+    'export function createAdapter(provider: string) { return { provider } }\n',
+  )
+  writeFileSync(
+    path.join(root, 'tests/integration/adapter-trace.test.ts'),
+    'import test from "node:test"\ntest("fixture", () => {})\n',
+  )
   writeJson(root, SCHEMA_PATH, {
     interfaces: [{ name: 'createAdapter', signature: SIGNATURE }],
     notes: 'Fixture adapter contract.',

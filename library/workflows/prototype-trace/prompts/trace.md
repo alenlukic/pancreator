@@ -22,7 +22,12 @@ any later standard or decomposition work starts from it.
    file. When an interface changes, update the schema in the same
    change.
 6. Run the `static` profile from `runtime/repository-checks.json`.
-   Repair a new static or type diagnostic before submission.
+   Repair a new static or type diagnostic before submission. Confirm the
+   `trace` repository-check profile runs the file in
+   `$PANCREATOR_TRACE_TEST_FILE` and fails when no tests are collected.
+   The harness executes each declared trace test file at submission. If the
+   target lacks that runner, report the missing configuration rather than
+   guessing a command or claiming a pass.
 
 ## Output
 
@@ -37,5 +42,5 @@ card's `output.operator_brief` contract.
 
 Skeletons, trace tests including one end-to-end path, and the schema
 file are in the repository, claimed signatures match the schema, and
-static checks pass. The run then waits for operator approval of the
-schema.
+static checks and the harness-owned trace test executions pass. The run
+then waits for operator approval of the schema and validated artifacts.

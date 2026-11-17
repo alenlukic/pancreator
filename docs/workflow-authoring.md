@@ -213,6 +213,30 @@ delegation contract unchanged.
   operator who brings a ratified specification starts it directly with
   `pan init --workflow delivery`. `delivery-candidate` is the autonomous
   best-of-N variant; it keeps its own `plan` stage and omits ship.
+- `prototype-trace` - defines skeletons, executable boundary/end-to-end tests,
+  and an interface schema before a new cross-layer contract is approved.
+  The harness checks every declared artifact and executes every distinct trace
+  test file through `runtime/repository-checks.json`'s `trace` profile. The
+  profile must run the selected workspace-relative file and fail if no tests
+  are collected; a pass from another suite is not sufficient. For a Node
+  target, configure the profile as follows (adapt to the target's actual runner):
+
+  ```json
+  {
+    "description": "Execute one declared trace test file",
+    "probes": ["node --version"],
+    "commands": ["node --test \"$PANCREATOR_TRACE_TEST_FILE\""]
+  }
+  ```
+
+  Add this object at `profiles.trace` in the existing manifest; do not replace
+  the other profiles. Self-development has a runner in the canonical
+  self-development template, including compiled TypeScript tests. An existing
+  custom manifest that lacks the profile must be updated before running a new
+  trace. Successful trace validation binds the schema, skeletons, and tests to
+  their content digests through approval and continuation. A failed trace can
+  be approved only as a failure/retry transition, not as a successful contract.
+
 - `prototype` - a fast spike that answers a technical question: intake,
   approach, build, evaluate. It applies `PROTO-001`, keeps the approach stage
   deliberately thin and ungated, gates only the `static` repository-check
@@ -418,6 +442,41 @@ conservatively inline other instructions rather than infer session delivery.
 A structured instruction MAY set `excerpt: true`. The card then quotes that
 instruction under the pointer, for a clause a worker has to meet on the card
 itself. Keep excerpts few: each one grows every Cursor worker card.
+
+A deferred clause receipt is scoped to the receiving worker, not just its
+stage invocation. Parallel evidence workers and the stage worker use their
+own canonical agent identity (host aliases resolve to the same identity).
+New evidence-worker briefs pin their own persona's applicable policies and
+capabilities. A registered worker retrieves a clause with its host session
+identity, or with `pan governance clause --policy <id> --trigger <trigger>
+--invocation <id> --worker <agent-id>`. For a shellless worker, the supervisor
+retrieves the named worker's clause and relays the complete text. No sibling
+receipt satisfies that worker's obligation. A new worker identity requires
+new delivery; resuming the same identity in the same invocation retains its
+receipts.
+
+Submission independently reconciles attributable agent-index tool events and
+wrapped shell records against the pinned policy groups, in addition to the
+policy hook's firing ledger. An outstanding obligation refuses submission
+without consuming a stage attempt. Historical invocation-wide firings are
+conservatively reconciled to applicable registered workers; old shared
+receipts cannot establish individual delivery. Unbound invocations retain
+their existing ledger semantics. An action absent from all supported evidence
+sources cannot be inferred by the submit check.
+
+The native hook byte budget covers the complete injected reminder or pre-tool
+message, including deferred text and recovery instructions. A hook delivers
+whole clause groups only. If a group cannot fit, it prints a scoped
+`pan governance clause` pull command and retains the firing without a delivery
+receipt. Pre-tool retries remain denied until the applicable groups have
+receipts; only the exact wrapped retrieval command for a pending group may
+pass the deferred shell guard to prevent a self-blocking pull. A shellless
+worker asks the supervisor to relay the complete scoped clause. Post-tool
+hooks re-offer unresolved groups on subsequent events. The base reminder is
+preserved when possible; if it leaves no room for recovery, the hook directs
+the agent to read its complete pinned reminder and card rather than truncating
+normative text. Wrapped governance clause pulls stream the full redacted body
+and retain the full shell log; ordinary shell output remains bounded.
 
 The invocation JSON records each policy's mode under `policy_delivery`. Card
 validation checks the policy snapshot and covered instruction digests. Saved

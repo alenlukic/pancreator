@@ -70,6 +70,10 @@ export function profileCommandEnv(
     delete merged[TEST_PROFILE_ENV]
   }
 
+  // A nested Node test runner silently exits zero without executing tests.
+  // Repository profiles launch standalone processes, even inside test fixtures.
+  delete merged.NODE_TEST_CONTEXT
+
   if (!(BUILD_READY_ENV in env)) {
     delete merged[BUILD_READY_ENV]
   }

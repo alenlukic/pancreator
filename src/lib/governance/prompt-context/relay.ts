@@ -32,6 +32,7 @@ import {
 } from './cache-diagnostics.js'
 import { ReminderRelayPackets, unwrapRelayHookText } from './relay-packets.js'
 import { resolvePromptContext } from './routing.js'
+import { hookByteBudget } from './deferred.js'
 
 const RECEIPT = 'runtime/reminder-relay.json'
 const LIMIT = 8 * 1024 * 1024
@@ -673,6 +674,7 @@ export async function resolveRelayPromptContext(
       result.ok &&
       isRecord(value) &&
       typeof value.body === 'string' &&
+      Buffer.byteLength(value.body, 'utf8') <= hookByteBudget(root) &&
       unwrapRelayHookText(value.body) === response.additional_context
     ) {
       return { ...response, additional_context: value.body }

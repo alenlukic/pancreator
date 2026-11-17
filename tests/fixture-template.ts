@@ -257,6 +257,10 @@ function writeFixtureRepositoryChecks(root: string): void {
             'impacted-release',
             'Run the fixture release-landing touch-set tests.',
           ),
+          trace: {
+            probes: [],
+            commands: ['node --test "$PANCREATOR_TRACE_TEST_FILE"'],
+          },
           secondary: profile('secondary', 'Run fixture secondary tests.'),
           full: profile('full', 'Run complete fixture verification.'),
         },

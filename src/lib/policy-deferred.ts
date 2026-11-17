@@ -264,7 +264,10 @@ export function renderDeferredIndex(
         'before your first use of that tool class, `event:<id>` when that ' +
         'event occurs, `path:<glob>` before you first touch a matching ' +
         'file. A hook may deliver the clause for you; otherwise run the ' +
-        'command on the line. The harness owns each digest.',
+        'command on the line. The harness owns each digest.' +
+        (invocationId
+          ? ' For a registered worker the host session selects its receipt; if unavailable, append `--worker <agent-id>` (your own registered identity or alias). Do not use a sibling’s receipt.'
+          : ''),
       '',
       ...groups.map((group) =>
         renderDeferredIndexLine(group, panCommand, invocationId),

@@ -6,6 +6,7 @@ import test from 'node:test'
 import { validateMarshalOutput } from '../../src/lib/validators/stage-validators.js'
 import {
   captureMarshalBaseline,
+  isShapeOnlyMarshal,
   marshalBaselinePath,
 } from '../../src/lib/standard-marshal.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
@@ -102,7 +103,7 @@ test('a mislabeled assertion edit fails against the captured author baseline', (
   mkdirSync(path.join(root, 'tests'), { recursive: true })
   writeFileSync(
     path.join(root, relative),
-    'const actual = oldCall()\nassert.equal(actual, 42)\n',
+    "import { oldCall } from '../src/subject.js'\nconst actual = oldCall()\nassert.equal(actual, 42)\n",
   )
   writeFileSync(
     path.join(root, report),
@@ -136,7 +137,7 @@ test('a mislabeled assertion edit fails against the captured author baseline', (
   captureMarshalBaseline(root, invocation)
   writeFileSync(
     path.join(root, relative),
-    'const actual = newCall()\nassert.equal(actual, 42)\n',
+    "import { newCall as oldCall } from '../src/subject.js'\nconst actual = oldCall()\nassert.equal(actual, 42)\n",
   )
   const check = () =>
     validateMarshalOutput({
@@ -159,7 +160,8 @@ test('standard contract join requires no reconciliation on success and permits o
   const report = 'runtime/agent/author.md'
   mkdirSync(path.join(root, 'runtime/agent'), { recursive: true })
   mkdirSync(path.join(root, 'tests'), { recursive: true })
-  const authored = 'const actual = oldCall()\nassert.equal(actual, 42)\n'
+  const authored =
+    "import { oldCall } from '../src/subject.js'\nconst actual = oldCall()\nassert.equal(actual, 42)\n"
   writeFileSync(path.join(root, relative), authored)
   writeFileSync(
     path.join(root, report),
@@ -208,7 +210,7 @@ test('standard contract join requires no reconciliation on success and permits o
   assert.equal(check().status, 'passed')
   writeFileSync(
     path.join(root, relative),
-    authored.replace('oldCall', 'newCall'),
+    authored.replace('import { oldCall }', 'import { newCall as oldCall }'),
   )
   assert.equal(check().status, 'failed', 'unreported test change')
   assert.equal(check(reconciliation).status, 'failed', 'no failed check')
@@ -241,5 +243,87 @@ test('standard contract join requires no reconciliation on success and permits o
     check(reconciliation).issues.some(
       (item) => item.code === 'marshal.assertion_loosened',
     ),
+  )
+})
+
+test('marshaling preserves control flow, assertion operands, fixture content, and test registration', () => {
+  const source = `import test from 'node:test'
+import assert from 'node:assert/strict'
+import { oldCall } from '../src/subject.js'
+test('Q-HAPPY', () => {
+  const actual = oldCall(2, 150)
+  assert.deepEqual(actual, { totalCents: 300 })
+})
+`
+  const renamed = source.replace(
+    'import { oldCall }',
+    'import { newCall as oldCall }',
+  )
+  assert.equal(
+    isShapeOnlyMarshal(source, renamed, 'tests/quote.test.mjs'),
+    true,
+  )
+  for (const changed of [
+    renamed.replace(
+      '  assert.deepEqual(actual, { totalCents: 300 })',
+      `  try {
+  assert.deepEqual(actual, { totalCents: 300 })
+  } catch {}`,
+    ),
+    renamed.replace(
+      '  assert.deepEqual(actual, { totalCents: 300 })',
+      `  if (false) {
+  assert.deepEqual(actual, { totalCents: 300 })
+  }`,
+    ),
+    renamed.replace(
+      '  const actual = oldCall(2, 150)',
+      '  const actual = { totalCents: 300 }',
+    ),
+    renamed.replace('oldCall(2, 150)', 'oldCall(1, 300)'),
+    renamed.replace('totalCents: 300', 'totalCents: 301'),
+    renamed.replace("test('Q-HAPPY'", "test.skip('Q-HAPPY'"),
+    renamed.replace("'node:assert/strict'", "'./noop.js'"),
+    renamed.replace("'../src/subject.js'", "'../src/other.js'"),
+    renamed.replace(
+      'import { newCall as oldCall }',
+      'import { newCall as different }',
+    ),
+  ])
+    assert.equal(
+      isShapeOnlyMarshal(source, changed, 'tests/quote.test.mjs'),
+      false,
+      changed,
+    )
+  assert.equal(
+    isShapeOnlyMarshal(
+      '{"totalCents":300}',
+      '{"totalCents":301}',
+      'fixtures/quote.json',
+    ),
+    false,
+  )
+})
+
+test('marshaling cannot rebind an assertion helper or swap the runner', () => {
+  const assertion =
+    "import { check } from '../src/assertions.js'\ncheck(42, 42)\n"
+  assert.equal(
+    isShapeOnlyMarshal(
+      assertion,
+      assertion.replace('{ check }', '{ noop as check }'),
+      'tests/example.test.mjs',
+    ),
+    false,
+  )
+  const helper =
+    "import { oldCall } from './helpers.js'\nconst actual = oldCall()\nassert.equal(actual, 42)\n"
+  assert.equal(
+    isShapeOnlyMarshal(
+      helper,
+      helper.replace('{ oldCall }', '{ noop as oldCall }'),
+      'tests/example.test.mjs',
+    ),
+    false,
   )
 })

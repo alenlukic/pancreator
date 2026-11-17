@@ -47,12 +47,25 @@ export function requiredData(
       )
     }
 
+    if (root) {
+      mkdirSync(path.join(root, 'src'), { recursive: true })
+      mkdirSync(path.join(root, 'tests/integration'), { recursive: true })
+      writeFileSync(
+        path.join(root, 'src/adapter.mjs'),
+        'export function createAdapter(provider) { return { provider } }\n',
+      )
+      writeFileSync(
+        path.join(root, 'tests/integration/adapter-trace.test.mjs'),
+        "import test from 'node:test'\nimport assert from 'node:assert/strict'\nimport { createAdapter } from '../../src/adapter.mjs'\ntest('TT-e2e', () => assert.deepEqual(createAdapter('fixture'), { provider: 'fixture' }))\n",
+      )
+    }
+
     return {
       skeletons: [
         {
           name: 'createAdapter',
           signature: '(provider: string) => Adapter',
-          path: 'src/adapter.ts',
+          path: 'src/adapter.mjs',
           expected_input: 'provider id',
           expected_output: 'Adapter',
           stub: 'not implemented',
@@ -61,7 +74,7 @@ export function requiredData(
       trace_tests: [
         {
           id: 'TT-e2e',
-          path: 'tests/integration/adapter-trace.test.ts',
+          path: 'tests/integration/adapter-trace.test.mjs',
           kind: 'e2e',
         },
       ],

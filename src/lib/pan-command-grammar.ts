@@ -202,8 +202,8 @@ export const HELP_BODY = `Usage:
   pan governance reminder-relay stop [--owner-pid <pid>]
       Stop the workspace relay, or do nothing when it is down. With an owner, release only that owner's share; other VS Code windows keep their relay.
   pan governance prompt-context
-  pan governance clause --policy <policy-id> --trigger <tool:class|event:id|path:glob> [--invocation <invocation-id>] [--audience <agent|supervisor>] [--capabilities <shell,delegation>] [--json]
-      Print the deferred clauses of one policy for one trigger, in the text a card renders, and record a receipt under runtime/policy-clauses/<invocation-id or session>.jsonl. The Deferred policy index on each card names the trigger, the digest, and this command. The receipt proves the clauses reached the agent; pan submit reads it.
+  pan governance clause --policy <policy-id> --trigger <tool:class|event:id|path:glob> [--invocation <invocation-id>] [--worker <agent-id>] [--audience <agent|supervisor>] [--capabilities <shell,delegation>] [--json]
+      Print the deferred clauses of one policy for one trigger, in the text a card renders, and record a receipt under runtime/policy-clauses/. Registered workers use their own invocation-and-agent scope; --worker names the receiving agent (or its alias) when the host session is not available. The Deferred policy index on each card names the trigger, the digest, and this command. The receipt proves the clauses reached the agent; pan submit reads it.
   pan governance pre-tool-clause
       Hook entry point. Reads a preToolUse payload on stdin and answers with permission allow, or deny with the deferred clauses the call triggers when the scope holds no receipt for them. The denial records the receipt, so the same call passes on retry. Held classes: browser, edit, git-remote, question.
   pan governance audit-directives [--json]

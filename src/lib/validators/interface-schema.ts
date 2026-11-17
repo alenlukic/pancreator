@@ -6,7 +6,8 @@ import {
   parseInterfaceSchema,
   type NamedSignature,
 } from '../interface-schema.js'
-import { fileExists, isRecord, readJson, resolveInside } from '../io.js'
+import { isFile, isRecord, readJson, resolveInside } from '../io.js'
+import { traceArtifactPath } from '../trace-artifacts.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { workspaceRootFromInput } from './stage/evidence.js'
 
@@ -71,7 +72,10 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
 
   const issues: HandlerResult['issues'] = []
   const data = isRecord(value.data) ? value.data : {}
+  const workspace = workspaceRootFromInput(input)
   const claimed: NamedSignature[] = []
+  const names = new Set<string>()
+  const sourcePaths = new Set<string>()
   const skeletons = Array.isArray(data.skeletons) ? data.skeletons : null
 
   if (!skeletons || skeletons.length === 0) {
@@ -100,6 +104,28 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
         continue
       }
 
+      if (names.has(entry.name)) {
+        issues.push(
+          issue(
+            'schema.skeleton_name',
+            `Duplicate skeleton name ${entry.name}`,
+          ),
+        )
+      }
+      names.add(entry.name)
+      try {
+        if (!nonEmptyString(entry.path))
+          throw new Error('Missing skeleton path')
+        traceArtifactPath(workspace, entry.path)
+        sourcePaths.add(entry.path)
+      } catch (error) {
+        issues.push(
+          issue(
+            'schema.skeleton_path',
+            `data.skeletons[${index}].path: ${errorMessage(error)}`,
+          ),
+        )
+      }
       claimed.push({ name: entry.name, signature: entry.signature })
     }
   }
@@ -112,6 +138,7 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
     )
   } else {
     let endToEnd = false
+    const ids = new Set<string>()
 
     for (const [index, entry] of tests.entries()) {
       if (!isRecord(entry)) {
@@ -133,6 +160,30 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
         )
       }
 
+      if (nonEmptyString(entry.id)) {
+        if (ids.has(entry.id))
+          issues.push(
+            issue(
+              'schema.trace_test_field',
+              `Duplicate trace test id ${entry.id}`,
+            ),
+          )
+        ids.add(entry.id)
+      }
+      if (nonEmptyString(entry.path)) {
+        try {
+          if (sourcePaths.has(entry.path))
+            throw new Error('Trace test path is also declared as a skeleton')
+          traceArtifactPath(workspace, entry.path)
+        } catch (error) {
+          issues.push(
+            issue(
+              'schema.trace_test_path',
+              `data.trace_tests[${index}].path: ${errorMessage(error)}`,
+            ),
+          )
+        }
+      }
       const kind = typeof entry.kind === 'string' ? entry.kind : ''
 
       if (!nonEmptyString(kind)) {
@@ -196,8 +247,7 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
     )
   }
 
-  const relative =
-    typeof schemaMeta.path === 'string' ? schemaMeta.path.trim() : ''
+  const relative = typeof schemaMeta.path === 'string' ? schemaMeta.path : ''
 
   if (relative.length === 0) {
     return { status: issues.length === 0 ? 'passed' : 'failed', issues }
@@ -206,26 +256,33 @@ export function validateInterfaceSchema(input: HandlerInput): HandlerResult {
   let schemaPath: string
 
   try {
-    schemaPath = resolveInside(workspaceRootFromInput(input), relative)
+    schemaPath = resolveInside(workspace, relative)
   } catch (error) {
     issues.push(
       issue(
         'schema.path',
-        `data.interface_schema.path is not a repository path: ${errorMessage(error)}`,
+        `data.interface_schema.path is not a valid artifact: ${errorMessage(error)}`,
       ),
     )
 
     return { status: 'failed', issues }
   }
 
-  if (!fileExists(schemaPath)) {
+  if (!isFile(schemaPath)) {
     issues.push(
       issue(
         'schema.missing',
-        `Interface schema file ${relative} does not exist`,
+        `Interface schema file ${relative} does not exist or is not a regular file`,
       ),
     )
-
+    return { status: 'failed', issues }
+  }
+  try {
+    traceArtifactPath(workspace, relative)
+  } catch (error) {
+    issues.push(
+      issue('schema.path', `Invalid schema artifact: ${errorMessage(error)}`),
+    )
     return { status: 'failed', issues }
   }
 

@@ -36,7 +36,14 @@ The supervisor launched both workers in one turn and watched both reports.
      profile (`impacted` or `static`) in `data.marshaling.check_profile`, the
      concrete mismatch and affected interface id in `data.marshaling.mismatch`,
      and each edited test path, `kind`, and `note` in `data.marshaling.edits`.
-     Kinds are `call_site`, `import`, `name`, or `fixture_shape`.
+     Kinds are `call_site`, `import`, `name`, or `fixture_shape`. The automatic
+     guard accepts unchanged bodies and fixtures and static named-import
+     corrections that preserve the implementation module path and local bindings, used only
+     for direct subject calls assigned to a local value (e.g.
+     `import { actualName as plannedName } from './module.js'`). For other
+     changes, preserve the authored tests and correct the implementation,
+     or return to planning for an independently reviewed contract amendment.
+     Do not treat an unchanged assertion line as proof of equivalent behavior.
    - The agreed contract is materially inadequate: return `blocked`, cite
      the affected interface and evidence, propose the smallest amendment,
      and request a new ratified plan before resuming parallel delivery.

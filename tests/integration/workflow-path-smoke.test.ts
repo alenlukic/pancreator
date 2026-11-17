@@ -62,6 +62,10 @@ function instantChecks(root: string): void {
       fast: profile('fast'),
       configuration: profile('configuration'),
       'impacted-integration': profile('impacted-integration'),
+      trace: {
+        probes: [],
+        commands: ['node --test "$PANCREATOR_TRACE_TEST_FILE"'],
+      },
       full: profile('full'),
     },
   })

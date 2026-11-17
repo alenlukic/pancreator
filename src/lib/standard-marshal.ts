@@ -76,32 +76,111 @@ export function captureMarshalBaseline(
   })
 }
 
-/** Conservative cross-language guard: preserve assertion and test registration
- * lines verbatim, including continuation lines for parenthesized expressions.
- * The review still judges fixture and behavioral equivalence. */
-export function protectedTestLines(source: string): string[] {
-  const protectedLines: string[] = []
-  let depth = 0
-  for (const line of source.split(/\r?\n/u)) {
-    const starts =
-      /\b(?:assert(?:[._\w]*|ion)|expect|test|it|describe|pytest\.raises|require\.[\w]+)\s*\(/u.test(
+/** A narrow, dependency-free proof of a shape-only edit. The entire test body,
+ * including assertion operands, control flow, comments and fixtures, must stay
+ * identical. Only static named imports of the implementation may be rebound
+ * while preserving every local binding. An unrecognized edit is not proof of
+ * semantic equivalence: restore the authored tests or return to planning. */
+function namedImport(
+  line: string,
+): { bindings: { imported: string; local: string }[]; module: string } | null {
+  const match = line.match(
+    /^\s*import\s*\{([^{}]+)\}\s*from\s*(['"])(\.{1,2}\/[a-zA-Z0-9_./-]+)\2\s*;?\s*$/u,
+  )
+  if (!match) return null
+  const entries = match[1]!
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+  if (!entries.length) return null
+  const bindings: { imported: string; local: string }[] = []
+  for (const entry of entries) {
+    const binding = entry.match(
+      /^([a-zA-Z_$][\w$]*)(?:\s+as\s+([a-zA-Z_$][\w$]*))?$/u,
+    )
+    if (!binding) return null
+    bindings.push({ imported: binding[1]!, local: binding[2] ?? binding[1]! })
+  }
+  if (
+    new Set(bindings.map((binding) => binding.local)).size !== bindings.length
+  )
+    return null
+  return { bindings, module: match[3]! }
+}
+
+/** Restrict edits to a real initial import header. A body line that happens to
+ * look like an import (inside a string, comment or nested scope) is not eligible. */
+export function isShapeOnlyMarshal(
+  before: string,
+  after: string,
+  relative: string,
+): boolean {
+  if (before === after) return true
+  if (!/\.(?:[cm]?[jt]s|[jt]sx)$/u.test(relative)) return false
+  const original = before.split(/\r?\n/u)
+  const current = after.split(/\r?\n/u)
+  if (original.length !== current.length) return false
+  let header = true
+  for (const [index, line] of original.entries()) {
+    const next = current[index]!
+    if (
+      header &&
+      !/^\s*(?:$|\/\/)/u.test(line) &&
+      !/^\s*import\s+(?:[a-zA-Z_$][\w$]*|\*\s+as\s+[a-zA-Z_$][\w$]*|\{[a-zA-Z0-9_$,\s]+\})\s+from\s+(['"])[^'"\\]+\1\s*;?\s*$/u.test(
         line,
-      ) ||
-      /\b(?:assert|def test_)[\s\w]/u.test(line) ||
-      /^\s*\.(?:to\w*|not|resolves|rejects|and|with)\b/u.test(line)
-    if (starts || depth > 0) {
-      protectedLines.push(line.trim())
-      depth = Math.max(
-        0,
-        depth +
-          (line.match(/\(/gu)?.length ?? 0) -
-          (line.match(/\)/gu)?.length ?? 0),
       )
-      // A test registration opens a callback; protect its declaration, not its body.
-      if (starts && /=>\s*\{|function\s*\([^)]*\)\s*\{/u.test(line)) depth = 0
+    )
+      header = false
+    if (line === next) continue
+    if (!header) return false
+    const oldImport = namedImport(line)
+    const newImport = namedImport(next)
+    if (
+      !oldImport ||
+      !newImport ||
+      oldImport.module !== newImport.module ||
+      JSON.stringify(oldImport.bindings.map((binding) => binding.local)) !==
+        JSON.stringify(newImport.bindings.map((binding) => binding.local))
+    )
+      return false
+    // Rebinding an assertion helper or a test registration function would
+    // preserve the text of the body while changing its meaning. Only direct
+    // subject calls assigned to a local value are recognized automatically.
+    const subject = path.posix.normalize(
+      path.posix.join(path.posix.dirname(relative), oldImport.module),
+    )
+    if (
+      subject.startsWith('../') ||
+      subject
+        .split('/')
+        .some((part) =>
+          /^(?:tests?|__tests__|fixtures?|__mocks__)$/iu.test(part),
+        )
+    )
+      return false
+    for (const [position, binding] of oldImport.bindings.entries()) {
+      if (binding.imported === newImport.bindings[position]!.imported) continue
+      const escaped = binding.local.replace(/\$/gu, '\\$')
+      const occurrence = new RegExp(`(?<![\\w$])${escaped}(?![\\w$])`, 'gu')
+      const assignment = new RegExp(
+        `^\\s*const\\s+[a-zA-Z_$][\\w$]*\\s*=\\s*${escaped}\\s*\\(`,
+        'u',
+      )
+      const uses = original
+        .slice(index + 1)
+        .filter((bodyLine) => [...bodyLine.matchAll(occurrence)].length > 0)
+      if (
+        !uses.length ||
+        uses.some(
+          (bodyLine) =>
+            !assignment.test(bodyLine) ||
+            [...bodyLine.matchAll(occurrence)].length !== 1,
+        )
+      )
+        return false
     }
   }
-  return protectedLines
+  return true
 }
 
 export function marshalBaselineViolations(
@@ -121,12 +200,10 @@ export function marshalBaselineViolations(
     const current = resolveInside(workspace, file.path)
     if (!fileExists(current))
       return [`Deleted authored test or fixture: ${file.path}`]
-    const before = protectedTestLines(file.content)
-    const after = protectedTestLines(readText(current))
-    return JSON.stringify(before) === JSON.stringify(after)
+    return isShapeOnlyMarshal(file.content, readText(current), file.path)
       ? []
       : [
-          `Changed assertion or scenario registration in ${file.path}; route behavior changes to remediation.`,
+          `Cannot prove shape-only reconciliation in ${file.path}; preserve the complete authored test body and fixtures. Restore them or return to planning for a reviewed contract amendment; route behavior changes to remediation.`,
         ]
   })
 }

@@ -287,6 +287,8 @@ export interface EvidenceWorkerAttempt {
 }
 
 export interface InvocationEvidenceWorker {
+  /** Policy snapshot for this persona; older briefs use the stage snapshot. */
+  policies?: Policy[]
   persona: string
   role: string
   scope: string

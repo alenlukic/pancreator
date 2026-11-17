@@ -41,7 +41,10 @@ const PAN_RUN_LINK_WINDOW_MS = 30_000
 // Reader helpers for watch integration
 // ---------------------------------------------------------------------------
 
-function loadEventsForEntry(root: string, agent: AgentEntry): AgentEvent[] {
+export function loadEventsForEntry(
+  root: string,
+  agent: AgentEntry,
+): AgentEvent[] {
   const events: AgentEvent[] = []
 
   for (const id of [agent.agent_id, ...agent.aliases]) {

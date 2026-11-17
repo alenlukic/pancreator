@@ -35,3 +35,12 @@ test('a caller that names the build-ready value keeps it', () => {
 
   assert.equal(named[BUILD_READY_ENV], '/named/root')
 })
+
+// A nested Node test process otherwise exits zero without running any tests.
+test('repository profile subprocesses never inherit the Node test context', () => {
+  assert.equal(
+    profileCommandEnv('/workspace', { NODE_TEST_CONTEXT: '' })
+      .NODE_TEST_CONTEXT,
+    undefined,
+  )
+})

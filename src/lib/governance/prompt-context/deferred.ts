@@ -7,11 +7,22 @@
 
 import path from 'node:path'
 
-import { fileExists, isRecord, readJson } from '../../io.js'
+import { readJson } from '../../io.js'
+import {
+  normalizeToolPaths,
+  policyToolEvidence,
+  recordInput,
+} from '../../policy-tool-evidence.js'
+export { toolClasses } from '../../policy-tool-evidence.js'
+import {
+  workerDelivery,
+  findInvocationWorker,
+} from '../../policy-worker-scope.js'
 import {
   clauseReceiptPath,
   hasClauseReceipt,
   readClauseReceipts,
+  readClauseFired,
   recordClauseFired,
   recordClauseReceipt,
   SESSION_RECEIPT_SCOPE,
@@ -19,6 +30,7 @@ import {
 } from '../../policy-clause.js'
 import {
   deferredClauseGroups,
+  deferredClauseCommand,
   type DeferredClauseGroup,
 } from '../../policy-deferred.js'
 import { loadPolicyCatalog } from '../../policies.js'
@@ -26,13 +38,13 @@ import { isInvocationContext } from '../../policy-delivery.js'
 import { readInstallationIdentity } from '../../project-config.js'
 import { listRunStatesWhere, runIsLive } from '../../state.js'
 import type {
-  Invocation,
   Policy,
   PolicyCapabilities,
   PolicyLoad,
   RunState,
 } from '../../types.js'
 import { liveRuns } from './cards.js'
+import { loadTurnReminderRegistry } from './registry.js'
 
 /** Tool classes whose first use is held back until its clauses are delivered. */
 export const PRE_TOOL_DENY_CLASSES: readonly string[] = [
@@ -44,50 +56,8 @@ export const PRE_TOOL_DENY_CLASSES: readonly string[] = [
   'question',
 ]
 
-const EDIT_TOOLS = new Set([
-  'Write',
-  'StrReplace',
-  'Delete',
-  'EditNotebook',
-  'ApplyPatch',
-  'Edit',
-  'MultiEdit',
-  'NotebookEdit',
-  'edit_file',
-  'write_file',
-  'search_replace',
-  'delete_file',
-])
-const READ_TOOLS = new Set([
-  'Read',
-  'Grep',
-  'Glob',
-  'LS',
-  'read_file',
-  'list_dir',
-  'list_directory',
-  'search_text',
-  'glob_files',
-  'grep_search',
-])
-const DELEGATION_TOOLS = new Set(['Task', 'Subagent', 'task', 'runSubagent'])
-const BROWSER_TOOL =
-  /(?:^|[:_/-])(?:browser_[a-z_]+|new_page|navigate_page|take_snapshot|take_screenshot|list_pages|select_page|close_page|chrome-devtools|playwright)(?:$|[:_/-])/iu
-const GIT_REMOTE =
-  /\b(?:git\s+(?:push|pull|fetch|remote|clone)|gh\s+(?:pr|release|repo|api))\b/u
 const SAME_REASON_PAUSE =
   /^Stage '[^']+' failed twice consecutively for the same deterministic reason \(.*\)\.$/u
-
-function questionToolClass(toolName: string): boolean {
-  const leaf = toolName.split(/[:/]/u).pop() ?? toolName
-  const compact = leaf.toLowerCase().replaceAll(/[_-]/g, '')
-
-  return (
-    compact === 'askquestion' ||
-    compact === 'askquestions' ||
-    compact === 'askuser'
-  )
-}
 
 function isSameReasonPause(run: RunState): boolean {
   // Trackers survive ordinary pauses and resumes and are created after the
@@ -107,93 +77,6 @@ export interface FiredContext {
   events: string[]
   /** Workspace-relative POSIX paths the call touches. */
   paths: string[]
-}
-
-function recordInput(value: unknown): Record<string, unknown> {
-  if (isRecord(value)) return value
-
-  if (typeof value === 'string') {
-    try {
-      const parsed: unknown = JSON.parse(value)
-
-      return isRecord(parsed) ? parsed : {}
-    } catch {
-      return {}
-    }
-  }
-
-  return {}
-}
-
-function relativePath(root: string, candidate: string): string {
-  const resolved = path.isAbsolute(candidate)
-    ? path.relative(root, candidate)
-    : path.normalize(candidate)
-
-  return resolved.split(path.sep).join('/')
-}
-
-/** Tool classes a call belongs to. A call can belong to several. */
-export function toolClasses(
-  toolName: string | null,
-  toolInput: Record<string, unknown>,
-): string[] {
-  if (!toolName) return []
-
-  const classes: string[] = []
-  const command = typeof toolInput.command === 'string' ? toolInput.command : ''
-
-  if (
-    toolName === 'Shell' ||
-    toolName === 'Bash' ||
-    toolName === 'bash' ||
-    toolName === 'run_in_terminal'
-  ) {
-    classes.push('shell')
-    if (/(?:^|[\s/])pan\s+delegate\b/u.test(command)) classes.push('delegation')
-    if (GIT_REMOTE.test(command)) classes.push('git-remote')
-  } else if (DELEGATION_TOOLS.has(toolName)) {
-    classes.push('delegation')
-  } else if (EDIT_TOOLS.has(toolName)) {
-    classes.push('edit')
-  } else if (questionToolClass(toolName)) {
-    classes.push('question')
-  } else if (BROWSER_TOOL.test(toolName)) {
-    classes.push('browser')
-  }
-
-  if (toolName.startsWith('MCP:')) {
-    classes.push(`mcp:${toolName.slice(4).split(':')[0]}`)
-  }
-
-  return classes
-}
-
-/** Workspace-relative paths a structured read, search, or edit touches. */
-export function touchedPaths(
-  root: string,
-  toolInput: Record<string, unknown>,
-): string[] {
-  const keys = [
-    'path',
-    'file_path',
-    'filePath',
-    'target_file',
-    'notebook_path',
-    'target_notebook',
-    'directory',
-    'dirPath',
-  ]
-  const found = keys.flatMap((key) => {
-    const value = toolInput[key]
-
-    return typeof value === 'string' && value.length > 0 ? [value] : []
-  })
-
-  return [...new Set(found.map((entry) => relativePath(root, entry)))].filter(
-    (entry) =>
-      entry !== '..' && !entry.startsWith('../') && !path.isAbsolute(entry),
-  )
 }
 
 /** Convert a `path:` glob to a matcher: `**`, `*`, `?`, and `{a,b}`. */
@@ -267,6 +150,8 @@ export interface DeliveryScope {
   audiences: ('agent' | 'supervisor')[]
   /** Pinned workspace for a registered invocation, independent of host cwd. */
   workspaceRoot?: string
+  invocationId?: string
+  workerId?: string
 }
 
 const FULL_CAPABILITIES: PolicyCapabilities = { shell: true, delegation: true }
@@ -279,59 +164,23 @@ function safeScope(value: string | null): string {
 
 /**
  * The scope a hook call delivers into. A live invocation worker uses its own
- * invocation id and the policies its snapshot pins; any other agent shares a
+ * invocation-and-agent scope and the policies its snapshot pins; any other agent shares a
  * per-conversation ledger and sees the whole catalog.
  */
 export function deliveryScope(
   root: string,
   conversationId: string | null,
+  parentToolCallId?: string | null,
 ): DeliveryScope {
-  const indexPath = path.join(root, 'runtime/logs/agents/index.json')
-
-  if (conversationId && fileExists(indexPath)) {
-    const index = readJson(indexPath)
-
-    if (isRecord(index) && Array.isArray(index.agents)) {
-      const aliases = isRecord(index.aliases) ? index.aliases : {}
-      const identity = aliases[conversationId] ?? conversationId
-      const worker = index.agents.find(
-        (entry: unknown) =>
-          isRecord(entry) &&
-          entry.agent_id === identity &&
-          typeof entry.run_id === 'string' &&
-          typeof entry.invocation_id === 'string',
-      )
-
-      if (isRecord(worker)) {
-        const active = liveRuns(root).find(
-          (run) => run.run_id === worker.run_id,
-        )?.current_invocation
-
-        if (active && active.id === worker.invocation_id) {
-          const snapshot: unknown = readJson(
-            path.resolve(root, active.json_path),
-          )
-
-          if (isInvocationContext(snapshot)) {
-            const invocation: Invocation = snapshot
-
-            return {
-              scope: safeScope(invocation.invocation_id),
-              policies: invocation.policies,
-              capabilities: invocation.capabilities ?? FULL_CAPABILITIES,
-              audiences: ['agent'],
-              ...(typeof invocation.workspace_root === 'string'
-                ? {
-                    workspaceRoot: path.resolve(
-                      root,
-                      invocation.workspace_root,
-                    ),
-                  }
-                : {}),
-            }
-          }
-        }
-      }
+  const worker = findInvocationWorker(root, conversationId, parentToolCallId)
+  if (worker) {
+    const active = liveRuns(root).find(
+      (run) => run.run_id === worker.run_id,
+    )?.current_invocation
+    if (active && active.id === worker.invocation_id) {
+      const snapshot: unknown = readJson(path.resolve(root, active.json_path))
+      if (isInvocationContext(snapshot))
+        return workerDelivery(root, snapshot, worker)
     }
   }
 
@@ -370,6 +219,7 @@ export function pendingDeferredGroups(
   delivery: DeliveryScope,
   fired: FiredContext,
   receipts: readonly ClauseReceipt[],
+  outstanding: ReturnType<typeof readClauseFired> = [],
 ): { group: DeferredClauseGroup; title: string }[] {
   const pending = new Map<
     string,
@@ -387,7 +237,13 @@ export function pendingDeferredGroups(
     )) {
       const key = `${group.policy_id}\u0000${group.trigger}`
       if (
-        triggerFires(group.trigger, fired) &&
+        (triggerFires(group.trigger, fired) ||
+          outstanding.some(
+            (entry) =>
+              entry.policy_id === group.policy_id &&
+              entry.trigger === group.trigger &&
+              entry.sha256 === group.sha256,
+          )) &&
         !hasClauseReceipt(
           receipts,
           group.policy_id,
@@ -421,9 +277,55 @@ export function renderDeferredDelivery(
     .trimEnd()
 }
 
+/** The configured budget applies to the entire host text, not each group. */
+export function hookByteBudget(root: string): number {
+  try {
+    return loadTurnReminderRegistry(root).byte_budget
+  } catch {
+    // Older installations and minimal fixtures may have no registry.
+    return 10240
+  }
+}
+
+const bytes = (text: string) => Buffer.byteLength(text, 'utf8')
+const REMINDER_FALLBACK =
+  'Read the complete active governance card, its pinned reminder, and AGENTS.md operating principles before proceeding.'
+
+/** Never slice a normative reminder or a UTF-8 codepoint to fit the host. */
+export function boundedReminder(text: string, budget: number): string {
+  if (bytes(text) <= budget) return text
+  return bytes(REMINDER_FALLBACK) <= budget ? REMINDER_FALLBACK : ''
+}
+
+function shellWord(value: string): string {
+  return `'${value.replaceAll("'", "'\"'\"'")}'`
+}
+
+/** Use the actual harness root even when the worker is in another worktree. */
+function recoveryCommand(
+  root: string,
+  delivery: DeliveryScope,
+  group: DeferredClauseGroup,
+): string {
+  const command = deferredClauseCommand(
+    group.policy_id,
+    group.trigger,
+    shellWord(path.resolve(root, 'bin/pan')),
+  )
+  return `${shellWord(path.resolve(root, 'bin/pan-run'))} --stream -- ${command}${group.pullArgs ? ` ${group.pullArgs}` : ''}${delivery.invocationId ? ` --invocation ${shellWord(delivery.invocationId)}` : ''}${delivery.workerId ? ` --worker ${shellWord(delivery.workerId)}` : ''}`
+}
+
+interface DeliveryOptions {
+  base?: string
+  suffix?: string
+  budget?: number
+  includeOutstanding?: boolean
+}
+
 /**
- * Deliver once. Returns the text to inject, or null when nothing is pending.
- * A receipt lands for every delivered group, so a later call stays silent.
+ * Fit complete groups or their pull commands. Plan the entire text before
+ * writing receipts. Keep the eager reminder whenever the recovery notice fits;
+ * otherwise explicitly direct the agent to its complete pinned reminder.
  */
 export function deliverDeferredClauses(
   root: string,
@@ -431,21 +333,120 @@ export function deliverDeferredClauses(
   fired: FiredContext,
   now: Date = new Date(),
   delivery: DeliveryScope = deliveryScope(root, conversationId),
+  options: DeliveryOptions = {},
 ): string | null {
   const pending = pendingDeferredGroups(
     delivery,
     fired,
     receiptsFor(root, delivery),
+    options.includeOutstanding ? readClauseFired(root, delivery.scope) : [],
   )
-
   if (pending.length === 0) return null
 
   for (const { group } of pending) {
     recordClauseFired(root, delivery.scope, group, now)
-    recordClauseReceipt(root, delivery.scope, group, 'hook', now)
   }
 
-  return renderDeferredDelivery(pending)
+  const budget = options.budget ?? hookByteBudget(root)
+  let base = boundedReminder(options.base ?? '', budget)
+  const suffix = options.suffix ?? ''
+  const pullInstruction = delivery.capabilities.shell
+    ? 'Read the complete pull output (or its full pan-run log if the host truncates it).'
+    : 'Ask the supervisor to execute the scoped pull and relay the complete text; you have no shell.'
+  const heading = '# Deferred policy clauses'
+  const notice =
+    'Pending clauses: retrieve the applicable groups from the active card’s Deferred policy index before proceeding. Unresolved groups remain pending.'
+  const compose = (parts: string[], pulls = false) =>
+    [base, heading, ...parts, pulls ? pullInstruction : '', suffix]
+      .filter(Boolean)
+      .join('\n\n')
+  const full = pending.map(({ group, title }) =>
+    [
+      `**${group.policy_id} · ${title}** · \`${group.trigger}\``,
+      '',
+      ...group.texts.map((text) => `- ${text}`),
+    ].join('\n'),
+  )
+  const commands = pending.map(
+    ({ group }) =>
+      `Retrieve ${group.policy_id} (\`${group.trigger}\`):\n\`${recoveryCommand(root, delivery, group)}\``,
+  )
+  if (bytes(compose(full)) <= budget) {
+    pending.forEach(({ group }) =>
+      recordClauseReceipt(root, delivery.scope, group, 'hook', now),
+    )
+    return compose(full)
+  }
+
+  // Reserve recovery instructions for *every* group before fitting bodies.
+  // If even the commands cannot fit, the compact notice plus as many complete
+  // commands as fit provides a recovery path. Future hooks re-offer outstanding
+  // groups, including one-off events, rather than forgetting them.
+  let parts = [...commands]
+  if (bytes(compose(parts, true)) > budget) {
+    // Keep the base unless it prevents even one usable pull command.
+    if (base && bytes(compose([notice, commands[0]], true)) > budget)
+      base = REMINDER_FALLBACK
+    parts = [notice]
+    if (bytes(compose(parts, true)) > budget) {
+      // A pathological budget may not even hold the notice. Fail closed for
+      // pre-tool calls and leave every obligation outstanding.
+      return boundedReminder(
+        [base, notice].filter(Boolean).join('\n\n'),
+        budget,
+      )
+    }
+    for (const command of commands) {
+      if (bytes(compose([...parts, command], true)) <= budget)
+        parts.push(command)
+    }
+    return compose(parts, true)
+  }
+
+  // A small group can be delivered alongside a large group's pull fallback.
+  const delivered = []
+  for (let index = 0; index < pending.length; index += 1) {
+    const candidate = parts.map((part, i) => (i === index ? full[index] : part))
+    if (bytes(compose(candidate, true)) <= budget) {
+      parts = candidate
+      delivered.push(pending[index].group)
+    }
+  }
+  const text = compose(parts, true)
+  delivered.forEach((group) =>
+    recordClauseReceipt(root, delivery.scope, group, 'hook', now),
+  )
+  return text
+}
+
+/**
+ * A pull must not be blocked by the very shell clause it retrieves. Exempt
+ * only an exact, generated, single wrapped command for an outstanding group
+ * in this scope; arbitrary commands, chaining and sibling pulls stay guarded.
+ */
+export function isDeferredRecoveryPull(
+  root: string,
+  delivery: DeliveryScope,
+  fired: FiredContext,
+  input: unknown,
+): boolean {
+  if (
+    !delivery.capabilities.shell ||
+    fired.classes.length !== 1 ||
+    fired.classes[0] !== 'shell' ||
+    fired.paths.length
+  )
+    return false
+  const command = recordInput(input).command
+  if (typeof command !== 'string') return false
+  return pendingDeferredGroups(
+    delivery,
+    fired,
+    receiptsFor(root, delivery),
+    readClauseFired(root, delivery.scope),
+  ).some(
+    ({ group }) => command.trim() === recoveryCommand(root, delivery, group),
+  )
 }
 
 /**
@@ -457,54 +458,6 @@ function promptOpens(prompt: string, command: string): boolean {
     `^\\s*(?:\\/pan-${command}\\b|(?:\\.\\/bin\\/)?pan\\s+${command}\\b)`,
     'u',
   ).test(prompt)
-}
-
-/** Watch recovery includes non-stall verdicts; they never imply a stall. */
-function watchRecoveryResult(output: unknown): boolean {
-  if (typeof output === 'string') {
-    if (
-      /^\s*(?:(?:agent |evidence )?watch (?:stalled|unregistered|unverified|timed_out|interrupted)\b|watch changed:[^\n]*; needs inspection:|(?:stalled|unregistered|unverified|timed_out|interrupted|attach_wake|attach_timed_out|orphaned) ·|Watch: (?:stalled|unverified|timed_out|interrupted|unregistered)\b)/mu.test(
-        output,
-      )
-    )
-      return true
-    try {
-      return watchRecoveryResult(JSON.parse(output))
-    } catch {
-      return false
-    }
-  }
-  if (Array.isArray(output)) return output.some(watchRecoveryResult)
-  if (!isRecord(output)) return false
-  if (Array.isArray(output.stalled) && output.stalled.length > 0) return true
-  if (
-    typeof output.state === 'string' &&
-    [
-      'stalled',
-      'unregistered',
-      'unverified',
-      'timed_out',
-      'interrupted',
-      'attach_wake',
-      'attach_timed_out',
-      'orphaned',
-    ].includes(output.state)
-  )
-    return true
-  if (
-    typeof output.session_terminal_state === 'string' &&
-    [
-      'stalled',
-      'unverified',
-      'timed_out',
-      'interrupted',
-      'unregistered',
-    ].includes(output.session_terminal_state)
-  )
-    return true
-  return ['stdout', 'output', 'text', 'content', 'result', 'ledgers'].some(
-    (key) => watchRecoveryResult(output[key]),
-  )
 }
 
 /**
@@ -527,24 +480,15 @@ export function firedContext(
     prompt: string
   },
 ): FiredContext {
-  const toolInput = recordInput(input.toolInput)
-  const classes = toolClasses(input.toolName, toolInput)
-  const events: string[] = []
   const failed =
     input.hookEvent === 'postToolUseFailure' ||
     input.hookEvent === 'PostToolUseFailure'
-
-  if (failed) events.push('tool_failure')
-  if (
-    (failed ||
-      input.hookEvent === 'postToolUse' ||
-      input.hookEvent === 'PostToolUse') &&
-    classes.includes('shell') &&
-    typeof toolInput.command === 'string' &&
-    /(?:^|[\s/])pan\s+watch\b/u.test(toolInput.command) &&
-    watchRecoveryResult(input.toolOutput)
+  const { classes, events, paths } = policyToolEvidence(
+    input.toolName,
+    input.toolInput,
+    input.toolOutput,
+    failed,
   )
-    events.push('stall')
   if (promptOpens(input.prompt, 'resume')) events.push('resume')
   const watched = listRunStatesWhere(
     root,
@@ -564,8 +508,7 @@ export function firedContext(
     events.push('gate_failure')
   }
 
-  const pathTool =
-    classes.includes('edit') || READ_TOOLS.has(input.toolName ?? '')
+  const pathTool = paths.length > 0
   // The hook's root is the harness, not necessarily the active workspace.
   // Host roots also identify worktrees whose absolute paths lie outside it.
   const workspaceRoots =
@@ -590,7 +533,7 @@ export function firedContext(
       ? [
           ...new Set(
             workspaces.flatMap((workspace) =>
-              touchedPaths(workspace, toolInput),
+              normalizeToolPaths(workspace, paths),
             ),
           ),
         ]
@@ -606,7 +549,8 @@ export interface PreToolDecision {
 
 /**
  * Deny a first call once so the agent reads the clauses before it acts. The
- * receipt lands with the denial, so the retry passes. Only the classes in
+ * receipt lands only for a complete body; a pull fallback holds the retry
+ * until retrieval. Only the classes in
  * `PRE_TOOL_DENY_CLASSES` are held; other classes receive clauses after use.
  */
 export function preToolDecision(
@@ -615,6 +559,7 @@ export function preToolDecision(
   fired: FiredContext,
   now: Date = new Date(),
   suppliedDelivery?: DeliveryScope,
+  toolInput?: unknown,
 ): PreToolDecision {
   const delivery = suppliedDelivery ?? deliveryScope(root, conversationId)
 
@@ -640,15 +585,29 @@ export function preToolDecision(
     return { permission: 'allow' }
   }
 
-  const text = deliverDeferredClauses(root, conversationId, held, now, delivery)
+  if (isDeferredRecoveryPull(root, delivery, held, toolInput)) {
+    return { permission: 'allow' }
+  }
+
+  const text = deliverDeferredClauses(
+    root,
+    conversationId,
+    held,
+    now,
+    delivery,
+    {
+      suffix:
+        'Read the clauses above, retrieve any listed clauses, then repeat the original call.',
+    },
+  )
 
   return text === null
     ? { permission: 'allow' }
     : {
         permission: 'deny',
         user_message:
-          'Pancreator loaded deferred policy clauses for this call. The agent retries once.',
-        agent_message: `${text}\n\nRead the clauses above, then repeat the same call. It will pass.`,
+          'Pancreator requires deferred policy clauses before this call.',
+        agent_message: text,
       }
 }
 

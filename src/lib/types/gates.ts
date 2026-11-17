@@ -245,6 +245,7 @@ export interface StageHistoryItem {
     data_sha256: string
     schema_path: string
     schema_sha256: string
+    artifacts?: Array<{ path: string; sha256: string }>
   }
   validation_errors: string[]
   governance_artifact_warnings?: string[]

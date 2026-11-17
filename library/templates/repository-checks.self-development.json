@@ -41,6 +41,13 @@
         "./bin/pan tests impacted --changed pan-dev --ignore VERSION --ignore CHANGELOG.md --ignore package.json --ignore package-lock.json --ignore release/index.json --ignore docs/embedded-installation.md"
       ]
     },
+    "trace": {
+      "description": "Run one declared prototype-trace test file. The trace gate supplies PANCREATOR_TRACE_TEST_FILE relative to the run workspace.",
+      "probes": ["node --version"],
+      "commands": [
+        "case \"$PANCREATOR_TRACE_TEST_FILE\" in *.ts) file=${PANCREATOR_TRACE_TEST_FILE#./}; ./bin/run-built -- node --test \"dist/${file%.ts}.js\" ;; *.js|*.mjs|*.cjs) node --test \"$PANCREATOR_TRACE_TEST_FILE\" ;; *) exit 2 ;; esac"
+      ]
+    },
     "secondary": {
       "description": "Run Pancreator's installer suites, which are outside the default lane.",
       "probes": ["node --version", "npm --version"],

@@ -102,6 +102,8 @@ export interface AgentEntry {
   last_event_kind: EventKind
   run_id: string | null
   invocation_id: string | null
+  /** Explicit evidence role from its launch brief, when present. */
+  worker_role?: string
   aliases: string[]
   transcript_path: string | null
   /** Parent conversation transcript path from subagentStart when valid. */
@@ -144,6 +146,10 @@ export interface AgentEvent {
   summary?: string
   duration_ms?: number
   failure_type?: string
+  /** Classified tool evidence, recorded independently of policy delivery. */
+  policy_context?: import('../policy-tool-evidence.js').PolicyToolEvidence
+  invocation_id?: string
+  run_id?: string
   status?: AgentStatus
   /** On a `stopped` line, so the stop survives a dropped index update. */
   transcript_path?: string
@@ -168,6 +174,7 @@ export interface PostToolUsePayload {
   parent_tool_call_id?: string
   tool_name?: string
   tool_use_id?: string
+  tool_input?: unknown
   tool_output?: unknown
   failure_type?: string
 }
@@ -419,7 +426,7 @@ export function promptDigest(text: string | null | undefined): string | null {
 // ---------------------------------------------------------------------------
 
 const RUN_INVOCATION_PATTERN =
-  /runtime\/logs\/workflows\/([^/\s]+)\/agent\/invocations\/([^/.\s]+)\.(?:md|json|delegation\.md)\b/u
+  /runtime\/logs\/workflows\/([^/\s]+)\/agent\/invocations\/([^/.\s]+)\.(?:md|json|delegation\.md|[A-Za-z0-9_-]+-brief(?:\.attempt-\d+)?\.md)\b/u
 
 /**
  * Extract the run id and invocation id from the first workflow invocation

@@ -22,6 +22,8 @@ export const TRACE_SCHEMA_REFUSALS: readonly StageRefusal[] = [
     code: 'schema.skeleton_signature',
     paths: ['data.skeletons[].signature'],
   },
+  { code: 'schema.skeleton_path', paths: ['data.skeletons[].path'] },
+  { code: 'schema.trace_test_path', paths: ['data.trace_tests[].path'] },
   { code: 'schema.trace_tests', paths: ['data.trace_tests[]'] },
   { code: 'schema.trace_test_shape', paths: ['data.trace_tests[]'] },
   {

@@ -2,6 +2,7 @@
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
+import { traceArtifactDigests } from '../trace-artifacts.js'
 import {
   fileExists,
   isRecord,
@@ -19,6 +20,7 @@ export function traceContractIdentity(
   root: string,
   state: RunState,
   history: StageHistoryItem,
+  includeArtifacts = true,
 ): NonNullable<StageHistoryItem['trace_contract']> {
   const output = readJson(resolveInside(root, history.output_path))
   invariant(
@@ -47,6 +49,14 @@ export function traceContractIdentity(
     data_sha256: sha256(output.data),
     schema_path: schema.path.trim(),
     schema_sha256: sha256(readText(schemaPath)),
+    ...(includeArtifacts
+      ? {
+          artifacts: traceArtifactDigests(
+            path.resolve(root, state.workspace_root),
+            output.data,
+          ),
+        }
+      : {}),
   }
 }
 
@@ -64,12 +74,27 @@ export function assertTraceContractCurrent(
       code: 'TRACE_CONTRACT_UNRECORDED',
     },
   )
-  const actual = traceContractIdentity(root, state, history)
+  let actual: NonNullable<StageHistoryItem['trace_contract']>
+  try {
+    actual = traceContractIdentity(
+      root,
+      state,
+      history,
+      expected.artifacts !== undefined,
+    )
+  } catch {
+    invariant(
+      false,
+      'Trace artifacts are missing or unreadable; restore them or submit a new trace.',
+      { code: 'TRACE_CONTRACT_DRIFT' },
+    )
+  }
   invariant(
     actual.data_sha256 === expected.data_sha256 &&
       actual.schema_path === expected.schema_path &&
-      actual.schema_sha256 === expected.schema_sha256,
-    'Trace output or schema changed after validation; restore it or submit a new trace.',
+      actual.schema_sha256 === expected.schema_sha256 &&
+      sha256(actual.artifacts ?? []) === sha256(expected.artifacts ?? []),
+    'Trace output, schema, skeletons or tests changed after validation; restore it or submit a new trace.',
     { code: 'TRACE_CONTRACT_DRIFT' },
   )
   return expected

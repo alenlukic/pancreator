@@ -21,7 +21,8 @@ import {
   type DelegationObservation,
 } from '../watch.js'
 import { panCommand } from '../project-config.js'
-import { DEFAULT_PAN_COMMAND, undeliveredClauses } from '../policy-clause.js'
+import { DEFAULT_PAN_COMMAND } from '../policy-clause.js'
+import { missingDeferredDelivery } from './deferred-delivery-evidence.js'
 import { evidenceWorkerAttempts, readEvidenceReportState } from '../render.js'
 import { watchedAgentActivity } from '../watch.js'
 import { WORKER_STILL_ACTIVE } from '../watch/types.js'
@@ -108,7 +109,7 @@ export function assertDeferredClausesDelivered(
   root: string,
   invocation: Invocation,
 ): void {
-  const undelivered = undeliveredClauses(root, invocation.invocation_id)
+  const undelivered = missingDeferredDelivery(root, invocation)
 
   if (undelivered.length === 0) return
 
@@ -125,7 +126,10 @@ export function assertDeferredClausesDelivered(
     `Deferred policy clauses fired for invocation '${invocation.invocation_id}' ` +
       `without a delivery receipt: ` +
       undelivered
-        .map((entry) => `${entry.policy_id} (${entry.trigger})`)
+        .map(
+          (entry) =>
+            `${entry.policy_id} (${entry.trigger})${entry.worker_id ? ` for worker ${entry.worker_id}` : ''}`,
+        )
         .join(', ') +
       `. Load each one with ` +
       undelivered
@@ -133,7 +137,10 @@ export function assertDeferredClausesDelivered(
           (entry) =>
             `${pan} governance clause --policy ${entry.policy_id} ` +
             `--trigger '${entry.trigger}' --invocation ${invocation.invocation_id}` +
-            (invocation.capabilities
+            (entry.worker_id
+              ? ` --worker '${entry.worker_id.replaceAll("'", "'\"'\"'")}'`
+              : '') +
+            (!entry.worker_id && invocation.capabilities
               ? ` --capabilities '${(['shell', 'delegation'] as const).filter((key) => invocation.capabilities?.[key]).join(',')}'`
               : ''),
         )
@@ -146,6 +153,9 @@ export function assertDeferredClausesDelivered(
         undelivered: undelivered.map((entry) => ({
           policy_id: entry.policy_id,
           trigger: entry.trigger,
+          scope: entry.scope,
+          sha256: entry.sha256,
+          ...(entry.worker_id ? { worker_id: entry.worker_id } : {}),
         })),
       },
     },
