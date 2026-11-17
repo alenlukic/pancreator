@@ -53,8 +53,7 @@ import {
 } from './workspace/protected-paths.js'
 import {
   readWorktreeIndex,
-  resolveOrCreateWorktree,
-  resolveWorktreeWorkspace,
+  resolveReleaseWorktree,
 } from './worktrees.js'
 import {
   cleanTreeRefusal,
@@ -211,21 +210,18 @@ function worktree(
   name: string,
   ownerRunId?: string,
 ): { record: ManagedWorktreeReference; absolute: string } {
-  assertReleaseWorkspaceAvailable(root, name, ownerRunId)
+  const resolved = resolveReleaseWorktree(root, name)
 
-  const record = resolveOrCreateWorktree(
-    root,
+  assertReleaseWorkspaceAvailable(
+    resolved.root,
     name,
-    `Release worktree '${name}'`,
+    ownerRunId,
+    resolved.record,
   )
 
-  resolveWorktreeWorkspace(root, name)
+  const absolute = resolveInside(resolved.root, resolved.record.path)
 
-  const absolute = resolveInside(root, record.path)
-
-  assertReleaseWorkspaceAvailable(root, name, ownerRunId, record)
-
-  return { record, absolute }
+  return { record: resolved.record, absolute }
 }
 
 /** Refuse release mutation unless this worktree is available to the named ship run. */
@@ -281,18 +277,18 @@ function rebaseWorktree(
   name: string,
   ownerRunId?: string,
 ): { record: ManagedWorktreeReference; absolute: string } {
-  const record = readWorktreeIndex(root).worktrees.find(
-    (entry) => entry.name === name,
+  const resolved = resolveReleaseWorktree(root, name)
+
+  assertReleaseWorkspaceAvailable(
+    resolved.root,
+    name,
+    ownerRunId,
+    resolved.record,
   )
 
-  invariant(record, `Worktree '${name}' does not exist in the index.`, {
-    code: 'WORKTREE_NOT_FOUND',
-  })
-  assertReleaseWorkspaceAvailable(root, name, ownerRunId, record)
+  const absolute = resolveInside(resolved.root, resolved.record.path)
 
-  const absolute = resolveInside(root, record.path)
-
-  return { record, absolute }
+  return { record: resolved.record, absolute }
 }
 
 function unsafeReleasePath(relativePath: string): string | null {

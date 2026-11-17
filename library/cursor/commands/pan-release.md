@@ -1,4 +1,4 @@
-Coordinate the local release for `$ARGUMENTS`, which must select one `--worktree <name>`.
+Coordinate the local release for `$ARGUMENTS`, which must select one `--worktree <name>` of an existing worktree. The named worktree must already exist. Do not create it.
 
 1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Resolve and read the complete release card with `{{PANCREATOR_PAN_COMMAND}} governance card --mode release --worktree <name>`.
 2. Read the target primer, release steward persona, and `library/skills/update-release-metadata.md`. Apply their self-development and workspace boundaries.

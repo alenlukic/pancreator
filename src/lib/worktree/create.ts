@@ -362,9 +362,10 @@ export function resolveWorktreeWorkspace(root: string, name: string): string {
 
 /**
  * Worktree a `--worktree <name>` option names, created when the index does
- * not hold it yet. Every entry point that accepts the shared worktree option
- * resolves through this function, so the create-or-resolve behavior stays
- * identical across runs, utilities, and standalone personas.
+ * not hold it yet. Run, utility, and standalone surfaces that create or
+ * resolve a workspace use this function. Release surfaces use
+ * `resolveReleaseWorktree` instead: they name an existing candidate and
+ * must not create one.
  */
 export function resolveOrCreateWorktree(
   root: string,
@@ -382,6 +383,97 @@ export function resolveOrCreateWorktree(
   resolveWorktreeWorkspace(root, name)
 
   return existing
+}
+
+function indexedWorktree(root: string, name: string): WorktreeRecord | null {
+  try {
+    return (
+      readWorktreeIndex(root).worktrees.find((entry) => entry.name === name) ??
+      null
+    )
+  } catch {
+    return null
+  }
+}
+
+function worktreePathMatches(
+  host: string,
+  record: WorktreeRecord,
+  candidate: string,
+): boolean {
+  try {
+    return (
+      path.resolve(absoluteWorktreePath(host, record)) ===
+      path.resolve(candidate)
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Installation that owns the named worktree's index record.
+ *
+ * Release commands often run from the candidate checkout itself, whose local
+ * index is empty. Walking ancestors finds the parent installation that
+ * recorded this path. A name present in the invocation root wins. A name
+ * recorded against a different path does not.
+ */
+export function worktreeIndexHost(root: string, name: string): string {
+  const start = path.resolve(root)
+  if (indexedWorktree(start, name)) {
+    return start
+  }
+
+  let current = path.dirname(start)
+  const seen = new Set<string>([start])
+
+  while (!seen.has(current)) {
+    seen.add(current)
+    const record = indexedWorktree(current, name)
+
+    if (record && worktreePathMatches(current, record, start)) {
+      return current
+    }
+
+    const parent = path.dirname(current)
+
+    if (parent === current) {
+      break
+    }
+
+    current = parent
+  }
+
+  return start
+}
+
+/**
+ * Existing worktree a release `--worktree <name>` option names.
+ *
+ * Never creates and never switches the checkout. Continuation and a busy
+ * workspace both need the current HEAD, including a detached rebase and a
+ * branch other than the recorded name. Throws `WORKTREE_NOT_FOUND` when the
+ * name is unrecorded and `WORKTREE_NOT_REGISTERED` when Git does not hold
+ * the path. When the invocation root is the named checkout, returns the
+ * parent installation that holds the index so later path joins stay valid.
+ */
+export function resolveReleaseWorktree(
+  root: string,
+  name: string,
+): { root: string; record: WorktreeRecord } {
+  const host = worktreeIndexHost(root, name)
+  const record = recordByName(readWorktreeIndex(host), name)
+  const repositoryRoot = recordRepositoryRoot(host, record)
+  const worktreePath = absoluteWorktreePath(host, record)
+
+  invariant(
+    isPresent(registeredWorktreePaths(repositoryRoot), worktreePath),
+    `Indexed worktree '${name}' is not registered with Git.`,
+    { code: 'WORKTREE_NOT_REGISTERED' },
+  )
+
+  return { root: host, record }
 }
 
 /**

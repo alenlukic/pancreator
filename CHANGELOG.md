@@ -1,5 +1,12 @@
 # Changelog
 
+## [10.18.1] - 2026-11-17
+
+### Fixed
+
+- Resolve `/pan-release --worktree` as an existing candidate instead of a new worktree ([create](src/lib/worktree/create.ts), [f74a4b59](https://github.com/alenlukic/pancreator/commit/f74a4b59)).
+- Leave the candidate checkout in place during release lookup ([create](src/lib/worktree/create.ts), [78fbba60](https://github.com/alenlukic/pancreator/commit/78fbba60)).
+
 ## [10.18.0] - 2026-11-17
 
 ### Changed

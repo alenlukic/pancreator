@@ -37,7 +37,9 @@ export {
   listWorktrees,
   resolveWorktreeWorkspace,
   resolveOrCreateWorktree,
+  resolveReleaseWorktree,
   resolveWorkspacePathOrWorktree,
+  worktreeIndexHost,
 } from './worktree/create.js'
 export {
   sweepWorktreeTestScratch,

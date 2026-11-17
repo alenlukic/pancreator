@@ -19,6 +19,7 @@ import { resolveRequirements } from '../requirements/resolve.js'
 import { readTargetExtensionManifest } from '../target-authoring/manifest.js'
 import {
   resolveOrCreateWorktree,
+  resolveReleaseWorktree,
   workspaceRepositoryRoot,
 } from '../worktrees.js'
 import {
@@ -192,13 +193,19 @@ export function buildGovernanceCard(
     contracts: [...(options.contracts ?? [])],
     operator_artifacts: 'suppressed',
   })
+  const releaseWorktree =
+    options.worktreeName && options.mode === 'release'
+      ? resolveReleaseWorktree(root, options.worktreeName)
+      : null
   const worktree = options.worktreeName
-    ? resolveOrCreateWorktree(
+    ? (releaseWorktree?.record ??
+      resolveOrCreateWorktree(
         root,
         options.worktreeName,
         `Worktree '${options.worktreeName}'`,
-      )
+      ))
     : null
+  const worktreeHost = releaseWorktree?.root ?? root
   const relativePath =
     options.outputPath ??
     `runtime/logs/sessions/${makeUniqueRunId(
@@ -209,7 +216,7 @@ export function buildGovernanceCard(
   const baseConduct = options.baseRef
     ? (() => {
         const targetRoot = worktree
-          ? path.resolve(root, worktree.path)
+          ? path.resolve(worktreeHost, worktree.path)
           : workspaceRepositoryRoot(root)
         // A self-development worktree carries the tracked closure at the
         // target revision. Target worktrees do not carry the installed harness,

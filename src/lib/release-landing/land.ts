@@ -13,7 +13,7 @@ import {
   finalizeLocalRelease,
   assertReleaseWorkspaceAvailable,
 } from '../release-preparation.js'
-import { resolveWorktreeWorkspace } from '../worktree/create.js'
+import { resolveReleaseWorktree } from '../worktree/create.js'
 import { workspaceRepositoryRoot } from '../worktree/registry.js'
 import {
   appendLandingEvent,
@@ -37,7 +37,9 @@ export function landRelease(
   options: LandReleaseOptions,
 ): LandingResult {
   const { worktree: name, runId = null, waitSeconds } = options
-  const relative = resolveWorktreeWorkspace(root, name)
+  const resolved = resolveReleaseWorktree(root, name)
+  root = resolved.root
+  const relative = resolved.record.path
   const workspace = path.resolve(root, relative)
   const repository = workspaceRepositoryRoot(root)
   const started = Date.now()

@@ -24,7 +24,7 @@ import {
   type ReleaseBump,
 } from './versioning.js'
 import {
-  readWorktreeIndex,
+  resolveReleaseWorktree,
   resolveWorktreeWorkspace,
   workspaceRepositoryRoot,
 } from './worktrees.js'
@@ -272,13 +272,10 @@ export function allocateReleaseVersion(
     { code: 'INVALID_RELEASE_BUMP' },
   )
 
-  const worktreePath = path.resolve(
-    root,
-    resolveWorktreeWorkspace(root, worktreeName),
-  )
-  const record = readWorktreeIndex(root).worktrees.find(
-    (entry) => entry.name === worktreeName,
-  )
+  const resolved = resolveReleaseWorktree(root, worktreeName)
+  root = resolved.root
+  const worktreePath = path.resolve(root, resolved.record.path)
+  const record = resolved.record
   const repositoryRoot = record?.repository_root
     ? path.resolve(root, record.repository_root)
     : workspaceRepositoryRoot(root)

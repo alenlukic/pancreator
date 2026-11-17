@@ -566,7 +566,9 @@ test('budget fitting delivers only whole groups, reserves the base and re-offers
       ],
     }
     const base = 'Complete eager reminder.'
-    const budget = 800
+    // Recovery commands embed quoted absolute pan and pan-run paths, so the
+    // budget must clear two of those plus the small inlined group.
+    const budget = 2000
     const response = deliverDeferredClauses(
       root,
       'conv-1',

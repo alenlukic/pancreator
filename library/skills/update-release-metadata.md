@@ -49,7 +49,7 @@ and release metadata into the release payload. The second changes only
 `release/index.json` and maps the version to the first commit. Preserve indexed
 installation and updates from existing releases.
 
-Run `pan release land --worktree <name> --bump <major|minor|patch> --json`.
+Run `pan release land --worktree <name> --bump <major|minor|patch> --json`. `--worktree` names an existing worktree and does not create one.
 In a workflow, also pass its supplied `--run <run-id>`. The landing mutex and
 allocation authority serialize the operation. Preserve candidate dependency and
 documentation changes.
