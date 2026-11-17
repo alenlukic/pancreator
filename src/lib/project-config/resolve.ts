@@ -5,7 +5,10 @@
 
 import path from 'node:path'
 
-import { EMBEDDED_HARNESS_PREFIX } from '../cursor-content.js'
+import {
+  EMBEDDED_HARNESS_PREFIX,
+  shellQuoteCommandPath,
+} from '../cursor-content.js'
 import { invariant } from '../errors.js'
 import { isRecord, sha256 } from '../io.js'
 import { testScratchDeclarationError } from '../test-scratch.js'
@@ -376,7 +379,7 @@ export function harnessPathPrefix(root: string): string {
  */
 export function panCommand(root: string): string {
   if (isDetachedInstallation(root)) {
-    return path.join(root, 'bin', 'pan')
+    return shellQuoteCommandPath(path.join(root, 'bin', 'pan'))
   }
 
   return isEmbeddedInstallation(root)

@@ -37,6 +37,42 @@ target repository tracks.
   Responses API itself. A missing key pauses the same way a missing CLI does.
   See `./bin/pan doctor`.
 
+## Ubuntu / WSL installation and invocation
+
+Run installation and all Pancreator commands **inside the same Ubuntu/WSL
+filesystem environment** as the repository. Use Linux builds of Node.js 22+,
+npm, Git, Bash, and Python 3. In particular, `node`, `npm`, `git`, `python3`,
+and any selected executor CLI (`claude`, `copilot`, `cursor-agent`) must be
+invocable from the WSL shell. A Windows `.exe` or `.cmd` found on the WSL
+`PATH` is not a substitute for a Linux-native CLI without separate verification.
+Use `command -v node npm git python3` to check resolution before installation.
+
+A normal Git checkout should **not** reuse a `node_modules` tree copied from
+macOS or Windows, including one extracted from a ZIP. Run `npm ci` from the
+Linux checkout to restore platform-correct executables and symlinks before
+`npm run build`. Use `npm run typecheck`, `npm run validate`, and
+`./bin/pan doctor` to check the installation. Prefer the WSL Linux filesystem
+(e.g. `~/dev/project`) to `/mnt/c` for Git worktrees, file modes, symlinks,
+case sensitivity, and build performance. Both shell hook commands and the
+`pan` invocation command support spaces and apostrophes in a detached harness
+path after projection; keep literal file references distinct from commands.
+
+**Host boundary:** The editor must launch project hooks in the **same WSL
+distro** that contains the harness. For VS Code, open the project in a Remote -
+WSL window and enable the `vscode` host in the installation configuration if
+you use the VS Code projections. A Windows-native editor executing its hooks
+in Windows cannot execute projected Linux paths directly. `config_overrides.json`
+may override `hosts` without changing `active_config` or model mappings.
+
+Linux cannot supply macOS `sandbox-exec` write containment; external executor
+launches report that limitation and rely on the existing observation/custody
+controls, which are not equivalent to OS-enforced write isolation. The native
+Cursor chat handoff, `bin/vscode-customizations` app patch, and `pan schedule
+install-agent` (launchd) are macOS-specific. On Ubuntu, invoke `pan schedule
+tick` from an external scheduler if required. Neither a successful Linux build
+nor fixture hook replay proves integration with a particular Windows-hosted
+editor; verify that in a real WSL-hosted editor session.
+
 ## Install
 
 From a Pancreator source checkout:
@@ -599,7 +635,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `10.18.1`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `10.18.2`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

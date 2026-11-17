@@ -101,6 +101,15 @@ export const CURSOR_PROJECTION_TOKENS = {
 } as const
 
 const UNRESOLVED_PROJECTION_TOKEN = /\{\{PANCREATOR_[A-Z_]+\}\}/gu
+const HOOK_EXECUTABLE_TOKEN =
+  /\{\{PANCREATOR_HARNESS_PATH\}\}bin\/(pan-hook-[a-z-]+)/gu
+
+/** Quote an executable or command argument, not a path shown as documentation. */
+export function shellQuoteCommandPath(value: string): string {
+  return /^[A-Za-z0-9_./:@%+=,-]+$/u.test(value)
+    ? value
+    : `'${value.replaceAll("'", `'"'"'`)}'`
+}
 
 /**
  * Render a canonical Cursor projection for the selected installation mode.
@@ -116,14 +125,33 @@ export function projectCursorContent(
 ): string {
   const targetInstallation = installationMode !== 'self_development'
   const harnessPath = targetInstallation ? `${harnessPrefix}/` : ''
-  const panCommand = targetInstallation
-    ? harnessPrefix === EMBEDDED_HARNESS_PREFIX
-      ? `./${harnessPrefix}/bin/pan`
-      : `${harnessPrefix}/bin/pan`
-    : './bin/pan'
-  const npmPrefix = targetInstallation ? ` --prefix ${harnessPrefix}` : ''
+  const panCommand = shellQuoteCommandPath(
+    targetInstallation
+      ? harnessPrefix === EMBEDDED_HARNESS_PREFIX
+        ? `./${harnessPrefix}/bin/pan`
+        : `${harnessPrefix}/bin/pan`
+      : './bin/pan',
+  )
+  const npmPrefix = targetInstallation
+    ? ` --prefix ${shellQuoteCommandPath(harnessPrefix)}`
+    : ''
+  // Hook fields are shell command strings. Quote the executable as a whole;
+  // quoting only the path prefix would still leave the command vulnerable to
+  // whitespace and shell metacharacters in a detached WSL/Linux install path.
+  // Ordinary {{PANCREATOR_HARNESS_PATH}} references are filesystem paths,
+  // not commands, and must remain unquoted.
+  const hooks =
+    relativePath === '.cursor/hooks.json' ||
+    relativePath.startsWith('.github/hooks/')
+  const source = hooks
+    ? content.replaceAll(HOOK_EXECUTABLE_TOKEN, (_, name: string) =>
+        JSON.stringify(
+          shellQuoteCommandPath(`${harnessPath}bin/${name}`),
+        ).slice(1, -1),
+      )
+    : content
 
-  const projected = content
+  const projected = source
     .replaceAll(CURSOR_PROJECTION_TOKENS.harnessPath, harnessPath)
     .replaceAll(CURSOR_PROJECTION_TOKENS.panCommand, panCommand)
     .replaceAll(CURSOR_PROJECTION_TOKENS.npmPrefix, npmPrefix)

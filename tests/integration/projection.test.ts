@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
   CURSOR_PROJECTION_TOKENS,
   projectCursorContent,
+  shellQuoteCommandPath,
 } from '../../src/lib/cursor-content.js'
 import {
   isPancreatorOwnedCursorBasename,
@@ -17,7 +26,9 @@ import {
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { resolveCursorModelSlug } from '../../src/lib/executors/cursor-catalog.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
+import { panCommand } from '../../src/lib/project-config/resolve.js'
 import { createFixture, fixtureGit } from '../fixture-template.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
   const { cliPath, harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
@@ -63,6 +74,105 @@ test('detached Cursor projection addresses the harness absolutely', () => {
   // No relative path from the target can reach a detached harness.
   assert.doesNotMatch(projected, /\.pancreator/u)
   assert.doesNotMatch(projected, /`\.\/opt/u)
+})
+
+test('detached Linux/WSL projection quotes executable paths without changing file references', () => {
+  const root = createTestTempDirectory('pancreator-wsl-exec-')
+  const harness = path.join(root, "User's Linux workspace")
+  const bin = path.join(harness, 'bin')
+  mkdirSync(bin, { recursive: true })
+  const executable = path.join(bin, 'pan-hook-governance-reminder')
+  writeFileSync(executable, '#!/bin/sh\nprintf "hook:%s\\n" "$1"\n')
+  chmodSync(executable, 0o755)
+
+  const hooks = projectCursorContent(
+    JSON.stringify({
+      hooks: {
+        postToolUse: [
+          {
+            command:
+              '{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-governance-reminder ping',
+          },
+        ],
+      },
+    }),
+    '.cursor/hooks.json',
+    'detached',
+    harness,
+  )
+  const command = (
+    JSON.parse(hooks) as { hooks: { postToolUse: [{ command: string }] } }
+  ).hooks.postToolUse[0].command
+  const result = spawnSync('/bin/sh', ['-c', command], { encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, 'hook:ping\n')
+
+  const vscode = projectCursorContent(
+    JSON.stringify({
+      hooks: {
+        preToolUse: [
+          {
+            bash: '{{PANCREATOR_HARNESS_PATH}}bin/pan-hook-governance-reminder ping',
+          },
+        ],
+      },
+    }),
+    '.github/hooks/pan-hooks.json',
+    'detached',
+    harness,
+  )
+  const vscodeCommand = (
+    JSON.parse(vscode) as { hooks: { preToolUse: [{ bash: string }] } }
+  ).hooks.preToolUse[0].bash
+  assert.equal(
+    spawnSync('/bin/sh', ['-c', vscodeCommand], { encoding: 'utf8' }).stdout,
+    'hook:ping\n',
+  )
+
+  const rendered = projectCursorContent(
+    'Read {{PANCREATOR_HARNESS_PATH}}docs/guide.md; run {{PANCREATOR_PAN_COMMAND}} status and npm{{PANCREATOR_NPM_PREFIX}} run check.',
+    '.cursor/commands/pan-status.md',
+    'detached',
+    harness,
+  )
+  assert.ok(rendered.includes(`${harness}/docs/guide.md`))
+  assert.ok(
+    rendered.includes(
+      `run ${shellQuoteCommandPath(path.join(harness, 'bin/pan'))} status`,
+    ),
+  )
+  assert.ok(
+    rendered.includes(
+      `npm --prefix ${shellQuoteCommandPath(harness)} run check`,
+    ),
+  )
+  assert.ok(rendered.includes(`'\"'\"'`), 'embedded single quotes are escaped')
+})
+
+test('detached panCommand is a runnable shell command with WSL path punctuation', () => {
+  const root = path.join(
+    createTestTempDirectory('pancreator-wsl-command-'),
+    "User's WSL checkout",
+  )
+  mkdirSync(path.join(root, 'bin'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'config.json'),
+    JSON.stringify({
+      schema_version: 1,
+      installation_mode: 'detached',
+      workspace_root: path.dirname(root),
+      state_root: 'runtime',
+    }),
+  )
+  const pan = path.join(root, 'bin/pan')
+  writeFileSync(pan, '#!/bin/sh\nprintf "pan:%s\\n" "$1"\n')
+  chmodSync(pan, 0o755)
+
+  const result = spawnSync('/bin/sh', ['-c', `${panCommand(root)} doctor`], {
+    encoding: 'utf8',
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, 'pan:doctor\n')
 })
 
 test('self-development projection is never rewritten', () => {

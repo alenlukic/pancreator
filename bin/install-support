@@ -74,6 +74,16 @@ const CURSOR_PROJECTION_TOKENS = {
   cliPath: '{{PANCREATOR_CLI_PATH}}',
 }
 const UNRESOLVED_PROJECTION_TOKEN = /\{\{PANCREATOR_[A-Z_]+\}\}/gu
+const HOOK_EXECUTABLE_TOKEN =
+  /\{\{PANCREATOR_HARNESS_PATH\}\}bin\/(pan-hook-[a-z-]+)/gu
+
+// Mirrors shellQuoteCommandPath in src/lib/cursor-content.ts. The installer
+// renders projections before the staged TypeScript build exists.
+function shellQuoteCommandPath(value) {
+  return /^[A-Za-z0-9_./:@%+=,-]+$/u.test(value)
+    ? value
+    : `'${value.replaceAll("'", `'"'"'`)}'`
+}
 // Kept in sync with GUIDANCE_DIGEST_OWNERSHIP in src/lib/policy-guidance.ts.
 const GUIDANCE_DIGEST_OWNERSHIP =
   'The harness computed this digest when it wrote the card. Read the source ' +
@@ -90,16 +100,27 @@ function projectCursorContent(
   relative,
   harnessPrefix = EMBEDDED_HARNESS_PREFIX,
 ) {
-  const panCommand =
+  const panCommand = shellQuoteCommandPath(
     harnessPrefix === EMBEDDED_HARNESS_PREFIX
       ? `./${harnessPrefix}/bin/pan`
-      : `${harnessPrefix}/bin/pan`
-  const projected = content
-    .replaceAll(CURSOR_PROJECTION_TOKENS.harnessPath, `${harnessPrefix}/`)
+      : `${harnessPrefix}/bin/pan`,
+  )
+  const harnessPath = `${harnessPrefix}/`
+  const hooks =
+    relative === '.cursor/hooks.json' || relative.startsWith('.github/hooks/')
+  const source = hooks
+    ? content.replaceAll(HOOK_EXECUTABLE_TOKEN, (_, name) =>
+        JSON.stringify(
+          shellQuoteCommandPath(`${harnessPath}bin/${name}`),
+        ).slice(1, -1),
+      )
+    : content
+  const projected = source
+    .replaceAll(CURSOR_PROJECTION_TOKENS.harnessPath, harnessPath)
     .replaceAll(CURSOR_PROJECTION_TOKENS.panCommand, panCommand)
     .replaceAll(
       CURSOR_PROJECTION_TOKENS.npmPrefix,
-      ` --prefix ${harnessPrefix}`,
+      ` --prefix ${shellQuoteCommandPath(harnessPrefix)}`,
     )
     .replaceAll(CURSOR_PROJECTION_TOKENS.cliPath, '')
   const unresolved = projected.match(UNRESOLVED_PROJECTION_TOKEN) ?? []

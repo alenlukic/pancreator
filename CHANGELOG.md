@@ -1,5 +1,11 @@
 # Changelog
 
+## [10.18.2] - 2026-11-17
+
+### Fixed
+
+- Quote projected command and hook paths so detached WSL and Linux harness installs with spaces or apostrophes stay executable ([cursor-content](src/lib/cursor-content.ts), [install-support](bin/install-support), [89426a01](https://github.com/alenlukic/pancreator/commit/89426a01)).
+
 ## [10.18.1] - 2026-11-17
 
 ### Fixed

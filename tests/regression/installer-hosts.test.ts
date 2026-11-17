@@ -402,3 +402,48 @@ test('write-project treats dest executor mappings as dest-local', () => {
     'openai:gpt-6.1-sol[effort=high]',
   )
 })
+
+test('detached installer and compiled command/hook projections agree with a spaced WSL path', () => {
+  const source = createFixture()
+  const work = createTestTempDirectory('pancreator-installer-wsl-')
+  const target = path.join(work, 'target')
+  const config = path.join(work, 'config.json')
+  const harness = path.join(work, "User's WSL workspace")
+  mkdirSync(target, { recursive: true })
+  writeFileSync(
+    config,
+    JSON.stringify({
+      ...readJson(path.join(source, 'config.json')),
+      hosts: ['cursor', 'vscode'],
+    }),
+  )
+  installSupport([
+    'project-cursor',
+    '--source-root',
+    source,
+    '--target-root',
+    target,
+    '--manifest-out',
+    path.join(work, 'manifest.json'),
+    '--persona-config',
+    config,
+    '--harness-prefix',
+    harness,
+  ])
+  for (const [sourcePath, targetPath] of [
+    ['library/cursor/hooks.json', '.cursor/hooks.json'],
+    ['library/vscode/hooks.json', '.github/hooks/pan-hooks.json'],
+    ['library/cursor/commands/pan-status.md', '.cursor/commands/pan-status.md'],
+  ]) {
+    assert.equal(
+      readFileSync(path.join(target, targetPath), 'utf8'),
+      projectCursorContent(
+        readFileSync(path.join(source, sourcePath), 'utf8'),
+        targetPath,
+        'detached',
+        harness,
+      ),
+      targetPath,
+    )
+  }
+})
