@@ -78,6 +78,61 @@ export function transcriptTaskDigest(file: string): string | null {
   )
 }
 
+/**
+ * The `promptDigest` of the last user record's `<user_query>` block inside the
+ * bounded tail of `file`, or null when unreadable or absent from the tail.
+ */
+export function transcriptLastTaskDigest(file: string): string | null {
+  try {
+    const stats = statSync(file)
+
+    if (!stats.isFile() || stats.size === 0) {
+      return null
+    }
+
+    const start = Math.max(0, stats.size - TRANSCRIPT_TAIL_BYTES)
+    const length = stats.size - start
+    const buffer = Buffer.alloc(length)
+    const fd = openSync(file, 'r')
+
+    try {
+      readSync(fd, buffer, 0, length, start)
+    } finally {
+      closeSync(fd)
+    }
+
+    const lines = buffer
+      .toString('utf8')
+      .split('\n')
+      .filter((line) => line.trim().length > 0)
+
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const line = lines[index] ?? ''
+      let record: unknown
+
+      try {
+        record = JSON.parse(line) as unknown
+      } catch {
+        continue
+      }
+
+      if (
+        record !== null &&
+        typeof record === 'object' &&
+        (record as { role?: unknown }).role === 'user'
+      ) {
+        // An unrecognized most-recent user message is not evidence that an
+        // earlier task still belongs to the resumed invocation.
+        return firstRecordTaskDigest(line)
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 function cacheTaskDigest(file: string, digest: string | null): string | null {
   if (taskDigestCache.size >= TASK_DIGEST_CACHE_LIMIT) {
     taskDigestCache.clear()

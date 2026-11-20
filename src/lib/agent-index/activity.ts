@@ -22,7 +22,11 @@ import {
   type AgentStopRecord,
   type EventKind,
 } from './store.js'
-import { readTranscriptState, type TranscriptState } from './transcript.js'
+import {
+  readTranscriptState,
+  transcriptLastTaskDigest,
+  type TranscriptState,
+} from './transcript.js'
 import {
   entryFromSubagentTranscript,
   linkUnclaimedTranscript,
@@ -36,6 +40,11 @@ import { agentLiveness, type AgentLiveness } from '../watch/liveness.js'
 // A pan-run record that started this long before a shell call cannot be its.
 const PAN_RUN_LINK_LEAD_MS = 2_000
 const PAN_RUN_LINK_WINDOW_MS = 30_000
+// Linux and WSL filesystems can stamp mtime a few milliseconds, or one
+// whole second, behind Date.now() used at registration. A stop whose
+// recorded time falls inside this lead of the latest start is still
+// current; a stop older than that belongs to an earlier attempt.
+const TRANSCRIPT_STOP_LEAD_MS = 2_000
 
 // ---------------------------------------------------------------------------
 // Reader helpers for watch integration
@@ -603,12 +612,16 @@ function resolveStop(
         : latest,
     Number.NEGATIVE_INFINITY,
   )
-  const current = (recordedAt: string): boolean => {
+  const current = (
+    recordedAt: string,
+    leadMs = 0,
+    invocationLeadMs = 0,
+  ): boolean => {
     const recordedMs = Date.parse(recordedAt)
 
     return (
-      !(recordedMs < lastStartMs) &&
-      (notBeforeMs === null || !(recordedMs < notBeforeMs))
+      !(recordedMs + leadMs < lastStartMs) &&
+      (notBeforeMs === null || !(recordedMs + invocationLeadMs < notBeforeMs))
     )
   }
 
@@ -638,11 +651,51 @@ function resolveStop(
   const transcriptRecordedAt = transcript
     ? new Date(transcript.mtime_ms).toISOString()
     : null
+  let registeredCount = 0
+  let hasCallSinceRegistration = false
+
+  for (const event of events) {
+    if (event.kind === 'registered') {
+      registeredCount += 1
+      hasCallSinceRegistration = false
+    } else if (event.kind === 'call_started') {
+      hasCallSinceRegistration = true
+    }
+  }
+  const lastTaskDigest =
+    transcript?.turn_ended && registeredCount > 1
+      ? transcriptLastTaskDigest(transcript.path)
+      : null
+  const awaitingResumedPrompt =
+    registeredCount > 1 &&
+    agent.prompt_digest !== null &&
+    lastTaskDigest !== null &&
+    lastTaskDigest !== agent.prompt_digest
+  // A resumed session reuses its JSONL. If its file grew after registration,
+  // a complete new turn is evidence even when WSL's mtime lags the hook clock.
+  // Without that size evidence, never apply the mtime tolerance on a resume:
+  // an old turn_ended may be inside the same filesystem timestamp window.
+  const atRegistration = agent.transcript_at_registration
+  const appendedSinceRegistration =
+    registeredCount > 1 &&
+    atRegistration != null &&
+    transcript?.path === atRegistration.path &&
+    transcript.size > atRegistration.size
+  const transcriptLeadMs =
+    (registeredCount === 1 && !hasCallSinceRegistration) ||
+    appendedSinceRegistration
+      ? TRANSCRIPT_STOP_LEAD_MS
+      : 0
 
   if (
     transcript?.turn_ended &&
+    !awaitingResumedPrompt &&
     transcriptRecordedAt !== null &&
-    current(transcriptRecordedAt)
+    current(
+      transcriptRecordedAt,
+      transcriptLeadMs,
+      appendedSinceRegistration ? TRANSCRIPT_STOP_LEAD_MS : 0,
+    )
   ) {
     return {
       status: transcriptStopStatus(transcript.turn_status),

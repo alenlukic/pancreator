@@ -8,7 +8,7 @@ This handbook records conventions verified in this repository. It is not a gener
 
 ## Detection evidence
 
-`./bin/pan technologies detect --json` reported `javascript` from `package.json`, `prettier.config.js`, the eval fixture modules `evals/fixtures/toy-node/src/greet.mjs` and `evals/fixtures/toy-node/tests/greet.test.mjs`, and the four `services/spend-sync/` modules. Those files plus the extensionless `bin/install-support` are the complete JavaScript surface, so the conventions below are narrow by construction.
+`./bin/pan technologies detect --json` reported `javascript` from `package.json`, `prettier.config.js`, the eval fixture modules `evals/fixtures/toy-node/src/greet.mjs` and `evals/fixtures/toy-node/tests/greet.test.mjs`, the four `services/spend-sync/` modules, and the VS Code relay extension entry `library/vscode/relay-extension.cjs`. Those files plus the extensionless `bin/install-support` are the complete JavaScript surface, so the conventions below are narrow by construction.
 
 ## Where JavaScript lives
 
@@ -17,13 +17,15 @@ JavaScript is a small, deliberate part of this repository. The harness and its t
 - `prettier.config.js` is the only tracked `.js` file at the repository root. It declares `const config = { ... }` and ends with `export default config`, and it carries the annotation `/** @type {import('prettier').Config} */` so editors type-check the object without a build step.
 - `bin/install-support` is the substantive installer JavaScript: a `#!/usr/bin/env node` ESM script with no file extension, invoked by `bin/install` and `bin/update`. Because it has no extension, the language detector does not list it and `pan style` does not scan it; it is still JavaScript and this handbook still governs it.
 - `services/spend-sync/` is the deployed Vercel service behind `pan spend sync` and `pan spend report`. `api/snapshots/upload.js` and `api/snapshots/index.js` are route modules that export `POST` and `GET`; `lib/handlers.js` holds the request logic and `lib/blob-deps.js` wires it to `@vercel/blob`.
+- `library/vscode/relay-extension.cjs` is the entry module of the VS Code reminder relay extension, beside its manifest `library/vscode/relay-extension.json`. `bin/package-vscode-relay` runs `dist/src/vscode-relay-package.js` to stage it as `extension.cjs` with the compiled relay under `runtime/`. The relay logic lives in TypeScript at `src/vscode-relay.ts`.
 - `evals/fixtures/toy-node/` holds `src/greet.mjs` and `tests/greet.test.mjs`. That tree is a toy target repository the harness evals copy and drive. It is fixture content governed by its own `AGENTS.fixture.md`, not harness code.
 
 Agents SHOULD keep new harness logic in TypeScript under `src/`. JavaScript is appropriate where a script MUST run before the TypeScript payload is built, which is the reason `bin/install-support` exists, and where a deployed runtime consumes the files directly, which is the reason `services/spend-sync/` exists.
 
 ## Module and runtime rules
 
-- `package.json` declares `"type": "module"`, so JavaScript here is ESM. Agents MUST NOT introduce `require`.
+- `package.json` declares `"type": "module"`, so JavaScript here is ESM. Agents MUST NOT introduce `require`, with one verified carve-out below.
+- `library/vscode/relay-extension.cjs` is CommonJS because the VS Code extension host loads the manifest's `"main": "./extension.cjs"` through `require`. It calls `require('vscode')`, assigns `exports.activate` and `exports.deactivate`, and reaches the ESM relay through `import('./runtime/vscode-relay.js')` and `activateRelayExtension(vscode, context)`. The shim MUST stay that thin: new relay behavior belongs in `src/vscode-relay.ts`, and the `.cjs` extension marks the only place `require` is allowed.
 - Node built-ins MUST use the `node:` prefix, as in `import path from 'node:path'` and `import { fileURLToPath } from 'node:url'`.
 - Local imports MUST carry the `.js` extension, as in `import { handleUpload } from '../../lib/handlers.js'`.
 - `engines.node` is `>=22.0.0` for the harness and `22.x` for the service, and top-level `await` is already used in `bin/install-support`.
@@ -61,7 +63,7 @@ Some installer functions deliberately mirror compiled TypeScript, because the in
 
 ## Type checking gap
 
-`tsconfig.json` includes only `src/**/*.ts` and `tests/**/*.ts`. JavaScript is therefore **not** covered by `npm run typecheck`, and neither `bin/install-support` nor `services/spend-sync/` reaches it. Correctness rests on review and on tests written in TypeScript: the installer suites under `tests/secondary/` pin the installer behavior, `tests/integration/install-language-bundle.test.ts` pins the language-bundle preservation, and `tests/unit/spend-sync-service.test.ts` pins the service handlers. Agents changing either surface MUST run those suites through `npm run test:secondary` or the profiles in `runtime/repository-checks.json`, which is the command authority.
+`tsconfig.json` includes only `src/**/*.ts` and `tests/**/*.ts`. JavaScript is therefore **not** covered by `npm run typecheck`, and neither `bin/install-support`, `services/spend-sync/`, nor `library/vscode/relay-extension.cjs` reaches it. Correctness rests on review and on tests written in TypeScript: the installer suites under `tests/secondary/` pin the installer behavior, `tests/integration/install-language-bundle.test.ts` pins the language-bundle preservation, and `tests/unit/spend-sync-service.test.ts` pins the service handlers. Agents changing either surface MUST run those suites through `npm run test:secondary` or the profiles in `runtime/repository-checks.json`, which is the command authority.
 
 ## No target-specific convention found
 

@@ -110,6 +110,8 @@ export interface AgentEntry {
   parent_transcript_path?: string | null
   /** Digest of the task text, the last key the stop resolution tries. */
   prompt_digest?: string | null
+  /** Last transcript size before this agent was re-registered (resume). */
+  transcript_at_registration?: { path: string; size: number } | null
   stop: AgentStopRecord | null
 }
 

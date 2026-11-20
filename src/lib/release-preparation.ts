@@ -51,10 +51,7 @@ import {
   isProtectedWorkspacePath,
   normalizeProtectedPath,
 } from './workspace/protected-paths.js'
-import {
-  readWorktreeIndex,
-  resolveReleaseWorktree,
-} from './worktrees.js'
+import { readWorktreeIndex, resolveReleaseWorktree } from './worktrees.js'
 import {
   cleanTreeRefusal,
   committablePaths,

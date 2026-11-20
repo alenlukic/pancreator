@@ -1,5 +1,21 @@
 # Changelog
 
+## [10.18.3] - 2026-11-20
+
+### Changed
+
+- Accept `rtk` and `rtk bypass` only in front of allowlisted read-only commands ([pan-hook-shell-monitor](bin/pan-hook-shell-monitor), [87bbeac2](https://github.com/alenlukic/pancreator/commit/87bbeac2)).
+
+### Fixed
+
+- Stop `pan-run` heartbeat subshells from catching wrapper signals and hanging on Linux ([pan-run](bin/pan-run), [76ad02fa](https://github.com/alenlukic/pancreator/commit/76ad02fa)).
+- Cancel `pan-run` drain timers through a marker instead of process-group kills ([pan-run](bin/pan-run), [4e58786b](https://github.com/alenlukic/pancreator/commit/4e58786b)).
+- Probe GNU `stat -c` against `.` so a fixture without `tsconfig.json` keeps a stable build stamp ([build](bin/build), [76ad02fa](https://github.com/alenlukic/pancreator/commit/76ad02fa)).
+- Run `shellcheck` only on scripts that pass `bash -n` ([check-shell](bin/check-shell), [76ad02fa](https://github.com/alenlukic/pancreator/commit/76ad02fa)).
+- Reuse matching Linux `gap` verification records across unchanged invocations ([verification-execution](src/lib/validators/verification-execution.ts), [76ad02fa](https://github.com/alenlukic/pancreator/commit/76ad02fa)).
+- Keep hook stops and resumed agent transcripts from looking current too early ([activity](src/lib/agent-index/activity.ts), [transcript](src/lib/agent-index/transcript.ts), [76ad02fa](https://github.com/alenlukic/pancreator/commit/76ad02fa), [4e58786b](https://github.com/alenlukic/pancreator/commit/4e58786b)).
+- Pin watched files during config handoff so Linux does not reuse an inode in one tick ([store](src/lib/worktree/store.ts), [76ad02fa](https://github.com/alenlukic/pancreator/commit/76ad02fa)).
+
 ## [10.18.2] - 2026-11-17
 
 ### Fixed

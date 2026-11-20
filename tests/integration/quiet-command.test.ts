@@ -35,6 +35,7 @@ function runQuiet(
     verbose?: boolean
     /** Open fd 3 as PAN_PROGRESS_FD with this heartbeat cadence. */
     progressSeconds?: string
+    drainSeconds?: string
     nested?: boolean
   } = {},
 ): SpawnSyncReturns<string> & { root: string; progress: string } {
@@ -48,6 +49,9 @@ function runQuiet(
   if (options.progressSeconds !== undefined) {
     env.PAN_PROGRESS_FD = '3'
     env.PAN_RUN_HEARTBEAT_SECONDS = options.progressSeconds
+  }
+  if (options.drainSeconds !== undefined) {
+    env.PAN_RUN_DRAIN_SECONDS = options.drainSeconds
   }
 
   const command = ['--', process.execPath, '-e', source]
@@ -285,4 +289,16 @@ test('a nested quiet wrapper beats to the sink the outer wrapper exported', () =
     readFileSync(path.join(inner.directory, 'output.log'), 'utf8'),
     'inner\n',
   )
+})
+
+test('a nested quiet wrapper cancels a long drain timer without diagnostics', () => {
+  const result = runQuiet(
+    "process.stdout.write('inner\\n'); setTimeout(() => {}, 1500)",
+    { nested: true, progressSeconds: '1', drainSeconds: '60' },
+  )
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+  assert.equal(result.stderr, '')
+  assert.match(result.progress, /  inner/u)
 })

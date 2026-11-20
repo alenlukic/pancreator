@@ -12,7 +12,7 @@
 # machine. When shellcheck is on PATH it then lints every script at error
 # severity, which catches defects a parse cannot see: a `${...}` that Bash
 # expands inside a double-quoted `node -e` program, for instance. Without
-# shellcheck the lint pass is skipped with one note, so a machine that lacks
+# that linter the lint pass is skipped with one note, so a machine that lacks
 # it still gets the parse check.
 #
 # Output is only the failures and one summary line.
@@ -62,6 +62,7 @@ display() {
 }
 
 failed=0
+parsed_scripts=()
 
 for script in "${scripts[@]}"; do
   if ! output="$("$BASH_BIN" -n "$script" 2>&1)"; then
@@ -69,6 +70,8 @@ for script in "${scripts[@]}"; do
     printf 'check-shell: %s does not parse under %s\n' \
       "$(display "$script")" "$BASH_BIN" >&2
     printf '%s\n' "$output" >&2
+  else
+    parsed_scripts+=("$script")
   fi
 done
 
@@ -76,12 +79,14 @@ bash_version="$("$BASH_BIN" -c 'printf %s "$BASH_VERSION"')"
 lint_note='shellcheck skipped'
 
 if command -v shellcheck >/dev/null 2>&1; then
-  if lint_output="$(shellcheck --severity=error --shell=bash -- "${scripts[@]}" 2>&1)"; then
-    lint_note='shellcheck -S error clean'
-  else
-    failed=$((failed + 1))
-    lint_note='shellcheck -S error failed'
-    printf '%s\n' "$lint_output" >&2
+  if [[ ${#parsed_scripts[@]} -gt 0 ]]; then
+    if lint_output="$(shellcheck --severity=error --shell=bash -- "${parsed_scripts[@]}" 2>&1)"; then
+      lint_note='shellcheck -S error clean'
+    else
+      failed=$((failed + 1))
+      lint_note='shellcheck -S error failed'
+      printf '%s\n' "$lint_output" >&2
+    fi
   fi
 else
   echo 'check-shell: shellcheck is not on PATH; skipping the lint pass' >&2

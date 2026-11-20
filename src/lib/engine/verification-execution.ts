@@ -43,6 +43,7 @@ import {
   isOperation,
   loadManifest,
   currentRecord,
+  matchingRecordInputs,
   verificationExecutionOperationErrors,
   verificationExecutionRequests,
 } from '../validators/verification-execution.js'
@@ -580,7 +581,9 @@ function collectVerificationExecutionEvidenceUnlocked(
         old &&
         old.status === 'gap' &&
         old.error === record.error &&
-        currentRecord(old, invocation, entry, sourceFingerprint, secrets)
+        old.enforcement.mode === record.enforcement.mode &&
+        old.enforcement.processes === record.enforcement.processes &&
+        matchingRecordInputs(old, invocation, entry, sourceFingerprint, secrets)
       ) {
         manifest.records.push(old)
         continue

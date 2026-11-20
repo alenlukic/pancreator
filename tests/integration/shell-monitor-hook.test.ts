@@ -184,12 +184,42 @@ test('AC-18: shell-monitor hook allow and deny cases', async (t) => {
     assert.equal(permission('cd /tmp && rtk git status'), 'allow')
   })
 
-  await t.test('allows rtk prefix before a host cd prefix', () => {
-    assert.equal(permission('rtk cd /tmp && git status'), 'allow')
+  await t.test('does not treat rtk cd as a host cwd prefix', () => {
+    assert.equal(permission('rtk cd /tmp && git status'), 'deny')
   })
 
-  await t.test('allows rtk prefix before a wrapped command', () => {
-    assert.equal(permission('rtk ./bin/pan-run -- npm test'), 'allow')
+  await t.test(
+    'denies an RTK-prefixed wrapper: pan-run must execute directly',
+    () => {
+      assert.equal(permission('rtk ./bin/pan-run -- npm test'), 'deny')
+      assert.equal(permission('cd /tmp && rtk bin/pan-run -- npm test'), 'deny')
+      assert.equal(permission('rtk bypass ./bin/pan-run -- npm test'), 'deny')
+    },
+  )
+
+  await t.test('allows RTK-disabled wrapper invocation', () => {
+    assert.equal(
+      permission('RTK_DISABLED=1 ./bin/pan-run -- npm test'),
+      'allow',
+    )
+  })
+
+  await t.test('allows RTK bypass for a read-only command', () => {
+    assert.equal(permission('rtk bypass git status'), 'allow')
+    assert.equal(permission('cd /tmp && rtk bypass rg foo'), 'allow')
+  })
+
+  await t.test('allows an RTK rewrite in each safe pipeline segment', () => {
+    assert.equal(permission('rtk git status | rtk rg foo'), 'allow')
+    assert.equal(permission('git status && rtk ls'), 'allow')
+  })
+
+  await t.test('denies RTK control and arbitrary execution commands', () => {
+    assert.equal(permission('rtk run git status'), 'deny')
+    assert.equal(permission('rtk bypass npm test'), 'deny')
+    assert.equal(permission('rtk bypass git push'), 'deny')
+    assert.equal(permission('rtk rtk git status'), 'deny')
+    assert.equal(permission('rtk git status && rtk bypass npm test'), 'deny')
   })
 
   await t.test('denies rtk prefix before a non-allowlisted command', () => {

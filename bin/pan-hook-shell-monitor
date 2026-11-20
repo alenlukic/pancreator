@@ -197,6 +197,7 @@ def refuses_long(arg, refused):
 
 
 def allowlisted_segment(words):
+    words = strip_allowlisted_rtk_prefix(words)
     if not words or ASSIGNMENT.match(words[0][2]):
         return False
     command, args = words[0][1], [word[1] for word in words[1:]]
@@ -269,34 +270,29 @@ def strip_host_cd_prefix(tokens):
     return tokens
 
 
-def strip_rtk_prefix(tokens):
-    """Drop a leading `rtk` word a user preToolUse hook prepends.
+def strip_allowlisted_rtk_prefix(words):
+    """Accept RTK's read-only rewrites, never treat RTK as `pan-run`.
 
-    The next token MUST be a word that does not start with `-`. An `rtk` option
-    or a missing operand leaves the tokens unchanged so the command stays denied.
+    Cursor's preToolUse hook can turn `git status` into `rtk git status`.
+    `rtk bypass` explicitly executes its operand without compression. Both
+    forms may prefix an allowlisted command, even in a pipeline, but `rtk run`
+    and other RTK subcommands are not transparent and must stay denied.
     """
+    if not words or words[0][0:2] != ("word", "rtk"):
+        return words
+    offset = 1
+    if len(words) > 1 and words[1][0:2] == ("word", "bypass"):
+        offset = 2
     if (
-        len(tokens) >= 2
-        and tokens[0][0] == "word"
-        and tokens[0][1] == "rtk"
-        and tokens[1][0] == "word"
-        and tokens[1][1]
-        and not tokens[1][1].startswith("-")
+        len(words) > offset
+        and words[offset][0] == "word"
+        and words[offset][1] in ALLOWED_COMMANDS
     ):
-        return tokens[1:]
-    return tokens
-
-
-def strip_transparent_prefixes(tokens):
-    while True:
-        nxt = strip_rtk_prefix(strip_host_cd_prefix(tokens))
-        if nxt == tokens:
-            return tokens
-        tokens = nxt
+        return words[offset:]
+    return words
 
 
 def is_allowlisted(tokens):
-    tokens = strip_transparent_prefixes(tokens)
     segments, current = [], []
     index = 0
     while index < len(tokens):
@@ -322,7 +318,9 @@ def verdict(command):
     if not command:
         return "No command provided."
     try:
-        tokens = strip_transparent_prefixes(lex(command))
+        # A host cwd prefix is transparent, but RTK itself is not a substitute
+        # for the audit wrapper. Strip RTK only inside allowlisted segments.
+        tokens = strip_host_cd_prefix(lex(command))
     except Substitution:
         return "Command contains a command or process substitution ($(...), backticks, <(...), or >(...))."
     except UnsupportedExpansion:

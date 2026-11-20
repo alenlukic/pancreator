@@ -301,6 +301,7 @@ export function handoffSelfDevelopmentLocalConfig(
   const sourcePath = path.join(installationRoot, configName)
   const targetPath = path.join(worktreePath, configName)
   let temporaryPath: string | undefined
+  const pinnedDescriptors: number[] = []
   let phase = 'read'
   let fields = ['configuration']
 
@@ -322,6 +323,15 @@ export function handoffSelfDevelopmentLocalConfig(
       path.join(worktreePath, LEGACY_LOCAL_CONFIG_PATH),
     ]
     const before = watchedPaths.map(snapshotHandoffFile)
+    if (process.platform !== 'win32') {
+      // Pin existing watched inodes so Linux ext4 cannot recycle an unlinked
+      // file's inode and coarse kernel timestamps across a concurrent replace.
+      for (const [index, file] of watchedPaths.entries()) {
+        if (before[index] !== undefined) {
+          pinnedDescriptors.push(openSync(file, 'r'))
+        }
+      }
+    }
     const tracked = JSON.parse(readFileSync(trackedPath, 'utf8')) as unknown
     const receiverName = localConfigName(worktreePath)
     const receiverBytes =
@@ -419,6 +429,13 @@ export function handoffSelfDevelopmentLocalConfig(
       },
     )
   } finally {
+    for (const descriptor of pinnedDescriptors) {
+      try {
+        closeSync(descriptor)
+      } catch {
+        // Best-effort release of read-only inode pins.
+      }
+    }
     if (temporaryPath !== undefined) {
       try {
         unlinkSync(temporaryPath)

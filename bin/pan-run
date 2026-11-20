@@ -996,6 +996,7 @@ STDOUT_LOG="$RECORD_DIR/stdout.log"
 STDERR_LOG="$RECORD_DIR/stderr.log"
 FIFO_OUT="$RECORD_DIR/.stdout.fifo"
 FIFO_ERR="$RECORD_DIR/.stderr.fifo"
+DRAIN_CANCEL_PATH="$RECORD_DIR/.drain-timer-cancel"
 mkdir -p "$RECORD_DIR"
 : >"$LOG_PATH"
 mv "$HELPER" "$RECORD_DIR/.pan-run.cjs"
@@ -1022,17 +1023,18 @@ ln -sfn "${RECORD_DIR_REL##*/}" "$SHELL_LOG_DIR/latest" 2>/dev/null || true
 HB_PID=""
 stop_heartbeat() {
   [[ -n "$HB_PID" ]] || return 0
-  # The in-flight sleep is a child of the loop; kill it first, or it outlives
-  # the loop.
+  # Freeze the loop before killing its children so it cannot fork another sleep
+  # or catch SIGTERM via an inherited wrapper trap and outlive the command.
+  kill -STOP "$HB_PID" 2>/dev/null || true
   pkill -P "$HB_PID" 2>/dev/null || true
-  kill "$HB_PID" 2>/dev/null || true
+  kill -KILL "$HB_PID" 2>/dev/null || true
   wait "$HB_PID" 2>/dev/null || true
   HB_PID=""
 }
 
 remove_scratch() {
   stop_heartbeat
-  rm -f "$FIFO_OUT" "$FIFO_ERR" "$HELPER" 2>/dev/null || true
+  rm -f "$FIFO_OUT" "$FIFO_ERR" "$DRAIN_CANCEL_PATH" "$HELPER" 2>/dev/null || true
 }
 trap remove_scratch EXIT
 
@@ -1115,6 +1117,7 @@ EOF
 }
 
 forward_signal() {
+  [[ "${BASHPID:-$$}" == "$WRAPPER_PID" ]] || exit 0
   WRAPPER_SIGNAL="$1"
   WRAPPER_SIGNAL_NUMBER="$2"
   INTERRUPTED=1
@@ -1203,6 +1206,7 @@ if [[ -n "$PROGRESS_FD" ]] && is_verbose; then
 fi
 
 (
+  trap - INT TERM
   if [[ -n "$PROGRESS_FD" ]]; then exec 1>&"$PROGRESS_FD"; else exec 1>/dev/null; fi
   exec 2>/dev/null
   # The sleep holds no inherited descriptor, so a parent reading our output
@@ -1230,22 +1234,37 @@ trap - INT TERM
 stop_heartbeat
 
 # A trapped USR1 interrupts `wait`, which bounds the drain without polling.
+# Repeat USR1 briefly after expiry so heavy load cannot deliver a single signal
+# before `wait` blocks and leave the wrapper waiting indefinitely.
 OUTPUT_DRAINED=1
 DRAIN_EXPIRED=0
 trap 'DRAIN_EXPIRED=1' USR1
 (
-  sleep "$DRAIN_SECONDS" </dev/null >/dev/null 2>&1 7>&- || exit 0
-  kill -USR1 "$WRAPPER_PID" 2>/dev/null
+  # Check cancellation even if the parent finishes before this subshell starts.
+  # A short tick also bounds the race between checking the marker and forking
+  # sleep; a one-shot long sleep can leave a cancelled timer waiting for 60s.
+  for ((tick=0; tick<DRAIN_SECONDS * 10; tick++)); do
+    [[ ! -e "$DRAIN_CANCEL_PATH" ]] || exit 0
+    sleep 0.1 </dev/null >/dev/null 2>&1 7>&- || exit 0
+  done
+  while [[ ! -e "$DRAIN_CANCEL_PATH" ]] && kill -USR1 "$WRAPPER_PID" 2>/dev/null; do
+    sleep 0.1 </dev/null >/dev/null 2>&1 7>&- || exit 0
+  done
 ) </dev/null >/dev/null 2>&1 7>&- &
 DRAIN_TIMER_PID=$!
-wait "$OUT_FILTER_PID" "$ERR_FILTER_PID" 2>/dev/null
+if [[ "$DRAIN_EXPIRED" -eq 0 ]]; then
+  wait "$OUT_FILTER_PID" "$ERR_FILTER_PID" 2>/dev/null
+fi
 # The filter check guards a timer that fired just after both filters exited.
 if [[ "$DRAIN_EXPIRED" -eq 1 ]] &&
   { kill -0 "$OUT_FILTER_PID" 2>/dev/null || kill -0 "$ERR_FILTER_PID" 2>/dev/null; }; then
   OUTPUT_DRAINED=0
 fi
-pkill -P "$DRAIN_TIMER_PID" 2>/dev/null || true
-kill "$DRAIN_TIMER_PID" 2>/dev/null || true
+trap '' USR1
+# Cooperative cancellation exits 0 without a Bash "Killed" diagnostic.
+# The short sleep ticks bound this wait even if cancellation races with the
+# timer's first instruction; no process-group signals or orphan sleeps.
+: >"$DRAIN_CANCEL_PATH"
 wait "$DRAIN_TIMER_PID" 2>/dev/null
 trap - USR1
 

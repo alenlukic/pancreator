@@ -12,7 +12,7 @@ STAMP="dist/.build-stamp"
 # GNU stat -f prints filesystem statistics before reporting a bad format
 # operand. Probe the dialect once so those changing statistics never enter
 # the source fingerprint on Linux.
-if stat -c '%n %Y %s' tsconfig.json >/dev/null 2>&1; then
+if stat -c '%n %Y %s' . >/dev/null 2>&1; then
   stat_args=(-c '%n %Y %s')
 else
   stat_args=(-f '%N %m %z')

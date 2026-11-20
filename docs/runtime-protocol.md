@@ -264,6 +264,28 @@ legacy all-history input behavior for compatibility. New runs use the scoped
 | `operator_decision`     | operator                  | Resolve a pause/circuit breaker or operator pause |
 | `none`                  | nobody                    | Run is terminal                                   |
 
+### Cursor RTK hook interoperability (Linux, WSL and macOS)
+
+RTK's optional Cursor `preToolUse` hook rewrites supported read-only shell
+commands, for example `git status` to `rtk git status`, through Cursor's
+`updated_input`. Pancreator's fail-closed `beforeShellExecution` monitor
+validates the command that reaches the shell. The unwrapped exception covers
+read-only allowlisted commands with an `rtk` prefix, or `rtk bypass` when raw
+read-only output is needed, including allowlisted pipeline segments. The
+monitor still refuses `rtk bypass npm test`, `rtk run ...`, and other
+unwrapped mutations. Its approval does not authorize a blocked action.
+
+`bin/pan-run` must be the **outermost executable**, even when RTK is installed:
+`bin/pan-run -- npm test`, not `rtk bin/pan-run -- npm test` or
+`rtk bypass bin/pan-run -- npm test`. RTK's output transformations cannot
+replace the wrapper's redacted full logs, heartbeat, exit status and shell
+record. The hook normally leaves an unrecognized wrapper command untouched;
+if an RTK configuration or newer hook rewrites it, use
+`RTK_DISABLED=1 bin/pan-run -- npm test` or configure RTK's
+`exclude_commands` to leave `bin/pan-run` alone. Do not install RTK into the
+repository or overwrite the target's existing hooks; the user-level RTK
+registration and Pancreator's project hooks can coexist.
+
 ### Supervisor continuation contract
 
 `ORCH-001` defines how the supervisor consumes `pending_action`, which actions it

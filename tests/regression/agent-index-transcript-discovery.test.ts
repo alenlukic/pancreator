@@ -7,7 +7,13 @@
  * a second, empty entry whose watch read the earlier turn's end as its stop.
  */
 import assert from 'node:assert/strict'
-import { appendFileSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  mkdirSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -240,8 +246,19 @@ test('a resumed child joins its entry and its earlier turn end is not its stop',
   assert.equal(readAgentStop(root, 'uuid-1', Date.now()), null)
 
   appendFileSync(file, userRecord('Fix finding 1.') + turnEnded('success'))
+  // Model a filesystem mtime that lags the resume's wall clock, as seen
+  // under WSL. The appended turn must still stop the agent, but the old
+  // turn before the append must not have stopped it.
+  const resumeMs = Date.parse(entry?.registered_at ?? '')
+  assert.ok(Number.isFinite(resumeMs))
+  utimesSync(file, (resumeMs - 500) / 1000, (resumeMs - 500) / 1000)
 
   assert.equal(readAgentStop(root, 'uuid-1', Date.now())?.status, 'completed')
+  assert.equal(
+    readAgentStop(root, 'uuid-1', Date.now(), resumeMs)?.status,
+    'completed',
+    'an invocation-time watch also recognizes a newly appended stop with lagging mtime',
+  )
 })
 
 test('a resume of an unindexed child links the resumed id to the new entry', () => {

@@ -301,7 +301,7 @@ export function loadManifest(
   return value
 }
 
-export function currentRecord(
+export function matchingRecordInputs(
   record: VerificationExecutionEvidence,
   invocation: ExecutionInvocation,
   entry: VerificationExecutionContract['operations'][number],
@@ -310,7 +310,6 @@ export function currentRecord(
 ): boolean {
   return (
     sourceFingerprint !== null &&
-    record.enforcement.processes === 'single-process' &&
     record.schema_version === 1 &&
     record.run_id === invocation.run_id &&
     record.invocation_id === invocation.invocation_id &&
@@ -327,6 +326,19 @@ export function currentRecord(
     JSON.stringify(record.evidence_paths) ===
       JSON.stringify(entry.operation.evidence_paths) &&
     JSON.stringify(record.source) === JSON.stringify(entry.source)
+  )
+}
+
+export function currentRecord(
+  record: VerificationExecutionEvidence,
+  invocation: ExecutionInvocation,
+  entry: VerificationExecutionContract['operations'][number],
+  sourceFingerprint: string | null,
+  secrets: string[] = [],
+): boolean {
+  return (
+    record.enforcement.processes === 'single-process' &&
+    matchingRecordInputs(record, invocation, entry, sourceFingerprint, secrets)
   )
 }
 

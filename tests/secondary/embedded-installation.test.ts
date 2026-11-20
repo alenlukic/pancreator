@@ -571,6 +571,7 @@ test('embedded installer preserves a tracked project hooks file and registers us
     timeout: 10,
     failClosed: true,
   }
+  const rtkEntry = { command: 'rtk hook cursor', matcher: 'Shell', timeout: 5 }
   const previousUserDirectory = process.env.PANCREATOR_CURSOR_USER_DIR
 
   process.env.PANCREATOR_CURSOR_USER_DIR = userDirectory
@@ -584,7 +585,7 @@ test('embedded installer preserves a tracked project hooks file and registers us
     )
     writeFileSync(
       userHooksPath,
-      `${JSON.stringify({ version: 1, hooks: { beforeShellExecution: [operatorEntry] } }, null, 2)}\n`,
+      `${JSON.stringify({ version: 1, hooks: { beforeShellExecution: [operatorEntry], preToolUse: [rtkEntry] } }, null, 2)}\n`,
     )
     git(project, ['add', 'README.md', '.cursor/hooks.json'])
     git(project, ['commit', '-qm', 'tracked hooks'])
@@ -608,6 +609,7 @@ test('embedded installer preserves a tracked project hooks file and registers us
     }>(path.join(REPO_ROOT, 'library', 'cursor', 'hooks.json'))
 
     assert.deepEqual(userHooks.hooks.beforeShellExecution?.[0], operatorEntry)
+    assert.deepEqual(userHooks.hooks.preToolUse?.[0], rtkEntry)
 
     for (const [event, entries] of Object.entries(canonical.hooks)) {
       assert.deepEqual(

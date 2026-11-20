@@ -14,12 +14,13 @@ import {
 } from '../../src/lib/debloat/symbols.js'
 import { createTestTempDirectory } from '../temp.js'
 
-const HISTORICAL_COMMIT = '768063d1'
+const HISTORICAL_COMMIT = '5714648c99bdae95a7f7fb0e514a124aaad00d31'
 const SUBPROCESS_TIMEOUT_MS = 60_000
 const SESSION = '20260920-000000-abcdef'
 
 /**
- * Paths the 6.30.0 handoff found stranded by the same fourteen ids.
+ * Paths the 6.26.0 tree, the last indexed release before the 6.30.1
+ * debloat merge, still held stranded by the same fourteen ids.
  *
  * Each one must land under `remove` or `edit`, which is what C-17 asks for. A
  * `freed` entry is a weaker result: it reports that nothing references the

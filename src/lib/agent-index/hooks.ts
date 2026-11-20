@@ -42,7 +42,10 @@ import {
   type SubagentStopPayload,
   type AgentEvent,
 } from './store.js'
-import { validatedParentTranscriptPath } from './transcript.js'
+import {
+  readTranscriptState,
+  validatedParentTranscriptPath,
+} from './transcript.js'
 import { allHostToolNames, loadHostToolRegistry } from '../host-tools.js'
 
 // ---------------------------------------------------------------------------
@@ -389,6 +392,14 @@ export function handleSubagentStart(
     if (!child) {
       child = newAgentEntry(childId, nowIso)
       index.agents.push(child)
+    } else {
+      // Cursor appends resumed turns to the existing JSONL. Snapshot its size
+      // before the new turn starts so coarse WSL mtimes cannot make an old
+      // turn_ended look new, or hide a genuinely appended completion.
+      const transcript = readTranscriptState(child, Date.now())
+      child.transcript_at_registration = transcript
+        ? { path: transcript.path, size: transcript.size }
+        : null
     }
 
     if (resumed !== null && child.agent_id === resumed) {
